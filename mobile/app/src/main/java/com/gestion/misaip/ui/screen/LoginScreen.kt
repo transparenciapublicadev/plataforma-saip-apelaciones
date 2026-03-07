@@ -285,7 +285,7 @@ private fun LoginContent(
                         value = uiState.usuario,
                         onValueChange = onUsuarioChanged,
                         label = { Text("Correo electrónico") },
-                        placeholder = { Text("ejemplo@entidad.gob.pe") },
+                        placeholder = { Text("ejemplo@entidad.test") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         isError = uiState.errorUsuario != null,
                         supportingText = uiState.errorUsuario?.let { { Text(it) } },

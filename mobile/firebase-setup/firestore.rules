@@ -15,7 +15,7 @@ service cloud.firestore {
 
     // ============================================
     // ENTIDADES PÚBLICAS — Lectura todos, escritura admin
-    // Catálogo de entidades del Estado Peruano
+    // Catálogo de entidades públicas del sistema
     // ============================================
     match /entidades/{entidadId} {
       allow read: if isAuthenticated();

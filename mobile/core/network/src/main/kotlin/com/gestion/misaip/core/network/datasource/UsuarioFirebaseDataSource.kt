@@ -25,8 +25,8 @@ class UsuarioFirebaseDataSource(
             // Construir email para Firebase Auth a partir del identificador genérico
             val email = when {
                 identificador.contains("@") -> identificador
-                identificador.matches(Regex("\\d{8}")) -> "$identificador@misaip.gob.pe"
-                else -> "$identificador@misaip.gob.pe"
+                identificador.matches(Regex("\\d{8}")) -> "$identificador@misaip.test"
+                else -> "$identificador@misaip.test"
             }
             val result = auth.signInWithEmailAndPassword(email, password).await()
             val uid = result.user?.uid ?: throw NetworkException("No se pudo obtener el UID")

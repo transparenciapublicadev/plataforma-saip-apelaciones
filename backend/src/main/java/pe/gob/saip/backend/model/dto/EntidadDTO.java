@@ -3,7 +3,7 @@ package pe.gob.saip.backend.model.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.Entidad;
 
-@Schema(description = "Entidad pública del Estado peruano")
+@Schema(description = "Entidad pública registrada en el sistema")
 public record EntidadDTO(
     Long id,
     @Schema(description = "Nombre oficial de la entidad")

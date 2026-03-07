@@ -3,7 +3,7 @@ package com.gestion.misaip.core.domain.model
 /**
  * Entidad de Dominio: Entidad Pública
  *
- * Representa una entidad pública del Estado Peruano
+ * Representa una entidad pública registrada en el sistema
  * a la cual se pueden dirigir solicitudes SAIP.
  *
  * Kotlin Puro - Sin dependencias de Android ni Firebase.

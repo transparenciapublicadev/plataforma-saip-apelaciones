@@ -83,7 +83,7 @@ function header(title) {
 // ╚══════════════════════════════════════════════════════════╝
 const USUARIOS = [
   {
-    email: '12345678@misaip.gob.pe',
+    email: '12345678@misaip.test',
     password: 'ciudadano123',
     displayName: 'Juan Carlos García Pérez',
     firestoreData: {
@@ -101,7 +101,7 @@ const USUARIOS = [
     }
   },
   {
-    email: '87654321@misaip.gob.pe',
+    email: '87654321@misaip.test',
     password: 'ciudadano123',
     displayName: 'María López Ríos',
     firestoreData: {
@@ -119,7 +119,7 @@ const USUARIOS = [
     }
   },
   {
-    email: 'func_minedu@misaip.gob.pe',
+    email: 'func_minedu@misaip.test',
     password: 'minedu123',
     displayName: 'Carlos Rodríguez',
     firestoreData: {
@@ -127,17 +127,17 @@ const USUARIOS = [
       nombre: 'Carlos Rodríguez',
       dni: '45678901',
       usuario: 'func_minedu',
-      email: 'carlos.rodriguez@minedu.gob.pe',
+      email: 'carlos.rodriguez@entidad1.test',
       telefono: '(01) 615-5800 Anexo 201',
       direccion: 'Calle del Comercio 193, San Borja, Lima',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       cargo: 'Jefe de Transparencia',
       estaActivo: true,
     }
   },
   {
-    email: 'func_minsa@misaip.gob.pe',
+    email: 'func_minsa@misaip.test',
     password: 'minsa123',
     displayName: 'Ana Torres',
     firestoreData: {
@@ -145,17 +145,17 @@ const USUARIOS = [
       nombre: 'Ana Torres',
       dni: '56789012',
       usuario: 'func_minsa',
-      email: 'ana.torres@minsa.gob.pe',
+      email: 'ana.torres@entidad2.test',
       telefono: '(01) 315-6600 Anexo 305',
       direccion: 'Av. Salaverry 801, Jesús María, Lima',
-      entidad: 'Ministerio de Salud (MINSA)',
+      entidad: 'Entidad Nacional de Salud (ENSAL)',
       entidadId: 'minsa',
       cargo: 'Coordinadora SAIP',
       estaActivo: true,
     }
   },
   {
-    email: 'func_mef@misaip.gob.pe',
+    email: 'func_mef@misaip.test',
     password: 'mef123456',
     displayName: 'Luis Fernández',
     firestoreData: {
@@ -163,17 +163,17 @@ const USUARIOS = [
       nombre: 'Luis Fernández',
       dni: '67890123',
       usuario: 'func_mef',
-      email: 'luis.fernandez@mef.gob.pe',
+      email: 'luis.fernandez@entidad3.test',
       telefono: '(01) 311-5930 Anexo 102',
       direccion: 'Jr. Junín 319, Cercado de Lima',
-      entidad: 'Ministerio de Economía y Finanzas (MEF)',
+      entidad: 'Entidad de Economía y Finanzas (EEF)',
       entidadId: 'mef',
       cargo: 'Jefe de Transparencia',
       estaActivo: true,
     }
   },
   {
-    email: 'func_mtc@misaip.gob.pe',
+    email: 'func_mtc@misaip.test',
     password: 'mtc123456',
     displayName: 'Patricia Vargas',
     firestoreData: {
@@ -181,17 +181,17 @@ const USUARIOS = [
       nombre: 'Patricia Vargas',
       dni: '78901234',
       usuario: 'func_mtc',
-      email: 'patricia.vargas@mtc.gob.pe',
+      email: 'patricia.vargas@entidad4.test',
       telefono: '(01) 615-7800 Anexo 108',
       direccion: 'Jr. Zorritos 1203, Cercado de Lima',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       cargo: 'Jefe de Transparencia',
       estaActivo: true,
     }
   },
   {
-    email: 'ttaip_001@misaip.gob.pe',
+    email: 'ttaip_001@misaip.test',
     password: 'ttaip123',
     displayName: 'Dr. Roberto Mendoza',
     firestoreData: {
@@ -199,7 +199,7 @@ const USUARIOS = [
       nombre: 'Dr. Roberto Mendoza',
       dni: '34567890',
       usuario: 'ttaip_001',
-      email: 'roberto.mendoza@ttaip.gob.pe',
+      email: 'roberto.mendoza@ttaip.test',
       telefono: '(01) 204-8585 Anexo 401',
       direccion: 'Av. Abancay cdra. 5 s/n, Cercado de Lima',
       entidad: 'Tribunal de Transparencia y Acceso a la Información Pública',
@@ -209,7 +209,7 @@ const USUARIOS = [
     }
   },
   {
-    email: 'ttaip_002@misaip.gob.pe',
+    email: 'ttaip_002@misaip.test',
     password: 'ttaip123',
     displayName: 'Dra. Carmen Silva',
     firestoreData: {
@@ -217,7 +217,7 @@ const USUARIOS = [
       nombre: 'Dra. Carmen Silva',
       dni: '23456789',
       usuario: 'ttaip_002',
-      email: 'carmen.silva@ttaip.gob.pe',
+      email: 'carmen.silva@ttaip.test',
       telefono: '(01) 204-8585 Anexo 402',
       direccion: 'Av. Abancay cdra. 5 s/n, Cercado de Lima',
       entidad: 'Tribunal de Transparencia y Acceso a la Información Pública',
@@ -227,7 +227,7 @@ const USUARIOS = [
     }
   },
   {
-    email: 'admin@misaip.gob.pe',
+    email: 'admin@misaip.test',
     password: 'admin12345',
     displayName: 'Administrador del Sistema',
     firestoreData: {
@@ -235,7 +235,7 @@ const USUARIOS = [
       nombre: 'Administrador del Sistema',
       dni: '00000001',
       usuario: 'admin',
-      email: 'admin@misaip.gob.pe',
+      email: 'admin@misaip.test',
       telefono: '(01) 204-8585 Anexo 100',
       direccion: 'Av. Abancay cdra. 5 s/n, Cercado de Lima',
       entidad: 'Sistema SAIP Nacional',
@@ -250,14 +250,14 @@ const USUARIOS = [
 // ║  DATOS DE ENTIDADES PÚBLICAS                            ║
 // ╚══════════════════════════════════════════════════════════╝
 const ENTIDADES = [
-  { id: 'minedu', nombre: 'Ministerio de Educación', sector: 'Educación', siglas: 'MINEDU', ruc: '20131370998', direccion: 'Calle del Comercio 193, San Borja, Lima', telefono: '(01) 615-5800', email: 'transparencia@minedu.gob.pe', sitioWeb: 'https://www.gob.pe/minedu', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'minsa', nombre: 'Ministerio de Salud', sector: 'Salud', siglas: 'MINSA', ruc: '20131373237', direccion: 'Av. Salaverry 801, Jesús María, Lima', telefono: '(01) 315-6600', email: 'transparencia@minsa.gob.pe', sitioWeb: 'https://www.gob.pe/minsa', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'mef', nombre: 'Ministerio de Economía y Finanzas', sector: 'Economía', siglas: 'MEF', ruc: '20131370645', direccion: 'Jr. Junín 319, Cercado de Lima', telefono: '(01) 311-5930', email: 'transparencia@mef.gob.pe', sitioWeb: 'https://www.gob.pe/mef', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'mtc', nombre: 'Ministerio de Transportes y Comunicaciones', sector: 'Transportes', siglas: 'MTC', ruc: '20131379944', direccion: 'Jr. Zorritos 1203, Cercado de Lima', telefono: '(01) 615-7800', email: 'transparencia@mtc.gob.pe', sitioWeb: 'https://www.gob.pe/mtc', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'mininter', nombre: 'Ministerio del Interior', sector: 'Seguridad', siglas: 'MININTER', ruc: '20131366966', direccion: 'Plaza 30 de Agosto s/n, San Isidro, Lima', telefono: '(01) 418-4030', email: 'transparencia@mininter.gob.pe', sitioWeb: 'https://www.gob.pe/mininter', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'produce', nombre: 'Ministerio de la Producción', sector: 'Producción', siglas: 'PRODUCE', ruc: '20504794637', direccion: 'Calle Uno Oeste 060, San Isidro, Lima', telefono: '(01) 616-2222', email: 'transparencia@produce.gob.pe', sitioWeb: 'https://www.gob.pe/produce', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'minam', nombre: 'Ministerio del Ambiente', sector: 'Ambiente', siglas: 'MINAM', ruc: '20492969658', direccion: 'Av. Antonio Miroquesada 425, Magdalena, Lima', telefono: '(01) 611-6000', email: 'transparencia@minam.gob.pe', sitioWeb: 'https://www.gob.pe/minam', nivelGobierno: 'NACIONAL', activa: true },
-  { id: 'mincetur', nombre: 'Ministerio de Comercio Exterior y Turismo', sector: 'Comercio', siglas: 'MINCETUR', ruc: '20504794637', direccion: 'Calle Uno Oeste 050, San Isidro, Lima', telefono: '(01) 513-6100', email: 'transparencia@mincetur.gob.pe', sitioWeb: 'https://www.gob.pe/mincetur', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'minedu', nombre: 'Entidad Nacional de Educación', sector: 'Educación', siglas: 'ENEDU', ruc: '20131370998', direccion: 'Calle del Comercio 193, San Borja, Lima', telefono: '(01) 615-5800', email: 'transparencia@enedu.test', sitioWeb: 'https://enedu.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'minsa', nombre: 'Entidad Nacional de Salud', sector: 'Salud', siglas: 'ENSAL', ruc: '20131373237', direccion: 'Av. Salaverry 801, Jesús María, Lima', telefono: '(01) 315-6600', email: 'transparencia@ensal.test', sitioWeb: 'https://ensal.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'mef', nombre: 'Entidad de Economía y Finanzas', sector: 'Economía', siglas: 'EEF', ruc: '20131370645', direccion: 'Jr. Junín 319, Cercado de Lima', telefono: '(01) 311-5930', email: 'transparencia@eef.test', sitioWeb: 'https://eef.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'mtc', nombre: 'Entidad de Transportes y Comunicaciones', sector: 'Transportes', siglas: 'ETC', ruc: '20131379944', direccion: 'Jr. Zorritos 1203, Cercado de Lima', telefono: '(01) 615-7800', email: 'transparencia@etc.test', sitioWeb: 'https://etc.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'mininter', nombre: 'Entidad de Seguridad Interior', sector: 'Seguridad', siglas: 'ESI', ruc: '20131366966', direccion: 'Plaza 30 de Agosto s/n, San Isidro, Lima', telefono: '(01) 418-4030', email: 'transparencia@esi.test', sitioWeb: 'https://esi.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'produce', nombre: 'Entidad de Producción', sector: 'Producción', siglas: 'EPROD', ruc: '20504794637', direccion: 'Calle Uno Oeste 060, San Isidro, Lima', telefono: '(01) 616-2222', email: 'transparencia@eprod.test', sitioWeb: 'https://eprod.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'minam', nombre: 'Entidad de Medio Ambiente', sector: 'Ambiente', siglas: 'EMA', ruc: '20492969658', direccion: 'Av. Antonio Miroquesada 425, Magdalena, Lima', telefono: '(01) 611-6000', email: 'transparencia@ema.test', sitioWeb: 'https://ema.test', nivelGobierno: 'NACIONAL', activa: true },
+  { id: 'mincetur', nombre: 'Entidad de Comercio Exterior y Turismo', sector: 'Comercio', siglas: 'ECET', ruc: '20504794637', direccion: 'Calle Uno Oeste 050, San Isidro, Lima', telefono: '(01) 513-6100', email: 'transparencia@ecet.test', sitioWeb: 'https://ecet.test', nivelGobierno: 'NACIONAL', activa: true },
 ];
 
 // ╔══════════════════════════════════════════════════════════╗
@@ -380,15 +380,15 @@ async function sembrarEntidades() {
 async function sembrarSolicitudes(uids) {
   header('PASO 4/5 — Sembrando colección "solicitudes" en Firestore');
 
-  const uidCiudadano1 = uids['12345678@misaip.gob.pe'];
-  const uidCiudadano2 = uids['87654321@misaip.gob.pe'];
+  const uidCiudadano1 = uids['12345678@misaip.test'];
+  const uidCiudadano2 = uids['87654321@misaip.test'];
 
   const solicitudes = [
     {
       id: 'sol_saip_00512',
       expediente: 'SAIP-2025-00512',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       usuarioId: uidCiudadano1,
       solicitanteNombre: 'Juan Carlos García Pérez',
@@ -423,7 +423,7 @@ async function sembrarSolicitudes(uids) {
       id: 'sol_saip_00498',
       expediente: 'SAIP-2025-00498',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio de Economía y Finanzas (MEF)',
+      entidad: 'Entidad de Economía y Finanzas (EEF)',
       entidadId: 'mef',
       usuarioId: uidCiudadano1,
       solicitanteNombre: 'Juan Carlos García Pérez',
@@ -459,7 +459,7 @@ async function sembrarSolicitudes(uids) {
       id: 'sol_saip_00520',
       expediente: 'SAIP-2025-00520',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio de Salud (MINSA)',
+      entidad: 'Entidad Nacional de Salud (ENSAL)',
       entidadId: 'minsa',
       usuarioId: uidCiudadano2,
       solicitanteNombre: 'María López Ríos',
@@ -468,7 +468,7 @@ async function sembrarSolicitudes(uids) {
       solicitanteTelefono: '912345678',
       solicitanteDireccion: 'Jr. Cusco 567, Lima',
       asunto: 'Informe de vacunación COVID-19 por regiones 2024',
-      descripcion: 'Solicito el informe estadístico de vacunación COVID-19 desglosado por regiones del Perú para el año 2024.',
+      descripcion: 'Solicito el informe estadístico de vacunación COVID-19 desglosado por regiones para el año 2024.',
       fechaCreacion: 1738886400000,
       fechaLimite: 1740096000000,
       estado: 'En Revisión',
@@ -493,7 +493,7 @@ async function sembrarSolicitudes(uids) {
       id: 'sol_saip_00505',
       expediente: 'SAIP-2025-00505',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       usuarioId: uidCiudadano2,
       solicitanteNombre: 'María López Ríos',
@@ -523,12 +523,12 @@ async function sembrarSolicitudes(uids) {
       pendienteSubida: false,
       ultimaModificacion: 1738713600000,
     },
-    // ─── sol_5: DENEGADA sin apelación (MINSA, ciudadano 1) ───
+    // ─── sol_5: DENEGADA sin apelación (ENSAL, ciudadano 1) ───
     {
       id: 'sol_saip_00530',
       expediente: 'SAIP-2025-00530',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio de Salud (MINSA)',
+      entidad: 'Entidad Nacional de Salud (ENSAL)',
       entidadId: 'minsa',
       usuarioId: uidCiudadano1,
       solicitanteNombre: 'Juan Carlos García Pérez',
@@ -537,7 +537,7 @@ async function sembrarSolicitudes(uids) {
       solicitanteTelefono: '987654321',
       solicitanteDireccion: 'Av. Arequipa 1234, Lima',
       asunto: 'Contratos de adquisición de equipos médicos 2024',
-      descripcion: 'Solicito información sobre los contratos de adquisición de equipos médicos celebrados por el MINSA durante el año 2024, incluyendo montos, proveedores y especificaciones técnicas.',
+      descripcion: 'Solicito información sobre los contratos de adquisición de equipos médicos celebrados por la ENSAL durante el año 2024, incluyendo montos, proveedores y especificaciones técnicas.',
       fechaCreacion: 1739145600000,
       fechaLimite: 1740355200000,
       estado: 'Denegada',
@@ -559,12 +559,12 @@ async function sembrarSolicitudes(uids) {
       pendienteSubida: false,
       ultimaModificacion: 1739836800000,
     },
-    // ─── sol_6: RECEPCIONADA (MINEDU, ciudadano 2) ───
+    // ─── sol_6: RECEPCIONADA (ENEDU, ciudadano 2) ───
     {
       id: 'sol_saip_00535',
       expediente: 'SAIP-2025-00535',
       tipo: 'INFORMACION_ESPECIFICA',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       usuarioId: uidCiudadano2,
       solicitanteNombre: 'María López Ríos',
@@ -592,12 +592,12 @@ async function sembrarSolicitudes(uids) {
       pendienteSubida: false,
       ultimaModificacion: 1739750400000,
     },
-    // ─── sol_7: VENCIDA (MININTER, ciudadano 2) ───
+    // ─── sol_7: VENCIDA (ESI, ciudadano 2) ───
     {
       id: 'sol_saip_00510',
       expediente: 'SAIP-2025-00510',
       tipo: 'ACCESO_INFORMACION',
-      entidad: 'Ministerio del Interior (MININTER)',
+      entidad: 'Entidad de Seguridad Interior (ESI)',
       entidadId: 'mininter',
       usuarioId: uidCiudadano2,
       solicitanteNombre: 'María López Ríos',
@@ -642,11 +642,11 @@ async function sembrarSolicitudes(uids) {
 async function sembrarApelaciones(uids) {
   header('PASO 5/7 — Sembrando colección "apelaciones"');
 
-  const uidCiudadano1 = uids['12345678@misaip.gob.pe'];
-  const uidCiudadano2 = uids['87654321@misaip.gob.pe'];
-  const uidFuncMinedu = uids['func_minedu@misaip.gob.pe'];
-  const uidFuncMtc = uids['func_mtc@misaip.gob.pe'];
-  const uidTtaip1 = uids['ttaip_001@misaip.gob.pe'];
+  const uidCiudadano1 = uids['12345678@misaip.test'];
+  const uidCiudadano2 = uids['87654321@misaip.test'];
+  const uidFuncMinedu = uids['func_minedu@misaip.test'];
+  const uidFuncMtc = uids['func_mtc@misaip.test'];
+  const uidTtaip1 = uids['ttaip_001@misaip.test'];
 
   // ─── Apelaciones ──────────────────────────────────────────
   const apelaciones = [
@@ -658,12 +658,12 @@ async function sembrarApelaciones(uids) {
       apelanteNombre: 'Juan Carlos García Pérez',
       apelanteDni: '12345678',
       apelanteEmail: 'juan.garcia@email.com',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       asunto: 'Apelación contra denegación de acceso a actas del CNE',
       fundamentoLegal: 'Artículo 2, inciso 5 de la Constitución Política del Perú; Artículo 10 del TUO de la Ley N° 27806',
-      exposicionHechos: 'Con fecha 03/01/2025 presenté la solicitud SAIP-2025-00512 ante el Ministerio de Educación, solicitando copias certificadas de las actas de sesiones del CNE. La entidad denegó mi solicitud alegando información confidencial.',
-      pretension: 'Solicito al Tribunal de Transparencia que ordene al MINEDU la entrega de las actas de sesiones del CNE correspondientes al periodo enero-diciembre 2024.',
+      exposicionHechos: 'Con fecha 03/01/2025 presenté la solicitud SAIP-2025-00512 ante la Entidad Nacional de Educación, solicitando copias certificadas de las actas de sesiones del CNE. La entidad denegó mi solicitud alegando información confidencial.',
+      pretension: 'Solicito al Tribunal de Transparencia que ordene a la ENEDU la entrega de las actas de sesiones del CNE correspondientes al periodo enero-diciembre 2024.',
       fechaPresentacion: 1736985600000,
       estado: 'Resuelto - Fundado',
       funcionarioTTAIP: 'Dr. Roberto Mendoza',
@@ -671,7 +671,7 @@ async function sembrarApelaciones(uids) {
         fecha: 1737590400000,
         funcionario: 'Dr. Roberto Mendoza',
         resultado: 'FUNDADO',
-        fundamentacion: 'Se declara FUNDADA la apelación. Las actas de sesiones de órganos colegiados constituyen información pública por mandato legal. Se ORDENA al MINEDU proporcionar la información en 5 días hábiles.',
+        fundamentacion: 'Se declara FUNDADA la apelación. Las actas de sesiones de órganos colegiados constituyen información pública por mandato legal. Se ORDENA a la ENEDU proporcionar la información en 5 días hábiles.',
         resolucion: 'Resolución N° 045-2025-TTAIP/SD',
         cedulaCiudadano: 'N° 145-C-2025',
         cedulaEntidad: 'N° 145-E-2025',
@@ -698,12 +698,12 @@ async function sembrarApelaciones(uids) {
       apelanteNombre: 'María López Ríos',
       apelanteDni: '87654321',
       apelanteEmail: 'maria.lopez@email.com',
-      entidad: 'Ministerio de Salud (MINSA)',
+      entidad: 'Entidad Nacional de Salud (ENSAL)',
       entidadId: 'minsa',
       asunto: 'Apelación por demora en entrega de informe de vacunación',
       fundamentoLegal: 'Artículo 11 del TUO de la Ley N° 27806',
-      exposicionHechos: 'Habiendo transcurrido el plazo legal sin obtener respuesta completa del MINSA.',
-      pretension: 'Solicito al TTAIP ordene al MINSA la entrega completa del informe estadístico de vacunación.',
+      exposicionHechos: 'Habiendo transcurrido el plazo legal sin obtener respuesta completa de la ENSAL.',
+      pretension: 'Solicito al TTAIP ordene a la ENSAL la entrega completa del informe estadístico de vacunación.',
       fechaPresentacion: 1739232000000,
       estado: 'En Calificación',
       funcionarioTTAIP: 'Dr. Roberto Mendoza',
@@ -728,7 +728,7 @@ async function sembrarApelaciones(uids) {
       apelanteNombre: 'María López Ríos',
       apelanteDni: '87654321',
       apelanteEmail: 'maria.lopez@email.com',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       asunto: 'Apelación por falta de respuesta sobre proyectos viales',
       fundamentoLegal: 'Artículo 11 del TUO de la Ley N° 27806',
@@ -776,11 +776,11 @@ async function sembrarApelaciones(uids) {
       apelanteNombre: 'María López Ríos',
       apelanteDni: '87654321',
       apelanteEmail: 'maria.lopez@email.com',
-      entidad: 'Ministerio del Interior (MININTER)',
+      entidad: 'Entidad de Seguridad Interior (ESI)',
       entidadId: 'mininter',
       asunto: 'Apelación contra denegación de información de seguridad nacional',
       fundamentoLegal: 'Artículo 2 inciso 5 de la Constitución Política del Perú',
-      exposicionHechos: 'Solicité información sobre operativos del Ministerio del Interior que me fue denegada por razones de seguridad nacional.',
+      exposicionHechos: 'Solicité información sobre operativos de la Entidad de Seguridad Interior que me fue denegada por razones de seguridad nacional.',
       pretension: 'Ordene la entrega de la información solicitada.',
       fechaPresentacion: 1734566400000,
       estado: 'Resuelto - Infundado',
@@ -823,8 +823,8 @@ async function sembrarApelaciones(uids) {
 async function sembrarExpedientes(uids) {
   header('PASO 6/7 — Sembrando colección "expedientes" (RF-EXP-01)');
 
-  const uidCiudadano1 = uids['12345678@misaip.gob.pe'];
-  const uidCiudadano2 = uids['87654321@misaip.gob.pe'];
+  const uidCiudadano1 = uids['12345678@misaip.test'];
+  const uidCiudadano2 = uids['87654321@misaip.test'];
 
   const expedientes = [
     {
@@ -834,7 +834,7 @@ async function sembrarExpedientes(uids) {
       expedienteSAIP: 'SAIP-2025-00512',
       recurrenteId: uidCiudadano1,
       recurrenteNombre: 'Juan Carlos García Pérez',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       sala: 'Primera Sala',
       vocalPonente: 'Tatiana Azucena Valverde Alvarado',
@@ -862,7 +862,7 @@ async function sembrarExpedientes(uids) {
       expedienteSAIP: 'SAIP-2025-00520',
       recurrenteId: uidCiudadano2,
       recurrenteNombre: 'María López Ríos',
-      entidad: 'Ministerio de Salud (MINSA)',
+      entidad: 'Entidad Nacional de Salud (ENSAL)',
       entidadId: 'minsa',
       sala: 'Primera Sala',
       vocalPonente: 'Luis Guillermo Agurto Villegas',
@@ -890,7 +890,7 @@ async function sembrarExpedientes(uids) {
       expedienteSAIP: 'SAIP-2025-00505',
       recurrenteId: uidCiudadano2,
       recurrenteNombre: 'María López Ríos',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       sala: 'Segunda Sala',
       vocalPonente: 'Junior Pichón De la Cruz',
@@ -918,7 +918,7 @@ async function sembrarExpedientes(uids) {
       expedienteSAIP: 'SAIP-2025-00510',
       recurrenteId: uidCiudadano2,
       recurrenteNombre: 'María López Ríos',
-      entidad: 'Ministerio del Interior (MININTER)',
+      entidad: 'Entidad de Seguridad Interior (ESI)',
       entidadId: 'mininter',
       sala: 'Segunda Sala',
       vocalPonente: 'Jessica Martha Rojas Barrueta',
@@ -956,11 +956,11 @@ async function sembrarExpedientes(uids) {
 async function sembrarCedulasYNotificaciones(uids) {
   header('PASO 7/7 — Sembrando "cedulas" y "notificaciones"');
 
-  const uidCiudadano1 = uids['12345678@misaip.gob.pe'];
-  const uidCiudadano2 = uids['87654321@misaip.gob.pe'];
-  const uidFuncMinedu = uids['func_minedu@misaip.gob.pe'];
-  const uidFuncMtc = uids['func_mtc@misaip.gob.pe'];
-  const uidTtaip1 = uids['ttaip_001@misaip.gob.pe'];
+  const uidCiudadano1 = uids['12345678@misaip.test'];
+  const uidCiudadano2 = uids['87654321@misaip.test'];
+  const uidFuncMinedu = uids['func_minedu@misaip.test'];
+  const uidFuncMtc = uids['func_mtc@misaip.test'];
+  const uidTtaip1 = uids['ttaip_001@misaip.test'];
 
   // ─── Cédulas de Notificación (RF-NOT-01) ──────────────────
   log('📜', 'Sembrando cédulas de notificación...');
@@ -977,9 +977,9 @@ async function sembrarCedulasYNotificaciones(uids) {
       destinatario: 'CIUDADANO',
       destinatarioId: uidCiudadano1,
       destinatarioNombre: 'Juan Carlos García Pérez',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
-      contenido: 'Se le notifica la Resolución N° 045-2025-TTAIP/SD que declara FUNDADA su apelación. Se ordena al MINEDU la entrega de información en 5 días hábiles.',
+      contenido: 'Se le notifica la Resolución N° 045-2025-TTAIP/SD que declara FUNDADA su apelación. Se ordena a la ENEDU la entrega de información en 5 días hábiles.',
       fechaNotificacion: 1737590400000,
       modalidad: 'VIRTUAL',
       estado: 'NOTIFICADO',
@@ -999,8 +999,8 @@ async function sembrarCedulasYNotificaciones(uids) {
       resolucionNumero: 'Resolución N° 045-2025-TTAIP/SD',
       destinatario: 'ENTIDAD',
       destinatarioId: uidFuncMinedu,
-      destinatarioNombre: 'Ministerio de Educación (MINEDU)',
-      entidad: 'Ministerio de Educación (MINEDU)',
+      destinatarioNombre: 'Entidad Nacional de Educación (ENEDU)',
+      entidad: 'Entidad Nacional de Educación (ENEDU)',
       entidadId: 'minedu',
       contenido: 'Se notifica la Resolución N° 045-2025-TTAIP/SD que declara FUNDADA la apelación del ciudadano. Se ordena la entrega de información en 5 días hábiles bajo apercibimiento.',
       fechaNotificacion: 1737590400000,
@@ -1023,7 +1023,7 @@ async function sembrarCedulasYNotificaciones(uids) {
       destinatario: 'CIUDADANO',
       destinatarioId: uidCiudadano2,
       destinatarioNombre: 'María López Ríos',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       contenido: 'Se requiere subsanación del recurso de apelación. Debe especificar con exactitud la información requerida. Plazo: 3 días hábiles.',
       fechaNotificacion: 1738368000000,
@@ -1046,7 +1046,7 @@ async function sembrarCedulasYNotificaciones(uids) {
       destinatario: 'CIUDADANO',
       destinatarioId: uidCiudadano2,
       destinatarioNombre: 'María López Ríos',
-      entidad: 'Ministerio de Transportes y Comunicaciones (MTC)',
+      entidad: 'Entidad de Transportes y Comunicaciones (ETC)',
       entidadId: 'mtc',
       contenido: 'Se le notifica la Resolución N° 078-2025-TTAIP/SD que declara INADMISIBLE su apelación por no subsanar en plazo.',
       fechaNotificacion: 1738886400000,
@@ -1069,7 +1069,7 @@ async function sembrarCedulasYNotificaciones(uids) {
       destinatario: 'CIUDADANO',
       destinatarioId: uidCiudadano2,
       destinatarioNombre: 'María López Ríos',
-      entidad: 'Ministerio del Interior (MININTER)',
+      entidad: 'Entidad de Seguridad Interior (ESI)',
       entidadId: 'mininter',
       contenido: 'Se le notifica la Resolución N° 023-2025-TTAIP/SD que declara INFUNDADA su apelación. La información está exceptuada por razones de seguridad nacional.',
       fechaNotificacion: 1735171200000,
@@ -1091,8 +1091,8 @@ async function sembrarCedulasYNotificaciones(uids) {
       resolucionNumero: 'Resolución N° 023-2025-TTAIP/SD',
       destinatario: 'ENTIDAD',
       destinatarioId: null,
-      destinatarioNombre: 'Ministerio del Interior (MININTER)',
-      entidad: 'Ministerio del Interior (MININTER)',
+      destinatarioNombre: 'Entidad de Seguridad Interior (ESI)',
+      entidad: 'Entidad de Seguridad Interior (ESI)',
       entidadId: 'mininter',
       contenido: 'Se notifica la Resolución N° 023-2025-TTAIP/SD que declara INFUNDADA la apelación del ciudadano.',
       fechaNotificacion: 1735171200000,

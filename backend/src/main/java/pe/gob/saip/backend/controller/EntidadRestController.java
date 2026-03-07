@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/entidades")
-@Tag(name = "Entidades Públicas", description = "Gestión de entidades públicas del Estado peruano")
+@Tag(name = "Entidades Públicas", description = "Gestión de entidades públicas del sistema")
 public class EntidadRestController {
 
     private final EntidadService entidadService;

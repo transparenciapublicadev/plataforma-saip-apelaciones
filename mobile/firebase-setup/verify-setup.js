@@ -43,13 +43,13 @@ const C = {
 const EXPECTED_EMAILS = [
   'juan.garcia@email.com',
   'maria.lopez@email.com',
-  'carlos.rodriguez@minedu.gob.pe',
-  'ana.torres@minsa.gob.pe',
-  'luis.fernandez@mef.gob.pe',
-  'patricia.vargas@mtc.gob.pe',
-  'roberto.mendoza@ttaip.gob.pe',
-  'carmen.silva@ttaip.gob.pe',
-  'admin@misaip.gob.pe',
+  'carlos.rodriguez@entidad1.test',
+  'ana.torres@entidad2.test',
+  'luis.fernandez@entidad3.test',
+  'patricia.vargas@entidad4.test',
+  'roberto.mendoza@ttaip.test',
+  'carmen.silva@ttaip.test',
+  'admin@misaip.test',
 ];
 
 // ─── Colecciones esperadas ─────────────────────────────────

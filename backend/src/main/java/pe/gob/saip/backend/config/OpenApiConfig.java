@@ -39,7 +39,7 @@ public class OpenApiConfig {
                     """)
                 .contact(new Contact()
                     .name("Equipo SAIP")
-                    .email("soporte@saip.gob.pe"))
+                    .email("soporte@plataforma-saip.test"))
                 .license(new License()
                     .name("MIT")
                     .url("https://opensource.org/licenses/MIT")))

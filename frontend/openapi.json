@@ -5,7 +5,7 @@
     "description": "API RESTful del Sistema de Acceso a la Información Pública (SAIP) y Apelaciones ante el Tribunal de Transparencia (TTAIP).\n\n## Módulos\n- **Autenticación**: Registro y login con JWT\n- **Solicitudes SAIP**: Gestión de solicitudes de acceso a la información (Ley N° 27806)\n- **Respuestas**: Respuestas de funcionarios a solicitudes SAIP\n- **Apelaciones TTAIP**: Gestión de apelaciones ante el Tribunal de Transparencia\n- **TTAIP**: Calificación y resolución de apelaciones por el tribunal\n- **Ciudadanos**: Gestión de ciudadanos solicitantes\n- **Funcionarios**: Gestión de funcionarios de entidades públicas\n- **Entidades**: Gestión de entidades públicas\n- **Estadísticas**: Indicadores y métricas del sistema\n- **Reportes**: Reportes consolidados\n",
     "contact": {
       "name": "Equipo SAIP",
-      "email": "soporte@saip.gob.pe"
+      "email": "soporte@plataforma-saip.test"
     },
     "license": {
       "name": "MIT",
@@ -31,7 +31,7 @@
     },
     {
       "name": "Entidades Públicas",
-      "description": "Gestión de entidades públicas del Estado peruano"
+      "description": "Gestión de entidades públicas del sistema"
     },
     {
       "name": "Funcionarios",
@@ -3221,7 +3221,7 @@
       },
       "EntidadDTO": {
         "type": "object",
-        "description": "Entidad pública del Estado peruano",
+        "description": "Entidad pública registrada en el sistema",
         "properties": {
           "id": {
             "type": "integer",

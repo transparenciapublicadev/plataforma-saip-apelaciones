@@ -1448,7 +1448,7 @@ export interface components {
             /** Format: int64 */
             solicitudesAtendidas?: number;
         };
-        /** @description Entidad pública del Estado peruano */
+        /** @description Entidad pública registrada en el sistema */
         EntidadDTO: {
             /** Format: int64 */
             id?: number;

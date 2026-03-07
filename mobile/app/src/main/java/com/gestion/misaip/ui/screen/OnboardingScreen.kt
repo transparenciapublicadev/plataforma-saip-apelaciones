@@ -95,7 +95,7 @@ private val pages = listOf(
         icon = Icons.Filled.Description,
         title = "Tu derecho a la\ninformación pública",
         description = "Presenta solicitudes de acceso a la información pública (SAIP) " +
-                "ante cualquier entidad del Estado peruano, de forma rápida y digital."
+                "ante cualquier entidad pública, de forma rápida y digital."
     ),
     OnboardingPage(
         icon = Icons.Filled.TrackChanges,

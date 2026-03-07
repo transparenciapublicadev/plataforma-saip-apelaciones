@@ -3,9 +3,9 @@ package com.gestion.misaip.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ══════════════════════════════════════════════════════════════════
-// ██ Brand Colors — Identidad Perú (Bandera + Ministerio de Justicia)
+// ██ Brand Colors — Identidad Plataforma SAIP
 // ══════════════════════════════════════════════════════════════════
-val BrandRed = Color(0xFFC8102E)            // Rojo oficial Perú (Pantone 186 C)
+val BrandRed = Color(0xFFC8102E)            // Rojo institucional (Pantone 186 C)
 val BrandRedLight = Color(0xFFFFB3AC)       // Coral suave para primary en dark theme
 val BrandRedDark = Color(0xFF920013)        // Carmesí profundo para containers
 val BrandRedSurface = Color(0xFFFFF0EE)     // Superficie con tinte rojo suave (light)
@@ -14,7 +14,7 @@ val BrandRedSurfaceDark = Color(0xFF2D1517) // Superficie con tinte rojo (dark)
 // ══════════════════════════════════════════════════════════════════
 // ██ Extended Palette — Colores complementarios profesionales
 // ══════════════════════════════════════════════════════════════════
-val GoldAccent = Color(0xFFD4A017)          // Dorado peruano (Escudo)
+val GoldAccent = Color(0xFFD4A017)          // Dorado institucional
 val GoldAccentLight = Color(0xFFFFE082)     // Dorado claro
 val NavyBlue = Color(0xFF1B3A5C)           // Azul institucional
 val NavyBlueLight = Color(0xFF90B4D6)      // Azul claro
