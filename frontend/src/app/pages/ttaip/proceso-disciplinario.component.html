@@ -1,0 +1,116 @@
+<div class="min-h-screen bg-[#FAFAFA]">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+    <div class="max-w-7xl mx-auto">
+      <a routerLink="/ttaip" class="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
+        Volver al Panel TTAIP
+      </a>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div class="text-white">
+          <h1 class="text-2xl md:text-3xl">Procesos Disciplinarios</h1>
+          <p class="text-white/70">Gestión de procesos remitidos a la Contraloría</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-[#F59E0B]">
+        <div class="text-2xl font-bold text-[#D97706]">{{ estadisticas().enInvestigacion }}</div>
+        <div class="text-sm text-gray-500">En Investigación</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-[#F97316]">
+        <div class="text-2xl font-bold text-[#EA580C]">{{ estadisticas().pendientesRemision }}</div>
+        <div class="text-sm text-gray-500">Pendientes Remisión</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-[#2563EB]">
+        <div class="text-2xl font-bold text-[#2563EB]">{{ estadisticas().remitidos }}</div>
+        <div class="text-sm text-gray-500">Remitidos</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-400">
+        <div class="text-2xl font-bold text-gray-600">{{ estadisticas().archivados }}</div>
+        <div class="text-sm text-gray-500">Archivados</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-[#1a1a2e]">Procesos Activos</h2>
+      </div>
+
+      @if (loading()) {
+        <div class="text-center py-20">
+          <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p class="mt-4 text-gray-400 text-sm">Cargando procesos...</p>
+        </div>
+      } @else if (procesos().length === 0) {
+        <div class="text-center py-16 text-gray-400">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p>No hay procesos disciplinarios registrados</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-[#F8F9FB]">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expediente</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apelación</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entidad</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funcionario</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              @for (proceso of procesos(); track proceso.id) {
+                <tr class="hover:bg-[#FEF2F2]/20 transition-colors">
+                  <td class="px-6 py-4 font-mono text-sm text-[#1a1a2e]">{{ proceso.expediente }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-500">{{ proceso.apelacionExpediente }}</td>
+                  <td class="px-6 py-4 text-sm text-[#1a1a2e]">{{ proceso.entidad }}</td>
+                  <td class="px-6 py-4 text-sm text-[#1a1a2e]">{{ proceso.funcionario }}</td>
+                  <td class="px-6 py-4">
+                    <span [class]="'px-2.5 py-1 text-xs font-medium rounded-full ' + getEstadoClass(proceso.estado)">
+                      {{ getEstadoTexto(proceso.estado) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <button class="text-sm text-[#C8102E] hover:text-[#A00D24] font-medium">Ver Detalle</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- Info Card -->
+    <div class="mt-6 bg-blue-50/80 border border-blue-100 rounded-xl p-4">
+      <h4 class="text-sm font-medium text-blue-900 mb-2">Posibles Sanciones</h4>
+      <ul class="text-sm text-blue-800 space-y-1 list-disc list-inside">
+        <li>Amonestación escrita</li>
+        <li>Suspensión temporal sin goce de haber (hasta 30 días)</li>
+        <li>Destitución del cargo (casos graves)</li>
+        <li>Multa administrativa (0.5 a 2 UIT)</li>
+      </ul>
+    </div>
+
+    <!-- Info Card 2 -->
+    <div class="mt-4 bg-blue-50/80 border border-blue-100 rounded-xl p-4">
+      <h4 class="text-sm font-medium text-blue-900 mb-2">Información</h4>
+      <p class="text-sm text-blue-800">
+        Los procesos disciplinarios se inician cuando el TTAIP declara FUNDADA una apelación y
+        determina que existió incumplimiento por parte de la entidad. Los actuados son remitidos
+        a la Contraloría General de la República para las acciones correspondientes.
+      </p>
+    </div>
+  </div>
+</div>
+

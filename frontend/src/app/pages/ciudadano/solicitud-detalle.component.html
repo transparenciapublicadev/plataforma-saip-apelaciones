@@ -1,0 +1,351 @@
+<div class="min-h-screen bg-[#F8F9FB]">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+    <div class="max-w-7xl mx-auto">
+      <a routerLink="/ciudadano" class="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Volver al Dashboard
+      </a>
+      @if (solicitud()) {
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="text-white">
+            <h1 class="text-2xl md:text-3xl font-bold mb-1">Expediente {{ solicitud()!.expediente }}</h1>
+            <p class="text-white/70">{{ solicitud()!.entidadNombre }}</p>
+          </div>
+          <span [class]="'px-4 py-2 rounded-full text-sm font-medium ' + getEstadoClass(solicitud()!.estado)">
+            {{ solicitud()!.estado }}
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
+    @if (loading()) {
+      <div class="bg-white rounded-2xl shadow-sm p-16 text-center">
+        <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-4 text-gray-500">Cargando solicitud...</p>
+      </div>
+    } @else if (error()) {
+      <div class="border border-[#DC2626]/15 bg-[#FEF2F2] rounded-xl p-6 text-center">
+        <p class="text-[#991B1B]">{{ error() }}</p>
+      </div>
+    } @else if (solicitud()) {
+      <!-- Appeal Alert -->
+      @if (puedeApelar()) {
+        <div class="mb-6 border border-[#F59E0B] bg-[#FFFBEB] rounded-xl p-4 flex items-center gap-3">
+          <svg class="w-5 h-5 text-[#F59E0B] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <p class="text-sm text-[#92400E] flex-1">
+            Tu solicitud fue denegada. Tienes derecho a <strong>interponer un recurso de apelación</strong> ante el TTAIP.
+          </p>
+          <a [routerLink]="['/ciudadano/apelacion/nueva', solicitud()!.expediente]"
+            class="px-4 py-2 bg-[#C8102E] hover:bg-[#A00D24] text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
+            Interponer Apelación
+          </a>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Timeline Sidebar -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-2xl shadow-sm overflow-hidden sticky top-24">
+            <div class="px-6 py-4 border-b border-gray-100">
+              <h3 class="font-semibold text-[#1a1a2e]">Línea de Tiempo</h3>
+            </div>
+            <div class="p-6">
+              <div class="space-y-6">
+                <!-- Presentada -->
+                <div class="flex gap-3">
+                  <div class="flex flex-col items-center">
+                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div class="flex-1 w-px bg-green-200 my-1"></div>
+                  </div>
+                  <div class="pb-4">
+                    <p class="font-medium text-sm text-[#1a1a2e]">Solicitud Presentada</p>
+                    <p class="text-xs text-gray-500">SAIP registrada en el sistema</p>
+                    <p class="text-xs text-gray-400 mt-1">{{ solicitud()!.fechaPresentacion | date:'dd MMM yyyy' }}</p>
+                  </div>
+                </div>
+                <!-- En Revisión -->
+                <div class="flex gap-3">
+                  <div class="flex flex-col items-center">
+                    <div [class]="solicitud()!.estado === 'RECEPCIONADA' ? 'w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center' : 'w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'">
+                      <svg class="w-4 h-4" [class]="solicitud()!.estado === 'RECEPCIONADA' ? 'text-gray-400' : 'text-blue-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <div class="flex-1 w-px bg-gray-200 my-1"></div>
+                  </div>
+                  <div class="pb-4">
+                    <p class="font-medium text-sm text-[#1a1a2e]">En Revisión</p>
+                    <p class="text-xs text-gray-500">La entidad está evaluando la solicitud</p>
+                  </div>
+                </div>
+                <!-- Respuesta -->
+                <div class="flex gap-3">
+                  <div class="flex flex-col items-center">
+                    <div [class]="solicitud()!.respuesta ? 'w-8 h-8 rounded-full bg-green-100 flex items-center justify-center' : 'w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center'">
+                      <svg class="w-4 h-4" [class]="solicitud()!.respuesta ? 'text-green-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="font-medium text-sm text-[#1a1a2e]">Respuesta</p>
+                    <p class="text-xs text-gray-500">
+                      @if (solicitud()!.respuesta) {
+                        La entidad ha emitido su respuesta
+                      } @else {
+                        Pendiente de respuesta
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details Tabs -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <!-- Tab buttons -->
+            <div class="flex border-b border-gray-100 overflow-x-auto">
+              <button (click)="cambiarTab('solicitud')"
+                [class]="activeTab() === 'solicitud' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap cursor-pointer' : 'px-5 py-3.5 text-gray-500 hover:text-[#1a1a2e] text-sm whitespace-nowrap cursor-pointer transition-colors'">
+                Solicitud
+              </button>
+              <button (click)="cambiarTab('respuesta')"
+                [class]="activeTab() === 'respuesta' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap cursor-pointer' : 'px-5 py-3.5 text-gray-500 hover:text-[#1a1a2e] text-sm whitespace-nowrap cursor-pointer transition-colors'">
+                Respuesta
+              </button>
+              <button (click)="cambiarTab('documentos')"
+                [class]="activeTab() === 'documentos' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap cursor-pointer' : 'px-5 py-3.5 text-gray-500 hover:text-[#1a1a2e] text-sm whitespace-nowrap cursor-pointer transition-colors'">
+                Adjuntos
+              </button>
+              <button (click)="cambiarTab('apelacion')"
+                [class]="activeTab() === 'apelacion' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap cursor-pointer' : 'px-5 py-3.5 text-gray-500 hover:text-[#1a1a2e] text-sm whitespace-nowrap cursor-pointer transition-colors'">
+                Apelación
+              </button>
+            </div>
+
+            <div class="p-6">
+              <!-- Tab: Solicitud -->
+              @if (activeTab() === 'solicitud') {
+                <div class="space-y-5">
+                  <div>
+                    <h4 class="font-semibold text-[#1a1a2e] mb-1">Asunto</h4>
+                    <p class="text-sm text-gray-600">{{ solicitud()!.asunto }}</p>
+                  </div>
+                  <div class="border-t border-gray-100 pt-4">
+                    <h4 class="font-semibold text-[#1a1a2e] mb-2">Descripción</h4>
+                    <p class="text-sm text-gray-500">{{ solicitud()!.descripcion }}</p>
+                  </div>
+                  <div class="border-t border-gray-100 pt-4">
+                    <h4 class="font-semibold text-[#1a1a2e] mb-2">Formato de Respuesta</h4>
+                    <div class="flex gap-2">
+                      @if (solicitud()!.formatoDigital) {
+                        <span class="text-xs bg-gray-100 px-3 py-1 rounded-full text-gray-700">Digital</span>
+                      }
+                      @if (solicitud()!.formatoFisico) {
+                        <span class="text-xs bg-gray-100 px-3 py-1 rounded-full text-gray-700">Físico</span>
+                      }
+                      @if (solicitud()!.copiaSimple) {
+                        <span class="text-xs bg-gray-100 px-3 py-1 rounded-full text-gray-700">Copia Simple</span>
+                      }
+                      @if (solicitud()!.copiaCertificada) {
+                        <span class="text-xs bg-gray-100 px-3 py-1 rounded-full text-gray-700">Copia Certificada</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="border-t border-gray-100 pt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 class="font-semibold text-[#1a1a2e] mb-1">Fecha de Presentación</h4>
+                      <p class="text-sm text-gray-500">{{ solicitud()!.fechaPresentacion | date:'dd \'de\' MMMM \'de\' yyyy' }}</p>
+                    </div>
+                    <div>
+                      <h4 class="font-semibold text-[#1a1a2e] mb-1">Fecha Límite</h4>
+                      <p class="text-sm text-gray-500">{{ solicitud()!.fechaLimite | date:'dd \'de\' MMMM \'de\' yyyy' }}</p>
+                    </div>
+                  </div>
+                  @if (solicitud()!.tipoInformacion) {
+                    <div class="border-t border-gray-100 pt-4">
+                      <h4 class="font-semibold text-[#1a1a2e] mb-1">Tipo de Información</h4>
+                      <p class="text-sm text-gray-500">{{ solicitud()!.tipoInformacion }}</p>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Tab: Respuesta -->
+              @if (activeTab() === 'respuesta') {
+                @if (solicitud()!.respuesta) {
+                  <div class="space-y-5">
+                    @if (solicitud()!.respuesta!.tipoRespuesta === 'DENEGACION_TOTAL') {
+                      <div class="bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg p-4">
+                        <div class="flex items-start gap-3">
+                          <svg class="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                          <div>
+                            <h4 class="font-semibold text-[#DC2626] mb-1">Solicitud Denegada</h4>
+                            <p class="text-sm text-[#991B1B]">La información solicitada ha sido denegada</p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                    @if (solicitud()!.respuesta!.causalDenegatoria) {
+                      <div>
+                        <h4 class="font-semibold text-[#1a1a2e] mb-2">Causal de Denegatoria</h4>
+                        <p class="text-sm bg-gray-100 p-3 rounded-lg">
+                          <strong>{{ solicitud()!.respuesta!.causalDenegatoria }}</strong>
+                        </p>
+                      </div>
+                    }
+                    @if (solicitud()!.respuesta!.fundamentoLegal) {
+                      <div class="border-t border-gray-100 pt-4">
+                        <h4 class="font-semibold text-[#1a1a2e] mb-2">Fundamento Legal</h4>
+                        <p class="text-sm text-gray-500">{{ solicitud()!.respuesta!.fundamentoLegal }}</p>
+                      </div>
+                    }
+                    <div class="border-t border-gray-100 pt-4">
+                      <h4 class="font-semibold text-[#1a1a2e] mb-2">Contenido de la Respuesta</h4>
+                      <p class="text-sm text-gray-500 whitespace-pre-wrap">{{ solicitud()!.respuesta!.contenido }}</p>
+                    </div>
+                    <div class="border-t border-gray-100 pt-4">
+                      <h4 class="font-semibold text-[#1a1a2e] mb-1">Fecha de Respuesta</h4>
+                      <p class="text-sm text-gray-500">{{ solicitud()!.respuesta!.fechaRespuesta | date:'dd \'de\' MMMM \'de\' yyyy' }}</p>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="text-center py-12">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="text-gray-500">Aún no hay respuesta para esta solicitud</p>
+                  </div>
+                }
+              }
+
+              <!-- Tab: Adjuntos -->
+              @if (activeTab() === 'documentos') {
+                @if (solicitud()!.documentos && solicitud()!.documentos!.length > 0) {
+                  <div class="space-y-3">
+                    @for (doc of solicitud()!.documentos; track doc.id) {
+                      <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-3">
+                            <svg class="w-8 h-8 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <div>
+                              <p class="font-medium text-[#1a1a2e]">{{ doc.nombreArchivo }}</p>
+                              <p class="text-xs text-gray-400">{{ doc.tipoArchivo }}</p>
+                            </div>
+                          </div>
+                          <button class="p-2 text-gray-400 hover:text-[#C8102E] transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="text-center py-12">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <p class="text-gray-500">No hay documentos adjuntos</p>
+                  </div>
+                }
+              }
+
+              <!-- Tab: Apelación -->
+              @if (activeTab() === 'apelacion') {
+                @if (solicitud()?.apelacion) {
+                  <div class="space-y-6">
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-5">
+                      <div class="flex items-center justify-between mb-4">
+                        <div>
+                          <span class="font-mono text-purple-700 font-medium">{{ solicitud()!.apelacion!.expediente }}</span>
+                          <span [class]="'ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getApelacionEstadoClass(solicitud()!.apelacion!.estado || '')">
+                            {{ solicitud()!.apelacion!.estado }}
+                          </span>
+                        </div>
+                        @if (solicitud()!.apelacion!.estado === 'EN_SUBSANACION') {
+                          <a [routerLink]="['/ciudadano/subsanacion', solicitud()!.apelacion!.expediente]"
+                            class="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors">
+                            Subsanar Ahora
+                          </a>
+                        }
+                      </div>
+                      <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p class="text-purple-600">Fecha de Apelación</p>
+                          <p class="text-purple-900 font-medium">{{ solicitud()!.apelacion!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+                        </div>
+                        @if (solicitud()!.apelacion!.resultado) {
+                          <div>
+                            <p class="text-purple-600">Resultado</p>
+                            <p [class]="solicitud()!.apelacion!.resultado === 'FUNDADO' ? 'text-green-600 font-bold' : 'text-[#C8102E] font-bold'">
+                              {{ solicitud()!.apelacion!.resultado }}
+                            </p>
+                          </div>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Process status -->
+                    <div>
+                      <h4 class="font-semibold text-[#1a1a2e] mb-3">Estado del Proceso</h4>
+                      <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span class="text-sm text-[#1a1a2e]">Apelación presentada</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          <div [class]="solicitud()!.apelacion!.estado === 'PENDIENTE' ? 'w-3 h-3 rounded-full bg-yellow-400 animate-pulse' : 'w-3 h-3 rounded-full bg-green-500'"></div>
+                          <span class="text-sm text-[#1a1a2e]">Primera calificación</span>
+                        </div>
+                        @if (solicitud()!.apelacion!.estado === 'EN_SUBSANACION') {
+                          <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-orange-400 animate-pulse"></div>
+                            <span class="text-sm text-orange-600 font-medium">Esperando subsanación</span>
+                          </div>
+                        }
+                        <div class="flex items-center gap-3">
+                          <div [class]="solicitud()!.apelacion!.estado === 'PRIMERA_RESOLUCION' ? 'w-3 h-3 rounded-full bg-blue-400 animate-pulse' : (solicitud()!.apelacion!.estado?.startsWith('RESUELTO') ? 'w-3 h-3 rounded-full bg-green-500' : 'w-3 h-3 rounded-full bg-gray-200')"></div>
+                          <span class="text-sm text-[#1a1a2e]">En análisis</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          <div [class]="solicitud()!.apelacion!.estado?.startsWith('RESUELTO') ? 'w-3 h-3 rounded-full bg-green-500' : 'w-3 h-3 rounded-full bg-gray-200'"></div>
+                          <span class="text-sm text-[#1a1a2e]">Resolución final</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    @if (solicitud()!.apelacion!.resultado) {
+                      <div class="bg-gray-50 rounded-xl p-4">
+                        <h4 class="font-semibold text-[#1a1a2e] mb-2">Resolución del TTAIP</h4>
+                        <p class="text-sm text-gray-500">
+                          La apelación fue declarada <strong class="text-[#1a1a2e]">{{ solicitud()!.apelacion!.resultado }}</strong>.
+                          @if (solicitud()!.apelacion!.resultado === 'FUNDADO') {
+                            La entidad debe entregar la información solicitada.
+                          } @else {
+                            La denegación de la entidad fue confirmada.
+                          }
+                        </p>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="text-center py-12">
+                    <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <h3 class="font-semibold text-[#1a1a2e] mb-2">Aún no has presentado una apelación</h3>
+                    <p class="text-sm text-gray-500 mb-6">Puedes apelar esta decisión ante el Tribunal de Transparencia y Acceso a la Información Pública</p>
+                    @if (puedeApelar()) {
+                      <a [routerLink]="['/ciudadano/apelacion/nueva', solicitud()!.expediente]"
+                        class="inline-flex px-6 py-2.5 bg-[#C8102E] hover:bg-[#A00D24] text-white font-medium rounded-xl transition-colors">
+                        Interponer Apelación
+                      </a>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

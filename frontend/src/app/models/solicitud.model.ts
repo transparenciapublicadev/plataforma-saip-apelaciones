@@ -1,0 +1,30 @@
+// Derivado del contrato OpenAPI — re-generar: npm run generate:api
+import type {
+    SolicitudDTO, ApelacionInfoDTO, RespuestaDTO, DocumentoDTO,
+    EstadoSolicitud as _EstadoSolicitud,
+    Prioridad as _Prioridad,
+    SemaforoEstado as _SemaforoEstado
+} from '../api/types';
+
+export type EstadoSolicitud = _EstadoSolicitud;
+export type Prioridad = _Prioridad;
+export type SemaforoEstado = _SemaforoEstado;
+export type ApelacionInfo = Required<ApelacionInfoDTO>;
+export type Solicitud = Required<SolicitudDTO> & {
+    respuesta: Required<RespuestaDTO>;
+    apelacion: Required<ApelacionInfoDTO>;
+    documentos: Required<DocumentoDTO>[];
+};
+
+// Tipo solo del lado cliente — no existe en el contrato OpenAPI
+export interface SolicitudCreate {
+    asunto: string;
+    descripcion: string;
+    ciudadanoId: number;
+    entidadId: number;
+    tipoInformacion?: string;
+    formatoDigital?: boolean;
+    formatoFisico?: boolean;
+    copiaSimple?: boolean;
+    copiaCertificada?: boolean;
+}

@@ -1,0 +1,207 @@
+<div class="min-h-screen bg-[#FAFAFA]">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+    <div class="max-w-7xl mx-auto">
+      <a routerLink="/ttaip" class="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
+        Volver al Panel TTAIP
+      </a>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
+          <!-- Scale icon -->
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18m0-18l-4 6h8L12 3zM5 21h14"/></svg>
+        </div>
+        <div class="text-white">
+          <h1 class="text-2xl md:text-3xl">Resolución Final</h1>
+          @if (apelacion()) {
+            <p class="text-white/70">Expediente {{ apelacion()!.expediente }} — {{ apelacion()!.ciudadanoNombre }} vs. {{ apelacion()!.entidadNombre }}</p>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
+    <!-- Info Banner (Green) -->
+    <div class="mb-6 bg-[#F0FDF4] border border-[#86EFAC] shadow-sm rounded-xl p-4 flex items-start gap-3">
+      <div class="w-9 h-9 rounded-lg bg-[#DCFCE7] flex items-center justify-center flex-shrink-0">
+        <svg class="h-4 w-4 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div>
+        <p class="text-sm text-[#065F46] mb-0.5 font-medium">Etapa de resolución de fondo</p>
+        <p class="text-sm text-[#065F46]">
+          La apelación fue admitida a trámite. Evalúe los argumentos de fondo y emita la resolución definitiva: Fundado o Infundado.
+        </p>
+      </div>
+    </div>
+
+    @if (loadingApelacion()) {
+      <div class="text-center py-20">
+        <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-4 text-gray-400 text-sm">Cargando apelación...</p>
+      </div>
+    } @else if (error() && !apelacion()) {
+      <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <svg class="w-10 h-10 text-red-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+        <p class="text-red-700 font-medium mb-1">{{ error() }}</p>
+        <p class="text-sm text-red-500 mb-4">No se pudo cargar los datos de la apelación.</p>
+        <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C8102E] text-white rounded-lg text-sm font-medium hover:bg-[#A00D24] transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
+          Volver al Panel TTAIP
+        </a>
+      </div>
+    } @else if (apelacion()) {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left Panel — Case Details -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="border-b border-gray-100 px-6 py-4">
+              <h3 class="font-semibold text-[#1a1a2e]">Recurso de Apelación</h3>
+            </div>
+            <div class="p-6 space-y-4 text-sm">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-gray-500 text-xs mb-1">Expediente SAIP</p>
+                  <p class="text-[#1a1a2e] font-mono">{{ apelacion()!.solicitudExpediente }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-xs mb-1">Entidad Demandada</p>
+                  <p class="text-[#1a1a2e]">{{ apelacion()!.entidadNombre }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-xs mb-1">Apelante</p>
+                  <p class="text-[#1a1a2e]">{{ apelacion()!.ciudadanoNombre }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-xs mb-1">Fecha Apelación</p>
+                  <p class="text-[#1a1a2e]">{{ apelacion()!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+                </div>
+              </div>
+              <div class="border-t pt-3">
+                <p class="text-gray-500 text-xs mb-1">Asunto SAIP Original</p>
+                <p class="text-[#1a1a2e]">{{ apelacion()!.solicitudAsunto }}</p>
+              </div>
+              <div class="border-t pt-3">
+                <p class="text-gray-500 text-xs mb-2">Fundamentos de la Apelación</p>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p class="text-sm text-[#1a1a2e] whitespace-pre-wrap">{{ apelacion()!.fundamentos }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel — Decision -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="border-b border-gray-100 px-6 py-4">
+              <h3 class="font-semibold text-[#1a1a2e]">Decisión del Tribunal</h3>
+              <p class="text-sm text-gray-500 mt-1">Emita la resolución definitiva del caso</p>
+            </div>
+
+            <div class="p-6 space-y-4">
+              @if (error()) {
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p class="text-sm text-red-600">{{ error() }}</p>
+                </div>
+              }
+              @if (mensaje()) {
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p class="text-sm text-green-600">{{ mensaje() }}</p>
+                </div>
+              }
+
+              <!-- Decision Radios -->
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'fundado' ? 'border-[#10B981] bg-[#F0FDF4]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="fundado" class="sr-only">
+                <svg class="w-5 h-5 text-[#10B981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#065F46]">FUNDADO</p>
+                  <p class="text-xs text-gray-500">A favor del ciudadano — Se ordena entregar la información</p>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'infundado' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="infundado" class="sr-only">
+                <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#991B1B]">INFUNDADO</p>
+                  <p class="text-xs text-gray-500">A favor de la entidad — La denegatoria fue correcta</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Info Cards -->
+          @if (decision === 'fundado') {
+            <div class="border border-[#10B981] bg-[#F0FDF4] rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-[#10B981] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div>
+                <p class="font-semibold text-[#065F46] mb-1">Apelación Fundada</p>
+                <p class="text-sm text-[#065F46]">Se ordena a la entidad entregar la información solicitada en un plazo de 10 días hábiles.</p>
+              </div>
+            </div>
+
+            <!-- Disciplinary Process Checkbox -->
+            <div class="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-4">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" name="iniciarProcesoDisciplinario"
+                  class="w-5 h-5 text-[#D97706] border-gray-300 rounded focus:ring-[#D97706]">
+                <div>
+                  <span class="font-medium text-[#92400E]">Iniciar Proceso Disciplinario</span>
+                  <p class="text-sm text-[#92400E]">Remitir actuados a la Contraloría por incumplimiento</p>
+                </div>
+              </label>
+            </div>
+          }
+          @if (decision === 'infundado') {
+            <div class="border border-[#DC2626] bg-[#FEE2E2] rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-[#DC2626] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div>
+                <p class="font-semibold text-[#991B1B] mb-1">Apelación Infundada</p>
+                <p class="text-sm text-[#991B1B]">La denegatoria de la entidad está correctamente fundamentada según la normativa vigente.</p>
+              </div>
+            </div>
+          }
+
+          <!-- Fundamentos -->
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="border-b border-gray-100 px-6 py-4">
+              <h3 class="font-semibold text-[#1a1a2e]">Fundamentos de la Resolución</h3>
+            </div>
+            <div class="p-6">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Fundamentos <span class="text-[#C8102E]">*</span>
+              </label>
+              <textarea [(ngModel)]="fundamentos" name="fundamentos" rows="8" required
+                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm"
+                placeholder="Fundamente detalladamente la decisión del Tribunal, citando normativa aplicable..."></textarea>
+              <p class="text-xs text-gray-400 mt-1">{{ fundamentos.length }} caracteres</p>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-4">
+            <button (click)="enviarResolucion()" [disabled]="loading() || !decision"
+              class="flex-1 py-3 font-medium rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+              [class]="decision === 'fundado' ? 'bg-[#059669] hover:bg-[#047857] text-white' : 'bg-[#C8102E] hover:bg-[#A00D24] text-white'">
+              @if (loading()) {
+                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Emitiendo Resolución...
+              } @else {
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Emitir Resolución {{ decision === 'fundado' ? 'FUNDADA' : decision === 'infundado' ? 'INFUNDADA' : '' }}
+              }
+            </button>
+            <a routerLink="/ttaip" class="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors text-center">
+              Cancelar
+            </a>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+

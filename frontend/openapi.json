@@ -1,0 +1,3621 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Plataforma SAIP — API REST",
+    "description": "API RESTful del Sistema de Acceso a la Información Pública (SAIP) y Apelaciones ante el Tribunal de Transparencia (TTAIP).\n\n## Módulos\n- **Autenticación**: Registro y login con JWT\n- **Solicitudes SAIP**: Gestión de solicitudes de acceso a la información (Ley N° 27806)\n- **Respuestas**: Respuestas de funcionarios a solicitudes SAIP\n- **Apelaciones TTAIP**: Gestión de apelaciones ante el Tribunal de Transparencia\n- **TTAIP**: Calificación y resolución de apelaciones por el tribunal\n- **Ciudadanos**: Gestión de ciudadanos solicitantes\n- **Funcionarios**: Gestión de funcionarios de entidades públicas\n- **Entidades**: Gestión de entidades públicas\n- **Estadísticas**: Indicadores y métricas del sistema\n- **Reportes**: Reportes consolidados\n",
+    "contact": {
+      "name": "Equipo SAIP",
+      "email": "soporte@saip.gob.pe"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Apelaciones TTAIP",
+      "description": "Gestión de apelaciones ante el Tribunal de Transparencia"
+    },
+    {
+      "name": "Entidades Públicas",
+      "description": "Gestión de entidades públicas del Estado peruano"
+    },
+    {
+      "name": "Funcionarios",
+      "description": "Gestión de funcionarios de entidades públicas"
+    },
+    {
+      "name": "Solicitudes SAIP",
+      "description": "Gestión de solicitudes de acceso a la información pública (Ley N° 27806)"
+    },
+    {
+      "name": "Autenticación",
+      "description": "Registro de ciudadanos y login con JWT"
+    },
+    {
+      "name": "Reportes",
+      "description": "Reportes consolidados del sistema SAIP"
+    },
+    {
+      "name": "Ciudadanos",
+      "description": "Gestión de ciudadanos solicitantes"
+    },
+    {
+      "name": "Estadísticas",
+      "description": "Indicadores y métricas del sistema SAIP"
+    },
+    {
+      "name": "Respuestas",
+      "description": "Respuestas de funcionarios a solicitudes SAIP"
+    },
+    {
+      "name": "TTAIP",
+      "description": "Calificación y resolución de apelaciones por el Tribunal de Transparencia"
+    }
+  ],
+  "paths": {
+    "/api/solicitudes/{id}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Obtener solicitud por ID",
+        "operationId": "obtenerPorId",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Actualizar solicitud SAIP",
+        "operationId": "actualizar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Eliminar solicitud SAIP",
+        "operationId": "eliminar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/funcionarios/{id}": {
+      "get": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Obtener funcionario por ID",
+        "operationId": "obtenerPorId_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del funcionario",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FuncionarioDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Actualizar funcionario",
+        "operationId": "actualizar_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del funcionario",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FuncionarioDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FuncionarioDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Eliminar funcionario",
+        "operationId": "eliminar_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del funcionario",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/entidades/{id}": {
+      "get": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Obtener entidad por ID",
+        "operationId": "obtenerPorId_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntidadDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Actualizar entidad pública",
+        "operationId": "actualizar_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntidadDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntidadDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Eliminar entidad",
+        "description": "Solo si no tiene solicitudes asociadas",
+        "operationId": "eliminar_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ciudadanos/{id}": {
+      "get": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Obtener ciudadano por ID",
+        "operationId": "obtenerPorId_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Actualizar datos de ciudadano",
+        "operationId": "actualizar_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CiudadanoDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "operationId": "eliminar_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/apelaciones/{id}": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Obtener apelación por ID",
+        "operationId": "obtenerPorId_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Actualizar apelación",
+        "operationId": "actualizar_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApelacionDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Eliminar apelación",
+        "operationId": "eliminar_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/infundado": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación infundada",
+        "description": "Resolución final: confirma la denegación de la entidad",
+        "operationId": "declararInfundado",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/infundada": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación infundada",
+        "description": "Resolución final: confirma la denegación de la entidad",
+        "operationId": "declararInfundado_1",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/fundado": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación fundada",
+        "description": "Resolución final a favor del ciudadano",
+        "operationId": "declararFundado",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/fundada": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación fundada",
+        "description": "Resolución final a favor del ciudadano",
+        "operationId": "declararFundado_1",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/calificacion/{apelacionId}/subsanar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Requerir subsanación",
+        "description": "Primera calificación: solicita al ciudadano subsanar la apelación en 2 días hábiles",
+        "operationId": "requerirSubsanacion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/calificacion/{apelacionId}/rechazar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Inadmitir o rechazar apelación",
+        "operationId": "inadmitirApelacion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/calificacion/{apelacionId}/inadmitir": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Inadmitir o rechazar apelación",
+        "operationId": "inadmitirApelacion_1",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/calificacion/{apelacionId}/admitir": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Admitir apelación",
+        "description": "Primera calificación: admite la apelación y solicita descargos a la entidad",
+        "operationId": "admitirApelacion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar todas las solicitudes SAIP",
+        "operationId": "listar",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Crear solicitud SAIP",
+        "description": "Genera automáticamente expediente y fecha límite (10 días hábiles)",
+        "operationId": "crear",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas": {
+      "get": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Listar todas las respuestas",
+        "operationId": "listar_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RespuestaDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Crear respuesta a solicitud SAIP",
+        "operationId": "crear_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearRespuestaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas/denegar": {
+      "post": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Denegar solicitud",
+        "description": "Crea respuesta con denegación total y causal",
+        "operationId": "denegarSolicitud",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearRespuestaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas/aceptar": {
+      "post": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Aceptar solicitud",
+        "description": "Crea respuesta con entrega total de información",
+        "operationId": "aceptarSolicitud",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearRespuestaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/funcionarios": {
+      "get": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Listar todos los funcionarios",
+        "operationId": "listar_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FuncionarioDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Registrar funcionario",
+        "operationId": "crear_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FuncionarioDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entidades": {
+      "get": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Listar todas las entidades públicas",
+        "operationId": "listar_3",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntidadDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Registrar entidad pública",
+        "operationId": "crear_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntidadDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntidadDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ciudadanos": {
+      "get": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Listar todos los ciudadanos",
+        "operationId": "listar_4",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CiudadanoDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Registrar ciudadano",
+        "operationId": "crear_4",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/registro": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Registrar ciudadano",
+        "description": "Registra un nuevo ciudadano en el sistema con email, DNI y datos personales",
+        "operationId": "registro",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistroRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Iniciar sesión",
+        "description": "Autentica al usuario y retorna un token JWT con datos del perfil según su rol",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Listar todas las apelaciones",
+        "operationId": "listar_5",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Crear apelación",
+        "description": "Crea apelación ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante",
+        "operationId": "crear_5",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApelacionDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/{id}/subsanacion": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Presentar subsanación",
+        "description": "Presenta fundamentos adicionales dentro del plazo de 2 días hábiles",
+        "operationId": "subsanar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Cambiar estado de solicitud",
+        "operationId": "cambiarEstado",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/funcionarios/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Activar o desactivar funcionario",
+        "operationId": "cambiarEstado_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del funcionario",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FuncionarioDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entidades/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Cambiar estado de entidad",
+        "operationId": "cambiarEstado_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntidadDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ciudadanos/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Activar o desactivar ciudadano",
+        "operationId": "cambiarEstado_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Cambiar estado de apelación",
+        "operationId": "cambiarEstado_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/subsanacion": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones en subsanación",
+        "operationId": "listarSubsanacion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/segunda-calificacion": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones en segunda calificación",
+        "operationId": "listarSegundaCalificacion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resueltas": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones resueltas",
+        "operationId": "listarResueltas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/pendientes": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones pendientes de elevación",
+        "operationId": "listarPendientes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/estadisticas": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Estadísticas del tribunal",
+        "operationId": "obtenerEstadisticas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/en-calificacion": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones en primera calificación",
+        "operationId": "listarEnCalificacion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/expediente/{expediente}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Obtener solicitud por expediente",
+        "description": "Busca por formato SAIP-AAAA-NNNNN",
+        "operationId": "obtenerPorExpediente",
+        "parameters": [
+          {
+            "name": "expediente",
+            "in": "path",
+            "description": "Número de expediente SAIP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/estado/{estado}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar solicitudes por estado",
+        "description": "Estados: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA",
+        "operationId": "listarPorEstado",
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "path",
+            "description": "Estado de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/estadisticas": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Estadísticas generales de solicitudes",
+        "operationId": "obtenerEstadisticas_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/entidad/{entidadId}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar solicitudes por entidad",
+        "operationId": "listarPorEntidad",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/entidad/{entidadId}/estadisticas": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Estadísticas de solicitudes por entidad",
+        "description": "Incluye conteo de solicitudes urgentes",
+        "operationId": "obtenerEstadisticasPorEntidad",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/ciudadano/{ciudadanoId}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar solicitudes por ciudadano",
+        "operationId": "listarPorCiudadano",
+        "parameters": [
+          {
+            "name": "ciudadanoId",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/ciudadano/{ciudadanoId}/estadisticas": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Estadísticas de solicitudes por ciudadano",
+        "operationId": "obtenerEstadisticasPorCiudadano",
+        "parameters": [
+          {
+            "name": "ciudadanoId",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas/{id}": {
+      "get": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Obtener respuesta por ID",
+        "operationId": "obtenerPorId_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la respuesta",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas/solicitud/{solicitudId}": {
+      "get": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Obtener respuesta por solicitud",
+        "operationId": "obtenerPorSolicitud",
+        "parameters": [
+          {
+            "name": "solicitudId",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/respuestas/causales-denegacion": {
+      "get": {
+        "tags": [
+          "Respuestas"
+        ],
+        "summary": "Obtener causales de denegación",
+        "description": "Lista las 9 causales bajo Art. 15 Ley 27806",
+        "operationId": "obtenerCausalesDenegacion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/solicitudes": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de solicitudes",
+        "description": "Filtrable por estado, entidad y rango de fechas",
+        "operationId": "reporteSolicitudes",
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entidadId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/resumen-ejecutivo": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Resumen ejecutivo",
+        "description": "Vista consolidada del sistema con entidades más activas",
+        "operationId": "resumenEjecutivo",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/funcionarios": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de funcionarios",
+        "description": "Filtrable por entidad, incluye respuestas emitidas",
+        "operationId": "reporteFuncionarios",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/entidades": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de entidades",
+        "description": "Incluye solicitudes pendientes y respondidas por entidad",
+        "operationId": "reporteEntidades",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/ciudadanos": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de ciudadanos",
+        "description": "Incluye total de solicitudes y apelaciones por ciudadano",
+        "operationId": "reporteCiudadanos",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reportes/apelaciones": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de apelaciones",
+        "description": "Filtrable por estado y rango de fechas",
+        "operationId": "reporteApelaciones",
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/funcionarios/entidad/{entidadId}": {
+      "get": {
+        "tags": [
+          "Funcionarios"
+        ],
+        "summary": "Listar funcionarios por entidad",
+        "operationId": "listarPorEntidad_1",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FuncionarioDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/tendencias/mensual": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Tendencias mensuales",
+        "description": "Últimos 12 meses de solicitudes creadas",
+        "operationId": "obtenerTendenciasMensuales",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/mensual": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Tendencias mensuales",
+        "description": "Últimos 12 meses de solicitudes creadas",
+        "operationId": "obtenerTendenciasMensuales_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/ranking/entidades": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Ranking de entidades",
+        "description": "Ordenadas por total de solicitudes, limitadas por parámetro",
+        "operationId": "obtenerRankingEntidades",
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "description": "Número máximo de resultados",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/periodo": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Estadísticas por período",
+        "description": "Filtrar por semana, mes o año",
+        "operationId": "obtenerEstadisticasPorPeriodo",
+        "parameters": [
+          {
+            "name": "periodo",
+            "in": "query",
+            "description": "Período: semana, mes, año",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "mes"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/general": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Estadísticas generales del sistema",
+        "description": "Totales de solicitudes, apelaciones, entidades, ciudadanos y funcionarios",
+        "operationId": "obtenerEstadisticasGenerales",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/entidad/{entidadId}": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Estadísticas por entidad",
+        "description": "Detalle con tiempo promedio de respuesta",
+        "operationId": "obtenerEstadisticasPorEntidad_1",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/estadisticas/distribucion/estados": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Distribución de solicitudes por estado",
+        "operationId": "obtenerDistribucionEstados",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entidades/{id}/estadisticas": {
+      "get": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Obtener entidad con estadísticas",
+        "description": "Incluye tasa de cumplimiento, solicitudes asignadas/pendientes/respondidas/vencidas",
+        "operationId": "obtenerConEstadisticas",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la entidad",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntidadDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entidades/buscar": {
+      "get": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Buscar entidades por nombre",
+        "operationId": "buscarPorNombre",
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "query",
+            "description": "Texto de búsqueda",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntidadDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/entidades/activas": {
+      "get": {
+        "tags": [
+          "Entidades Públicas"
+        ],
+        "summary": "Listar entidades activas",
+        "operationId": "listarActivas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntidadDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ciudadanos/{id}/estadisticas": {
+      "get": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Obtener ciudadano con estadísticas",
+        "description": "Incluye conteo de solicitudes, apelaciones y estados",
+        "operationId": "obtenerConEstadisticas_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ciudadanos/dni/{dni}": {
+      "get": {
+        "tags": [
+          "Ciudadanos"
+        ],
+        "summary": "Buscar ciudadano por DNI",
+        "operationId": "obtenerPorDni",
+        "parameters": [
+          {
+            "name": "dni",
+            "in": "path",
+            "description": "DNI de 8 dígitos",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CiudadanoDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/verificar-email": {
+      "get": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Verificar disponibilidad de email",
+        "operationId": "verificarEmail",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/verificar-dni": {
+      "get": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Verificar disponibilidad de DNI",
+        "operationId": "verificarDni",
+        "parameters": [
+          {
+            "name": "dni",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me/{usuarioId}": {
+      "get": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Obtener usuario actual",
+        "description": "Retorna los datos básicos del usuario autenticado",
+        "operationId": "obtenerUsuarioActual",
+        "parameters": [
+          {
+            "name": "usuarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/expediente/{expediente}": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Obtener apelación por expediente TTAIP",
+        "description": "Formato: NNNNN-AAAA-JUS/TTAIP",
+        "operationId": "obtenerPorExpediente_1",
+        "parameters": [
+          {
+            "name": "expediente",
+            "in": "path",
+            "description": "Número de expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/estado/{estado}": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Listar apelaciones por estado",
+        "operationId": "listarPorEstado_1",
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "path",
+            "description": "Estado de la apelación",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/estadisticas": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Estadísticas de apelaciones",
+        "operationId": "obtenerEstadisticas_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/ciudadano/{ciudadanoId}": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Listar apelaciones por ciudadano",
+        "operationId": "listarPorCiudadano_1",
+        "parameters": [
+          {
+            "name": "ciudadanoId",
+            "in": "path",
+            "description": "ID del ciudadano",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApelacionInfoDTO": {
+        "type": "object",
+        "description": "Resumen de apelación asociada a una solicitud",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "fechaApelacion": {
+            "type": "string"
+          },
+          "fechaSubsanacion": {
+            "type": "string"
+          },
+          "diasSubsanacion": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DocumentoDTO": {
+        "type": "object",
+        "description": "Documento adjunto a solicitud, respuesta, apelación o resolución",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombreArchivo": {
+            "type": "string"
+          },
+          "rutaArchivo": {
+            "type": "string"
+          },
+          "tipoArchivo": {
+            "type": "string"
+          },
+          "tamanio": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoDocumento": {
+            "type": "string"
+          },
+          "fechaSubida": {
+            "type": "string"
+          }
+        }
+      },
+      "RespuestaDTO": {
+        "type": "object",
+        "description": "Respuesta de funcionario a solicitud SAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoRespuesta": {
+            "type": "string",
+            "description": "Tipo de respuesta",
+            "enum": [
+              "ENTREGA_TOTAL",
+              "ENTREGA_PARCIAL",
+              "DENEGACION_TOTAL",
+              "SILENCIO_ADMINISTRATIVO"
+            ],
+            "example": "ENTREGA_TOTAL"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "contenido": {
+            "type": "string"
+          },
+          "causalDenegatoria": {
+            "type": "string"
+          },
+          "fundamentoLegal": {
+            "type": "string"
+          },
+          "fechaRespuesta": {
+            "type": "string"
+          },
+          "funcionarioId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "funcionarioNombre": {
+            "type": "string"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoDTO"
+            }
+          }
+        }
+      },
+      "SolicitudDTO": {
+        "type": "object",
+        "description": "Solicitud de Acceso a la Información Pública (SAIP)",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string",
+            "description": "Número de solicitud",
+            "example": "SAIP-2025-00512"
+          },
+          "asunto": {
+            "type": "string",
+            "description": "Asunto de la solicitud"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "description": "Estado actual",
+            "enum": [
+              "RECEPCIONADA",
+              "EN_REVISION",
+              "PENDIENTE_INFORMACION",
+              "RESPONDIDA",
+              "DENEGADA",
+              "CONCLUIDA",
+              "VENCIDA"
+            ],
+            "example": "RECEPCIONADA"
+          },
+          "prioridad": {
+            "type": "string",
+            "description": "Nivel de prioridad",
+            "enum": [
+              "BAJA",
+              "NORMAL",
+              "ALTA",
+              "URGENTE"
+            ],
+            "example": "NORMAL"
+          },
+          "semaforo": {
+            "type": "string",
+            "description": "Semáforo de plazo",
+            "enum": [
+              "VERDE",
+              "AMBAR",
+              "ROJO",
+              "NEGRO"
+            ],
+            "example": "VERDE"
+          },
+          "fechaPresentacion": {
+            "type": "string"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "description": "Fecha límite (10 días hábiles)"
+          },
+          "diasRestantes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Días hábiles restantes"
+          },
+          "ciudadanoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ciudadanoNombre": {
+            "type": "string"
+          },
+          "ciudadanoDni": {
+            "type": "string"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "entidadAcronimo": {
+            "type": "string"
+          },
+          "formatoDigital": {
+            "type": "boolean"
+          },
+          "formatoFisico": {
+            "type": "boolean"
+          },
+          "copiaSimple": {
+            "type": "boolean"
+          },
+          "copiaCertificada": {
+            "type": "boolean"
+          },
+          "tipoInformacion": {
+            "type": "string"
+          },
+          "respuesta": {
+            "$ref": "#/components/schemas/RespuestaDTO"
+          },
+          "apelacion": {
+            "$ref": "#/components/schemas/ApelacionInfoDTO"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoDTO"
+            }
+          }
+        }
+      },
+      "FuncionarioDTO": {
+        "type": "object",
+        "description": "Funcionario de entidad pública",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombreCompleto": {
+            "type": "string"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "telefono": {
+            "type": "string"
+          },
+          "fechaRegistro": {
+            "type": "string"
+          },
+          "activo": {
+            "type": "boolean"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "entidadAcronimo": {
+            "type": "string"
+          },
+          "solicitudesAtendidas": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "EntidadDTO": {
+        "type": "object",
+        "description": "Entidad pública del Estado peruano",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombre": {
+            "type": "string",
+            "description": "Nombre oficial de la entidad"
+          },
+          "acronimo": {
+            "type": "string",
+            "description": "Acrónimo único",
+            "example": "MINJUS"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "direccion": {
+            "type": "string"
+          },
+          "telefono": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "fechaRegistro": {
+            "type": "string"
+          },
+          "solicitudesAsignadas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendientes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "respondidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vencidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tasaCumplimiento": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CiudadanoDTO": {
+        "type": "object",
+        "description": "Ciudadano solicitante de información pública",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dni": {
+            "type": "string",
+            "description": "DNI de 8 dígitos",
+            "example": "12345678"
+          },
+          "nombreCompleto": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "telefono": {
+            "type": "string"
+          },
+          "direccion": {
+            "type": "string"
+          },
+          "fechaRegistro": {
+            "type": "string"
+          },
+          "activo": {
+            "type": "boolean"
+          },
+          "totalSolicitudes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudesEnProceso": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudesRespondidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "apelacionesRealizadas": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApelacionDTO": {
+        "type": "object",
+        "description": "Apelación ante el Tribunal de Transparencia (TTAIP)",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string",
+            "description": "Número de expediente TTAIP",
+            "example": "01560-2025-JUS/TTAIP"
+          },
+          "fundamentos": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "description": "Estado de la apelación",
+            "example": "PENDIENTE"
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "fechaApelacion": {
+            "type": "string"
+          },
+          "fechaSubsanacion": {
+            "type": "string"
+          },
+          "diasSubsanacion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "calificacionPrimera": {
+            "type": "string"
+          },
+          "calificacionSegunda": {
+            "type": "string"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudExpediente": {
+            "type": "string"
+          },
+          "solicitudAsunto": {
+            "type": "string"
+          },
+          "ciudadanoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ciudadanoNombre": {
+            "type": "string"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "resolucion": {
+            "$ref": "#/components/schemas/ResolucionDTO"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoDTO"
+            }
+          }
+        }
+      },
+      "ResolucionDTO": {
+        "type": "object",
+        "description": "Resolución del TTAIP sobre una apelación",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoResolucion": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "fundamentos": {
+            "type": "string"
+          },
+          "observaciones": {
+            "type": "string"
+          },
+          "fechaResolucion": {
+            "type": "string"
+          },
+          "miembroTTAIPId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "miembroTTAIPNombre": {
+            "type": "string"
+          }
+        }
+      },
+      "ResolucionRequest": {
+        "type": "object",
+        "description": "Datos para emitir resolución final de apelación",
+        "properties": {
+          "fundamentos": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "miembroId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "iniciarProcesoDisciplinario": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fundamentos"
+        ]
+      },
+      "CalificacionRequest": {
+        "type": "object",
+        "description": "Datos para calificación de apelación por miembro TTAIP",
+        "properties": {
+          "fundamentos": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "miembroId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "observaciones": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "diasSubsanacion": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "fundamentos"
+        ]
+      },
+      "CrearRespuestaRequest": {
+        "type": "object",
+        "description": "Datos para crear respuesta a solicitud SAIP",
+        "properties": {
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "funcionarioId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoRespuesta": {
+            "type": "string",
+            "description": "Tipo de respuesta",
+            "enum": [
+              "ENTREGA_TOTAL",
+              "ENTREGA_PARCIAL",
+              "DENEGACION_TOTAL"
+            ],
+            "example": "ENTREGA_TOTAL",
+            "minLength": 1
+          },
+          "contenido": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "causalDenegatoria": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "fundamentoLegal": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "formatoEntrega": {
+            "type": "string"
+          },
+          "plazoEntrega": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "contenido",
+          "solicitudId",
+          "tipoRespuesta"
+        ]
+      },
+      "RegistroRequestDTO": {
+        "type": "object",
+        "description": "Datos de registro de ciudadano",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email del ciudadano",
+            "example": "ciudadano@email.com",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña (mín 6 caracteres)",
+            "maxLength": 100,
+            "minLength": 6
+          },
+          "dni": {
+            "type": "string",
+            "description": "DNI de 8 dígitos",
+            "example": "12345678",
+            "minLength": 1,
+            "pattern": "\\d{8}"
+          },
+          "nombreCompleto": {
+            "type": "string",
+            "description": "Nombre completo del ciudadano",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "telefono": {
+            "type": "string",
+            "description": "Número de teléfono",
+            "example": "987654321",
+            "maxLength": 15,
+            "minLength": 0
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "dni",
+          "email",
+          "nombreCompleto",
+          "password"
+        ]
+      },
+      "LoginRequestDTO": {
+        "type": "object",
+        "description": "Credenciales de inicio de sesión",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email del usuario",
+            "example": "ciudadano@email.com",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "Contraseña",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "Token JWT obtenido del endpoint POST /api/auth/login",
+        "name": "bearerAuth",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
