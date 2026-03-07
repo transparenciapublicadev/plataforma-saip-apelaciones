@@ -301,18 +301,19 @@ Proyecto FigMake (React + Vite + Radix UI + Tailwind) que sirve como **diseño d
 Basadas en la Ley N.° 27806.
 
 | Regla | Descripción |
-|-------|-------------|
-| BR-SAIP-001 | Plazo máximo: **10 días hábiles** para atender una solicitud |
+|-------|---------|
+| BR-SAIP-001 | Plazo máximo: **10 días hábiles** para atender una solicitud. El conteo inicia el **día hábil siguiente** a la recepción (día de recepción = día 0). Si la SAIP se presenta fuera del horario laboral de la entidad, se considera recibida el siguiente día hábil y el plazo inicia al día hábil posterior |
 | BR-SAIP-002 | Días hábiles: excluir sábados, domingos y feriados nacionales |
 | BR-SAIP-003 | Subsanación solo en los **2 primeros días hábiles** |
 | BR-SAIP-004 | Liquidación de costos: notificar a más tardar el **día 9** |
 | BR-SAIP-005 | Silencio Administrativo Negativo si >10 días sin respuesta |
+| BR-SAIP-006 | Plazo para apelar: **15 días calendario** contados desde la fecha de recepción de la respuesta de la entidad (aplica para cualquier tipo de respuesta: total, parcial, denegatoria) |
 
 ### Tipos de respuesta del funcionario
 
 | TipoRespuesta | Estado resultante | Apelable |
 |---------------|-------------------|----------|
-| `ENTREGA_TOTAL` | Respondida | No |
+| `ENTREGA_TOTAL` | Respondida | Sí (el ciudadano puede discrepar si la entrega fue realmente completa) |
 | `ENTREGA_PARCIAL` | Respondida | Sí |
 | `DENEGACION_TOTAL` | Denegada | Sí |
 | `SILENCIO_ADMINISTRATIVO` | Vencida | Sí |
@@ -333,18 +334,22 @@ Basadas en la Ley N.° 27806.
 Flujo secuencial según SRS v2.0:
 
 | Etapa | Plazo | Descripción |
-|-------|-------|-------------|
+|-------|---------|---------|
+| Presentación del recurso | 15 días calendario | Plazo del ciudadano para presentar apelación, contado desde la fecha de recepción de la respuesta de la entidad |
 | Elevación | 2 días hábiles | La entidad remite el recurso al TTAIP |
 | Primera Calificación | 7 días hábiles | Improcedente / Admisión / Inadmisible |
-| Subsanación | 2 días hábiles | Solo si fue declarado Inadmisible |
-| Segunda Calificación | — | Post-subsanación: Improcedencia / Admisibilidad |
-| Descargos | 7 días hábiles | La entidad presenta descargos |
-| Instrucción | 3 días hábiles | Actuaciones internas del TTAIP |
-| Resolución Final | 10 días hábiles | Fundado / Infundado |
+| Subsanación | 2 días hábiles | Solo si fue declarado Inadmisible. Si el ciudadano NO subsana, se declara `TENER POR NO PRESENTADO` y finaliza el proceso |
+| Segunda Calificación | — | Post-subsanación: Improcedencia / Admisibilidad. Genera resolución que **debe notificarse al ciudadano** antes de continuar |
+| Notificación post-calificación | — | La resolución de admisibilidad o improcedencia se notifica al ciudadano. Solo después de notificación correcta inicia el plazo de resolución final |
+| Resolución Final | 10 días hábiles | Fundado / Infundado. Los 10 días incluyen descargos de la entidad (7d) e instrucción opcional (3d para informes orales, info complementaria, etc.) |
+
+> **Nota importante**: Los 10 días hábiles de resolución final engloban los descargos (7 días) y la instrucción (3 días, opcional). No son etapas con plazos separados que se sumen.
 
 ### Estados del expediente
 
-`PENDIENTE_ELEVACION` → `EN_CALIFICACION_1` → `EN_SUBSANACION` → `EN_CALIFICACION_2` → `ESPERANDO_DESCARGOS` → `EN_INSTRUCCION` → `EN_RESOLUCION` → `RESUELTO`
+`PENDIENTE_ELEVACION` → `EN_CALIFICACION_1` → `EN_SUBSANACION` → `EN_CALIFICACION_2` → `NOTIFICACION_SEGUNDA_CALIFICACION` → `ESPERANDO_DESCARGOS` → `EN_INSTRUCCION` → `EN_RESOLUCION` → `RESUELTO`
+
+> Estado terminal alternativo: `TENER_POR_NO_PRESENTADO` (si el ciudadano no subsana en plazo)
 
 ---
 
@@ -355,7 +360,7 @@ Flujo secuencial según SRS v2.0:
 | BR-REP-001 | Inmutabilidad: cédula rechazada NO se edita, se conserva como histórico |
 | BR-REP-002 | Ante rechazo, generar nueva cédula con ID correlativo |
 | BR-REP-003 | Mientras exista rechazo sin nueva cédula, expediente en `EN_PROCESO_DE_SUBSANACION` |
-| BR-REP-004 | Etapa cierra solo cuando ambas partes tienen notificación `NOTIFICADO` |
+| BR-REP-004 | **Notificaciones normales**: Etapa cierra solo cuando ambas partes tienen notificación `NOTIFICADO`. **Reprocesos**: Pueden afectar solo al recurrente, solo a la entidad, o ambos. El estado cambia a `SUBSANADO` cuando se re-notifica la nueva cédula a la parte afectada, se consigna la nueva fecha de notificación y el número de cédula/oficio utilizado |
 
 ---
 
