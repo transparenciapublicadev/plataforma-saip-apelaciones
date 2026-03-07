@@ -60,31 +60,36 @@ El sistema permite a los ciudadanos presentar solicitudes de información a enti
 La plataforma sigue una arquitectura **Clean Architecture** en cada capa, con separación estricta de responsabilidades y comunicación unidireccional entre capas.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLIENTES                                 │
-│  ┌──────────────┐  ┌──────────────┐                            │
-│  │  mobile/     │  │  frontend/   │                            │
-│  │  Android     │  │  Angular 21  │                            │
-│  │  Kotlin +    │  │  SSR +       │                            │
-│  │  Compose     │  │  Tailwind    │                            │
-│  └──────┬───────┘  └──────┬───────┘                            │
-│         │                 │                                     │
-│         └────────┬────────┘                                     │
-│                  ▼                                               │
-│  ┌──────────────────────────────┐                               │
-│  │  backend/                    │                               │
-│  │  Spring Boot 4 (Java 21)    │                               │
-│  │  REST API + JPA + Security  │                               │
-│  └──────────────┬───────────────┘                               │
-│                 │                                               │
-│      ┌──────────┴──────────┐                                    │
-│      ▼                     ▼                                    │
-│  ┌────────┐  ┌───────────────────┐                              │
-│  │ MySQL  │  │ Firebase          │                              │
-│  │ (RDBMS)│  │ Auth + Firestore  │                              │
-│  │        │  │ + FCM             │                              │
-│  └────────┘  └───────────────────┘                              │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CLIENTES                                     │
+│  ┌──────────────┐  ┌──────────────┐                                │
+│  │  mobile/     │  │  frontend/   │                                │
+│  │  Android     │  │  Angular 21  │                                │
+│  │  Kotlin +    │  │  SSR +       │                                │
+│  │  Compose     │  │  Tailwind    │                                │
+│  └──┬───────┬───┘  └──────┬───────┘                                │
+│     │       │              │                                        │
+│     │  ┌────┴──────────────┘  (REST API — Retrofit / HttpClient)   │
+│     │  │                                                            │
+│     │  ▼                                                            │
+│     │  ┌──────────────────────────────┐                             │
+│     │  │  backend/                    │                             │
+│     │  │  Spring Boot 4 (Java 21)    │                             │
+│     │  │  REST API + JPA + Security  │                             │
+│     │  └──────────────┬───────────────┘                             │
+│     │                 │                                             │
+│     │                 ▼                                             │
+│     │           ┌────────┐                                          │
+│     │           │ MySQL  │                                          │
+│     │           │ (RDBMS)│                                          │
+│     │           └────────┘                                          │
+│     │                                                               │
+│     ▼  (Auth + FCM — directo desde mobile)                         │
+│  ┌───────────────────┐                                              │
+│  │ Firebase          │                                              │
+│  │ Auth + FCM        │                                              │
+│  └───────────────────┘                                              │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Principios de diseño
@@ -92,7 +97,8 @@ La plataforma sigue una arquitectura **Clean Architecture** en cada capa, con se
 1. **Clean Architecture**: Separación estricta entre capas de presentación, dominio y datos en cada módulo.
 2. **API-First Contract**: El backend publica un OpenAPI spec (`/v3/api-docs`) que es el contrato formal. Frontend genera tipos TypeScript y mobile usa Retrofit — ambos consumidores son **independientes**.
 3. **Módulos independientes**: Cada módulo (backend, frontend, mobile) puede construirse, testearse y desplegarse de forma aislada. No comparten código fuente.
-4. **Offline-First (mobile)**: SQLDelight como Single Source of Truth. Retrofit sincroniza contra el backend REST.
+4. **Offline-First (mobile)**: SQLDelight como Single Source of Truth. Retrofit sincroniza contra el backend REST API.
+5. **Smart Auth Gateway (mobile)**: Firebase Auth opcional para push/analytics. Autenticación principal mediante JWT contra el backend REST. Bypass de Firebase cuando hay conectividad directa al backend.
 
 ### Flujo del contrato API
 
@@ -105,10 +111,12 @@ Backend (Spring Boot)          Frontend (Angular)           Mobile (Android)
        │       │                       │                           │
        │       └──────────────────────────────────────────────────► │
        │                               │                    Retrofit DTOs
+       │◄──── REST API ──────────────────────────────────────────► │
        │                               │                    mapeados a mano
        │                               │                           │
        ▼                               ▼                           ▼
-   MySQL + JPA                   HttpClient + RxJS        OkHttp + SQLDelight
+   MySQL + JPA                   HttpClient + RxJS       Retrofit + SQLDelight
+                                                         + Firebase (Auth/FCM)
 ```
 
 ---
@@ -245,9 +253,9 @@ Aplicación web Angular 21 con Tailwind CSS. Consume la API REST del backend.
 
 **Páginas organizadas por rol:**
 - `pages/auth/` — Login, Registro
-- `pages/ciudadano/` — Dashboard ciudadano, Nueva SAIP, Detalle, Apelación, Subsanación
-- `pages/funcionario/` — Dashboard funcionario, Responder solicitud, Detalle
-- `pages/ttaip/` — Dashboard TTAIP, Calificación, Resolución
+- `pages/ciudadano/` — Dashboard ciudadano, Nueva SAIP, Detalle solicitud, Nueva apelación, Subsanación
+- `pages/funcionario/` — Dashboard funcionario, Responder solicitud, Detalle solicitud
+- `pages/ttaip/` — Dashboard TTAIP, Calificar, Segunda Calificación, Resolver, Resolución Detalle, Proceso Disciplinario
 - `pages/admin/` — Dashboard administrador
 
 ### `mobile/` — App Android
@@ -259,7 +267,7 @@ Aplicación Android nativa con Kotlin, Jetpack Compose + Material 3, Clean Archi
 - `core/domain/` — Kotlin puro (Models, UseCases, Repository interfaces)
 - `core/data/` — Repository implementations, Mappers
 - `core/database/` — SQLDelight local DB
-- `core/network/` — Firebase (Firestore, Auth, FCM)
+- `core/network/` — Retrofit (REST API) + Firebase (Auth/FCM)
 - `core/common/` — Utilidades compartidas
 
 ---
