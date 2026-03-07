@@ -27,8 +27,13 @@ import java.util.concurrent.TimeUnit
  *
  * Provee Retrofit, OkHttp y los DataSources que consumen el backend REST.
  * Reemplaza los DataSources de Firebase cuando se usa el backend como fuente de datos.
+ *
+ * @param baseUrl URL base del backend REST. Configurable via gradle.properties / local.properties.
+ *   - Emulador: http://10.0.2.2:8080/ (default)
+ *   - Dispositivo físico con adb reverse: http://127.0.0.1:8080/
+ *   - LAN: http://<host-ip>:8080/
  */
-val restNetworkModule = module {
+fun restNetworkModule(baseUrl: String) = module {
 
     // ===========================================
     // JSON Serialization
@@ -83,7 +88,7 @@ val restNetworkModule = module {
         val json: Json = get()
         val client: OkHttpClient = get()
         Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8080/")
+            .baseUrl(baseUrl)
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

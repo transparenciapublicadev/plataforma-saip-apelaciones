@@ -20,6 +20,9 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // REST API base URL — configurable via gradle.properties o local.properties
+        buildConfigField("String", "REST_BASE_URL", "\"${project.findProperty("REST_BASE_URL") ?: "http://10.0.2.2:8080/"}\"")
     }
 
     buildTypes {

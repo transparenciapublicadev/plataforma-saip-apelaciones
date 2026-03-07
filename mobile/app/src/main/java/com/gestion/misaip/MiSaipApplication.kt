@@ -139,7 +139,7 @@ class MiSaipApplication : Application(), Configuration.Provider {
             modules(
                 // Core Modules
                 databaseModule,
-                restNetworkModule,
+                restNetworkModule(BuildConfig.REST_BASE_URL),
                 domainModule,
                 dataModule,
 
