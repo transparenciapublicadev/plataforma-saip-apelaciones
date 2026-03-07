@@ -1,0 +1,126 @@
+# ============================================================
+# Plataforma SAIP — Root .gitignore
+# Monorepo: mobile (Android) + backend (Spring Boot) + frontend (Angular)
+# ============================================================
+
+# ── OS Generated ────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ── IDEs & Editors ──────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.factorypath
+/nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ── Android / Gradle (mobile/) ──────────────────────────────
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/core/*/build/
+mobile/local.properties
+mobile/captures/
+mobile/.externalNativeBuild/
+mobile/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.hprof
+
+# Mobile build logs (dev artifacts, not source)
+mobile/build_*.txt
+
+# ── Maven / Spring Boot (backend/) ──────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/*.log
+backend/hs_err_pid*
+
+# ── Node.js / Angular / React ───────────────────────────────
+node_modules/
+dist/
+.angular/
+.cache/
+.tmp/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.vercel/
+.next/
+out/
+
+# ── Coverage & Testing ─────────────────────────────────────
+coverage/
+*.lcov
+test-results/
+junit-reports/
+.nyc_output/
+
+# ── Logs ────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Package Managers ────────────────────────────────────────
+yarn.lock
+pnpm-lock.yaml
+
+# ── Secrets & Environment ──────────────────────────────────
+*.env
+.env.*
+!.env.example
+local.properties
+
+# ── AI / Copilot (solo local, NO subir al repo) ────────────
+.github/copilot-instructions.md
+.github/copilot-repo-notes.md
+.github/agents/
+.github/skills/
+skills-lock.json
+*.jks
+*.keystore
+secrets/
+
+# ── Firebase (keep config, ignore generated) ────────────────
+firebase-debug.log
+.firebase/
+firestore-debug.log
+ui-debug.log
+
+# ── Documentation build artifacts ──────────────────────────
+docs/_build/
+docs/.doctrees/
+
+# ── Design Reference (visual-only, not deployed) ───────────
+design-reference/
+
+# ── Copilot / Agent internal ───────────────────────────────
+memories/
