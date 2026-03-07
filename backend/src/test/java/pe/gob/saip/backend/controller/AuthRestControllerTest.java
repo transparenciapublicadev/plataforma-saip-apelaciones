@@ -81,7 +81,7 @@ class AuthRestControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"email":"ciudadano@test.com","password":"pass123"}
+                            {"identificador":"ciudadano@test.com","password":"pass123"}
                             """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -98,7 +98,7 @@ class AuthRestControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"email":"ciudadano@test.com","password":"wrongpass"}
+                            {"identificador":"ciudadano@test.com","password":"wrongpass"}
                             """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
@@ -112,7 +112,7 @@ class AuthRestControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"email":"noexiste@test.com","password":"pass123"}
+                            {"identificador":"noexiste@test.com","password":"pass123"}
                             """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
@@ -120,11 +120,11 @@ class AuthRestControllerTest {
     }
 
     @Test
-    void login_emailInvalido_debeRetornar400() throws Exception {
+    void login_identificadorEnBlanco_debeRetornar400() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"email":"no-es-email","password":"pass123"}
+                            {"identificador":"","password":"pass123"}
                             """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
@@ -149,7 +149,7 @@ class AuthRestControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"email":"ciudadano@test.com","password":"pass123"}
+                            {"identificador":"ciudadano@test.com","password":"pass123"}
                             """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
