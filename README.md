@@ -10,19 +10,39 @@ El sistema permite a los ciudadanos presentar solicitudes de información a enti
 
 ## Tabla de Contenidos
 
-1. [Autores](#autores)
-2. [Arquitectura de la Plataforma](#arquitectura-de-la-plataforma)
-3. [Stack Tecnológico](#stack-tecnológico)
-4. [Estructura del Monorepo](#estructura-del-monorepo)
-5. [Módulos del Proyecto](#módulos-del-proyecto)
-6. [Glosario de Dominio](#glosario-de-dominio)
-7. [Sistema de Roles](#sistema-de-roles)
-8. [Reglas de Negocio — Módulo SAIP](#reglas-de-negocio--módulo-saip)
-9. [Reglas de Negocio — Módulo Apelaciones TTAIP](#reglas-de-negocio--módulo-apelaciones-ttaip)
-10. [Reglas de Negocio — Motor de Notificaciones y Reprocesos](#reglas-de-negocio--motor-de-notificaciones-y-reprocesos)
-11. [Reglas de Numeración e Identificadores](#reglas-de-numeración-e-identificadores)
-12. [Compilación y Ejecución](#compilación-y-ejecución)
-13. [Documentación](#documentación)
+- [Plataforma SAIP — Sistema de Gestión de Acceso a la Información Pública](#plataforma-saip--sistema-de-gestión-de-acceso-a-la-información-pública)
+  - [Tabla de Contenidos](#tabla-de-contenidos)
+  - [Autores](#autores)
+  - [Arquitectura de la Plataforma](#arquitectura-de-la-plataforma)
+    - [Principios de diseño](#principios-de-diseño)
+    - [Flujo del contrato API](#flujo-del-contrato-api)
+  - [Stack Tecnológico](#stack-tecnológico)
+    - [Backend (`backend/`)](#backend-backend)
+    - [Frontend (`frontend/`)](#frontend-frontend)
+    - [Mobile (`mobile/`)](#mobile-mobile)
+  - [Estructura del Monorepo](#estructura-del-monorepo)
+  - [Módulos del Proyecto](#módulos-del-proyecto)
+    - [`backend/` — API REST](#backend--api-rest)
+    - [`frontend/` — SPA Angular](#frontend--spa-angular)
+    - [`mobile/` — App Android](#mobile--app-android)
+  - [Glosario de Dominio](#glosario-de-dominio)
+    - [Distinción crítica: SAIP ≠ Expediente](#distinción-crítica-saip--expediente)
+  - [Sistema de Roles](#sistema-de-roles)
+  - [Reglas de Negocio — Módulo SAIP](#reglas-de-negocio--módulo-saip)
+    - [Tipos de respuesta del funcionario](#tipos-de-respuesta-del-funcionario)
+    - [Semáforo de estado](#semáforo-de-estado)
+  - [Reglas de Negocio — Módulo Apelaciones TTAIP](#reglas-de-negocio--módulo-apelaciones-ttaip)
+    - [Estados del expediente](#estados-del-expediente)
+  - [Reglas de Negocio — Motor de Notificaciones y Reprocesos](#reglas-de-negocio--motor-de-notificaciones-y-reprocesos)
+  - [Reglas de Numeración e Identificadores](#reglas-de-numeración-e-identificadores)
+  - [Compilación y Ejecución](#compilación-y-ejecución)
+    - [Backend](#backend)
+    - [Frontend](#frontend)
+    - [Mobile](#mobile)
+    - [Sincronizar contrato OpenAPI](#sincronizar-contrato-openapi)
+  - [CI/CD](#cicd)
+  - [Documentación](#documentación)
+  - [Licencia](#licencia)
 
 ---
 
@@ -42,12 +62,12 @@ La plataforma sigue una arquitectura **Clean Architecture** en cada capa, con se
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLIENTES                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │  mobile/     │  │  frontend/   │  │  design-reference/     │ │
-│  │  Android     │  │  Angular 21  │  │  FigMake (referencia)  │ │
-│  │  Kotlin +    │  │  SSR +       │  │  React + Vite          │ │
-│  │  Compose     │  │  Tailwind    │  │  (diseño UI target)    │ │
-│  └──────┬───────┘  └──────┬───────┘  └────────────────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐                            │
+│  │  mobile/     │  │  frontend/   │                            │
+│  │  Android     │  │  Angular 21  │                            │
+│  │  Kotlin +    │  │  SSR +       │                            │
+│  │  Compose     │  │  Tailwind    │                            │
+│  └──────┬───────┘  └──────┬───────┘                            │
 │         │                 │                                     │
 │         └────────┬────────┘                                     │
 │                  ▼                                               │
@@ -73,7 +93,6 @@ La plataforma sigue una arquitectura **Clean Architecture** en cada capa, con se
 2. **API-First Contract**: El backend publica un OpenAPI spec (`/v3/api-docs`) que es el contrato formal. Frontend genera tipos TypeScript y mobile usa Retrofit — ambos consumidores son **independientes**.
 3. **Módulos independientes**: Cada módulo (backend, frontend, mobile) puede construirse, testearse y desplegarse de forma aislada. No comparten código fuente.
 4. **Offline-First (mobile)**: SQLDelight como Single Source of Truth. Retrofit sincroniza contra el backend REST.
-5. **Design-Driven**: El proyecto `design-reference/` (FigMake) es la referencia visual que el frontend debe replicar fielmente.
 
 ### Flujo del contrato API
 
@@ -135,15 +154,6 @@ Backend (Spring Boot)          Frontend (Angular)           Mobile (Android)
 | Push / Analytics | Firebase (Auth + FCM) | BOM 34.10.0 |
 | Build | AGP 9.1.0, Gradle 9.3.1 | compileSdk 36, minSdk 24 |
 
-### Referencia de Diseño (`design-reference/`)
-
-| Aspecto | Tecnología | Versión |
-|---------|------------|---------|
-| Framework | React | 18.3.1 |
-| Build | Vite | 6.3.5 |
-| UI Components | Radix UI + shadcn/ui | — |
-| Estilos | Tailwind CSS | 4.1.12 |
-| Propósito | Referencia visual (FigMake) para el frontend Angular |
 
 ---
 
@@ -203,9 +213,6 @@ plataforma-saip/
 ├── scripts/                        ← Scripts de sincronización (OpenAPI spec)
 │   ├── sync-openapi.sh             ← Linux/macOS
 │   └── sync-openapi.ps1            ← Windows
-├── design-reference/               ← Referencia visual FigMake (React + Vite)
-│   ├── package.json
-│   └── src/components/             ← Componentes UI de referencia
 ├── docs/                           ← Documentación técnica y funcional (en progreso)
 ├── .gitignore
 ├── LICENSE
@@ -234,7 +241,7 @@ API RESTful construida con Spring Boot 4 y Java 21. Gestiona la lógica de negoc
 
 ### `frontend/` — SPA Angular
 
-Aplicación web Angular 21 con Tailwind CSS. Consume la API REST del backend. Debe replicar fielmente los diseños del `design-reference/`.
+Aplicación web Angular 21 con Tailwind CSS. Consume la API REST del backend.
 
 **Páginas organizadas por rol:**
 - `pages/auth/` — Login, Registro
@@ -254,10 +261,6 @@ Aplicación Android nativa con Kotlin, Jetpack Compose + Material 3, Clean Archi
 - `core/database/` — SQLDelight local DB
 - `core/network/` — Firebase (Firestore, Auth, FCM)
 - `core/common/` — Utilidades compartidas
-
-### `design-reference/` — Referencia Visual
-
-Proyecto FigMake (React + Vite + Radix UI + Tailwind) que sirve como **diseño de referencia** para el frontend Angular. Cada componente en esta carpeta representa el diseño visual exacto que debe implementarse en `frontend/`.
 
 ---
 
@@ -301,13 +304,13 @@ Proyecto FigMake (React + Vite + Radix UI + Tailwind) que sirve como **diseño d
 Basadas en la Ley N.° 27806.
 
 | Regla | Descripción |
-|-------|---------|
-| BR-SAIP-001 | Plazo máximo: **10 días hábiles** para atender una solicitud. El conteo inicia el **día hábil siguiente** a la recepción (día de recepción = día 0). Si la SAIP se presenta fuera del horario laboral de la entidad, se considera recibida el siguiente día hábil y el plazo inicia al día hábil posterior |
-| BR-SAIP-002 | Días hábiles: excluir sábados, domingos y feriados nacionales |
-| BR-SAIP-003 | Subsanación solo en los **2 primeros días hábiles** |
-| BR-SAIP-004 | Liquidación de costos: notificar a más tardar el **día 9** |
-| BR-SAIP-005 | Silencio Administrativo Negativo si >10 días sin respuesta |
-| BR-SAIP-006 | Plazo para apelar: **15 días calendario** contados desde la fecha de recepción de la respuesta de la entidad (aplica para cualquier tipo de respuesta: total, parcial, denegatoria) |
+|-------|-------------|
+| `BR‑SAIP‑001` | Plazo máximo: **10 días hábiles** para atender una solicitud. El conteo inicia el **día hábil siguiente** a la recepción (día de recepción = día 0). Si la SAIP se presenta fuera del horario laboral de la entidad, se considera recibida el siguiente día hábil y el plazo inicia al día hábil posterior |
+| `BR‑SAIP‑002` | Días hábiles: excluir sábados, domingos y feriados nacionales |
+| `BR‑SAIP‑003` | Subsanación solo en los **2 primeros días hábiles** |
+| `BR‑SAIP‑004` | Liquidación de costos: notificar a más tardar el **día 9** |
+| `BR‑SAIP‑005` | Silencio Administrativo Negativo si >10 días sin respuesta |
+| `BR‑SAIP‑006` | Plazo para apelar: **15 días calendario** contados desde la fecha de recepción de la respuesta de la entidad (aplica para cualquier tipo de respuesta: total, parcial, denegatoria) |
 
 ### Tipos de respuesta del funcionario
 
@@ -334,7 +337,7 @@ Basadas en la Ley N.° 27806.
 Flujo secuencial según SRS v2.0:
 
 | Etapa | Plazo | Descripción |
-|-------|---------|---------|
+|-------|-------|-------------|
 | Presentación del recurso | 15 días calendario | Plazo del ciudadano para presentar apelación, contado desde la fecha de recepción de la respuesta de la entidad |
 | Elevación | 2 días hábiles | La entidad remite el recurso al TTAIP |
 | Primera Calificación | 7 días hábiles | Improcedente / Admisión / Inadmisible |
@@ -357,10 +360,10 @@ Flujo secuencial según SRS v2.0:
 
 | Regla | Descripción |
 |-------|-------------|
-| BR-REP-001 | Inmutabilidad: cédula rechazada NO se edita, se conserva como histórico |
-| BR-REP-002 | Ante rechazo, generar nueva cédula con ID correlativo |
-| BR-REP-003 | Mientras exista rechazo sin nueva cédula, expediente en `EN_PROCESO_DE_SUBSANACION` |
-| BR-REP-004 | **Notificaciones normales**: Etapa cierra solo cuando ambas partes tienen notificación `NOTIFICADO`. **Reprocesos**: Pueden afectar solo al recurrente, solo a la entidad, o ambos. El estado cambia a `SUBSANADO` cuando se re-notifica la nueva cédula a la parte afectada, se consigna la nueva fecha de notificación y el número de cédula/oficio utilizado |
+| `BR‑REP‑001` | Inmutabilidad: cédula rechazada NO se edita, se conserva como histórico |
+| `BR‑REP‑002` | Ante rechazo, generar nueva cédula con ID correlativo |
+| `BR‑REP‑003` | Mientras exista rechazo sin nueva cédula, expediente en `EN_PROCESO_DE_SUBSANACION` |
+| `BR‑REP‑004` | **Notificaciones normales**: Etapa cierra solo cuando ambas partes tienen notificación `NOTIFICADO`. **Reprocesos**: Pueden afectar solo al recurrente, solo a la entidad, o ambos. El estado cambia a `SUBSANADO` cuando se re-notifica la nueva cédula a la parte afectada, se consigna la nueva fecha de notificación y el número de cédula/oficio utilizado |
 
 ---
 
@@ -410,14 +413,6 @@ cd mobile
 ```
 
 Requiere `google-services.json` en `mobile/app/`.
-
-### Design Reference
-
-```bash
-cd design-reference
-npm install
-npm run dev        # Vite dev server
-```
 
 ### Sincronizar contrato OpenAPI
 
