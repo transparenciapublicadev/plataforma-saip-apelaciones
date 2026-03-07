@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Base.Theme.MiSAIP" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_red</item>
+        <item name="colorPrimaryDark">@color/brand_red_dark</item>
+        <item name="android:statusBarColor">@color/brand_red</item>
+        <item name="android:navigationBarColor">@color/brand_red</item>
+        <item name="android:windowBackground">@color/brand_red</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.MiSAIP" parent="Base.Theme.MiSAIP" />
+
+    <style name="Theme.MiSAIP.Splash" parent="Base.Theme.MiSAIP">
+        <item name="android:statusBarColor">@color/brand_red</item>
+        <item name="android:navigationBarColor">@color/brand_red</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
+

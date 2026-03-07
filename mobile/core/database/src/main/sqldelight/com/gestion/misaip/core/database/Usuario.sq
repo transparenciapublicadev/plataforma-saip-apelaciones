@@ -1,0 +1,100 @@
+-- =============================================================================
+-- QUERIES: Usuario
+-- =============================================================================
+
+-- Obtener usuario por ID
+getUsuarioById:
+SELECT * FROM Usuario WHERE id = ?;
+
+-- Obtener todos los usuarios (para administrador)
+getAllUsuarios:
+SELECT * FROM Usuario WHERE estaActivo = 1 ORDER BY nombre ASC;
+
+-- Obtener usuario por DNI
+getUsuarioByDni:
+SELECT * FROM Usuario WHERE dni = ? AND estaActivo = 1;
+
+-- Obtener usuario por nombre de usuario
+getUsuarioByUsuario:
+SELECT * FROM Usuario WHERE usuario = ? AND estaActivo = 1;
+
+-- Obtener usuario actual (sesión activa)
+getUsuarioActual:
+SELECT u.* FROM Usuario u
+INNER JOIN Sesion s ON u.id = s.usuarioId
+WHERE s.activa = 1
+LIMIT 1;
+
+-- Insertar usuario
+insertUsuario:
+INSERT OR REPLACE INTO Usuario (
+    id, tipo, nombre, dni, usuario, email, telefono, direccion,
+    entidad, entidadId, cargo, fechaRegistro, passwordHash,
+    estaActivo, sincronizado, ultimaModificacion
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Actualizar usuario
+updateUsuario:
+UPDATE Usuario SET
+    nombre = ?,
+    email = ?,
+    telefono = ?,
+    direccion = ?,
+    sincronizado = 0,
+    ultimaModificacion = ?
+WHERE id = ?;
+
+-- Marcar usuario como sincronizado
+marcarUsuarioSincronizado:
+UPDATE Usuario SET sincronizado = 1 WHERE id = ?;
+
+-- =============================================================================
+-- QUERIES: Sesion
+-- =============================================================================
+
+-- Obtener sesión activa
+getSesionActiva:
+SELECT * FROM Sesion WHERE activa = 1 LIMIT 1;
+
+-- Insertar sesión
+insertSesion:
+INSERT INTO Sesion (id, usuarioId, token, fechaInicio, fechaExpiracion, activa)
+VALUES (1, ?, ?, ?, ?, 1);
+
+-- Cerrar sesión
+cerrarSesion:
+UPDATE Sesion SET activa = 0 WHERE id = 1;
+
+-- Eliminar sesión
+eliminarSesion:
+DELETE FROM Sesion WHERE id = 1;
+
+-- =============================================================================
+-- QUERIES: EntidadPublica
+-- =============================================================================
+
+-- Obtener todas las entidades activas
+getAllEntidadesActivas:
+SELECT * FROM EntidadPublica WHERE activa = 1 ORDER BY nombre ASC;
+
+-- Obtener entidad por ID
+getEntidadById:
+SELECT * FROM EntidadPublica WHERE id = ?;
+
+-- Buscar entidades por nombre o siglas
+buscarEntidades:
+SELECT * FROM EntidadPublica
+WHERE activa = 1 AND (nombre LIKE '%' || ? || '%' OR siglas LIKE '%' || ? || '%')
+ORDER BY nombre ASC;
+
+-- Obtener entidades por sector
+getEntidadesBySector:
+SELECT * FROM EntidadPublica WHERE sector = ? AND activa = 1 ORDER BY nombre ASC;
+
+-- Insertar entidad
+insertEntidad:
+INSERT OR REPLACE INTO EntidadPublica (
+    id, nombre, sector, siglas, ruc, direccion, telefono, email,
+    sitioWeb, nivelGobierno, activa, sincronizado, ultimaModificacion
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+

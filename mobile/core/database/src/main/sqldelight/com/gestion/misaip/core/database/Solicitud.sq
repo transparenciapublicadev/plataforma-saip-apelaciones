@@ -1,0 +1,102 @@
+-- =============================================================================
+-- QUERIES: Solicitud
+-- =============================================================================
+
+-- Obtener todas las solicitudes (para administrador)
+getAllSolicitudes:
+SELECT * FROM Solicitud ORDER BY fechaCreacion DESC;
+
+-- Obtener solicitudes del usuario
+getSolicitudesByUsuario:
+SELECT * FROM Solicitud
+WHERE usuarioId = ?
+ORDER BY fechaCreacion DESC;
+
+-- Obtener solicitudes de una entidad
+getSolicitudesByEntidad:
+SELECT * FROM Solicitud
+WHERE entidadId = ?
+ORDER BY fechaCreacion DESC;
+
+-- Obtener solicitud por expediente
+getSolicitudByExpediente:
+SELECT * FROM Solicitud WHERE expediente = ?;
+
+-- Obtener solicitud por ID
+getSolicitudById:
+SELECT * FROM Solicitud WHERE id = ?;
+
+-- Obtener solicitudes pendientes de sincronización
+getSolicitudesPendientesSincronizacion:
+SELECT * FROM Solicitud WHERE pendienteSubida = 1;
+
+-- Contar solicitudes por estado (para estadísticas)
+contarSolicitudesPorEstado:
+SELECT estado, COUNT(*) AS cantidad
+FROM Solicitud
+WHERE usuarioId = ?
+GROUP BY estado;
+
+-- Obtener estadísticas del usuario
+getEstadisticasUsuario:
+SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN estado IN ('Recepcionada', 'En Revisión', 'Pendiente de Información') THEN 1 ELSE 0 END) AS enProceso,
+    SUM(CASE WHEN estado = 'Respondida' THEN 1 ELSE 0 END) AS respondidas,
+    SUM(CASE WHEN estado = 'Denegada' THEN 1 ELSE 0 END) AS denegadas,
+    SUM(CASE WHEN estado = 'Vencida' THEN 1 ELSE 0 END) AS vencidas
+FROM Solicitud
+WHERE usuarioId = ?;
+
+-- Insertar solicitud
+insertSolicitud:
+INSERT OR REPLACE INTO Solicitud (
+    id, expediente, tipo, entidad, entidadId, usuarioId,
+    solicitanteNombre, solicitanteDni, solicitanteEmail,
+    solicitanteTelefono, solicitanteDireccion,
+    asunto, descripcion, fechaCreacion, fechaLimite, estado,
+    diasRestantes, prioridad, silencioAdministrativo,
+    respuestaFecha, respuestaFuncionario, respuestaTipo,
+    respuestaFundamentacion, respuestaArchivos, timeline,
+    sincronizado, pendienteSubida, ultimaModificacion
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Actualizar estado de solicitud
+updateEstadoSolicitud:
+UPDATE Solicitud SET
+    estado = ?,
+    diasRestantes = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Actualizar respuesta de solicitud
+updateRespuestaSolicitud:
+UPDATE Solicitud SET
+    estado = ?,
+    respuestaFecha = ?,
+    respuestaFuncionario = ?,
+    respuestaTipo = ?,
+    respuestaFundamentacion = ?,
+    respuestaArchivos = ?,
+    timeline = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Marcar solicitud como sincronizada
+marcarSolicitudSincronizada:
+UPDATE Solicitud SET
+    sincronizado = 1,
+    pendienteSubida = 0
+WHERE id = ?;
+
+-- Actualizar timeline
+updateTimeline:
+UPDATE Solicitud SET
+    timeline = ?,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+

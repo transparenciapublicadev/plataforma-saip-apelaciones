@@ -1,0 +1,22 @@
+{
+  "name": "misaip-firebase-setup",
+  "version": "1.0.0",
+  "description": "Scripts para configurar Firebase (Auth + Firestore + Rules) del proyecto MiSAIP desde la terminal",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "setup": "node setup-firebase.js",
+    "seed": "node seed-firestore.js",
+    "rules": "npx firebase deploy --only firestore:rules",
+    "indexes": "npx firebase deploy --only firestore:indexes",
+    "verify": "node verify-setup.js",
+    "clean": "node clean-firestore.js",
+    "all": "node setup-firebase.js && npx firebase deploy --only firestore:rules,firestore:indexes && node verify-setup.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.29.0"
+  }
+}

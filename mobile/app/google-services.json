@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "570857370610",
+    "project_id": "misaip",
+    "storage_bucket": "misaip.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:570857370610:android:52c9f03a5091b14943b16b",
+        "android_client_info": {
+          "package_name": "com.gestion.misaip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1QY_Atqg-Qs3XUqow8VN6yGwM2xAOXR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

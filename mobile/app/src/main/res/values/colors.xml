@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_red">#C8102E</color>
+    <color name="brand_red_dark">#9A0D24</color>
+    <color name="brand_red_light">#E53935</color>
+    <color name="background_gray">#F5F5F5</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_hint">#9E9E9E</color>
+
+    <color name="input_border">#E5E7EB</color>
+    <color name="divider">#E0E0E0</color>
+
+    <color name="status_pending_bg">#FFF3E0</color>
+    <color name="status_pending_text">#EF6C00</color>
+    <color name="status_review_bg">#E3F2FD</color>
+    <color name="status_review_text">#1976D2</color>
+    <color name="status_responded_bg">#E8F5E9</color>
+    <color name="status_responded_text">#388E3C</color>
+    <color name="status_expired_bg">#FFEBEE</color>
+    <color name="status_expired_text">#D32F2F</color>
+
+    <color name="blue_500">#2196F3</color>
+    <color name="blue_50">#E3F2FD</color>
+    <color name="blue_100">#BBDEFB</color>
+    <color name="blue_800">#1565C0</color>
+    <color name="green_500">#4CAF50</color>
+    <color name="green_50">#E8F5E9</color>
+    <color name="green_800">#2E7D32</color>
+    <color name="amber_500">#FFC107</color>
+    <color name="amber_50">#FFF8E1</color>
+    <color name="amber_100">#FFECB3</color>
+    <color name="amber_800">#FF8F00</color>
+    <color name="purple_500">#9C27B0</color>
+    <color name="purple_50">#F3E5F5</color>
+    <color name="purple_600">#8E24AA</color>
+    <color name="orange_500">#FF9800</color>
+    <color name="red_500">#F44336</color>
+    <color name="red_50">#FFEBEE</color>
+    <color name="gray_300">#E0E0E0</color>
+    <color name="gray_400">#BDBDBD</color>
+    <color name="gray_500">#9E9E9E</color>
+    <color name="gray_100">#F5F5F5</color>
+    <color name="gray_200">#EEEEEE</color>
+    <color name="gray_600">#757575</color>
+    <color name="gray_700">#616161</color>
+    <color name="gray_800">#424242</color>
+
+    <!-- Colores adicionales para Clean Architecture -->
+    <color name="primary">#C8102E</color>
+    <color name="primary_dark">#9A0D24</color>
+    <color name="primary_light">#F8D7DA</color>
+    <color name="secondary">#1976D2</color>
+    <color name="error">#F44336</color>
+    <color name="success">#4CAF50</color>
+    <color name="warning">#FF9800</color>
+    <color name="purple">#9C27B0</color>
+
+    <!-- Colores de estado -->
+    <color name="amber">#FFC107</color>
+    <color name="amber_dark">#FFA000</color>
+    <color name="amber_light">#FFF8E1</color>
+    <color name="amber_bg">#FFF8E1</color>
+    <color name="green">#4CAF50</color>
+    <color name="green_dark">#388E3C</color>
+    <color name="green_bg">#E8F5E9</color>
+    <color name="red">#F44336</color>
+    <color name="red_dark">#D32F2F</color>
+    <color name="red_bg">#FFEBEE</color>
+    <color name="blue">#2196F3</color>
+    <color name="blue_dark">#1976D2</color>
+    <color name="blue_bg">#E3F2FD</color>
+
+    <!-- Alertas -->
+    <color name="alert_orange">#ED6C02</color>
+    <color name="alert_orange_bg">#FFF4E5</color>
+    <color name="alert_orange_border">#FFB74D</color>
+    <color name="alert_orange_text">#663C00</color>
+    <color name="alert_purple">#9C27B0</color>
+    <color name="alert_purple_bg">#F3E5F5</color>
+    <color name="alert_purple_border">#CE93D8</color>
+    <color name="alert_purple_text">#4A148C</color>
+
+    <!-- Transparencias -->
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="white_60">#99FFFFFF</color>
+
+    <!-- Colores adicionales para diálogos -->
+    <color name="green_600">#43A047</color>
+    <color name="blue_200">#90CAF9</color>
+    <color name="blue_700">#1976D2</color>
+    <color name="orange_50">#FFF3E0</color>
+    <color name="orange_200">#FFCC80</color>
+    <color name="orange_600">#FB8C00</color>
+    <color name="orange_700">#F57C00</color>
+    <color name="orange_800">#EF6C00</color>
+    <color name="gray_900">#212121</color>
+
+    <!-- Colores de estado simplificados -->
+    <color name="status_success">#4CAF50</color>
+    <color name="status_success_bg">#E8F5E9</color>
+    <color name="status_error">#F44336</color>
+    <color name="status_error_bg">#FFEBEE</color>
+    <color name="status_warning">#FF9800</color>
+    <color name="status_warning_bg">#FFF3E0</color>
+    <color name="status_warning_text">#E65100</color>
+
+    <!-- ============================================== -->
+    <!-- COLORES SEMÁNTICOS (para soporte tema oscuro)  -->
+    <!-- Estos se sobreescriben en values-night/colors   -->
+    <!-- ============================================== -->
+    <color name="surface_color">#FFFFFF</color>
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="surface_variant">#F5F5F5</color>
+    <color name="nav_bar_color">#FFFFFF</color>
+    <color name="card_stat_overlay">#1AFFFFFF</color>
+    <color name="toggle_container_bg">#E5E7EB</color>
+    <color name="selector_container_bg">#F0F0F0</color>
+    <color name="login_divider_bg">#E5E7EB</color>
+    <color name="login_info_blue_bg">#EFF6FF</color>
+    <color name="login_info_blue_border">#BFDBFE</color>
+    <color name="login_info_blue_text">#1E40AF</color>
+    <color name="login_info_blue_icon">#3B82F6</color>
+    <color name="login_info_amber_bg">#FEF3C7</color>
+    <color name="login_info_amber_border">#FDE68A</color>
+    <color name="login_info_amber_text">#92400E</color>
+    <color name="login_info_amber_icon">#D97706</color>
+    <color name="login_selector_bg">#E5E7EB</color>
+    <color name="register_card_bg">#F9FAFB</color>
+    <color name="register_hint_text">#6B7280</color>
+    <color name="entity_alert_text">#B71C1C</color>
+    <color name="entity_alert_border">#EF9A9A</color>
+    <color name="appeal_form_border">#CE93D8</color>
+</resources>

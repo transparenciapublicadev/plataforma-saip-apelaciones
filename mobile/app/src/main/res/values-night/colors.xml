@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============================================================ -->
+    <!-- TEMA OSCURO: Paleta con tonalidades rojas del branding       -->
+    <!-- MiSAIP adaptadas para modo oscuro.                           -->
+    <!--                                                              -->
+    <!-- Diseño UI/UX: Superficies con sutil calidez roja,            -->
+    <!-- textos cálidos, colores de acento más brillantes para        -->
+    <!-- contraste WCAG AA sobre fondos oscuros.                      -->
+    <!-- ============================================================ -->
+
+    <!-- ============================== -->
+    <!-- BRANDING (ajustado contraste)  -->
+    <!-- ============================== -->
+    <color name="brand_red">#FF6B6B</color>
+    <color name="brand_red_dark">#E53935</color>
+    <color name="brand_red_light">#FF8A80</color>
+    <color name="primary">#FF6B6B</color>
+    <color name="primary_dark">#E53935</color>
+    <color name="primary_light">#3D2226</color>
+    <color name="secondary">#64B5F6</color>
+
+    <!-- ============================================ -->
+    <!-- SUPERFICIES (tonalidad cálida roja sutil)    -->
+    <!-- ============================================ -->
+    <color name="background_gray">#161112</color>
+    <color name="surface_color">#201A1B</color>
+    <color name="surface_elevated">#2C2224</color>
+    <color name="surface_variant">#251D1F</color>
+    <color name="nav_bar_color">#201A1B</color>
+    <!-- white se mantiene #FFFFFF — se usa como texto sobre headers rojos -->
+
+    <!-- ============================== -->
+    <!-- TEXTO (cálido, legible)        -->
+    <!-- ============================== -->
+    <color name="text_primary">#F5E6E8</color>
+    <color name="text_secondary">#C4A9AD</color>
+    <color name="text_hint">#8E7275</color>
+
+    <!-- ============================== -->
+    <!-- BORDES Y DIVISORES             -->
+    <!-- ============================== -->
+    <color name="input_border">#4A3538</color>
+    <color name="divider">#3D2D30</color>
+
+    <!-- ============================== -->
+    <!-- GRISES (adaptados a oscuro)    -->
+    <!-- ============================== -->
+    <color name="gray_100">#251D1F</color>
+    <color name="gray_200">#302628</color>
+    <color name="gray_300">#3D2D30</color>
+    <color name="gray_400">#5C4A4E</color>
+    <color name="gray_500">#8E7275</color>
+    <color name="gray_600">#A38A8E</color>
+    <color name="gray_700">#BFA0A4</color>
+    <color name="gray_800">#C4A9AD</color>
+    <color name="gray_900">#F5E6E8</color>
+
+    <!-- ======================================== -->
+    <!-- ESTADO: Fondos oscuros tintados          -->
+    <!-- ======================================== -->
+    <color name="status_pending_bg">#332B1C</color>
+    <color name="status_pending_text">#FFB74D</color>
+    <color name="status_review_bg">#1B2A3B</color>
+    <color name="status_review_text">#64B5F6</color>
+    <color name="status_responded_bg">#1B3726</color>
+    <color name="status_responded_text">#66BB6A</color>
+    <color name="status_expired_bg">#3B1C1E</color>
+    <color name="status_expired_text">#EF5350</color>
+
+    <!-- Estado simplificado -->
+    <color name="status_success">#66BB6A</color>
+    <color name="status_success_bg">#1B3726</color>
+    <color name="status_error">#EF5350</color>
+    <color name="status_error_bg">#3B1C1E</color>
+    <color name="status_warning">#FFA726</color>
+    <color name="status_warning_bg">#332B1C</color>
+    <color name="status_warning_text">#FFB74D</color>
+
+    <!-- ============================== -->
+    <!-- COLORES DE ACENTO (brillantes) -->
+    <!-- ============================== -->
+    <color name="error">#EF5350</color>
+    <color name="success">#66BB6A</color>
+    <color name="warning">#FFA726</color>
+    <color name="purple">#CE93D8</color>
+
+    <!-- ============================== -->
+    <!-- AZULES                         -->
+    <!-- ============================== -->
+    <color name="blue">#42A5F5</color>
+    <color name="blue_dark">#64B5F6</color>
+    <color name="blue_bg">#1B2A3B</color>
+    <color name="blue_50">#1B2A3B</color>
+    <color name="blue_100">#1E3A5C</color>
+    <color name="blue_200">#2A4A6B</color>
+    <color name="blue_500">#42A5F5</color>
+    <color name="blue_700">#42A5F5</color>
+    <color name="blue_800">#64B5F6</color>
+
+    <!-- ============================== -->
+    <!-- VERDES                         -->
+    <!-- ============================== -->
+    <color name="green">#66BB6A</color>
+    <color name="green_dark">#81C784</color>
+    <color name="green_bg">#1B3726</color>
+    <color name="green_50">#1B3726</color>
+    <color name="green_500">#66BB6A</color>
+    <color name="green_600">#66BB6A</color>
+    <color name="green_800">#81C784</color>
+
+    <!-- ============================== -->
+    <!-- ÁMBAR / NARANJA                -->
+    <!-- ============================== -->
+    <color name="amber">#FFCA28</color>
+    <color name="amber_dark">#FFB300</color>
+    <color name="amber_light">#332B1C</color>
+    <color name="amber_bg">#332B1C</color>
+    <color name="amber_50">#332B1C</color>
+    <color name="amber_100">#3D321E</color>
+    <color name="amber_500">#FFCA28</color>
+    <color name="amber_800">#FFB300</color>
+    <color name="orange_50">#332B1C</color>
+    <color name="orange_200">#5C4A2E</color>
+    <color name="orange_500">#FFA726</color>
+    <color name="orange_600">#FFA726</color>
+    <color name="orange_700">#FFB74D</color>
+    <color name="orange_800">#FFCA28</color>
+
+    <!-- ============================== -->
+    <!-- PÚRPURAS                       -->
+    <!-- ============================== -->
+    <color name="purple_50">#2B1D33</color>
+    <color name="purple_500">#CE93D8</color>
+    <color name="purple_600">#BA68C8</color>
+
+    <!-- ============================== -->
+    <!-- ROJOS                          -->
+    <!-- ============================== -->
+    <color name="red">#EF5350</color>
+    <color name="red_dark">#EF5350</color>
+    <color name="red_bg">#3B1C1E</color>
+    <color name="red_50">#3B1C1E</color>
+    <color name="red_500">#EF5350</color>
+
+    <!-- ============================== -->
+    <!-- ALERTAS                        -->
+    <!-- ============================== -->
+    <color name="alert_orange">#FFB74D</color>
+    <color name="alert_orange_bg">#332B1C</color>
+    <color name="alert_orange_border">#5C4A2E</color>
+    <color name="alert_orange_text">#FFB74D</color>
+    <color name="alert_purple">#CE93D8</color>
+    <color name="alert_purple_bg">#2B1D33</color>
+    <color name="alert_purple_border">#4A2F5C</color>
+    <color name="alert_purple_text">#CE93D8</color>
+
+    <!-- ============================== -->
+    <!-- TRANSPARENCIAS                 -->
+    <!-- ============================== -->
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="white_60">#99FFFFFF</color>
+
+    <!-- ============================== -->
+    <!-- SEMÁNTICOS (tema oscuro)       -->
+    <!-- ============================== -->
+    <color name="card_stat_overlay">#33FFFFFF</color>
+    <color name="toggle_container_bg">#362A2C</color>
+    <color name="selector_container_bg">#2C2224</color>
+    <color name="login_divider_bg">#3D2D30</color>
+    <color name="login_selector_bg">#302628</color>
+    <color name="login_info_blue_bg">#1B2A3B</color>
+    <color name="login_info_blue_border">#2A4A6B</color>
+    <color name="login_info_blue_text">#64B5F6</color>
+    <color name="login_info_blue_icon">#42A5F5</color>
+    <color name="login_info_amber_bg">#332B1C</color>
+    <color name="login_info_amber_border">#5C4A2E</color>
+    <color name="login_info_amber_text">#FFB74D</color>
+    <color name="login_info_amber_icon">#FFA726</color>
+    <color name="register_card_bg">#251D1F</color>
+    <color name="register_hint_text">#8E7275</color>
+    <color name="entity_alert_text">#FF8A80</color>
+    <color name="entity_alert_border">#5C2A2E</color>
+    <color name="appeal_form_border">#6A3D75</color>
+</resources>

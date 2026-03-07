@@ -1,0 +1,203 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // USUARIOS — Solo su propio perfil + admin
+    // ============================================
+    match /usuarios/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && 
+        (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // ENTIDADES PÚBLICAS — Lectura todos, escritura admin
+    // Catálogo de entidades del Estado Peruano
+    // ============================================
+    match /entidades/{entidadId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ============================================
+    // SOLICITUDES SAIP (Ley N° 27806)
+    // BR-SAIP-001: Plazo máximo 10 días hábiles
+    // BR-SAIP-002: Excluir sábados, domingos y feriados
+    // BR-SAIP-003: Subsanación solo primeros 2 días hábiles
+    // BR-SAIP-004: Liquidación de costos máximo día 9
+    // BR-SAIP-005: Silencio administrativo negativo si >10 días
+    // ============================================
+    match /solicitudes/{solicitudId} {
+      // Todos los autenticados pueden leer (ciudadano ve las suyas,
+      // funcionario ve las de su entidad, TTAIP ve todas)
+      allow read: if isAuthenticated();
+      
+      // Ciudadano crea solicitudes
+      allow create: if isAuthenticated();
+      
+      // Funcionario de la entidad puede responder (update),
+      // ciudadano puede actualizar la suya (subsanación),
+      // TTAIP/Admin también pueden actualizar (silencio administrativo)
+      allow update: if isAuthenticated() && (
+        resource.data.usuarioId == request.auth.uid ||
+        isFuncionarioOfEntidad(resource.data.entidadId) ||
+        isTTAIPOrAdmin()
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // APELACIONES TTAIP (SRS v2.0)
+    // BR-TTAIP-001: Elevación en 2 días hábiles
+    // BR-TTAIP-002: Primera calificación en 7 días hábiles
+    // BR-TTAIP-003: Subsanación de inadmisibilidad (2 días)
+    // BR-TTAIP-004: Segunda calificación post-subsanación
+    // BR-TTAIP-005: Solicitud de descargos tras admisión
+    // BR-TTAIP-006: Entidad presenta descargos (7 días)
+    // BR-TTAIP-007: Fase de instrucción (3 días)
+    // BR-TTAIP-008: Suspensión por info complementaria/informe oral
+    // BR-TTAIP-009: Resolución final (10 días)
+    // ============================================
+    match /apelaciones/{apelacionId} {
+      allow read: if isAuthenticated();
+      
+      // Ciudadano crea apelaciones, entidad puede elevar
+      allow create: if isAuthenticated();
+      
+      // Ciudadano actualiza subsanación,
+      // Funcionario de entidad sube descargos/elevación,
+      // TTAIP califica y resuelve
+      allow update: if isAuthenticated() && (
+        resource.data.usuarioId == request.auth.uid ||
+        isFuncionarioOfEntidad(resource.data.entidadId) ||
+        isTTAIPOrAdmin()
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // EXPEDIENTES (RF-EXP-01, RF-EXP-02)
+    // Contenedor único que agrupa: recurso de apelación,
+    // resoluciones, cédulas, cargos y escritos.
+    // Estados: PENDIENTE_ELEVACION → EN_CALIFICACION_1 →
+    //   EN_SUBSANACION → EN_CALIFICACION_2 →
+    //   ESPERANDO_DESCARGOS → EN_INSTRUCCION →
+    //   EN_RESOLUCION → RESUELTO
+    // Formato: NNNNN-AAAA-JUS/TTAIP
+    // ============================================
+    match /expedientes/{expedienteId} {
+      allow read: if isAuthenticated();
+      allow create: if isTTAIPOrAdmin();
+      allow update: if isAuthenticated() && (
+        isTTAIPOrAdmin() ||
+        isFuncionarioOfEntidad(resource.data.entidadId)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // CÉDULAS DE NOTIFICACIÓN (RF-NOT-01, RF-NOT-02)
+    // Formato: NOTIFICACION [Correlativo]-[Año]-TTAIP
+    // Firmante: José Ángel Dávila Córdova (Sec. Técnico)
+    // BR-REP-001: Cédula rechazada no se edita (inmutabilidad)
+    // BR-REP-002: Ante rechazo, se genera nueva cédula
+    // BR-REP-003: Estado alerta si rechazo sin nueva cédula
+    // BR-REP-004: Etapa ATENDIDO solo si ambas partes notificadas
+    // ============================================
+    match /cedulas/{cedulaId} {
+      // Ciudadano y entidad ven sus cédulas, TTAIP ve todas
+      allow read: if isAuthenticated() && (
+        resource.data.destinatarioId == request.auth.uid ||
+        isFuncionarioOfEntidad(resource.data.entidadId) ||
+        isTTAIPOrAdmin()
+      );
+      
+      // Solo TTAIP/Admin genera cédulas
+      allow create: if isTTAIPOrAdmin();
+      
+      // Solo TTAIP actualiza estado de cédula (PENDIENTE → NOTIFICADO/RECHAZADO)
+      // BR-REP-001: Cédula rechazada NO se edita, se crea nueva
+      allow update: if isTTAIPOrAdmin();
+      
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // NOTIFICACIONES DEL SISTEMA
+    // Alertas push y en-app para todos los roles
+    // ============================================
+    match /notificaciones/{notificacionId} {
+      allow read: if isAuthenticated() && 
+        resource.data.usuarioId == request.auth.uid;
+      allow create: if isAuthenticated();
+      // Usuario puede marcar como leída
+      allow update: if isAuthenticated() && 
+        resource.data.usuarioId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        resource.data.usuarioId == request.auth.uid;
+    }
+
+    // ============================================
+    // COLA DE NOTIFICACIONES PUSH (NotificationPushHelper)
+    // Documentos encolados para entrega push entre dispositivos.
+    // El listener en cada dispositivo lee documentos con enviado=false
+    // y los muestra como notificación local al destinatario.
+    // ============================================
+    match /notificaciones_push/{notifId} {
+      // Todos los autenticados pueden leer (el filtrado es client-side)
+      allow read: if isAuthenticated();
+      // Cualquier autenticado puede crear (ciudadano, funcionario, TTAIP)
+      allow create: if isAuthenticated();
+      // Cualquier autenticado puede marcar como enviado (update enviado=true)
+      allow update: if isAuthenticated();
+      // Solo admin puede eliminar registros del historial
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // FERIADOS NACIONALES (BR-SAIP-002)
+    // Tabla de feriados para cálculo de días hábiles
+    // ============================================
+    match /feriados/{anio} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ============================================
+    // FUNCIONES AUXILIARES
+    // ============================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().tipo == 'ADMIN';
+    }
+
+    function isFuncionarioOrHigher() {
+      return isAuthenticated() && 
+        getUserData().tipo in ['FUNCIONARIO', 'TTAIP', 'ADMIN'];
+    }
+
+    function isTTAIPOrAdmin() {
+      return isAuthenticated() && 
+        getUserData().tipo in ['TTAIP', 'ADMIN'];
+    }
+
+    // Verifica que el usuario sea funcionario de la entidad específica
+    function isFuncionarioOfEntidad(entidadId) {
+      return isAuthenticated() && 
+        getUserData().tipo == 'FUNCIONARIO' &&
+        getUserData().entidadId == entidadId;
+    }
+  }
+}

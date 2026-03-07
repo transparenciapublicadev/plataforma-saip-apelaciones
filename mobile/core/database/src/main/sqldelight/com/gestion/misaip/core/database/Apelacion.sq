@@ -1,0 +1,143 @@
+-- =============================================================================
+-- QUERIES: Apelacion
+-- =============================================================================
+
+-- Obtener apelaciones del usuario
+getApelacionesByUsuario:
+SELECT * FROM Apelacion
+WHERE usuarioId = ?
+ORDER BY fechaPresentacion DESC;
+
+-- Obtener todas las apelaciones (para TTAIP)
+getAllApelaciones:
+SELECT * FROM Apelacion ORDER BY fechaPresentacion DESC;
+
+-- Obtener apelación por expediente
+getApelacionByExpediente:
+SELECT * FROM Apelacion WHERE expediente = ?;
+
+-- Obtener apelación por expediente SAIP
+getApelacionByExpedienteSAIP:
+SELECT * FROM Apelacion WHERE expedienteSAIP = ? LIMIT 1;
+
+-- Obtener apelaciones pendientes de sincronización
+getApelacionesPendientesSincronizacion:
+SELECT * FROM Apelacion WHERE pendienteSubida = 1;
+
+-- Insertar apelación
+insertApelacion:
+INSERT OR REPLACE INTO Apelacion (
+    id, expediente, expedienteSAIP, usuarioId,
+    apelanteNombre, apelanteDni, apelanteEmail,
+    entidad, entidadId, asunto, fundamentoLegal,
+    exposicionHechos, pretension, fechaPresentacion, estado,
+    funcionarioTTAIP, primeraCalificacion, segundaCalificacion,
+    subsanacion, timeline, diasHabiles, diasRestantes,
+    informeOralSolicitado, timerPausado, fechaElevacion,
+    elevacionExtemporanea, sincronizado, pendienteSubida, ultimaModificacion
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Actualizar estado de apelación
+updateEstadoApelacion:
+UPDATE Apelacion SET
+    estado = ?,
+    funcionarioTTAIP = ?,
+    diasRestantes = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Actualizar primera calificación
+updatePrimeraCalificacion:
+UPDATE Apelacion SET
+    estado = ?,
+    primeraCalificacion = ?,
+    timeline = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Actualizar segunda calificación
+updateSegundaCalificacion:
+UPDATE Apelacion SET
+    estado = ?,
+    segundaCalificacion = ?,
+    timeline = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Actualizar subsanación
+updateSubsanacion:
+UPDATE Apelacion SET
+    estado = 'Subsanación Presentada',
+    subsanacion = ?,
+    timeline = ?,
+    sincronizado = 0,
+    pendienteSubida = 1,
+    ultimaModificacion = ?
+WHERE expediente = ?;
+
+-- Marcar apelación como sincronizada
+marcarApelacionSincronizada:
+UPDATE Apelacion SET
+    sincronizado = 1,
+    pendienteSubida = 0
+WHERE id = ?;
+
+-- =============================================================================
+-- QUERIES: Contadores
+-- =============================================================================
+
+-- Obtener valor de contador
+getContador:
+SELECT valor FROM Contadores WHERE id = ?;
+
+-- Incrementar contador
+incrementarContador:
+UPDATE Contadores SET
+    valor = valor + 1,
+    ultimaModificacion = ?
+WHERE id = ?;
+
+-- Establecer contador solo si el nuevo valor es mayor al actual
+setContadorSiMayor:
+UPDATE Contadores SET
+    valor = MAX(valor, ?),
+    ultimaModificacion = ?
+WHERE id = ?;
+
+-- Obtener el máximo número de expediente SAIP local
+getMaxExpedienteSAIP:
+SELECT MAX(CAST(SUBSTR(expediente, 11) AS INTEGER)) FROM Solicitud
+WHERE expediente LIKE 'SAIP-%';
+
+-- Obtener el máximo número de expediente TTAIP local (formato: NNNNN-YYYY-JUS/TTAIP)
+getMaxExpedienteTTAIP:
+SELECT MAX(CAST(SUBSTR(expediente, 1, 5) AS INTEGER)) FROM Apelacion
+WHERE expediente LIKE '%-JUS/TTAIP';
+
+-- =============================================================================
+-- QUERIES: SyncLog
+-- =============================================================================
+
+-- Insertar log de sincronización
+insertSyncLog:
+INSERT INTO SyncLog (tabla, registroId, operacion, timestamp, sincronizado, intentos, ultimoError)
+VALUES (?, ?, ?, ?, 0, 0, NULL);
+
+-- Obtener logs pendientes
+getLogsPendientes:
+SELECT * FROM SyncLog WHERE sincronizado = 0 ORDER BY timestamp ASC LIMIT 100;
+
+-- Marcar log como sincronizado
+marcarLogSincronizado:
+UPDATE SyncLog SET sincronizado = 1 WHERE id = ?;
+
+-- Incrementar intentos de sincronización
+incrementarIntentos:
+UPDATE SyncLog SET intentos = intentos + 1, ultimoError = ? WHERE id = ?;
+

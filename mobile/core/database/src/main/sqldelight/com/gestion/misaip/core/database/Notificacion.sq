@@ -1,0 +1,49 @@
+-- =============================================================================
+-- QUERIES: Notificacion
+-- =============================================================================
+
+-- Obtener notificaciones del usuario
+getNotificacionesByUsuario:
+SELECT * FROM Notificacion
+WHERE usuarioId = ?
+ORDER BY fecha DESC;
+
+-- Obtener notificaciones no leídas del usuario
+getNotificacionesNoLeidas:
+SELECT * FROM Notificacion
+WHERE usuarioId = ? AND leida = 0
+ORDER BY fecha DESC;
+
+-- Obtener conteo de no leídas
+getConteoNoLeidas:
+SELECT COUNT(*) AS cantidad FROM Notificacion
+WHERE usuarioId = ? AND leida = 0;
+
+-- Obtener notificación por ID
+getNotificacionById:
+SELECT * FROM Notificacion WHERE id = ?;
+
+-- Insertar notificación
+insertNotificacion:
+INSERT INTO Notificacion (tipo, titulo, mensaje, fecha, leida, icono, color, expediente, usuarioId, sincronizado)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Obtener último ID insertado
+lastInsertId:
+SELECT last_insert_rowid();
+
+-- Marcar como leída
+marcarComoLeida:
+UPDATE Notificacion SET leida = 1 WHERE id = ?;
+
+-- Marcar todas como leídas
+marcarTodasComoLeidas:
+UPDATE Notificacion SET leida = 1 WHERE usuarioId = ?;
+
+-- Eliminar notificación
+eliminarNotificacion:
+DELETE FROM Notificacion WHERE id = ?;
+
+-- Eliminar notificaciones antiguas (más de 30 días)
+limpiarNotificacionesAntiguas:
+DELETE FROM Notificacion WHERE fecha < ? AND leida = 1;

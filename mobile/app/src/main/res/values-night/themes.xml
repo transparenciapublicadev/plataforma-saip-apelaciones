@@ -1,0 +1,61 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ============================================================ -->
+    <!-- TEMA OSCURO MiSAIP                                           -->
+    <!-- Tonalidades rojas del branding adaptadas a superficies        -->
+    <!-- oscuras con calidez. Contraste WCAG AA.                       -->
+    <!-- ============================================================ -->
+    <style name="Base.Theme.MiSAIP" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Colores primarios (rojo branding ajustado) -->
+        <item name="colorPrimary">@color/brand_red</item>
+        <item name="colorPrimaryDark">@color/brand_red_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/primary_light</item>
+        <item name="colorOnPrimaryContainer">@color/brand_red_light</item>
+
+        <!-- Colores secundarios -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- Superficies -->
+        <item name="colorSurface">@color/surface_color</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorSurfaceContainerLow">@color/surface_color</item>
+        <item name="colorSurfaceContainer">@color/surface_variant</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_elevated</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/white</item>
+
+        <!-- Outline / Bordes -->
+        <item name="colorOutline">@color/divider</item>
+        <item name="colorOutlineVariant">@color/input_border</item>
+
+        <!-- Fondo -->
+        <item name="android:colorBackground">@color/background_gray</item>
+        <item name="android:windowBackground">@color/background_gray</item>
+
+        <!-- Barra de estado y navegación -->
+        <item name="android:statusBarColor">@color/brand_red_dark</item>
+        <item name="android:navigationBarColor">@color/nav_bar_color</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Texto de EditText / Input -->
+        <item name="android:editTextColor">@color/text_primary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+
+        <!-- Ripple -->
+        <item name="colorControlHighlight">#33FF6B6B</item>
+    </style>
+
+    <style name="Theme.MiSAIP" parent="Base.Theme.MiSAIP" />
+
+    <style name="Theme.MiSAIP.Splash" parent="Base.Theme.MiSAIP">
+        <item name="android:statusBarColor">@color/brand_red_dark</item>
+        <item name="android:navigationBarColor">@color/brand_red_dark</item>
+    </style>
+
+</resources>

@@ -1,0 +1,316 @@
+<resources>
+    <string name="app_name">MiSAIP</string>
+
+    <!-- Tab Navigation Labels -->
+    <string name="tab_home">Inicio</string>
+    <string name="tab_create_saip">Crear SAIP</string>
+    <string name="tab_notifications">Notificaciones</string>
+    <string name="tab_profile">Perfil</string>
+
+    <!-- Tab Content Descriptions for Accessibility -->
+    <string name="tab_home_description">Ir a la pantalla de inicio</string>
+    <string name="tab_create_saip_description">Crear una nueva solicitud SAIP</string>
+    <string name="tab_notifications_description">Ver notificaciones</string>
+    <string name="tab_profile_description">Ver y editar perfil</string>
+
+    <!-- Icon Content Descriptions for Accessibility -->
+    <string name="icon_arrow_top_description">Expandir hacia arriba</string>
+    <string name="icon_arrow_left_description">Volver atrás</string>
+    <string name="icon_arrow_right_description">Continuar</string>
+    <string name="icon_burger_description">Abrir menú de navegación</string>
+    <string name="icon_calendar_description">Seleccionar fecha</string>
+    <string name="icon_clock_description">Ver horario</string>
+    <string name="icon_comment_description">Ver comentarios</string>
+    <string name="icon_document_description">Ver documento</string>
+    <string name="icon_download_description">Descargar archivo</string>
+    <string name="icon_entity_description">Ver entidad</string>
+    <string name="icon_filter_description">Filtrar resultados</string>
+    <string name="icon_log_out_description">Cerrar sesión</string>
+    <string name="icon_search_description">Buscar solicitud</string>
+    <string name="icon_statistics_description">Ver estadísticas</string>
+    <string name="icon_user_description">Información de usuario</string>
+    <string name="icon_verify_description">Verificar información</string>
+    <string name="icon_warning_description">Advertencia importante</string>
+
+    <!-- Icon Action Labels (for buttons/tooltips) -->
+    <string name="icon_action_back">Atrás</string>
+    <string name="icon_action_next">Siguiente</string>
+    <string name="icon_action_menu">Menú</string>
+    <string name="icon_action_filter">Filtrar</string>
+    <string name="icon_action_search">Buscar</string>
+    <string name="icon_action_download">Descargar</string>
+    <string name="icon_action_logout">Cerrar sesión</string>
+
+    <!-- Nuevos strings para Clean Architecture -->
+
+    <!-- Dashboard -->
+    <string name="bienvenido">Bienvenido</string>
+    <string name="mis_expedientes">Mis Trámites</string>
+    <string name="hint_buscar_expediente">Buscar solicitud o asunto…</string>
+    <string name="nueva_solicitud">Nueva Solicitud</string>
+    <string name="apelar">Apelar</string>
+    <string name="buscar">Buscar</string>
+    <string name="filtrar">Filtrar</string>
+
+    <!-- Filtros -->
+    <string name="filtro_todas">Todas</string>
+    <string name="filtro_saip">SAIP</string>
+    <string name="filtro_apelacion">Apelación</string>
+    <string name="filtro_en_proceso">En Proceso</string>
+    <string name="filtro_respondida">Respondida</string>
+    <string name="filtro_denegada">Denegada</string>
+
+    <!-- Alertas -->
+    <string name="subsanacion_requerida">Subsanación Requerida</string>
+    <string name="alert_subsanacion_pendiente">Tiene %d apelación(es) que requiere(n) subsanación.</string>
+    <string name="solicitudes_puede_apelar">Solicitudes que puede apelar</string>
+    <string name="alert_solicitudes_denegadas">Tiene %d solicitud(es) denegada(s) que puede apelar</string>
+
+    <!-- Estado vacío -->
+    <string name="empty_title">¡Bienvenido al SAIP!</string>
+    <string name="empty_subtitle">Aún no tienes solicitudes. Comienza creando tu primera solicitud.</string>
+    <string name="crear_primera_solicitud">Crear mi primera solicitud</string>
+
+    <!-- Login -->
+    <string name="iniciar_sesion">Iniciar Sesión</string>
+    <string name="dni">DNI</string>
+    <string name="contrasena">Contraseña</string>
+    <string name="ciudadano">Ciudadano</string>
+    <string name="funcionario">Funcionario</string>
+    <string name="registro_ciudadano">Registro de Ciudadano</string>
+
+    <!-- Detalle -->
+    <string name="detalle_solicitud">Detalle de Solicitud</string>
+    <string name="detalle_apelacion">Detalle de Apelación</string>
+    <string name="expediente">Expediente</string>
+    <string name="estado_actual">Estado Actual</string>
+
+    <!-- Formulario -->
+    <string name="nueva_solicitud_saip">Nueva Solicitud SAIP</string>
+    <string name="nueva_apelacion">Nueva Apelación</string>
+    <string name="enviar_solicitud">Enviar Solicitud</string>
+    <string name="tipo_solicitud">Tipo de Solicitud</string>
+    <string name="entidad_publica">Entidad Pública</string>
+    <string name="asunto">Asunto</string>
+    <string name="descripcion_detallada">Descripción Detallada</string>
+
+    <!-- Navigation -->
+    <string name="nav_inicio">Inicio</string>
+    <string name="nav_solicitud">Solicitud</string>
+    <string name="nav_notificaciones">Avisos</string>
+    <string name="nav_perfil">Perfil</string>
+
+    <!-- Registro -->
+    <string name="crear_cuenta">Crear Cuenta</string>
+
+    <!-- Canales de notificación -->
+    <string name="channel_general_name">Notificaciones MiSAIP</string>
+    <string name="channel_general_desc">Notificaciones generales del sistema SAIP</string>
+    <string name="channel_saip_name">Solicitudes SAIP</string>
+    <string name="channel_saip_desc">Nuevas solicitudes, respuestas y cambios de estado</string>
+    <string name="channel_ttaip_name">Apelaciones TTAIP</string>
+    <string name="channel_ttaip_desc">Apelaciones, calificaciones y resoluciones del TTAIP</string>
+    <string name="channel_alertas_name">Alertas Urgentes</string>
+    <string name="channel_alertas_desc">Vencimientos de plazo y silencio administrativo</string>
+    <string name="nueva_notificacion">Nueva notificación</string>
+
+    <!-- Mensajes de error de validación -->
+    <string name="error_seleccione_entidad">Seleccione una entidad</string>
+    <string name="error_asunto_obligatorio">El asunto es obligatorio</string>
+    <string name="error_asunto_min">El asunto debe tener al menos 10 caracteres</string>
+    <string name="error_descripcion_obligatoria">La descripción es obligatoria</string>
+    <string name="error_descripcion_min">La descripción debe tener al menos 20 caracteres</string>
+    <string name="error_campos_incompletos">Complete los campos: %1$s</string>
+    <string name="error_usuario_no_encontrado">Error: usuario no encontrado</string>
+    <string name="error_dni_obligatorio">El DNI es obligatorio</string>
+    <string name="error_dni_formato">El DNI debe tener 8 dígitos</string>
+    <string name="error_usuario_obligatorio">El usuario es obligatorio</string>
+    <string name="error_contrasena_obligatoria">La contraseña es obligatoria</string>
+    <string name="error_campos_vacios">Por favor complete todos los campos</string>
+    <string name="error_iniciar_sesion">Error al iniciar sesión: %1$s</string>
+    <string name="error_nombre_obligatorio">El nombre es obligatorio</string>
+    <string name="error_email_obligatorio">El email es obligatorio</string>
+    <string name="error_email_invalido">Email inválido</string>
+    <string name="error_contrasena_min">Mínimo 6 caracteres</string>
+    <string name="error_contrasenas_no_coinciden">Las contraseñas no coinciden</string>
+    <string name="error_aceptar_terminos">Debe aceptar los términos y condiciones</string>
+    <string name="error_campos_incorrectos">Por favor complete todos los campos correctamente</string>
+    <string name="error_registrar">Error al registrar: %1$s</string>
+    <string name="error_ingrese_expediente">Ingrese un número de expediente</string>
+    <string name="error_solicitud_no_encontrada">Solicitud SAIP no encontrada</string>
+    <string name="error_expediente_no_pertenece">Este expediente no le pertenece</string>
+    <string name="error_solo_apelar_denegadas">Solo puede apelar solicitudes denegadas o vencidas</string>
+    <string name="error_apelacion_existente">Ya existe una apelación para este expediente</string>
+    <string name="error_busque_expediente">Primero busque un expediente válido</string>
+    <string name="error_fundamento_obligatorio">El fundamento legal es obligatorio</string>
+    <string name="error_hechos_obligatorio">La exposición de hechos es obligatoria</string>
+    <string name="error_pretension_obligatoria">La pretensión es obligatoria</string>
+    <string name="error_aceptar_declaracion">Debe aceptar la declaración jurada</string>
+    <string name="error_campos_obligatorios">Por favor complete todos los campos obligatorios</string>
+    <string name="error_crear_solicitud">Error al crear la solicitud: %1$s</string>
+    <string name="error_crear_apelacion">Error al crear la apelación: %1$s</string>
+    <string name="error_complete_campos">Complete todos los campos</string>
+
+    <!-- Mensajes de éxito -->
+    <string name="solicitud_creada">Solicitud %1$s creada exitosamente</string>
+    <string name="apelacion_creada">Apelación %1$s presentada exitosamente</string>
+    <string name="bienvenido_usuario">¡Bienvenido %1$s!</string>
+    <string name="solicitud_en_revision">Solicitud marcada como En Revisión</string>
+    <string name="respuesta_registrada">Respuesta registrada exitosamente</string>
+    <string name="calificacion_registrada">Calificación registrada: %1$s</string>
+    <string name="calificacion_registrada_detalle">Calificación %1$s registrada: %2$s</string>
+    <string name="apelacion_en_calificacion">Apelación en calificación</string>
+    <string name="subsanacion_presentada_exitosa">Subsanación presentada exitosamente</string>
+    <string name="expediente_encontrado">Expediente encontrado</string>
+    <string name="sesion_cerrada">Sesión cerrada</string>
+    <string name="tramite_no_encontrado">Trámite no encontrado</string>
+
+    <!-- Estados estratégicos -->
+    <string name="estado_requiere_subsanacion">Requiere Subsanación</string>
+    <string name="estado_subsanacion_presentada">Subsanación Presentada</string>
+    <string name="estado_en_apelacion">En Apelación</string>
+    <string name="estado_vencido">Vencido</string>
+
+    <!-- Etiquetas de detalle -->
+    <string name="label_expediente">Expediente</string>
+    <string name="label_numero_saip">N° SAIP</string>
+    <string name="titulo_detalle_apelacion">Detalle de Apelación</string>
+    <string name="titulo_detalle_solicitud">Detalle de Solicitud</string>
+    <string name="no_registrado">No registrado</string>
+    <string name="descargando_constancia">Descargando constancia…</string>
+    <string name="funcionario_default">Funcionario</string>
+
+    <!-- Botones de acción del detalle -->
+    <string name="btn_presentar_apelacion">Presentar Apelación</string>
+    <string name="btn_iniciar_revision">Iniciar Revisión</string>
+    <string name="btn_responder_solicitud">Responder Solicitud</string>
+    <string name="btn_emitir_calificacion">Emitir Calificación</string>
+    <string name="btn_presentar_subsanacion">Presentar Subsanación</string>
+    <string name="btn_enviar_solicitud">Enviar Solicitud</string>
+    <string name="btn_presentar_apelacion_ttaip">Presentar Apelación ante TTAIP</string>
+    <string name="btn_iniciar_sesion">Iniciar Sesión</string>
+    <string name="btn_crear_cuenta">Crear Cuenta</string>
+
+    <!-- Formularios -->
+    <string name="seleccione_entidad">Seleccione una entidad</string>
+    <string name="char_count_format">%1$d/500 caracteres</string>
+    <string name="enviando">Enviando…</string>
+    <string name="iniciando">Iniciando…</string>
+    <string name="registrando">Registrando…</string>
+    <string name="fecha_format">Fecha: %1$s</string>
+
+    <!-- Perfil -->
+    <string name="tipo_ciudadano">Ciudadano</string>
+    <string name="tipo_funcionario">Funcionario de Entidad</string>
+    <string name="tipo_ttaip">Funcionario TTAIP</string>
+    <string name="tipo_admin">Administrador</string>
+    <string name="dialog_cerrar_sesion_titulo">Cerrar Sesión</string>
+    <string name="dialog_cerrar_sesion_msg">¿Está seguro que desea cerrar sesión?</string>
+    <string name="dialog_cerrar_sesion_confirm">Sí, cerrar sesión</string>
+    <string name="cancelar">Cancelar</string>
+
+    <!-- Notificaciones (tabs) -->
+    <string name="tab_todas_count">Todas (%1$d)</string>
+    <string name="tab_no_leidas_count">No leídas (%1$d)</string>
+
+    <!-- Dashboard de Entidad -->
+    <string name="alerta_solicitudes_vencidas">Tienes %1$d solicitudes vencidas. Responde para evitar Silencio Administrativo Negativo.</string>
+    <string name="label_solicitante_format">Solicitante: %1$s</string>
+    <string name="dias_habiles_format">%1$d días hábiles</string>
+
+    <!-- Dashboard Ciudadano -->
+    <string name="tipo_saip_apelada">SAIP · Apelada</string>
+    <string name="dias_format">%1$d días</string>
+
+    <!-- Dashboard TTAIP -->
+    <string name="label_recurrente_format">Recurrente: %1$s</string>
+
+    <!-- Dashboard Admin -->
+    <string name="ultima_actualizacion_format">Última actualización: %1$s</string>
+    <string name="actividad_usuario_fecha">%1$s • %2$s</string>
+    <string name="solicitudes_totales_format">%1$d solicitudes totales</string>
+    <string name="admin_panel_titulo">Panel de Administrador</string>
+    <string name="admin_nombre_default">Administrador</string>
+    <string name="admin_refresh_description">Actualizar datos</string>
+    <string name="admin_stat_solicitudes">Solicitudes SAIP</string>
+    <string name="admin_stat_usuarios">Usuarios</string>
+    <string name="admin_stat_apelaciones">Apelaciones</string>
+    <string name="admin_stat_resueltas">Resueltas</string>
+    <string name="admin_sol_detalle_format">%1$d pendientes · %2$d vencidas</string>
+    <string name="admin_usr_detalle_format">%1$d ciudadanos · %2$d func.</string>
+    <string name="admin_apel_detalle_format">%1$d pendientes · %2$d en calif.</string>
+    <string name="admin_resueltas_detalle_format">%1$d fundadas · %2$d infundadas</string>
+    <string name="admin_seccion_exportar">Exportar Reportes</string>
+    <string name="admin_exportar_subtitulo">Descarga estadísticas reales del sistema</string>
+    <string name="admin_reporte_general">Reporte General</string>
+    <string name="admin_reporte_general_desc">Resumen ejecutivo con todas las métricas</string>
+    <string name="admin_reporte_solicitudes">Reporte de Solicitudes</string>
+    <string name="admin_reporte_apelaciones">Reporte de Apelaciones</string>
+    <string name="admin_export_pdf">PDF</string>
+    <string name="admin_export_excel">Excel</string>
+    <string name="admin_export_count_sol">%1$d solicitudes registradas</string>
+    <string name="admin_export_count_apel">%1$d apelaciones registradas</string>
+    <string name="admin_seccion_entidades">Estadísticas por Entidad</string>
+    <string name="admin_seccion_actividad">Actividad Reciente</string>
+    <string name="admin_entidades_vacio">No hay entidades con solicitudes</string>
+    <string name="admin_actividad_vacio">No hay actividad registrada</string>
+    <string name="admin_export_ok">Archivo guardado en Descargas/MiSAIP</string>
+    <string name="admin_export_error">No se pudo generar el archivo</string>
+    <string name="admin_no_datos_export">No hay datos para exportar</string>
+    <string name="admin_respondidas_format">%1$d respondidas</string>
+    <string name="admin_vencidas_format">%1$d vencidas</string>
+
+    <!-- Notificaciones generadas -->
+    <string name="notif_solicitud_respondida">Solicitud Respondida</string>
+    <string name="notif_solicitud_respondida_msg">Tu solicitud %1$s ha sido respondida por la entidad.</string>
+    <string name="notif_solicitud_denegada">Solicitud Denegada</string>
+    <string name="notif_solicitud_denegada_msg">Tu solicitud %1$s ha sido denegada. Puedes apelar ante el TTAIP.</string>
+    <string name="notif_subsanacion_requerida_titulo">Subsanación Requerida</string>
+    <string name="notif_subsanacion_requerida_msg">Tu apelación %1$s requiere subsanación. Revisa los detalles.</string>
+    <string name="notif_apelacion_resuelta">Apelación Resuelta</string>
+    <string name="notif_apelacion_resuelta_msg">Tu apelación %1$s ha sido declarada %2$s.</string>
+    <string name="notif_nueva_solicitud_titulo">Nueva solicitud SAIP</string>
+    <string name="notif_nueva_solicitud_msg">Se ha recibido la solicitud %1$s de %2$s.</string>
+    <string name="notif_solicitud_vencer">Solicitud por Vencer</string>
+    <string name="notif_solicitud_vencer_msg">La solicitud %1$s vence en %2$d días hábiles.</string>
+    <string name="notif_solicitud_vencida">Solicitud Vencida</string>
+    <string name="notif_solicitud_vencida_msg">La solicitud %1$s ha vencido. Silencio Administrativo Negativo.</string>
+    <string name="notif_nueva_apelacion_titulo">Nueva Apelación</string>
+    <string name="notif_nueva_apelacion_msg">Apelación %1$s pendiente de asignación y calificación.</string>
+    <string name="notif_subsanacion_recibida">Subsanación Recibida</string>
+    <string name="notif_subsanacion_recibida_msg">El ciudadano ha presentado subsanación para %1$s.</string>
+    <string name="notif_apelacion_urgente">Apelación Urgente</string>
+    <string name="notif_apelacion_urgente_msg">La apelación %1$s debe resolverse en los próximos días.</string>
+    <string name="notif_panel_admin">Panel Administrativo</string>
+    <string name="notif_panel_admin_msg">Acceda al panel de administración para gestionar el sistema.</string>
+    <string name="notif_sistema_operativo">Sistema Operativo</string>
+    <string name="notif_sistema_operativo_msg">El sistema MiSAIP se encuentra operando con normalidad.</string>
+    <string name="notif_monitoreo_activo">Monitoreo Activo</string>
+    <string name="notif_monitoreo_activo_msg">Las solicitudes y apelaciones están siendo procesadas correctamente.</string>
+
+    <!-- Push notifications -->
+    <string name="push_nueva_solicitud_titulo">Nueva Solicitud SAIP</string>
+    <string name="push_nueva_solicitud_msg">Se ha recibido la solicitud %1$s de %2$s dirigida a %3$s.</string>
+    <string name="push_respuesta_titulo">Respuesta a solicitud %1$s</string>
+    <string name="push_respuesta_msg">%1$s ha respondido tu solicitud SAIP con: %2$s</string>
+    <string name="push_nueva_apelacion_titulo">Nueva Apelación Recibida</string>
+    <string name="push_nueva_apelacion_msg">Expediente %1$s — Apelación de %2$s contra %3$s (SAIP: %4$s).</string>
+    <string name="push_calificacion_titulo">%1$s Calificación — Expediente %2$s</string>
+    <string name="push_calificacion_msg">El TTAIP ha emitido la %1$s calificación de tu apelación: %2$s</string>
+    <string name="push_resultado_admitida">Admitida</string>
+    <string name="push_resultado_inadmisible">Inadmisible (requiere subsanación)</string>
+    <string name="push_resultado_improcedente">Improcedente</string>
+    <string name="push_subsanacion_requerida_titulo">Subsanación Requerida — %1$s</string>
+    <string name="push_subsanacion_requerida_msg">Tu apelación ha sido declarada Inadmisible. Tienes 2 días hábiles para presentar la subsanación.</string>
+    <string name="push_subsanacion_presentada_titulo">Subsanación Presentada — %1$s</string>
+    <string name="push_subsanacion_presentada_msg">%1$s ha presentado la subsanación para el expediente %2$s.</string>
+    <string name="push_vencimiento_titulo">⚠️ Solicitud próxima a vencer</string>
+    <string name="push_vencimiento_msg">La solicitud %1$s vence en %2$d día(s) hábil(es). Responda a tiempo para evitar silencio administrativo.</string>
+    <string name="push_silencio_titulo">Silencio Administrativo — %1$s</string>
+    <string name="push_silencio_msg">%1$s no respondió tu solicitud en plazo legal (10 días hábiles). Puedes presentar una apelación ante el TTAIP.</string>
+    <string name="push_tipo_entrega_total">Entrega Total de Información</string>
+    <string name="push_tipo_entrega_parcial">Entrega Parcial de Información</string>
+    <string name="push_tipo_denegacion">Denegación de Información</string>
+    <string name="push_tipo_silencio">Silencio Administrativo Negativo</string>
+    <string name="push_tipo_respuesta">Respuesta</string>
+</resources>
