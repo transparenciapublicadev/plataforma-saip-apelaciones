@@ -1365,7 +1365,7 @@ export interface components {
              * @example ENTREGA_TOTAL
              * @enum {string}
              */
-            tipoRespuesta?: "ACEPTADA" | "DENEGADA" | "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL" | "SILENCIO_ADMINISTRATIVO";
+            tipoRespuesta?: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL" | "SILENCIO_ADMINISTRATIVO";
             decision?: string;
             contenido?: string;
             causalDenegatoria?: string;
@@ -1393,7 +1393,7 @@ export interface components {
              * @example RECEPCIONADA
              * @enum {string}
              */
-            estado?: "PENDIENTE" | "RECEPCIONADA" | "EN_REVISION" | "PENDIENTE_INFORMACION" | "RESPONDIDA" | "DENEGADA" | "APELADA" | "CONCLUIDA" | "VENCIDA";
+            estado?: "RECEPCIONADA" | "EN_REVISION" | "PENDIENTE_INFORMACION" | "RESPONDIDA" | "DENEGADA" | "CONCLUIDA" | "VENCIDA";
             /**
              * @description Nivel de prioridad
              * @example MEDIA

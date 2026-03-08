@@ -120,30 +120,42 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   getApelacionEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'PENDIENTE': 'bg-yellow-100 text-yellow-800',
-      'EN_CALIFICACION': 'bg-yellow-100 text-yellow-800',
-      'SEGUNDA_RESOLUCION': 'bg-purple-100 text-purple-800',
-      'PRIMERA_RESOLUCION': 'bg-blue-100 text-blue-800',
+      'PENDIENTE_ELEVACION': 'bg-yellow-100 text-yellow-800',
+      'EN_CALIFICACION_1': 'bg-yellow-100 text-yellow-800',
+      'EN_CALIFICACION_2': 'bg-orange-100 text-orange-800',
       'EN_SUBSANACION': 'bg-orange-100 text-orange-800',
-      'RESUELTO_INADMISIBLE': 'bg-red-100 text-red-800',
-      'RESUELTO_IMPROCEDENTE': 'bg-red-100 text-red-800',
+      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-blue-100 text-blue-800',
+      'EN_RESOLUCION': 'bg-purple-100 text-purple-800',
+      'RESUELTO': 'bg-green-100 text-green-800',
       'RESUELTO_FUNDADO': 'bg-green-100 text-green-800',
-      'RESUELTO_INFUNDADO': 'bg-green-100 text-green-800'
+      'RESUELTO_FUNDADO_EN_PARTE': 'bg-green-100 text-green-800',
+      'RESUELTO_INFUNDADO': 'bg-gray-100 text-gray-800',
+      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-gray-100 text-gray-800',
+      'RESUELTO_IMPROCEDENTE': 'bg-red-100 text-red-800',
+      'TENER_POR_NO_PRESENTADO': 'bg-red-100 text-red-800',
+      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-green-100 text-green-800',
+      'CONCLUSION_DESISTIMIENTO': 'bg-gray-100 text-gray-800'
     };
     return clases[estado] || 'bg-gray-100 text-gray-800';
   }
 
   getApelacionBadgeClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'PENDIENTE': 'badge-warning',
-      'EN_CALIFICACION': 'badge-warning',
-      'SEGUNDA_RESOLUCION': 'badge-in-process',
-      'PRIMERA_RESOLUCION': 'badge-in-process',
+      'PENDIENTE_ELEVACION': 'badge-warning',
+      'EN_CALIFICACION_1': 'badge-warning',
+      'EN_CALIFICACION_2': 'badge-warning',
       'EN_SUBSANACION': 'badge-warning',
-      'RESUELTO_INADMISIBLE': 'badge-danger',
-      'RESUELTO_IMPROCEDENTE': 'badge-danger',
+      'NOTIFICACION_SEGUNDA_CALIFICACION': 'badge-in-process',
+      'EN_RESOLUCION': 'badge-in-process',
+      'RESUELTO': 'badge-success',
       'RESUELTO_FUNDADO': 'badge-success',
-      'RESUELTO_INFUNDADO': 'badge-success'
+      'RESUELTO_FUNDADO_EN_PARTE': 'badge-success',
+      'RESUELTO_INFUNDADO': 'badge-muted',
+      'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
+      'RESUELTO_IMPROCEDENTE': 'badge-danger',
+      'TENER_POR_NO_PRESENTADO': 'badge-danger',
+      'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
+      'CONCLUSION_DESISTIMIENTO': 'badge-muted'
     };
     return clases[estado] || 'badge-muted';
   }

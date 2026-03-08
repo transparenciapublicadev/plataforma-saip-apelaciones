@@ -72,15 +72,21 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   getApelacionEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'PENDIENTE': 'bg-yellow-100 text-yellow-800',
-      'EN_CALIFICACION': 'bg-yellow-100 text-yellow-800',
-      'SEGUNDA_RESOLUCION': 'bg-purple-100 text-purple-800',
-      'PRIMERA_RESOLUCION': 'bg-blue-100 text-blue-800',
+      'PENDIENTE_ELEVACION': 'bg-yellow-100 text-yellow-800',
+      'EN_CALIFICACION_1': 'bg-yellow-100 text-yellow-800',
+      'EN_CALIFICACION_2': 'bg-orange-100 text-orange-800',
       'EN_SUBSANACION': 'bg-orange-100 text-orange-800',
-      'RESUELTO_INADMISIBLE': 'bg-red-100 text-red-800',
-      'RESUELTO_IMPROCEDENTE': 'bg-red-100 text-red-800',
+      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-blue-100 text-blue-800',
+      'EN_RESOLUCION': 'bg-purple-100 text-purple-800',
+      'RESUELTO': 'bg-green-100 text-green-800',
       'RESUELTO_FUNDADO': 'bg-green-100 text-green-800',
-      'RESUELTO_INFUNDADO': 'bg-green-100 text-green-800'
+      'RESUELTO_FUNDADO_EN_PARTE': 'bg-green-100 text-green-800',
+      'RESUELTO_INFUNDADO': 'bg-gray-100 text-gray-800',
+      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-gray-100 text-gray-800',
+      'RESUELTO_IMPROCEDENTE': 'bg-red-100 text-red-800',
+      'TENER_POR_NO_PRESENTADO': 'bg-red-100 text-red-800',
+      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-green-100 text-green-800',
+      'CONCLUSION_DESISTIMIENTO': 'bg-gray-100 text-gray-800'
     };
     return clases[estado] || 'bg-gray-100 text-gray-800';
   }

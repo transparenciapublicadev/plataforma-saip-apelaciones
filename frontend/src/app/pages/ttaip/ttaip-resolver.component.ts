@@ -66,21 +66,24 @@ export class TtaipResolverComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
 
-    if (this.decision === 'fundado') {
-      this.ttaipService.declararFundado(ap.id, {
-        fundamentos: this.fundamentos,
-        iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario
-      }).subscribe({
-        next: () => this.exito('Apelación declarada FUNDADA'),
-        error: (err) => this.errorHandler(err)
-      });
+    const request = { fundamentos: this.fundamentos, iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario };
+
+    const serviceMap: Record<string, () => void> = {
+      'fundado': () => this.ttaipService.declararFundado(ap.id, request).subscribe({ next: () => this.exito('Apelación declarada FUNDADA'), error: (err) => this.errorHandler(err) }),
+      'fundado_en_parte': () => this.ttaipService.declararFundadoEnParte(ap.id, request).subscribe({ next: () => this.exito('Apelación declarada FUNDADA EN PARTE'), error: (err) => this.errorHandler(err) }),
+      'infundado': () => this.ttaipService.declararInfundado(ap.id, { fundamentos: this.fundamentos }).subscribe({ next: () => this.exito('Apelación declarada INFUNDADA'), error: (err) => this.errorHandler(err) }),
+      'infundado_en_parte': () => this.ttaipService.declararInfundadoEnParte(ap.id, { fundamentos: this.fundamentos }).subscribe({ next: () => this.exito('Apelación declarada INFUNDADA EN PARTE'), error: (err) => this.errorHandler(err) }),
+      'improcedente': () => this.ttaipService.declararImprocedente(ap.id, { fundamentos: this.fundamentos }).subscribe({ next: () => this.exito('Apelación declarada IMPROCEDENTE'), error: (err) => this.errorHandler(err) }),
+      'sustraccion_materia': () => this.ttaipService.declararSustraccionMateria(ap.id, { fundamentos: this.fundamentos }).subscribe({ next: () => this.exito('Conclusión por sustracción de la materia'), error: (err) => this.errorHandler(err) }),
+      'desistimiento': () => this.ttaipService.declararDesistimiento(ap.id, { fundamentos: this.fundamentos }).subscribe({ next: () => this.exito('Conclusión por desistimiento'), error: (err) => this.errorHandler(err) })
+    };
+
+    const handler = serviceMap[this.decision];
+    if (handler) {
+      handler();
     } else {
-      this.ttaipService.declararInfundado(ap.id, {
-        fundamentos: this.fundamentos
-      }).subscribe({
-        next: () => this.exito('Apelación declarada INFUNDADA'),
-        error: (err) => this.errorHandler(err)
-      });
+      this.loading.set(false);
+      this.error.set('Decisión no válida');
     }
   }
 
@@ -93,6 +96,19 @@ export class TtaipResolverComponent implements OnInit {
   private errorHandler(err: any): void {
     this.loading.set(false);
     this.error.set(err.error?.mensaje || 'Error al procesar');
+  }
+
+  getDecisionLabel(): string {
+    const labels: Record<string, string> = {
+      'fundado': 'FUNDADA',
+      'fundado_en_parte': 'FUNDADA EN PARTE',
+      'infundado': 'INFUNDADA',
+      'infundado_en_parte': 'INFUNDADA EN PARTE',
+      'improcedente': 'IMPROCEDENTE',
+      'sustraccion_materia': 'SUSTRACCIÓN DE MATERIA',
+      'desistimiento': 'DESISTIMIENTO'
+    };
+    return labels[this.decision] || '';
   }
 }
 

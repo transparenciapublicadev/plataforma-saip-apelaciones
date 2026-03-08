@@ -47,8 +47,12 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   getResultadoClass(resultado: string | undefined): string {
     if (!resultado) return 'bg-white/20 text-white';
-    if (resultado === 'FUNDADO') return 'bg-[#DCFCE7] text-[#065F46]';
-    if (resultado === 'INFUNDADO') return 'bg-[#FEE2E2] text-[#991B1B]';
+    if (resultado === 'FUNDADO' || resultado === 'FUNDADO_EN_PARTE') return 'bg-[#DCFCE7] text-[#065F46]';
+    if (resultado === 'INFUNDADO' || resultado === 'INFUNDADO_EN_PARTE') return 'bg-[#FEE2E2] text-[#991B1B]';
+    if (resultado === 'IMPROCEDENTE') return 'bg-[#FEF3C7] text-[#92400E]';
+    if (resultado === 'CONCLUSION_SUSTRACCION_MATERIA') return 'bg-[#EEF2FF] text-[#4338CA]';
+    if (resultado === 'CONCLUSION_DESISTIMIENTO') return 'bg-gray-100 text-gray-700';
+    if (resultado === 'TENER_POR_NO_PRESENTADO') return 'bg-gray-100 text-gray-700';
     return 'bg-white/20 text-white';
   }
 }

@@ -30,7 +30,7 @@
       <div>
         <p class="text-sm text-[#065F46] mb-0.5 font-medium">Etapa de resolución de fondo</p>
         <p class="text-sm text-[#065F46]">
-          La apelación fue admitida a trámite. Evalúe los argumentos de fondo y emita la resolución definitiva: Fundado o Infundado.
+          La apelación fue admitida a trámite. Evalúe los argumentos de fondo y emita la resolución definitiva.
         </p>
       </div>
     </div>
@@ -123,6 +123,16 @@
               </label>
 
               <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'fundado_en_parte' ? 'border-[#10B981] bg-[#F0FDF4]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="fundado_en_parte" class="sr-only">
+                <svg class="w-5 h-5 text-[#10B981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#065F46]">FUNDADO EN PARTE</p>
+                  <p class="text-xs text-gray-500">Parcialmente a favor — Se ordena entrega parcial de información</p>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
                 [class]="decision === 'infundado' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
                 <input type="radio" [(ngModel)]="decision" name="decision" value="infundado" class="sr-only">
                 <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -131,16 +141,56 @@
                   <p class="text-xs text-gray-500">A favor de la entidad — La denegatoria fue correcta</p>
                 </div>
               </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'infundado_en_parte' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="infundado_en_parte" class="sr-only">
+                <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#991B1B]">INFUNDADO EN PARTE</p>
+                  <p class="text-xs text-gray-500">Parcialmente a favor de la entidad — Se confirma parte de la conducta</p>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'improcedente' ? 'border-[#D97706] bg-[#FFFBEB]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="improcedente" class="sr-only">
+                <svg class="w-5 h-5 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#92400E]">IMPROCEDENTE</p>
+                  <p class="text-xs text-gray-500">No cumple requisitos formales o de fondo</p>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'sustraccion_materia' ? 'border-[#6366F1] bg-[#EEF2FF]' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="sustraccion_materia" class="sr-only">
+                <svg class="w-5 h-5 text-[#6366F1]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div>
+                  <p class="font-semibold text-[#4338CA]">CONCLUSIÓN POR SUSTRACCIÓN DE LA MATERIA</p>
+                  <p class="text-xs text-gray-500">La entidad entregó la información durante el trámite de apelación</p>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                [class]="decision === 'desistimiento' ? 'border-gray-400 bg-gray-50' : 'border-gray-200 hover:border-gray-300'">
+                <input type="radio" [(ngModel)]="decision" name="decision" value="desistimiento" class="sr-only">
+                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <div>
+                  <p class="font-semibold text-gray-700">CONCLUSIÓN POR DESISTIMIENTO</p>
+                  <p class="text-xs text-gray-500">El ciudadano desiste voluntariamente del recurso</p>
+                </div>
+              </label>
             </div>
           </div>
 
           <!-- Info Cards -->
-          @if (decision === 'fundado') {
+          @if (decision === 'fundado' || decision === 'fundado_en_parte') {
             <div class="border border-[#10B981] bg-[#F0FDF4] rounded-xl p-4 flex items-start gap-3">
               <svg class="w-5 h-5 text-[#10B981] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <div>
-                <p class="font-semibold text-[#065F46] mb-1">Apelación Fundada</p>
-                <p class="text-sm text-[#065F46]">Se ordena a la entidad entregar la información solicitada en un plazo de 10 días hábiles.</p>
+                <p class="font-semibold text-[#065F46] mb-1">{{ decision === 'fundado' ? 'Apelación Fundada' : 'Apelación Fundada en Parte' }}</p>
+                <p class="text-sm text-[#065F46]">Se ordena a la entidad entregar {{ decision === 'fundado' ? 'la información solicitada' : 'parcialmente la información' }} en un plazo de 10 días hábiles.</p>
               </div>
             </div>
 
@@ -156,12 +206,39 @@
               </label>
             </div>
           }
-          @if (decision === 'infundado') {
+          @if (decision === 'infundado' || decision === 'infundado_en_parte') {
             <div class="border border-[#DC2626] bg-[#FEE2E2] rounded-xl p-4 flex items-start gap-3">
               <svg class="w-5 h-5 text-[#DC2626] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <div>
-                <p class="font-semibold text-[#991B1B] mb-1">Apelación Infundada</p>
-                <p class="text-sm text-[#991B1B]">La denegatoria de la entidad está correctamente fundamentada según la normativa vigente.</p>
+                <p class="font-semibold text-[#991B1B] mb-1">{{ decision === 'infundado' ? 'Apelación Infundada' : 'Apelación Infundada en Parte' }}</p>
+                <p class="text-sm text-[#991B1B]">La {{ decision === 'infundado' ? 'denegatoria' : 'conducta' }} de la entidad {{ decision === 'infundado' ? 'está correctamente fundamentada' : 'se confirma parcialmente' }} según la normativa vigente.</p>
+              </div>
+            </div>
+          }
+          @if (decision === 'improcedente') {
+            <div class="border border-[#D97706] bg-[#FFFBEB] rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-[#D97706] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+              <div>
+                <p class="font-semibold text-[#92400E] mb-1">Apelación Improcedente</p>
+                <p class="text-sm text-[#92400E]">El recurso no cumple los requisitos formales o de fondo para ser evaluado.</p>
+              </div>
+            </div>
+          }
+          @if (decision === 'sustraccion_materia') {
+            <div class="border border-[#6366F1] bg-[#EEF2FF] rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-[#6366F1] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div>
+                <p class="font-semibold text-[#4338CA] mb-1">Conclusión por Sustracción de la Materia</p>
+                <p class="text-sm text-[#4338CA]">La entidad entregó la información solicitada durante el trámite de apelación, por lo que carece de objeto pronunciarse.</p>
+              </div>
+            </div>
+          }
+          @if (decision === 'desistimiento') {
+            <div class="border border-gray-400 bg-gray-50 rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              <div>
+                <p class="font-semibold text-gray-700 mb-1">Conclusión por Desistimiento</p>
+                <p class="text-sm text-gray-600">El ciudadano ha desistido voluntariamente de su recurso de apelación.</p>
               </div>
             </div>
           }
@@ -186,13 +263,13 @@
           <div class="flex gap-4">
             <button (click)="enviarResolucion()" [disabled]="loading() || !decision"
               class="flex-1 py-3 font-medium rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-              [class]="decision === 'fundado' ? 'bg-[#059669] hover:bg-[#047857] text-white' : 'bg-[#C8102E] hover:bg-[#A00D24] text-white'">
+              [class]="(decision === 'fundado' || decision === 'fundado_en_parte') ? 'bg-[#059669] hover:bg-[#047857] text-white' : 'bg-[#C8102E] hover:bg-[#A00D24] text-white'">
               @if (loading()) {
                 <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Emitiendo Resolución...
               } @else {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                Emitir Resolución {{ decision === 'fundado' ? 'FUNDADA' : decision === 'infundado' ? 'INFUNDADA' : '' }}
+                Emitir Resolución {{ getDecisionLabel() }}
               }
             </button>
             <a routerLink="/ttaip" class="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors text-center">

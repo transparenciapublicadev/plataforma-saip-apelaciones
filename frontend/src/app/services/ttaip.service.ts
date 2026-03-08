@@ -62,5 +62,33 @@ export class TtaipService {
   declararInfundado(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
     return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/infundado`, data);
   }
+
+  declararFundadoEnParte(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/fundado-en-parte`, data);
+  }
+
+  declararInfundadoEnParte(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/infundado-en-parte`, data);
+  }
+
+  declararImprocedente(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/improcedente`, data);
+  }
+
+  declararSustraccionMateria(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/sustraccion-materia`, data);
+  }
+
+  declararDesistimiento(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/desistimiento`, data);
+  }
+
+  declararNoPresentado(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/no-presentado`, data);
+  }
+
+  notificarSegundaCalificacion(apelacionId: number): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/notificar-segunda-calificacion/${apelacionId}`, {});
+  }
 }
 

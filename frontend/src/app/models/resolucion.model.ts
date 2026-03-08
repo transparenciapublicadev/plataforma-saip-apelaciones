@@ -14,8 +14,11 @@ export type DecisionResolucion =
     | 'IMPROCEDENTE'
     | 'ADMITIDO'
     | 'FUNDADO'
+    | 'FUNDADO_EN_PARTE'
     | 'INFUNDADO'
-    | 'DEVOLVER_ENTIDAD'
-    | 'ORDENAR_ENTREGA';
+    | 'INFUNDADO_EN_PARTE'
+    | 'TENER_POR_NO_PRESENTADO'
+    | 'CONCLUSION_SUSTRACCION_MATERIA'
+    | 'CONCLUSION_DESISTIMIENTO';
 
 export type Resolucion = Required<ResolucionDTO>;
