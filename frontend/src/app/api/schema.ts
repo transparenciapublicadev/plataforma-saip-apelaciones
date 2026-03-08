@@ -1580,7 +1580,7 @@ export interface components {
              * @example ENTREGA_TOTAL
              * @enum {string}
              */
-            tipoRespuesta: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            tipoRespuesta: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL" | "SILENCIO_ADMINISTRATIVO";
             contenido: string;
             causalDenegatoria?: string;
             fundamentoLegal?: string;
