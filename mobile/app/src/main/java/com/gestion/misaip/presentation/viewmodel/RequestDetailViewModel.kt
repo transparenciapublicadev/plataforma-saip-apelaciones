@@ -177,11 +177,13 @@ class RequestDetailViewModel(
                         apelacionRelacionada.estado.toDisplayString()
                     } else {
                         when (apelacionRelacionada.estado) {
+                            EstadoApelacion.PENDIENTE_ELEVACION -> "Pendiente de Elevación"
+                            EstadoApelacion.EN_CALIFICACION_1 -> "En Primera Calificación"
                             EstadoApelacion.EN_SUBSANACION -> "Requiere Subsanación"
                             EstadoApelacion.EN_CALIFICACION_2 -> "En Segunda Calificación"
                             EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION -> "Notificación Segunda Calificación"
                             EstadoApelacion.EN_RESOLUCION -> "En Resolución"
-                            else -> "En Apelación"
+                            else -> apelacionRelacionada.estado.toDisplayString()
                         }
                     }
                 } else {
@@ -211,7 +213,6 @@ class RequestDetailViewModel(
             } else if (apelacion != null) {
                 val puedeCalificar = tipoUsuario == TipoUsuario.TTAIP &&
                     apelacion.estado in listOf(
-                        EstadoApelacion.PENDIENTE_ELEVACION,
                         EstadoApelacion.EN_CALIFICACION_1,
                         EstadoApelacion.EN_CALIFICACION_2
                     )

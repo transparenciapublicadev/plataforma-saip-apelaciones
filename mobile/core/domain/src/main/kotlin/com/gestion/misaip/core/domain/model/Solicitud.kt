@@ -54,14 +54,13 @@ data class Solicitud(
 
     /**
      * Verifica si la solicitud puede ser apelada.
-     * Según Ley N° 27806:
-     * - Denegada → puede apelar
-     * - Vencida (silencio administrativo) → puede apelar
-     * - Respondida con entrega parcial → puede apelar
+     * Según Ley N° 27806 y BR-SAIP-006:
+     * Aplica para cualquier tipo de respuesta (entrega total, parcial, denegación)
+     * y también por silencio administrativo (vencida).
+     * Plazo: 15 días calendario desde la recepción de la respuesta.
      */
     val puedeSerApelada: Boolean
-        get() = fueDenegada || estaVencida ||
-            (fueRespondida && respuestaEntidad?.tipo == TipoRespuesta.ENTREGA_PARCIAL)
+        get() = fueDenegada || estaVencida || fueRespondida
 
     /**
      * Verifica si la solicitud fue respondida satisfactoriamente.

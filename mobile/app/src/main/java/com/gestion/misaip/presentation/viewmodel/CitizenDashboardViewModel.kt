@@ -113,6 +113,10 @@ class CitizenDashboardViewModel(
                         apelVinculada.estado.toDisplayString()
                     } else {
                         when (apelVinculada.estado) {
+                            com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE_ELEVACION ->
+                                "Pendiente de Elevación"
+                            com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_1 ->
+                                "En Primera Calificación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_SUBSANACION ->
                                 "Requiere Subsanación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_2 ->
@@ -121,7 +125,7 @@ class CitizenDashboardViewModel(
                                 "Notificación Segunda Calificación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_RESOLUCION ->
                                 "En Resolución"
-                            else -> "En Apelación"
+                            else -> apelVinculada.estado.toDisplayString()
                         }
                     }
                 } else {

@@ -157,9 +157,9 @@ fun SemaphoreIndicator(
     val targetColor = remember(diasRestantes) {
         when {
             diasRestantes == null -> SemaphoreBlack
-            diasRestantes <= 0 -> SemaphoreBlack
-            diasRestantes in 1..2 -> SemaphoreRed
-            diasRestantes in 3..5 -> SemaphoreAmber
+            diasRestantes < 0 -> SemaphoreBlack
+            diasRestantes <= 1 -> SemaphoreRed
+            diasRestantes <= 4 -> SemaphoreAmber
             else -> SemaphoreGreen
         }
     }
