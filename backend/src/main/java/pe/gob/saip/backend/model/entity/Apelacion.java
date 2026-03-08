@@ -49,7 +49,7 @@ public class Apelacion {
     private LocalDateTime fechaApelacion;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 40)
     private EstadoApelacion estado;
 
     @Enumerated(EnumType.STRING)
@@ -79,7 +79,7 @@ public class Apelacion {
     protected void onCreate() {
         fechaApelacion = LocalDateTime.now();
         if (estado == null) {
-            estado = EstadoApelacion.PENDIENTE;
+            estado = EstadoApelacion.PENDIENTE_ELEVACION;
         }
     }
 
@@ -87,16 +87,20 @@ public class Apelacion {
      * Estados de apelación — alineados con core/domain/model/Apelacion.kt (EstadoApelacion)
      */
     public enum EstadoApelacion {
-        PENDIENTE,
-        EN_CALIFICACION,
+        PENDIENTE_ELEVACION,
+        EN_CALIFICACION_1,
         EN_SUBSANACION,
-        SUBSANACION_PRESENTADA,
-        PRIMERA_RESOLUCION,
-        SEGUNDA_RESOLUCION,
-        RESUELTA,
+        EN_CALIFICACION_2,
+        NOTIFICACION_SEGUNDA_CALIFICACION,
+        EN_RESOLUCION,
+        RESUELTO,
+        TENER_POR_NO_PRESENTADO,
+        CONCLUSION_SUSTRACCION_MATERIA,
+        CONCLUSION_DESISTIMIENTO,
         RESUELTO_FUNDADO,
+        RESUELTO_FUNDADO_EN_PARTE,
         RESUELTO_INFUNDADO,
-        RESUELTO_INADMISIBLE,
+        RESUELTO_INFUNDADO_EN_PARTE,
         RESUELTO_IMPROCEDENTE
     }
 
@@ -104,9 +108,7 @@ public class Apelacion {
         ADMISIBLE,
         INADMISIBLE,
         IMPROCEDENTE,
-        ADMITIDO,
-        FUNDADO,
-        INFUNDADO
+        ADMITIDO
     }
 
     public Long getId() {
@@ -147,9 +149,14 @@ public class Apelacion {
      * Verifica si la apelación está en un estado resuelto.
      */
     public boolean isResuelta() {
-        return estado == EstadoApelacion.RESUELTO_FUNDADO ||
+        return estado == EstadoApelacion.RESUELTO ||
+               estado == EstadoApelacion.RESUELTO_FUNDADO ||
+               estado == EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE ||
                estado == EstadoApelacion.RESUELTO_INFUNDADO ||
-               estado == EstadoApelacion.RESUELTO_INADMISIBLE ||
-               estado == EstadoApelacion.RESUELTO_IMPROCEDENTE;
+               estado == EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE ||
+               estado == EstadoApelacion.RESUELTO_IMPROCEDENTE ||
+               estado == EstadoApelacion.TENER_POR_NO_PRESENTADO ||
+               estado == EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA ||
+               estado == EstadoApelacion.CONCLUSION_DESISTIMIENTO;
     }
 }

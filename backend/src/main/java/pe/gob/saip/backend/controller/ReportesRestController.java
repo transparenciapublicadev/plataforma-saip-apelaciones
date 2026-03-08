@@ -288,11 +288,12 @@ public class ReportesRestController {
         resumen.put("apelaciones", Map.of(
                 "total", apelaciones.size(),
                 "pendientes", apelaciones.stream().filter(a ->
-                        Apelacion.EstadoApelacion.PENDIENTE.equals(a.getEstado()) ||
-                        Apelacion.EstadoApelacion.EN_CALIFICACION.equals(a.getEstado())).count(),
+                        Apelacion.EstadoApelacion.PENDIENTE_ELEVACION.equals(a.getEstado()) ||
+                        Apelacion.EstadoApelacion.EN_CALIFICACION_1.equals(a.getEstado())).count(),
                 "enProceso", apelaciones.stream().filter(a ->
-                        Apelacion.EstadoApelacion.PRIMERA_RESOLUCION.equals(a.getEstado()) ||
-                        Apelacion.EstadoApelacion.SEGUNDA_RESOLUCION.equals(a.getEstado()) ||
+                        Apelacion.EstadoApelacion.EN_RESOLUCION.equals(a.getEstado()) ||
+                        Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION.equals(a.getEstado()) ||
+                        Apelacion.EstadoApelacion.EN_CALIFICACION_2.equals(a.getEstado()) ||
                         Apelacion.EstadoApelacion.EN_SUBSANACION.equals(a.getEstado())).count(),
                 "resueltas", apelaciones.stream().filter(a -> a.isResuelta()).count()
         ));

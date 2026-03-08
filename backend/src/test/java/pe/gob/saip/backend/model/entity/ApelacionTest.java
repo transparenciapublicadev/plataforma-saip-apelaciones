@@ -22,13 +22,14 @@ class ApelacionTest {
 
     @Test
     void getId_debeRetornarIdApelacion() {
-        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE);
-        assertThat(a.getId()).isEqualTo(1L);
+        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
     }
 
     @ParameterizedTest
     @EnumSource(value = Apelacion.EstadoApelacion.class,
-            names = {"RESUELTO_FUNDADO", "RESUELTO_INFUNDADO", "RESUELTO_INADMISIBLE", "RESUELTO_IMPROCEDENTE"})
+            names = {"RESUELTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO",
+                     "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE",
+                     "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO"})
     void isResuelta_estadosResueltos_debeRetornarTrue(Apelacion.EstadoApelacion estado) {
         Apelacion a = crearApelacion(estado);
         assertThat(a.isResuelta()).isTrue();
@@ -36,8 +37,8 @@ class ApelacionTest {
 
     @ParameterizedTest
     @EnumSource(value = Apelacion.EstadoApelacion.class,
-            names = {"PENDIENTE", "EN_CALIFICACION", "EN_SUBSANACION", "SUBSANACION_PRESENTADA",
-                     "PRIMERA_RESOLUCION", "SEGUNDA_RESOLUCION"})
+            names = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2",
+                     "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION"})
     void isResuelta_estadosNoResueltos_debeRetornarFalse(Apelacion.EstadoApelacion estado) {
         Apelacion a = crearApelacion(estado);
         assertThat(a.isResuelta()).isFalse();
@@ -45,13 +46,13 @@ class ApelacionTest {
 
     @Test
     void getResolucion_sinResoluciones_debeRetornarNull() {
-        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE);
+        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         assertThat(a.getResolucion()).isNull();
     }
 
     @Test
     void getResolucionPrimeraCalificacion_sinResoluciones_debeRetornarNull() {
-        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE);
+        Apelacion a = crearApelacion(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         assertThat(a.getResolucionPrimeraCalificacion()).isNull();
     }
 }

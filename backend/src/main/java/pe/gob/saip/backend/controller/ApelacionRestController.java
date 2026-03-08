@@ -106,7 +106,7 @@ public class ApelacionRestController {
         apelacion.setFundamentos(apelacionDTO.fundamentos());
         apelacion.setSolicitud(solicitud);
         apelacion.setCiudadano(ciudadano);
-        apelacion.setEstado(Apelacion.EstadoApelacion.PENDIENTE);
+        apelacion.setEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
 
         apelacion = apelacionService.save(apelacion);
 
@@ -172,7 +172,7 @@ public class ApelacionRestController {
         String fundamentosActuales = apelacion.getFundamentos() != null ? apelacion.getFundamentos() : "";
         apelacion.setFundamentos(fundamentosActuales + "\n\n--- SUBSANACIÓN ---\n" + fundamentosAdicionales);
 
-        apelacion.setEstado(Apelacion.EstadoApelacion.SUBSANACION_PRESENTADA);
+        apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2);
 
         apelacion = apelacionService.save(apelacion);
 
@@ -184,11 +184,17 @@ public class ApelacionRestController {
     public ResponseEntity<Map<String, Object>> obtenerEstadisticas() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
-        stats.put("pendientes", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE));
-        stats.put("enCalificacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION));
+        stats.put("pendientes", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
+        stats.put("enCalificacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
         stats.put("enSubsanacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_SUBSANACION));
         stats.put("resueltosFundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO));
         stats.put("resueltosInfundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO));
+        stats.put("resueltosFundadoEnParte", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE));
+        stats.put("resueltosInfundadoEnParte", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE));
+        stats.put("resueltosImprocedente", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE));
+        stats.put("tenerPorNoPresentado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO));
+        stats.put("conclusionSustraccion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA));
+        stats.put("conclusionDesistimiento", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO));
 
         return ResponseEntity.ok(stats);
     }

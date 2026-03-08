@@ -65,8 +65,6 @@ public class Respuesta {
      * Tipos de respuesta — alineados con core/domain/model/Solicitud.kt (TipoRespuesta)
      */
     public enum TipoRespuesta {
-        ACEPTADA,
-        DENEGADA,
         ENTREGA_TOTAL,
         ENTREGA_PARCIAL,
         DENEGACION_TOTAL,

@@ -39,8 +39,8 @@ class ApelacionServiceTest {
     @Test
     void obtenerTodasLasApelaciones_debeRetornarLista() {
         var apelaciones = List.of(
-            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE),
-            crearApelacion(2L, "00002-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION)
+            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION),
+            crearApelacion(2L, "00002-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION_1)
         );
         when(apelacionRepository.findAll()).thenReturn(apelaciones);
 
@@ -51,7 +51,7 @@ class ApelacionServiceTest {
 
     @Test
     void obtenerApelacionPorId_existente_debeRetornarPresente() {
-        var apelacion = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE);
+        var apelacion = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         when(apelacionRepository.findById(1L)).thenReturn(Optional.of(apelacion));
 
         Optional<Apelacion> resultado = apelacionService.obtenerApelacionPorId(1L);
@@ -71,7 +71,7 @@ class ApelacionServiceTest {
 
     @Test
     void obtenerApelacionPorExpediente_debeRetornarApelacion() {
-        var apelacion = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE);
+        var apelacion = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         when(apelacionRepository.findByExpediente("00001-2025-JUS/TTAIP")).thenReturn(Optional.of(apelacion));
 
         Optional<Apelacion> resultado = apelacionService.obtenerApelacionPorExpediente("00001-2025-JUS/TTAIP");
@@ -82,20 +82,20 @@ class ApelacionServiceTest {
     @Test
     void obtenerApelacionesPorEstado_debeRetornarFiltradas() {
         var apelaciones = List.of(
-            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION)
+            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION_1)
         );
-        when(apelacionRepository.findByEstadoOrderByFechaApelacionDesc(Apelacion.EstadoApelacion.EN_CALIFICACION)).thenReturn(apelaciones);
+        when(apelacionRepository.findByEstadoOrderByFechaApelacionDesc(Apelacion.EstadoApelacion.EN_CALIFICACION_1)).thenReturn(apelaciones);
 
-        List<Apelacion> resultado = apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION);
+        List<Apelacion> resultado = apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
 
         assertThat(resultado).hasSize(1);
     }
 
     @Test
     void contarApelacionesPorEstado_debeRetornarCuenta() {
-        when(apelacionRepository.countByEstado(Apelacion.EstadoApelacion.PENDIENTE)).thenReturn(7L);
+        when(apelacionRepository.countByEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)).thenReturn(7L);
 
-        long resultado = apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE);
+        long resultado = apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
 
         assertThat(resultado).isEqualTo(7L);
     }
@@ -103,7 +103,7 @@ class ApelacionServiceTest {
     @Test
     void findByCiudadanoId_debeRetornarApelacionesDelCiudadano() {
         var apelaciones = List.of(
-            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE)
+            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)
         );
         when(apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(10L)).thenReturn(apelaciones);
 
@@ -115,7 +115,7 @@ class ApelacionServiceTest {
     @Test
     void findPendientes_debeRetornarApelacionesPendientes() {
         var apelaciones = List.of(
-            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE)
+            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)
         );
         when(apelacionRepository.findPendientes()).thenReturn(apelaciones);
 
@@ -136,7 +136,7 @@ class ApelacionServiceTest {
 
     @Test
     void save_sinExpediente_debeGenerarExpediente() {
-        Apelacion apelacion = crearApelacion(null, null, Apelacion.EstadoApelacion.PENDIENTE);
+        Apelacion apelacion = crearApelacion(null, null, Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         when(apelacionRepository.count()).thenReturn(0L);
         when(apelacionRepository.save(any())).thenAnswer(inv -> {
             Apelacion a = inv.getArgument(0);
@@ -152,7 +152,7 @@ class ApelacionServiceTest {
 
     @Test
     void save_conExpediente_noDebeRegenerar() {
-        Apelacion apelacion = crearApelacion(1L, "00010-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE);
+        Apelacion apelacion = crearApelacion(1L, "00010-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
         when(apelacionRepository.save(apelacion)).thenReturn(apelacion);
 
         Apelacion resultado = apelacionService.save(apelacion);
@@ -179,8 +179,8 @@ class ApelacionServiceTest {
     @Test
     void countByCiudadanoId_debeRetornarCantidad() {
         var apelaciones = List.of(
-            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE),
-            crearApelacion(2L, "00002-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION)
+            crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION),
+            crearApelacion(2L, "00002-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION_1)
         );
         when(apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(10L)).thenReturn(apelaciones);
 

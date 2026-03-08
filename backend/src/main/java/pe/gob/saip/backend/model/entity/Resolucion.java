@@ -39,7 +39,7 @@ public class Resolucion {
     private TipoResolucion tipoResolucion;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 40)
     private DecisionResolucion decision;
 
     @NotBlank(message = "Los fundamentos no pueden estar vacíos")
@@ -86,10 +86,13 @@ public class Resolucion {
         INADMISIBLE,
         IMPROCEDENTE,
         ADMITIDO,
+        TENER_POR_NO_PRESENTADO,
         FUNDADO,
+        FUNDADO_EN_PARTE,
         INFUNDADO,
-        DEVOLVER_ENTIDAD,
-        ORDENAR_ENTREGA
+        INFUNDADO_EN_PARTE,
+        CONCLUSION_SUSTRACCION_MATERIA,
+        CONCLUSION_DESISTIMIENTO
     }
 
     public Long getId() {

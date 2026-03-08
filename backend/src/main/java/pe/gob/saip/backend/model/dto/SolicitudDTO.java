@@ -13,7 +13,7 @@ public record SolicitudDTO(
     @Schema(description = "Asunto de la solicitud")
     String asunto,
     String descripcion,
-    @Schema(description = "Estado actual", example = "RECEPCIONADA", allowableValues = {"PENDIENTE", "RECEPCIONADA", "EN_REVISION", "PENDIENTE_INFORMACION", "RESPONDIDA", "DENEGADA", "APELADA", "CONCLUIDA", "VENCIDA"})
+    @Schema(description = "Estado actual", example = "RECEPCIONADA", allowableValues = {"RECEPCIONADA", "EN_REVISION", "PENDIENTE_INFORMACION", "RESPONDIDA", "DENEGADA", "CONCLUIDA", "VENCIDA"})
     String estado,
     @Schema(description = "Nivel de prioridad", example = "MEDIA", allowableValues = {"BAJA", "NORMAL", "MEDIA", "ALTA", "URGENTE"})
     String prioridad,

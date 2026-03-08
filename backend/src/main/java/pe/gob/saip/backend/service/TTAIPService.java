@@ -41,17 +41,23 @@ public class TTAIPService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
         stats.put("pendientesAdmision",
-                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION));
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
         stats.put("enProceso",
-                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PRIMERA_RESOLUCION)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.SUBSANACION_PRESENTADA));
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_RESOLUCION));
         stats.put("enSubsanacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_SUBSANACION));
         stats.put("resueltas",
                 apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INADMISIBLE)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE));
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO));
         return stats;
     }
 
@@ -85,7 +91,7 @@ public class TTAIPService {
     @Transactional
     public ApelacionDTO admitirApelacion(Long apelacionId, CalificacionRequest request) {
         Apelacion apelacion = buscarApelacion(apelacionId);
-        boolean esSegundaCalificacion = apelacion.getEstado() == Apelacion.EstadoApelacion.SUBSANACION_PRESENTADA;
+        boolean esSegundaCalificacion = apelacion.getEstado() == Apelacion.EstadoApelacion.EN_CALIFICACION_2;
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 esSegundaCalificacion ? Resolucion.TipoResolucion.SEGUNDA_CALIFICACION : Resolucion.TipoResolucion.PRIMERA_CALIFICACION,
@@ -95,10 +101,11 @@ public class TTAIPService {
         );
         resolucion.setObservaciones(request.observaciones());
         resolucionService.save(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.PRIMERA_RESOLUCION);
         if (esSegundaCalificacion) {
+            apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION);
             apelacion.setCalificacionSegunda(Apelacion.Calificacion.ADMITIDO);
         } else {
+            apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
             apelacion.setCalificacionPrimera(Apelacion.Calificacion.ADMISIBLE);
         }
         apelacionService.save(apelacion);
@@ -129,7 +136,7 @@ public class TTAIPService {
     @Transactional
     public ApelacionDTO inadmitirApelacion(Long apelacionId, CalificacionRequest request) {
         Apelacion apelacion = buscarApelacion(apelacionId);
-        boolean esSegundaCalificacion = apelacion.getEstado() == Apelacion.EstadoApelacion.SUBSANACION_PRESENTADA;
+        boolean esSegundaCalificacion = apelacion.getEstado() == Apelacion.EstadoApelacion.EN_CALIFICACION_2;
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 esSegundaCalificacion ? Resolucion.TipoResolucion.SEGUNDA_CALIFICACION : Resolucion.TipoResolucion.PRIMERA_CALIFICACION,
@@ -186,6 +193,123 @@ public class TTAIPService {
         resolucionService.save(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO);
         apelacion.setResultado("INFUNDADO");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararFundadoEnParte(Long apelacionId, ResolucionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                Resolucion.DecisionResolucion.FUNDADO_EN_PARTE,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado("FUNDADO_EN_PARTE");
+        resolucion.setIniciarProcesoDisciplinario(request.iniciarProcesoDisciplinario());
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE);
+        apelacion.setResultado("FUNDADO_EN_PARTE");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararInfundadoEnParte(Long apelacionId, ResolucionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                Resolucion.DecisionResolucion.INFUNDADO_EN_PARTE,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado("INFUNDADO_EN_PARTE");
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE);
+        apelacion.setResultado("INFUNDADO_EN_PARTE");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararImprocedenteFinal(Long apelacionId, ResolucionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                Resolucion.DecisionResolucion.IMPROCEDENTE,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado("IMPROCEDENTE");
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE);
+        apelacion.setResultado("IMPROCEDENTE");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararConclusionSustraccion(Long apelacionId, ResolucionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                Resolucion.DecisionResolucion.CONCLUSION_SUSTRACCION_MATERIA,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA);
+        apelacion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararConclusionDesistimiento(Long apelacionId, ResolucionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                Resolucion.DecisionResolucion.CONCLUSION_DESISTIMIENTO,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado("CONCLUSION_DESISTIMIENTO");
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO);
+        apelacion.setResultado("CONCLUSION_DESISTIMIENTO");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO declararTenerPorNoPresentado(Long apelacionId, CalificacionRequest request) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.PRIMERA_CALIFICACION,
+                Resolucion.DecisionResolucion.TENER_POR_NO_PRESENTADO,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setObservaciones(request.observaciones());
+        resolucionService.save(resolucion);
+        apelacion.setEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO);
+        apelacion.setResultado("TENER_POR_NO_PRESENTADO");
+        apelacionService.save(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    @Transactional
+    public ApelacionDTO notificarSegundaCalificacion(Long apelacionId) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
         apelacionService.save(apelacion);
         return ApelacionDTO.from(apelacion);
     }

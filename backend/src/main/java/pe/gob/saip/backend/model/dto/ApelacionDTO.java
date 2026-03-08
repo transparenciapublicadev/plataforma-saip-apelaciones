@@ -11,7 +11,7 @@ public record ApelacionDTO(
     @Schema(description = "Número de expediente TTAIP", example = "01560-2025-JUS/TTAIP")
     String expediente,
     String fundamentos,
-    @Schema(description = "Estado de la apelación", example = "PENDIENTE")
+    @Schema(description = "Estado de la apelación", example = "PENDIENTE_ELEVACION")
     String estado,
     String resultado,
     String fechaApelacion,

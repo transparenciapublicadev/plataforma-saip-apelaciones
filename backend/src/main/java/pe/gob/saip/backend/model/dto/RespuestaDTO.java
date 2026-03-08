@@ -8,7 +8,7 @@ import java.util.List;
 @Schema(description = "Respuesta de funcionario a solicitud SAIP")
 public record RespuestaDTO(
     Long id,
-    @Schema(description = "Tipo de respuesta", example = "ENTREGA_TOTAL", allowableValues = {"ACEPTADA", "DENEGADA", "ENTREGA_TOTAL", "ENTREGA_PARCIAL", "DENEGACION_TOTAL", "SILENCIO_ADMINISTRATIVO"})
+    @Schema(description = "Tipo de respuesta", example = "ENTREGA_TOTAL", allowableValues = {"ENTREGA_TOTAL", "ENTREGA_PARCIAL", "DENEGACION_TOTAL", "SILENCIO_ADMINISTRATIVO"})
     String tipoRespuesta,
     String decision,
     String contenido,

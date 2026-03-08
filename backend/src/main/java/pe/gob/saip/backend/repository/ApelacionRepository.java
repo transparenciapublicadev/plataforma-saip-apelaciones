@@ -31,7 +31,7 @@ public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
     @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad WHERE a.ciudadano.idUsuario = :ciudadanoId ORDER BY a.fechaApelacion DESC")
     List<Apelacion> findByCiudadanoWithSolicitud(@Param("ciudadanoId") Long ciudadanoId);
 
-    @Query("SELECT a FROM Apelacion a WHERE a.estado NOT IN ('RESUELTO_FUNDADO', 'RESUELTO_INFUNDADO', 'RESUELTO_INADMISIBLE', 'RESUELTO_IMPROCEDENTE') ORDER BY a.fechaApelacion DESC")
+    @Query("SELECT a FROM Apelacion a WHERE a.estado NOT IN ('RESUELTO', 'RESUELTO_FUNDADO', 'RESUELTO_FUNDADO_EN_PARTE', 'RESUELTO_INFUNDADO', 'RESUELTO_INFUNDADO_EN_PARTE', 'RESUELTO_IMPROCEDENTE', 'TENER_POR_NO_PRESENTADO', 'CONCLUSION_SUSTRACCION_MATERIA', 'CONCLUSION_DESISTIMIENTO') ORDER BY a.fechaApelacion DESC")
     List<Apelacion> findPendientes();
 }
 

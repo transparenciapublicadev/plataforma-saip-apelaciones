@@ -105,13 +105,11 @@ public class Solicitud {
      * Estados de solicitud SAIP — alineados con core/domain/model/Solicitud.kt
      */
     public enum EstadoSolicitud {
-        PENDIENTE,
         RECEPCIONADA,
         EN_REVISION,
         PENDIENTE_INFORMACION,
         RESPONDIDA,
         DENEGADA,
-        APELADA,
         CONCLUIDA,
         VENCIDA
     }
@@ -155,12 +153,12 @@ public class Solicitud {
 
     /**
      * Semáforo de estado según días restantes.
-     * Verde (0-5), Ámbar (6-8), Rojo (9-10), Negro (vencido)
+     * Verde (5+), Ámbar (2-4), Rojo (0-1), Negro (vencido)
      */
     public String getSemaforo() {
         int dias = getDiasRestantes();
         if (dias < 0) return "NEGRO";
-        if (dias <= 2) return "ROJO";
+        if (dias <= 1) return "ROJO";
         if (dias <= 4) return "AMBAR";
         return "VERDE";
     }
