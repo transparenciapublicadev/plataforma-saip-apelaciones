@@ -105,7 +105,7 @@ public class TTAIPService {
             apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION);
             apelacion.setCalificacionSegunda(Apelacion.Calificacion.ADMITIDO);
         } else {
-            apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
+            apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2);
             apelacion.setCalificacionPrimera(Apelacion.Calificacion.ADMISIBLE);
         }
         apelacionService.save(apelacion);

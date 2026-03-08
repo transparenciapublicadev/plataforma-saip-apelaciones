@@ -69,7 +69,8 @@ class SolicitudTest {
 
     @Test
     void getSemaforo_vencido_debeSerNegro() {
-        Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, LocalDate.now().minusDays(1));
+        // Usar fecha suficientemente en el pasado para garantizar al menos 1 día hábil vencido
+        Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, LocalDate.now().minusDays(5));
         assertThat(s.getSemaforo()).isEqualTo("NEGRO");
     }
 
