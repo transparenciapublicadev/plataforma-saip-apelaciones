@@ -59,10 +59,7 @@ data class Apelacion(
      * Verifica si la apelación está resuelta.
      */
     val estaResuelta: Boolean
-        get() = estado == EstadoApelacion.RESUELTO_FUNDADO ||
-                estado == EstadoApelacion.RESUELTO_INFUNDADO ||
-                estado == EstadoApelacion.RESUELTO_INADMISIBLE ||
-                estado == EstadoApelacion.RESUELTO_IMPROCEDENTE
+        get() = estado.isTerminal()
 }
 
 /**
@@ -78,50 +75,54 @@ data class Apelante(
  * Estados de una apelación.
  */
 enum class EstadoApelacion {
-    PENDIENTE,
-    EN_CALIFICACION,
+    PENDIENTE_ELEVACION,
+    EN_CALIFICACION_1,
     EN_SUBSANACION,
-    SUBSANACION_PRESENTADA,
-    PRIMERA_RESOLUCION,
-    SEGUNDA_RESOLUCION,
+    EN_CALIFICACION_2,
+    NOTIFICACION_SEGUNDA_CALIFICACION,
+    EN_RESOLUCION,
+    RESUELTO,
+    TENER_POR_NO_PRESENTADO,
+    CONCLUSION_SUSTRACCION_MATERIA,
+    CONCLUSION_DESISTIMIENTO,
     RESUELTO_FUNDADO,
+    RESUELTO_FUNDADO_EN_PARTE,
     RESUELTO_INFUNDADO,
-    RESUELTO_INADMISIBLE,
+    RESUELTO_INFUNDADO_EN_PARTE,
     RESUELTO_IMPROCEDENTE;
 
     companion object {
         fun fromString(value: String): EstadoApelacion {
-            // Normalizar: quitar espacios extra alrededor de guiones, luego reemplazar
-            val normalized = value.trim().lowercase()
-                .replace(" - ", "_") // "Resuelto - Fundado" → "resuelto_fundado"
-                .replace("-", "_")
-                .replace(" ", "_")
-            return when (normalized) {
-                "pendiente" -> PENDIENTE
-                "en_calificación", "en_calificacion" -> EN_CALIFICACION
-                "en_subsanación", "en_subsanacion" -> EN_SUBSANACION
-                "subsanación_presentada", "subsanacion_presentada" -> SUBSANACION_PRESENTADA
-                "primera_resolución_emitida", "primera_resolucion_emitida", "primera_resolucion" -> PRIMERA_RESOLUCION
-                "segunda_resolución_emitida", "segunda_resolucion_emitida", "segunda_resolucion" -> SEGUNDA_RESOLUCION
-                "resuelto_fundado" -> RESUELTO_FUNDADO
-                "resuelto_infundado" -> RESUELTO_INFUNDADO
-                "resuelto_inadmisible" -> RESUELTO_INADMISIBLE
-                "resuelto_improcedente" -> RESUELTO_IMPROCEDENTE
-                else -> PENDIENTE
-            }
+            val normalized = value.trim().uppercase().replace(" ", "_").replace("-", "_")
+            return entries.find { it.name == normalized } ?: PENDIENTE_ELEVACION
         }
+
+        /** Estados terminales del expediente */
+        val TERMINALES = setOf(
+            RESUELTO, RESUELTO_FUNDADO, RESUELTO_FUNDADO_EN_PARTE,
+            RESUELTO_INFUNDADO, RESUELTO_INFUNDADO_EN_PARTE,
+            RESUELTO_IMPROCEDENTE, TENER_POR_NO_PRESENTADO,
+            CONCLUSION_SUSTRACCION_MATERIA, CONCLUSION_DESISTIMIENTO
+        )
     }
 
+    fun isTerminal(): Boolean = this in TERMINALES
+
     fun toDisplayString(): String = when (this) {
-        PENDIENTE -> "Pendiente"
-        EN_CALIFICACION -> "En Calificación"
+        PENDIENTE_ELEVACION -> "Pendiente de Elevación"
+        EN_CALIFICACION_1 -> "En Primera Calificación"
         EN_SUBSANACION -> "En Subsanación"
-        SUBSANACION_PRESENTADA -> "Subsanación Presentada"
-        PRIMERA_RESOLUCION -> "Primera Resolución Emitida"
-        SEGUNDA_RESOLUCION -> "Segunda Resolución Emitida"
+        EN_CALIFICACION_2 -> "En Segunda Calificación"
+        NOTIFICACION_SEGUNDA_CALIFICACION -> "Notificación Segunda Calificación"
+        EN_RESOLUCION -> "En Resolución"
+        RESUELTO -> "Resuelto"
+        TENER_POR_NO_PRESENTADO -> "Tener por No Presentado"
+        CONCLUSION_SUSTRACCION_MATERIA -> "Conclusión por Sustracción de Materia"
+        CONCLUSION_DESISTIMIENTO -> "Conclusión por Desistimiento"
         RESUELTO_FUNDADO -> "Resuelto - Fundado"
+        RESUELTO_FUNDADO_EN_PARTE -> "Resuelto - Fundado en Parte"
         RESUELTO_INFUNDADO -> "Resuelto - Infundado"
-        RESUELTO_INADMISIBLE -> "Resuelto - Inadmisible"
+        RESUELTO_INFUNDADO_EN_PARTE -> "Resuelto - Infundado en Parte"
         RESUELTO_IMPROCEDENTE -> "Resuelto - Improcedente"
     }
 }
@@ -144,27 +145,19 @@ data class Calificacion(
 )
 
 /**
- * Resultado de una calificación.
+ * Resultado de una calificación (primera o segunda instancia).
+ * ADMISIBLE/INADMISIBLE/IMPROCEDENTE aplican en primera calificación.
+ * ADMITIDO/IMPROCEDENTE aplican en segunda calificación.
  */
 enum class ResultadoCalificacion {
     ADMISIBLE,
     INADMISIBLE,
     IMPROCEDENTE,
-    FUNDADO,
-    INFUNDADO,
-    SUBSANACION_REQUERIDA;
+    ADMITIDO;
 
     companion object {
         fun fromString(value: String): ResultadoCalificacion {
-            return when (value.uppercase().replace(" ", "_")) {
-                "ADMISIBLE" -> ADMISIBLE
-                "INADMISIBLE" -> INADMISIBLE
-                "IMPROCEDENTE" -> IMPROCEDENTE
-                "FUNDADO" -> FUNDADO
-                "INFUNDADO" -> INFUNDADO
-                "SUBSANACIÓN_REQUERIDA", "SUBSANACION_REQUERIDA" -> SUBSANACION_REQUERIDA
-                else -> ADMISIBLE
-            }
+            return entries.find { it.name == value.uppercase().replace(" ", "_") } ?: ADMISIBLE
         }
     }
 }

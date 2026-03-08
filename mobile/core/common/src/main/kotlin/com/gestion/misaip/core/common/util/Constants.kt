@@ -43,15 +43,20 @@ object Constants {
     // ===========================================
 
     object EstadoApelacion {
-        const val PENDIENTE = "Pendiente"
-        const val EN_CALIFICACION = "En Calificación"
+        const val PENDIENTE_ELEVACION = "Pendiente de Elevación"
+        const val EN_CALIFICACION_1 = "En Primera Calificación"
         const val EN_SUBSANACION = "En Subsanación"
-        const val SUBSANACION_PRESENTADA = "Subsanación Presentada"
-        const val PRIMERA_RESOLUCION = "Primera Resolución Emitida"
-        const val SEGUNDA_RESOLUCION = "Segunda Resolución Emitida"
+        const val EN_CALIFICACION_2 = "En Segunda Calificación"
+        const val NOTIFICACION_SEGUNDA_CALIFICACION = "Notificación Segunda Calificación"
+        const val EN_RESOLUCION = "En Resolución"
+        const val RESUELTO = "Resuelto"
+        const val TENER_POR_NO_PRESENTADO = "Tener por No Presentado"
+        const val CONCLUSION_SUSTRACCION_MATERIA = "Conclusión por Sustracción de Materia"
+        const val CONCLUSION_DESISTIMIENTO = "Conclusión por Desistimiento"
         const val RESUELTO_FUNDADO = "Resuelto - Fundado"
+        const val RESUELTO_FUNDADO_EN_PARTE = "Resuelto - Fundado en Parte"
         const val RESUELTO_INFUNDADO = "Resuelto - Infundado"
-        const val RESUELTO_INADMISIBLE = "Resuelto - Inadmisible"
+        const val RESUELTO_INFUNDADO_EN_PARTE = "Resuelto - Infundado en Parte"
         const val RESUELTO_IMPROCEDENTE = "Resuelto - Improcedente"
     }
 

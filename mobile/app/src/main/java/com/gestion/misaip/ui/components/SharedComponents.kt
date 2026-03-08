@@ -94,7 +94,7 @@ fun StatusBadge(
                 if (isDark) StatusPendingBgDark to StatusPendingTextDark
                 else StatusPendingBg to StatusPendingText
             estado.contains("Revisión", true) || estado.contains("Calificación", true) ||
-            estado.contains("En Apelación", true) ->
+            estado.contains("Resolución", true) || estado.contains("Notificación", true) ->
                 if (isDark) StatusReviewBgDark to StatusReviewTextDark
                 else StatusReviewBg to StatusReviewText
             estado.contains("Respondida", true) || estado.contains("Fundado", true) ||
@@ -102,7 +102,7 @@ fun StatusBadge(
                 if (isDark) StatusRespondedBgDark to StatusRespondedTextDark
                 else StatusRespondedBg to StatusRespondedText
             estado.contains("Denegada", true) || estado.contains("Infundado", true) ||
-            estado.contains("Inadmisible", true) || estado.contains("Improcedente", true) ->
+            estado.contains("Improcedente", true) || estado.contains("No Presentado", true) ->
                 if (isDark) StatusDeniedBgDark to StatusDeniedTextDark
                 else StatusDeniedBg to StatusDeniedText
             estado.contains("Vencida", true) || estado.contains("Silencio", true) ->
@@ -111,7 +111,8 @@ fun StatusBadge(
             estado.contains("Subsanación", true) ->
                 if (isDark) StatusSubsanacionBgDark to StatusSubsanacionTextDark
                 else StatusSubsanacionBg to StatusSubsanacionText
-            estado.contains("Resuelto", true) ->
+            estado.contains("Conclusión", true) || estado.contains("Desistimiento", true) ||
+            estado.contains("Sustracción", true) || estado.contains("Resuelto", true) ->
                 if (isDark) StatusResolvedBgDark to StatusResolvedTextDark
                 else StatusResolvedBg to StatusResolvedText
             else ->

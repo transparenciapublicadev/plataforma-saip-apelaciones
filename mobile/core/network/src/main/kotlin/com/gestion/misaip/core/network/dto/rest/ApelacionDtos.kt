@@ -102,28 +102,11 @@ data class ApelacionRestDto(
 }
 
 /**
- * Mapea el estado/resultado del backend al enum del dominio mobile.
+ * Mapea el estado del backend al enum del dominio mobile.
+ * Ahora los valores son idénticos entre backend y mobile.
  */
 private fun mapEstadoApelacion(estado: String?, resultado: String?): EstadoApelacion {
-    if (resultado != null) {
-        return when (resultado.uppercase()) {
-            "FUNDADO", "FUNDADA" -> EstadoApelacion.RESUELTO_FUNDADO
-            "INFUNDADO", "INFUNDADA" -> EstadoApelacion.RESUELTO_INFUNDADO
-            "INADMISIBLE" -> EstadoApelacion.RESUELTO_INADMISIBLE
-            "IMPROCEDENTE" -> EstadoApelacion.RESUELTO_IMPROCEDENTE
-            else -> EstadoApelacion.fromString(estado ?: "PENDIENTE")
-        }
-    }
-    return when (estado?.uppercase()) {
-        "PENDIENTE_ELEVACION" -> EstadoApelacion.PENDIENTE
-        "EN_CALIFICACION_1", "EN_CALIFICACION" -> EstadoApelacion.EN_CALIFICACION
-        "EN_SUBSANACION" -> EstadoApelacion.EN_SUBSANACION
-        "EN_CALIFICACION_2" -> EstadoApelacion.SUBSANACION_PRESENTADA
-        "ESPERANDO_DESCARGOS", "EN_INSTRUCCION" -> EstadoApelacion.PRIMERA_RESOLUCION
-        "EN_RESOLUCION" -> EstadoApelacion.SEGUNDA_RESOLUCION
-        "RESUELTO" -> EstadoApelacion.RESUELTO_FUNDADO
-        else -> EstadoApelacion.fromString(estado ?: "PENDIENTE")
-    }
+    return EstadoApelacion.fromString(estado ?: "PENDIENTE_ELEVACION")
 }
 
 private fun parseApelacionDate(dateStr: String?): Long {

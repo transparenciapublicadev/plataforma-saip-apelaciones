@@ -286,7 +286,7 @@ private fun TTAIPDashboardContent(
                         )
 
                         // Filtros
-                        val filtros = remember { listOf("todas", "Pendiente", "En Calificación", "En Subsanación", "Subsanación Presentada", "Resuelto") }
+                        val filtros = remember { listOf("todas", "Pendiente de Elevación", "En Calificación", "En Subsanación", "En Resolución", "Resuelto") }
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -418,7 +418,7 @@ private fun ApelacionCard(
                 )
             }
 
-            if (item.estado == "Pendiente") {
+            if (item.estado == "Pendiente de Elevación") {
                 Spacer(modifier = Modifier.height(10.dp))
                 FilledTonalButton(
                     onClick = onIniciarCalificacion,

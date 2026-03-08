@@ -90,8 +90,8 @@ class TTAIPDashboardViewModel(
 
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasTTAIP(
-                pendientes = apelaciones.count { it.estado.name == "PENDIENTE" },
-                enCalificacion = apelaciones.count { it.estado.name == "EN_CALIFICACION" },
+                pendientes = apelaciones.count { it.estado.name == "PENDIENTE_ELEVACION" },
+                enCalificacion = apelaciones.count { it.estado.name == "EN_CALIFICACION_1" || it.estado.name == "EN_CALIFICACION_2" },
                 resueltas = apelaciones.count { it.estaResuelta },
                 total = apelaciones.size
             )
@@ -151,12 +151,11 @@ class TTAIPDashboardViewModel(
                 apel.entidad.lowercase().contains(busqueda)
 
             val matchesFiltro = when (filtro) {
-                "Pendiente" -> apel.estado == "Pendiente"
-                "En Calificación" -> apel.estado == "En Calificación"
+                "Pendiente de Elevación" -> apel.estado == "Pendiente de Elevación"
+                "En Calificación" -> apel.estado == "En Primera Calificación" || apel.estado == "En Segunda Calificación"
                 "En Subsanación" -> apel.estado == "En Subsanación"
-                "Subsanación Presentada" -> apel.estado == "Subsanación Presentada"
-                "Primera Resolución Emitida" -> apel.estado == "Primera Resolución Emitida"
-                "Resuelto" -> apel.estado.startsWith("Resuelto") || apel.estado in listOf("Fundado", "Infundado", "Inadmisible", "Improcedente")
+                "En Resolución" -> apel.estado == "En Resolución" || apel.estado == "Notificación Segunda Calificación"
+                "Resuelto" -> apel.estado.startsWith("Resuelto") || apel.estado.startsWith("Conclusión") || apel.estado == "Tener por No Presentado"
                 else -> true
             }
 

@@ -145,10 +145,11 @@ class AdminDashboardViewModel(
 
                 // Desglose de apelaciones por estado
                 val apelPendientes = apelaciones.count {
-                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE
+                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE_ELEVACION
                 }
                 val apelEnCalif = apelaciones.count {
-                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION
+                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_1 ||
+                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_2
                 }
                 val apelFundadas = apelaciones.count { it.esFundada }
                 val apelInfundadas = apelaciones.count { it.esInfundada }

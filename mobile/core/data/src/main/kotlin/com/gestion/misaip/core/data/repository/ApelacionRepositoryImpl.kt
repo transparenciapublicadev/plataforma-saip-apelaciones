@@ -96,7 +96,7 @@ class ApelacionRepositoryImpl(
             id = id,
             expediente = expediente,
             fechaPresentacion = System.currentTimeMillis(),
-            estado = EstadoApelacion.PENDIENTE,
+            estado = EstadoApelacion.PENDIENTE_ELEVACION,
             diasRestantes = 7,
             timeline = listOf(
                 TimelineItem(
@@ -180,22 +180,19 @@ class ApelacionRepositoryImpl(
         val tipoLower = tipo.lowercase()
 
         val nuevoEstado = when {
-            // Primera calificación: INADMISIBLE → subsanación (BR-TTAIP-002)
+            // Primera calificación: INADMISIBLE → subsanación (BR-TTAIP-003)
             calificacion.resultado == ResultadoCalificacion.INADMISIBLE && tipoLower == "primera" ->
                 EstadoApelacion.EN_SUBSANACION.toDisplayString()
-            calificacion.resultado == ResultadoCalificacion.SUBSANACION_REQUERIDA ->
-                EstadoApelacion.EN_SUBSANACION.toDisplayString()
-            // IMPROCEDENTE → fin del trámite, resolución final de Improcedencia (BR-TTAIP-002/004)
+            // IMPROCEDENTE → fin del trámite (BR-TTAIP-003/005)
             calificacion.resultado == ResultadoCalificacion.IMPROCEDENTE ->
                 EstadoApelacion.RESUELTO_IMPROCEDENTE.toDisplayString()
-            // ADMISIBLE → pasa a Descargos, resolución de Admisibilidad (BR-TTAIP-002/004)
-            calificacion.resultado == ResultadoCalificacion.ADMISIBLE ->
-                EstadoApelacion.PRIMERA_RESOLUCION.toDisplayString()
-            calificacion.resultado == ResultadoCalificacion.FUNDADO ->
-                EstadoApelacion.RESUELTO_FUNDADO.toDisplayString()
-            calificacion.resultado == ResultadoCalificacion.INFUNDADO ->
-                EstadoApelacion.RESUELTO_INFUNDADO.toDisplayString()
-            else -> EstadoApelacion.EN_CALIFICACION.toDisplayString()
+            // Primera calificación: ADMISIBLE → pasa a segunda calificación (BR-TTAIP-003)
+            calificacion.resultado == ResultadoCalificacion.ADMISIBLE && tipoLower == "primera" ->
+                EstadoApelacion.EN_CALIFICACION_2.toDisplayString()
+            // Segunda calificación: ADMITIDO → notificación (BR-TTAIP-005/006)
+            calificacion.resultado == ResultadoCalificacion.ADMITIDO && tipoLower == "segunda" ->
+                EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION.toDisplayString()
+            else -> EstadoApelacion.EN_CALIFICACION_1.toDisplayString()
         }
 
         val current = queries.getApelacionByExpediente(expediente).executeAsOneOrNull()
@@ -206,9 +203,7 @@ class ApelacionRepositoryImpl(
             ResultadoCalificacion.ADMISIBLE -> "Admisible"
             ResultadoCalificacion.INADMISIBLE -> "Inadmisible"
             ResultadoCalificacion.IMPROCEDENTE -> "Improcedente"
-            ResultadoCalificacion.FUNDADO -> "Fundado"
-            ResultadoCalificacion.INFUNDADO -> "Infundado"
-            ResultadoCalificacion.SUBSANACION_REQUERIDA -> "Subsanación Requerida"
+            ResultadoCalificacion.ADMITIDO -> "Admitido"
         }
         val eventName = when (tipo) {
             "primera" -> "Primera calificación: $resultadoDisplay"

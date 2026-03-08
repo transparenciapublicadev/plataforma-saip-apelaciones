@@ -178,7 +178,9 @@ class RequestDetailViewModel(
                     } else {
                         when (apelacionRelacionada.estado) {
                             EstadoApelacion.EN_SUBSANACION -> "Requiere Subsanación"
-                            EstadoApelacion.SUBSANACION_PRESENTADA -> "Subsanación Presentada"
+                            EstadoApelacion.EN_CALIFICACION_2 -> "En Segunda Calificación"
+                            EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION -> "Notificación Segunda Calificación"
+                            EstadoApelacion.EN_RESOLUCION -> "En Resolución"
                             else -> "En Apelación"
                         }
                     }
@@ -209,9 +211,9 @@ class RequestDetailViewModel(
             } else if (apelacion != null) {
                 val puedeCalificar = tipoUsuario == TipoUsuario.TTAIP &&
                     apelacion.estado in listOf(
-                        EstadoApelacion.PENDIENTE,
-                        EstadoApelacion.EN_CALIFICACION,
-                        EstadoApelacion.SUBSANACION_PRESENTADA
+                        EstadoApelacion.PENDIENTE_ELEVACION,
+                        EstadoApelacion.EN_CALIFICACION_1,
+                        EstadoApelacion.EN_CALIFICACION_2
                     )
 
                 val puedeSubsanar = tipoUsuario == TipoUsuario.CIUDADANO &&

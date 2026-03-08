@@ -23,7 +23,7 @@ class GetApelacionPorSAIPUseCase(
  * Caso de Uso: Iniciar Calificación de Apelación
  *
  * Un funcionario TTAIP marca una apelación como "En Calificación".
- * Cambia el estado de PENDIENTE a EN_CALIFICACION y agrega evento al timeline.
+ * Cambia el estado de PENDIENTE_ELEVACION a EN_CALIFICACION_1 y agrega evento al timeline.
  */
 class IniciarCalificacionUseCase(
     private val apelacionRepository: ApelacionRepository
@@ -34,8 +34,8 @@ class IniciarCalificacionUseCase(
         val apelacion = apelacionRepository.getApelacionPorExpediente(expediente).first()
             ?: throw IllegalStateException("No se encontró la apelación $expediente")
 
-        if (apelacion.estado != EstadoApelacion.PENDIENTE) {
-            throw IllegalStateException("Solo se puede iniciar calificación de apelaciones pendientes")
+        if (apelacion.estado != EstadoApelacion.PENDIENTE_ELEVACION) {
+            throw IllegalStateException("Solo se puede iniciar calificación de apelaciones pendientes de elevación")
         }
 
         val timelineActualizado = apelacion.timeline + TimelineItem(
@@ -46,7 +46,7 @@ class IniciarCalificacionUseCase(
         )
 
         val apelacionActualizada = apelacion.copy(
-            estado = EstadoApelacion.EN_CALIFICACION,
+            estado = EstadoApelacion.EN_CALIFICACION_1,
             timeline = timelineActualizado
         )
 

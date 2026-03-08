@@ -112,7 +112,7 @@ class CrearApelacionUseCase(
             exposicionHechos = params.exposicionHechos,
             pretension = params.pretension,
             fechaPresentacion = fechaActual,
-            estado = EstadoApelacion.PENDIENTE,
+            estado = EstadoApelacion.PENDIENTE_ELEVACION,
             timeline = listOf(
                 TimelineItem(
                     fecha = fechaActual,
@@ -216,16 +216,12 @@ class CalificarApelacionUseCase(
         return when (params.resultado) {
             ResultadoCalificacion.ADMISIBLE ->
                 "Se le notifica que su apelación ha sido declarada ADMISIBLE. Se procede a solicitar descargos a la entidad."
-            ResultadoCalificacion.FUNDADO ->
-                "Se le notifica que su apelación ha sido declarada FUNDADA. La entidad deberá entregar la información en ${params.plazoEntrega ?: "5 días hábiles"}."
-            ResultadoCalificacion.INFUNDADO ->
-                "Se le notifica que su apelación ha sido declarada INFUNDADA. La denegación de la entidad se encuentra ajustada a ley."
+            ResultadoCalificacion.ADMITIDO ->
+                "Se le notifica que su apelación ha sido ADMITIDA. Se procederá con la resolución del recurso."
             ResultadoCalificacion.INADMISIBLE ->
                 "Se le notifica que su apelación ha sido declarada INADMISIBLE. ${params.fundamentacion}"
             ResultadoCalificacion.IMPROCEDENTE ->
                 "Se le notifica que su apelación ha sido declarada IMPROCEDENTE. ${params.fundamentacion}"
-            ResultadoCalificacion.SUBSANACION_REQUERIDA ->
-                "Se requiere subsanar su apelación en un plazo de ${params.plazoSubsanacion ?: "3 días hábiles"}. ${params.observacionesSubsanacion ?: ""}"
         }
     }
 

@@ -115,8 +115,12 @@ class CitizenDashboardViewModel(
                         when (apelVinculada.estado) {
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_SUBSANACION ->
                                 "Requiere Subsanación"
-                            com.gestion.misaip.core.domain.model.EstadoApelacion.SUBSANACION_PRESENTADA ->
-                                "Subsanación Presentada"
+                            com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_2 ->
+                                "En Segunda Calificación"
+                            com.gestion.misaip.core.domain.model.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION ->
+                                "Notificación Segunda Calificación"
+                            com.gestion.misaip.core.domain.model.EstadoApelacion.EN_RESOLUCION ->
+                                "En Resolución"
                             else -> "En Apelación"
                         }
                     }
