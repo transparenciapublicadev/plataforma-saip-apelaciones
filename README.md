@@ -32,6 +32,7 @@ El sistema permite a los ciudadanos presentar solicitudes de información a enti
     - [Tipos de respuesta del funcionario](#tipos-de-respuesta-del-funcionario)
     - [Semáforo de estado](#semáforo-de-estado)
   - [Reglas de Negocio — Módulo Apelaciones TTAIP](#reglas-de-negocio--módulo-apelaciones-ttaip)
+    - [Tipos de Resolución del TTAIP](#tipos-de-resolución-del-ttaip)
     - [Estados del expediente](#estados-del-expediente)
   - [Reglas de Negocio — Motor de Notificaciones y Reprocesos](#reglas-de-negocio--motor-de-notificaciones-y-reprocesos)
   - [Reglas de Numeración e Identificadores](#reglas-de-numeración-e-identificadores)
@@ -348,19 +349,30 @@ Flujo secuencial según SRS v2.0:
 |-------|-------|-------------|
 | Presentación del recurso | 15 días calendario | Plazo del ciudadano para presentar apelación, contado desde la fecha de recepción de la respuesta de la entidad |
 | Elevación | 2 días hábiles | La entidad remite el recurso al TTAIP |
-| Primera Calificación | 7 días hábiles | Improcedente / Admisión / Inadmisible |
-| Subsanación | 2 días hábiles | Solo si fue declarado Inadmisible. Si el ciudadano NO subsana, se declara `TENER POR NO PRESENTADO` y finaliza el proceso |
-| Segunda Calificación | — | Post-subsanación: Improcedencia / Admisibilidad. Genera resolución que **debe notificarse al ciudadano** antes de continuar |
+| Primera Calificación | 7 días hábiles | Genera **Primera Resolución**: Improcedente (→ rechazo definitivo) / Inadmisible (→ subsanación) / Admisión |
+| Subsanación | 2 días hábiles | Solo si fue declarado Inadmisible. Si el ciudadano NO subsana, se genera resolución `TENER POR NO PRESENTADO` y finaliza el proceso |
+| Segunda Calificación | — | Post-subsanación. Genera **Segunda Resolución**: Admitido (→ trámite) / Improcedente (→ rechazo definitivo). **Debe notificarse al ciudadano** antes de continuar |
 | Notificación post-calificación | — | La resolución de admisibilidad o improcedencia se notifica al ciudadano. Solo después de notificación correcta inicia el plazo de resolución final |
-| Resolución Final | 10 días hábiles | Fundado / Infundado. Los 10 días incluyen descargos de la entidad (7d) e instrucción opcional (3d para informes orales, info complementaria, etc.) |
+| Resolución Final | 10 días hábiles | Decisiones posibles: Fundado, Fundado en parte, Infundado, Infundado en parte, Improcedente, Conclusión por sustracción de la materia, Conclusión por desistimiento |
 
-> **Nota importante**: Los 10 días hábiles de resolución final engloban los descargos (7 días) y la instrucción (3 días, opcional). No son etapas con plazos separados que se sumen.
+### Tipos de Resolución del TTAIP
+
+| Decisión | Descripción | Cuándo aplica |
+|----------|-------------|---------------|
+| **Fundado** | Se ampara el recurso de apelación y se ordena a la entidad entregar la información | Resolución Final |
+| **Fundado en parte** | Se ampara parcialmente el recurso, ordenando la entrega parcial de información | Resolución Final |
+| **Infundado** | Se desestima el recurso de apelación, confirmando la conducta de la entidad | Resolución Final |
+| **Infundado en parte** | Se desestima parcialmente, confirmando parte de la conducta de la entidad | Resolución Final |
+| **Improcedente** | El recurso no cumple requisitos formales o de fondo para ser tramitado | Primera Resolución, Segunda Resolución o Resolución Final |
+| **Conclusión por sustracción de la materia** | La entidad entrega la información durante el trámite de apelación, haciendo innecesario el pronunciamiento de fondo | Resolución Final |
+| **Conclusión por desistimiento** | El ciudadano desiste voluntariamente de su recurso de apelación | Resolución Final |
+| **No presentado** | El ciudadano no subsana las observaciones dentro del plazo de 2 días hábiles tras ser declarado inadmisible | Primera Resolución |
 
 ### Estados del expediente
 
-`PENDIENTE_ELEVACION` → `EN_CALIFICACION_1` → `EN_SUBSANACION` → `EN_CALIFICACION_2` → `NOTIFICACION_SEGUNDA_CALIFICACION` → `ESPERANDO_DESCARGOS` → `EN_INSTRUCCION` → `EN_RESOLUCION` → `RESUELTO`
+`PENDIENTE_ELEVACION` → `EN_CALIFICACION_1` → `EN_SUBSANACION` → `EN_CALIFICACION_2` → `NOTIFICACION_SEGUNDA_CALIFICACION` → `EN_RESOLUCION` → `RESUELTO`
 
-> Estado terminal alternativo: `TENER_POR_NO_PRESENTADO` (si el ciudadano no subsana en plazo)
+> Estados terminales alternativos: `TENER_POR_NO_PRESENTADO` (si el ciudadano no subsana en plazo), `CONCLUSION_SUSTRACCION_MATERIA`, `CONCLUSION_DESISTIMIENTO`
 
 ---
 
