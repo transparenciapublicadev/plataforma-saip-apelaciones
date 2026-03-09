@@ -62,8 +62,8 @@ class SolicitudTest {
 
     @Test
     void getSemaforo_urgente_debeSerRojo() {
-        // 1 día hábil restante → ROJO (0-2)
-        Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, avanzarDiasHabiles(LocalDate.now(), 1));
+        // fechaLimite = hoy → contarDiasHabiles(hoy, hoy) = 1 (día hábil) o 0 (fin de semana), ambos ≤ 1 → ROJO
+        Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, LocalDate.now());
         assertThat(s.getSemaforo()).isEqualTo("ROJO");
     }
 
