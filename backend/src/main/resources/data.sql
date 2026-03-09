@@ -1,4 +1,4 @@
-﻿-- ============================================
+-- ============================================
 -- Datos iniciales (seed) para desarrollo — Plataforma SAIP
 -- Se ejecuta automáticamente al iniciar Spring Boot (spring.sql.init.mode=always)
 -- Usa INSERT IGNORE: solo inserta si el registro no existe (datos persisten entre reinicios)
