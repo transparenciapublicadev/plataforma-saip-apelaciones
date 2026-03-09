@@ -48,9 +48,21 @@ public class ApelacionService {
         return apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(ciudadanoId);
     }
 
+    private static final List<Apelacion.EstadoApelacion> ESTADOS_FINALES = List.of(
+            Apelacion.EstadoApelacion.RESUELTO,
+            Apelacion.EstadoApelacion.RESUELTO_FUNDADO,
+            Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE,
+            Apelacion.EstadoApelacion.RESUELTO_INFUNDADO,
+            Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE,
+            Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE,
+            Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO,
+            Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA,
+            Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO
+    );
+
     @Transactional(readOnly = true)
     public List<Apelacion> findPendientes() {
-        return apelacionRepository.findPendientes();
+        return apelacionRepository.findPendientes(ESTADOS_FINALES);
     }
 
     @Transactional(readOnly = true)

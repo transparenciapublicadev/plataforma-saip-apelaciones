@@ -210,12 +210,14 @@ VALUES (3, 7, 6,
 -- Formato expediente TTAIP: NNNNN-AAAA-JUS-TTAIP
 -- ============================================
 
--- Apelación 1: María apela DENEGACION de sol 4 → EN_CALIFICACION (esperando primera calificación)
+-- Apelación 1: María apela DENEGACION de sol 4 → EN_CALIFICACION_1 (esperando primera calificación)
 INSERT IGNORE INTO apelaciones (id_apelacion, expediente, id_solicitud, id_ciudadano, fundamentos, fecha_apelacion, estado)
 VALUES (1, '00001-2025-JUS-TTAIP', 4, 2,
   'Apelo la denegación de mi solicitud SAIP-2025-00004 por improcedente aplicación de la excepción de secreto comercial. Los contratos celebrados con fondos públicos son información de carácter público conforme al artículo 10 del TUO de la Ley N.° 27806. La excepción invocada (Art. 17 inc. 2 y 4) no resulta aplicable a contrataciones estatales sometidas al principio de publicidad de la Ley de Contrataciones del Estado (Ley N.° 30225).',
   DATE_SUB(NOW(), INTERVAL 10 DAY),
-  'EN_CALIFICACION');
+  'EN_CALIFICACION_1');
+-- Corrige dato inválido si ya existía con estado vacío (MySQL almacena '' cuando el valor no coincide con el enum)
+UPDATE apelaciones SET estado = 'EN_CALIFICACION_1' WHERE id_apelacion = 1 AND (estado = '' OR estado IS NULL);
 
 -- Apelación 2: Carlos apela SILENCIO ADMINISTRATIVO de sol 6 → EN_SUBSANACION (primera calif. fue INADMISIBLE)
 -- BR-TTAIP-002: Primera calificación en 7 días

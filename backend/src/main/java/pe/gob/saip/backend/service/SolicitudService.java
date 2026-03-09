@@ -79,12 +79,19 @@ public class SolicitudService {
         return solicitudRepository.findById(id);
     }
 
+    private static final List<Solicitud.EstadoSolicitud> ESTADOS_FINALES_SOLICITUD = List.of(
+            Solicitud.EstadoSolicitud.RESPONDIDA,
+            Solicitud.EstadoSolicitud.DENEGADA,
+            Solicitud.EstadoSolicitud.CONCLUIDA,
+            Solicitud.EstadoSolicitud.VENCIDA
+    );
+
     /**
      * BR-SAIP-005: Detecta y marca solicitudes vencidas (silencio administrativo negativo).
      */
     @Transactional
     public List<Solicitud> detectarSilencioAdministrativo() {
-        List<Solicitud> vencidas = solicitudRepository.findVencidas(LocalDate.now());
+        List<Solicitud> vencidas = solicitudRepository.findVencidas(LocalDate.now(), ESTADOS_FINALES_SOLICITUD);
         for (Solicitud s : vencidas) {
             s.setEstado(Solicitud.EstadoSolicitud.VENCIDA);
         }

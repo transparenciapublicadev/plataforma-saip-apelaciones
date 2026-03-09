@@ -29,8 +29,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     long countByEntidad_IdEntidad(Long entidadId);
 
-    @Query("SELECT s FROM Solicitud s WHERE s.fechaLimite < :hoy AND s.estado NOT IN ('RESPONDIDA', 'DENEGADA', 'CONCLUIDA', 'VENCIDA')")
-    List<Solicitud> findVencidas(@Param("hoy") LocalDate hoy);
+    @Query("SELECT s FROM Solicitud s WHERE s.fechaLimite < :hoy AND s.estado NOT IN :estadosFinales")
+    List<Solicitud> findVencidas(@Param("hoy") LocalDate hoy, @Param("estadosFinales") List<Solicitud.EstadoSolicitud> estadosFinales);
 
     @Query("SELECT s FROM Solicitud s LEFT JOIN FETCH s.respuesta LEFT JOIN FETCH s.documentos WHERE s.idSolicitud = :id")
     Optional<Solicitud> findByIdWithDetails(@Param("id") Long id);

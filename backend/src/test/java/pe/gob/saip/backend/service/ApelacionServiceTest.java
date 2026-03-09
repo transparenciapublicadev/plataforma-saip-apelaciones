@@ -117,7 +117,7 @@ class ApelacionServiceTest {
         var apelaciones = List.of(
             crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)
         );
-        when(apelacionRepository.findPendientes()).thenReturn(apelaciones);
+        when(apelacionRepository.findPendientes(anyList())).thenReturn(apelaciones);
 
         List<Apelacion> resultado = apelacionService.findPendientes();
 

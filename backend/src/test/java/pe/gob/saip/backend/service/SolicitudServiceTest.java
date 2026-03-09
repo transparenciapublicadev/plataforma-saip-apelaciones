@@ -186,7 +186,7 @@ class SolicitudServiceTest {
     @Test
     void detectarSilencioAdministrativo_debeMarcarComoVencidas() {
         var solicitud = crearSolicitud(1L, "SAIP-2025-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
-        when(solicitudRepository.findVencidas(any(LocalDate.class))).thenReturn(List.of(solicitud));
+        when(solicitudRepository.findVencidas(any(LocalDate.class), anyList())).thenReturn(List.of(solicitud));
         when(solicitudRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
         List<Solicitud> resultado = solicitudService.detectarSilencioAdministrativo();
