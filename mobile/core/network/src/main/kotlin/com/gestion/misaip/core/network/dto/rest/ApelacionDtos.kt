@@ -55,6 +55,8 @@ data class ApelacionRestDto(
     val entidadId: Long? = null,
     val entidadNombre: String? = null,
     val resolucion: ResolucionRestDto? = null,
+    val resolucionPrimeraCalificacion: ResolucionRestDto? = null,
+    val resolucionSegundaCalificacion: ResolucionRestDto? = null,
     val documentos: List<DocumentoRestDto>? = null
 ) {
     fun toDomain(): Apelacion {

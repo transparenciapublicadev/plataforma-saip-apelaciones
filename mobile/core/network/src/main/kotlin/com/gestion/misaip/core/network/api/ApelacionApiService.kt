@@ -5,8 +5,8 @@ import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
-import retrofit2.http.PUT
 import retrofit2.http.Path
 
 /**
@@ -33,7 +33,7 @@ interface ApelacionApiService {
     @POST("api/apelaciones")
     suspend fun crear(@Body request: CrearApelacionRestRequest): ApelacionRestDto
 
-    @PUT("api/apelaciones/{id}/estado")
+    @PATCH("api/apelaciones/{id}/estado")
     suspend fun actualizarEstado(
         @Path("id") id: Long,
         @Body body: Map<String, String>
