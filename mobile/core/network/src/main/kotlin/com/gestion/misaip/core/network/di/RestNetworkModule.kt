@@ -4,6 +4,7 @@ import com.gestion.misaip.core.network.api.ApelacionApiService
 import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.api.EntidadApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
+import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.datasource.ApelacionRemoteDataSource
 import com.gestion.misaip.core.network.datasource.ApelacionRestDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRemoteDataSource
@@ -102,6 +103,7 @@ fun restNetworkModule(baseUrl: String) = module {
     single<SolicitudApiService> { get<Retrofit>().create(SolicitudApiService::class.java) }
     single<ApelacionApiService> { get<Retrofit>().create(ApelacionApiService::class.java) }
     single<EntidadApiService> { get<Retrofit>().create(EntidadApiService::class.java) }
+    single<TTAIPApiService> { get<Retrofit>().create(TTAIPApiService::class.java) }
 
     // ===========================================
     // DATA SOURCES REMOTOS (REST)
