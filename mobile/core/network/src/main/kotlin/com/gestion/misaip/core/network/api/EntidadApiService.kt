@@ -3,6 +3,7 @@ package com.gestion.misaip.core.network.api
 import com.gestion.misaip.core.network.dto.rest.EntidadRestDto
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * Servicio Retrofit para entidades publicas.
@@ -20,5 +21,5 @@ interface EntidadApiService {
     suspend fun getById(@Path("id") id: Long): EntidadRestDto
 
     @GET("api/entidades/buscar")
-    suspend fun buscar(): List<EntidadRestDto>
+    suspend fun buscar(@Query("nombre") nombre: String): List<EntidadRestDto>
 }
