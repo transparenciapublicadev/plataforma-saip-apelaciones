@@ -112,7 +112,7 @@ export class CiudadanoDashboardComponent implements OnInit {
       s.estado === 'VENCIDA'
     ).length);
     this.tieneApelables.set(solicitudes.some(s =>
-      s.estado === 'DENEGADA' || s.estado === 'VENCIDA'
+      s.estado === 'RESPONDIDA' || s.estado === 'DENEGADA' || s.estado === 'VENCIDA'
     ));
   }
 
