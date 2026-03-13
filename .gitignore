@@ -119,6 +119,9 @@ ui-debug.log
 # ── Documentation build artifacts ──────────────────────────
 docs/_build/
 docs/.doctrees/
+docs/.astro/
+docs/dist/
+docs/build_*.txt
 
 # ── Design Reference (visual-only, not deployed) ───────────
 design-reference/
