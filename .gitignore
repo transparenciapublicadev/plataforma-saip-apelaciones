@@ -114,6 +114,9 @@ secrets/
 .agents/
 .gemini/
 
+# ── Windsurf (solo local, NO subir al repo) ──────────────
+.windsurf/
+
 # ── Firebase (keep config, ignore generated) ────────────────
 firebase-debug.log
 .firebase/
