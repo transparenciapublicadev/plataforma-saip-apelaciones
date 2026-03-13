@@ -2,8 +2,9 @@ package com.gestion.misaip.ui.screen
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -39,10 +40,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +64,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.ui.theme.BrandRed
 import com.gestion.misaip.ui.theme.GradientRedEnd
 import com.gestion.misaip.ui.theme.GradientRedStart
@@ -117,8 +123,26 @@ fun OnboardingScreen(
     onOnboardingComplete: () -> Unit
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
+    var pushEnabled by remember { mutableStateOf(FCMHelper.arePushNotificationsEnabled(context)) }
+
+    fun refreshPushState() {
+        pushEnabled = FCMHelper.arePushNotificationsEnabled(context)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPushState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -142,8 +166,14 @@ fun OnboardingScreen(
                 if (pagerState.currentPage < pages.lastIndex) {
                     TextButton(
                         onClick = {
-                            markOnboardingCompleted(context)
-                            onOnboardingComplete()
+                            if (pushEnabled) {
+                                markOnboardingCompleted(context)
+                                onOnboardingComplete()
+                            } else {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pages.lastIndex)
+                                }
+                            }
                         }
                     ) {
                         Text(
@@ -163,7 +193,7 @@ fun OnboardingScreen(
                 OnboardingPageContent(
                     page = pages[pageIndex],
                     isCurrentPage = pagerState.currentPage == pageIndex,
-                    onPermissionGranted = { /* Permiso concedido */ }
+                    onPermissionGranted = { pushEnabled = true }
                 )
             }
 
@@ -204,6 +234,7 @@ fun OnboardingScreen(
 
                 // Botón principal
                 val isLastPage = pagerState.currentPage == pages.lastIndex
+                val canCompleteOnboarding = !isLastPage || pushEnabled
                 Button(
                     onClick = {
                         if (isLastPage) {
@@ -218,6 +249,7 @@ fun OnboardingScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
+                    enabled = canCompleteOnboarding,
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
@@ -225,7 +257,11 @@ fun OnboardingScreen(
                     )
                 ) {
                     Text(
-                        text = if (isLastPage) "Comenzar" else "Siguiente",
+                        text = when {
+                            !isLastPage -> "Siguiente"
+                            pushEnabled -> "Comenzar"
+                            else -> "Activa notificaciones para continuar"
+                        },
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -237,6 +273,16 @@ fun OnboardingScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                }
+
+                if (isLastPage && !pushEnabled) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Debes habilitar push para continuar al login.",
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -353,42 +399,64 @@ private fun NotificationPermissionButton(
     onPermissionGranted: () -> Unit
 ) {
     val context = LocalContext.current
-    var permissionGranted by remember {
-        mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            } else true
-        )
+    var permissionGranted by remember { mutableStateOf(FCMHelper.arePushNotificationsEnabled(context)) }
+
+    fun refreshPermissionState() {
+        permissionGranted = FCMHelper.arePushNotificationsEnabled(context)
+        if (permissionGranted) {
+            onPermissionGranted()
+        }
+    }
+
+    fun openNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        permissionGranted = granted
-        if (granted) onPermissionGranted()
+    ) {
+        refreshPermissionState()
     }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !permissionGranted) {
-        Button(
-            onClick = {
-                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            },
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White.copy(alpha = 0.2f),
-                contentColor = Color.White
-            ),
-            modifier = Modifier.height(44.dp)
-        ) {
-            Icon(
-                Icons.Filled.Notifications,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Activar notificaciones", fontWeight = FontWeight.Medium)
+    if (!permissionGranted) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Button(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        refreshPermissionState()
+                    }
+                },
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier.height(44.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Activar notificaciones", fontWeight = FontWeight.Medium)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick = { openNotificationSettings() },
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.height(40.dp)
+            ) {
+                Text("Abrir ajustes")
+            }
         }
     } else {
         // Permiso ya concedido o no necesario
