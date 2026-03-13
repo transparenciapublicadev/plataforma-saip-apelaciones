@@ -40,9 +40,10 @@ El sistema permite a los ciudadanos presentar solicitudes de información a enti
     - [Backend](#backend)
     - [Frontend](#frontend)
     - [Mobile](#mobile)
+    - [Documentación](#documentación)
     - [Sincronizar contrato OpenAPI](#sincronizar-contrato-openapi)
   - [CI/CD](#cicd)
-  - [Documentación](#documentación)
+  - [Documentación](#documentación-1)
   - [Licencia](#licencia)
 
 ---
