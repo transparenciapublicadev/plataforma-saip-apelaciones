@@ -1,0 +1,127 @@
+---
+title: Reglas SAIP
+description: Reglas de negocio para Solicitudes de Acceso a la Información Pública según la Ley N° 27806.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Marco Legal
+
+La Ley N° 27806 — **Ley de Transparencia y Acceso a la Información Pública** — regula el derecho de toda persona a solicitar información a entidades de la Administración Pública.
+
+## Reglas de Negocio
+
+### BR-SAIP-001 — Plazo Máximo
+
+<Card title="10 días hábiles" icon="warning">
+El plazo máximo de atención de una solicitud SAIP es de **10 días hábiles**. El conteo inicia el **día hábil siguiente** a la recepción (día de recepción = día 0). Si la SAIP se presenta fuera del horario laboral, se considera recibida el siguiente día hábil y el plazo inicia al día hábil posterior.
+</Card>
+
+### BR-SAIP-002 — Días Hábiles
+
+Se excluyen del conteo:
+- Sábados y domingos
+- **14 feriados nacionales peruanos:**
+
+| Fecha | Feriado |
+|-------|---------|
+| 1 de enero | Año Nuevo |
+| Jueves y Viernes Santos | Semana Santa (variable) |
+| 1 de mayo | Día del Trabajo |
+| 7 de junio | Batalla de Arica |
+| 23 de junio | Día del Campesino |
+| 28–29 de julio | Fiestas Patrias |
+| 6 de agosto | Batalla de Junín |
+| 30 de agosto | Santa Rosa de Lima |
+| 8 de octubre | Combate de Angamos |
+| 1 de noviembre | Día de Todos los Santos |
+| 8 de diciembre | Inmaculada Concepción |
+| 9 de diciembre | Batalla de Ayacucho |
+| 25 de diciembre | Navidad |
+
+### BR-SAIP-003 — Subsanación
+
+La entidad puede requerir subsanación solo dentro de los **2 primeros días hábiles** desde la recepción de la solicitud.
+
+### BR-SAIP-004 — Liquidación de Costos
+
+Si aplica cobro por costos de reproducción, la liquidación debe emitirse **a más tardar el día 9** del plazo.
+
+### BR-SAIP-005 — Silencio Administrativo Negativo
+
+Si transcurren más de **10 días hábiles** sin respuesta de la entidad, opera el **silencio administrativo negativo** y la solicitud pasa a estado `VENCIDA`. Esto habilita automáticamente el derecho del ciudadano a apelar.
+
+### BR-SAIP-006 — Plazo para Apelar
+
+El ciudadano tiene **15 días calendario** desde la fecha de recepción de la respuesta de la entidad para presentar un recurso de apelación. Esto aplica para cualquier tipo de respuesta (entrega total, parcial, denegación).
+
+## Semáforo de Estado
+
+El sistema muestra un indicador visual del estado del plazo:
+
+| Color | Rango | Significado |
+|-------|-------|-------------|
+| 🟢 Verde | Días 0–5 | En plazo |
+| 🟡 Ámbar | Días 6–8 | Próximo a vencer |
+| 🔴 Rojo | Días 9–10 | Urgente |
+| ⚫ Negro | >10 días | Vencido (Silencio Administrativo) |
+
+```java
+// Implementación del semáforo
+public static String calcularSemaforo(long diasTranscurridos) {
+    if (diasTranscurridos <= 5) return "VERDE";
+    if (diasTranscurridos <= 8) return "AMBAR";
+    if (diasTranscurridos <= 10) return "ROJO";
+    return "NEGRO";
+}
+```
+
+## Tipos de Respuesta
+
+| TipoRespuesta | Estado resultante | ¿Apelable? |
+|---------------|-------------------|------------|
+| `ENTREGA_TOTAL` | `RESPONDIDA` | Sí |
+| `ENTREGA_PARCIAL` | `RESPONDIDA` | Sí |
+| `DENEGACION_TOTAL` | `DENEGADA` | Sí |
+| `SILENCIO_ADMINISTRATIVO` | `VENCIDA` | Sí |
+
+:::note[Entrega total es apelable]
+El ciudadano puede apelar incluso ante una entrega total si considera que la información entregada no es la que solicitó o está incompleta.
+:::
+
+## Causales de Denegación (Art. 15 Ley 27806)
+
+1. Información clasificada como secreta en el ámbito militar o de inteligencia
+2. Información clasificada como reservada (seguridad nacional)
+3. Información confidencial (secreto bancario, tributario, comercial, industrial, tecnológico)
+4. Información vinculada a investigaciones en trámite
+5. Información preparada u obtenida para la defensa del Estado
+6. Datos personales sensibles
+7. Información protegida por secreto profesional
+8. Información protegida por el privilegio de asesoría legal
+9. Información que pueda afectar la seguridad de las personas
+
+## Formato de Número SAIP
+
+| Componente | Formato | Ejemplo |
+|------------|---------|---------|
+| Prefijo | `SAIP` | — |
+| Año | `AAAA` | `2025` |
+| Secuencia | `NNNNN` (5 dígitos, zero-padded) | `00512` |
+| **Completo** | **`SAIP-AAAA-NNNNN`** | **`SAIP-2025-00512`** |
+
+## Flujo de Estados
+
+<Steps>
+1. **RECEPCIONADA** — Solicitud ingresada al sistema
+2. **EN_REVISION** — Funcionario asignado revisa la solicitud
+3. **PENDIENTE_INFORMACION** — Se requiere subsanación del ciudadano (2 primeros días)
+4. **RESPONDIDA** — Entrega total o parcial de información
+5. **DENEGADA** — Denegación total con fundamento legal
+6. **CONCLUIDA** — Solicitud cerrada administrativamente
+7. **VENCIDA** — Silencio administrativo negativo (>10 días hábiles)
+</Steps>
+
+:::caution[SAIP ≠ Expediente]
+Una **Solicitud SAIP** es de primera instancia. Su número (`SAIP-AAAA-NNNNN`) **NO es un expediente**. El expediente (`NNNNN-AAAA-JUS/TTAIP`) solo se crea cuando el ciudadano apela ante el TTAIP.
+:::

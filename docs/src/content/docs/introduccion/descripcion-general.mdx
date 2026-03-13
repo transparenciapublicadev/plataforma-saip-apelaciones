@@ -1,0 +1,105 @@
+---
+title: Descripción General
+description: Visión completa del proyecto Plataforma SAIP, sus objetivos, alcance y stakeholders.
+sidebar:
+  order: 1
+---
+
+import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
+
+## ¿Qué es la Plataforma SAIP?
+
+La **Plataforma SAIP** es un sistema integral desarrollado para gestionar el ciclo completo de las **Solicitudes de Acceso a la Información Pública (SAIP)** en el Perú, conforme a la **Ley N° 27806** — Ley de Transparencia y Acceso a la Información Pública.
+
+El sistema abarca dos instancias:
+
+1. **Primera instancia** — Solicitudes SAIP dirigidas a entidades públicas.
+2. **Segunda instancia** — Apelaciones ante el **Tribunal de Transparencia y Acceso a la Información Pública (TTAIP)** del Ministerio de Justicia.
+
+:::note
+Una **solicitud SAIP** NO es un expediente. El **expediente TTAIP** se crea únicamente cuando el ciudadano interpone un recurso de apelación.
+:::
+
+---
+
+## Objetivos del Sistema
+
+<CardGrid>
+  <Card title="Digitalización" icon="laptop">
+    Digitalizar el flujo completo de solicitudes SAIP y apelaciones TTAIP, eliminando procesos manuales y paper-based.
+  </Card>
+  <Card title="Transparencia" icon="open-book">
+    Garantizar el derecho constitucional de acceso a la información pública con trazabilidad completa.
+  </Card>
+  <Card title="Eficiencia" icon="rocket">
+    Reducir los tiempos de respuesta y automatizar el control de plazos legales (10 días hábiles SAIP, 15 días calendario para apelación).
+  </Card>
+  <Card title="Accesibilidad" icon="star">
+    Proporcionar acceso multiplataforma (web y móvil) para ciudadanos, funcionarios y miembros del tribunal.
+  </Card>
+</CardGrid>
+
+---
+
+## Stakeholders
+
+| Actor | Rol | Módulos que usa |
+|-------|-----|-----------------|
+| **Ciudadano** | Presenta solicitudes SAIP y apelaciones | Frontend, Mobile |
+| **Funcionario** | Responde solicitudes como representante de la entidad pública | Frontend |
+| **Miembro TTAIP** | Califica y resuelve apelaciones en el tribunal | Frontend |
+| **Administrador** | Gestiona usuarios, entidades y configuración del sistema | Frontend |
+
+---
+
+## Estructura del Monorepo
+
+El proyecto se organiza como un **monorepo** con tres módulos independientes:
+
+| Módulo | Tecnología | Puerto | Propósito |
+|--------|-----------|--------|-----------|
+| `saip-backend/` | Spring Boot 4, Java 21, Maven | `:8080` | API REST + OpenAPI spec |
+| `saip-frontend/` | Angular 21, TypeScript 5.9, Tailwind CSS | `:4200` | SPA web |
+| `MiSAIP/` | Kotlin 2.3, Jetpack Compose, Material 3 | — | App Android nativa |
+
+:::tip
+Los módulos son **independientes**: no comparten código fuente. El **OpenAPI spec** del backend (`/v3/api-docs`) es el contrato formal que define la interfaz entre ellos.
+:::
+
+---
+
+## Ciclo de Vida de una Solicitud
+
+<Steps>
+
+1. **Ciudadano presenta solicitud SAIP** a una entidad pública (web o móvil).
+
+2. **La entidad recepciona** la solicitud y tiene **10 días hábiles** para responder.
+
+3. **Funcionario responde** con entrega total, parcial, denegación, o el plazo vence (silencio administrativo).
+
+4. **Ciudadano puede apelar** dentro de los **15 días calendario** siguientes a la respuesta, creando un expediente TTAIP.
+
+5. **El TTAIP califica** la apelación (primera calificación → subsanación → segunda calificación).
+
+6. **El TTAIP resuelve** con resolución final: Fundado, Infundado, Improcedente u otras decisiones.
+
+</Steps>
+
+---
+
+## Marco Legal
+
+- **Ley N° 27806** — Ley de Transparencia y Acceso a la Información Pública
+- **D.S. N° 072-2003-PCM** — Reglamento de la Ley
+- **D.S. N° 019-2017-JUS** — Reglamento del TTAIP
+- **Ley N° 27444** — Ley del Procedimiento Administrativo General
+
+---
+
+## Autores
+
+| Nombre | Rol |
+|--------|-----|
+| Daniel Angel León Salazar | Desarrollador Full-Stack |
+| Kelly de la Cruz Lopez | Desarrolladora Full-Stack |

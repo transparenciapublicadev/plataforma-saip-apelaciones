@@ -1,0 +1,203 @@
+---
+title: Flujo de Estados
+description: Máquinas de estado para solicitudes SAIP y expedientes de apelación TTAIP con transiciones válidas.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Solicitud SAIP — 7 Estados
+
+<Steps>
+1. **RECEPCIONADA** — Solicitud ingresada al sistema, asignada a la entidad correspondiente
+2. **EN_REVISION** — Un funcionario de la entidad está analizando la solicitud
+3. **PENDIENTE_INFORMACION** — Se requiere subsanación del ciudadano (solo en los 2 primeros días hábiles)
+4. **RESPONDIDA** — La entidad emitió respuesta (entrega total o parcial)
+5. **DENEGADA** — La entidad denegó el acceso con fundamento legal (Art. 15 Ley 27806)
+6. **CONCLUIDA** — Solicitud cerrada administrativamente
+7. **VENCIDA** — Silencio administrativo negativo (> 10 días hábiles sin respuesta)
+</Steps>
+
+### Diagrama de Transiciones — Solicitud SAIP
+
+```
+RECEPCIONADA ──→ EN_REVISION ──→ RESPONDIDA
+                    │               │
+                    ├──→ DENEGADA   │
+                    │               │
+                    ├──→ PENDIENTE_INFORMACION ──→ EN_REVISION
+                    │
+                    └──→ VENCIDA (automático, >10 días hábiles)
+
+RESPONDIDA ───→ CONCLUIDA
+DENEGADA ─────→ CONCLUIDA
+```
+
+### Transiciones Válidas
+
+| Estado Origen | Estados Destino |
+|---------------|-----------------|
+| `RECEPCIONADA` | `EN_REVISION` |
+| `EN_REVISION` | `RESPONDIDA`, `DENEGADA`, `PENDIENTE_INFORMACION`, `VENCIDA` |
+| `PENDIENTE_INFORMACION` | `EN_REVISION` |
+| `RESPONDIDA` | `CONCLUIDA` |
+| `DENEGADA` | `CONCLUIDA` |
+| `VENCIDA` | — (estado terminal) |
+| `CONCLUIDA` | — (estado terminal) |
+
+:::caution[Estados terminales]
+`VENCIDA` y `CONCLUIDA` son estados finales — no se puede transicionar fuera de ellos. Una solicitud vencida habilita automáticamente la apelación.
+:::
+
+## Expediente TTAIP — 15 Estados
+
+<Tabs>
+  <TabItem label="Flujo Principal">
+    <Steps>
+    1. **PENDIENTE_ELEVACION** — Apelación creada, esperando que la entidad eleve el expediente al TTAIP
+    2. **EN_CALIFICACION_1** — Primera calificación por un miembro del TTAIP
+    3. **EN_SUBSANACION** — Se requiere que el ciudadano subsane observaciones (2 días hábiles)
+    4. **EN_CALIFICACION_2** — Segunda calificación tras subsanación
+    5. **NOTIFICACION_SEGUNDA_CALIFICACION** — Notificando al ciudadano la resolución de segunda calificación
+    6. **EN_RESOLUCION** — El TTAIP está deliberando la resolución final (10 días hábiles)
+    7. **RESUELTO** — (genérico) Resolución final emitida
+    </Steps>
+  </TabItem>
+  <TabItem label="Estados de Resolución">
+    | Estado | Descripción |
+    |--------|-------------|
+    | `RESUELTO_FUNDADO` | Recurso amparado — se ordena entregar información |
+    | `RESUELTO_FUNDADO_EN_PARTE` | Recurso amparado parcialmente |
+    | `RESUELTO_INFUNDADO` | Recurso desestimado |
+    | `RESUELTO_INFUNDADO_EN_PARTE` | Recurso desestimado parcialmente |
+    | `RESUELTO_IMPROCEDENTE` | No cumple requisitos formales |
+    | `CONCLUSION_SUSTRACCION_MATERIA` | Entidad entregó información durante trámite |
+    | `CONCLUSION_DESISTIMIENTO` | Ciudadano desistió voluntariamente |
+    | `TENER_POR_NO_PRESENTADO` | Ciudadano no subsanó en plazo |
+  </TabItem>
+</Tabs>
+
+### Diagrama de Transiciones — Expediente TTAIP
+
+```
+PENDIENTE_ELEVACION
+    │
+    ▼
+EN_CALIFICACION_1
+    │
+    ├──→ RESUELTO_IMPROCEDENTE (rechazo definitivo)
+    │
+    ▼
+EN_SUBSANACION
+    │
+    ├──→ TENER_POR_NO_PRESENTADO (no subsanó en 2 días hábiles)
+    │
+    ▼
+EN_CALIFICACION_2
+    │
+    ├──→ RESUELTO_IMPROCEDENTE (rechazo definitivo)
+    │
+    ▼
+NOTIFICACION_SEGUNDA_CALIFICACION
+    │
+    ▼
+EN_RESOLUCION
+    │
+    ├──→ RESUELTO_FUNDADO
+    ├──→ RESUELTO_FUNDADO_EN_PARTE
+    ├──→ RESUELTO_INFUNDADO
+    ├──→ RESUELTO_INFUNDADO_EN_PARTE
+    ├──→ RESUELTO_IMPROCEDENTE
+    ├──→ CONCLUSION_SUSTRACCION_MATERIA
+    └──→ CONCLUSION_DESISTIMIENTO
+```
+
+### Transiciones Válidas
+
+| Estado Origen | Estados Destino |
+|---------------|-----------------|
+| `PENDIENTE_ELEVACION` | `EN_CALIFICACION_1` |
+| `EN_CALIFICACION_1` | `EN_SUBSANACION`, `RESUELTO_IMPROCEDENTE` |
+| `EN_SUBSANACION` | `EN_CALIFICACION_2`, `TENER_POR_NO_PRESENTADO` |
+| `EN_CALIFICACION_2` | `NOTIFICACION_SEGUNDA_CALIFICACION`, `RESUELTO_IMPROCEDENTE` |
+| `NOTIFICACION_SEGUNDA_CALIFICACION` | `EN_RESOLUCION` |
+| `EN_RESOLUCION` | Cualquier estado `RESUELTO_*`, `CONCLUSION_*` |
+| `RESUELTO_*` | — (estados terminales) |
+| `TENER_POR_NO_PRESENTADO` | — (estado terminal) |
+| `CONCLUSION_*` | — (estados terminales) |
+
+## Enumeraciones Java
+
+<Tabs>
+  <TabItem label="EstadoSolicitud">
+    ```java
+    public enum EstadoSolicitud {
+        RECEPCIONADA,
+        EN_REVISION,
+        PENDIENTE_INFORMACION,
+        RESPONDIDA,
+        DENEGADA,
+        CONCLUIDA,
+        VENCIDA
+    }
+    ```
+  </TabItem>
+  <TabItem label="EstadoApelacion">
+    ```java
+    public enum EstadoApelacion {
+        PENDIENTE_ELEVACION,
+        EN_CALIFICACION_1,
+        EN_SUBSANACION,
+        EN_CALIFICACION_2,
+        NOTIFICACION_SEGUNDA_CALIFICACION,
+        EN_RESOLUCION,
+        RESUELTO_FUNDADO,
+        RESUELTO_FUNDADO_EN_PARTE,
+        RESUELTO_INFUNDADO,
+        RESUELTO_INFUNDADO_EN_PARTE,
+        RESUELTO_IMPROCEDENTE,
+        CONCLUSION_SUSTRACCION_MATERIA,
+        CONCLUSION_DESISTIMIENTO,
+        TENER_POR_NO_PRESENTADO
+    }
+    ```
+  </TabItem>
+  <TabItem label="DecisionResolucion">
+    ```java
+    public enum DecisionResolucion {
+        ADMISIBLE,
+        ADMITIDO,
+        IMPROCEDENTE,
+        FUNDADO,
+        FUNDADO_EN_PARTE,
+        INFUNDADO,
+        INFUNDADO_EN_PARTE,
+        CONCLUSION_SUSTRACCION_MATERIA,
+        CONCLUSION_DESISTIMIENTO,
+        TENER_POR_NO_PRESENTADO
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Mobile — Estados Simplificados
+
+En la app mobile, los estados de apelación se mapean a un enum simplificado para la UI:
+
+```kotlin
+enum class EstadoApelacion {
+    PENDIENTE,
+    EN_CALIFICACION,
+    EN_SUBSANACION,
+    SUBSANACION_PRESENTADA,
+    PRIMERA_RESOLUCION,
+    SEGUNDA_RESOLUCION,
+    RESUELTO_FUNDADO,
+    RESUELTO_FUNDADO_EN_PARTE,
+    RESUELTO_INFUNDADO,
+    RESUELTO_INFUNDADO_EN_PARTE,
+    RESUELTO_IMPROCEDENTE,
+    CONCLUSION_SUSTRACCION_MATERIA,
+    CONCLUSION_DESISTIMIENTO,
+    TENER_POR_NO_PRESENTADO,
+}
+```

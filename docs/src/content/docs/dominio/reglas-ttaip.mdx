@@ -1,0 +1,157 @@
+---
+title: Reglas TTAIP
+description: Reglas de negocio del Tribunal de Transparencia para calificación, admisión y resolución de apelaciones.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Proceso de Apelación ante el TTAIP
+
+Cuando un ciudadano no está conforme con la respuesta (o ausencia de respuesta) de una entidad pública, puede apelar ante el **Tribunal de Transparencia y Acceso a la Información Pública (TTAIP)**.
+
+## Reglas de Negocio
+
+### BR-TTAIP-001 — Plazo para Apelar
+
+El ciudadano tiene **15 días calendario** desde la recepción de la respuesta de la entidad para presentar el recurso de apelación.
+
+### BR-TTAIP-002 — Elevación
+
+La entidad tiene **2 días hábiles** para elevar (remitir) el expediente al TTAIP.
+
+### BR-TTAIP-003 — Primera Calificación
+
+El TTAIP tiene **7 días** para realizar la primera calificación, que genera una **Primera Resolución**:
+
+| Decisión | Resultado | Estado |
+|----------|-----------|--------|
+| Admisible | Pasa a subsanación (si hay observaciones) | `EN_SUBSANACION` |
+| Improcedente | Rechazo definitivo | `RESUELTO_IMPROCEDENTE` |
+
+### BR-TTAIP-004 — Subsanación
+
+El ciudadano tiene **2 días hábiles** para subsanar las observaciones. Si NO subsana en plazo, se genera resolución `TENER POR NO PRESENTADO` y el proceso finaliza.
+
+### BR-TTAIP-005 — Segunda Calificación
+
+Genera una **Segunda Resolución**:
+
+| Decisión | Resultado | Estado |
+|----------|-----------|--------|
+| Admitido | Pasa a trámite | `NOTIFICACION_SEGUNDA_CALIFICACION` |
+| Improcedente | Rechazo definitivo | `RESUELTO_IMPROCEDENTE` |
+
+### BR-TTAIP-006 — Notificación Post-Segunda Calificación
+
+La resolución de segunda calificación **debe notificarse al ciudadano**. Solo después de la notificación correcta inicia el plazo de resolución final.
+
+### BR-TTAIP-007 — Resolución Final
+
+El TTAIP tiene **10 días hábiles** para emitir la resolución final con una de las siguientes decisiones:
+
+<CardGrid>
+  <Card title="Fundado" icon="approve-check">
+    Se ampara el recurso y se ordena entregar la información.
+  </Card>
+  <Card title="Fundado en parte" icon="approve-check">
+    Se ampara parcialmente, ordenando entrega parcial.
+  </Card>
+  <Card title="Infundado" icon="close">
+    Se desestima el recurso, confirmando la conducta de la entidad.
+  </Card>
+  <Card title="Infundado en parte" icon="close">
+    Se desestima parcialmente.
+  </Card>
+</CardGrid>
+
+| Decisión adicional | Descripción |
+|-------------------|-------------|
+| Improcedente | No cumple requisitos formales o de fondo |
+| Conclusión por sustracción de la materia | La entidad entregó la información durante el trámite |
+| Conclusión por desistimiento | El ciudadano desiste voluntariamente |
+
+## Calificación ↔ Resolución Mapping
+
+Cada etapa de calificación genera una resolución con su `TipoResolucion`:
+
+<Tabs>
+  <TabItem label="Primera Calificación">
+    **TipoResolucion**: `PRIMERA_CALIFICACION`
+
+    | Decisión | Estado resultante |
+    |----------|-------------------|
+    | `ADMISIBLE` | `EN_SUBSANACION` |
+    | `IMPROCEDENTE` | `RESUELTO_IMPROCEDENTE` |
+
+    Si el ciudadano no subsana en plazo:
+    | Decisión | Estado resultante |
+    |----------|-------------------|
+    | `TENER_POR_NO_PRESENTADO` | `TENER_POR_NO_PRESENTADO` |
+  </TabItem>
+  <TabItem label="Segunda Calificación">
+    **TipoResolucion**: `SEGUNDA_CALIFICACION`
+
+    | Decisión | Estado resultante |
+    |----------|-------------------|
+    | `ADMITIDO` | `NOTIFICACION_SEGUNDA_CALIFICACION` |
+    | `IMPROCEDENTE` | `RESUELTO_IMPROCEDENTE` |
+
+    :::note
+    La segunda calificación lee las observaciones de `resolucionPrimeraCalificacion` (NO de `resolucion`).
+    :::
+  </TabItem>
+  <TabItem label="Resolución Final">
+    **TipoResolucion**: `RESOLUCION_FINAL`
+
+    | Decisión | Estado resultante |
+    |----------|-------------------|
+    | `FUNDADO` | `RESUELTO_FUNDADO` |
+    | `FUNDADO_EN_PARTE` | `RESUELTO_FUNDADO_EN_PARTE` |
+    | `INFUNDADO` | `RESUELTO_INFUNDADO` |
+    | `INFUNDADO_EN_PARTE` | `RESUELTO_INFUNDADO_EN_PARTE` |
+    | `IMPROCEDENTE` | `RESUELTO_IMPROCEDENTE` |
+    | `CONCLUSION_SUSTRACCION_MATERIA` | `CONCLUSION_SUSTRACCION_MATERIA` |
+    | `CONCLUSION_DESISTIMIENTO` | `CONCLUSION_DESISTIMIENTO` |
+  </TabItem>
+</Tabs>
+
+:::danger[Regla crítica]
+El rechazo definitivo en primera o segunda calificación usa `DecisionResolucion.IMPROCEDENTE` — NUNCA `INADMISIBLE`. El valor `INADMISIBLE` solo se usa como resultado de calificación (`Calificacion.INADMISIBLE`), significando que requiere subsanación.
+:::
+
+## Formatos de Numeración
+
+| Tipo | Formato | Ejemplo |
+|------|---------|---------|
+| Expediente TTAIP | `NNNNN-AAAA-JUS/TTAIP` | `01560-2025-JUS/TTAIP` |
+| Cédula de Notificación | `CÉDULA DE NOTIFICACIÓN N.° NNNNN-AAAA-JUS/TTAIP` | `15203-2025-JUS/TTAIP` |
+| Resolución | `RESOLUCIÓN N.° NNNNNN-AAAA-JUS/TTAIP-[SALA]` | `001595-2025-JUS/TTAIP-PRIMERA SALA` |
+
+## Reglas de Notificación y Reproceso
+
+| Regla | Detalle |
+|-------|---------|
+| BR-REP-001 | Cédula rechazada NO se edita — se conserva como histórico |
+| BR-REP-002 | Ante rechazo, se genera nueva cédula con ID correlativo |
+| BR-REP-003 | Expediente en `EN_PROCESO_DE_SUBSANACION` mientras haya rechazo sin resolver |
+| BR-REP-004 | Etapa cierra solo cuando ambas partes tienen `NOTIFICADO` |
+
+## DTO de Apelación — Tres Resoluciones
+
+El `ApelacionDTO` expone tres campos separados de resolución:
+
+```java
+public record ApelacionDTO(
+    Long id,
+    String expediente,
+    String estado,
+    // ...
+    ResolucionDTO resolucion,                     // Final
+    ResolucionDTO resolucionPrimeraCalificacion,   // 1ª calificación
+    ResolucionDTO resolucionSegundaCalificacion     // 2ª calificación
+) {}
+```
+
+:::tip
+Este diseño permite consultar el estado de cada etapa de calificación de forma independiente, sin ambigüedad sobre cuál resolución está activa.
+:::

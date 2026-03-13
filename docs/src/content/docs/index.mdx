@@ -1,0 +1,68 @@
+---
+title: Plataforma SAIP
+description: Sistema integral para la gestión de Solicitudes de Acceso a la Información Pública y apelaciones ante el Tribunal de Transparencia del Perú.
+template: splash
+hero:
+  tagline: Documentación técnica del sistema de gestión de Solicitudes de Acceso a la Información Pública (SAIP) y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP).
+  actions:
+    - text: Comenzar
+      link: /introduccion/descripcion-general/
+      icon: right-arrow
+    - text: Ver Arquitectura
+      link: /introduccion/arquitectura/
+      icon: seti:config
+      variant: secondary
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Módulos del Sistema
+
+<CardGrid stagger>
+  <Card title="Backend — Spring Boot 4" icon="setting">
+    API REST con Java 21, Spring Data JPA, MySQL, Spring Security y JWT.
+    Exposición de OpenAPI spec como contrato formal entre módulos.
+  </Card>
+
+  <Card title="Frontend — Angular 21" icon="laptop">
+    SPA con TypeScript 5.9, Tailwind CSS 4.1, SSR con Express.
+    Componentes standalone, signals y change detection OnPush.
+  </Card>
+
+  <Card title="Mobile — Android Compose" icon="rocket">
+    App nativa con Kotlin 2.3, Jetpack Compose, Material 3, Navigation 3.
+    Arquitectura offline-first con SQLDelight y Retrofit.
+  </Card>
+
+  <Card title="Dominio SAIP/TTAIP" icon="document">
+    Reglas de negocio de la Ley N° 27806, plazos, estados, calificaciones
+    y resoluciones del Tribunal de Transparencia.
+  </Card>
+</CardGrid>
+
+---
+
+## Explora la documentación
+
+<CardGrid>
+  <LinkCard
+    title="Descripción General"
+    description="Visión completa del proyecto, objetivos y alcance del sistema."
+    href="/introduccion/descripcion-general/"
+  />
+  <LinkCard
+    title="Arquitectura del Sistema"
+    description="Arquitectura API-First, diagrama de capas y flujo de datos entre módulos."
+    href="/introduccion/arquitectura/"
+  />
+  <LinkCard
+    title="Guía de Inicio"
+    description="Instrucciones para configurar el entorno de desarrollo y ejecutar los módulos."
+    href="/introduccion/comenzar/"
+  />
+  <LinkCard
+    title="Reglas de Negocio"
+    description="Reglas SAIP y TTAIP, plazos, estados y flujos de trabajo."
+    href="/dominio/reglas-saip/"
+  />
+</CardGrid>

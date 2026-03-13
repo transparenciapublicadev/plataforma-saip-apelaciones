@@ -1,0 +1,118 @@
+---
+title: Roles y Usuarios
+description: Sistema de roles, jerarquía de usuarios y permisos del sistema SAIP con herencia JPA JOINED.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+## Tipos de Usuario
+
+El sistema SAIP define **4 roles** con accesos y capacidades diferenciadas:
+
+<CardGrid>
+  <Card title="Ciudadano" icon="person">
+    Presenta solicitudes SAIP, recibe respuestas de entidades, y puede apelar ante el TTAIP si no está conforme.
+  </Card>
+  <Card title="Funcionario" icon="setting">
+    Oficial de una entidad pública que recibe y responde solicitudes asignadas a su institución.
+  </Card>
+  <Card title="Miembro TTAIP" icon="approve-check-circle">
+    Vocal del Tribunal de Transparencia que califica y resuelve recursos de apelación.
+  </Card>
+  <Card title="Administrador" icon="warning">
+    Gestiona el sistema, usuarios, entidades y reportes globales.
+  </Card>
+</CardGrid>
+
+## Jerarquía de Entidades (JPA JOINED)
+
+```
+Usuario (base abstracta)
+  ├── Ciudadano      → dni, nombreCompleto, telefono, direccion
+  ├── Funcionario    → nombreCompleto, cargo, area, telefono, entidad
+  ├── MiembroTTAIP   → nombreCompleto, cargo, sala, especialidad
+  └── Administrador  → nombreCompleto, rol, permisos
+```
+
+:::note[Herencia JOINED]
+Cada tipo de usuario tiene su propia tabla en la base de datos (`ciudadanos`, `funcionarios`, `miembros_ttaip`, `administradores`) con una relación JOIN a la tabla base `usuarios`. Esto permite consultas específicas por tipo sin datos nulos.
+:::
+
+## Campos por Tipo de Usuario
+
+<Tabs>
+  <TabItem label="Ciudadano">
+    | Campo | Tipo | Descripción |
+    |-------|------|-------------|
+    | `dni` | `String (8)` | Documento Nacional de Identidad — único |
+    | `nombreCompleto` | `String` | Nombre y apellidos |
+    | `telefono` | `String` | Teléfono de contacto |
+    | `direccion` | `String` | Dirección de notificación |
+    | `solicitudes[]` | Relación | Solicitudes SAIP presentadas |
+    | `apelaciones[]` | Relación | Recursos de apelación |
+  </TabItem>
+  <TabItem label="Funcionario">
+    | Campo | Tipo | Descripción |
+    |-------|------|-------------|
+    | `nombreCompleto` | `String` | Nombre y apellidos |
+    | `cargo` | `String` | Cargo en la entidad |
+    | `area` | `String` | Área o unidad orgánica |
+    | `telefono` | `String` | Teléfono institucional |
+    | `entidad` | `Entidad` | Entidad pública (ManyToOne) |
+    | `respuestas[]` | Relación | Respuestas a solicitudes |
+  </TabItem>
+  <TabItem label="MiembroTTAIP">
+    | Campo | Tipo | Descripción |
+    |-------|------|-------------|
+    | `nombreCompleto` | `String` | Nombre y apellidos |
+    | `cargo` | `String` | Presidente de Sala / Vocal |
+    | `sala` | `String` | Primera Sala / Segunda Sala |
+    | `especialidad` | `String` | Área de especialización |
+    | `resoluciones[]` | Relación | Resoluciones emitidas |
+  </TabItem>
+  <TabItem label="Administrador">
+    | Campo | Tipo | Descripción |
+    |-------|------|-------------|
+    | `nombreCompleto` | `String` | Nombre y apellidos |
+    | `rol` | `String` | Rol administrativo |
+    | `permisos` | `String` | Permisos del sistema |
+  </TabItem>
+</Tabs>
+
+## Permisos por Rol
+
+| Acción | CIUDADANO | FUNCIONARIO | TTAIP | ADMIN |
+|--------|-----------|-------------|-------|-------|
+| Crear solicitud SAIP | ✅ | — | — | — |
+| Ver solicitud propia | ✅ | — | — | ✅ |
+| Ver solicitud entidad | — | ✅ | — | ✅ |
+| Responder solicitud | — | ✅ | — | — |
+| Crear apelación | ✅ | — | — | — |
+| Presentar subsanación | ✅ | — | — | — |
+| Calificar apelación | — | — | ✅ | — |
+| Emitir resolución | — | — | ✅ | — |
+| Gestionar usuarios | — | — | — | ✅ |
+| Gestionar entidades | — | — | — | ✅ |
+| Ver estadísticas globales | — | — | — | ✅ |
+| Ver reportes | — | — | ✅ | ✅ |
+
+## TTAIP — Salas y Vocales
+
+```
+Presidencia del TTAIP:
+  └── Julio César Mancilla Crespo
+
+Primera Sala:
+  ├── Tatiana Azucena Valverde Alvarado (Presidenta)
+  ├── Luis Guillermo Agurto Villegas (Vocal)
+  └── Segundo Ulises Zamora Barboza (Vocal)
+
+Segunda Sala:
+  ├── Junior Pichón De la Cruz (Presidente)
+  ├── Julio César Mancilla Crespo (Vocal)
+  └── Jessica Martha Rojas Barrueta (Vocal)
+```
+
+:::tip[Dato]
+El Dr. Julio César Mancilla Crespo ejerce tanto la Presidencia del TTAIP como la vocalía de la Segunda Sala.
+:::

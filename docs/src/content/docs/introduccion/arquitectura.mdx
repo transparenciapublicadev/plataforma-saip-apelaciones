@@ -1,0 +1,171 @@
+---
+title: Arquitectura del Sistema
+description: Arquitectura API-First, diagrama de capas, flujo de datos y patrones de diseño utilizados en la Plataforma SAIP.
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem, Card, CardGrid, FileTree } from '@astrojs/starlight/components';
+
+## Arquitectura API-First Contract
+
+La Plataforma SAIP sigue una arquitectura **API-First Contract** donde el backend es la **única fuente de verdad** para los datos persistentes, y el **OpenAPI spec** (`/v3/api-docs`) actúa como contrato formal entre módulos.
+
+```
+    Backend (Spring Boot)  ── OpenAPI spec (/v3/api-docs) ──┐
+         │                                                   │
+    MySQL (JPA)                                              │
+    REST API :8080                                           │
+         │                                                   │
+    ┌────┴────────────┐                            ┌────────┴─────────┐
+    │                 │                            │                  │
+Frontend (Angular) Mobile (Android)          openapi-typescript   Retrofit DTOs
+HttpClient + RxJS  Retrofit + OkHttp         genera schema.ts    mapeados a mano
+    SPA :4200      SQLDelight (offline)
+```
+
+:::note[Regla fundamental]
+Cada módulo se construye, testea y despliega de forma **independiente**. No comparten código fuente.
+:::
+
+---
+
+## Diagrama de Capas
+
+<Tabs>
+  <TabItem label="Vista General" icon="open-book">
+    ```
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    PRESENTATION LAYER                           │
+    │  Mobile: Screens + ViewModels (Compose + StateFlow)            │
+    │  Frontend: Pages + Components (Angular + Signals)              │
+    ├─────────────────────────────────────────────────────────────────┤
+    │                    DOMAIN LAYER (por módulo)                    │
+    │  Mobile: core/domain/ (Kotlin puro, local)                     │
+    │  Backend: model/entity/ + model/dto/ (Java)                    │
+    │  Frontend: models/ (TypeScript, generado desde OpenAPI)        │
+    ├─────────────────────────────────────────────────────────────────┤
+    │                    DATA LAYER                                   │
+    │  Mobile: Retrofit + SQLDelight (offline-first)                 │
+    │  Backend: Spring Data JPA + MySQL                              │
+    │  Frontend: HttpClient + RxJS → Backend REST API                │
+    ├─────────────────────────────────────────────────────────────────┤
+    │                    INFRASTRUCTURE                               │
+    │  Mobile: Retrofit + OkHttp + SQLDelight + Firebase (Auth/FCM) │
+    │  Backend: MySQL + Spring Security + springdoc-openapi           │
+    │  Frontend: SSR (Express) + Auth Interceptor + Guards           │
+    └─────────────────────────────────────────────────────────────────┘
+    ```
+  </TabItem>
+  <TabItem label="Backend" icon="setting">
+    ```
+    controller/     → REST endpoints (@RestController)
+    service/        → Business logic (@Service)
+    repository/     → Spring Data JPA interfaces
+    model/
+      ├── entity/   → JPA entities (@Entity)
+      └── dto/      → Request/Response DTOs (records)
+    exception/      → GlobalExceptionHandler + custom exceptions
+    security/       → SecurityConfig (Spring Security + JWT)
+    config/         → CorsConfig
+    ```
+  </TabItem>
+  <TabItem label="Frontend" icon="laptop">
+    ```
+    src/app/
+    ├── guards/          → Auth guards (CanActivateFn)
+    ├── interceptors/    → HTTP interceptors (JWT)
+    ├── models/          → TypeScript interfaces
+    ├── services/        → HTTP services (HttpClient + RxJS)
+    └── pages/           → 18 standalone components
+        ├── auth/        → Login, Registro
+        ├── ciudadano/   → Dashboard, NuevaSAIP, Detalle, Apelación
+        ├── funcionario/ → Dashboard, Responder, Detalle
+        ├── ttaip/       → Dashboard, Calificar, Resolver
+        └── admin/       → Dashboard
+    ```
+  </TabItem>
+  <TabItem label="Mobile" icon="rocket">
+    ```
+    app/                → MainActivity, NavDisplay, Screens, ViewModels, DI
+    core/
+    ├── domain/         → Kotlin puro (modelos, UseCases, interfaces)
+    ├── data/           → Repository impls, Mappers
+    ├── database/       → SQLDelight (5 tablas)
+    ├── network/        → Retrofit + Firebase (Auth/FCM)
+    └── common/         → Utilidades Android compartidas
+    ```
+  </TabItem>
+</Tabs>
+
+---
+
+## Estructura del Monorepo
+
+<FileTree>
+
+- plataforma-saip/
+  - saip-backend/ API REST (Spring Boot 4, Java 21, Maven)
+    - src/main/java/pe/gob/saip/backend/
+      - controller/ 10 REST controllers
+      - service/ 15 services
+      - repository/ 11 Spring Data JPA interfaces
+      - model/
+        - entity/ 11 JPA entities
+        - dto/ 14 DTOs
+      - exception/ GlobalExceptionHandler
+      - security/ SecurityConfig
+      - config/ CorsConfig
+  - saip-frontend/ SPA (Angular 21, TypeScript 5.9, Tailwind CSS)
+    - src/app/
+      - guards/
+      - interceptors/
+      - models/
+      - services/ 8 HTTP services
+      - pages/ 18 standalone components
+  - MiSAIP/ App Android (Kotlin 2.3, Compose, Material 3)
+    - app/ Screens, ViewModels, DI, Theme
+    - core/
+      - domain/ Modelos, UseCases, interfaces
+      - data/ Repositories, Mappers
+      - database/ SQLDelight
+      - network/ Retrofit, Firebase
+      - common/ Utilidades
+  - docs/ Esta documentación (Starlight / Astro)
+
+</FileTree>
+
+---
+
+## Patrones de Diseño
+
+<CardGrid>
+  <Card title="Layered Architecture" icon="setting">
+    Backend organizado en capas: Controller → Service → Repository → Entity. Cada capa tiene responsabilidades claras y no accede a capas no adyacentes.
+  </Card>
+  <Card title="Clean Architecture" icon="star">
+    Mobile sigue Clean Architecture con separación estricta: domain (Kotlin puro), data (implementaciones), network (infraestructura) y presentation (Compose + ViewModels).
+  </Card>
+  <Card title="API-First Contract" icon="document">
+    El OpenAPI spec del backend define el contrato formal. Frontend genera tipos TypeScript automáticamente. Mobile mapea DTOs manualmente.
+  </Card>
+  <Card title="Offline-First" icon="rocket">
+    Mobile implementa estrategia offline-first: SQLDelight como fuente local, Retrofit como remota, sincronización en background.
+  </Card>
+</CardGrid>
+
+---
+
+## Stack Tecnológico
+
+| Capa | Backend | Frontend | Mobile |
+|------|---------|----------|--------|
+| **Lenguaje** | Java 21 | TypeScript 5.9 | Kotlin 2.3 |
+| **Framework** | Spring Boot 4.0 | Angular 21 | Jetpack Compose |
+| **Base de datos** | MySQL (JPA/Hibernate) | — | SQLDelight |
+| **HTTP Client** | — | HttpClient + RxJS | Retrofit + OkHttp |
+| **Autenticación** | Spring Security + JWT | Auth Interceptor + Guards | Firebase Auth |
+| **UI** | — | Tailwind CSS 4.1 | Material 3 |
+| **Testing** | JUnit 5 + Mockito | Vitest | JUnit + MockK |
+| **DI** | Spring IoC | Angular DI (`inject()`) | Koin 4.1 |
+| **Navegación** | — | Angular Router (lazy) | Navigation 3 (`NavDisplay`) |
