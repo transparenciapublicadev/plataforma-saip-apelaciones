@@ -64,12 +64,7 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToDashboard = { tipoUsuario ->
                         backStack.clear()
-                        val route = dashboardRouteForRole(tipoUsuario)
-                        backStack.add(route)
-                        // Si hay deep link, navegar al detalle
-                        if (!deepLinkExpediente.isNullOrBlank()) {
-                            backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
-                        }
+                        backStack.add(NotificationPermissionGate(tipoUsuario.name))
                     }
                 )
             }
@@ -85,15 +80,27 @@ fun MiSAIPNavigation(
 
             entry<Login> {
                 LoginScreen(
-                    onLoginSuccess = { tipoUsuario, _, entidadId, nombreUsuario ->
+                    onLoginSuccess = { tipoUsuario, _, _, nombreUsuario ->
                         welcomeMessage = "¡Bienvenido $nombreUsuario!"
                         backStack.clear()
-                        backStack.add(dashboardRouteForRole(
-                            TipoUsuario.valueOf(tipoUsuario)
-                        ))
+                        backStack.add(NotificationPermissionGate(tipoUsuario))
                     },
                     onNavigateToRegister = {
                         backStack.add(Register)
+                    }
+                )
+            }
+
+            entry<NotificationPermissionGate> { key ->
+                NotificationPermissionGateScreen(
+                    onPermissionEnabled = {
+                        val route = dashboardRouteForRole(TipoUsuario.valueOf(key.tipoUsuario))
+                        backStack.clear()
+                        backStack.add(route)
+                        // Si hay deep link, navegar al detalle tras habilitar push.
+                        if (!deepLinkExpediente.isNullOrBlank()) {
+                            backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
+                        }
                     }
                 )
             }

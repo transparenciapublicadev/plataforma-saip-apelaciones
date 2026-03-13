@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -86,6 +87,15 @@ object FCMHelper {
         } else {
             true // Permiso no requerido en versiones anteriores
         }
+    }
+
+    /**
+     * Verifica si las push notifications están realmente habilitadas para la app.
+     * Incluye permiso runtime (Android 13+) y estado global de notificaciones.
+     */
+    fun arePushNotificationsEnabled(context: Context): Boolean {
+        return hasNotificationPermission(context) &&
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
     /**

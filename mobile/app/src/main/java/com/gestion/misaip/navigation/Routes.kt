@@ -13,6 +13,9 @@ data object Onboarding : NavKey
 data object Login : NavKey
 
 @Serializable
+data class NotificationPermissionGate(val tipoUsuario: String) : NavKey
+
+@Serializable
 data object Register : NavKey
 
 @Serializable
