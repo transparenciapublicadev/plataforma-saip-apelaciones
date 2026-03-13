@@ -110,6 +110,10 @@ skills-lock.json
 *.keystore
 secrets/
 
+# ── Antigravity AI Agent (solo local, NO subir al repo) ───
+.agents/
+.gemini/
+
 # ── Firebase (keep config, ignore generated) ────────────────
 firebase-debug.log
 .firebase/
