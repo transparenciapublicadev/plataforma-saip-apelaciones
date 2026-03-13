@@ -1,0 +1,72 @@
+---
+title: Despliegue Frontend
+description: Build de producción para Angular 21 con SSR Express y optimizaciones de rendimiento.
+---
+
+import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
+
+## Requisitos
+
+<CardGrid>
+  <Card title="Node.js 22+" icon="seti:javascript">
+    Runtime para build y SSR con Express.
+  </Card>
+  <Card title="npm 10+" icon="puzzle">
+    Gestión de dependencias.
+  </Card>
+</CardGrid>
+
+## Build de Producción
+
+<Steps>
+1. **Instalar** dependencias
+   ```bash
+   cd frontend && npm ci
+   ```
+2. **Compilar** para producción
+   ```bash
+   npm run build
+   ```
+   Esto genera el directorio `dist/` con los bundles optimizados y el servidor SSR.
+3. **Ejecutar** SSR con Express
+   ```bash
+   node dist/saip-frontend/server/server.mjs
+   ```
+</Steps>
+
+## Variables de Entorno
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `API_URL` | URL del backend REST API | `http://localhost:8080/api` |
+| `PORT` | Puerto del servidor SSR | `4000` |
+
+## Configuración
+
+```typescript
+// environment.prod.ts
+export const environment = {
+  production: true,
+  apiUrl: 'https://api.misaip.gob.pe/api',
+};
+```
+
+## Optimizaciones Incluidas
+
+| Optimización | Detalle |
+|-------------|---------|
+| Tree-shaking | Eliminación de código no usado |
+| Lazy loading | Rutas cargadas bajo demanda con `loadComponent` |
+| SSR | Server-Side Rendering con Express para SEO y rendimiento |
+| OnPush | Detección de cambios optimizada en todos los componentes |
+| AOT | Compilación Ahead-of-Time habilitada por defecto |
+
+## Consideraciones
+
+:::caution[SSR y localStorage]
+El interceptor de autenticación verifica `isPlatformBrowser` antes de acceder a `localStorage`. Esto es necesario porque durante el SSR no existe el objeto `window`.
+:::
+
+:::note[CORS]
+El backend debe incluir el dominio de producción del frontend en la configuración CORS permitida.
+:::

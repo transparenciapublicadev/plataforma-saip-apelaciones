@@ -1,0 +1,183 @@
+---
+title: Arquitectura Frontend
+description: Patrones de Angular 21 — standalone components, signals, OnPush, inject() y native control flow.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+El frontend sigue los patrones modernos de **Angular 21** con standalone components, signals para estado reactivo y Tailwind CSS para estilos.
+
+## Principios Arquitectónicos
+
+<CardGrid>
+  <Card title="Standalone Components" icon="seti:typescript">
+    Todos los componentes son standalone — sin NgModules. Es el default en Angular 21, no se declara `standalone: true`.
+  </Card>
+  <Card title="Signals" icon="rocket">
+    Estado local con `signal()`, estado derivado con `computed()`. NO usar `BehaviorSubject`.
+  </Card>
+  <Card title="OnPush" icon="approve-check">
+    `ChangeDetectionStrategy.OnPush` en todos los componentes para rendimiento óptimo.
+  </Card>
+  <Card title="inject()" icon="puzzle">
+    Inyección de dependencias con `inject()` en lugar de constructor injection.
+  </Card>
+</CardGrid>
+
+## Patrón de Componente
+
+```typescript
+@Component({
+  selector: 'app-solicitud-detalle',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgIcon, RouterLink, DatePipe],
+  providers: [provideIcons({ heroDocumentText })],
+  template: `
+    @if (loading()) {
+      <div class="flex justify-center p-8">
+        <span class="animate-spin">⏳</span>
+      </div>
+    } @else if (solicitud()) {
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold">
+          {{ solicitud()!.expediente }}
+        </h2>
+        <!-- Contenido -->
+      </div>
+    }
+  `,
+})
+export class SolicitudDetalleComponent {
+  // Inyección con inject()
+  private readonly solicitudService = inject(SolicitudService);
+  private readonly route = inject(ActivatedRoute);
+
+  // Estado con signals
+  solicitud = signal<Solicitud | null>(null);
+  loading = signal(false);
+  error = signal<string | null>(null);
+
+  // Estado derivado con computed
+  estadoColor = computed(() =>
+    this.getColorByEstado(this.solicitud()?.estado));
+
+  // Inputs/Outputs como funciones (NO decoradores)
+  expediente = input.required<string>();
+  cerrado = output<void>();
+}
+```
+
+## Reglas Obligatorias
+
+<Tabs>
+  <TabItem label="Componentes">
+    | Regla | Correcto | Incorrecto |
+    |-------|----------|------------|
+    | Standalone | *(default, no declarar)* | `standalone: true` |
+    | Change detection | `OnPush` siempre | `Default` |
+    | Inyección | `inject(Service)` | `constructor(private svc: Service)` |
+    | Inputs | `input()` / `input.required()` | `@Input()` |
+    | Outputs | `output()` | `@Output()` |
+    | Control flow | `@if`, `@for`, `@switch` | `*ngIf`, `*ngFor` |
+    | Estilos | Tailwind CSS | CSS puro para layout |
+  </TabItem>
+  <TabItem label="Estado">
+    | Regla | Correcto | Incorrecto |
+    |-------|----------|------------|
+    | Estado local | `signal()` | `BehaviorSubject` |
+    | Estado derivado | `computed()` | Getter / pipe manual |
+    | Async data | `resource()` | `async` pipe con Subject |
+    | Formularios | Reactive Forms (`FormBuilder`) | Template-driven forms |
+  </TabItem>
+  <TabItem label="Routing">
+    | Regla | Correcto | Incorrecto |
+    |-------|----------|------------|
+    | Carga de componentes | `loadComponent` (lazy) | Imports directos |
+    | Guards | `CanActivateFn` | Class-based guards |
+    | Interceptors | `HttpInterceptorFn` | Class-based interceptors |
+  </TabItem>
+</Tabs>
+
+## Native Control Flow
+
+```html
+<!-- @if — reemplaza *ngIf -->
+@if (loading()) {
+  <app-spinner />
+} @else if (error()) {
+  <div class="text-red-500">{{ error() }}</div>
+} @else {
+  <div>Contenido cargado</div>
+}
+
+<!-- @for — reemplaza *ngFor -->
+@for (solicitud of solicitudes(); track solicitud.id) {
+  <app-solicitud-card [solicitud]="solicitud" />
+} @empty {
+  <p>No hay solicitudes registradas.</p>
+}
+
+<!-- @switch — reemplaza ngSwitch -->
+@switch (estado()) {
+  @case ('RECEPCIONADA') { <span class="text-blue-500">Recepcionada</span> }
+  @case ('RESPONDIDA') { <span class="text-green-500">Respondida</span> }
+  @case ('VENCIDA') { <span class="text-red-500">Vencida</span> }
+  @default { <span>{{ estado() }}</span> }
+}
+```
+
+## Iconos con ng-icon
+
+```typescript
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { heroDocumentText, heroEye, heroPencil } from '@ng-icons/heroicons/outline';
+
+@Component({
+  imports: [NgIcon],
+  providers: [provideIcons({ heroDocumentText, heroEye, heroPencil })],
+  template: `
+    <ng-icon name="heroDocumentText" class="text-blue-500" />
+    <ng-icon name="heroEye" size="24" />
+  `,
+})
+```
+
+## SSR con Express
+
+El frontend usa **Angular SSR** con Express 5.1 para renderizado del lado del servidor:
+
+```typescript
+// server.ts
+import { APP_BASE_HREF } from '@angular/common';
+import { CommonEngine } from '@angular/ssr/node';
+import express from 'express';
+
+const server = express();
+const commonEngine = new CommonEngine();
+
+server.get('*', (req, res, next) => {
+  commonEngine
+    .render({ bootstrap, documentFilePath, url: req.originalUrl })
+    .then(html => res.send(html))
+    .catch(err => next(err));
+});
+```
+
+:::tip[SSR-Safe]
+Los servicios que acceden a `localStorage` o `window` deben verificar la plataforma:
+```typescript
+private readonly platformId = inject(PLATFORM_ID);
+
+if (isPlatformBrowser(this.platformId)) {
+  localStorage.setItem('usuario', JSON.stringify(data));
+}
+```
+:::
+
+## Flujo de Datos
+
+```
+Usuario → Componente (signals) → Service (HttpClient) → Backend REST API
+                                                            ↓
+Usuario ← Template (OnPush) ← signal.set() ← Observable ← Response JSON
+```

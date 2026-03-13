@@ -1,0 +1,233 @@
+---
+title: Datos Offline-First
+description: Arquitectura offline-first con SQLDelight como fuente local y Retrofit para sincronización con el backend.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+La app mobile implementa una **arquitectura offline-first**: los datos se leen primero desde la base de datos local (SQLDelight) y se sincronizan con el servidor cuando hay conectividad.
+
+## Flujo de Datos
+
+```
+User Action → ViewModel → UseCase → Repository Implementation
+                                        ├─ 1. Leer SQLDelight (local first)
+                                        ├─ 2. Si miss/stale → Retrofit REST API (10s timeout)
+                                        └─ 3. Guardar en local + emitir datos actualizados
+```
+
+<Steps>
+1. **Acción del usuario** — El ViewModel invoca el UseCase correspondiente
+2. **UseCase** delega al Repository
+3. **Repository** lee primero datos locales (SQLDelight) y los emite inmediatamente
+4. **Sincronización** — En paralelo, intenta obtener datos frescos del servidor (Retrofit, 10s timeout)
+5. **Actualización local** — Si la red responde, guarda en SQLDelight y emite datos actualizados
+6. **Sin conexión** — Si falla la red, los datos locales se mantienen sin cambio
+</Steps>
+
+## SQLDelight — 5 Tablas
+
+<Tabs>
+  <TabItem label="Esquema">
+    ```sql
+    -- Usuario.sq
+    CREATE TABLE Usuario (
+        id TEXT NOT NULL PRIMARY KEY,
+        email TEXT NOT NULL,
+        nombreCompleto TEXT NOT NULL,
+        tipoUsuario TEXT NOT NULL,
+        token TEXT,
+        ultimoAcceso INTEGER
+    );
+
+    -- Solicitud.sq
+    CREATE TABLE Solicitud (
+        id TEXT NOT NULL PRIMARY KEY,
+        expediente TEXT NOT NULL UNIQUE,
+        asunto TEXT NOT NULL,
+        descripcion TEXT NOT NULL,
+        estado TEXT NOT NULL,
+        ciudadanoId TEXT NOT NULL,
+        entidadId TEXT NOT NULL,
+        fechaPresentacion INTEGER NOT NULL,
+        fechaLimite INTEGER,
+        pendienteSubida INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (ciudadanoId) REFERENCES Usuario(id)
+    );
+
+    -- Apelacion.sq
+    CREATE TABLE Apelacion (
+        id TEXT NOT NULL PRIMARY KEY,
+        expedienteTTAIP TEXT NOT NULL UNIQUE,
+        solicitudId TEXT NOT NULL,
+        estado TEXT NOT NULL,
+        fundamentos TEXT NOT NULL,
+        fechaPresentacion INTEGER NOT NULL,
+        pendienteSubida INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (solicitudId) REFERENCES Solicitud(id)
+    );
+
+    -- EntidadPublica.sq
+    CREATE TABLE EntidadPublica (
+        id TEXT NOT NULL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        acronimo TEXT NOT NULL UNIQUE,
+        direccion TEXT
+    );
+
+    -- Notificacion.sq
+    CREATE TABLE Notificacion (
+        id TEXT NOT NULL PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        mensaje TEXT NOT NULL,
+        tipo TEXT NOT NULL,
+        leida INTEGER NOT NULL DEFAULT 0,
+        fecha INTEGER NOT NULL,
+        referenciaId TEXT,
+        referenciaTipo TEXT
+    );
+    ```
+  </TabItem>
+  <TabItem label="Queries">
+    ```sql
+    -- Solicitud.sq (queries)
+    getByUsuarioId:
+    SELECT * FROM Solicitud
+    WHERE ciudadanoId = ?
+    ORDER BY fechaPresentacion DESC;
+
+    getByExpediente:
+    SELECT * FROM Solicitud
+    WHERE expediente = ?;
+
+    getPendientesSubida:
+    SELECT * FROM Solicitud
+    WHERE pendienteSubida = 1;
+
+    insertOrReplace:
+    INSERT OR REPLACE INTO Solicitud
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+    deleteById:
+    DELETE FROM Solicitud WHERE id = ?;
+
+    -- Notificacion.sq (queries)
+    getNoLeidas:
+    SELECT * FROM Notificacion
+    WHERE leida = 0
+    ORDER BY fecha DESC;
+
+    marcarLeida:
+    UPDATE Notificacion SET leida = 1 WHERE id = ?;
+    ```
+  </TabItem>
+</Tabs>
+
+## Retrofit — REST API Client
+
+```kotlin
+// OkHttp con timeout de 10 segundos
+val okHttpClient = OkHttpClient.Builder()
+    .connectTimeout(10, TimeUnit.SECONDS)
+    .readTimeout(10, TimeUnit.SECONDS)
+    .writeTimeout(10, TimeUnit.SECONDS)
+    .addInterceptor(AuthInterceptor(credentialStorage))
+    .build()
+
+// Retrofit
+val retrofit = Retrofit.Builder()
+    .baseUrl("http://10.0.2.2:8080/api/") // localhost desde emulador
+    .client(okHttpClient)
+    .addConverterFactory(GsonConverterFactory.create())
+    .build()
+```
+
+:::note[IP del emulador]
+En el emulador Android, `10.0.2.2` apunta a `localhost` de la máquina host. En dispositivos físicos, usar la IP de red local del servidor.
+:::
+
+## Mapper Pattern
+
+Los Mappers convierten entre las 3 representaciones de datos:
+
+```
+Domain Model ←→ SQLDelight Entity ←→ Network DTO
+     ↑              ↑                    ↑
+  core/domain    core/database       core/network
+```
+
+```kotlin
+object SolicitudMapper {
+    // DB → Domain
+    fun toDomain(entity: SolicitudEntity): Solicitud = Solicitud(
+        id = entity.id,
+        expediente = entity.expediente,
+        asunto = entity.asunto,
+        descripcion = entity.descripcion,
+        estado = EstadoSolicitud.valueOf(entity.estado),
+        fechaPresentacion = Instant.fromEpochMilliseconds(entity.fechaPresentacion)
+            .toLocalDateTime(TimeZone.currentSystemDefault()),
+    )
+
+    // Domain → DB
+    fun toEntity(domain: Solicitud, pendienteSubida: Boolean = true) =
+        SolicitudEntity(
+            id = domain.id,
+            expediente = domain.expediente,
+            asunto = domain.asunto,
+            descripcion = domain.descripcion,
+            estado = domain.estado.name,
+            fechaPresentacion = domain.fechaPresentacion
+                .toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds(),
+            pendienteSubida = if (pendienteSubida) 1 else 0,
+        )
+
+    // DTO → Domain
+    fun toDomain(dto: SolicitudDTO): Solicitud = Solicitud(
+        id = dto.id.toString(),
+        expediente = dto.expediente,
+        asunto = dto.asunto,
+        descripcion = dto.descripcion ?: "",
+        estado = EstadoSolicitud.valueOf(dto.estado),
+    )
+}
+```
+
+## Sincronización Offline
+
+<CardGrid>
+  <Card title="pendienteSubida" icon="warning">
+    Flag en la tabla local que marca registros creados offline que aún no se han sincronizado con el servidor.
+  </Card>
+  <Card title="Fire-and-Forget" icon="rocket">
+    La sincronización se ejecuta en background (viewModelScope) sin bloquear la UI — si falla, se reintenta la próxima vez.
+  </Card>
+</CardGrid>
+
+```kotlin
+// Sync de datos pendientes
+suspend fun sincronizarPendientes() {
+    val pendientes = localDataSource.getPendientesSubida()
+    pendientes.forEach { solicitud ->
+        try {
+            val response = remoteDataSource.crear(mapper.toDto(solicitud))
+            // Actualizar local con ID del servidor
+            localDataSource.insertOrReplace(
+                mapper.toEntity(response, pendienteSubida = false)
+            )
+        } catch (e: Exception) {
+            // Mantener como pendiente — se reintentará
+        }
+    }
+}
+```
+
+## Seguridad Local
+
+| Concepto | Implementación |
+|----------|----------------|
+| Credenciales | `EncryptedSharedPreferences` de AndroidX Security |
+| Password hash | SHA-256 para login offline |
+| Token JWT | Almacenado cifrado, no en SQLDelight |
+| Logs | NUNCA loguear datos sensibles |
+| Timeout | 10 segundos en todas las llamadas de red |

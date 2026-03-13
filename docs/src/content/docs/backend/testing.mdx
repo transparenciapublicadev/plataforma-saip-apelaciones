@@ -1,0 +1,273 @@
+---
+title: Testing
+description: Estrategia de testing del backend — JUnit 5, Mockito, MockMvc y cobertura.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+El backend sigue un enfoque de **TDD (Test-Driven Development)** con cobertura objetivo del 80%.
+
+## Stack de Testing
+
+<CardGrid>
+  <Card title="JUnit 5" icon="approve-check">
+    Framework de testing principal con extensiones `MockitoExtension`.
+  </Card>
+  <Card title="Mockito" icon="puzzle">
+    Mocking de dependencias para tests unitarios aislados.
+  </Card>
+  <Card title="MockMvc" icon="rocket">
+    Tests de integración de controladores REST con Spring Context.
+  </Card>
+  <Card title="JaCoCo" icon="document">
+    Reporte de cobertura de código (target: 80%).
+  </Card>
+</CardGrid>
+
+## Tipos de Tests
+
+<Tabs>
+  <TabItem label="Unitarios (Service)">
+    Tests aislados de la capa de servicio con dependencias mockeadas:
+
+    ```java
+    @ExtendWith(MockitoExtension.class)
+    class SolicitudServiceTest {
+
+        @Mock
+        SolicitudRepository solicitudRepository;
+
+        @Mock
+        CiudadanoRepository ciudadanoRepository;
+
+        @Mock
+        EntidadRepository entidadRepository;
+
+        @InjectMocks
+        SolicitudService solicitudService;
+
+        @Test
+        void crear_debeGenerarExpedienteAutomatico() {
+            // Arrange
+            var request = new CrearSolicitudRequest(
+                "Asunto", "Descripción", 1L, 3L, true, true);
+            var ciudadano = new Ciudadano();
+            ciudadano.setId(1L);
+            var entidad = new Entidad();
+            entidad.setId(3L);
+
+            when(ciudadanoRepository.findById(1L))
+                .thenReturn(Optional.of(ciudadano));
+            when(entidadRepository.findById(3L))
+                .thenReturn(Optional.of(entidad));
+            when(solicitudRepository.save(any()))
+                .thenAnswer(inv -> {
+                    var s = inv.getArgument(0, Solicitud.class);
+                    s.setId(42L);
+                    return s;
+                });
+
+            // Act
+            var resultado = solicitudService.crear(request);
+
+            // Assert
+            assertNotNull(resultado);
+            assertNotNull(resultado.getExpediente());
+            assertTrue(resultado.getExpediente()
+                .startsWith("SAIP-2025-"));
+            assertEquals(EstadoSolicitud.RECEPCIONADA,
+                resultado.getEstado());
+            verify(solicitudRepository).save(any());
+        }
+
+        @Test
+        void findByExpediente_noExiste_debeLanzarExcepcion() {
+            when(solicitudRepository.findByExpediente("SAIP-2025-99999"))
+                .thenReturn(Optional.empty());
+
+            assertThrows(ResourceNotFoundException.class,
+                () -> solicitudService.findByExpediente(
+                    "SAIP-2025-99999"));
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Unitarios (Entity)">
+    Tests de validación de entidades JPA y lógica de dominio:
+
+    ```java
+    class SolicitudEntityTest {
+
+        private Validator validator;
+
+        @BeforeEach
+        void setUp() {
+            ValidatorFactory factory =
+                Validation.buildDefaultValidatorFactory();
+            validator = factory.getValidator();
+        }
+
+        @Test
+        void solicitud_sinAsunto_debeViolacion() {
+            var solicitud = new Solicitud();
+            solicitud.setDescripcion("Descripción válida");
+            // asunto es null
+
+            var violations = validator.validate(solicitud);
+
+            assertFalse(violations.isEmpty());
+            assertTrue(violations.stream()
+                .anyMatch(v -> v.getPropertyPath()
+                    .toString().equals("asunto")));
+        }
+
+        @Test
+        void solicitud_valida_sinViolaciones() {
+            var solicitud = crearSolicitudValida();
+
+            var violations = validator.validate(solicitud);
+
+            assertTrue(violations.isEmpty());
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Integración (Controller)">
+    Tests de endpoints REST con `MockMvc` y contexto Spring completo:
+
+    ```java
+    @SpringBootTest
+    @AutoConfigureMockMvc
+    class SolicitudRestControllerIT {
+
+        @Autowired
+        MockMvc mvc;
+
+        @Autowired
+        ObjectMapper objectMapper;
+
+        @MockBean
+        SolicitudService solicitudService;
+
+        @Test
+        void listar_debeRetornar200() throws Exception {
+            when(solicitudService.findAll())
+                .thenReturn(List.of());
+
+            mvc.perform(get("/api/solicitudes")
+                    .header("Authorization", "Bearer " + testToken))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(
+                    MediaType.APPLICATION_JSON));
+        }
+
+        @Test
+        void crear_requestInvalido_debeRetornar400() throws Exception {
+            var request = new CrearSolicitudRequest(
+                "", "", null, null, false, false); // campos vacíos
+
+            mvc.perform(post("/api/solicitudes")
+                    .header("Authorization", "Bearer " + testToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void crear_sinAuth_debeRetornar401() throws Exception {
+            mvc.perform(post("/api/solicitudes")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}"))
+                .andExpect(status().isUnauthorized());
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Ciclo TDD
+
+<Steps>
+1. **RED** — Escribir un test que falle describiendo el comportamiento esperado
+2. **GREEN** — Escribir el código mínimo para que el test pase
+3. **REFACTOR** — Limpiar el código manteniendo todos los tests verdes
+</Steps>
+
+## Categorías de Tests
+
+| Categoría | Cantidad | Descripción |
+|-----------|----------|-------------|
+| Controller Tests | ~12 | Endpoints REST con MockMvc |
+| Service Tests | ~44 | Lógica de negocio con Mockito |
+| Entity Tests | ~26 | Validaciones Jakarta y dominio |
+| **Total** | **~82** | — |
+
+## Ejecutar Tests
+
+```bash
+# Ejecutar todos los tests
+cd backend && ./mvnw test           # Linux/macOS
+cd backend && .\mvnw.cmd test       # Windows
+
+# Test específico
+./mvnw test -Dtest=SolicitudServiceTest
+
+# Test con reporte de cobertura
+./mvnw test jacoco:report
+
+# Ver reporte en navegador
+# target/site/jacoco/index.html
+```
+
+:::tip[Pre-Commit Gate]
+El test suite DEBE pasar al 100% **antes** de cada commit. Un commit con tests fallando contamina `main` y rompe CI.
+:::
+
+## Estructura de Tests
+
+```
+src/test/java/pe/gob/saip/backend/
+├── controller/
+│   ├── AuthRestControllerTest.java
+│   ├── SolicitudRestControllerTest.java
+│   ├── ApelacionRestControllerTest.java
+│   └── ...
+├── service/
+│   ├── SolicitudServiceTest.java
+│   ├── ApelacionServiceTest.java
+│   ├── TTAIPServiceTest.java
+│   ├── JwtServiceTest.java
+│   └── ...
+└── model/
+    └── entity/
+        ├── SolicitudEntityTest.java
+        ├── ApelacionEntityTest.java
+        └── ...
+```
+
+## Convenciones de Nomenclatura
+
+```java
+// Patrón: metodo_condicion_resultadoEsperado
+@Test
+void crear_asuntoVacio_debeLanzarValidationException() { }
+
+@Test
+void findByExpediente_expedienteExiste_debeRetornarSolicitud() { }
+
+@Test
+void admitirApelacion_estadoIncorrecto_debeLanzarIllegalState() { }
+```
+
+## Configuración para Pruebas
+
+El backend usa un perfil separado para CI con **H2** en memoria:
+
+```properties
+# application-test.properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+jwt.secret=claveTestDePruebasNoUsarEnProduccion
+```

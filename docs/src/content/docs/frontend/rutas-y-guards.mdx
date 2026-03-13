@@ -1,0 +1,202 @@
+---
+title: Rutas y Guards
+description: Sistema de rutas lazy-loaded, guards de autenticación y autorización por rol, e interceptor HTTP.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+El frontend implementa **20+ rutas lazy-loaded** protegidas por guards funcionales y un interceptor HTTP para inyección automática de JWT.
+
+## Mapa de Rutas
+
+<Tabs>
+  <TabItem label="Públicas">
+    | Ruta | Componente | Descripción |
+    |------|-----------|-------------|
+    | `/` | `HomeComponent` | Landing page |
+    | `/login` | `LoginComponent` | Inicio de sesión |
+    | `/registro` | `RegistroComponent` | Registro ciudadano |
+    | `**` | *(redirect)* | Redirige a `/` |
+  </TabItem>
+  <TabItem label="Ciudadano">
+    Protegidas con `tipoUsuarioGuard('CIUDADANO')`:
+
+    | Ruta | Componente | Descripción |
+    |------|-----------|-------------|
+    | `/ciudadano` | `CiudadanoDashboardComponent` | Dashboard |
+    | `/ciudadano/nueva-saip` | `NuevaSaipComponent` | Crear solicitud |
+    | `/ciudadano/solicitud/:expediente` | `SolicitudDetalleComponent` | Detalle solicitud |
+    | `/ciudadano/nueva-apelacion` | `NuevaApelacionComponent` | Nueva apelación |
+    | `/ciudadano/apelacion/nueva/:exp` | `NuevaApelacionComponent` | Apelar solicitud |
+    | `/ciudadano/subsanacion/:exp` | `SubsanacionComponent` | Subsanar apelación |
+  </TabItem>
+  <TabItem label="Funcionario">
+    Protegidas con `tipoUsuarioGuard('FUNCIONARIO')`:
+
+    | Ruta | Componente | Descripción |
+    |------|-----------|-------------|
+    | `/funcionario` | `FuncionarioDashboardComponent` | Dashboard |
+    | `/funcionario/solicitud/:exp` | `FuncionarioSolicitudDetalleComponent` | Detalle |
+    | `/funcionario/responder/:exp` | `FuncionarioResponderComponent` | Responder SAIP |
+  </TabItem>
+  <TabItem label="TTAIP">
+    Protegidas con `tipoUsuarioGuard('TTAIP')`:
+
+    | Ruta | Componente | Descripción |
+    |------|-----------|-------------|
+    | `/ttaip` | `TtaipDashboardComponent` | Dashboard |
+    | `/ttaip/calificar/:exp` | `TtaipCalificarComponent` | 1ª calificación |
+    | `/ttaip/segunda-calificacion/:exp` | `TtaipSegundaCalificacionComponent` | 2ª calificación |
+    | `/ttaip/resolver/:exp` | `TtaipResolverComponent` | Resolución final |
+    | `/ttaip/apelacion/:exp` | `TtaipResolucionDetalleComponent` | Detalle apelación |
+    | `/ttaip/resolucion/:exp` | `TtaipResolucionDetalleComponent` | Detalle resolución |
+    | `/ttaip/procesos-disciplinarios` | `ProcesoDisciplinarioComponent` | Disciplinarios |
+  </TabItem>
+  <TabItem label="Admin">
+    Protegidas con `tipoUsuarioGuard('ADMINISTRADOR')`:
+
+    | Ruta | Componente | Descripción |
+    |------|-----------|-------------|
+    | `/admin` | `AdminDashboardComponent` | Dashboard completo |
+  </TabItem>
+</Tabs>
+
+## Definición de Rutas
+
+```typescript
+// app.routes.ts
+export const routes: Routes = [
+  {
+    path: '',
+    loadComponent: () => import('./pages/home/home.component')
+      .then(m => m.HomeComponent),
+  },
+  {
+    path: 'login',
+    loadComponent: () => import('./pages/auth/login/login.component')
+      .then(m => m.LoginComponent),
+  },
+  {
+    path: 'ciudadano',
+    canActivate: [authGuard, tipoUsuarioGuard('CIUDADANO')],
+    loadComponent: () =>
+      import('./pages/ciudadano/ciudadano-dashboard/ciudadano-dashboard.component')
+        .then(m => m.CiudadanoDashboardComponent),
+  },
+  // ... 20+ rutas más
+  {
+    path: '**',
+    redirectTo: '',
+  },
+];
+```
+
+:::tip[Lazy Loading]
+Todas las rutas usan `loadComponent` para carga diferida (lazy loading), lo que mejora el tiempo de carga inicial — solo se descarga el código del componente cuando el usuario navega a esa ruta.
+:::
+
+## Guards
+
+### authGuard
+
+Guard funcional (`CanActivateFn`) que verifica si el usuario tiene sesión activa:
+
+```typescript
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.estaLogueado()) {
+    return true;
+  }
+
+  router.navigate(['/login']);
+  return false;
+};
+```
+
+### tipoUsuarioGuard
+
+**Factory function** que genera un guard parametrizado por tipo de usuario. La comparación es **case-insensitive**:
+
+```typescript
+export function tipoUsuarioGuard(tipoRequerido: string): CanActivateFn {
+  return (route, state) => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+
+    const tipoUsuario = authService.getTipoUsuario();
+
+    if (tipoUsuario?.toUpperCase() === tipoRequerido.toUpperCase()) {
+      return true;
+    }
+
+    router.navigate(['/login']);
+    return false;
+  };
+}
+```
+
+**Uso en rutas:**
+```typescript
+canActivate: [authGuard, tipoUsuarioGuard('CIUDADANO')]
+canActivate: [authGuard, tipoUsuarioGuard('FUNCIONARIO')]
+canActivate: [authGuard, tipoUsuarioGuard('TTAIP')]
+canActivate: [authGuard, tipoUsuarioGuard('ADMINISTRADOR')]
+```
+
+## Interceptor HTTP
+
+### authInterceptor
+
+Interceptor funcional (`HttpInterceptorFn`) que inyecta automáticamente el token JWT en todas las peticiones HTTP. Es **SSR-safe**:
+
+```typescript
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const platformId = inject(PLATFORM_ID);
+
+  // No ejecutar en SSR
+  if (!isPlatformBrowser(platformId)) {
+    return next(req);
+  }
+
+  // Extraer token del localStorage
+  const sesionStr = localStorage.getItem('usuario');
+  if (!sesionStr) return next(req);
+
+  const sesion = JSON.parse(sesionStr);
+  const token = sesion?.token;
+
+  if (token) {
+    const clonedReq = req.clone({
+      setHeaders: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return next(clonedReq);
+  }
+
+  return next(req);
+};
+```
+
+**Registro en `app.config.ts`:**
+```typescript
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+    provideHttpClient(withInterceptors([authInterceptor])),
+  ],
+};
+```
+
+## Flujo de Navegación
+
+<Steps>
+1. **Usuario accede a ruta** — El router evalúa los guards en orden
+2. **authGuard** verifica sesión activa en localStorage
+3. **tipoUsuarioGuard** verifica que el rol coincida con la ruta
+4. **Si pasa** → Se carga el componente (lazy loading)
+5. **Si falla** → Redirige a `/login`
+6. **En cada petición HTTP** → El interceptor adjunta el JWT token automáticamente
+</Steps>

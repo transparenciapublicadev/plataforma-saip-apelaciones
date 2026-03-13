@@ -1,0 +1,112 @@
+---
+title: Mobile — Android
+description: Módulo mobile de la Plataforma SAIP — App Android con Kotlin, Jetpack Compose y Material 3.
+---
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem, FileTree, Badge } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Kotlin 2.3" icon="seti:kotlin">
+    Exclusivamente Kotlin — NO Java, NO XML.
+  </Card>
+  <Card title="Jetpack Compose" icon="puzzle">
+    UI declarativa con Material 3 Design.
+  </Card>
+  <Card title="Navigation 3" icon="right-arrow">
+    Navegación moderna con `NavDisplay` + `NavKey`.
+  </Card>
+  <Card title="Offline-First" icon="approve-check">
+    SQLDelight local + Retrofit para sincronización.
+  </Card>
+</CardGrid>
+
+## Stack Técnico
+
+| Tecnología | Versión | Propósito |
+|------------|---------|-----------|
+| Kotlin | 2.3.10 | Lenguaje exclusivo |
+| AGP | 9.1.0 | Android Gradle Plugin |
+| Gradle | 9.3.1 | Build system |
+| Jetpack Compose | Última BOM | UI declarativa |
+| Material 3 | Última | Design system |
+| Navigation 3 | Última | Navegación single-Activity |
+| Koin | 4.1.1 | Inyección de dependencias |
+| SQLDelight | 2.2.1 | Base de datos local |
+| Retrofit | 2.11.0 | HTTP client REST |
+| OkHttp | 4.12.0 | HTTP transport |
+| Firebase BOM | 34.10.0 | Auth + FCM push |
+| compileSdk | 36 | Target API level |
+| minSdk | 24 | Android 7.0+ |
+
+## Arquitectura Multi-Módulo
+
+<FileTree>
+- MiSAIP/
+  - app/
+    - src/main/java/.../
+      - MainActivity.kt (NavDisplay + single-Activity)
+      - screen/ (13 Screens — Composables)
+      - viewmodel/ (11 ViewModels)
+      - theme/ (Theme.kt — light + dark)
+      - di/ (6 Koin modules)
+      - messaging/ (NotificationPushHelper)
+  - core/
+    - domain/ (Kotlin puro — NO dependencias Android)
+      - model/ (Modelos de dominio)
+      - usecase/ (32 UseCases)
+      - repository/ (Interfaces)
+    - data/ (Implementaciones)
+      - repository/ (5 Repository impls)
+      - mapper/ (4 Mappers)
+    - database/ (SQLDelight)
+      - 5 tablas locales
+    - network/ (Retrofit + Firebase)
+      - datasource/ (RemoteDataSources)
+      - dto/ (DTOs de red)
+      - api/ (ApiServices Retrofit)
+    - common/ (Utilidades Android)
+  - gradle/
+    - libs.versions.toml (Version catalog)
+</FileTree>
+
+## Métricas del Módulo
+
+| Concepto | Cantidad |
+|----------|----------|
+| Screens (Composables) | 13 |
+| ViewModels | 11 |
+| Use Cases | 32 |
+| Repository Implementations | 5 |
+| Mappers | 4 |
+| Tablas SQLDelight | 5 |
+| Koin DI Modules | 6 |
+
+## Ejecución
+
+```bash
+# Compilar debug APK (Windows)
+cd mobile && .\gradlew.bat assembleDebug
+
+# Compilar + ejecutar tests
+.\gradlew.bat clean compileDebugKotlin test
+
+# Solo tests unitarios
+.\gradlew.bat test
+```
+
+:::caution[Gradle Cache]
+Al modificar módulos `core/*`, usar siempre `clean` para evitar que el cache de Gradle enmascare errores de compilación:
+```bash
+.\gradlew.bat clean compileDebugKotlin test
+```
+:::
+
+## Subsecciones
+
+<CardGrid>
+  <LinkCard title="Arquitectura" href="/mobile/arquitectura/" description="Clean Architecture, capas, Koin DI" />
+  <LinkCard title="Navegación" href="/mobile/navegacion/" description="Navigation 3 con NavDisplay y NavKey" />
+  <LinkCard title="ViewModels" href="/mobile/viewmodels/" description="UiState + Events + StateFlow" />
+  <LinkCard title="Datos Offline" href="/mobile/datos-offline/" description="SQLDelight + Retrofit offline-first" />
+  <LinkCard title="Testing" href="/mobile/testing/" description="JUnit + MockK + Turbine + Compose Testing" />
+</CardGrid>

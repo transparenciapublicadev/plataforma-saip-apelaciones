@@ -1,0 +1,348 @@
+---
+title: Entidades JPA
+description: Modelos de dominio, jerarquía de herencia JOINED, relaciones y enumeraciones del backend.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps } from '@astrojs/starlight/components';
+
+## Jerarquía de Herencia
+
+El backend usa **JPA Inheritance JOINED** con `Usuario` como entidad base. Cada tipo de usuario tiene su propia tabla con campos específicos.
+
+```
+Usuario (base, @Inheritance(JOINED))
+  ├── Ciudadano     → dni, nombreCompleto, telefono, direccion
+  ├── Funcionario   → nombreCompleto, cargo, area, telefono, entidad
+  ├── MiembroTTAIP  → nombreCompleto, cargo, sala, especialidad
+  └── Administrador → nombreCompleto, rol, permisos
+```
+
+## Entidades de Usuario
+
+<Tabs>
+  <TabItem label="Usuario (Base)">
+    Entidad base con herencia `JOINED`. Todos los usuarios comparten estos campos.
+
+    | Campo | Tipo | Restricciones |
+    |-------|------|---------------|
+    | `idUsuario` | `Long` | PK, auto-generated |
+    | `email` | `String` | unique, not null |
+    | `password` | `String` | not null (BCrypt hash) |
+    | `tipoUsuario` | `TipoUsuario` | Enum: CIUDADANO, FUNCIONARIO, TTAIP, ADMINISTRADOR |
+    | `fechaRegistro` | `LocalDateTime` | Auto-set en `@PrePersist` |
+    | `activo` | `boolean` | default `true` |
+
+    ```java
+    @Entity
+    @Table(name = "usuarios")
+    @Inheritance(strategy = InheritanceType.JOINED)
+    public class Usuario {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long idUsuario;
+
+        @Column(unique = true, nullable = false)
+        private String email;
+
+        @Enumerated(EnumType.STRING)
+        private TipoUsuario tipoUsuario;
+
+        @PrePersist
+        protected void onCreate() {
+            this.fechaRegistro = LocalDateTime.now();
+            this.activo = true;
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Ciudadano">
+    Extiende `Usuario` con datos de identidad peruana.
+
+    | Campo | Tipo | Restricciones |
+    |-------|------|---------------|
+    | `dni` | `String` | 8 dígitos, unique |
+    | `nombreCompleto` | `String` | not null |
+    | `telefono` | `String` | Opcional |
+    | `direccion` | `String` | Opcional |
+    | `solicitudes` | `List<Solicitud>` | OneToMany, mappedBy ciudadano |
+    | `apelaciones` | `List<Apelacion>` | OneToMany, mappedBy ciudadano |
+  </TabItem>
+  <TabItem label="Funcionario">
+    Funcionario de una entidad pública que responde solicitudes.
+
+    | Campo | Tipo | Restricciones |
+    |-------|------|---------------|
+    | `nombreCompleto` | `String` | not null |
+    | `cargo` | `String` | — |
+    | `area` | `String` | — |
+    | `telefono` | `String` | — |
+    | `entidad` | `Entidad` | ManyToOne, not null |
+    | `respuestas` | `List<Respuesta>` | OneToMany |
+  </TabItem>
+  <TabItem label="MiembroTTAIP">
+    Vocal del Tribunal de Transparencia que califica y resuelve apelaciones.
+
+    | Campo | Tipo | Restricciones |
+    |-------|------|---------------|
+    | `nombreCompleto` | `String` | not null |
+    | `cargo` | `String` | — |
+    | `sala` | `String` | Primera Sala / Segunda Sala |
+    | `especialidad` | `String` | — |
+    | `resoluciones` | `List<Resolucion>` | OneToMany |
+  </TabItem>
+  <TabItem label="Administrador">
+    | Campo | Tipo | Restricciones |
+    |-------|------|---------------|
+    | `nombreCompleto` | `String` | not null |
+    | `rol` | `String` | — |
+    | `permisos` | `String` | — |
+  </TabItem>
+</Tabs>
+
+## Entidades de Dominio
+
+### Solicitud
+
+Representa una Solicitud de Acceso a la Información Pública (SAIP).
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `expediente` | `String` | Formato `SAIP-AAAA-NNNNN`, unique |
+| `asunto` | `String` | Tema de la solicitud |
+| `descripcion` | `String` | Detalle de la información solicitada |
+| `ciudadano` | `Ciudadano` | ManyToOne |
+| `entidad` | `Entidad` | ManyToOne |
+| `estado` | `EstadoSolicitud` | Enum (7 valores) |
+| `prioridad` | `Prioridad` | Enum (5 niveles) |
+| `fechaPresentacion` | `LocalDateTime` | Auto-set |
+| `fechaLimite` | `LocalDate` | Calculada: +10 días hábiles |
+| `diasRestantes` | `Integer` | `@Transient`, calculado |
+| `semaforoEstado` | `String` | `@Transient`: VERDE/AMBAR/ROJO/NEGRO |
+| `tipoInformacion` | `String` | — |
+| `formatoDigital` | `Boolean` | — |
+| `formatoFisico` | `Boolean` | — |
+| `copiaSimple` | `Boolean` | — |
+| `copiaCertificada` | `Boolean` | — |
+| `respuesta` | `Respuesta` | OneToOne, mappedBy solicitud |
+| `apelacion` | `Apelacion` | OneToOne, mappedBy solicitud |
+| `documentos` | `List<Documento>` | OneToMany |
+
+:::tip
+La `fechaLimite` se calcula automáticamente en `@PrePersist` usando `DiasHabilesUtil.sumarDiasHabiles()`, que excluye sábados, domingos y 14 feriados nacionales peruanos.
+:::
+
+### Apelación
+
+Expediente de apelación ante el TTAIP (segunda instancia).
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `expediente` | `String` | Formato `NNNNN-AAAA-JUS/TTAIP`, unique |
+| `solicitud` | `Solicitud` | OneToOne |
+| `ciudadano` | `Ciudadano` | ManyToOne |
+| `fundamentos` | `String(TEXT)` | Fundamentos del recurso |
+| `estado` | `EstadoApelacion` | Enum (15+ valores) |
+| `calificacionPrimera` | `Calificacion` | Resultado 1ª calificación |
+| `calificacionSegunda` | `Calificacion` | Resultado 2ª calificación |
+| `fechaPresentacion` | `LocalDateTime` | Auto-set |
+| `fechaSubsanacion` | `LocalDateTime` | Cuándo se requirió subsanación |
+| `diasSubsanacion` | `Integer` | Plazo otorgado (default 2 días) |
+| `resoluciones` | `List<Resolucion>` | OneToMany |
+| `documentos` | `List<Documento>` | OneToMany |
+
+### Respuesta
+
+Respuesta de un funcionario a una solicitud SAIP.
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `solicitud` | `Solicitud` | OneToOne |
+| `funcionario` | `Funcionario` | ManyToOne |
+| `tipoRespuesta` | `TipoRespuesta` | Enum (4 valores) |
+| `contenido` | `String(TEXT)` | Respuesta detallada |
+| `causalDenegatoria` | `String` | 9 causales Art. 15 Ley 27806 |
+| `fundamentoLegal` | `String` | Base legal |
+| `decision` | `String` | Decisión aplicada |
+| `documentos` | `List<Documento>` | OneToMany |
+
+### Resolución
+
+Resolución emitida por un miembro del TTAIP sobre una apelación.
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `apelacion` | `Apelacion` | ManyToOne |
+| `miembroTTAIP` | `MiembroTTAIP` | ManyToOne |
+| `tipoResolucion` | `TipoResolucion` | Enum (3 valores) |
+| `decision` | `DecisionResolucion` | Enum (11 valores) |
+| `fundamentos` | `String(TEXT)` | Fundamento de la resolución |
+| `fundamentoLegal` | `String` | Base legal |
+| `observaciones` | `String(TEXT)` | Observaciones (subsanación) |
+| `numeroResolucion` | `String` | Formato `NNNNNN-AAAA-JUS/TTAIP-[SALA]` |
+| `iniciarProcesoDisciplinario` | `boolean` | Remitir a proceso disciplinario |
+| `documentos` | `List<Documento>` | OneToMany |
+
+### Entidad Pública
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `nombre` | `String` | not null |
+| `acronimo` | `String` | unique |
+| `descripcion` | `String` | — |
+| `direccion` | `String` | — |
+| `telefono` | `String` | — |
+| `email` | `String` | — |
+| `activa` | `boolean` | default true |
+| `solicitudesAsignadas` | `Integer` | `@Transient` |
+| `solicitudesRespondidas` | `Integer` | `@Transient` |
+| `tasaCumplimiento` | `Double` | `@Transient` |
+
+### Documento
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | `Long` | PK |
+| `nombreArchivo` | `String` | — |
+| `rutaArchivo` | `String` | — |
+| `tipoArchivo` | `String` | MIME type |
+| `tamanio` | `Long` | Bytes |
+| `tipoDocumento` | `TipoDocumento` | Enum (6 valores) |
+| `fechaSubida` | `LocalDateTime` | Auto-set |
+
+## Enumeraciones
+
+<Tabs>
+  <TabItem label="EstadoSolicitud">
+    ```java
+    public enum EstadoSolicitud {
+        RECEPCIONADA,          // Recibida, pendiente revisión
+        EN_REVISION,           // En revisión por funcionario
+        PENDIENTE_INFORMACION, // Requiere info adicional
+        RESPONDIDA,            // Entrega total o parcial
+        DENEGADA,              // Denegación total
+        CONCLUIDA,             // Finalizada
+        VENCIDA                // Silencio administrativo (>10 días)
+    }
+    ```
+  </TabItem>
+  <TabItem label="EstadoApelacion">
+    ```java
+    public enum EstadoApelacion {
+        PENDIENTE_ELEVACION,
+        EN_CALIFICACION_1,
+        EN_SUBSANACION,
+        EN_CALIFICACION_2,
+        NOTIFICACION_SEGUNDA_CALIFICACION,
+        EN_RESOLUCION,
+        RESUELTO,
+        RESUELTO_FUNDADO,
+        RESUELTO_FUNDADO_EN_PARTE,
+        RESUELTO_INFUNDADO,
+        RESUELTO_INFUNDADO_EN_PARTE,
+        RESUELTO_IMPROCEDENTE,
+        TENER_POR_NO_PRESENTADO,
+        CONCLUSION_SUSTRACCION_MATERIA,
+        CONCLUSION_DESISTIMIENTO
+    }
+    ```
+  </TabItem>
+  <TabItem label="TipoRespuesta">
+    ```java
+    public enum TipoRespuesta {
+        ENTREGA_TOTAL,           // Información entregada completa
+        ENTREGA_PARCIAL,         // Entrega parcial
+        DENEGACION_TOTAL,        // Denegación total
+        SILENCIO_ADMINISTRATIVO  // Sin respuesta en plazo
+    }
+    ```
+  </TabItem>
+  <TabItem label="DecisionResolucion">
+    ```java
+    public enum DecisionResolucion {
+        ADMISIBLE,                      // 1ª calificación → subsanación
+        INADMISIBLE,                    // Solo como resultado de calificación
+        IMPROCEDENTE,                   // Rechazo definitivo
+        ADMITIDO,                       // 2ª calificación → trámite
+        TENER_POR_NO_PRESENTADO,        // No subsanó en plazo
+        FUNDADO,                        // Se ampara recurso
+        FUNDADO_EN_PARTE,               // Amparo parcial
+        INFUNDADO,                      // Se desestima recurso
+        INFUNDADO_EN_PARTE,             // Desestimación parcial
+        CONCLUSION_SUSTRACCION_MATERIA, // Entidad entregó info
+        CONCLUSION_DESISTIMIENTO        // Ciudadano desistió
+    }
+    ```
+  </TabItem>
+  <TabItem label="Otros Enums">
+    ```java
+    public enum TipoResolucion {
+        PRIMERA_CALIFICACION, SEGUNDA_CALIFICACION, RESOLUCION_FINAL
+    }
+
+    public enum TipoDocumento {
+        SOLICITUD_ORIGINAL, RESPUESTA_ENTIDAD, RECURSO_APELACION,
+        RESOLUCION_TTAIP, DOCUMENTO_ADJUNTO, SUBSANACION
+    }
+
+    public enum Prioridad {
+        BAJA, NORMAL, MEDIA, ALTA, URGENTE
+    }
+
+    public enum TipoUsuario {
+        CIUDADANO, FUNCIONARIO, TTAIP, ADMINISTRADOR
+    }
+
+    public enum Calificacion {
+        ADMISIBLE, INADMISIBLE, IMPROCEDENTE, ADMITIDO
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Diagrama de Relaciones
+
+```
+Ciudadano ──1:N──> Solicitud ──1:1──> Respuesta ──N:1──> Funcionario
+     │                  │                   │
+     │                  1:1                 │
+     │                  │                   │
+     └──1:N──> Apelacion ──1:N──> Resolucion ──N:1──> MiembroTTAIP
+                    │
+                    │
+          Funcionario ──N:1──> Entidad ──1:N──> Solicitud
+
+Documento (polimórfico) ──N:1──> Solicitud | Respuesta | Apelacion | Resolucion
+```
+
+## Repositorios JPA
+
+Todos los repositorios extienden `JpaRepository` con queries JPQL personalizadas:
+
+```java
+public interface SolicitudRepository
+        extends JpaRepository<Solicitud, Long> {
+    Optional<Solicitud> findByExpediente(String expediente);
+
+    @Query("SELECT s FROM Solicitud s " +
+           "LEFT JOIN FETCH s.documentos " +
+           "LEFT JOIN FETCH s.respuesta " +
+           "WHERE s.id = :id")
+    Optional<Solicitud> findByIdWithDetails(@Param("id") Long id);
+
+    List<Solicitud> findByEstado(EstadoSolicitud estado);
+
+    @Query("SELECT s FROM Solicitud s " +
+           "WHERE s.estado NOT IN ('RESPONDIDA','DENEGADA','CONCLUIDA','VENCIDA') " +
+           "AND s.fechaLimite < CURRENT_DATE")
+    List<Solicitud> findVencidas();
+}
+```
+
+:::note
+Se usa `JOIN FETCH` para prevenir el problema N+1 en consultas que necesitan cargar relaciones.
+:::

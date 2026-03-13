@@ -1,0 +1,231 @@
+---
+title: Testing Mobile
+description: Estrategia de testing para la app Android con JUnit 5, MockK, Turbine y Compose Testing.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Stack de Testing
+
+<CardGrid>
+  <Card title="JUnit 5" icon="approve-check">
+    Framework de testing principal para tests unitarios.
+  </Card>
+  <Card title="MockK" icon="puzzle">
+    Mocking idiomático para Kotlin.
+  </Card>
+  <Card title="Turbine" icon="rocket">
+    Testing de Flow con assertions temporales.
+  </Card>
+  <Card title="Compose Testing" icon="laptop">
+    Testing de UI con semántica de Compose.
+  </Card>
+</CardGrid>
+
+## Tipos de Tests
+
+<Tabs>
+  <TabItem label="UseCases">
+    ```kotlin
+    class CrearSolicitudUseCaseTest {
+        private val repo = mockk<SolicitudRepository>()
+        private val useCase = CrearSolicitudUseCase(repo)
+
+        @Test
+        fun `invoke deberia crear solicitud correctamente`() = runTest {
+            // Arrange
+            val solicitud = mockSolicitud()
+            coEvery { repo.crearSolicitud(any()) } returns solicitud
+
+            // Act
+            val result = useCase(CrearSolicitudUseCase.Params(
+                asunto = "Solicitud de prueba",
+                descripcion = "Descripción",
+                entidadId = "1",
+            ))
+
+            // Assert
+            assertEquals(solicitud, result)
+            coVerify(exactly = 1) { repo.crearSolicitud(any()) }
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="ViewModels">
+    ```kotlin
+    class CitizenDashboardViewModelTest {
+        private val getSolicitudes = mockk<GetSolicitudesUsuarioUseCase>()
+        private val getApelaciones = mockk<GetApelacionesUsuarioUseCase>()
+
+        private lateinit var viewModel: CitizenDashboardViewModel
+
+        @BeforeEach
+        fun setup() {
+            every { getSolicitudes(any()) } returns flowOf(listOf(mockSolicitud()))
+            every { getApelaciones(any()) } returns flowOf(emptyList())
+            viewModel = CitizenDashboardViewModel(getSolicitudes, getApelaciones)
+        }
+
+        @Test
+        fun `cargarDatos deberia emitir solicitudes`() = runTest {
+            viewModel.uiState.test {
+                val initial = awaitItem()
+                assertTrue(initial.loading)
+
+                val loaded = awaitItem()
+                assertFalse(loaded.loading)
+                assertEquals(1, loaded.solicitudes.size)
+            }
+        }
+
+        @Test
+        fun `seleccionarSolicitud deberia emitir evento de navegacion`() =
+            runTest {
+                viewModel.events.test {
+                    viewModel.seleccionarSolicitud("SAIP-2025-00042")
+
+                    val event = awaitItem()
+                    assertTrue(event is CitizenDashboardEvent.NavegarADetalle)
+                    assertEquals(
+                        "SAIP-2025-00042",
+                        (event as CitizenDashboardEvent.NavegarADetalle).expediente
+                    )
+                }
+            }
+    }
+    ```
+
+    :::tip[Turbine]
+    La extensión `.test {}` de Turbine permite assertions secuenciales sobre emisiones de `Flow` y `StateFlow`, incluyendo timeouts automáticos si un item esperado nunca llega.
+    :::
+  </TabItem>
+  <TabItem label="Repositories">
+    ```kotlin
+    class SolicitudRepositoryImplTest {
+        private val localDataSource = mockk<SolicitudLocalDataSource>()
+        private val remoteDataSource = mockk<SolicitudRemoteDataSource>()
+        private val mapper = SolicitudMapper
+
+        private val repo = SolicitudRepositoryImpl(
+            localDataSource, remoteDataSource, mapper,
+        )
+
+        @Test
+        fun `getSolicitudes deberia emitir local primero y luego remoto`() =
+            runTest {
+                // Arrange
+                val localData = listOf(mockSolicitudEntity())
+                val remoteData = listOf(mockSolicitudDTO(), mockSolicitudDTO())
+
+                coEvery { localDataSource.getByUsuarioId(any()) } returns localData
+                coEvery { remoteDataSource.getByUsuarioId(any()) } returns remoteData
+                coEvery { localDataSource.insertAll(any()) } just runs
+
+                // Act & Assert
+                repo.getSolicitudesUsuario("user-1").test {
+                    val first = awaitItem()
+                    assertEquals(1, first.size) // datos locales
+
+                    val second = awaitItem()
+                    assertEquals(2, second.size) // datos remotos
+
+                    awaitComplete()
+                }
+            }
+
+        @Test
+        fun `getSolicitudes deberia mantener datos locales si red falla`() =
+            runTest {
+                coEvery { localDataSource.getByUsuarioId(any()) } returns
+                    listOf(mockSolicitudEntity())
+                coEvery { remoteDataSource.getByUsuarioId(any()) } throws
+                    IOException("Sin conexión")
+
+                repo.getSolicitudesUsuario("user-1").test {
+                    val items = awaitItem()
+                    assertEquals(1, items.size)
+                    awaitComplete()
+                }
+            }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Compose UI">
+    ```kotlin
+    class CitizenDashboardScreenTest {
+        @get:Rule
+        val composeRule = createComposeRule()
+
+        @Test
+        fun `deberia mostrar lista de solicitudes`() {
+            val uiState = CitizenDashboardUiState(
+                solicitudes = listOf(
+                    mockSolicitud(expediente = "SAIP-2025-00042"),
+                    mockSolicitud(expediente = "SAIP-2025-00043"),
+                ),
+            )
+
+            composeRule.setContent {
+                CitizenDashboardContent(
+                    uiState = uiState,
+                    onSolicitudClick = {},
+                    onNuevaSAIP = {},
+                )
+            }
+
+            composeRule
+                .onNodeWithText("SAIP-2025-00042")
+                .assertIsDisplayed()
+            composeRule
+                .onNodeWithText("SAIP-2025-00043")
+                .assertIsDisplayed()
+        }
+
+        @Test
+        fun `deberia mostrar indicador de carga`() {
+            composeRule.setContent {
+                CitizenDashboardContent(
+                    uiState = CitizenDashboardUiState(loading = true),
+                    onSolicitudClick = {},
+                    onNuevaSAIP = {},
+                )
+            }
+
+            composeRule
+                .onNodeWithTag("loading-indicator")
+                .assertIsDisplayed()
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Ejecutar Tests
+
+```bash
+# Compilar todo + ejecutar tests (recomendado)
+cd mobile && .\gradlew.bat clean compileDebugKotlin test
+
+# Solo tests unitarios
+.\gradlew.bat test
+
+# Tests de un módulo específico
+.\gradlew.bat :core:domain:test
+.\gradlew.bat :app:test
+```
+
+:::caution[Módulos sin tests]
+Los módulos `core/network`, `core/data`, `core/database` y `core/common` NO tienen tests unitarios propios aún. `gradlew test` solo ejecuta tests de `core/domain` y `app/`. Siempre compilar explícitamente antes de testear para detectar errores en todos los módulos.
+:::
+
+## Convenciones
+
+| Regla | Valor |
+|-------|-------|
+| Nomenclatura | `` `descripción en español` `` con backticks |
+| Patrón | Arrange → Act → Assert |
+| Mocking | MockK (`mockk`, `coEvery`, `coVerify`) |
+| Flow testing | Turbine (`.test {}`, `awaitItem()`, `awaitComplete()`) |
+| Compose testing | `createComposeRule()`, `onNodeWithText/Tag` |
+| Cobertura objetivo | 80%+ en domain y app |
+| Coroutines | `runTest {}` de `kotlinx-coroutines-test` |

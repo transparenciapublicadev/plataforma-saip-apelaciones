@@ -1,0 +1,192 @@
+---
+title: Componentes
+description: Componentes standalone del frontend organizados por rol de usuario y flujo funcional.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+El frontend cuenta con **18+ componentes standalone** organizados por rol de usuario. Todos usan `ChangeDetectionStrategy.OnPush` y signals.
+
+## Mapa de Componentes por Rol
+
+<Tabs>
+  <TabItem label="Público">
+    ### Componentes de acceso público
+
+    | Componente | Ruta | Descripción |
+    |------------|------|-------------|
+    | `HomeComponent` | `/` | Landing page con scroll suave a secciones |
+    | `LoginComponent` | `/login` | Login multi-rol con Smart Auth Gateway |
+    | `RegistroComponent` | `/registro` | Registro de ciudadano en 2 pasos |
+
+    **LoginComponent** — Características:
+    - Detecta formato de identificador (email, DNI, username)
+    - Mapa de conversión de rutas backend → frontend:
+      ```typescript
+      const routeMap: Record<string, string> = {
+        '/ciudadano/dashboard': '/ciudadano',
+        '/funcionario/dashboard': '/funcionario',
+        '/ttaip/dashboard': '/ttaip',
+        '/admin/dashboard': '/admin',
+      };
+      ```
+    - Redirige automáticamente al dashboard correspondiente tras login
+
+    **RegistroComponent** — Flujo en 2 pasos:
+    1. Datos personales (DNI 8 dígitos, nombre, email)
+    2. Credenciales (password con validación computed de requisitos)
+  </TabItem>
+  <TabItem label="Ciudadano">
+    ### Componentes del ciudadano <Badge text="CIUDADANO" variant="note" />
+
+    | Componente | Ruta | Descripción |
+    |------------|------|-------------|
+    | `CiudadanoDashboardComponent` | `/ciudadano` | Dashboard con solicitudes y apelaciones |
+    | `NuevaSaipComponent` | `/ciudadano/nueva-saip` | Crear solicitud SAIP |
+    | `SolicitudDetalleComponent` | `/ciudadano/solicitud/:expediente` | Detalle de solicitud |
+    | `NuevaApelacionComponent` | `/ciudadano/nueva-apelacion` | Crear apelación |
+    | `SubsanacionComponent` | `/ciudadano/subsanacion/:expediente` | Subsanar apelación |
+
+    **CiudadanoDashboardComponent:**
+    - Lista de solicitudes con búsqueda y filtros
+    - Lista de apelaciones con estados diferenciados
+    - Tarjetas de estadísticas (total, pendientes, respondidas)
+    - Semáforo visual de urgencia por solicitud
+    - Tracking de subsanaciones pendientes
+
+    **NuevaApelacionComponent:**
+    - Dos modos de creación: directa (ID de solicitud) o selección de listado
+    - Adjuntar hasta 3 archivos de fundamento
+    - Upload con signals para tracking de estado
+  </TabItem>
+  <TabItem label="Funcionario">
+    ### Componentes del funcionario <Badge text="FUNCIONARIO" variant="tip" />
+
+    | Componente | Ruta | Descripción |
+    |------------|------|-------------|
+    | `FuncionarioDashboardComponent` | `/funcionario` | Dashboard de entidad |
+    | `FuncionarioSolicitudDetalleComponent` | `/funcionario/solicitud/:exp` | Detalle |
+    | `FuncionarioResponderComponent` | `/funcionario/responder/:exp` | Responder solicitud |
+
+    **FuncionarioDashboardComponent:**
+    - Solicitudes filtradas por entidad del funcionario
+    - Indicador visual de urgentes (< 3 días para vencer)
+    - Bordes de prioridad diferenciados por estado de semáforo
+    - Búsqueda por expediente o asunto
+
+    **FuncionarioResponderComponent:**
+    - Formulario de aceptar (entrega total/parcial) o denegar
+    - Dropdown con 9 causales de denegación (Art. 15 Ley 27806)
+    - Campo de fundamento legal obligatorio en denegación
+  </TabItem>
+  <TabItem label="TTAIP">
+    ### Componentes del tribunal <Badge text="TTAIP" variant="success" />
+
+    | Componente | Ruta | Descripción |
+    |------------|------|-------------|
+    | `TtaipDashboardComponent` | `/ttaip` | Dashboard del tribunal |
+    | `TtaipCalificarComponent` | `/ttaip/calificar/:exp` | Primera calificación |
+    | `TtaipSegundaCalificacionComponent` | `/ttaip/segunda-calificacion/:exp` | Segunda calificación |
+    | `TtaipResolverComponent` | `/ttaip/resolver/:exp` | Resolución final |
+    | `TtaipResolucionDetalleComponent` | `/ttaip/resolucion/:exp` | Detalle resolución |
+    | `ProcesoDisciplinarioComponent` | `/ttaip/procesos-disciplinarios` | Procesos disciplinarios |
+
+    **TtaipDashboardComponent — 5 filtros:**
+    1. Pendientes de calificación
+    2. En análisis (primera calificación)
+    3. En subsanación
+    4. Segunda calificación
+    5. Resueltas
+
+    **TtaipResolverComponent — 7 decisiones:**
+    ```typescript
+    // Patrón serviceMap para despachar decisiones
+    private readonly serviceMap: Record<string,
+      (id: number, body: any) => Observable<any>> = {
+      fundado: (id, b) => this.ttaipService.declararFundado(id, b),
+      infundado: (id, b) => this.ttaipService.declararInfundado(id, b),
+      'fundado-en-parte': (id, b) => this.ttaipService.declararFundadoEnParte(id, b),
+      'infundado-en-parte': (id, b) => this.ttaipService.declararInfundadoEnParte(id, b),
+      improcedente: (id, b) => this.ttaipService.declararImprocedente(id, b),
+      'sustraccion-materia': (id, b) => this.ttaipService.declararSustraccionMateria(id, b),
+      desistimiento: (id, b) => this.ttaipService.declararDesistimiento(id, b),
+    };
+    ```
+  </TabItem>
+  <TabItem label="Admin">
+    ### Componentes del administrador <Badge text="ADMIN" variant="caution" />
+
+    | Componente | Ruta | Descripción |
+    |------------|------|-------------|
+    | `AdminDashboardComponent` | `/admin` | Dashboard completo |
+
+    **AdminDashboardComponent — 5 tabs:**
+    1. **Resumen** — Tarjetas con métricas globales
+    2. **Entidades** — CRUD de entidades públicas con modales
+    3. **Usuarios** — Lista de usuarios del sistema (simulada)
+    4. **Solicitudes** — Vista global de todas las solicitudes
+    5. **Reportes** — Reportes y exportaciones
+
+    :::note
+    El Admin Dashboard concentra toda la funcionalidad administrativa en un solo componente con tabs para evitar navegación innecesaria.
+    :::
+  </TabItem>
+</Tabs>
+
+## Patrones Comunes
+
+### Estado con Signals
+
+```typescript
+// Todos los componentes usan este patrón
+solicitudes = signal<Solicitud[]>([]);
+loading = signal(false);
+error = signal<string | null>(null);
+searchTerm = signal('');
+
+// Estado derivado
+filteredSolicitudes = computed(() =>
+  this.solicitudes().filter(s =>
+    s.expediente.includes(this.searchTerm()) ||
+    s.asunto.toLowerCase().includes(this.searchTerm().toLowerCase())
+  )
+);
+```
+
+### Badges de Estado
+
+```typescript
+getEstadoClass(estado: string): string {
+  const clases: Record<string, string> = {
+    RECEPCIONADA: 'bg-blue-100 text-blue-800',
+    EN_REVISION: 'bg-yellow-100 text-yellow-800',
+    RESPONDIDA: 'bg-green-100 text-green-800',
+    DENEGADA: 'bg-red-100 text-red-800',
+    VENCIDA: 'bg-gray-800 text-white',
+  };
+  return clases[estado] ?? 'bg-gray-100 text-gray-800';
+}
+```
+
+### Formularios Reactivos
+
+```typescript
+private readonly fb = inject(FormBuilder);
+
+form = this.fb.group({
+  asunto: ['', [Validators.required, Validators.maxLength(200)]],
+  descripcion: ['', [Validators.required, Validators.maxLength(2000)]],
+  entidadId: [null as number | null, Validators.required],
+});
+
+onSubmit() {
+  if (this.form.invalid) return;
+  this.loading.set(true);
+  this.solicitudService.crear(this.form.value)
+    .subscribe({
+      next: () => this.router.navigate(['/ciudadano']),
+      error: (err) => this.error.set(err.message),
+      complete: () => this.loading.set(false),
+    });
+}
+```

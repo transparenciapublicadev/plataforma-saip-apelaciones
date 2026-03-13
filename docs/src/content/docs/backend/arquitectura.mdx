@@ -1,0 +1,251 @@
+---
+title: Arquitectura del Backend
+description: Arquitectura en capas, patrones de diseño y flujo de datos del módulo Spring Boot.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, FileTree } from '@astrojs/starlight/components';
+
+## Arquitectura en Capas
+
+El backend sigue una **arquitectura en capas** estricta donde cada capa tiene una responsabilidad única y solo se comunica con la capa inmediatamente inferior.
+
+```
+┌─────────────────────────────────────────────┐
+│          Controller Layer (REST)            │
+│  Recibe HTTP requests, valida inputs,       │
+│  delega a services, retorna responses       │
+├─────────────────────────────────────────────┤
+│          Service Layer (Negocio)            │
+│  Lógica de negocio, transacciones,          │
+│  orquestación, reglas SAIP/TTAIP            │
+├─────────────────────────────────────────────┤
+│          Repository Layer (Datos)           │
+│  Acceso a datos via Spring Data JPA,        │
+│  queries JPQL, projections                  │
+├─────────────────────────────────────────────┤
+│          Model Layer (Dominio)              │
+│  Entities JPA + DTOs (records Java)         │
+├─────────────────────────────────────────────┤
+│          Infrastructure                     │
+│  MySQL, Spring Security, OpenAPI            │
+└─────────────────────────────────────────────┘
+```
+
+## Patrones de Diseño
+
+<Tabs>
+  <TabItem label="Thin Controllers">
+    Los controladores **delegan toda la lógica** a los services. Un controller no debe superar ~100 líneas.
+
+    ```java
+    @RestController
+    @RequestMapping("/api/solicitudes")
+    public class SolicitudRestController {
+        private final SolicitudService solicitudService;
+
+        // Constructor injection (preferido)
+        public SolicitudRestController(SolicitudService solicitudService) {
+            this.solicitudService = solicitudService;
+        }
+
+        @GetMapping("/{id}")
+        public ResponseEntity<SolicitudDTO> findById(@PathVariable Long id) {
+            return ResponseEntity.ok(solicitudService.findById(id));
+        }
+
+        @PostMapping
+        public ResponseEntity<SolicitudDTO> crear(
+                @Valid @RequestBody SolicitudDTO dto) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(solicitudService.crear(dto));
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Domain Services">
+    La lógica de negocio compleja se extrae a **services dedicados**. El `TTAIPService` orquesta calificación, admisión y resolución.
+
+    ```java
+    @Service
+    public class TTAIPService {
+        private final ApelacionRepository apelacionRepo;
+        private final ResolucionService resolucionService;
+
+        @Transactional
+        public ApelacionDTO admitirApelacion(
+                Long apelacionId, CalificacionRequest request) {
+            Apelacion apelacion = apelacionRepo.findById(apelacionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                    "Apelación no encontrada"));
+
+            apelacion.setEstado(EstadoApelacion.EN_RESOLUCION);
+            apelacion.setCalificacionSegunda(Calificacion.ADMITIDO);
+
+            Resolucion resolucion = new Resolucion();
+            resolucion.setTipoResolucion(
+                TipoResolucion.SEGUNDA_CALIFICACION);
+            resolucion.setDecision(DecisionResolucion.ADMITIDO);
+            // ...
+            return ApelacionDTO.from(apelacionRepo.save(apelacion));
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="Typed DTOs">
+    Se usan **records Java** con validación Jakarta en lugar de `Map<String, Object>`.
+
+    ```java
+    public record CalificacionRequest(
+        @NotBlank String fundamentos,
+        String observaciones,
+        Integer diasSubsanacion
+    ) {}
+
+    public record ResolucionRequest(
+        @NotBlank String fundamentos,
+        Boolean iniciarProcesoDisciplinario
+    ) {}
+
+    public record CrearRespuestaRequest(
+        @NotNull Long solicitudId,
+        @NotNull Long funcionarioId,
+        @NotBlank String tipoRespuesta,
+        @NotBlank String contenido,
+        String causalDenegatoria,
+        String fundamentoLegal,
+        String formatoEntrega,
+        Integer plazoEntrega
+    ) {}
+    ```
+  </TabItem>
+</Tabs>
+
+## Flujo de una Request
+
+<Steps>
+1. **HTTP Request** llega al controller con validación `@Valid`
+2. **Controller** delega al service correspondiente
+3. **Service** aplica lógica de negocio y reglas (transaccional)
+4. **Repository** ejecuta query JPA contra MySQL
+5. **Entity** se mapea a **DTO** (record) via método `from()`
+6. **Controller** retorna `ResponseEntity` con el DTO
+</Steps>
+
+## Inyección de Dependencias
+
+El backend usa **constructor injection** de forma exclusiva (nunca `@Autowired` en campos):
+
+```java
+@Service
+public class SolicitudService {
+    private final SolicitudRepository solicitudRepository;
+    private final EntidadRepository entidadRepository;
+    private final CiudadanoRepository ciudadanoRepository;
+    private final DiasHabilesUtil diasHabilesUtil;
+
+    public SolicitudService(
+            SolicitudRepository solicitudRepository,
+            EntidadRepository entidadRepository,
+            CiudadanoRepository ciudadanoRepository,
+            DiasHabilesUtil diasHabilesUtil) {
+        this.solicitudRepository = solicitudRepository;
+        this.entidadRepository = entidadRepository;
+        this.ciudadanoRepository = ciudadanoRepository;
+        this.diasHabilesUtil = diasHabilesUtil;
+    }
+}
+```
+
+## Transaccionalidad
+
+| Anotación | Uso |
+|-----------|-----|
+| `@Transactional` | Métodos de escritura (crear, actualizar, eliminar) |
+| `@Transactional(readOnly = true)` | Métodos de solo lectura (consultas) |
+
+:::caution
+Nunca usar transacciones de larga duración. Las operaciones de lectura siempre deben marcarse con `readOnly = true` para optimizar el rendimiento.
+:::
+
+## Manejo de Excepciones
+
+El `GlobalExceptionHandler` centraliza el manejo de errores con `@RestControllerAdvice`:
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(
+            RecursoNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(Map.of("mensaje", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(
+            MethodArgumentNotValidException ex) {
+        Map<String, String> errores = new HashMap<>();
+        ex.getBindingResult().getFieldErrors()
+            .forEach(e -> errores.put(e.getField(),
+                e.getDefaultMessage()));
+        return ResponseEntity.badRequest()
+            .body(Map.of("mensaje", "Error de validación",
+                         "errores", errores));
+    }
+}
+```
+
+## Configuración
+
+<Tabs>
+  <TabItem label="application.properties">
+    ```properties
+    # Base de datos
+    spring.datasource.url=jdbc:mysql://localhost:3306/saip_db
+    spring.datasource.username=${DB_USERNAME:root}
+    spring.datasource.password=${DB_PASSWORD:}
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+    # JWT
+    jwt.secret=${JWT_SECRET}
+    jwt.expiration=86400000
+
+    # Server
+    server.port=8080
+    ```
+  </TabItem>
+  <TabItem label="CORS">
+    ```java
+    @Configuration
+    public class CorsConfig implements WebMvcConfigurer {
+        // CORS configurado en SecurityConfig
+        // Permite localhost:4200 y localhost:4201
+    }
+    ```
+  </TabItem>
+  <TabItem label="OpenAPI">
+    ```java
+    @Configuration
+    public class OpenApiConfig {
+        @Bean
+        public OpenAPI customOpenAPI() {
+            return new OpenAPI()
+                .info(new Info()
+                    .title("SAIP API")
+                    .version("1.0")
+                    .description("API de la Plataforma SAIP"))
+                .addSecurityItem(new SecurityRequirement()
+                    .addList("bearerAuth"))
+                .components(new Components()
+                    .addSecuritySchemes("bearerAuth",
+                        new SecurityScheme()
+                            .type(SecurityScheme.Type.HTTP)
+                            .scheme("bearer")
+                            .bearerFormat("JWT")));
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>

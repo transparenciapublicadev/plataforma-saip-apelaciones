@@ -1,0 +1,176 @@
+---
+title: Autenticación
+description: Flujo de autenticación JWT con JJWT 0.12.6, tokens Bearer y Spring Security.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Arquitectura de Auth
+
+<CardGrid>
+  <Card title="JJWT 0.12.6" icon="approve-check">
+    Librería para generación y validación de JWT con algoritmo HMAC-SHA.
+  </Card>
+  <Card title="BCrypt(12)" icon="approve-check">
+    Hashing de contraseñas con factor de costo 12.
+  </Card>
+  <Card title="Spring Security" icon="setting">
+    Filtro de autenticación stateless con SecurityFilterChain.
+  </Card>
+  <Card title="Sesiones Stateless" icon="rocket">
+    No se almacena estado en el servidor — el JWT contiene toda la información necesaria.
+  </Card>
+</CardGrid>
+
+## Flujo de Autenticación
+
+<Steps>
+1. **Login** — El cliente envía `POST /api/auth/login` con `identificador` + `password`
+2. **Validación** — `CustomUserDetailsService` busca al usuario por email, nombre completo o DNI
+3. **Verificación** — `BCryptPasswordEncoder` compara el password enviado contra el hash almacenado
+4. **Generación JWT** — `JwtService` genera un token con claims: `email`, `role`, `usuarioId`
+5. **Respuesta** — Se retorna el token JWT + datos básicos del usuario
+6. **Peticiones autenticadas** — El cliente incluye `Authorization: Bearer <token>` en cada request
+7. **Filtro JWT** — `JwtAuthFilter` intercepta cada request, valida el token y establece el `SecurityContext`
+</Steps>
+
+## Estructura del Token JWT
+
+```json
+// Header
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+// Payload (Claims)
+{
+  "sub": "juan@ejemplo.com",         // email del usuario
+  "role": "CIUDADANO",               // tipo de usuario
+  "usuarioId": 42,                   // ID del usuario
+  "iat": 1737000000,                 // issued at
+  "exp": 1737086400                  // expiration (24h después)
+}
+
+// Signature
+HMACSHA256(base64(header) + "." + base64(payload), secret)
+```
+
+| Claim | Tipo | Descripción |
+|-------|------|-------------|
+| `sub` | `String` | Email del usuario (subject) |
+| `role` | `String` | `CIUDADANO`, `FUNCIONARIO`, `TTAIP`, `ADMIN` |
+| `usuarioId` | `Long` | ID de la tabla `usuarios` |
+| `iat` | `Long` | Timestamp de emisión (epoch seconds) |
+| `exp` | `Long` | Timestamp de expiración (86400000 ms = 24 horas) |
+
+## Headers de Autenticación
+
+```http
+GET /api/solicitudes HTTP/1.1
+Host: localhost:8080
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+```
+
+## JwtAuthFilter
+
+El filtro se ejecuta en cada request excepto las rutas de `/api/auth/`:
+
+```java
+// Pseudocódigo del flujo del filtro
+if (path.startsWith("/api/auth/")) {
+    // Rutas públicas — no verificar token
+    filterChain.doFilter(request, response);
+    return;
+}
+
+String token = extractTokenFromHeader(request);
+if (token != null && jwtService.isTokenValid(token)) {
+    String email = jwtService.extractEmail(token);
+    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+    // Establecer SecurityContext
+    SecurityContextHolder.getContext().setAuthentication(authToken);
+}
+filterChain.doFilter(request, response);
+```
+
+## Endpoints Públicos vs Protegidos
+
+<Tabs>
+  <TabItem label="Públicos (sin auth)">
+    | Ruta | Descripción |
+    |------|-------------|
+    | `POST /api/auth/login` | Autenticación |
+    | `POST /api/auth/registro/ciudadano` | Auto-registro de ciudadanos |
+    | `GET /api/entidades` | Listar entidades (para formulario de registro) |
+  </TabItem>
+  <TabItem label="Autenticados">
+    | Ruta | Roles permitidos |
+    |------|-----------------|
+    | `GET /api/auth/perfil` | Cualquier usuario autenticado |
+    | `GET /api/solicitudes/*` | CIUDADANO, FUNCIONARIO, ADMIN |
+    | `POST /api/solicitudes` | CIUDADANO |
+    | `POST /api/respuestas` | FUNCIONARIO |
+    | `POST /api/ttaip/*` | TTAIP |
+    | `GET /api/estadisticas/*` | ADMIN, TTAIP |
+  </TabItem>
+</Tabs>
+
+## Implementación en Clientes
+
+<Tabs>
+  <TabItem label="Frontend (Angular)">
+    ```typescript
+    // auth.interceptor.ts — HttpInterceptorFn
+    export const authInterceptor: HttpInterceptorFn = (req, next) => {
+      if (typeof window === 'undefined') return next(req); // SSR guard
+
+      const token = localStorage.getItem('token');
+      if (token) {
+        req = req.clone({
+          setHeaders: { Authorization: `Bearer ${token}` },
+        });
+      }
+      return next(req);
+    };
+    ```
+  </TabItem>
+  <TabItem label="Mobile (Kotlin)">
+    ```kotlin
+    // AuthInterceptor para OkHttp
+    class AuthInterceptor(
+        private val credentialStorage: CredentialStorage,
+    ) : Interceptor {
+        override fun intercept(chain: Interceptor.Chain): Response {
+            val token = credentialStorage.obtenerToken()
+            val request = if (token != null) {
+                chain.request().newBuilder()
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                chain.request()
+            }
+            return chain.proceed(request)
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Seguridad
+
+:::danger[Gestión de Secrets]
+- El `JWT_SECRET` NUNCA se hardcodea — se inyecta via variable de entorno `${JWT_SECRET}`
+- Las contraseñas se almacenan hasheadas con BCrypt(12) — NUNCA en texto plano
+- En el mobile, las credenciales se almacenan en `EncryptedSharedPreferences`
+:::
+
+| Aspecto | Implementación |
+|---------|----------------|
+| Algoritmo | HMAC-SHA256 |
+| Expiración | 24 horas (86400000 ms) |
+| Secret | Variable de entorno `${JWT_SECRET}` |
+| Password hashing | BCrypt con strength 12 |
+| CORS | Solo `localhost:4200` y `localhost:4201` |
+| Rate limiting | Aplicado en endpoints de `/api/auth` |

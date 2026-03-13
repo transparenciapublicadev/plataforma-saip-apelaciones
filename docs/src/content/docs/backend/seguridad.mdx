@@ -1,0 +1,261 @@
+---
+title: Seguridad
+description: Configuración de Spring Security, autenticación JWT, autorización por roles y protección de endpoints.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+La seguridad del backend se implementa con **Spring Security** + **JWT (JJWT 0.12.6)** + **BCrypt** en una arquitectura stateless.
+
+## Arquitectura de Seguridad
+
+```
+                         ┌──────────────┐
+  Request ──► CORS ──► │ JwtAuthFilter │ ──► SecurityFilterChain ──► Controller
+                         │  (OncePerReq) │
+                         │  ├─ Extract   │
+                         │  │  Bearer    │
+                         │  ├─ Validate  │
+                         │  │  JWT       │
+                         │  └─ Set Auth  │
+                         │    Context    │
+                         └──────────────┘
+```
+
+## Componentes de Seguridad
+
+<CardGrid>
+  <Card title="SecurityConfig" icon="setting">
+    Configura la cadena de filtros, CORS, CSRF, roles y endpoints públicos.
+  </Card>
+  <Card title="JwtAuthFilter" icon="approve-check">
+    Intercepta requests, extrae y valida el token JWT del header `Authorization`.
+  </Card>
+  <Card title="JwtService" icon="document">
+    Genera y valida tokens JWT con HMAC-SHA. Expiration: 24h.
+  </Card>
+  <Card title="CustomUserDetailsService" icon="star">
+    Carga el usuario desde la base de datos por email para Spring Security.
+  </Card>
+</CardGrid>
+
+## SecurityConfig
+
+```java
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter;
+    private final CustomUserDetailsService userDetailsService;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable()) // API stateless
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                // Endpoints públicos
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+
+                // Endpoints por rol
+                .requestMatchers("/api/ciudadanos/**").hasRole("CIUDADANO")
+                .requestMatchers("/api/funcionarios/**").hasRole("FUNCIONARIO")
+                .requestMatchers("/api/ttaip/**").hasRole("TTAIP")
+                .requestMatchers("/api/estadisticas/**").hasAnyRole("ADMIN", "TTAIP")
+                .requestMatchers("/api/reportes/**").hasRole("ADMIN")
+
+                // Solicitudes — acceso mixto
+                .requestMatchers(HttpMethod.POST, "/api/solicitudes")
+                    .hasRole("CIUDADANO")
+                .requestMatchers(HttpMethod.GET, "/api/solicitudes/**")
+                    .hasAnyRole("CIUDADANO", "FUNCIONARIO", "ADMIN")
+
+                .anyRequest().authenticated()
+            )
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthFilter,
+                UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12); // Strength 12
+    }
+}
+```
+
+## Flujo de Autenticación
+
+<Steps>
+1. **Login** — El cliente envía `POST /api/auth/login` con `identificador` + `password`
+2. **Smart Auth Gateway** — El backend detecta el formato del identificador (email, DNI de 8 dígitos, o username) y busca al usuario con la estrategia apropiada
+3. **Verificación BCrypt** — Se compara la contraseña con el hash BCrypt(12) almacenado
+4. **Generación JWT** — Si es válido, `JwtService` genera un token con claims: `email`, `role`, `usuarioId`
+5. **Respuesta** — Se retorna el token JWT + datos del usuario + URL de redirección por rol
+6. **Requests posteriores** — El cliente incluye `Authorization: Bearer <token>` en cada request
+7. **JwtAuthFilter** — Extrae el token, valida firma/expiración, establece `SecurityContext`
+</Steps>
+
+## JwtAuthFilter
+
+```java
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final CustomUserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+            HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
+        // Skipear rutas de auth
+        if (request.getServletPath().startsWith("/api/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtService.extractEmail(token);
+
+        if (email != null && SecurityContextHolder.getContext()
+                .getAuthentication() == null) {
+            var userDetails = userDetailsService.loadUserByUsername(email);
+            if (jwtService.validateToken(token)) {
+                var authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource()
+                    .buildDetails(request));
+                SecurityContextHolder.getContext()
+                    .setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+## Matriz de Autorización
+
+<Tabs>
+  <TabItem label="Por Rol">
+    | Endpoint | CIUDADANO | FUNCIONARIO | TTAIP | ADMIN |
+    |----------|:---------:|:-----------:|:-----:|:-----:|
+    | `POST /api/auth/*` | ✅ | ✅ | ✅ | ✅ |
+    | `POST /api/solicitudes` | ✅ | ❌ | ❌ | ❌ |
+    | `GET /api/solicitudes/*` | ✅ | ✅ | ❌ | ✅ |
+    | `POST /api/apelaciones` | ✅ | ❌ | ❌ | ❌ |
+    | `POST /api/respuestas/*` | ❌ | ✅ | ❌ | ❌ |
+    | `GET /api/ttaip/*` | ❌ | ❌ | ✅ | ❌ |
+    | `POST /api/ttaip/*` | ❌ | ❌ | ✅ | ❌ |
+    | `GET /api/estadisticas/*` | ❌ | ❌ | ✅ | ✅ |
+    | `GET /api/reportes/*` | ❌ | ❌ | ❌ | ✅ |
+    | `GET /api/entidades/*` | ✅ | ✅ | ✅ | ✅ |
+  </TabItem>
+  <TabItem label="Endpoints Públicos">
+    Los siguientes endpoints NO requieren autenticación:
+
+    | Ruta | Descripción |
+    |------|-------------|
+    | `POST /api/auth/login` | Login |
+    | `POST /api/auth/registro` | Registro de ciudadano |
+    | `GET /api/auth/verificar-email` | Verificar disponibilidad de email |
+    | `GET /api/auth/verificar-dni` | Verificar disponibilidad de DNI |
+    | `GET /v3/api-docs/**` | Documentación OpenAPI |
+    | `GET /swagger-ui/**` | Interfaz Swagger UI |
+  </TabItem>
+</Tabs>
+
+## CORS
+
+```java
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:4200",  // Frontend dev
+            "http://localhost:4201"   // Frontend preview
+        ));
+        configuration.setAllowedMethods(List.of(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
+    }
+}
+```
+
+:::caution[Producción]
+En producción, la lista de `allowedOrigins` debe contener **únicamente** los dominios autorizados. NUNCA usar `*` con `allowCredentials(true)`.
+:::
+
+## Hashing de Contraseñas
+
+El backend usa **BCrypt con strength 12** para almacenar contraseñas:
+
+```java
+// Registro — hashear antes de guardar
+String hashedPassword = passwordEncoder.encode(request.password());
+usuario.setPassword(hashedPassword);
+
+// Login — verificar contra hash
+boolean matches = passwordEncoder.matches(
+    request.password(), usuario.getPassword());
+```
+
+| Parámetro | Valor |
+|-----------|-------|
+| Algoritmo | BCrypt |
+| Strength | 12 (4096 iteraciones) |
+| Resultado | 60 caracteres (`$2a$12$...`) |
+
+## Gestión de Secrets
+
+| Variable | Uso | Default (solo dev) |
+|----------|-----|-------------------|
+| `DB_USERNAME` | Usuario MySQL | `root` |
+| `DB_PASSWORD` | Contraseña MySQL | *(vacío)* |
+| `JWT_SECRET` | Clave HMAC-SHA para JWT | **Requerido** |
+
+```properties
+# application.properties — Solo placeholders, NUNCA valores reales
+spring.datasource.username=${DB_USERNAME:root}
+spring.datasource.password=${DB_PASSWORD:}
+jwt.secret=${JWT_SECRET}
+```
+
+:::danger[NUNCA hacer esto]
+```properties
+# ❌ INCORRECTO — Secreto hardcodeado
+jwt.secret=miClaveSecretaSuperSecura123
+spring.datasource.password=admin123
+```
+
+```properties
+# ✅ CORRECTO — Variable de entorno
+jwt.secret=${JWT_SECRET}
+spring.datasource.password=${DB_PASSWORD:}
+```
+:::

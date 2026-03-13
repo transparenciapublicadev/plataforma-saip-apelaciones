@@ -1,0 +1,91 @@
+---
+title: Despliegue Backend
+description: Configuración de producción para el backend Spring Boot con MySQL, JWT y variables de entorno.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+## Requisitos de Producción
+
+<CardGrid>
+  <Card title="Java 21" icon="seti:java">
+    JDK 21 (LTS) — requerido por Spring Boot 4.
+  </Card>
+  <Card title="MySQL 8+" icon="setting">
+    Base de datos relacional principal.
+  </Card>
+  <Card title="Maven" icon="puzzle">
+    Maven Wrapper incluido en el proyecto.
+  </Card>
+</CardGrid>
+
+## Variables de Entorno
+
+| Variable | Descripción | Obligatoria |
+|----------|-------------|-------------|
+| `DB_USERNAME` | Usuario de MySQL | Sí |
+| `DB_PASSWORD` | Contraseña de MySQL | Sí |
+| `JWT_SECRET` | Clave secreta para firmar tokens JWT (mín. 256 bits) | Sí |
+| `SPRING_PROFILES_ACTIVE` | Perfil activo (`prod`, `dev`) | Recomendada |
+
+:::danger[Secrets]
+NUNCA hardcodear credenciales. En producción, usar variables de entorno del hosting platform o un gestor de secretos.
+:::
+
+## Build de Producción
+
+<Steps>
+1. **Compilar** el proyecto con Maven
+   ```bash
+   cd backend
+   ./mvnw clean package -DskipTests
+   ```
+2. **Verificar** el JAR generado
+   ```bash
+   ls target/saip-backend-*.jar
+   ```
+3. **Ejecutar** con variables de entorno
+   ```bash
+   DB_USERNAME=saip_user \
+   DB_PASSWORD=secure_password \
+   JWT_SECRET=clave_secreta_minimo_256_bits_segura \
+   java -jar target/saip-backend-0.0.1-SNAPSHOT.jar \
+     --spring.profiles.active=prod
+   ```
+</Steps>
+
+## Configuración de Producción
+
+```properties
+# application-prod.properties
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+server.port=8080
+
+# CORS — restringir a dominios de producción
+cors.allowed-origins=https://misaip.gob.pe
+```
+
+:::caution[ddl-auto]
+En producción, usar `validate` (NO `update`) para evitar cambios accidentales en el schema. Las migraciones deben ejecutarse de forma controlada.
+:::
+
+## Base de Datos
+
+```sql
+-- Crear base de datos y usuario
+CREATE DATABASE saip_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'saip_user'@'%' IDENTIFIED BY 'secure_password';
+GRANT ALL PRIVILEGES ON saip_db.* TO 'saip_user'@'%';
+FLUSH PRIVILEGES;
+```
+
+## Verificación
+
+```bash
+# Health check
+curl http://localhost:8080/actuator/health
+
+# Verificar OpenAPI spec
+curl http://localhost:8080/v3/api-docs
+```

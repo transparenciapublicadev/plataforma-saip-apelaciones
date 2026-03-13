@@ -1,0 +1,117 @@
+---
+title: Frontend — Angular 21
+description: Módulo frontend de la Plataforma SAIP — SPA con Angular 21, TypeScript 5.9 y Tailwind CSS 4.1.
+---
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem, FileTree, Badge } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Angular 21" icon="seti:typescript">
+    Framework SPA con standalone components, signals y SSR.
+  </Card>
+  <Card title="TypeScript 5.9" icon="seti:json">
+    Tipado estricto con generación de tipos desde OpenAPI.
+  </Card>
+  <Card title="Tailwind CSS 4.1" icon="seti:css">
+    Utility-first CSS para diseño responsive y consistente.
+  </Card>
+  <Card title="Vitest 4.0" icon="approve-check">
+    Testing moderno y rápido.
+  </Card>
+</CardGrid>
+
+## Stack Técnico
+
+| Tecnología | Versión | Propósito |
+|------------|---------|-----------|
+| Angular | 21.0.0 | Framework SPA |
+| TypeScript | 5.9.2 | Lenguaje de desarrollo |
+| Tailwind CSS | 4.1.12 | Sistema de estilos |
+| Vitest | 4.0.8 | Framework de testing |
+| Express | 5.1.0 | SSR (Server-Side Rendering) |
+| ng-icons | Última | Iconos Heroicons |
+| ngx-charts | Última | Visualización de datos |
+
+## Estructura del Módulo
+
+<FileTree>
+- src/
+  - app/
+    - guards/
+      - auth.guard.ts
+    - interceptors/
+      - auth.interceptor.ts
+    - models/
+      - usuario.model.ts
+      - solicitud.model.ts
+      - apelacion.model.ts
+      - resolucion.model.ts
+      - respuesta.model.ts
+      - entidad.model.ts
+      - funcionario.model.ts
+      - ciudadano.model.ts
+      - documento.model.ts
+    - services/
+      - auth.service.ts
+      - solicitud.service.ts
+      - apelacion.service.ts
+      - respuesta.service.ts
+      - ttaip.service.ts
+      - funcionario.service.ts
+      - entidad.service.ts
+      - ciudadano.service.ts
+    - pages/
+      - home/ (Landing)
+      - auth/ (Login, Registro)
+      - ciudadano/ (Dashboard, NuevaSAIP, Detalle, Apelación, Subsanación)
+      - funcionario/ (Dashboard, Detalle, Responder)
+      - ttaip/ (Dashboard, Calificar, 2ªCalif., Resolver, Detalle, Disciplinario)
+      - admin/ (Dashboard con CRUD completo)
+    - app.routes.ts
+    - app.config.ts
+  - index.html
+  - main.ts
+  - main.server.ts
+  - server.ts
+  - styles.css
+- angular.json
+- package.json
+- tsconfig.json
+</FileTree>
+
+## Métricas del Módulo
+
+| Concepto | Cantidad |
+|----------|----------|
+| Componentes | 18+ standalone |
+| Servicios HTTP | 8 |
+| Modelos TypeScript | 9 (generados desde OpenAPI) |
+| Guards | 2 (auth + tipoUsuario) |
+| Interceptores | 1 (JWT auth) |
+| Rutas lazy-loaded | 20+ |
+
+## Ejecución
+
+```bash
+# Instalar dependencias
+cd frontend && npm install
+
+# Arrancar en modo desarrollo (puerto 4200)
+npm start
+
+# Build de producción con SSR
+npm run build
+
+# Ejecutar tests con Vitest
+npm test
+```
+
+## Subsecciones
+
+<CardGrid>
+  <LinkCard title="Arquitectura" href="/frontend/arquitectura/" description="Patrones Angular 21, signals, standalone components" />
+  <LinkCard title="Componentes" href="/frontend/componentes/" description="18+ componentes por rol de usuario" />
+  <LinkCard title="Servicios" href="/frontend/servicios/" description="8 servicios HTTP con HttpClient + RxJS" />
+  <LinkCard title="Rutas y Guards" href="/frontend/rutas-y-guards/" description="20+ rutas lazy-loaded protegidas por rol" />
+  <LinkCard title="Testing" href="/frontend/testing/" description="Vitest + Testing Library" />
+</CardGrid>

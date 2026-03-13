@@ -1,0 +1,222 @@
+---
+title: Arquitectura Mobile
+description: Clean Architecture multi-módulo con Kotlin puro en domain, Koin DI y patrón offline-first.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+La app mobile sigue **Clean Architecture** con separación estricta en capas y módulos Gradle independientes.
+
+## Capas de la Arquitectura
+
+```
+┌─────────────────────────────────────────────┐
+│          PRESENTATION (app/)                │
+│  Screens (@Composable) + ViewModels         │
+│  Material 3 + Navigation 3                  │
+├─────────────────────────────────────────────┤
+│          DOMAIN (core/domain/)              │
+│  Modelos + UseCases + Repository interfaces │
+│  Kotlin puro — SIN dependencias Android     │
+├─────────────────────────────────────────────┤
+│          DATA (core/data/)                  │
+│  Repository impls + Mappers                 │
+│  Orquesta local (DB) ↔ remoto (API)        │
+├─────────────────────────────────────────────┤
+│          INFRASTRUCTURE                     │
+│  core/database/ → SQLDelight                │
+│  core/network/  → Retrofit + Firebase       │
+│  core/common/   → Utilidades Android        │
+└─────────────────────────────────────────────┘
+```
+
+## Módulos Gradle
+
+<Tabs>
+  <TabItem label="domain">
+    ### core/domain <Badge text="Kotlin puro" variant="success" />
+
+    Módulo de Kotlin puro — **NO tiene dependencias de Android**. Define:
+
+    - **Modelos** — Clases de datos del dominio (`Solicitud`, `Apelacion`, `Usuario`, etc.)
+    - **UseCases** — 32 casos de uso con `operator fun invoke()`
+    - **Repository interfaces** — Contratos que la capa data implementa
+
+    ```kotlin
+    // Modelo de dominio
+    data class Solicitud(
+        val id: String,
+        val expediente: String,
+        val asunto: String,
+        val descripcion: String,
+        val estado: EstadoSolicitud,
+        val fechaPresentacion: LocalDateTime,
+        val fechaLimite: LocalDate?,
+        val diasRestantes: Int?,
+        val semaforoEstado: SemaforoEstado?,
+    )
+
+    // UseCase con factory injection
+    class CrearSolicitudUseCase(
+        private val repo: SolicitudRepository
+    ) {
+        suspend operator fun invoke(params: Params): Solicitud =
+            repo.crearSolicitud(params.toSolicitud())
+    }
+
+    // Repository interface
+    interface SolicitudRepository {
+        fun getSolicitudesUsuario(usuarioId: String): Flow<List<Solicitud>>
+        suspend fun crearSolicitud(solicitud: Solicitud): Solicitud
+        suspend fun getSolicitudByExpediente(expediente: String): Solicitud?
+    }
+    ```
+  </TabItem>
+  <TabItem label="data">
+    ### core/data <Badge text="Orquestación" variant="note" />
+
+    Implementa las interfaces de `domain/` orquestando datos locales y remotos:
+
+    - **5 Repository implementations** — Implementan patrón offline-first
+    - **4 Mappers** — Conversión domain ↔ DB entity ↔ network DTO
+
+    ```kotlin
+    class SolicitudRepositoryImpl(
+        private val localDataSource: SolicitudLocalDataSource,
+        private val remoteDataSource: SolicitudRemoteDataSource,
+        private val mapper: SolicitudMapper,
+    ) : SolicitudRepository {
+
+        override fun getSolicitudesUsuario(
+            usuarioId: String
+        ): Flow<List<Solicitud>> = flow {
+            // 1. Emitir datos locales inmediatamente
+            val local = localDataSource.getByUsuarioId(usuarioId)
+            emit(local.map(mapper::toDomain))
+
+            // 2. Intentar sincronizar con servidor
+            try {
+                val remote = remoteDataSource.getByUsuarioId(usuarioId)
+                localDataSource.insertAll(remote.map(mapper::toEntity))
+                emit(remote.map(mapper::toDomain))
+            } catch (e: Exception) {
+                // Offline — mantener datos locales
+            }
+        }
+    }
+    ```
+  </TabItem>
+  <TabItem label="database">
+    ### core/database <Badge text="SQLDelight" variant="tip" />
+
+    **5 tablas SQLDelight** para persistencia local:
+
+    | Tabla | Campos clave |
+    |-------|-------------|
+    | `Usuario` | id, email, nombre, tipoUsuario, token |
+    | `Solicitud` | id, expediente, asunto, estado, fechaPresentacion |
+    | `Apelacion` | id, expediente, estado, fundamentos |
+    | `EntidadPublica` | id, nombre, acronimo, direccion |
+    | `Notificacion` | id, titulo, mensaje, leida, fecha |
+  </TabItem>
+  <TabItem label="network">
+    ### core/network <Badge text="Retrofit + Firebase" variant="caution" />
+
+    - **Retrofit** — Cliente HTTP para la REST API (timeout: 10s)
+    - **Firebase Auth** — Autenticación federada
+    - **Firebase FCM** — Push notifications
+    - **DTOs** — Objetos de transferencia de red
+    - **ApiServices** — Interfaces Retrofit
+
+    ```kotlin
+    interface SolicitudApiService {
+        @GET("solicitudes/ciudadano/{id}")
+        suspend fun getByCiudadanoId(
+            @Path("id") ciudadanoId: Long
+        ): List<SolicitudDTO>
+
+        @POST("solicitudes")
+        suspend fun crear(
+            @Body request: CrearSolicitudRequest
+        ): SolicitudDTO
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Koin DI — Orden de Módulos
+
+Los 6 módulos Koin se registran en orden de dependencias:
+
+<Steps>
+1. **databaseModule** — SQLDelight driver + instancia de DB
+2. **networkModule** — Firebase instances + RemoteDataSources + Retrofit
+3. **domainModule** — 32 UseCases (scope: `factory`)
+4. **dataModule** — 5 Repository implementations (scope: `single`)
+5. **appModule** — CredentialStorage, helpers
+6. **presentationModule** — 11 ViewModels (scope: `viewModel`)
+</Steps>
+
+```kotlin
+// Application.onCreate()
+startKoin {
+    androidContext(this@MiSAIPApplication)
+    modules(
+        databaseModule,
+        networkModule,
+        domainModule,
+        dataModule,
+        appModule,
+        presentationModule,
+    )
+}
+```
+
+**Scopes:**
+
+| Scope | Uso | Ejemplo |
+|-------|-----|---------|
+| `factory` | Nueva instancia cada vez | UseCases |
+| `single` | Singleton | Repositories, DataSources |
+| `viewModel` | Ciclo de vida del ViewModel | ViewModels |
+
+## Mapper Pattern
+
+```kotlin
+object SolicitudMapper {
+    fun toDomain(entity: SolicitudEntity): Solicitud {
+        return Solicitud(
+            id = entity.id,
+            expediente = entity.expediente,
+            asunto = entity.asunto,
+            estado = EstadoSolicitud.valueOf(entity.estado),
+            // ...
+        )
+    }
+
+    fun toEntity(
+        domain: Solicitud,
+        pendienteSubida: Boolean = true
+    ): SolicitudEntity {
+        return SolicitudEntity(
+            id = domain.id,
+            expediente = domain.expediente,
+            asunto = domain.asunto,
+            estado = domain.estado.name,
+            pendienteSubida = pendienteSubida,
+            // ...
+        )
+    }
+}
+```
+
+## Restricciones del Módulo
+
+| Regla | Detalle |
+|-------|---------|
+| NO Views/XML | Solo Jetpack Compose para UI |
+| NO Activities múltiples | Single-Activity con Navigation 3 |
+| NO Navigation viejo | NO `NavHost`, NO `NavController` |
+| NO Java | Exclusivamente Kotlin |
+| NO Android en domain | `core/domain/` es Kotlin puro |
+| NO `collectAsState()` | Usar `collectAsStateWithLifecycle()` |

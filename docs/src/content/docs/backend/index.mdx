@@ -1,0 +1,102 @@
+---
+title: Backend — Visión General
+description: Módulo API REST con Spring Boot 4, Java 21, MySQL y Spring Security para la Plataforma SAIP.
+---
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem, Steps, FileTree, Badge } from '@astrojs/starlight/components';
+
+El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST que sirve como fuente de datos central para los módulos frontend y mobile, publicando un contrato OpenAPI como interfaz formal.
+
+## Stack Tecnológico
+
+<CardGrid>
+  <Card title="Spring Boot 4.0.0" icon="rocket">
+    Framework principal con autoconfiguración, embedded Tomcat y soporte para Java 21.
+  </Card>
+  <Card title="Java 21 (LTS)" icon="seti:java">
+    Records, pattern matching, virtual threads y sealed classes.
+  </Card>
+  <Card title="MySQL + JPA" icon="seti:db">
+    Spring Data JPA con Hibernate y dialecto `MySQLDialect`. DDL auto-update en desarrollo.
+  </Card>
+  <Card title="Spring Security" icon="approve-check-circle">
+    JWT (JJWT 0.12.6) + BCrypt(12) + autorización basada en roles.
+  </Card>
+</CardGrid>
+
+## Datos del Módulo
+
+| Propiedad | Valor |
+|-----------|-------|
+| **Puerto** | `8080` |
+| **Package base** | `pe.gob.saip.backend` |
+| **Build tool** | Maven Wrapper (`mvnw`) |
+| **Java version** | 21 |
+| **Base de datos** | MySQL (`saip_db`) |
+| **OpenAPI** | `/v3/api-docs` |
+
+## Estructura del Proyecto
+
+<FileTree>
+- backend/
+  - src/main/java/pe/gob/saip/backend/
+    - controller/ 10 REST controllers
+    - service/ 15 servicios de negocio
+    - repository/ 11 interfaces JPA
+    - model/
+      - entity/ 11 entidades JPA
+      - dto/ 14 DTOs (records)
+    - exception/ GlobalExceptionHandler + excepciones custom
+    - security/ SecurityConfig, JwtService, JwtAuthFilter
+    - config/ CorsConfig, OpenApiConfig
+    - util/ DiasHabilesUtil
+  - src/main/resources/
+    - application.properties
+  - src/test/java/
+    - controller/ Tests de integración
+    - service/ Tests unitarios
+    - model/entity/ Tests de entidades
+  - pom.xml
+  - mvnw / mvnw.cmd
+</FileTree>
+
+## Métricas del Módulo
+
+<CardGrid stagger>
+  <Card title="10 Controllers" icon="list-format">
+    100+ endpoints REST organizados por dominio funcional.
+  </Card>
+  <Card title="15 Services" icon="setting">
+    Lógica de negocio con transaccionalidad y validación.
+  </Card>
+  <Card title="11 Entities" icon="seti:db">
+    Jerarquía JPA con herencia JOINED desde `Usuario`.
+  </Card>
+  <Card title="14 DTOs" icon="document">
+    Records Java con validación Jakarta Bean Validation.
+  </Card>
+</CardGrid>
+
+## Ejecutar el Backend
+
+```bash
+# Requisito: MySQL corriendo en localhost:3306/saip_db
+cd backend
+./mvnw spring-boot:run        # Linux/macOS
+.\mvnw.cmd spring-boot:run    # Windows
+```
+
+:::note
+Las credenciales de base de datos se externalizan via variables de entorno: `${DB_USERNAME:root}` y `${DB_PASSWORD:}`. El secret JWT se configura con `${JWT_SECRET}`.
+:::
+
+## Secciones de esta Guía
+
+<CardGrid>
+  <LinkCard title="Arquitectura" href="/backend/arquitectura" description="Capas, patrones y flujo de datos del backend." />
+  <LinkCard title="Entidades JPA" href="/backend/entidades" description="Modelos de dominio, relaciones y enums." />
+  <LinkCard title="Controladores REST" href="/backend/controladores" description="Endpoints, verbos HTTP y ejemplos." />
+  <LinkCard title="Servicios" href="/backend/servicios" description="Lógica de negocio y reglas SAIP/TTAIP." />
+  <LinkCard title="Seguridad" href="/backend/seguridad" description="JWT, roles, CORS y Spring Security." />
+  <LinkCard title="Testing" href="/backend/testing" description="JUnit 5, Mockito y MockMvc." />
+</CardGrid>

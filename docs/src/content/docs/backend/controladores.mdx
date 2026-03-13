@@ -1,0 +1,256 @@
+---
+title: Controladores REST
+description: Endpoints de la API REST, verbos HTTP, rutas y ejemplos de request/response.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+El backend expone **100+ endpoints** organizados en 10 controladores REST, cada uno con una responsabilidad de dominio específica.
+
+## Resumen de Controladores
+
+| Controller | Base Path | Endpoints | Descripción |
+|------------|-----------|-----------|-------------|
+| `AuthRestController` | `/api/auth` | 6 | Autenticación y registro |
+| `SolicitudRestController` | `/api/solicitudes` | 12 | CRUD solicitudes SAIP |
+| `ApelacionRestController` | `/api/apelaciones` | 10 | Gestión de apelaciones |
+| `RespuestaRestController` | `/api/respuestas` | 5 | Respuestas de funcionarios |
+| `TTAIPRestController` | `/api/ttaip` | 14 | Operaciones del tribunal |
+| `CiudadanoRestController` | `/api/ciudadanos` | 7 | Gestión de ciudadanos |
+| `EntidadRestController` | `/api/entidades` | 8 | Entidades públicas |
+| `FuncionarioRestController` | `/api/funcionarios` | 6 | Gestión de funcionarios |
+| `EstadisticasRestController` | `/api/estadisticas` | 3 | Estadísticas generales |
+| `ReportesRestController` | `/api/reportes` | 4 | Reportes filtrados |
+
+## Detalle por Controlador
+
+<Tabs>
+  <TabItem label="Auth">
+    ### AuthRestController <Badge text="/api/auth" variant="tip" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `POST` | `/login` | Autenticación (email, DNI o username) |
+    | `POST` | `/registro` | Registro de ciudadano |
+    | `GET` | `/verificar-email` | Verificar si email existe |
+    | `GET` | `/verificar-dni` | Verificar si DNI existe |
+    | `GET` | `/me/{id}` | Obtener usuario actual |
+    | `POST` | `/refresh` | Refrescar token JWT |
+
+    **Ejemplo — Login:**
+    ```json
+    // POST /api/auth/login
+    {
+      "identificador": "ciudadano@test.com",
+      "password": "password123"
+    }
+
+    // Response 200
+    {
+      "success": true,
+      "token": "eyJhbGciOiJIUzI1NiJ9...",
+      "usuarioId": 1,
+      "email": "ciudadano@test.com",
+      "tipoUsuario": "CIUDADANO",
+      "nombre": "Juan Pérez",
+      "ciudadanoId": 1,
+      "redirectUrl": "/ciudadano/dashboard"
+    }
+    ```
+
+    :::tip
+    El campo `identificador` acepta email, DNI o username gracias al **Smart Auth Gateway** — el backend detecta automáticamente el formato.
+    :::
+  </TabItem>
+  <TabItem label="Solicitudes">
+    ### SolicitudRestController <Badge text="/api/solicitudes" variant="tip" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todas las solicitudes |
+    | `GET` | `/{id}` | Obtener por ID (con JOIN FETCH) |
+    | `GET` | `/expediente/{exp}` | Buscar por expediente |
+    | `GET` | `/ciudadano/{id}` | Solicitudes de un ciudadano |
+    | `GET` | `/entidad/{id}` | Solicitudes de una entidad |
+    | `GET` | `/estado/{estado}` | Filtrar por estado |
+    | `GET` | `/estadisticas` | Estadísticas generales |
+    | `GET` | `/ciudadano/{id}/estadisticas` | Stats por ciudadano |
+    | `GET` | `/entidad/{id}/estadisticas` | Stats por entidad |
+    | `POST` | `/` | Crear nueva solicitud SAIP |
+    | `PUT` | `/{id}` | Actualizar solicitud |
+    | `PATCH` | `/{id}/estado` | Cambiar estado |
+
+    **Ejemplo — Crear Solicitud:**
+    ```json
+    // POST /api/solicitudes
+    {
+      "asunto": "Información sobre presupuesto 2024",
+      "descripcion": "Solicito copia del presupuesto ejecutado...",
+      "ciudadanoId": 1,
+      "entidadId": 3,
+      "formatoDigital": true,
+      "copiaSimple": true
+    }
+
+    // Response 201
+    {
+      "id": 42,
+      "expediente": "SAIP-2025-00042",
+      "asunto": "Información sobre presupuesto 2024",
+      "estado": "RECEPCIONADA",
+      "fechaPresentacion": "2025-07-15T10:30:00",
+      "fechaLimite": "2025-07-29",
+      "diasRestantes": 10,
+      "semaforoEstado": "VERDE"
+    }
+    ```
+  </TabItem>
+  <TabItem label="Apelaciones">
+    ### ApelacionRestController <Badge text="/api/apelaciones" variant="tip" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todas |
+    | `GET` | `/{id}` | Obtener por ID |
+    | `GET` | `/expediente/{exp}` | Buscar por expediente |
+    | `GET` | `/estado/{estado}` | Filtrar por estado |
+    | `GET` | `/ciudadano/{id}` | Apelaciones de un ciudadano |
+    | `GET` | `/estadisticas` | Estadísticas |
+    | `POST` | `/` | Crear apelación |
+    | `PUT` | `/{id}` | Actualizar |
+    | `PATCH` | `/{id}/estado` | Cambiar estado |
+    | `POST` | `/{id}/subsanacion` | Presentar subsanación |
+
+    **Ejemplo — Crear Apelación:**
+    ```json
+    // POST /api/apelaciones
+    {
+      "solicitudId": 42,
+      "ciudadanoId": 1,
+      "fundamentos": "La entidad denegó injustificadamente..."
+    }
+
+    // Response 201
+    {
+      "id": 7,
+      "expediente": "00007-2025-JUS/TTAIP",
+      "estado": "PENDIENTE_ELEVACION"
+    }
+    ```
+  </TabItem>
+  <TabItem label="Respuestas">
+    ### RespuestaRestController <Badge text="/api/respuestas" variant="tip" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todas |
+    | `GET` | `/{id}` | Obtener por ID |
+    | `GET` | `/solicitud/{id}` | Buscar por solicitud |
+    | `POST` | `/aceptar` | Aceptar solicitud (entrega) |
+    | `POST` | `/denegar` | Denegar solicitud |
+    | `GET` | `/causales-denegacion` | Obtener 9 causales Art. 15 |
+
+    **Causales de Denegación (Art. 15 Ley 27806):**
+    1. Información clasificada como secreta
+    2. Información clasificada como reservada
+    3. Información confidencial
+    4. Intimidad personal
+    5. Seguridad nacional
+    6. Secreto bancario/tributario
+    7. Investigaciones en trámite
+    8. Información protegida por ley
+    9. Documentos preparatorios internos
+  </TabItem>
+  <TabItem label="TTAIP">
+    ### TTAIPRestController <Badge text="/api/ttaip" variant="tip" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/estadisticas` | Estadísticas del tribunal |
+    | `GET` | `/pendientes` | Apelaciones pendientes |
+    | `GET` | `/en-calificacion` | En primera calificación |
+    | `GET` | `/subsanacion` | En subsanación |
+    | `GET` | `/segunda-calificacion` | En segunda calificación |
+    | `GET` | `/resueltas` | Apelaciones resueltas |
+    | `POST` | `/calificacion/{id}/admitir` | Admitir apelación |
+    | `POST` | `/calificacion/{id}/subsanar` | Requerir subsanación |
+    | `POST` | `/calificacion/{id}/inadmitir` | Declarar improcedente |
+    | `POST` | `/resolucion/{id}/fundado` | Declarar fundado |
+    | `POST` | `/resolucion/{id}/infundado` | Declarar infundado |
+    | `POST` | `/resolucion/{id}/fundado-en-parte` | Fundado en parte |
+    | `POST` | `/resolucion/{id}/infundado-en-parte` | Infundado en parte |
+    | `POST` | `/resolucion/{id}/improcedente` | Improcedente |
+    | `POST` | `/resolucion/{id}/sustraccion-materia` | Sustracción de materia |
+    | `POST` | `/resolucion/{id}/desistimiento` | Desistimiento |
+    | `POST` | `/resolucion/{id}/no-presentado` | No presentado |
+    | `POST` | `/notificar-segunda-calificacion/{id}` | Notificar al ciudadano |
+  </TabItem>
+  <TabItem label="Otros">
+    ### CiudadanoRestController <Badge text="/api/ciudadanos" variant="note" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todos |
+    | `GET` | `/{id}` | Obtener por ID |
+    | `GET` | `/dni/{dni}` | Buscar por DNI |
+    | `GET` | `/{id}/estadisticas` | Stats del ciudadano |
+    | `POST` | `/` | Crear ciudadano |
+    | `PUT` | `/{id}` | Actualizar |
+    | `PATCH` | `/{id}/estado` | Cambiar estado activo |
+
+    ### EntidadRestController <Badge text="/api/entidades" variant="note" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todas |
+    | `GET` | `/activas` | Solo activas |
+    | `GET` | `/{id}` | Obtener por ID |
+    | `GET` | `/{id}/estadisticas` | Stats con tasa cumplimiento |
+    | `GET` | `/buscar` | Buscar por nombre |
+    | `POST` | `/` | Crear entidad |
+    | `PUT` | `/{id}` | Actualizar |
+    | `PATCH` | `/{id}/estado` | Cambiar estado |
+
+    ### FuncionarioRestController <Badge text="/api/funcionarios" variant="note" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Listar todos |
+    | `GET` | `/{id}` | Obtener por ID |
+    | `GET` | `/entidad/{id}` | Filtrar por entidad |
+    | `POST` | `/` | Crear funcionario |
+    | `PUT` | `/{id}` | Actualizar |
+    | `PATCH` | `/{id}/estado` | Cambiar estado |
+
+    ### EstadisticasRestController <Badge text="/api/estadisticas" variant="note" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/` | Estadísticas generales |
+    | `GET` | `/periodo` | Stats por periodo (semana/mes/año) |
+    | `GET` | `/resumen` | Resumen ejecutivo |
+
+    ### ReportesRestController <Badge text="/api/reportes" variant="note" />
+
+    | Método | Ruta | Descripción |
+    |--------|------|-------------|
+    | `GET` | `/solicitudes` | Reporte de solicitudes |
+    | `GET` | `/apelaciones` | Reporte de apelaciones |
+    | `GET` | `/entidades` | Reporte por entidad |
+    | `GET` | `/general` | Reporte general |
+  </TabItem>
+</Tabs>
+
+## Convenciones de Respuesta
+
+Todos los endpoints siguen un patrón de respuesta consistente:
+
+| Escenario | Código HTTP | Body |
+|-----------|-------------|------|
+| Éxito lectura | `200 OK` | DTO o lista de DTOs |
+| Éxito creación | `201 CREATED` | DTO creado |
+| Validación fallida | `400 BAD REQUEST` | `{ "mensaje": "...", "errores": {...} }` |
+| No autenticado | `401 UNAUTHORIZED` | `{ "mensaje": "No autorizado" }` |
+| Sin permiso | `403 FORBIDDEN` | `{ "mensaje": "Acceso denegado" }` |
+| No encontrado | `404 NOT FOUND` | `{ "mensaje": "Recurso no encontrado" }` |
+| Error servidor | `500 INTERNAL SERVER ERROR` | `{ "mensaje": "Error interno" }` |

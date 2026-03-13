@@ -1,0 +1,221 @@
+---
+title: ViewModels
+description: Patrón ViewModel con UiState inmutable, Events para navegación y StateFlow para observación reactiva.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+Los ViewModels siguen un patrón estricto: **UiState inmutable** + **Events** para efectos secundarios + **StateFlow** para observación reactiva.
+
+## Patrón Obligatorio
+
+### Estructura de un ViewModel
+
+```kotlin
+// 1. UiState — siempre @Immutable data class
+@Immutable
+data class CitizenDashboardUiState(
+    val solicitudes: List<Solicitud> = emptyList(),
+    val apelaciones: List<Apelacion> = emptyList(),
+    val loading: Boolean = false,
+    val error: String? = null,
+    val estadisticas: EstadisticasCiudadano? = null,
+)
+
+// 2. Events — sealed interface para one-shot
+sealed interface CitizenDashboardEvent {
+    data class MostrarMensaje(val mensaje: String) : CitizenDashboardEvent
+    data class NavegarADetalle(val expediente: String) : CitizenDashboardEvent
+    data object CerrarSesion : CitizenDashboardEvent
+}
+
+// 3. ViewModel con UseCases inyectados
+class CitizenDashboardViewModel(
+    private val getSolicitudes: GetSolicitudesUsuarioUseCase,
+    private val getApelaciones: GetApelacionesUsuarioUseCase,
+    private val getEstadisticas: GetEstadisticasCiudadanoUseCase,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(CitizenDashboardUiState())
+    val uiState: StateFlow<CitizenDashboardUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<CitizenDashboardEvent>()
+    val events: SharedFlow<CitizenDashboardEvent> = _events.asSharedFlow()
+
+    init {
+        cargarDatos()
+    }
+
+    fun cargarDatos() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(loading = true, error = null) }
+            try {
+                getSolicitudes(usuarioId).collect { solicitudes ->
+                    _uiState.update { it.copy(solicitudes = solicitudes) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            } finally {
+                _uiState.update { it.copy(loading = false) }
+            }
+        }
+    }
+
+    fun seleccionarSolicitud(expediente: String) {
+        viewModelScope.launch {
+            _events.emit(CitizenDashboardEvent.NavegarADetalle(expediente))
+        }
+    }
+}
+```
+
+## 11 ViewModels
+
+| ViewModel | Screen | Rol |
+|-----------|--------|-----|
+| `SplashViewModel` | SplashScreen | — |
+| `LoginViewModel` | LoginScreen | — |
+| `RegisterViewModel` | RegisterScreen | — |
+| `CitizenDashboardViewModel` | CitizenDashboardScreen | CIUDADANO |
+| `NewSAIPViewModel` | NewSAIPScreen | CIUDADANO |
+| `RequestDetailViewModel` | RequestDetailScreen | CIUDADANO |
+| `AppealViewModel` | AppealFormScreen | CIUDADANO |
+| `SubsanationViewModel` | SubsanationScreen | CIUDADANO |
+| `EntityDashboardViewModel` | EntityDashboardScreen | FUNCIONARIO |
+| `EntityResponseViewModel` | EntityResponseScreen | FUNCIONARIO |
+| `TTAIPDashboardViewModel` | TTAIPDashboardScreen | TTAIP |
+
+## Observación en Composables
+
+<Tabs>
+  <TabItem label="UiState">
+    ```kotlin
+    @Composable
+    fun CitizenDashboardScreen(
+        viewModel: CitizenDashboardViewModel = koinViewModel(),
+        onNavigateToDetail: (String) -> Unit,
+    ) {
+        // SIEMPRE collectAsStateWithLifecycle
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+        // Renderizar según estado
+        when {
+            uiState.loading -> LoadingIndicator()
+            uiState.error != null -> ErrorMessage(uiState.error!!)
+            else -> DashboardContent(
+                solicitudes = uiState.solicitudes,
+                onSolicitudClick = viewModel::seleccionarSolicitud,
+            )
+        }
+    }
+    ```
+
+    :::danger[collectAsState está PROHIBIDO]
+    NUNCA usar `collectAsState()` — no respeta el ciclo de vida. Usar siempre `collectAsStateWithLifecycle()` que pausa la colección cuando la app está en background.
+    :::
+  </TabItem>
+  <TabItem label="Events">
+    ```kotlin
+    @Composable
+    fun CitizenDashboardScreen(
+        viewModel: CitizenDashboardViewModel = koinViewModel(),
+        onNavigateToDetail: (String) -> Unit,
+        onLogout: () -> Unit,
+    ) {
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+        // Observar eventos one-shot
+        LaunchedEffect(Unit) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is CitizenDashboardEvent.NavegarADetalle ->
+                        onNavigateToDetail(event.expediente)
+                    is CitizenDashboardEvent.MostrarMensaje ->
+                        snackbarHostState.showSnackbar(event.mensaje)
+                    is CitizenDashboardEvent.CerrarSesion ->
+                        onLogout()
+                }
+            }
+        }
+
+        // ... UI
+    }
+    ```
+  </TabItem>
+  <TabItem label="Koin DI">
+    ```kotlin
+    // presentationModule — registrar ViewModels
+    val presentationModule = module {
+        viewModel { SplashViewModel(get()) }
+        viewModel { LoginViewModel(get(), get()) }
+        viewModel { RegisterViewModel(get()) }
+        viewModel { CitizenDashboardViewModel(get(), get(), get()) }
+        viewModel { NewSAIPViewModel(get(), get()) }
+        viewModel { RequestDetailViewModel(get()) }
+        viewModel { AppealViewModel(get()) }
+        viewModel { SubsanationViewModel(get()) }
+        viewModel { EntityDashboardViewModel(get(), get()) }
+        viewModel { EntityResponseViewModel(get(), get()) }
+        viewModel { TTAIPDashboardViewModel(get(), get()) }
+    }
+
+    // Obtención en Composables
+    val viewModel: LoginViewModel = koinViewModel()
+    ```
+  </TabItem>
+</Tabs>
+
+## 32 UseCases
+
+Los UseCases siguen el patrón `operator fun invoke()` con Koin **factory** scope:
+
+<Tabs>
+  <TabItem label="Síncronos">
+    ```kotlin
+    class GetSolicitudesUsuarioUseCase(
+        private val repo: SolicitudRepository
+    ) {
+        operator fun invoke(usuarioId: String): Flow<List<Solicitud>> =
+            repo.getSolicitudesUsuario(usuarioId)
+    }
+    ```
+  </TabItem>
+  <TabItem label="Suspendibles">
+    ```kotlin
+    class CrearSolicitudUseCase(
+        private val repo: SolicitudRepository
+    ) {
+        suspend operator fun invoke(params: Params): Solicitud =
+            repo.crearSolicitud(params.toSolicitud())
+    }
+
+    class LoginUseCase(
+        private val authRepo: AuthRepository,
+        private val credentialStorage: CredentialStorage,
+    ) {
+        suspend operator fun invoke(
+            identificador: String,
+            password: String,
+        ): AuthResult {
+            val result = authRepo.login(identificador, password)
+            if (result is AuthResult.Success) {
+                credentialStorage.guardarSesion(result.usuario)
+            }
+            return result
+        }
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Reglas del Patrón
+
+| Regla | Detalle |
+|-------|---------|
+| `@Immutable` en UiState | Optimiza recomposición de Compose |
+| `StateFlow` para estado | `.asStateFlow()` para inmutabilidad externa |
+| `SharedFlow` para eventos | One-shot, no se replayan en recomposición |
+| `copy()` para actualizaciones | NUNCA mutar directamente el UiState |
+| `viewModelScope.launch` | Cancela coroutines automáticamente |
+| `collectAsStateWithLifecycle` | OBLIGATORIO, nunca `collectAsState()` |
+| UseCases via `factory` | Nueva instancia por cada invocación |

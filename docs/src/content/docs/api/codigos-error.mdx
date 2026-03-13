@@ -1,0 +1,174 @@
+---
+title: Códigos de Error
+description: Formato de respuestas de error, códigos HTTP y manejo centralizado con GlobalExceptionHandler.
+---
+
+import { Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+## Formato Estándar de Error
+
+Todas las respuestas de error siguen el formato `ApiError`:
+
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "asunto: no debe estar vacío, entidadId: no debe ser nulo",
+  "timestamp": "2025-01-15T10:30:00",
+  "path": "/api/solicitudes"
+}
+```
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `status` | `int` | Código HTTP |
+| `error` | `String` | Descripción corta del error HTTP |
+| `message` | `String` | Detalle legible del error |
+| `timestamp` | `String` | Fecha y hora del error |
+| `path` | `String` | Ruta del endpoint que generó el error |
+
+## Códigos HTTP
+
+<Tabs>
+  <TabItem label="Éxito (2xx)">
+    | Código | Significado | Cuándo se usa |
+    |--------|-------------|---------------|
+    | `200 OK` | Operación exitosa | GET, PUT exitosos |
+    | `201 Created` | Recurso creado | POST exitosos |
+    | `204 No Content` | Sin contenido | DELETE exitosos |
+  </TabItem>
+  <TabItem label="Error Cliente (4xx)">
+    | Código | Significado | Cuándo se usa |
+    |--------|-------------|---------------|
+    | `400 Bad Request` | Datos inválidos | Validación Jakarta fallida |
+    | `401 Unauthorized` | No autenticado | Token JWT ausente o expirado |
+    | `403 Forbidden` | Sin permisos | Rol insuficiente para la acción |
+    | `404 Not Found` | No encontrado | Recurso inexistente |
+    | `409 Conflict` | Conflicto | Expediente duplicado, estado inválido |
+    | `422 Unprocessable Entity` | Regla de negocio | Plazo vencido, transición inválida |
+  </TabItem>
+  <TabItem label="Error Servidor (5xx)">
+    | Código | Significado | Cuándo se usa |
+    |--------|-------------|---------------|
+    | `500 Internal Server Error` | Error interno | Excepciones no controladas |
+    | `503 Service Unavailable` | Servicio no disponible | Base de datos caída |
+  </TabItem>
+</Tabs>
+
+## GlobalExceptionHandler
+
+El manejo centralizado de excepciones se realiza en `GlobalExceptionHandler`:
+
+```java
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    // Validación de campos (Jakarta Bean Validation)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(
+            MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+            .map(e -> e.getField() + ": " + e.getDefaultMessage())
+            .collect(Collectors.joining(", "));
+        return ResponseEntity.badRequest()
+            .body(ApiError.validation(message));
+    }
+
+    // Recurso no encontrado
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<ApiError> handleNotFound(
+            RecursoNoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiError.notFound(ex.getMessage()));
+    }
+
+    // Regla de negocio violada
+    @ExceptionHandler(ReglaNegocioException.class)
+    public ResponseEntity<ApiError> handleBusinessRule(
+            ReglaNegocioException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(ApiError.businessRule(ex.getMessage()));
+    }
+
+    // Error genérico
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGeneric(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiError.internal("Error interno del servidor"));
+    }
+}
+```
+
+## Excepciones Custom
+
+| Excepción | Código HTTP | Uso |
+|-----------|-------------|-----|
+| `RecursoNoEncontradoException` | `404` | Solicitud, apelación o usuario no encontrado |
+| `ReglaNegocioException` | `422` | Violación de regla de negocio (plazo vencido, estado inválido) |
+| `AccesoNoAutorizadoException` | `403` | Intento de acceder a recurso de otro usuario |
+| `EstadoInvalidoException` | `409` | Transición de estado no permitida |
+
+## Ejemplos de Errores
+
+<Tabs>
+  <TabItem label="Validación">
+    ```json
+    // POST /api/solicitudes con campos vacíos
+    // Response 400
+    {
+      "status": 400,
+      "error": "Bad Request",
+      "message": "asunto: no debe estar vacío, descripcion: no debe estar vacío, entidadId: no debe ser nulo",
+      "timestamp": "2025-01-15T10:30:00",
+      "path": "/api/solicitudes"
+    }
+    ```
+  </TabItem>
+  <TabItem label="No encontrado">
+    ```json
+    // GET /api/solicitudes/99999
+    // Response 404
+    {
+      "status": 404,
+      "error": "Not Found",
+      "message": "Solicitud con ID 99999 no encontrada",
+      "timestamp": "2025-01-15T10:30:00",
+      "path": "/api/solicitudes/99999"
+    }
+    ```
+  </TabItem>
+  <TabItem label="Regla de negocio">
+    ```json
+    // POST /api/apelaciones — plazo vencido
+    // Response 422
+    {
+      "status": 422,
+      "error": "Unprocessable Entity",
+      "message": "El plazo de 15 días calendario para apelar ha vencido",
+      "timestamp": "2025-01-15T10:30:00",
+      "path": "/api/apelaciones"
+    }
+    ```
+  </TabItem>
+  <TabItem label="No autorizado">
+    ```json
+    // GET /api/solicitudes sin token
+    // Response 401
+    {
+      "status": 401,
+      "error": "Unauthorized",
+      "message": "Token de autenticación requerido",
+      "timestamp": "2025-01-15T10:30:00",
+      "path": "/api/solicitudes"
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+## Manejo en Clientes
+
+| Módulo | Estrategia |
+|--------|-----------|
+| **Frontend** | `catchError` en pipes RxJS → muestra mensaje al usuario con señales de error |
+| **Mobile** | `try/catch` en `viewModelScope.launch` → actualiza `uiState.error` |
+| **Backend** | `GlobalExceptionHandler` centraliza TODAS las excepciones |

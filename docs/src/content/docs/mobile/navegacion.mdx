@@ -1,0 +1,178 @@
+---
+title: Navegación
+description: Navigation 3 con NavDisplay, NavKey y back stack como SnapshotStateList en single-Activity.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+
+La app usa **Navigation 3** — la API moderna de navegación de Jetpack. Single-Activity con `NavDisplay` + `NavKey`.
+
+:::caution[Navigation 3 — NO Navigation vieja]
+NUNCA usar `NavHost`, `NavController` ni `rememberNavController()`. Navigation 3 usa `NavDisplay` + `entryProvider` + `rememberNavBackStack`.
+:::
+
+## Conceptos Clave
+
+<CardGrid>
+  <Card title="NavKey" icon="seti:kotlin">
+    Clase que define una ruta de navegación. Puede contener parámetros.
+  </Card>
+  <Card title="NavDisplay" icon="puzzle">
+    Composable que renderiza la pantalla actual según el back stack.
+  </Card>
+  <Card title="Back Stack" icon="list-format">
+    `SnapshotStateList` reactivo — navegar = agregar/eliminar keys.
+  </Card>
+  <Card title="entryProvider" icon="right-arrow">
+    DSL que mapea un NavKey a su Composable correspondiente.
+  </Card>
+</CardGrid>
+
+## Definición de Rutas
+
+```kotlin
+// NavKeys — cada ruta es un objeto/data class serializable
+@Serializable
+object Splash : NavKey
+@Serializable
+object Login : NavKey
+@Serializable
+object Register : NavKey
+@Serializable
+object CitizenDashboard : NavKey
+@Serializable
+data class RequestDetail(val expediente: String) : NavKey
+@Serializable
+data class AppealForm(val solicitudExpediente: String) : NavKey
+@Serializable
+data class SubsanationForm(val apelacionExpediente: String) : NavKey
+@Serializable
+object EntityDashboard : NavKey
+@Serializable
+data class EntityRequestDetail(val expediente: String) : NavKey
+@Serializable
+data class EntityResponse(val expediente: String) : NavKey
+@Serializable
+object TTAIPDashboard : NavKey
+// ... más rutas
+```
+
+## NavDisplay en MainActivity
+
+```kotlin
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MiSAIPTheme {
+                val backStack = rememberNavBackStack(Splash)
+
+                NavDisplay(backStack = backStack) {
+                    entryProvider<Splash> {
+                        SplashScreen(
+                            onNavigateToLogin = { backStack.add(Login) },
+                            onNavigateToDashboard = { rol ->
+                                backStack.add(getDashboardForRole(rol))
+                            },
+                        )
+                    }
+
+                    entryProvider<Login> {
+                        LoginScreen(
+                            onNavigateToRegister = { backStack.add(Register) },
+                            onLoginSuccess = { rol ->
+                                backStack.clear()
+                                backStack.add(getDashboardForRole(rol))
+                            },
+                        )
+                    }
+
+                    entryProvider<CitizenDashboard> {
+                        CitizenDashboardScreen(
+                            onNavigateToNewSAIP = { backStack.add(NewSAIP) },
+                            onNavigateToDetail = { exp ->
+                                backStack.add(RequestDetail(exp))
+                            },
+                            onLogout = {
+                                backStack.clear()
+                                backStack.add(Login)
+                            },
+                        )
+                    }
+
+                    // ... 10+ entryProviders más
+                }
+            }
+        }
+    }
+}
+```
+
+## Operaciones de Navegación
+
+<Tabs>
+  <TabItem label="Navegar">
+    ```kotlin
+    // Ir a una pantalla
+    backStack.add(CitizenDashboard)
+
+    // Ir a pantalla con parámetros
+    backStack.add(RequestDetail(expediente = "SAIP-2025-00042"))
+    ```
+  </TabItem>
+  <TabItem label="Volver">
+    ```kotlin
+    // Volver a pantalla anterior
+    backStack.removeLastOrNull()
+
+    // Volver a un punto específico (pop hasta encontrar)
+    while (backStack.lastOrNull() !is CitizenDashboard) {
+        backStack.removeLastOrNull() ?: break
+    }
+    ```
+  </TabItem>
+  <TabItem label="Reset">
+    ```kotlin
+    // Limpiar y navegar (ej: después de login/logout)
+    backStack.clear()
+    backStack.add(Login)
+
+    // Reemplazar el backstack completo
+    backStack.clear()
+    backStack.add(CitizenDashboard)
+    ```
+  </TabItem>
+</Tabs>
+
+## 13 Screens
+
+| Screen | NavKey | Rol | Descripción |
+|--------|--------|-----|-------------|
+| `SplashScreen` | `Splash` | — | Carga inicial, verificar sesión |
+| `LoginScreen` | `Login` | — | Autenticación |
+| `RegisterScreen` | `Register` | — | Registro ciudadano |
+| `CitizenDashboardScreen` | `CitizenDashboard` | CIUDADANO | Dashboard |
+| `NewSAIPScreen` | `NewSAIP` | CIUDADANO | Crear solicitud |
+| `RequestDetailScreen` | `RequestDetail` | CIUDADANO | Detalle solicitud |
+| `AppealFormScreen` | `AppealForm` | CIUDADANO | Crear apelación |
+| `SubsanationScreen` | `SubsanationForm` | CIUDADANO | Subsanar |
+| `EntityDashboardScreen` | `EntityDashboard` | FUNCIONARIO | Dashboard entidad |
+| `EntityRequestDetailScreen` | `EntityRequestDetail` | FUNCIONARIO | Detalle |
+| `EntityResponseScreen` | `EntityResponse` | FUNCIONARIO | Responder |
+| `TTAIPDashboardScreen` | `TTAIPDashboard` | TTAIP | Dashboard tribunal |
+| `NotificationsScreen` | `Notifications` | Todos | Notificaciones |
+
+## Flujo de Navegación
+
+<Steps>
+1. **App inicia** → `SplashScreen` verifica sesión guardada
+2. **Sin sesión** → navega a `Login`
+3. **Login exitoso** → `backStack.clear()` + `backStack.add(Dashboard)`
+4. **Navegación interna** → `backStack.add(destino)` apila pantallas
+5. **Botón back** → `backStack.removeLastOrNull()` desapila
+6. **Logout** → `backStack.clear()` + `backStack.add(Login)`
+</Steps>
+
+:::tip[Back Stack Reactivo]
+El back stack es un `SnapshotStateList` — cualquier modificación (add, remove, clear) recompone automáticamente `NavDisplay` para mostrar la pantalla correcta. No se necesitan callbacks ni observers adicionales.
+:::

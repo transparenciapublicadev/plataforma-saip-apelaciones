@@ -1,0 +1,289 @@
+---
+title: Servicios y Lógica de Negocio
+description: Capa de servicios del backend — lógica de negocio, transacciones, cálculos de plazo y reglas SAIP/TTAIP.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Badge, Steps } from '@astrojs/starlight/components';
+
+El backend cuenta con **15 servicios** que implementan toda la lógica de negocio de la plataforma SAIP.
+
+## Inventario de Servicios
+
+<Tabs>
+  <TabItem label="Core SAIP">
+    | Servicio | Responsabilidad |
+    |----------|-----------------|
+    | `SolicitudService` | CRUD + flujo completo de solicitudes SAIP |
+    | `RespuestaService` | Crear respuestas, aceptar/denegar solicitudes |
+    | `ApelacionService` | Gestión de apelaciones, subsanación |
+    | `TTAIPService` | Calificación, admisión y resolución del tribunal |
+    | `ResolucionService` | Crear y consultar resoluciones |
+  </TabItem>
+  <TabItem label="Usuarios">
+    | Servicio | Responsabilidad |
+    |----------|-----------------|
+    | `UsuarioService` | Operaciones base de usuario |
+    | `CiudadanoService` | CRUD ciudadanos, búsqueda por DNI |
+    | `FuncionarioService` | CRUD funcionarios, filtro por entidad |
+    | `MiembroTTAIPService` | Gestión miembros del tribunal |
+    | `AdministradorService` | Operaciones de administración |
+  </TabItem>
+  <TabItem label="Infraestructura">
+    | Servicio | Responsabilidad |
+    |----------|-----------------|
+    | `EntidadService` | CRUD entidades públicas |
+    | `DocumentoService` | Gestión de documentos adjuntos |
+    | `FileStorageService` | Almacenamiento físico de archivos |
+    | `JwtService` | Generación y validación de tokens JWT |
+    | `CustomUserDetailsService` | Carga de usuario para Spring Security |
+  </TabItem>
+</Tabs>
+
+## Servicios Críticos
+
+### SolicitudService
+
+Gestiona el ciclo de vida completo de una solicitud SAIP, incluyendo generación automática de expediente y cálculo de plazos.
+
+```java
+@Service
+public class SolicitudService {
+    private final SolicitudRepository solicitudRepository;
+    private final CiudadanoRepository ciudadanoRepository;
+    private final EntidadRepository entidadRepository;
+    private final DocumentoService documentoService;
+
+    // Constructor injection
+    public SolicitudService(SolicitudRepository solicitudRepository, ...) {
+        this.solicitudRepository = solicitudRepository;
+        // ...
+    }
+
+    @Transactional
+    public SolicitudDTO crear(CrearSolicitudRequest request) {
+        // 1. Validar ciudadano y entidad existen
+        // 2. Generar expediente automático: SAIP-YYYY-NNNNN
+        // 3. Calcular fecha límite (10 días hábiles)
+        // 4. Crear entidad con estado RECEPCIONADA
+        // 5. Retornar DTO con datos calculados
+    }
+
+    @Transactional(readOnly = true)
+    public SolicitudDTO findByExpediente(String expediente) {
+        return solicitudRepository.findByExpediente(expediente)
+            .map(this::toDTO)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Solicitud no encontrada: " + expediente));
+    }
+}
+```
+
+**Generación de Expediente:**
+
+```java
+// Formato: SAIP-AAAA-NNNNN
+// Ejemplo: SAIP-2025-00042
+private String generarExpediente() {
+    int year = Year.now().getValue();
+    long count = solicitudRepository.countByYear(year);
+    return String.format("SAIP-%d-%05d", year, count + 1);
+}
+```
+
+### TTAIPService
+
+Servicio de **orquestación** que implementa todo el flujo del Tribunal de Transparencia. Es el servicio más complejo del sistema.
+
+<Steps>
+1. **Primera Calificación** — Evalúa requisitos formales de la apelación
+2. **Subsanación** (condicional) — Si el recurso es inadmisible, el ciudadano tiene 2 días hábiles para subsanar
+3. **Segunda Calificación** — Re-evalúa tras subsanación
+4. **Notificación** — Notifica al ciudadano del resultado de la segunda calificación
+5. **Resolución Final** — El vocal emite resolución con una de 7 decisiones posibles
+</Steps>
+
+```java
+@Service
+public class TTAIPService {
+    private final ApelacionRepository apelacionRepository;
+    private final ResolucionService resolucionService;
+    private final MiembroTTAIPService miembroTTAIPService;
+
+    // --- Primera Calificación ---
+
+    @Transactional
+    public ApelacionDTO admitirApelacion(Long id, CalificacionRequest request) {
+        var apelacion = findApelacionById(id);
+        validarEstado(apelacion, EstadoApelacion.EN_CALIFICACION_1);
+
+        // Crear resolución de primera calificación con decisión ADMISIBLE
+        resolucionService.crearResolucion(apelacion, TipoResolucion.PRIMERA_CALIFICACION,
+            DecisionResolucion.ADMISIBLE, request.fundamentos(), request.miembroId());
+
+        apelacion.setEstado(EstadoApelacion.EN_SUBSANACION);
+        return toDTO(apelacionRepository.save(apelacion));
+    }
+
+    @Transactional
+    public ApelacionDTO requerirSubsanacion(Long id, CalificacionRequest request) {
+        // Calificación INADMISIBLE → requiere subsanación
+        // Ciudadano tiene 2 días hábiles (BR-TTAIP-004)
+    }
+
+    @Transactional
+    public ApelacionDTO inadmitirApelacion(Long id, CalificacionRequest request) {
+        // Calificación IMPROCEDENTE → rechazo definitivo
+        // Estado final: RESUELTO_IMPROCEDENTE
+    }
+
+    // --- Resolución Final ---
+
+    @Transactional
+    public ApelacionDTO declararFundado(Long id, ResolucionRequest request) {
+        var apelacion = findApelacionById(id);
+        validarEstado(apelacion, EstadoApelacion.EN_RESOLUCION);
+
+        resolucionService.crearResolucion(apelacion, TipoResolucion.RESOLUCION_FINAL,
+            DecisionResolucion.FUNDADO, request.fundamentos(), request.miembroId());
+
+        apelacion.setEstado(EstadoApelacion.RESUELTO_FUNDADO);
+        return toDTO(apelacionRepository.save(apelacion));
+    }
+
+    // Análogo: declararInfundado, fundadoEnParte, infundadoEnParte,
+    //          improcedente, sustraccionMateria, desistimiento, noPresentado
+}
+```
+
+:::caution[Validación de Estado]
+Cada operación del TTAIPService **verifica el estado actual** de la apelación antes de ejecutarse. Por ejemplo, `declararFundado()` solo procede si el estado es `EN_RESOLUCION`. Intentar ejecutar operaciones fuera de secuencia lanza `IllegalStateException`.
+:::
+
+### DiasHabilesUtil — Cálculo de Plazos
+
+Utilidad crítica que implementa el conteo de **días hábiles** según la legislación peruana (BR-SAIP-001, BR-SAIP-002).
+
+```java
+public class DiasHabilesUtil {
+
+    // 14 feriados nacionales peruanos
+    private static final Set<MonthDay> FERIADOS = Set.of(
+        MonthDay.of(1, 1),   // Año Nuevo
+        MonthDay.of(3, 29),  // Jueves Santo (varía)
+        MonthDay.of(3, 30),  // Viernes Santo (varía)
+        MonthDay.of(5, 1),   // Día del Trabajo
+        MonthDay.of(6, 7),   // Batalla de Arica
+        MonthDay.of(6, 29),  // San Pedro y San Pablo
+        MonthDay.of(7, 23),  // Fuerza Aérea del Perú
+        MonthDay.of(7, 28),  // Fiestas Patrias
+        MonthDay.of(7, 29),  // Fiestas Patrias
+        MonthDay.of(8, 6),   // Batalla de Junín
+        MonthDay.of(8, 30),  // Santa Rosa de Lima
+        MonthDay.of(10, 8),  // Combate de Angamos
+        MonthDay.of(11, 1),  // Todos los Santos
+        MonthDay.of(12, 8),  // Inmaculada Concepción
+        MonthDay.of(12, 9),  // Batalla de Ayacucho
+        MonthDay.of(12, 25)  // Navidad
+    );
+
+    public static boolean esDiaHabil(LocalDate fecha) {
+        DayOfWeek dia = fecha.getDayOfWeek();
+        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) return false;
+        return !FERIADOS.contains(MonthDay.from(fecha));
+    }
+
+    public static LocalDate sumarDiasHabiles(LocalDate desde, int dias) {
+        LocalDate actual = desde;
+        int contados = 0;
+        while (contados < dias) {
+            actual = actual.plusDays(1);
+            if (esDiaHabil(actual)) contados++;
+        }
+        return actual;
+    }
+
+    public static int contarDiasHabilesTranscurridos(LocalDate desde, LocalDate hasta) {
+        // Contar días hábiles entre dos fechas
+    }
+}
+```
+
+:::note
+El día de recepción de la solicitud se considera **día 0** (BR-SAIP-001). El conteo de los 10 días hábiles inicia el **día hábil siguiente**.
+:::
+
+## Patrones Transaccionales
+
+| Tipo de método | Anotación | Ejemplo |
+|----------------|-----------|---------|
+| Lectura | `@Transactional(readOnly = true)` | `findById`, `findByEstado`, `getEstadisticas` |
+| Escritura simple | `@Transactional` | `crear`, `actualizar`, `eliminar` |
+| Escritura + workflow | `@Transactional` | `admitirApelacion`, `declararFundado` |
+| Sin transacción | *(ninguna)* | Métodos de utilidad, conversiones DTO |
+
+## Semáforo de Estado
+
+El sistema calcula un **semáforo visual** para indicar la urgencia de cada solicitud basándose en los días hábiles transcurridos:
+
+| Color | Rango (días hábiles) | Significado | CSS |
+|-------|---------------------|-------------|-----|
+| 🟢 Verde | 0–5 | En plazo | `bg-green-100` |
+| 🟡 Ámbar | 6–8 | Próximo a vencer | `bg-yellow-100` |
+| 🔴 Rojo | 9–10 | Urgente | `bg-red-100` |
+| ⚫ Negro | >10 / Vencido | Silencio Administrativo | `bg-gray-800` |
+
+```java
+public SemaforoEstado calcularSemaforo(Solicitud solicitud) {
+    int diasTranscurridos = DiasHabilesUtil.contarDiasHabilesTranscurridos(
+        solicitud.getFechaPresentacion().toLocalDate(), LocalDate.now());
+
+    if (diasTranscurridos <= 5) return SemaforoEstado.VERDE;
+    if (diasTranscurridos <= 8) return SemaforoEstado.AMBAR;
+    if (diasTranscurridos <= 10) return SemaforoEstado.ROJO;
+    return SemaforoEstado.NEGRO;
+}
+```
+
+## JwtService
+
+Genera y valida tokens JWT usando **JJWT 0.12.6** con algoritmo HMAC-SHA:
+
+```java
+@Service
+public class JwtService {
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    private static final long EXPIRATION = 86_400_000L; // 24 horas
+
+    public String generateToken(String email, String role, Long usuarioId) {
+        return Jwts.builder()
+            .subject(email)
+            .claim("role", role)
+            .claim("usuarioId", usuarioId)
+            .issuedAt(new Date())
+            .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
+            .signWith(getSigningKey())
+            .compact();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().verifyWith(getSigningKey()).build()
+                .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(
+            Decoders.BASE64.decode(jwtSecret));
+    }
+}
+```
+
+:::caution[Seguridad]
+El secreto JWT se obtiene de la variable de entorno `${JWT_SECRET}`. **NUNCA** hardcodear el secreto en el código fuente ni en `application.properties`.
+:::

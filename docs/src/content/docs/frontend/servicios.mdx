@@ -1,0 +1,201 @@
+---
+title: Servicios HTTP
+description: 8 servicios Angular que consumen la API REST del backend mediante HttpClient y RxJS.
+---
+
+import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+El frontend cuenta con **8 servicios HTTP** que encapsulan toda la comunicación con el backend REST API. Todos usan `inject(HttpClient)` y `environment.apiUrl`.
+
+## Patrón de Servicio
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class SolicitudService {
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = environment.apiUrl + '/solicitudes';
+
+  getSolicitudes(): Observable<Solicitud[]> {
+    return this.http.get<Solicitud[]>(this.apiUrl);
+  }
+
+  crear(solicitud: SolicitudCreate): Observable<Solicitud> {
+    return this.http.post<Solicitud>(this.apiUrl, solicitud);
+  }
+}
+```
+
+## Inventario de Servicios
+
+<Tabs>
+  <TabItem label="AuthService">
+    ### AuthService <Badge text="Autenticación" variant="tip" />
+
+    Gestiona login, registro y sesión del usuario. **SSR-safe** — verifica `isPlatformBrowser` antes de acceder a `localStorage`.
+
+    | Método | HTTP | Ruta | Descripción |
+    |--------|------|------|-------------|
+    | `login(request)` | POST | `/auth/login` | Autenticación |
+    | `registro(request)` | POST | `/auth/registro` | Registro ciudadano |
+    | `verificarEmail(email)` | GET | `/auth/verificar-email` | Disponibilidad email |
+    | `verificarDni(dni)` | GET | `/auth/verificar-dni` | Disponibilidad DNI |
+    | `getUsuarioActual(id)` | GET | `/auth/me/{id}` | Usuario actual |
+
+    **Métodos de sesión (localStorage):**
+
+    | Método | Descripción |
+    |--------|-------------|
+    | `guardarSesion(data)` | Guarda datos de login en `localStorage` |
+    | `obtenerSesion()` | Recupera sesión guardada |
+    | `cerrarSesion()` | Elimina sesión y redirige a `/login` |
+    | `estaLogueado()` | Verifica si hay sesión activa |
+    | `getTipoUsuario()` | Retorna rol del usuario (`CIUDADANO`, `FUNCIONARIO`...) |
+    | `getToken()` | Retorna JWT token |
+
+    ```typescript
+    // SSR-safe — verifica plataforma
+    estaLogueado(): boolean {
+      if (!isPlatformBrowser(this.platformId)) return false;
+      const sesion = localStorage.getItem('usuario');
+      return sesion !== null;
+    }
+    ```
+  </TabItem>
+  <TabItem label="SolicitudService">
+    ### SolicitudService <Badge text="CRUD" variant="note" />
+
+    | Método | HTTP | Ruta | Descripción |
+    |--------|------|------|-------------|
+    | `findAll()` | GET | `/solicitudes` | Todas las solicitudes |
+    | `findById(id)` | GET | `/solicitudes/{id}` | Por ID |
+    | `findByExpediente(exp)` | GET | `/solicitudes/expediente/{exp}` | Por expediente |
+    | `findByCiudadanoId(id)` | GET | `/solicitudes/ciudadano/{id}` | Por ciudadano |
+    | `findByEntidadId(id)` | GET | `/solicitudes/entidad/{id}` | Por entidad |
+    | `findByEstado(estado)` | GET | `/solicitudes/estado/{estado}` | Por estado |
+    | `getEstadisticas()` | GET | `/solicitudes/estadisticas` | Stats generales |
+    | `getEstadisticasCiudadano(id)` | GET | `/solicitudes/ciudadano/{id}/estadisticas` | Stats ciudadano |
+    | `getEstadisticasEntidad(id)` | GET | `/solicitudes/entidad/{id}/estadisticas` | Stats entidad |
+    | `crear(solicitud)` | POST | `/solicitudes` | Crear nueva SAIP |
+    | `actualizar(id, data)` | PUT | `/solicitudes/{id}` | Actualizar |
+    | `cambiarEstado(id, estado)` | PATCH | `/solicitudes/{id}/estado` | Cambiar estado |
+    | `eliminar(id)` | DELETE | `/solicitudes/{id}` | Eliminar |
+  </TabItem>
+  <TabItem label="ApelacionService">
+    ### ApelacionService <Badge text="CRUD" variant="note" />
+
+    | Método | HTTP | Ruta | Descripción |
+    |--------|------|------|-------------|
+    | `findAll()` | GET | `/apelaciones` | Todas |
+    | `findById(id)` | GET | `/apelaciones/{id}` | Por ID |
+    | `findByExpediente(exp)` | GET | `/apelaciones/expediente/{exp}` | Por expediente TTAIP |
+    | `findByEstado(estado)` | GET | `/apelaciones/estado/{estado}` | Por estado |
+    | `findByCiudadanoId(id)` | GET | `/apelaciones/ciudadano/{id}` | Por ciudadano |
+    | `getEstadisticas()` | GET | `/apelaciones/estadisticas` | Estadísticas |
+    | `crear(apelacion)` | POST | `/apelaciones` | Crear apelación |
+    | `actualizar(id, data)` | PUT | `/apelaciones/{id}` | Actualizar |
+    | `cambiarEstado(id, estado)` | PATCH | `/apelaciones/{id}/estado` | Cambiar estado |
+    | `subsanar(id, data)` | POST | `/apelaciones/{id}/subsanacion` | Presentar subsanación |
+    | `eliminar(id)` | DELETE | `/apelaciones/{id}` | Eliminar |
+  </TabItem>
+  <TabItem label="TtaipService">
+    ### TtaipService <Badge text="Tribunal" variant="success" />
+
+    El servicio más complejo — implementa todo el flujo del tribunal:
+
+    **Consultas:**
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | `getEstadisticas()` | GET | `/ttaip/estadisticas` |
+    | `getPendientes()` | GET | `/ttaip/pendientes` |
+    | `getEnAnalisis()` | GET | `/ttaip/en-calificacion` |
+    | `getSubsanacion()` | GET | `/ttaip/subsanacion` |
+    | `getSegundaCalificacion()` | GET | `/ttaip/segunda-calificacion` |
+    | `getResueltas()` | GET | `/ttaip/resueltas` |
+
+    **Calificación:**
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | `admitirApelacion(id, body)` | POST | `/ttaip/calificacion/{id}/admitir` |
+    | `requerirSubsanacion(id, body)` | POST | `/ttaip/calificacion/{id}/subsanar` |
+    | `inadmitirApelacion(id, body)` | POST | `/ttaip/calificacion/{id}/inadmitir` |
+
+    **Resolución Final (7 decisiones):**
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | `declararFundado(id, body)` | POST | `/ttaip/resolucion/{id}/fundado` |
+    | `declararInfundado(id, body)` | POST | `/ttaip/resolucion/{id}/infundado` |
+    | `declararFundadoEnParte(id, body)` | POST | `/ttaip/resolucion/{id}/fundado-en-parte` |
+    | `declararInfundadoEnParte(id, body)` | POST | `/ttaip/resolucion/{id}/infundado-en-parte` |
+    | `declararImprocedente(id, body)` | POST | `/ttaip/resolucion/{id}/improcedente` |
+    | `declararSustraccionMateria(id, body)` | POST | `/ttaip/resolucion/{id}/sustraccion-materia` |
+    | `declararDesistimiento(id, body)` | POST | `/ttaip/resolucion/{id}/desistimiento` |
+    | `declararNoPresentado(id, body)` | POST | `/ttaip/resolucion/{id}/no-presentado` |
+    | `notificarSegundaCalificacion(id)` | POST | `/ttaip/notificar-segunda-calificacion/{id}` |
+  </TabItem>
+  <TabItem label="Otros">
+    ### RespuestaService <Badge text="Funcionario" variant="note" />
+
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | `findAll()` | GET | `/respuestas` |
+    | `findById(id)` | GET | `/respuestas/{id}` |
+    | `findBySolicitudId(id)` | GET | `/respuestas/solicitud/{id}` |
+    | `aceptarSolicitud(body)` | POST | `/respuestas/aceptar` |
+    | `denegarSolicitud(body)` | POST | `/respuestas/denegar` |
+    | `getCausalesDenegacion()` | GET | `/respuestas/causales-denegacion` |
+
+    ### FuncionarioService
+
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | CRUD estándar | GET/POST/PUT/DELETE | `/funcionarios/*` |
+    | `findByEntidadId(id)` | GET | `/funcionarios/entidad/{id}` |
+    | `cambiarEstado(id, estado)` | PATCH | `/funcionarios/{id}/estado` |
+
+    ### EntidadService
+
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | CRUD estándar | GET/POST/PUT/DELETE | `/entidades/*` |
+    | `findActivas()` | GET | `/entidades/activas` |
+    | `findByIdConEstadisticas(id)` | GET | `/entidades/{id}/estadisticas` |
+    | `buscarPorNombre(nombre)` | GET | `/entidades/buscar` |
+
+    ### CiudadanoService
+
+    | Método | HTTP | Ruta |
+    |--------|------|------|
+    | CRUD estándar | GET/POST/PUT/DELETE | `/ciudadanos/*` |
+    | `findByDni(dni)` | GET | `/ciudadanos/dni/{dni}` |
+    | `findByIdConEstadisticas(id)` | GET | `/ciudadanos/{id}/estadisticas` |
+  </TabItem>
+</Tabs>
+
+## Modelos TypeScript
+
+Los modelos se generan desde el **OpenAPI spec** del backend y se re-exportan con tipos `Required<>`:
+
+```typescript
+// solicitud.model.ts
+import type { SolicitudDTO } from '../api/types';
+
+export type Solicitud = Required<SolicitudDTO> & {
+  respuesta?: Respuesta;
+  apelacion?: Apelacion;
+  documentos?: Documento[];
+};
+
+// Tipo de creación (solo campos del cliente)
+export interface SolicitudCreate {
+  asunto: string;
+  descripcion: string;
+  ciudadanoId: number;
+  entidadId: number;
+  formatoDigital: boolean;
+  copiaSimple: boolean;
+}
+```
+
+:::tip[API-First]
+Los tipos TypeScript se derivan del OpenAPI spec para mantener consistencia con el contrato del backend. Al cambiar el esquema del backend, se regeneran los tipos automáticamente en el frontend.
+:::
