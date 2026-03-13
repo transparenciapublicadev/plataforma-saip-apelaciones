@@ -173,6 +173,7 @@ plataforma-saip/
 ├── .github/
 │   └── workflows/                  ← CI/CD (GitHub Actions)
 │       ├── backend-ci.yml
+│       ├── docs-ci.yml
 │       ├── frontend-ci.yml
 │       └── mobile-ci.yml
 ├── backend/                        ← API REST (Spring Boot 4, Java 21)
@@ -434,6 +435,17 @@ cd mobile
 
 Requiere `google-services.json` en `mobile/app/`.
 
+### Documentación
+
+```bash
+cd docs
+npm install
+npm run dev        # sitio de documentación en local
+npm run build      # build estático de Astro + Starlight
+```
+
+Los diagramas Mermaid están configurados para renderizar correctamente en tema claro y tema oscuro.
+
 ### Sincronizar contrato OpenAPI
 
 Cuando el backend modifica endpoints o DTOs, los consumidores deben actualizar su contrato:
@@ -458,6 +470,7 @@ El proyecto usa **GitHub Actions** con pipelines independientes por módulo:
 | Workflow | Trigger (paths) | Qué hace |
 |----------|-----------------|----------|
 | `backend-ci.yml` | `backend/**` | Maven build + tests (Java 21, H2) + genera OpenAPI spec |
+| `docs-ci.yml` | `docs/**` | npm ci + build de documentación Astro/Starlight + artifact `docs-dist` |
 | `frontend-ci.yml` | `frontend/**` | npm install + TypeScript check + Vitest + Angular build |
 | `mobile-ci.yml` | `mobile/**` | Gradle assembleDebug + tests + upload APK artifact |
 
@@ -467,7 +480,15 @@ Cada pipeline se ejecuta solo cuando cambian archivos en su módulo correspondie
 
 ## Documentación
 
-La carpeta `docs/` contiene la documentación técnica y funcional del proyecto. Consultar [docs/README.md](docs/README.md) para la estructura planificada.
+La carpeta `docs/` contiene la documentación técnica y funcional publicada con Astro + Starlight, incluyendo diagramas Mermaid adaptados para tema claro y oscuro.
+
+Comandos rápidos:
+
+```bash
+cd docs
+npm run dev
+npm run build
+```
 
 ---
 
