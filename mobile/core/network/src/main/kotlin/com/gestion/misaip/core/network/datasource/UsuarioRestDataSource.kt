@@ -28,6 +28,8 @@ class UsuarioRestDataSource(
             android.util.Log.d("MiSAIP", "Login REST exitoso → usuarioId=${response.usuarioId}, tipo=${response.tipoUsuario}")
             response.token?.let { tokenStorage.saveToken(it) }
             response.usuarioId?.let { tokenStorage.saveUserId(it) }
+            tokenStorage.saveTipoUsuario(response.tipoUsuario)
+            tokenStorage.saveEntidadId(response.entidadId)
             return response.toDomain()
         } catch (e: HttpException) {
             android.util.Log.w("MiSAIP", "Login REST rechazado → HTTP ${e.code()}: ${e.message()}")
@@ -53,6 +55,8 @@ class UsuarioRestDataSource(
             )
             response.token?.let { tokenStorage.saveToken(it) }
             response.usuarioId?.let { tokenStorage.saveUserId(it) }
+            tokenStorage.saveTipoUsuario(response.tipoUsuario)
+            tokenStorage.saveEntidadId(response.entidadId)
             return response.toDomain()
         } catch (e: HttpException) {
             val mensaje = extraerMensajeError(e) ?: "Error al registrar usuario (${e.code()})"
@@ -107,4 +111,8 @@ interface TokenStorage {
     fun clearToken()
     fun saveUserId(id: Long)
     fun getUserId(): Long?
+    fun saveTipoUsuario(tipoUsuario: String?)
+    fun getTipoUsuario(): String?
+    fun saveEntidadId(entidadId: Long?)
+    fun getEntidadId(): Long?
 }

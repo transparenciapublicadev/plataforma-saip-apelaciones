@@ -49,8 +49,20 @@ class ApelacionRestDataSource(
     }
 
     override suspend fun getApelacionesModificadasDesde(desde: Long): List<Apelacion> {
-        // El backend no tiene endpoint de sync incremental
-        val userId = tokenStorage.getUserId() ?: return emptyList()
-        return apelacionApi.getByCiudadano(userId).map { it.toDomain() }
+        // El backend no tiene endpoint de sync incremental.
+        // Sincronizamos por rol para mantener consistencia con frontend.
+        return when (tokenStorage.getTipoUsuario()?.uppercase()) {
+            "CIUDADANO" -> {
+                val userId = tokenStorage.getUserId() ?: return emptyList()
+                apelacionApi.getByCiudadano(userId).map { it.toDomain() }
+            }
+            "FUNCIONARIO", "TTAIP", "ADMIN" -> {
+                apelacionApi.listar().map { it.toDomain() }
+            }
+            else -> {
+                val userId = tokenStorage.getUserId() ?: return emptyList()
+                apelacionApi.getByCiudadano(userId).map { it.toDomain() }
+            }
+        }
     }
 }

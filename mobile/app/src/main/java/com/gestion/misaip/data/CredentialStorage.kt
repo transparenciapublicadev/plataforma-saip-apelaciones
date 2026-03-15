@@ -35,6 +35,8 @@ class CredentialStorage(context: Context) : TokenStorage {
         // JWT Token (REST API)
         private const val KEY_JWT_TOKEN = "jwt_token"
         private const val KEY_USER_ID = "rest_user_id"
+        private const val KEY_TIPO_USUARIO = "rest_tipo_usuario"
+        private const val KEY_ENTIDAD_ID = "rest_entidad_id"
     }
 
     // ═══════════════════════════════════════════
@@ -111,6 +113,8 @@ class CredentialStorage(context: Context) : TokenStorage {
         prefs.edit()
             .remove(KEY_JWT_TOKEN)
             .remove(KEY_USER_ID)
+            .remove(KEY_TIPO_USUARIO)
+            .remove(KEY_ENTIDAD_ID)
             .apply()
     }
 
@@ -120,6 +124,27 @@ class CredentialStorage(context: Context) : TokenStorage {
 
     override fun getUserId(): Long? {
         val id = prefs.getLong(KEY_USER_ID, -1L)
+        return if (id != -1L) id else null
+    }
+
+    override fun saveTipoUsuario(tipoUsuario: String?) {
+        prefs.edit().putString(KEY_TIPO_USUARIO, tipoUsuario).apply()
+    }
+
+    override fun getTipoUsuario(): String? {
+        return prefs.getString(KEY_TIPO_USUARIO, null)
+    }
+
+    override fun saveEntidadId(entidadId: Long?) {
+        if (entidadId == null) {
+            prefs.edit().remove(KEY_ENTIDAD_ID).apply()
+            return
+        }
+        prefs.edit().putLong(KEY_ENTIDAD_ID, entidadId).apply()
+    }
+
+    override fun getEntidadId(): Long? {
+        val id = prefs.getLong(KEY_ENTIDAD_ID, -1L)
         return if (id != -1L) id else null
     }
 }

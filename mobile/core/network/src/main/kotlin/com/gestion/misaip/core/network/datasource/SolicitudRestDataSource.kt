@@ -46,9 +46,28 @@ class SolicitudRestDataSource(
     }
 
     override suspend fun getSolicitudesModificadasDesde(desde: Long): List<Solicitud> {
-        // El backend no tiene endpoint de sync incremental
-        // Retornamos todas las solicitudes del usuario
-        val userId = tokenStorage.getUserId() ?: return emptyList()
-        return solicitudApi.getByCiudadano(userId).map { it.toDomain() }
+        // El backend no tiene endpoint de sync incremental.
+        // Sincronizamos por rol para mantener consistencia con frontend:
+        // - CIUDADANO: solo sus solicitudes
+        // - FUNCIONARIO: solicitudes de su entidad
+        // - TTAIP/ADMIN: listado general
+        return when (tokenStorage.getTipoUsuario()?.uppercase()) {
+            "CIUDADANO" -> {
+                val userId = tokenStorage.getUserId() ?: return emptyList()
+                solicitudApi.getByCiudadano(userId).map { it.toDomain() }
+            }
+            "FUNCIONARIO" -> {
+                val entidadId = tokenStorage.getEntidadId()
+                    ?: throw NetworkException("Entidad no disponible para usuario FUNCIONARIO")
+                solicitudApi.getByEntidad(entidadId).map { it.toDomain() }
+            }
+            "TTAIP", "ADMIN" -> {
+                solicitudApi.listar(page = 0, size = 1000).map { it.toDomain() }
+            }
+            else -> {
+                val userId = tokenStorage.getUserId() ?: return emptyList()
+                solicitudApi.getByCiudadano(userId).map { it.toDomain() }
+            }
+        }
     }
 }

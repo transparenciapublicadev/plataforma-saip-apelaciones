@@ -27,7 +27,7 @@ data class TTAIPDashboardUiState(
     val estadisticas: EstadisticasTTAIP = EstadisticasTTAIP(0, 0, 0, 0),
     val apelaciones: List<ApelacionItem> = emptyList(),
     val apelacionesFiltradas: List<ApelacionItem> = emptyList(),
-    val filtroActual: String = "todas",
+    val filtroActual: String = "Pendiente de Elevación",
     val busqueda: String = "",
     val apelacionesUrgentes: List<Apelacion> = emptyList(),
     val isLoading: Boolean = false
@@ -110,6 +110,13 @@ class TTAIPDashboardViewModel(
                 )
             }
 
+            val filtroPorDefecto = "Pendiente de Elevación"
+            val apelacionesFiltradas = filtrarApelaciones(
+                apelaciones = apelacionesItems,
+                filtro = filtroPorDefecto,
+                busqueda = ""
+            )
+
             // Apelaciones urgentes (menos de 3 días)
             val urgentes = apelaciones.filter {
                 !it.estaResuelta && (it.diasRestantes ?: 0) <= 3
@@ -120,7 +127,8 @@ class TTAIPDashboardViewModel(
                 cargo = usuario.cargo ?: "",
                 estadisticas = estadisticas,
                 apelaciones = apelacionesItems,
-                apelacionesFiltradas = apelacionesItems,
+                apelacionesFiltradas = apelacionesFiltradas,
+                filtroActual = filtroPorDefecto,
                 apelacionesUrgentes = urgentes,
                 isLoading = false
             )
@@ -141,14 +149,34 @@ class TTAIPDashboardViewModel(
     }
 
     fun aplicarFiltro(filtro: String) {
-        val apelaciones = _uiState.value.apelaciones
-        val busqueda = _uiState.value.busqueda.lowercase()
+        val filtradas = filtrarApelaciones(
+            apelaciones = _uiState.value.apelaciones,
+            filtro = filtro,
+            busqueda = _uiState.value.busqueda
+        )
 
-        val filtradas = apelaciones.filter { apel ->
-            val matchesBusqueda = busqueda.isEmpty() ||
-                apel.expediente.lowercase().contains(busqueda) ||
-                apel.recurrente.lowercase().contains(busqueda) ||
-                apel.entidad.lowercase().contains(busqueda)
+        _uiState.value = _uiState.value.copy(
+            filtroActual = filtro,
+            apelacionesFiltradas = filtradas
+        )
+    }
+
+    fun buscar(query: String) {
+        _uiState.value = _uiState.value.copy(busqueda = query)
+        aplicarFiltro(_uiState.value.filtroActual)
+    }
+
+    private fun filtrarApelaciones(
+        apelaciones: List<ApelacionItem>,
+        filtro: String,
+        busqueda: String
+    ): List<ApelacionItem> {
+        val query = busqueda.lowercase()
+        return apelaciones.filter { apel ->
+            val matchesBusqueda = query.isEmpty() ||
+                apel.expediente.lowercase().contains(query) ||
+                apel.recurrente.lowercase().contains(query) ||
+                apel.entidad.lowercase().contains(query)
 
             val matchesFiltro = when (filtro) {
                 "Pendiente de Elevación" -> apel.estado == "Pendiente de Elevación"
@@ -161,16 +189,6 @@ class TTAIPDashboardViewModel(
 
             matchesBusqueda && matchesFiltro
         }
-
-        _uiState.value = _uiState.value.copy(
-            filtroActual = filtro,
-            apelacionesFiltradas = filtradas
-        )
-    }
-
-    fun buscar(query: String) {
-        _uiState.value = _uiState.value.copy(busqueda = query)
-        aplicarFiltro(_uiState.value.filtroActual)
     }
 
     fun iniciarCalificacion(expediente: String) {
