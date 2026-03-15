@@ -100,3 +100,7 @@ UPDATE Solicitud SET
     ultimaModificacion = ?
 WHERE expediente = ?;
 
+-- Limpiar caché local de solicitudes
+limpiarSolicitudes:
+DELETE FROM Solicitud;
+

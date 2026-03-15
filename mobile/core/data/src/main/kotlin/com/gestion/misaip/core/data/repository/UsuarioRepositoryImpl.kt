@@ -29,6 +29,8 @@ class UsuarioRepositoryImpl(
 ) : UsuarioRepository {
 
     private val queries = database.usuarioQueries
+    private val solicitudQueries = database.solicitudQueries
+    private val apelacionQueries = database.apelacionQueries
 
     override fun getUsuarioActual(): Flow<Usuario?> {
         return queries.getUsuarioActual()
@@ -48,6 +50,7 @@ class UsuarioRepositoryImpl(
         // 1. Intentar autenticación remota (REST backend)
         try {
             val usuario = remoteDataSource.autenticar(dni, password)
+            limpiarCacheSiCambioContexto(usuario)
             // Éxito remoto → cachear datos localmente
             val entity = UsuarioMapper.toEntity(usuario, hashPassword(password))
             insertarUsuarioLocal(entity)
@@ -87,6 +90,7 @@ class UsuarioRepositoryImpl(
         // 1. Intentar autenticación remota (REST backend)
         try {
             val remoteUser = remoteDataSource.autenticar(usuario, password)
+            limpiarCacheSiCambioContexto(remoteUser)
             // Éxito remoto → cachear datos localmente
             val entity = UsuarioMapper.toEntity(remoteUser, hashPassword(password))
             insertarUsuarioLocal(entity)
@@ -164,6 +168,23 @@ class UsuarioRepositoryImpl(
             fechaInicio = System.currentTimeMillis(),
             fechaExpiracion = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000) // 7 días
         )
+    }
+
+    private fun limpiarCacheSiCambioContexto(usuarioRemoto: Usuario) {
+        val sesionActiva = queries.getSesionActiva().executeAsOneOrNull() ?: return
+        val usuarioPrevio = queries.getUsuarioById(sesionActiva.usuarioId).executeAsOneOrNull() ?: return
+
+        val cambioUsuario = usuarioPrevio.id != usuarioRemoto.id
+        val cambioRol = !usuarioPrevio.tipo.equals(usuarioRemoto.tipo.name, ignoreCase = true)
+
+        if (!cambioUsuario && !cambioRol) {
+            return
+        }
+
+        // Evita mezcla de datasets entre cuentas/roles y fuerza una resincronizacion completa.
+        solicitudQueries.limpiarSolicitudes()
+        apelacionQueries.limpiarApelaciones()
+        apelacionQueries.limpiarSyncLogs()
     }
 
     private fun insertarUsuarioLocal(entity: com.gestion.misaip.core.database.Usuario) {

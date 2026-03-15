@@ -88,6 +88,10 @@ UPDATE Apelacion SET
     pendienteSubida = 0
 WHERE id = ?;
 
+-- Limpiar caché local de apelaciones
+limpiarApelaciones:
+DELETE FROM Apelacion;
+
 -- =============================================================================
 -- QUERIES: Contadores
 -- =============================================================================
@@ -140,4 +144,8 @@ UPDATE SyncLog SET sincronizado = 1 WHERE id = ?;
 -- Incrementar intentos de sincronización
 incrementarIntentos:
 UPDATE SyncLog SET intentos = intentos + 1, ultimoError = ? WHERE id = ?;
+
+-- Limpiar logs de sincronización
+limpiarSyncLogs:
+DELETE FROM SyncLog;
 
