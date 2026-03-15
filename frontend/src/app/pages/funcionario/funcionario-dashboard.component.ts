@@ -5,6 +5,7 @@ import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
+import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 @Component({
   selector: 'app-funcionario-dashboard',
@@ -165,6 +166,24 @@ export class FuncionarioDashboardComponent implements OnInit {
       return 'border-l-4 border-red-500';
     }
     return '';
+  }
+
+  isSilencioAdministrativoSolicitud(solicitud: Solicitud): boolean {
+    return isSilencioAdministrativo(solicitud);
+  }
+
+  getEstadoDisplay(solicitud: Solicitud): string {
+    return this.isSilencioAdministrativoSolicitud(solicitud)
+      ? 'SILENCIO_ADMINISTRATIVO'
+      : solicitud.estado;
+  }
+
+  canResponder(solicitud: Solicitud): boolean {
+    if (!canSendManualResponse(solicitud)) {
+      return false;
+    }
+
+    return solicitud.estado === 'RECEPCIONADA' || solicitud.estado === 'EN_REVISION' || solicitud.estado === 'PENDIENTE_INFORMACION';
   }
 
   logout(): void {

@@ -31,7 +31,7 @@
           <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
         </div>
         <div class="text-3xl tracking-tight text-[#DC2626] mb-0.5">{{ vencidas() }}</div>
-        <div class="text-sm text-gray-500">Vencidas</div>
+        <div class="text-sm text-gray-500">Silencio Adm.</div>
       </div>
       <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden p-5">
         <div class="w-10 h-10 rounded-xl bg-[#FFFBEB] flex items-center justify-center mb-3">
@@ -63,7 +63,7 @@
           <option value="">Todas</option>
           <option value="todas">Todas</option>
           <option value="RECEPCIONADA">Pendientes</option>
-          <option value="VENCIDA">Vencidas</option>
+          <option value="VENCIDA">Silencio Administrativo</option>
           <option value="RESPONDIDA">Respondidas</option>
         </select>
       </div>
@@ -126,7 +126,7 @@
                   </td>
                   <td class="px-6 py-4">
                     <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getEstadoClass(solicitud.estado)">
-                      {{ solicitud.estado }}
+                      {{ getEstadoDisplay(solicitud) }}
                     </span>
                   </td>
                   <td class="px-6 py-4 text-right">
@@ -135,7 +135,7 @@
                         class="text-[#C8102E] hover:text-[#A00D24] text-sm font-medium inline-flex items-center gap-1 transition-colors">
                         Ver <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                       </a>
-                    } @else if (solicitud.estado === 'RECEPCIONADA' || solicitud.estado === 'EN_REVISION' || solicitud.estado === 'PENDIENTE_INFORMACION') {
+                    } @else if (canResponder(solicitud)) {
                       <a [routerLink]="['/funcionario/responder', solicitud.expediente]"
                         class="inline-flex items-center px-4 py-1.5 bg-[#C8102E] hover:bg-[#A00D24] text-white text-xs font-medium rounded-lg transition-colors">
                         Responder

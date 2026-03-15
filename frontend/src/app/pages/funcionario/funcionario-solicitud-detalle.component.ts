@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
+import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
@@ -93,7 +94,47 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   puedeResponder(): boolean {
     const sol = this.solicitud();
-    return sol !== null && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION' || sol.estado === 'PENDIENTE_INFORMACION');
+    if (!sol) {
+      return false;
+    }
+
+    if (!canSendManualResponse(sol)) {
+      return false;
+    }
+
+    return sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION' || sol.estado === 'PENDIENTE_INFORMACION';
+  }
+
+  esSilencioAdministrativo(): boolean {
+    return isSilencioAdministrativo(this.solicitud());
+  }
+
+  getTipoRespuestaDisplay(): string {
+    const sol = this.solicitud();
+    if (!sol) {
+      return '';
+    }
+
+    return sol.respuesta?.tipoRespuesta || (this.esSilencioAdministrativo() ? 'SILENCIO_ADMINISTRATIVO' : '');
+  }
+
+  getTituloRespuesta(): string {
+    const tipo = this.getTipoRespuestaDisplay();
+
+    if (tipo === 'SILENCIO_ADMINISTRATIVO') {
+      return 'Silencio Administrativo';
+    }
+
+    if (tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL') {
+      return 'Solicitud Aceptada';
+    }
+
+    return 'Solicitud Denegada';
+  }
+
+  esRespuestaEntrega(): boolean {
+    const tipo = this.getTipoRespuestaDisplay();
+    return tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL';
   }
 }
 

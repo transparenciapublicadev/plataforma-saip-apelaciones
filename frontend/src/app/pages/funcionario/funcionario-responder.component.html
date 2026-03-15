@@ -87,6 +87,16 @@
           <h3 class="text-[#1a1a2e] font-semibold">Respuesta de la Entidad</h3>
         </div>
         <div class="p-6 space-y-6">
+          @if (esSilencioAdministrativoAutomatico()) {
+            <div class="bg-gray-50 border border-gray-300 rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div>
+                <p class="text-sm font-semibold text-gray-900 mb-0.5">SILENCIO_ADMINISTRATIVO automático</p>
+                <p class="text-sm text-gray-700">La solicitud superó el plazo legal de 10 días hábiles sin respuesta. Este estado se gestiona automáticamente por regla de negocio y no permite registrar respuesta manual.</p>
+              </div>
+            </div>
+          }
+
           @if (error()) {
             <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
               <svg class="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -100,31 +110,32 @@
             </div>
           }
 
-          <!-- Decision -->
-          <div class="space-y-3">
-            <label class="block text-sm font-medium text-[#1a1a2e]">Decisión sobre la Solicitud <span class="text-[#D91E18]">*</span></label>
+          @if (puedeRegistrarRespuestaManual()) {
+            <!-- Decision -->
             <div class="space-y-3">
-              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                [class]="decision === 'aceptar' ? 'border-[#10B981] bg-[#F0FDF4]' : 'border-gray-200 hover:border-gray-300'">
-                <input type="radio" [(ngModel)]="decision" name="decision" value="aceptar" class="w-4 h-4 text-[#10B981]">
-                <div class="flex-1">
-                  <p class="font-semibold text-[#1a1a2e]">Aceptar Solicitud</p>
-                  <p class="text-xs text-gray-500">La información será entregada al ciudadano</p>
-                </div>
-              </label>
-              <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                [class]="decision === 'denegar' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
-                <input type="radio" [(ngModel)]="decision" name="decision" value="denegar" class="w-4 h-4 text-[#DC2626]">
-                <div class="flex-1">
-                  <p class="font-semibold text-[#1a1a2e]">Denegar Solicitud</p>
-                  <p class="text-xs text-gray-500">La información no puede ser entregada</p>
-                </div>
-              </label>
+              <label class="block text-sm font-medium text-[#1a1a2e]">Decisión sobre la Solicitud <span class="text-[#D91E18]">*</span></label>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                  [class]="decision === 'aceptar' ? 'border-[#10B981] bg-[#F0FDF4]' : 'border-gray-200 hover:border-gray-300'">
+                  <input type="radio" [(ngModel)]="decision" name="decision" value="aceptar" class="w-4 h-4 text-[#10B981]">
+                  <div class="flex-1">
+                    <p class="font-semibold text-[#1a1a2e]">Aceptar Solicitud</p>
+                    <p class="text-xs text-gray-500">La información será entregada al ciudadano</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
+                  [class]="decision === 'denegar' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
+                  <input type="radio" [(ngModel)]="decision" name="decision" value="denegar" class="w-4 h-4 text-[#DC2626]">
+                  <div class="flex-1">
+                    <p class="font-semibold text-[#1a1a2e]">Denegar Solicitud</p>
+                    <p class="text-xs text-gray-500">La información no puede ser entregada</p>
+                  </div>
+                </label>
+              </div>
             </div>
-          </div>
 
-          <!-- Accept case -->
-          @if (decision === 'aceptar') {
+            <!-- Accept case -->
+            @if (decision === 'aceptar') {
             <div class="border border-[#10B981] bg-[#F0FDF4] rounded-xl p-5 space-y-4">
               <h4 class="font-semibold text-[#065F46]">Detalles de Aceptación y Entrega</h4>
               <div class="space-y-2">
@@ -155,10 +166,10 @@
                 </div>
               </div>
             </div>
-          }
+            }
 
-          <!-- Deny case -->
-          @if (decision === 'denegar') {
+            <!-- Deny case -->
+            @if (decision === 'denegar') {
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-[#1a1a2e]">Causal de Denegatoria <span class="text-[#D91E18]">*</span></label>
@@ -200,21 +211,22 @@
                 </div>
               }
             </div>
-          }
+            }
 
-          <!-- Submit -->
-          <div class="space-y-3 pt-4">
-            <button type="button" (click)="enviarRespuesta()" [disabled]="loading()"
-              class="w-full h-12 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              @if (loading()) {
-                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Enviando...
-              } @else {
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                Enviar Respuesta
-              }
-            </button>
-          </div>
+            <!-- Submit -->
+            <div class="space-y-3 pt-4">
+              <button type="button" (click)="enviarRespuesta()" [disabled]="loading()"
+                class="w-full h-12 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                @if (loading()) {
+                  <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Enviando...
+                } @else {
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                  Enviar Respuesta
+                }
+              </button>
+            </div>
+          }
 
           <!-- Info -->
           <div class="bg-blue-50/80 border border-blue-100 rounded-xl p-4 mt-2">

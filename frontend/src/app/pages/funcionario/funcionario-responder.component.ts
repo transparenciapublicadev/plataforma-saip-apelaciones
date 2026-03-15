@@ -6,6 +6,7 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { RespuestaService } from '../../services/respuesta.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
+import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 @Component({
   selector: 'app-funcionario-responder',
@@ -89,6 +90,11 @@ export class FuncionarioResponderComponent implements OnInit {
       return;
     }
 
+    if (this.esSilencioAdministrativoAutomatico()) {
+      this.error.set('La solicitud venció y aplica SILENCIO_ADMINISTRATIVO automáticamente. No se permite registrar respuesta manual.');
+      return;
+    }
+
     if (this.decision === 'denegar' && !this.causalDenegatoria) {
       this.error.set('Debe seleccionar una causal de denegación');
       return;
@@ -136,6 +142,14 @@ export class FuncionarioResponderComponent implements OnInit {
         }
       });
     }
+  }
+
+  esSilencioAdministrativoAutomatico(): boolean {
+    return isSilencioAdministrativo(this.solicitud());
+  }
+
+  puedeRegistrarRespuestaManual(): boolean {
+    return canSendManualResponse(this.solicitud());
   }
 }
 
