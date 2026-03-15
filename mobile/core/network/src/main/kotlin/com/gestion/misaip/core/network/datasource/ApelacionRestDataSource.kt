@@ -2,8 +2,8 @@ package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.network.api.ApelacionApiService
+import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
-import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
 
 /**
  * Implementación REST del datasource de apelaciones.
@@ -11,6 +11,7 @@ import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
  */
 class ApelacionRestDataSource(
     private val apelacionApi: ApelacionApiService,
+    private val ttaipApi: TTAIPApiService,
     private val tokenStorage: TokenStorage
 ) : ApelacionRemoteDataSource {
 
@@ -37,7 +38,10 @@ class ApelacionRestDataSource(
     }
 
     override suspend fun getTodasLasApelaciones(): List<Apelacion> {
-        return apelacionApi.listar().map { it.toDomain() }
+        return when (tokenStorage.getTipoUsuario()?.uppercase()) {
+            "TTAIP" -> obtenerApelacionesTtaip()
+            else -> apelacionApi.listar().map { it.toDomain() }
+        }
     }
 
     override suspend fun getApelacionPorExpediente(expediente: String): Apelacion? {
@@ -56,7 +60,10 @@ class ApelacionRestDataSource(
                 val userId = tokenStorage.getUserId() ?: return emptyList()
                 apelacionApi.getByCiudadano(userId).map { it.toDomain() }
             }
-            "FUNCIONARIO", "TTAIP", "ADMIN" -> {
+            "TTAIP" -> {
+                obtenerApelacionesTtaip()
+            }
+            "FUNCIONARIO", "ADMIN" -> {
                 apelacionApi.listar().map { it.toDomain() }
             }
             else -> {
@@ -64,5 +71,20 @@ class ApelacionRestDataSource(
                 apelacionApi.getByCiudadano(userId).map { it.toDomain() }
             }
         }
+    }
+
+    private suspend fun obtenerApelacionesTtaip(): List<Apelacion> {
+        val apelacionesSegmentadas = buildList {
+            addAll(ttaipApi.listarPendientes())
+            addAll(ttaipApi.listarEnCalificacion())
+            addAll(ttaipApi.listarSubsanacion())
+            addAll(ttaipApi.listarSegundaCalificacion())
+            addAll(ttaipApi.listarEnResolucion())
+            addAll(ttaipApi.listarResueltas())
+        }
+
+        return apelacionesSegmentadas
+            .distinctBy { dto -> dto.id?.toString() ?: dto.expediente }
+            .map { it.toDomain() }
     }
 }

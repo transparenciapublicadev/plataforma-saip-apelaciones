@@ -118,7 +118,11 @@ fun restNetworkModule(baseUrl: String) = module {
     }
 
     single<ApelacionRemoteDataSource> {
-        ApelacionRestDataSource(apelacionApi = get(), tokenStorage = get())
+        ApelacionRestDataSource(
+            apelacionApi = get(),
+            ttaipApi = get(),
+            tokenStorage = get()
+        )
     }
 
     single<EntidadPublicaRemoteDataSource> {
