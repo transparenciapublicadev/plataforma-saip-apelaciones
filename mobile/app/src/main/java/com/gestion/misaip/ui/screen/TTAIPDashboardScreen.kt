@@ -240,32 +240,48 @@ private fun TTAIPDashboardContent(
                             .fillMaxSize()
                     ) {
                         // Estadísticas animadas
-                        Row(
+                        LazyRow(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(vertical = 12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            AnimatedStatCard(
-                                titulo = "Pendientes",
-                                valor = uiState.estadisticas.pendientes,
-                                icon = Icons.Default.HourglassEmpty,
-                                modifier = Modifier.weight(1f)
-                            )
-                            AnimatedStatCard(
-                                titulo = "En Calif.",
-                                valor = uiState.estadisticas.enCalificacion,
-                                icon = Icons.Default.RateReview,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.weight(1f)
-                            )
-                            AnimatedStatCard(
-                                titulo = "Resueltas",
-                                valor = uiState.estadisticas.resueltas,
-                                icon = Icons.Default.CheckCircle,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.weight(1f)
-                            )
+                            item {
+                                AnimatedStatCard(
+                                    titulo = "Pend. Admis.",
+                                    valor = uiState.estadisticas.pendientesAdmision,
+                                    icon = Icons.Default.HourglassEmpty,
+                                    modifier = Modifier.width(140.dp)
+                                )
+                            }
+                            item {
+                                AnimatedStatCard(
+                                    titulo = "En Proceso",
+                                    valor = uiState.estadisticas.enProceso,
+                                    icon = Icons.Default.RateReview,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.width(140.dp)
+                                )
+                            }
+                            item {
+                                AnimatedStatCard(
+                                    titulo = "Subsanación",
+                                    valor = uiState.estadisticas.enSubsanacion,
+                                    icon = Icons.Default.Notifications,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.width(140.dp)
+                                )
+                            }
+                            item {
+                                AnimatedStatCard(
+                                    titulo = "Resueltas",
+                                    valor = uiState.estadisticas.resueltas,
+                                    icon = Icons.Default.CheckCircle,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.width(140.dp)
+                                )
+                            }
                         }
 
                         // Búsqueda

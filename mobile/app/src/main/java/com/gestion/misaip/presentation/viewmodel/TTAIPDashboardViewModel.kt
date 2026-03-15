@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 data class TTAIPDashboardUiState(
     val nombreUsuario: String = "",
     val cargo: String = "",
-    val estadisticas: EstadisticasTTAIP = EstadisticasTTAIP(0, 0, 0, 0),
+    val estadisticas: EstadisticasTTAIP = EstadisticasTTAIP(0, 0, 0, 0, 0),
     val apelaciones: List<ApelacionItem> = emptyList(),
     val apelacionesFiltradas: List<ApelacionItem> = emptyList(),
     val filtroActual: String = "Pendiente de Elevación",
@@ -90,8 +90,15 @@ class TTAIPDashboardViewModel(
 
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasTTAIP(
-                pendientes = apelaciones.count { it.estado.name == "PENDIENTE_ELEVACION" },
-                enCalificacion = apelaciones.count { it.estado.name == "EN_CALIFICACION_1" || it.estado.name == "EN_CALIFICACION_2" },
+                pendientesAdmision = apelaciones.count {
+                    it.estado.name == "PENDIENTE_ELEVACION" || it.estado.name == "EN_CALIFICACION_1"
+                },
+                enProceso = apelaciones.count {
+                    it.estado.name == "EN_CALIFICACION_2" ||
+                        it.estado.name == "NOTIFICACION_SEGUNDA_CALIFICACION" ||
+                        it.estado.name == "EN_RESOLUCION"
+                },
+                enSubsanacion = apelaciones.count { it.estado.name == "EN_SUBSANACION" },
                 resueltas = apelaciones.count { it.estaResuelta },
                 total = apelaciones.size
             )

@@ -23,8 +23,9 @@ data class EstadisticasEntidad(
 
 // Estadísticas para el dashboard del TTAIP
 data class EstadisticasTTAIP(
-    val pendientes: Int,
-    val enCalificacion: Int,
+    val pendientesAdmision: Int,
+    val enProceso: Int,
+    val enSubsanacion: Int,
     val resueltas: Int,
     val total: Int
 )
