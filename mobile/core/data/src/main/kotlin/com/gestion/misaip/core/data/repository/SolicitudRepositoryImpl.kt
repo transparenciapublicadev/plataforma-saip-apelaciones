@@ -248,9 +248,12 @@ class SolicitudRepositoryImpl(
         expediente: String,
         respuesta: RespuestaEntidad
     ) = withContext(Dispatchers.IO) {
+        require(respuesta.tipo != TipoRespuesta.SILENCIO_ADMINISTRATIVO) {
+            "Silencio administrativo se aplica automáticamente y no se registra como respuesta manual"
+        }
+
         val nuevoEstado = when (respuesta.tipo) {
             TipoRespuesta.DENEGACION_TOTAL -> "Denegada"
-            TipoRespuesta.SILENCIO_ADMINISTRATIVO -> "Vencida"
             else -> "Respondida"
         }
 
@@ -261,9 +264,9 @@ class SolicitudRepositoryImpl(
         // Agregar nuevo evento al timeline
         val eventoNombre = when (respuesta.tipo) {
             TipoRespuesta.DENEGACION_TOTAL -> "Solicitud DENEGADA por ${respuesta.funcionario}"
-            TipoRespuesta.SILENCIO_ADMINISTRATIVO -> "SILENCIO ADMINISTRATIVO NEGATIVO — sin respuesta en plazo legal"
             TipoRespuesta.ENTREGA_TOTAL -> "Solicitud RESPONDIDA — entrega total por ${respuesta.funcionario}"
             TipoRespuesta.ENTREGA_PARCIAL -> "Solicitud RESPONDIDA — entrega parcial por ${respuesta.funcionario}"
+            TipoRespuesta.SILENCIO_ADMINISTRATIVO -> error("Tipo de respuesta no permitido: SILENCIO_ADMINISTRATIVO")
         }
         val timelineItems: MutableList<TimelineDto> = try {
             Json.decodeFromString(timelineActual)
@@ -274,7 +277,6 @@ class SolicitudRepositoryImpl(
                 evento = eventoNombre,
                 tipo = when (respuesta.tipo) {
                     TipoRespuesta.DENEGACION_TOTAL -> "denegacion"
-                    TipoRespuesta.SILENCIO_ADMINISTRATIVO -> "vencimiento"
                     else -> "respuesta"
                 },
                 completado = true,

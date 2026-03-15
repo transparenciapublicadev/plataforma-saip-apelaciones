@@ -46,6 +46,7 @@ data class RequestDetailUiState(
     val telefonoRecurrente: String = "",
     val timeline: List<TimelineItem> = emptyList(),
     val tipoUsuario: TipoUsuario = TipoUsuario.CIUDADANO,
+    val silencioAdministrativoAutomatico: Boolean = false,
     val puedeApelar: Boolean = false,
     val puedeIniciarRevision: Boolean = false,
     val puedeResponder: Boolean = false,
@@ -158,12 +159,17 @@ class RequestDetailViewModel(
                 val esFuncionarioEntidad = tipoUsuario == TipoUsuario.FUNCIONARIO &&
                     usuario?.entidadId == solicitud.entidadId
 
+                val silencioAdministrativoAutomatico = solicitud.silencioAdministrativo ||
+                    (solicitud.respuestaEntidad == null && (solicitud.diasRestantes ?: Int.MAX_VALUE) <= 0)
+
                 // Solo mostrar "Iniciar Revisión" cuando está RECEPCIONADA
                 val puedeIniciarRevision = esFuncionarioEntidad &&
                     solicitud.estado == com.gestion.misaip.core.domain.model.EstadoSolicitud.RECEPCIONADA
 
                 // Mostrar "Responder" cuando está pendiente (incluye RECEPCIONADA y EN_REVISION)
-                val puedeResponder = esFuncionarioEntidad && solicitud.estaPendiente
+                val puedeResponder = esFuncionarioEntidad &&
+                    solicitud.estaPendiente &&
+                    !silencioAdministrativoAutomatico
 
                 // Ciudadano: permitir subsanar desde la vista SAIP si la apelación lo requiere
                 val puedeSubsanar = tipoUsuario == TipoUsuario.CIUDADANO &&
@@ -204,6 +210,7 @@ class RequestDetailViewModel(
                     telefonoRecurrente = solicitud.solicitante.telefono.ifEmpty { usuario?.telefono ?: "" },
                     timeline = solicitud.timeline,
                     tipoUsuario = tipoUsuario,
+                    silencioAdministrativoAutomatico = silencioAdministrativoAutomatico,
                     puedeApelar = puedeApelar,
                     puedeIniciarRevision = puedeIniciarRevision,
                     puedeResponder = puedeResponder,
@@ -249,7 +256,20 @@ class RequestDetailViewModel(
     }
 
     fun mostrarFormularioRespuesta() {
-        _uiState.value = _uiState.value.copy(showResponseForm = true)
+        val state = _uiState.value
+        if (!state.puedeResponder) {
+            viewModelScope.launch {
+                if (state.silencioAdministrativoAutomatico) {
+                    _events.emit(
+                        RequestDetailEvent.ShowMessage(
+                            "Silencio administrativo aplicado automáticamente por vencimiento de plazo"
+                        )
+                    )
+                }
+            }
+            return
+        }
+        _uiState.value = state.copy(showResponseForm = true)
     }
 
     fun ocultarFormularioRespuesta() {
@@ -265,6 +285,15 @@ class RequestDetailViewModel(
                 // Usar fromString() que maneja acentos correctamente
                 // (ej: "Denegación Total" → DENEGACION_TOTAL)
                 val tipoRespuestaEnum = TipoRespuesta.fromString(tipoRespuesta)
+
+                if (tipoRespuestaEnum == TipoRespuesta.SILENCIO_ADMINISTRATIVO) {
+                    _events.emit(
+                        RequestDetailEvent.ShowMessage(
+                            "Silencio administrativo es automático y no se registra manualmente"
+                        )
+                    )
+                    return@launch
+                }
 
                 responderSolicitudUseCase(
                     ResponderSolicitudUseCase.Params(

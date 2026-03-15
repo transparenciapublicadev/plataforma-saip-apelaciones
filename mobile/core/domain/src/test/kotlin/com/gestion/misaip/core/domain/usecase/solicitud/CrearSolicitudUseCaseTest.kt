@@ -114,6 +114,17 @@ class ResponderSolicitudUseCaseTest {
         useCase(params)
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `lanza excepcion cuando tipo respuesta es silencio administrativo`() = runTest {
+        val params = ResponderSolicitudUseCase.Params(
+            expediente = "SAIP-2025-00001",
+            funcionario = "func-1",
+            tipoRespuesta = TipoRespuesta.SILENCIO_ADMINISTRATIVO,
+            fundamentacion = "Plazo vencido"
+        )
+        useCase(params)
+    }
+
     @Test
     fun `responde solicitud con datos validos`() = runTest {
         coEvery { solicitudRepository.responderSolicitud(any(), any()) } just Runs

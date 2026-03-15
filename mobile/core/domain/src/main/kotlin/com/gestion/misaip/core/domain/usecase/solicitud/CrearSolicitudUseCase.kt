@@ -104,6 +104,9 @@ class ResponderSolicitudUseCase(
     suspend operator fun invoke(params: Params) {
         require(params.expediente.isNotBlank()) { "El expediente es obligatorio" }
         require(params.fundamentacion.isNotBlank()) { "La fundamentación es obligatoria" }
+        require(params.tipoRespuesta != TipoRespuesta.SILENCIO_ADMINISTRATIVO) {
+            "Silencio administrativo se aplica automáticamente y no debe registrarse manualmente"
+        }
 
         val respuesta = RespuestaEntidad(
             fechaRespuesta = System.currentTimeMillis(),

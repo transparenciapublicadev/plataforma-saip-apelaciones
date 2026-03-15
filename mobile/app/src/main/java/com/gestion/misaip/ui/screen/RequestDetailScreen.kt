@@ -398,6 +398,20 @@ private fun RequestDetailContent(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Responder Solicitud")
                             }
+                        } else if (uiState.silencioAdministrativoAutomatico && uiState.tipoUsuario == com.gestion.misaip.core.domain.model.TipoUsuario.FUNCIONARIO) {
+                            Card(
+                                shape = MaterialTheme.shapes.medium,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Text(
+                                    text = "Silencio administrativo aplicado automáticamente por vencimiento de plazo.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
                         }
                         if (uiState.puedeCalificar) {
                             Button(
@@ -616,7 +630,7 @@ private fun ResponseBottomSheet(
     var tipoSeleccionado by remember { mutableStateOf("") }
     var fundamentacion by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-    val tipos = remember { listOf("Entrega Total", "Entrega Parcial", "Denegación Total", "Silencio Administrativo") }
+    val tipos = remember { listOf("Entrega Total", "Entrega Parcial", "Denegación Total") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
