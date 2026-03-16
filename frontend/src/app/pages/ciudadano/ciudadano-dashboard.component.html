@@ -219,9 +219,16 @@
                     <span class="text-sm text-gray-400">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</span>
                   </td>
                   <td class="px-6 py-4">
-                    <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getEstadoClass(solicitud.estado)">
-                      {{ solicitud.estado }}
-                    </span>
+                    <div class="flex flex-col items-start gap-1">
+                      <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getEstadoClass(solicitud.estado)">
+                        {{ solicitud.estado }}
+                      </span>
+                      @if (esSilencioAdministrativo(solicitud)) {
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800">
+                          SILENCIO ADMINISTRATIVO AUTOMATICO
+                        </span>
+                      }
+                    </div>
                   </td>
                   <td class="px-6 py-4">
                     @if (solicitud.apelacion) {

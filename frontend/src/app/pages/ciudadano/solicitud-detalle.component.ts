@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
+import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 @Component({
   selector: 'app-solicitud-detalle',
@@ -119,6 +120,19 @@ export class SolicitudDetalleComponent implements OnInit {
   puedeApelar(): boolean {
     const sol = this.solicitud();
     return sol !== null && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA') && !sol.apelacion;
+  }
+
+  esSilencioAdministrativo(): boolean {
+    return isSilencioAdministrativo(this.solicitud());
+  }
+
+  getTipoRespuestaDisplay(): string {
+    const sol = this.solicitud();
+    if (!sol) {
+      return '';
+    }
+
+    return sol.respuesta?.tipoRespuesta || (this.esSilencioAdministrativo() ? 'SILENCIO_ADMINISTRATIVO' : '');
   }
 }
 

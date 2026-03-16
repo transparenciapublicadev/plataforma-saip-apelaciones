@@ -7,6 +7,7 @@ import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
 import { Apelacion } from '../../models/apelacion.model';
+import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 @Component({
   selector: 'app-ciudadano-dashboard',
@@ -208,6 +209,10 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   logout(): void {
     this.authService.cerrarSesion();
+  }
+
+  esSilencioAdministrativo(solicitud: Solicitud): boolean {
+    return isSilencioAdministrativo(solicitud);
   }
 }
 

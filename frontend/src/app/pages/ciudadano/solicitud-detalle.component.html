@@ -36,7 +36,11 @@
         <div class="mb-6 border border-[#F59E0B] bg-[#FFFBEB] rounded-xl p-4 flex items-center gap-3">
           <svg class="w-5 h-5 text-[#F59E0B] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           <p class="text-sm text-[#92400E] flex-1">
-            Tu solicitud fue denegada. Tienes derecho a <strong>interponer un recurso de apelación</strong> ante el TTAIP.
+              @if (esSilencioAdministrativo()) {
+                Tu solicitud venció sin respuesta de la entidad. Se aplica <strong>silencio administrativo automático</strong> y puedes interponer apelación ante el TTAIP.
+              } @else {
+                Tu solicitud fue denegada. Tienes derecho a <strong>interponer un recurso de apelación</strong> ante el TTAIP.
+              }
           </p>
           <a [routerLink]="['/ciudadano/apelacion/nueva', solicitud()!.expediente]"
             class="px-4 py-2 bg-[#C8102E] hover:bg-[#A00D24] text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
@@ -84,15 +88,17 @@
                 <!-- Respuesta -->
                 <div class="flex gap-3">
                   <div class="flex flex-col items-center">
-                    <div [class]="solicitud()!.respuesta ? 'w-8 h-8 rounded-full bg-green-100 flex items-center justify-center' : 'w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center'">
-                      <svg class="w-4 h-4" [class]="solicitud()!.respuesta ? 'text-green-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <div [class]="(solicitud()!.respuesta || esSilencioAdministrativo()) ? 'w-8 h-8 rounded-full bg-green-100 flex items-center justify-center' : 'w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center'">
+                        <svg class="w-4 h-4" [class]="(solicitud()!.respuesta || esSilencioAdministrativo()) ? 'text-green-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                   </div>
                   <div>
                     <p class="font-medium text-sm text-[#1a1a2e]">Respuesta</p>
                     <p class="text-xs text-gray-500">
-                      @if (solicitud()!.respuesta) {
+                        @if (solicitud()!.respuesta) {
                         La entidad ha emitido su respuesta
+                        } @else if (esSilencioAdministrativo()) {
+                          Silencio administrativo automático por vencimiento de plazo
                       } @else {
                         Pendiente de respuesta
                       }
@@ -177,9 +183,9 @@
 
               <!-- Tab: Respuesta -->
               @if (activeTab() === 'respuesta') {
-                @if (solicitud()!.respuesta) {
+                  @if (solicitud()!.respuesta || esSilencioAdministrativo()) {
                   <div class="space-y-5">
-                    @if (solicitud()!.respuesta!.tipoRespuesta === 'DENEGACION_TOTAL') {
+                      @if (getTipoRespuestaDisplay() === 'DENEGACION_TOTAL') {
                       <div class="bg-[#FEF2F2] border border-[#FCA5A5] rounded-lg p-4">
                         <div class="flex items-start gap-3">
                           <svg class="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -190,7 +196,18 @@
                         </div>
                       </div>
                     }
-                    @if (solicitud()!.respuesta!.causalDenegatoria) {
+                      @if (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO') {
+                        <div class="bg-[#FFFBEB] border border-[#FCD34D] rounded-lg p-4">
+                          <div class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-[#D97706] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <div>
+                              <h4 class="font-semibold text-[#92400E] mb-1">Silencio Administrativo Automático</h4>
+                              <p class="text-sm text-[#78350F]">La entidad no respondió dentro del plazo legal (10 días hábiles).</p>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    @if (solicitud()!.respuesta && solicitud()!.respuesta!.causalDenegatoria) {
                       <div>
                         <h4 class="font-semibold text-[#1a1a2e] mb-2">Causal de Denegatoria</h4>
                         <p class="text-sm bg-gray-100 p-3 rounded-lg">
@@ -198,20 +215,22 @@
                         </p>
                       </div>
                     }
-                    @if (solicitud()!.respuesta!.fundamentoLegal) {
+                    @if (solicitud()!.respuesta && solicitud()!.respuesta!.fundamentoLegal) {
                       <div class="border-t border-gray-100 pt-4">
                         <h4 class="font-semibold text-[#1a1a2e] mb-2">Fundamento Legal</h4>
                         <p class="text-sm text-gray-500">{{ solicitud()!.respuesta!.fundamentoLegal }}</p>
                       </div>
                     }
-                    <div class="border-t border-gray-100 pt-4">
-                      <h4 class="font-semibold text-[#1a1a2e] mb-2">Contenido de la Respuesta</h4>
-                      <p class="text-sm text-gray-500 whitespace-pre-wrap">{{ solicitud()!.respuesta!.contenido }}</p>
-                    </div>
-                    <div class="border-t border-gray-100 pt-4">
-                      <h4 class="font-semibold text-[#1a1a2e] mb-1">Fecha de Respuesta</h4>
-                      <p class="text-sm text-gray-500">{{ solicitud()!.respuesta!.fechaRespuesta | date:'dd \'de\' MMMM \'de\' yyyy' }}</p>
-                    </div>
+                    @if (solicitud()!.respuesta) {
+                      <div class="border-t border-gray-100 pt-4">
+                        <h4 class="font-semibold text-[#1a1a2e] mb-2">Contenido de la Respuesta</h4>
+                        <p class="text-sm text-gray-500 whitespace-pre-wrap">{{ solicitud()!.respuesta!.contenido }}</p>
+                      </div>
+                      <div class="border-t border-gray-100 pt-4">
+                        <h4 class="font-semibold text-[#1a1a2e] mb-1">Fecha de Respuesta</h4>
+                        <p class="text-sm text-gray-500">{{ solicitud()!.respuesta!.fechaRespuesta | date:'dd \'de\' MMMM \'de\' yyyy' }}</p>
+                      </div>
+                    }
                   </div>
                 } @else {
                   <div class="text-center py-12">
