@@ -20,17 +20,23 @@ jobs:
   build:
     name: Build (Android / Kotlin)
     runs-on: ubuntu-latest
+    env:
+      ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-download: "false"
+      ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-detect: "false"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21 (JetBrains Runtime)
         uses: actions/setup-java@v5
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: '21'
+          distribution: 'jetbrains'
           cache: gradle
+
+      - name: Pin Gradle toolchain path to installed JDK
+        run: echo "ORG_GRADLE_PROJECT_org.gradle.java.installations.paths=$JAVA_HOME" >> $GITHUB_ENV
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
