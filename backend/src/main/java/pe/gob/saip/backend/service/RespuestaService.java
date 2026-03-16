@@ -157,6 +157,10 @@ public class RespuestaService {
 
     private void aplicarTipoRespuesta(Respuesta respuesta, Solicitud solicitud, CrearRespuestaRequest request) {
         String tipo = request.tipoRespuesta();
+        if ("SILENCIO_ADMINISTRATIVO".equalsIgnoreCase(tipo)) {
+            throw new IllegalArgumentException("Silencio administrativo se aplica automaticamente y no se registra manualmente");
+        }
+
         if ("ENTREGA_TOTAL".equalsIgnoreCase(tipo) || "ACEPTADA".equalsIgnoreCase(tipo)) {
             respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.ENTREGA_TOTAL);
             solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
