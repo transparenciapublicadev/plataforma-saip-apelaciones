@@ -10,11 +10,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.gestion.misaip.core.domain.model.TipoUsuario
+import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.navigation.*
 import com.gestion.misaip.ui.screen.*
 import com.gestion.misaip.ui.theme.MiSAIPTheme
@@ -45,8 +47,23 @@ fun MiSAIPNavigation(
     deepLinkExpediente: String? = null,
     deepLinkTipo: String? = null
 ) {
+    val context = LocalContext.current
     val backStack = rememberNavBackStack(Splash)
     var welcomeMessage by remember { mutableStateOf<String?>(null) }
+
+    fun navigateAfterAuth(tipoUsuario: TipoUsuario) {
+        backStack.clear()
+
+        if (FCMHelper.arePushNotificationsEnabled(context)) {
+            backStack.add(dashboardRouteForRole(tipoUsuario))
+            if (!deepLinkExpediente.isNullOrBlank()) {
+                backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
+            }
+            return
+        }
+
+        backStack.add(NotificationPermissionGate(tipoUsuario.name))
+    }
 
     NavDisplay(
         backStack = backStack,
@@ -63,8 +80,7 @@ fun MiSAIPNavigation(
                         backStack.add(Onboarding)
                     },
                     onNavigateToDashboard = { tipoUsuario ->
-                        backStack.clear()
-                        backStack.add(NotificationPermissionGate(tipoUsuario.name))
+                        navigateAfterAuth(tipoUsuario)
                     }
                 )
             }
@@ -82,8 +98,9 @@ fun MiSAIPNavigation(
                 LoginScreen(
                     onLoginSuccess = { tipoUsuario, _, _, nombreUsuario ->
                         welcomeMessage = "¡Bienvenido $nombreUsuario!"
-                        backStack.clear()
-                        backStack.add(NotificationPermissionGate(tipoUsuario))
+                        val role = runCatching { TipoUsuario.valueOf(tipoUsuario) }
+                            .getOrDefault(TipoUsuario.CIUDADANO)
+                        navigateAfterAuth(role)
                     },
                     onNavigateToRegister = {
                         backStack.add(Register)
