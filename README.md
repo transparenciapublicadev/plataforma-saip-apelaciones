@@ -475,7 +475,9 @@ El proyecto usa **GitHub Actions** con pipelines independientes por módulo:
 | `frontend-ci.yml` | `frontend/**` | npm install + TypeScript check + Vitest + Angular build |
 | `mobile-ci.yml` | `mobile/**` | Gradle assembleDebug + tests + upload APK artifact |
 
-Cada pipeline se ejecuta solo cuando cambian archivos en su módulo correspondiente.
+Cada pipeline se ejecuta en las siguientes condiciones:
+- **Push**: a main, develop, daniel/** o kelly/** (feedback inmediato al desarrollador)
+- **Pull Request**: a main o develop (gate de integración antes de merge)
 
 ---
 
