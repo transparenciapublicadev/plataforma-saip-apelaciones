@@ -10,13 +10,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.gestion.misaip.core.domain.model.TipoUsuario
-import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.navigation.*
 import com.gestion.misaip.ui.screen.*
 import com.gestion.misaip.ui.theme.MiSAIPTheme
@@ -47,25 +45,15 @@ fun MiSAIPNavigation(
     deepLinkExpediente: String? = null,
     deepLinkTipo: String? = null
 ) {
-    val context = LocalContext.current
     val backStack = rememberNavBackStack(Splash)
     var welcomeMessage by remember { mutableStateOf<String?>(null) }
-    var permissionGateRole by remember { mutableStateOf<TipoUsuario?>(null) }
 
     fun navigateAfterAuth(tipoUsuario: TipoUsuario) {
         backStack.clear()
-        permissionGateRole = null
-
-        if (FCMHelper.arePushNotificationsEnabled(context)) {
-            backStack.add(dashboardRouteForRole(tipoUsuario))
-            if (!deepLinkExpediente.isNullOrBlank()) {
-                backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
-            }
-            return
+        backStack.add(dashboardRouteForRole(tipoUsuario))
+        if (!deepLinkExpediente.isNullOrBlank()) {
+            backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
         }
-
-        permissionGateRole = tipoUsuario
-        backStack.add(NotificationPermissionGate(tipoUsuario.name))
     }
 
     NavDisplay(
@@ -76,12 +64,10 @@ fun MiSAIPNavigation(
                 SplashScreen(
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     onNavigateToOnboarding = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Onboarding)
                     },
                     onNavigateToDashboard = { tipoUsuario ->
@@ -94,7 +80,6 @@ fun MiSAIPNavigation(
                 OnboardingScreen(
                     onOnboardingComplete = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     }
                 )
@@ -110,24 +95,6 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToRegister = {
                         backStack.add(Register)
-                    }
-                )
-            }
-
-            entry<NotificationPermissionGate> { key ->
-                NotificationPermissionGateScreen(
-                    onPermissionEnabled = {
-                        val resolvedRole = permissionGateRole
-                            ?: runCatching { TipoUsuario.valueOf(key.tipoUsuario) }
-                                .getOrElse { TipoUsuario.fromString(key.tipoUsuario) }
-                        val route = dashboardRouteForRole(resolvedRole)
-                        backStack.clear()
-                        permissionGateRole = null
-                        backStack.add(route)
-                        // Si hay deep link, navegar al detalle tras habilitar push.
-                        if (!deepLinkExpediente.isNullOrBlank()) {
-                            backStack.add(RequestDetail(deepLinkExpediente, deepLinkTipo ?: "SAIP"))
-                        }
                     }
                 )
             }
@@ -153,7 +120,6 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -168,7 +134,6 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -183,7 +148,6 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -195,7 +159,6 @@ fun MiSAIPNavigation(
                 AdminDashboardScreen(
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -245,7 +208,6 @@ fun MiSAIPNavigation(
                     onNavigateBack = { backStack.removeLastOrNull() },
                     onNavigateToLogin = {
                         backStack.clear()
-                        permissionGateRole = null
                         backStack.add(Login)
                     }
                 )
