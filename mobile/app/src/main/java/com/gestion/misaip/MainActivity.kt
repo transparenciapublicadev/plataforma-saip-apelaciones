@@ -50,9 +50,11 @@ fun MiSAIPNavigation(
     val context = LocalContext.current
     val backStack = rememberNavBackStack(Splash)
     var welcomeMessage by remember { mutableStateOf<String?>(null) }
+    var permissionGateRole by remember { mutableStateOf<TipoUsuario?>(null) }
 
     fun navigateAfterAuth(tipoUsuario: TipoUsuario) {
         backStack.clear()
+        permissionGateRole = null
 
         if (FCMHelper.arePushNotificationsEnabled(context)) {
             backStack.add(dashboardRouteForRole(tipoUsuario))
@@ -62,6 +64,7 @@ fun MiSAIPNavigation(
             return
         }
 
+        permissionGateRole = tipoUsuario
         backStack.add(NotificationPermissionGate(tipoUsuario.name))
     }
 
@@ -73,10 +76,12 @@ fun MiSAIPNavigation(
                 SplashScreen(
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     onNavigateToOnboarding = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Onboarding)
                     },
                     onNavigateToDashboard = { tipoUsuario ->
@@ -89,6 +94,7 @@ fun MiSAIPNavigation(
                 OnboardingScreen(
                     onOnboardingComplete = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     }
                 )
@@ -111,8 +117,12 @@ fun MiSAIPNavigation(
             entry<NotificationPermissionGate> { key ->
                 NotificationPermissionGateScreen(
                     onPermissionEnabled = {
-                        val route = dashboardRouteForRole(TipoUsuario.valueOf(key.tipoUsuario))
+                        val resolvedRole = permissionGateRole
+                            ?: runCatching { TipoUsuario.valueOf(key.tipoUsuario) }
+                                .getOrElse { TipoUsuario.fromString(key.tipoUsuario) }
+                        val route = dashboardRouteForRole(resolvedRole)
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(route)
                         // Si hay deep link, navegar al detalle tras habilitar push.
                         if (!deepLinkExpediente.isNullOrBlank()) {
@@ -143,6 +153,7 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -157,6 +168,7 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -171,6 +183,7 @@ fun MiSAIPNavigation(
                     },
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -182,6 +195,7 @@ fun MiSAIPNavigation(
                 AdminDashboardScreen(
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     },
                     welcomeMessage = welcomeMessage,
@@ -231,6 +245,7 @@ fun MiSAIPNavigation(
                     onNavigateBack = { backStack.removeLastOrNull() },
                     onNavigateToLogin = {
                         backStack.clear()
+                        permissionGateRole = null
                         backStack.add(Login)
                     }
                 )
