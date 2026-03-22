@@ -2,7 +2,6 @@ package com.gestion.misaip.presentation.di
 
 import com.gestion.misaip.data.CredentialStorage
 import com.gestion.misaip.presentation.viewmodel.*
-import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -17,8 +16,6 @@ val presentationModule = module {
     // ===========================================
     // SINGLETONS
     // ===========================================
-
-    single { CredentialStorage(androidContext()) }
 
     // ===========================================
     // VIEWMODELS - Activity-based (Use Cases)

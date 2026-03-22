@@ -2,6 +2,7 @@ package com.gestion.misaip.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.gestion.misaip.core.network.datasource.TokenStorage
@@ -13,17 +14,14 @@ import com.gestion.misaip.core.network.datasource.TokenStorage
  */
 class CredentialStorage(context: Context) : TokenStorage {
 
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context.applicationContext,
-        "misaip_credentials",
-        MasterKey.Builder(context.applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val appContext = context.applicationContext
+
+    private val prefs: SharedPreferences = createSafePreferences()
 
     companion object {
+        private const val TAG = "CredentialStorage"
+        private const val PREFS_FILE_NAME = "misaip_credentials"
+
         // Ciudadano
         private const val KEY_CIUDADANO_DNI = "ciudadano_dni"
         private const val KEY_CIUDADANO_PASS = "ciudadano_pass"
@@ -37,6 +35,38 @@ class CredentialStorage(context: Context) : TokenStorage {
         private const val KEY_USER_ID = "rest_user_id"
         private const val KEY_TIPO_USUARIO = "rest_tipo_usuario"
         private const val KEY_ENTIDAD_ID = "rest_entidad_id"
+    }
+
+    private fun createSafePreferences(): SharedPreferences {
+        return try {
+            createEncryptedPreferences()
+        } catch (firstError: Exception) {
+            Log.e(TAG, "EncryptedSharedPreferences fallo en primer intento", firstError)
+            limpiarArchivosEncriptados()
+            try {
+                createEncryptedPreferences()
+            } catch (secondError: Exception) {
+                Log.e(TAG, "EncryptedSharedPreferences fallo tras limpieza. Usando fallback no encriptado", secondError)
+                appContext.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE)
+            }
+        }
+    }
+
+    private fun createEncryptedPreferences(): SharedPreferences {
+        return EncryptedSharedPreferences.create(
+            appContext,
+            PREFS_FILE_NAME,
+            MasterKey.Builder(appContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    private fun limpiarArchivosEncriptados() {
+        appContext.deleteSharedPreferences(PREFS_FILE_NAME)
+        appContext.deleteSharedPreferences("_androidx_security_crypto_encrypted_prefs_keyset__")
     }
 
     // ═══════════════════════════════════════════
