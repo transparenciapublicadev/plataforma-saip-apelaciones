@@ -14,6 +14,9 @@ import org.koin.dsl.module
  */
 val appModule = module {
 
+    // Almacenamiento seguro de credenciales y tokens
+    single { CredentialStorage(get()) }
+
     // Rastreador de lectura de notificaciones (SharedPreferences)
     single { NotificacionReadTracker(get()) }
 
