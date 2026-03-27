@@ -1,7 +1,7 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+type GsapMatchMedia = ReturnType<(typeof import('gsap'))['gsap']['matchMedia']>;
 
 @Injectable({ providedIn: 'root' })
 export class UxMotionService {
@@ -10,27 +10,66 @@ export class UxMotionService {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   private initialized = false;
-  private routeMatchMedia: gsap.MatchMedia | null = null;
+  private initializing: Promise<boolean> | null = null;
+  private gsapRef: (typeof import('gsap'))['gsap'] | null = null;
+  private scrollTriggerRef: (typeof import('gsap/ScrollTrigger'))['ScrollTrigger'] | null = null;
+  private routeMatchMedia: GsapMatchMedia | null = null;
+  private animationToken = 0;
 
-  private initialize(): boolean {
+  private async initialize(): Promise<boolean> {
+    if (this.initialized) {
+      return true;
+    }
+
     if (!this.isBrowser) {
-      return false;
+      return Promise.resolve(false);
     }
 
     if (typeof this.document.defaultView?.matchMedia !== 'function') {
-      return false;
+      return Promise.resolve(false);
     }
 
-    if (!this.initialized) {
+    if (this.initializing) {
+      return this.initializing;
+    }
+
+    this.initializing = (async () => {
+      const [{ gsap }, { ScrollTrigger }] = await Promise.all([
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+
       gsap.registerPlugin(ScrollTrigger);
+      this.gsapRef = gsap;
+      this.scrollTriggerRef = ScrollTrigger;
       this.initialized = true;
-    }
+      return true;
+    })().catch(() => false);
 
-    return true;
+    return this.initializing;
   }
 
   animateShell(): void {
-    if (!this.initialize()) {
+    void this.runShellAnimation();
+  }
+
+  animateRoute(mainElement: HTMLElement | null): void {
+    void this.runRouteAnimation(mainElement);
+  }
+
+  dispose(): void {
+    this.routeMatchMedia?.revert();
+    this.routeMatchMedia = null;
+    this.scrollTriggerRef?.getAll().forEach((trigger) => trigger.kill());
+  }
+
+  private async runShellAnimation(): Promise<void> {
+    if (!(await this.initialize())) {
+      return;
+    }
+
+    const gsap = this.gsapRef;
+    if (!gsap) {
       return;
     }
 
@@ -59,13 +98,29 @@ export class UxMotionService {
     );
   }
 
-  animateRoute(mainElement: HTMLElement | null): void {
-    if (!this.initialize() || !mainElement) {
+  private async runRouteAnimation(mainElement: HTMLElement | null): Promise<void> {
+    if (!mainElement) {
       return;
     }
 
+    if (!(await this.initialize())) {
+      return;
+    }
+
+    const gsap = this.gsapRef;
+    const ScrollTrigger = this.scrollTriggerRef;
+    if (!gsap || !ScrollTrigger) {
+      return;
+    }
+
+    const currentToken = ++this.animationToken;
+
     const routeHost = mainElement.querySelector(':scope > :not(router-outlet)') as HTMLElement | null;
     if (!routeHost) {
+      return;
+    }
+
+    if (currentToken !== this.animationToken) {
       return;
     }
 
@@ -76,7 +131,7 @@ export class UxMotionService {
 
     const canUseMatchMedia = typeof this.document.defaultView?.matchMedia === 'function';
     if (!canUseMatchMedia) {
-      this.runBasicIntro(routeHost);
+      this.runBasicIntro(gsap, routeHost);
       return;
     }
 
@@ -86,7 +141,7 @@ export class UxMotionService {
         reduceMotion: '(prefers-reduced-motion: reduce)',
         motionEnabled: '(prefers-reduced-motion: no-preference)',
       },
-      (context) => {
+      (context: { conditions?: Record<string, boolean> }) => {
         const reduceMotion = Boolean(context.conditions?.['reduceMotion']);
         if (reduceMotion) {
           gsap.set(routeHost, { autoAlpha: 1, y: 0, clearProps: 'all' });
@@ -156,13 +211,7 @@ export class UxMotionService {
     );
   }
 
-  dispose(): void {
-    this.routeMatchMedia?.revert();
-    this.routeMatchMedia = null;
-    ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-  }
-
-  private runBasicIntro(routeHost: HTMLElement): void {
+  private runBasicIntro(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
     gsap.fromTo(
       routeHost,
       { autoAlpha: 0, y: 18 },
