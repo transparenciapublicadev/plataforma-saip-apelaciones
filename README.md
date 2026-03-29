@@ -52,7 +52,7 @@ El sistema permite a los ciudadanos presentar solicitudes de información a enti
 
 | Nombre | Rol | Contribución |
 |--------|-----|--------------|
-| **Kelly De la Cruz Lopez** | Co-autora, Analista Funcional | Concepción e ideación del proyecto, levantamiento y especificación de requisitos funcionales, definición de reglas de negocio, modelado del flujo de trámite SAIP y apelaciones TTAIP, diseño del dominio y validación funcional |
+| **Kelly Medalit De La Cruz Lopez** | Co-autora, Analista Funcional | Concepción e ideación del proyecto, levantamiento y especificación de requisitos funcionales, definición de reglas de negocio, modelado del flujo de trámite SAIP y apelaciones TTAIP, diseño del dominio y validación funcional |
 | **Daniel Angel Leon Salazar** | Co-autor, Arquitecto de Software | Diseño e implementación de la arquitectura Clean Architecture + MVVM multimodular, desarrollo integral de la aplicación Android nativa, backend Spring Boot, frontend Angular, integración con Firebase, sistema de notificaciones push y despliegue técnico |
 
 ---
