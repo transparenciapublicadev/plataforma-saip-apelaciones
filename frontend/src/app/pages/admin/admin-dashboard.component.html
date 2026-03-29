@@ -222,13 +222,29 @@
                     Estado de Solicitudes
                   </h3>
                 </div>
-                <div class="p-5 space-y-2.5">
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Total</span><span class="text-sm font-bold text-[#1a1a2e]">{{ totalSolicitudes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Pendientes</span><span class="text-sm font-semibold text-[#D97706]">{{ pendientes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">En Proceso</span><span class="text-sm font-semibold text-[#2563EB]">{{ enProceso() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Respondidas</span><span class="text-sm font-semibold text-[#059669]">{{ respondidas() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Denegadas</span><span class="text-sm font-semibold text-[#D97706]">{{ denegadas() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Vencidas</span><span class="text-sm font-semibold text-[#DC2626]">{{ vencidas() }}</span></div>
+                <div class="p-5 space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Total</span>
+                    <span class="text-sm font-bold text-[#1a1a2e]">{{ totalSolicitudes() }}</span>
+                  </div>
+                  <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                    @for (segment of solicitudesChartData(); track segment.label) {
+                      @if (segment.value > 0) {
+                        <div class="h-full transition-all" [style.width.%]="segment.percentage" [style.background-color]="segment.color"></div>
+                      }
+                    }
+                  </div>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                    @for (segment of solicitudesChartData(); track segment.label) {
+                      <div class="flex items-center justify-between gap-2 text-sm">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background-color]="segment.color"></span>
+                          <span class="text-gray-500 truncate">{{ segment.label }}</span>
+                        </div>
+                        <span class="text-[#1a1a2e] font-semibold">{{ segment.value }}</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               </div>
 
@@ -239,11 +255,40 @@
                     Apelaciones TTAIP
                   </h3>
                 </div>
-                <div class="p-5 space-y-2.5">
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Total</span><span class="text-sm font-bold text-[#1a1a2e]">{{ totalApelaciones() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Pendientes</span><span class="text-sm font-semibold text-[#D97706]">{{ apelacionesPendientes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">En Análisis</span><span class="text-sm font-semibold text-[#2563EB]">{{ apelacionesEnAnalisis() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Resueltas</span><span class="text-sm font-semibold text-[#059669]">{{ apelacionesResueltas() }}</span></div>
+                <div class="p-5">
+                  <div class="flex items-center gap-5">
+                    <div class="relative w-32 h-32 shrink-0">
+                      <svg class="w-32 h-32 -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                        <circle cx="60" cy="60" r="42" fill="none" stroke="#E5E7EB" stroke-width="14"></circle>
+                        @for (segment of apelacionesDonutChartData(); track segment.label) {
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="42"
+                            fill="none"
+                            stroke-width="14"
+                            [attr.stroke]="segment.color"
+                            [attr.stroke-dasharray]="segment.dashArray"
+                            [attr.stroke-dashoffset]="segment.dashOffset"></circle>
+                        }
+                      </svg>
+                      <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-2xl font-bold text-[#1a1a2e]">{{ totalApelaciones() }}</span>
+                        <span class="text-[11px] text-gray-500 uppercase tracking-wide">Total</span>
+                      </div>
+                    </div>
+                    <div class="flex-1 space-y-2.5">
+                      @for (segment of apelacionesChartData(); track segment.label) {
+                        <div class="flex items-center justify-between text-sm gap-2">
+                          <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background-color]="segment.color"></span>
+                            <span class="text-gray-500 truncate">{{ segment.label }}</span>
+                          </div>
+                          <span class="text-[#1a1a2e] font-semibold">{{ segment.value }} ({{ segment.percentage }}%)</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -274,6 +319,19 @@
                 <div class="text-2xl font-bold text-[#DC2626]">{{ administradores() }}</div>
                 <div class="text-xs text-[#DC2626]/70 mt-1">Administradores</div>
               </div>
+            </div>
+            <div class="px-5 pb-5 space-y-2.5">
+              @for (segment of usuariosChartData(); track segment.label) {
+                <div>
+                  <div class="flex items-center justify-between text-sm mb-1.5">
+                    <span class="text-gray-500">{{ segment.label }}</span>
+                    <span class="font-semibold text-[#1a1a2e]">{{ segment.value }} ({{ segment.percentage }}%)</span>
+                  </div>
+                  <div class="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all" [style.width.%]="segment.percentage" [style.background-color]="segment.color"></div>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         }

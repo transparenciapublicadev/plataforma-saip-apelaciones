@@ -15,6 +15,18 @@ interface Usuario {
   activo: boolean;
 }
 
+interface ChartDatum {
+  label: string;
+  value: number;
+  percentage: number;
+  color: string;
+}
+
+interface DonutChartDatum extends ChartDatum {
+  dashArray: string;
+  dashOffset: string;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   imports: [FormsModule, DatePipe],
@@ -85,6 +97,8 @@ export class AdminDashboardComponent implements OnInit {
     password: '',
     tipoUsuario: ''
   };
+
+  readonly donutCircumference = 2 * Math.PI * 42;
 
   private entidadIdEditando: number | null = null;
 
@@ -241,6 +255,67 @@ export class AdminDashboardComponent implements OnInit {
       .slice(0, 5);
   }
 
+  solicitudesChartData(): ChartDatum[] {
+    const total = this.totalSolicitudes();
+    const source = [
+      { label: 'Pendientes', value: this.pendientes(), color: '#D97706' },
+      { label: 'En proceso', value: this.enProceso(), color: '#2563EB' },
+      { label: 'Respondidas', value: this.respondidas(), color: '#059669' },
+      { label: 'Denegadas', value: this.denegadas(), color: '#7C3AED' },
+      { label: 'Vencidas', value: this.vencidas(), color: '#DC2626' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
+  apelacionesChartData(): ChartDatum[] {
+    const total = this.totalApelaciones();
+    const source = [
+      { label: 'Pendientes', value: this.apelacionesPendientes(), color: '#D97706' },
+      { label: 'En analisis', value: this.apelacionesEnAnalisis(), color: '#2563EB' },
+      { label: 'Resueltas', value: this.apelacionesResueltas(), color: '#059669' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
+  apelacionesDonutChartData(): DonutChartDatum[] {
+    const segments = this.apelacionesChartData().filter((item) => item.value > 0);
+    let accumulated = 0;
+
+    return segments.map((item) => {
+      const arc = this.donutCircumference * (item.percentage / 100);
+      const donutItem: DonutChartDatum = {
+        ...item,
+        dashArray: `${arc} ${this.donutCircumference - arc}`,
+        dashOffset: `-${accumulated}`,
+      };
+      accumulated += arc;
+      return donutItem;
+    });
+  }
+
+  usuariosChartData(): ChartDatum[] {
+    const total = this.totalUsuarios();
+    const source = [
+      { label: 'Ciudadanos', value: this.ciudadanos(), color: '#2563EB' },
+      { label: 'Funcionarios', value: this.funcionarios(), color: '#7C3AED' },
+      { label: 'Miembros TTAIP', value: this.miembrosTTAIP(), color: '#D97706' },
+      { label: 'Administradores', value: this.administradores(), color: '#DC2626' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
   abrirModalEntidad(): void {
     this.nuevaEntidad = { nombre: '', acronimo: '', direccion: '', telefono: '', email: '', descripcion: '' };
     this.entidadEditando.set(false);
@@ -364,6 +439,13 @@ export class AdminDashboardComponent implements OnInit {
   private mostrarMensaje(msg: string): void {
     this.mensaje.set(msg);
     setTimeout(() => this.mensaje.set(''), 3000);
+  }
+
+  private toPercent(value: number, total: number): number {
+    if (value <= 0 || total <= 0) {
+      return 0;
+    }
+    return Number(((value / total) * 100).toFixed(1));
   }
 }
 
