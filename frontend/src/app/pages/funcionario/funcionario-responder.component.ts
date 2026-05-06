@@ -67,14 +67,14 @@ export class FuncionarioResponderComponent implements OnInit {
 
   getEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'bg-yellow-100 text-yellow-800',
-      'EN_REVISION': 'bg-blue-100 text-blue-800',
-      'PENDIENTE_INFORMACION': 'bg-orange-100 text-orange-800',
-      'RESPONDIDA': 'bg-green-100 text-green-800',
-      'DENEGADA': 'bg-red-100 text-red-800',
-      'VENCIDA': 'bg-gray-100 text-gray-800'
+      'RECEPCIONADA': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_REVISION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'PENDIENTE_INFORMACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'RESPONDIDA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'DENEGADA': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
+      'VENCIDA': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
     };
-    return clases[estado] || 'bg-gray-100 text-gray-800';
+    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
   enviarRespuesta(): void {
@@ -152,4 +152,5 @@ export class FuncionarioResponderComponent implements OnInit {
     return canSendManualResponse(this.solicitud());
   }
 }
+
 

@@ -35,12 +35,12 @@ export class HomeComponent {
 
   readonly solicitudesChartData = this.createChartData(
     [
-      { label: 'Respondidas', value: this.indicadores.respondidas, color: '#059669' },
-      { label: 'En apelacion', value: this.indicadores.apelaciones, color: '#D97706' },
+      { label: 'Respondidas', value: this.indicadores.respondidas, color: 'var(--estado-verde)' },
+      { label: 'En apelacion', value: this.indicadores.apelaciones, color: 'var(--estado-ambar)' },
       {
         label: 'En tramite',
         value: this.indicadores.saipPresentadas - this.indicadores.respondidas - this.indicadores.apelaciones,
-        color: '#2563EB',
+        color: 'var(--estado-azul)',
       },
     ],
     this.indicadores.saipPresentadas
@@ -48,10 +48,10 @@ export class HomeComponent {
 
   readonly tipoRespuestaChartData = this.createChartData(
     [
-      { label: 'Entrega total', value: 1284, color: '#059669' },
-      { label: 'Entrega parcial', value: 639, color: '#22C55E' },
-      { label: 'Denegada', value: 412, color: '#DC2626' },
-      { label: 'Silencio administrativo', value: 512, color: '#374151' },
+      { label: 'Entrega total', value: 1284, color: 'var(--estado-verde)' },
+      { label: 'Entrega parcial', value: 639, color: 'var(--estado-verde-borde)' },
+      { label: 'Denegada', value: 412, color: 'var(--estado-rojo)' },
+      { label: 'Silencio administrativo', value: 512, color: 'var(--humo)' },
     ],
     this.indicadores.saipPresentadas
   );

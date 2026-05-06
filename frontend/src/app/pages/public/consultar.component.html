@@ -1,0 +1,124 @@
+<div class="saip-page min-h-screen bg-[var(--background)] pt-28 pb-16 px-4">
+  <div class="max-w-4xl mx-auto">
+    <section class="text-center mb-8">
+      <div class="w-14 h-14 mx-auto bg-[var(--peru-rojo-suave)] rounded-2xl flex items-center justify-center mb-4 border border-[var(--ceniza-claro)]">
+        <svg class="w-7 h-7 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-width="2" d="m20 20-3-3"></path></svg>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-bold text-[var(--carbon)] mb-3">Consultar Estado de Solicitud</h1>
+      <p class="text-[var(--niebla)] max-w-2xl mx-auto">Ingrese su numero de expediente SAIP para visualizar el estado actual del tramite sin iniciar sesion.</p>
+    </section>
+
+    <section class="card p-6 md:p-8 mb-6">
+      <label for="expediente" class="label">Numero de expediente</label>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="expediente"
+          class="input h-12"
+          placeholder="Ej: SAIP-2025-00847"
+          [value]="query()"
+          (input)="onQueryInput($event)"
+        />
+        <button
+          type="button"
+          class="btn-primary h-12 sm:px-6"
+          [disabled]="!query().trim() || buscando()"
+          (click)="buscar()"
+        >
+          @if (buscando()) {
+            <span class="inline-flex items-center gap-2">
+              <span class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+              Buscando...
+            </span>
+          } @else {
+            Buscar
+          }
+        </button>
+      </div>
+      <p class="text-xs text-[var(--niebla)] mt-3">Expedientes demo: SAIP-2025-00847, SAIP-2025-00723, SAIP-2025-00654</p>
+    </section>
+
+    @if (noEncontrado()) {
+      <section class="card p-6 border border-[var(--estado-rojo-borde)] bg-[var(--estado-rojo-suave)]">
+        <h2 class="text-lg font-semibold text-[var(--estado-rojo)] mb-1">Expediente no encontrado</h2>
+        <p class="text-sm text-[var(--humo)]">No se encontro el expediente {{ query() }}. Verifique el numero e intente nuevamente.</p>
+      </section>
+    }
+
+    @if (resultado(); as data) {
+      <section class="card overflow-hidden mb-6">
+        <div class="h-1.5 bg-[var(--peru-rojo)]"></div>
+        <div class="p-6 md:p-8">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+            <div>
+              <p class="font-expediente text-xl text-[var(--carbon)]">{{ data.expediente }}</p>
+              <span [class]="estadoBadgeClass(data.estado)">{{ estadoEtiqueta(data.estado) }}</span>
+            </div>
+            <div class="text-left sm:text-right">
+              <p class="text-2xl font-bold text-[var(--peru-rojo)]">{{ data.diasTranscurridos }}</p>
+              <p class="text-xs text-[var(--niebla)] uppercase tracking-wider">dias transcurridos</p>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-3 mb-4">
+            <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
+              <p class="text-xs text-[var(--niebla)] mb-1">Entidad</p>
+              <p class="text-sm text-[var(--carbon)]">{{ data.entidad }}</p>
+            </div>
+            <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
+              <p class="text-xs text-[var(--niebla)] mb-1">Fecha de presentacion</p>
+              <p class="text-sm text-[var(--carbon)]">{{ data.fechaPresentacion }}</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)] mb-4">
+            <p class="text-xs text-[var(--niebla)] mb-1">Asunto</p>
+            <p class="text-sm text-[var(--carbon)]">{{ data.asunto }}</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
+            <p class="text-xs text-[var(--niebla)] mb-1">Solicitante</p>
+            <p class="text-sm text-[var(--carbon)]">{{ data.ciudadano }}</p>
+            <p class="text-[11px] text-[var(--niebla)] mt-1">Datos parcialmente ocultos por privacidad.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card p-6 md:p-8 mb-6">
+        <h3 class="text-lg font-semibold text-[var(--carbon)] mb-5">Historial del tramite</h3>
+        <div class="space-y-4">
+          @for (item of data.timeline; track item.title) {
+            <article class="flex gap-3">
+              <div class="pt-1">
+                <div class="w-3 h-3 rounded-full" [class]="timelineClass(item.status)"></div>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-[var(--carbon)]">{{ item.title }}</p>
+                <p class="text-sm text-[var(--humo)]">{{ item.description }}</p>
+                <p class="text-xs text-[var(--niebla)] mt-1">{{ item.date }}</p>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="grid md:grid-cols-3 gap-4">
+      <article class="card p-5">
+        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Consulta publica</h4>
+        <p class="text-sm text-[var(--niebla)]">No requiere inicio de sesion para seguimiento basico.</p>
+      </article>
+      <article class="card p-5">
+        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Seguimiento en tiempo real</h4>
+        <p class="text-sm text-[var(--niebla)]">Visualiza cada etapa del procedimiento SAIP/TTAIP.</p>
+      </article>
+      <article class="card p-5">
+        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Privacidad protegida</h4>
+        <p class="text-sm text-[var(--niebla)]">La identidad del solicitante se anonimiza parcialmente.</p>
+      </article>
+    </section>
+
+    <div class="mt-8 text-center">
+      <a routerLink="/login" class="btn-outline">Iniciar sesion para ver mas detalles</a>
+    </div>
+  </div>
+</div>

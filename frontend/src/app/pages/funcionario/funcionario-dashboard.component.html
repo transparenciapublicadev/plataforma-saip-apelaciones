@@ -1,16 +1,16 @@
-<div class="saip-page min-h-screen bg-[#F8F9FB]">
+<div class="saip-page min-h-screen">
   <!-- Header -->
-  <div class="bg-gradient-to-br from-[#C8102E] via-[#A00D24] to-[#6B0919] pt-28 pb-12 px-4 relative overflow-hidden">
-    <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-white/[0.03]"></div>
+  <div class="bg-gradient-peru-hero pt-28 pb-14 px-4 relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
     <div class="max-w-7xl mx-auto relative z-10">
       <div class="flex items-center gap-4 mb-1">
-        <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m-4 0h4"/></svg>
+        <div class="w-12 h-12 bg-black/[0.03] backdrop-blur-md rounded-xl flex items-center justify-center border border-white/[0.08]">
+          <svg class="w-6 h-6 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
         </div>
-        <div class="text-white">
-          <p class="text-white/50 text-sm">Panel de Entidad</p>
-          <h1 class="text-2xl md:text-3xl tracking-tight">Dashboard de Entidad</h1>
-          <p class="text-white/60 text-sm">{{ nombreEntidad() }}</p>
+        <div class="text-[var(--carbon)]">
+          <p class="text-[var(--carbon)]/40 text-sm font-medium">Panel de Entidad</p>
+          <h1 class="text-2xl md:text-3xl tracking-tight font-extrabold">Dashboard de Entidad</h1>
+          <p class="text-[var(--carbon)]/50 text-sm">{{ nombreEntidad() }}</p>
         </div>
       </div>
     </div>
@@ -18,48 +18,37 @@
 
   <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16 relative z-10">
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-      <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden p-5">
-        <div class="w-10 h-10 rounded-xl bg-[#EFF6FF] flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <div class="text-3xl tracking-tight text-[#2563EB] mb-0.5">{{ pendientes() }}</div>
-        <div class="text-sm text-gray-500">Pendientes</div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div class="metric-card metric-card-info" data-reveal>
+        <div class="icon-container icon-container-sm icon-container-info rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div class="metric-value text-[var(--estado-azul)]">{{ pendientes() }}</div>
+        <div class="metric-label">Pendientes</div>
       </div>
-      <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden p-5">
-        <div class="w-10 h-10 rounded-xl bg-[#FEF2F2] flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        </div>
-        <div class="text-3xl tracking-tight text-[#DC2626] mb-0.5">{{ vencidas() }}</div>
-        <div class="text-sm text-gray-500">Silencio Adm.</div>
+      <div class="metric-card metric-card-primary" data-reveal>
+        <div class="icon-container icon-container-sm icon-container-primary rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+        <div class="metric-value text-[var(--peru-rojo)]">{{ vencidas() }}</div>
+        <div class="metric-label">Silencio Adm.</div>
       </div>
-      <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden p-5">
-        <div class="w-10 h-10 rounded-xl bg-[#FFFBEB] flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-        </div>
-        <div class="text-3xl tracking-tight text-[#D97706] mb-0.5">{{ urgentes() }}</div>
-        <div class="text-sm text-gray-500">Urgentes</div>
+      <div class="metric-card metric-card-warning" data-reveal>
+        <div class="icon-container icon-container-sm icon-container-warning rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+        <div class="metric-value text-[var(--estado-ambar)]">{{ urgentes() }}</div>
+        <div class="metric-label">Urgentes</div>
       </div>
-      <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden p-5">
-        <div class="w-10 h-10 rounded-xl bg-[#F0FDF4] flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <div class="text-3xl tracking-tight text-[#059669] mb-0.5">{{ respondidas() }}</div>
-        <div class="text-sm text-gray-500">Respondidas</div>
+      <div class="metric-card metric-card-success" data-reveal>
+        <div class="icon-container icon-container-sm icon-container-success rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div class="metric-value text-[var(--estado-verde)]">{{ respondidas() }}</div>
+        <div class="metric-label">Respondidas</div>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-5">
+    <div class="card p-4 mb-5">
       <div class="flex flex-col md:flex-row gap-3">
         <div class="flex-1 relative">
-          <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input type="text" [(ngModel)]="busqueda" (keyup.enter)="filtrarPorEstado(filtroEstado || 'todas')"
-            placeholder="Buscar por expediente, ciudadano o asunto..."
-            class="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors text-sm">
+          <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" [(ngModel)]="busqueda" (keyup.enter)="filtrarPorEstado(filtroEstado || 'todas')" placeholder="Buscar por expediente, ciudadano o asunto..." class="input pl-10 h-11 bg-[var(--nieve)]" />
         </div>
-        <select [(ngModel)]="filtroEstado" (change)="filtrarPorEstado(filtroEstado)"
-          class="h-11 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] md:w-[200px] cursor-pointer">
+        <select [(ngModel)]="filtroEstado" (change)="filtrarPorEstado(filtroEstado)" class="input h-11 md:w-[200px] bg-[var(--nieve)]">
           <option value="">Todas</option>
           <option value="todas">Todas</option>
           <option value="RECEPCIONADA">Pendientes</option>
@@ -70,79 +59,61 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div class="border-b border-gray-100 bg-white px-6 py-4">
-        <h3 class="flex items-center gap-2 text-[#1a1a2e] font-semibold">
-          <svg class="w-5 h-5 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Solicitudes SAIP Asignadas
-        </h3>
+    <div class="card overflow-hidden" data-reveal>
+      <div class="border-b border-[var(--ceniza-claro)] px-5 py-4 flex items-center gap-2">
+        <div class="icon-container icon-container-sm icon-container-primary rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <h3 class="text-[var(--carbon)] font-semibold">Solicitudes SAIP Asignadas</h3>
       </div>
 
       @if (loading()) {
-        <div class="text-center py-16">
-          <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p class="mt-4 text-sm text-gray-400">Cargando solicitudes...</p>
-        </div>
+        <div class="text-center py-16"><div class="spinner spinner-lg mx-auto"></div><p class="mt-4 text-sm text-[var(--niebla)]">Cargando solicitudes...</p></div>
       } @else if (solicitudes().length === 0) {
         <div class="text-center py-16">
-          <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <p class="text-gray-400">No se encontraron solicitudes</p>
+          <div class="w-14 h-14 bg-[var(--nieve)] rounded-2xl flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <p class="text-[var(--niebla)]">No se encontraron solicitudes</p>
         </div>
       } @else {
         <div class="overflow-x-auto">
-          <table class="w-full">
+          <table class="table">
             <thead>
-              <tr class="bg-[#F8F9FB] border-b border-gray-100">
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Expediente</th>
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Ciudadano</th>
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Asunto</th>
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">F. Límite</th>
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Días</th>
-                <th class="text-left px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Estado</th>
-                <th class="text-right px-6 py-3 text-[11px] uppercase tracking-wider text-gray-400 font-medium">Acciones</th>
+              <tr>
+                <th>Expediente</th>
+                <th>Ciudadano</th>
+                <th>Asunto</th>
+                <th>F. Límite</th>
+                <th>Días</th>
+                <th>Estado</th>
+                <th class="text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
               @for (solicitud of solicitudes(); track solicitud.id) {
-                <tr class="hover:bg-[#FEF2F2]/30 transition-colors border-b border-gray-50">
-                  <td class="px-6 py-4">
-                    <span class="font-mono text-sm text-[#1a1a2e]">{{ solicitud.expediente }}</span>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-600">{{ solicitud.ciudadanoNombre }}</td>
-                  <td class="px-6 py-4 max-w-[180px]">
-                    <div class="truncate text-sm text-gray-600" [title]="solicitud.asunto">{{ solicitud.asunto }}</div>
-                  </td>
-                  <td class="px-6 py-4 text-sm text-gray-400">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</td>
-                  <td class="px-6 py-4">
+                <tr [class]="getPrioridadClass(solicitud)">
+                  <td><span class="font-expediente text-sm text-[var(--carbon)]">{{ solicitud.expediente }}</span></td>
+                  <td class="text-sm text-[var(--humo)]">{{ solicitud.ciudadanoNombre }}</td>
+                  <td class="max-w-[180px]"><div class="truncate text-sm text-[var(--humo)]" [title]="solicitud.asunto">{{ solicitud.asunto }}</div></td>
+                  <td class="text-sm text-[var(--niebla)]">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</td>
+                  <td>
                     @if (solicitud.diasRestantes !== undefined && solicitud.diasRestantes >= 0) {
-                      <span class="text-sm font-medium" [class]="solicitud.diasRestantes <= 3 ? 'text-[#D97706]' : 'text-[#059669]'">
-                        {{ solicitud.diasRestantes }}d
-                      </span>
+                      <span class="text-sm font-semibold" [class]="solicitud.diasRestantes <= 3 ? 'text-[var(--estado-ambar)]' : 'text-[var(--estado-verde)]'">{{ solicitud.diasRestantes }}d</span>
                     } @else if (solicitud.diasRestantes !== undefined && solicitud.diasRestantes < 0) {
-                      <span class="text-sm font-medium text-[#DC2626]">{{ -solicitud.diasRestantes }}d retraso</span>
+                      <span class="text-sm font-semibold text-[var(--estado-rojo)]">{{ -solicitud.diasRestantes }}d retraso</span>
                     } @else {
-                      <span class="text-gray-400">—</span>
+                      <span class="text-[var(--niebla)]">—</span>
                     }
                   </td>
-                  <td class="px-6 py-4">
-                    <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getEstadoClass(solicitud.estado)">
-                      {{ getEstadoDisplay(solicitud) }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-right">
+                  <td><span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ getEstadoDisplay(solicitud) }}</span></td>
+                  <td class="text-right">
                     @if (solicitud.estado === 'RESPONDIDA') {
-                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]"
-                        class="text-[#C8102E] hover:text-[#A00D24] text-sm font-medium inline-flex items-center gap-1 transition-colors">
+                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]" class="text-[var(--peru-rojo)] hover:text-[var(--peru-rojo-hover)] text-sm font-medium inline-flex items-center gap-1 transition-colors">
                         Ver <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                       </a>
                     } @else if (canResponder(solicitud)) {
-                      <a [routerLink]="['/funcionario/responder', solicitud.expediente]"
-                        class="inline-flex items-center px-4 py-1.5 bg-[#C8102E] hover:bg-[#A00D24] text-white text-xs font-medium rounded-lg transition-colors">
-                        Responder
-                      </a>
+                      <a [routerLink]="['/funcionario/responder', solicitud.expediente]" class="btn-primary h-8 px-4 text-xs">Responder</a>
                     } @else {
-                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]"
-                        class="text-[#C8102E] hover:text-[#A00D24] text-sm font-medium inline-flex items-center gap-1 transition-colors">
+                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]" class="text-[var(--peru-rojo)] hover:text-[var(--peru-rojo-hover)] text-sm font-medium inline-flex items-center gap-1 transition-colors">
                         Ver <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                       </a>
                     }
@@ -156,18 +127,16 @@
     </div>
 
     <!-- Help Card -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-5">
-      <div class="h-1 bg-[#2563EB]"></div>
-      <div class="p-6 flex items-start gap-4">
-        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4" stroke-width="2"/><path stroke-width="2" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+    <div class="card overflow-hidden mt-5 border-t-4 border-t-[var(--estado-azul)]" data-reveal>
+      <div class="p-5 flex items-start gap-4">
+        <div class="icon-container icon-container-sm icon-container-info rounded-lg shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         </div>
         <div>
-          <h3 class="font-semibold text-[#1a1a2e] mb-1">Información Importante</h3>
-          <p class="text-sm text-gray-500">Las solicitudes SAIP deben ser respondidas en un plazo máximo de 10 días hábiles. Las solicitudes vencidas pueden generar sanciones para la entidad.</p>
+          <h3 class="font-semibold text-[var(--carbon)] mb-1">Información Importante</h3>
+          <p class="text-sm text-[var(--niebla)]">Las solicitudes SAIP deben ser respondidas en un plazo máximo de 10 días hábiles. Las solicitudes vencidas pueden generar sanciones para la entidad.</p>
         </div>
       </div>
     </div>
   </div>
 </div>
-

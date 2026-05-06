@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './services/auth.service';
+import { ThemeService } from './services/theme.service';
 import { UxMotionService } from './services/ux-motion.service';
 
 @Component({
@@ -17,6 +18,7 @@ import { UxMotionService } from './services/ux-motion.service';
 export class App {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly themeService = inject(ThemeService);
   private readonly motionService = inject(UxMotionService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -74,6 +76,23 @@ export class App {
     this.menuAbierto.set(false);
     this.mobileMenuAbierto.set(false);
     this.router.navigate(['/']);
+  }
+
+  isAuthRoute(): boolean {
+    const currentUrl = this.router.url.split('?')[0];
+    return currentUrl === '/login'
+      || currentUrl === '/registro'
+      || currentUrl === '/acceso-funcionario'
+      || currentUrl === '/acceso-ttaip'
+      || currentUrl === '/acceso-admin';
+  }
+
+  currentTheme(): 'light' | 'dark' {
+    return this.themeService.theme();
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 }
 

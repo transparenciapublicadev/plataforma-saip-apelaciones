@@ -1,2 +1,7 @@
-/* Estilos adicionales para home */
-
+/* Home page specific styles */
+.text-gradient-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #C8A96E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

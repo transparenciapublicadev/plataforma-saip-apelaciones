@@ -1,8 +1,10 @@
-<div class="saip-page min-h-screen bg-[#FAFAFA]">
+<div class="saip-page min-h-screen bg-[var(--nieve)]">
   <!-- Header -->
-  <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+  <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+    <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
     <div class="max-w-7xl mx-auto">
-      <a routerLink="/ttaip" class="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+      <a routerLink="/ttaip" class="flex items-center gap-1.5 text-[var(--carbon)]/70 hover:text-[var(--carbon)] text-sm mb-4 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
         Volver al Panel TTAIP
       </a>
@@ -11,11 +13,11 @@
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg class="w-5 h-5 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <div class="text-white">
+            <div class="text-[var(--carbon)]">
               <h1 class="text-2xl md:text-3xl">Expediente {{ apelacion()!.expediente }}</h1>
-              <p class="text-white/70">{{ apelacion()!.ciudadanoNombre }} vs. {{ apelacion()!.entidadNombre }}</p>
+              <p class="text-[var(--carbon)]/70">{{ apelacion()!.ciudadanoNombre }} vs. {{ apelacion()!.entidadNombre }}</p>
             </div>
           </div>
           <div>
@@ -31,63 +33,63 @@
 
   @if (loading()) {
     <div class="text-center py-20">
-      <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
-      <p class="mt-4 text-gray-400 text-sm">Cargando expediente...</p>
+      <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="mt-4 text-[var(--niebla)] text-sm">Cargando expediente...</p>
     </div>
   } @else if (error()) {
     <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
-      <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-        <p class="text-red-600">{{ error() }}</p>
+      <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-6 text-center">
+        <p class="text-[var(--estado-rojo)]">{{ error() }}</p>
       </div>
     </div>
   } @else if (apelacion()) {
     <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
       <!-- Quick Info Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           </div>
-          <div class="text-lg font-mono text-blue-600 truncate">{{ apelacion()!.solicitudExpediente }}</div>
-          <div class="text-sm text-gray-500">Expediente SAIP</div>
+          <div class="text-lg font-mono text-[var(--estado-azul)] truncate">{{ apelacion()!.solicitudExpediente }}</div>
+          <div class="text-sm text-[var(--niebla)]">Expediente SAIP</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <div class="text-lg text-purple-600">{{ apelacion()!.fechaApelacion | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-gray-500">Fecha Apelación</div>
+          <div class="text-lg text-[var(--accent-violet)]">{{ apelacion()!.fechaApelacion | date:'dd/MM/yyyy' }}</div>
+          <div class="text-sm text-[var(--niebla)]">Fecha Apelación</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#FFFBEB] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
           </div>
-          <div class="text-lg text-[#D97706] truncate">{{ apelacion()!.entidadNombre }}</div>
-          <div class="text-sm text-gray-500">Entidad</div>
+          <div class="text-lg text-[var(--estado-ambar)] truncate">{{ apelacion()!.entidadNombre }}</div>
+          <div class="text-sm text-[var(--niebla)]">Entidad</div>
         </div>
       </div>
 
       <!-- Tabs Content -->
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="flex border-b border-gray-100">
+      <div class="card overflow-hidden">
+        <div class="flex border-b border-[var(--ceniza-claro)]">
           <button (click)="cambiarTab('resolucion')"
             class="px-6 py-4 text-sm font-medium transition-colors"
-            [class]="activeTab() === 'resolucion' ? 'border-b-2 border-[#C8102E] text-[#C8102E]' : 'text-gray-500 hover:text-gray-700'">
+            [class]="activeTab() === 'resolucion' ? 'border-b-2 border-[var(--peru-rojo)] text-[var(--peru-rojo)]' : 'text-[var(--niebla)] hover:text-[var(--humo)]'">
             Resolución
           </button>
           <button (click)="cambiarTab('apelacion')"
             class="px-6 py-4 text-sm font-medium transition-colors"
-            [class]="activeTab() === 'apelacion' ? 'border-b-2 border-[#C8102E] text-[#C8102E]' : 'text-gray-500 hover:text-gray-700'">
+            [class]="activeTab() === 'apelacion' ? 'border-b-2 border-[var(--peru-rojo)] text-[var(--peru-rojo)]' : 'text-[var(--niebla)] hover:text-[var(--humo)]'">
             Apelación
           </button>
           <button (click)="cambiarTab('solicitud')"
             class="px-6 py-4 text-sm font-medium transition-colors"
-            [class]="activeTab() === 'solicitud' ? 'border-b-2 border-[#C8102E] text-[#C8102E]' : 'text-gray-500 hover:text-gray-700'">
+            [class]="activeTab() === 'solicitud' ? 'border-b-2 border-[var(--peru-rojo)] text-[var(--peru-rojo)]' : 'text-[var(--niebla)] hover:text-[var(--humo)]'">
             Solicitud Original
           </button>
           <button (click)="cambiarTab('documentos')"
             class="px-6 py-4 text-sm font-medium transition-colors"
-            [class]="activeTab() === 'documentos' ? 'border-b-2 border-[#C8102E] text-[#C8102E]' : 'text-gray-500 hover:text-gray-700'">
+            [class]="activeTab() === 'documentos' ? 'border-b-2 border-[var(--peru-rojo)] text-[var(--peru-rojo)]' : 'text-[var(--niebla)] hover:text-[var(--humo)]'">
             Documentos
           </button>
         </div>
@@ -99,33 +101,33 @@
               <!-- Primera Calificación -->
               @if (apelacion()!.resolucionPrimeraCalificacion) {
                 <div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e] mb-4 flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)] mb-4 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[var(--estado-azul-suave)] text-[var(--estado-azul)] flex items-center justify-center text-xs font-bold">1</span>
                     Primera Calificación
                   </h3>
-                  <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-3">
+                  <div class="bg-[var(--estado-azul-suave)] border border-[var(--estado-azul-borde)] rounded-xl p-5 space-y-3">
                     <div class="flex items-center justify-between">
-                      <span class="text-sm text-gray-500">Decisión</span>
-                      <span class="font-semibold text-blue-800">{{ apelacion()!.resolucionPrimeraCalificacion!.decision }}</span>
+                      <span class="text-sm text-[var(--niebla)]">Decisión</span>
+                      <span class="font-semibold text-[var(--estado-azul)]">{{ apelacion()!.resolucionPrimeraCalificacion!.decision }}</span>
                     </div>
                     <div>
-                      <span class="text-sm text-gray-500">Fundamentos</span>
-                      <p class="text-sm text-[#1a1a2e] whitespace-pre-wrap mt-1">{{ apelacion()!.resolucionPrimeraCalificacion!.fundamentos }}</p>
+                      <span class="text-sm text-[var(--niebla)]">Fundamentos</span>
+                      <p class="text-sm text-[var(--carbon)] whitespace-pre-wrap mt-1">{{ apelacion()!.resolucionPrimeraCalificacion!.fundamentos }}</p>
                     </div>
                     @if (apelacion()!.resolucionPrimeraCalificacion!.observaciones) {
                       <div>
-                        <span class="text-sm text-gray-500">Observaciones</span>
-                        <p class="text-sm text-[#1a1a2e] mt-1">{{ apelacion()!.resolucionPrimeraCalificacion!.observaciones }}</p>
+                        <span class="text-sm text-[var(--niebla)]">Observaciones</span>
+                        <p class="text-sm text-[var(--carbon)] mt-1">{{ apelacion()!.resolucionPrimeraCalificacion!.observaciones }}</p>
                       </div>
                     }
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-500">Miembro TTAIP</span>
-                      <span class="text-[#1a1a2e]">{{ apelacion()!.resolucionPrimeraCalificacion!.miembroTTAIPNombre }}</span>
+                      <span class="text-[var(--niebla)]">Miembro TTAIP</span>
+                      <span class="text-[var(--carbon)]">{{ apelacion()!.resolucionPrimeraCalificacion!.miembroTTAIPNombre }}</span>
                     </div>
                     @if (apelacion()!.resolucionPrimeraCalificacion!.fechaResolucion) {
                       <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-500">Fecha</span>
-                        <span class="text-[#1a1a2e]">{{ apelacion()!.resolucionPrimeraCalificacion!.fechaResolucion | date:'dd/MM/yyyy' }}</span>
+                        <span class="text-[var(--niebla)]">Fecha</span>
+                        <span class="text-[var(--carbon)]">{{ apelacion()!.resolucionPrimeraCalificacion!.fechaResolucion | date:'dd/MM/yyyy' }}</span>
                       </div>
                     }
                   </div>
@@ -135,33 +137,33 @@
               <!-- Segunda Calificación -->
               @if (apelacion()!.resolucionSegundaCalificacion) {
                 <div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e] mb-4 flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-bold">2</span>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)] mb-4 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)] flex items-center justify-center text-xs font-bold">2</span>
                     Segunda Calificación
                   </h3>
-                  <div class="bg-orange-50 border border-orange-200 rounded-xl p-5 space-y-3">
+                  <div class="bg-[var(--estado-ambar-suave)] border border-[var(--estado-ambar-borde)] rounded-xl p-5 space-y-3">
                     <div class="flex items-center justify-between">
-                      <span class="text-sm text-gray-500">Decisión</span>
-                      <span class="font-semibold text-orange-800">{{ apelacion()!.resolucionSegundaCalificacion!.decision }}</span>
+                      <span class="text-sm text-[var(--niebla)]">Decisión</span>
+                      <span class="font-semibold text-[var(--estado-ambar)]">{{ apelacion()!.resolucionSegundaCalificacion!.decision }}</span>
                     </div>
                     <div>
-                      <span class="text-sm text-gray-500">Fundamentos</span>
-                      <p class="text-sm text-[#1a1a2e] whitespace-pre-wrap mt-1">{{ apelacion()!.resolucionSegundaCalificacion!.fundamentos }}</p>
+                      <span class="text-sm text-[var(--niebla)]">Fundamentos</span>
+                      <p class="text-sm text-[var(--carbon)] whitespace-pre-wrap mt-1">{{ apelacion()!.resolucionSegundaCalificacion!.fundamentos }}</p>
                     </div>
                     @if (apelacion()!.resolucionSegundaCalificacion!.observaciones) {
                       <div>
-                        <span class="text-sm text-gray-500">Observaciones</span>
-                        <p class="text-sm text-[#1a1a2e] mt-1">{{ apelacion()!.resolucionSegundaCalificacion!.observaciones }}</p>
+                        <span class="text-sm text-[var(--niebla)]">Observaciones</span>
+                        <p class="text-sm text-[var(--carbon)] mt-1">{{ apelacion()!.resolucionSegundaCalificacion!.observaciones }}</p>
                       </div>
                     }
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-500">Miembro TTAIP</span>
-                      <span class="text-[#1a1a2e]">{{ apelacion()!.resolucionSegundaCalificacion!.miembroTTAIPNombre }}</span>
+                      <span class="text-[var(--niebla)]">Miembro TTAIP</span>
+                      <span class="text-[var(--carbon)]">{{ apelacion()!.resolucionSegundaCalificacion!.miembroTTAIPNombre }}</span>
                     </div>
                     @if (apelacion()!.resolucionSegundaCalificacion!.fechaResolucion) {
                       <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-500">Fecha</span>
-                        <span class="text-[#1a1a2e]">{{ apelacion()!.resolucionSegundaCalificacion!.fechaResolucion | date:'dd/MM/yyyy' }}</span>
+                        <span class="text-[var(--niebla)]">Fecha</span>
+                        <span class="text-[var(--carbon)]">{{ apelacion()!.resolucionSegundaCalificacion!.fechaResolucion | date:'dd/MM/yyyy' }}</span>
                       </div>
                     }
                   </div>
@@ -171,49 +173,49 @@
               <!-- Resolución Final -->
               @if (apelacion()!.resolucion) {
                 <div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e] mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)] mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     Resolución Final
                   </h3>
-                  <div class="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
+                  <div class="bg-[var(--nieve-calida)] border border-[var(--ceniza-claro)] rounded-xl p-5 space-y-4">
                     <div class="flex items-center gap-4">
                       <div class="w-14 h-14 rounded-full flex items-center justify-center"
-                        [class]="apelacion()!.resolucion!.decision === 'FUNDADO' ? 'bg-[#F0FDF4]' : 'bg-[#FEE2E2]'">
+                        [class]="apelacion()!.resolucion!.decision === 'FUNDADO' ? 'bg-[var(--estado-verde-suave)]' : 'bg-[var(--estado-rojo-suave)]'">
                         @if (apelacion()!.resolucion!.decision === 'FUNDADO') {
-                          <svg class="w-7 h-7 text-[#10B981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          <svg class="w-7 h-7 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         } @else {
-                          <svg class="w-7 h-7 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          <svg class="w-7 h-7 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         }
                       </div>
                       <div>
                         <h4 class="text-2xl font-bold"
-                          [class]="apelacion()!.resolucion!.decision === 'FUNDADO' ? 'text-[#065F46]' : 'text-[#991B1B]'">
+                          [class]="apelacion()!.resolucion!.decision === 'FUNDADO' ? 'text-[var(--estado-verde)]' : 'text-[var(--peru-rojo)]'">
                           {{ apelacion()!.resolucion!.decision }}
                         </h4>
-                        <p class="text-gray-500 text-sm">Resolución emitida el {{ apelacion()!.resolucion!.fechaResolucion | date:'dd/MM/yyyy' }}</p>
+                        <p class="text-[var(--niebla)] text-sm">Resolución emitida el {{ apelacion()!.resolucion!.fechaResolucion | date:'dd/MM/yyyy' }}</p>
                       </div>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-500 mb-2">Fundamentos</label>
-                      <p class="text-[#1a1a2e] whitespace-pre-wrap text-sm">{{ apelacion()!.resolucion!.fundamentos }}</p>
+                      <label class="block text-sm font-medium text-[var(--niebla)] mb-2">Fundamentos</label>
+                      <p class="text-[var(--carbon)] whitespace-pre-wrap text-sm">{{ apelacion()!.resolucion!.fundamentos }}</p>
                     </div>
                     @if (apelacion()!.resolucion!.observaciones) {
                       <div>
-                        <label class="block text-sm font-medium text-gray-500 mb-2">Observaciones</label>
-                        <p class="text-[#1a1a2e] text-sm">{{ apelacion()!.resolucion!.observaciones }}</p>
+                        <label class="block text-sm font-medium text-[var(--niebla)] mb-2">Observaciones</label>
+                        <p class="text-[var(--carbon)] text-sm">{{ apelacion()!.resolucion!.observaciones }}</p>
                       </div>
                     }
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-500">Miembro TTAIP</span>
-                      <span class="text-[#1a1a2e]">{{ apelacion()!.resolucion!.miembroTTAIPNombre }}</span>
+                      <span class="text-[var(--niebla)]">Miembro TTAIP</span>
+                      <span class="text-[var(--carbon)]">{{ apelacion()!.resolucion!.miembroTTAIPNombre }}</span>
                     </div>
                   </div>
                 </div>
               }
 
               @if (!apelacion()!.resolucion && !apelacion()!.resolucionPrimeraCalificacion && !apelacion()!.resolucionSegundaCalificacion) {
-                <div class="text-center py-12 text-gray-400">
-                  <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+                <div class="text-center py-12 text-[var(--niebla)]">
+                  <svg class="w-12 h-12 mx-auto mb-3 text-[var(--ceniza)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
                   <p>Aún no se ha emitido resolución para esta apelación</p>
                 </div>
               }
@@ -224,23 +226,23 @@
           @if (activeTab() === 'apelacion') {
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Apelante</label>
-                <p class="text-[#1a1a2e]">{{ apelacion()!.ciudadanoNombre }}</p>
+                <label class="block text-sm font-medium text-[var(--niebla)] mb-1">Apelante</label>
+                <p class="text-[var(--carbon)]">{{ apelacion()!.ciudadanoNombre }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Fundamentos de la Apelación</label>
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p class="text-[#1a1a2e] whitespace-pre-wrap text-sm">{{ apelacion()!.fundamentos }}</p>
+                <label class="block text-sm font-medium text-[var(--niebla)] mb-1">Fundamentos de la Apelación</label>
+                <div class="bg-[var(--estado-azul-suave)] border border-[var(--estado-azul-borde)] rounded-lg p-4">
+                  <p class="text-[var(--carbon)] whitespace-pre-wrap text-sm">{{ apelacion()!.fundamentos }}</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-500 mb-1">1ra Calificación</label>
-                  <p class="text-[#1a1a2e]">{{ apelacion()!.calificacionPrimera || 'Pendiente' }}</p>
+                  <label class="block text-sm font-medium text-[var(--niebla)] mb-1">1ra Calificación</label>
+                  <p class="text-[var(--carbon)]">{{ apelacion()!.calificacionPrimera || 'Pendiente' }}</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-500 mb-1">2da Calificación</label>
-                  <p class="text-[#1a1a2e]">{{ apelacion()!.calificacionSegunda || 'N/A' }}</p>
+                  <label class="block text-sm font-medium text-[var(--niebla)] mb-1">2da Calificación</label>
+                  <p class="text-[var(--carbon)]">{{ apelacion()!.calificacionSegunda || 'N/A' }}</p>
                 </div>
               </div>
             </div>
@@ -250,16 +252,16 @@
           @if (activeTab() === 'solicitud') {
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Expediente SAIP</label>
-                <p class="text-[#1a1a2e] font-mono">{{ apelacion()!.solicitudExpediente }}</p>
+                <label class="block text-sm font-medium text-[var(--niebla)] mb-1">Expediente SAIP</label>
+                <p class="text-[var(--carbon)] font-mono">{{ apelacion()!.solicitudExpediente }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Asunto</label>
-                <p class="text-[#1a1a2e]">{{ apelacion()!.solicitudAsunto }}</p>
+                <label class="block text-sm font-medium text-[var(--niebla)] mb-1">Asunto</label>
+                <p class="text-[var(--carbon)]">{{ apelacion()!.solicitudAsunto }}</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-500 mb-1">Entidad</label>
-                <p class="text-[#1a1a2e]">{{ apelacion()!.entidadNombre }}</p>
+                <label class="block text-sm font-medium text-[var(--niebla)] mb-1">Entidad</label>
+                <p class="text-[var(--carbon)]">{{ apelacion()!.entidadNombre }}</p>
               </div>
             </div>
           }
@@ -269,24 +271,24 @@
             @if (apelacion()!.documentos && apelacion()!.documentos!.length > 0) {
               <div class="space-y-3">
                 @for (doc of apelacion()!.documentos; track doc.id) {
-                  <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div class="flex items-center justify-between p-4 border border-[var(--ceniza-claro)] rounded-xl hover:bg-[var(--nieve)] transition-colors">
                     <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                        <svg class="w-5 h-5 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                      <div class="w-10 h-10 bg-[var(--estado-rojo-suave)] rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                       </div>
                       <div>
-                        <p class="font-medium text-[#1a1a2e]">{{ doc.nombreArchivo }}</p>
-                        <p class="text-xs text-gray-500">{{ doc.tipoArchivo }}</p>
+                        <p class="font-medium text-[var(--carbon)]">{{ doc.nombreArchivo }}</p>
+                        <p class="text-xs text-[var(--niebla)]">{{ doc.tipoArchivo }}</p>
                       </div>
                     </div>
-                    <button class="p-2 hover:bg-gray-100 rounded-lg text-gray-500">
+                    <button class="p-2 hover:bg-[var(--nieve)] rounded-lg text-[var(--niebla)]">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     </button>
                   </div>
                 }
               </div>
             } @else {
-              <div class="text-center py-8 text-gray-400">
+              <div class="text-center py-8 text-[var(--niebla)]">
                 <p>No hay documentos adjuntos</p>
               </div>
             }

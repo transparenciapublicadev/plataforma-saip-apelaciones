@@ -7,7 +7,27 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
+    path: 'acceso-funcionario',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'acceso-ttaip',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'acceso-admin',
+    renderMode: RenderMode.Client
+  },
+  {
     path: 'registro',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'consultar',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'ayuda',
     renderMode: RenderMode.Client
   },
   // Ciudadano routes (auth-protected)

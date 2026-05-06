@@ -95,15 +95,15 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   getEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'bg-yellow-100 text-yellow-800',
-      'EN_REVISION': 'bg-blue-100 text-blue-800',
-      'PENDIENTE_INFORMACION': 'bg-orange-100 text-orange-800',
-      'RESPONDIDA': 'bg-green-100 text-green-800',
-      'DENEGADA': 'bg-red-100 text-red-800',
-      'VENCIDA': 'bg-gray-100 text-gray-800',
-      'CONCLUIDA': 'bg-gray-100 text-gray-800'
+      'RECEPCIONADA': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_REVISION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'PENDIENTE_INFORMACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'RESPONDIDA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'DENEGADA': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
+      'VENCIDA': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
+      'CONCLUIDA': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
     };
-    return clases[estado] || 'bg-gray-100 text-gray-800';
+    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
   getEstadoBadgeClass(estado: string): string {
@@ -121,23 +121,23 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   getApelacionEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'PENDIENTE_ELEVACION': 'bg-yellow-100 text-yellow-800',
-      'EN_CALIFICACION_1': 'bg-yellow-100 text-yellow-800',
-      'EN_CALIFICACION_2': 'bg-orange-100 text-orange-800',
-      'EN_SUBSANACION': 'bg-orange-100 text-orange-800',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-blue-100 text-blue-800',
-      'EN_RESOLUCION': 'bg-purple-100 text-purple-800',
-      'RESUELTO': 'bg-green-100 text-green-800',
-      'RESUELTO_FUNDADO': 'bg-green-100 text-green-800',
-      'RESUELTO_FUNDADO_EN_PARTE': 'bg-green-100 text-green-800',
-      'RESUELTO_INFUNDADO': 'bg-gray-100 text-gray-800',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-gray-100 text-gray-800',
-      'RESUELTO_IMPROCEDENTE': 'bg-red-100 text-red-800',
-      'TENER_POR_NO_PRESENTADO': 'bg-red-100 text-red-800',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-green-100 text-green-800',
-      'CONCLUSION_DESISTIMIENTO': 'bg-gray-100 text-gray-800'
+      'PENDIENTE_ELEVACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_CALIFICACION_1': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_CALIFICACION_2': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_SUBSANACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'EN_RESOLUCION': 'bg-[var(--accent-violet-soft)] text-[var(--accent-violet)]',
+      'RESUELTO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'RESUELTO_FUNDADO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'RESUELTO_FUNDADO_EN_PARTE': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'RESUELTO_INFUNDADO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
+      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
+      'RESUELTO_IMPROCEDENTE': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
+      'TENER_POR_NO_PRESENTADO': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
+      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'CONCLUSION_DESISTIMIENTO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
     };
-    return clases[estado] || 'bg-gray-100 text-gray-800';
+    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
   getApelacionBadgeClass(estado: string): string {
@@ -163,7 +163,7 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   getPrioridadClass(sol: Solicitud): string {
     if (sol.diasRestantes !== undefined && sol.diasRestantes <= 3 && sol.diasRestantes >= 0) {
-      return 'border-l-4 border-red-500';
+      return 'border-l-4 border-[var(--estado-rojo)]';
     }
     return '';
   }
@@ -190,4 +190,5 @@ export class FuncionarioDashboardComponent implements OnInit {
     this.authService.cerrarSesion();
   }
 }
+
 

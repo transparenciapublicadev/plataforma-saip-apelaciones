@@ -1,41 +1,47 @@
-<div class="saip-page min-h-screen bg-[#FAFAFA]">
+<div class="saip-page min-h-screen bg-[var(--nieve)]">
   @if (loading()) {
-    <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
-      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-white">Cargando...</h1></div>
+    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
+      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-[var(--carbon)]">Cargando...</h1></div>
     </div>
     <div class="max-w-7xl mx-auto px-4 py-20 text-center">
-      <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
     </div>
   } @else if (error()) {
-    <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
-      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-white">Error</h1></div>
+    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
+      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-[var(--carbon)]">Error</h1></div>
     </div>
     <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
-      <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-600">{{ error() }}</div>
+      <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-6 text-center text-[var(--estado-rojo)]">{{ error() }}</div>
     </div>
   } @else if (solicitud()) {
     <!-- Header -->
-    <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
       <div class="max-w-7xl mx-auto">
-        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-[var(--carbon)]/70 hover:text-[var(--carbon)] text-sm mb-4 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
           Volver al Dashboard
         </a>
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg class="w-5 h-5 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <div class="text-white">
+            <div class="text-[var(--carbon)]">
               <h1 class="text-2xl md:text-3xl">Expediente {{ solicitud()!.expediente }}</h1>
-              <p class="text-white/70">{{ solicitud()!.entidadNombre }}</p>
+              <p class="text-[var(--carbon)]/70">{{ solicitud()!.entidadNombre }}</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
             <span [class]="'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ' + getEstadoClass(solicitud()!.estado)">{{ solicitud()!.estado }}</span>
             @if (puedeResponder()) {
               <a [routerLink]="['/funcionario/responder', solicitud()!.expediente]"
-                class="inline-flex items-center px-4 py-1.5 bg-white text-[#C8102E] rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors">
+                class="inline-flex items-center px-4 py-1.5 bg-white text-[var(--peru-rojo)] rounded-lg text-sm font-medium hover:bg-[var(--nieve)] transition-colors">
                 Responder
               </a>
             }
@@ -48,75 +54,75 @@
       <!-- Urgency Alert -->
       @if (solicitud()!.diasRestantes !== undefined && solicitud()!.diasRestantes! <= 3 && solicitud()!.diasRestantes! >= 0) {
         <div class="mb-6 bg-white shadow-sm rounded-xl p-4 flex items-start gap-3">
-          <div class="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </div>
           <div>
-            <p class="text-sm text-[#1a1a2e] font-medium mb-0.5">Solicitud Urgente</p>
-            <p class="text-sm text-gray-500">Quedan solo {{ solicitud()!.diasRestantes }} días hábiles para responder esta solicitud.</p>
+            <p class="text-sm text-[var(--carbon)] font-medium mb-0.5">Solicitud Urgente</p>
+            <p class="text-sm text-[var(--niebla)]">Quedan solo {{ solicitud()!.diasRestantes }} días hábiles para responder esta solicitud.</p>
           </div>
         </div>
       }
 
       <!-- Quick Stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           </div>
-          <div class="text-lg text-[#2563EB] mt-1">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-gray-500">Fecha Solicitud</div>
+          <div class="text-lg text-[var(--estado-azul)] mt-1">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+          <div class="text-sm text-[var(--niebla)]">Fecha Solicitud</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#FFFBEB] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
-          <div class="text-lg text-[#D97706] mt-1">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-gray-500">Fecha Límite</div>
+          <div class="text-lg text-[var(--estado-ambar)] mt-1">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy' }}</div>
+          <div class="text-sm text-[var(--niebla)]">Fecha Límite</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-2" [style.background-color]="solicitud()!.diasRestantes < 0 ? '#FEF2F2' : '#F0FDF4'">
-            <svg class="w-4 h-4" [style.color]="solicitud()!.diasRestantes < 0 ? '#DC2626' : '#059669'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-2" [style.background-color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo-suave)' : 'var(--estado-verde-suave)'">
+            <svg class="w-4 h-4" [style.color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo)' : 'var(--estado-verde)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </div>
           @if (solicitud()!.diasRestantes < 0) {
-            <div class="text-lg text-[#DC2626] mt-1">{{ -solicitud()!.diasRestantes }} días de retraso</div>
+            <div class="text-lg text-[var(--estado-rojo)] mt-1">{{ -solicitud()!.diasRestantes }} días de retraso</div>
           } @else {
-            <div class="text-lg text-[#059669] mt-1">{{ solicitud()!.diasRestantes }} días</div>
+            <div class="text-lg text-[var(--estado-verde)] mt-1">{{ solicitud()!.diasRestantes }} días</div>
           }
-          <div class="text-sm text-gray-500">Días Restantes</div>
+          <div class="text-sm text-[var(--niebla)]">Días Restantes</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#F5F3FF] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
           </div>
-          <div class="text-lg text-[#7C3AED] mt-1 truncate">{{ solicitud()!.ciudadanoNombre }}</div>
-          <div class="text-sm text-gray-500">Solicitante</div>
+          <div class="text-lg text-[var(--accent-violet)] mt-1 truncate">{{ solicitud()!.ciudadanoNombre }}</div>
+          <div class="text-sm text-[var(--niebla)]">Solicitante</div>
         </div>
       </div>
 
       <!-- Tabs -->
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="flex border-b border-gray-100 overflow-x-auto">
+      <div class="card overflow-hidden">
+        <div class="flex border-b border-[var(--ceniza-claro)] overflow-x-auto">
           @if (solicitud()!.respuesta) {
             <button (click)="cambiarTab('respuesta')"
-              [class]="activeTab() === 'respuesta' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-gray-400 hover:text-gray-600 text-sm whitespace-nowrap transition-colors'">
+              [class]="activeTab() === 'respuesta' ? 'px-5 py-3.5 text-[var(--peru-rojo)] border-b-2 border-[var(--peru-rojo)] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-[var(--niebla)] hover:text-[var(--humo)] text-sm whitespace-nowrap transition-colors'">
               Respuesta
             </button>
           }
           <button (click)="cambiarTab('solicitud')"
-            [class]="activeTab() === 'solicitud' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-gray-400 hover:text-gray-600 text-sm whitespace-nowrap transition-colors'">
+            [class]="activeTab() === 'solicitud' ? 'px-5 py-3.5 text-[var(--peru-rojo)] border-b-2 border-[var(--peru-rojo)] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-[var(--niebla)] hover:text-[var(--humo)] text-sm whitespace-nowrap transition-colors'">
             Solicitud
           </button>
           <button (click)="cambiarTab('ciudadano')"
-            [class]="activeTab() === 'ciudadano' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-gray-400 hover:text-gray-600 text-sm whitespace-nowrap transition-colors'">
+            [class]="activeTab() === 'ciudadano' ? 'px-5 py-3.5 text-[var(--peru-rojo)] border-b-2 border-[var(--peru-rojo)] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-[var(--niebla)] hover:text-[var(--humo)] text-sm whitespace-nowrap transition-colors'">
             Ciudadano
           </button>
           <button (click)="cambiarTab('documentos')"
-            [class]="activeTab() === 'documentos' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-gray-400 hover:text-gray-600 text-sm whitespace-nowrap transition-colors'">
+            [class]="activeTab() === 'documentos' ? 'px-5 py-3.5 text-[var(--peru-rojo)] border-b-2 border-[var(--peru-rojo)] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-[var(--niebla)] hover:text-[var(--humo)] text-sm whitespace-nowrap transition-colors'">
             Adjuntos
           </button>
           <button (click)="cambiarTab('historial')"
-            [class]="activeTab() === 'historial' ? 'px-5 py-3.5 text-[#C8102E] border-b-2 border-[#C8102E] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-gray-400 hover:text-gray-600 text-sm whitespace-nowrap transition-colors'">
+            [class]="activeTab() === 'historial' ? 'px-5 py-3.5 text-[var(--peru-rojo)] border-b-2 border-[var(--peru-rojo)] font-medium text-sm whitespace-nowrap' : 'px-5 py-3.5 text-[var(--niebla)] hover:text-[var(--humo)] text-sm whitespace-nowrap transition-colors'">
             Historial
           </button>
         </div>
@@ -127,55 +133,55 @@
             <div class="space-y-6">
               <div class="flex items-center gap-3 mb-4">
                 @if (esRespuestaEntrega()) {
-                  <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <div class="w-10 h-10 bg-[var(--estado-verde-suave)] rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   </div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e]">{{ getTituloRespuesta() }}</h3>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)]">{{ getTituloRespuesta() }}</h3>
                 } @else if (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO') {
-                  <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <div class="w-10 h-10 bg-[var(--nieve)] rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--humo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   </div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e]">{{ getTituloRespuesta() }}</h3>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)]">{{ getTituloRespuesta() }}</h3>
                 } @else {
-                  <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <div class="w-10 h-10 bg-[var(--estado-rojo-suave)] rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                   </div>
-                  <h3 class="text-lg font-semibold text-[#1a1a2e]">{{ getTituloRespuesta() }}</h3>
+                  <h3 class="text-lg font-semibold text-[var(--carbon)]">{{ getTituloRespuesta() }}</h3>
                 }
               </div>
-              <div [class]="esRespuestaEntrega() ? 'bg-green-50 border border-green-200 rounded-xl p-4' : (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO' ? 'bg-gray-50 border border-gray-200 rounded-xl p-4' : 'bg-red-50 border border-red-200 rounded-xl p-4')">
+              <div [class]="esRespuestaEntrega() ? 'bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-4' : (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO' ? 'bg-[var(--nieve-calida)] border border-[var(--ceniza-claro)] rounded-xl p-4' : 'bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-4')">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h4 class="text-sm text-gray-500 mb-1">Fecha de Respuesta</h4>
-                    <p class="text-[#1a1a2e]">{{ (solicitud()!.respuesta.fechaRespuesta || solicitud()!.fechaLimite) | date:'dd/MM/yyyy' }}</p>
+                    <h4 class="text-sm text-[var(--niebla)] mb-1">Fecha de Respuesta</h4>
+                    <p class="text-[var(--carbon)]">{{ (solicitud()!.respuesta.fechaRespuesta || solicitud()!.fechaLimite) | date:'dd/MM/yyyy' }}</p>
                   </div>
                   <div>
-                    <h4 class="text-sm text-gray-500 mb-1">Tipo de Respuesta</h4>
-                    <p class="text-[#1a1a2e] font-medium">{{ getTipoRespuestaDisplay() }}</p>
+                    <h4 class="text-sm text-[var(--niebla)] mb-1">Tipo de Respuesta</h4>
+                    <p class="text-[var(--carbon)] font-medium">{{ getTipoRespuestaDisplay() }}</p>
                   </div>
                 </div>
               </div>
               <div>
-                <h4 class="text-sm text-gray-400 mb-2">Contenido de la Respuesta</h4>
-                <div [class]="esRespuestaEntrega() ? 'bg-green-50 border border-green-200 rounded-xl p-4' : (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO' ? 'bg-gray-50 border border-gray-200 rounded-xl p-4' : 'bg-red-50 border border-red-200 rounded-xl p-4')">
+                <h4 class="text-sm text-[var(--niebla)] mb-2">Contenido de la Respuesta</h4>
+                <div [class]="esRespuestaEntrega() ? 'bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-4' : (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO' ? 'bg-[var(--nieve-calida)] border border-[var(--ceniza-claro)] rounded-xl p-4' : 'bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-4')">
                   @if (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO') {
-                    <p class="text-[#1a1a2e] leading-relaxed">La solicitud excedió el plazo legal de 10 días hábiles sin respuesta registrada. El sistema aplica SILENCIO_ADMINISTRATIVO de forma automática.</p>
+                    <p class="text-[var(--carbon)] leading-relaxed">La solicitud excedió el plazo legal de 10 días hábiles sin respuesta registrada. El sistema aplica SILENCIO_ADMINISTRATIVO de forma automática.</p>
                   } @else {
-                    <p class="text-[#1a1a2e] leading-relaxed whitespace-pre-wrap">{{ solicitud()!.respuesta!.contenido }}</p>
+                    <p class="text-[var(--carbon)] leading-relaxed whitespace-pre-wrap">{{ solicitud()!.respuesta!.contenido }}</p>
                   }
                 </div>
               </div>
               @if (solicitud()!.respuesta.causalDenegatoria) {
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-2">Causal de Denegatoria</h4>
-                  <p class="text-[#1a1a2e]">{{ solicitud()!.respuesta!.causalDenegatoria }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-2">Causal de Denegatoria</h4>
+                  <p class="text-[var(--carbon)]">{{ solicitud()!.respuesta!.causalDenegatoria }}</p>
                 </div>
               }
               @if (solicitud()!.respuesta.fundamentoLegal) {
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-2">Fundamento Legal</h4>
-                  <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <p class="text-[#1a1a2e] leading-relaxed whitespace-pre-wrap">{{ solicitud()!.respuesta!.fundamentoLegal }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-2">Fundamento Legal</h4>
+                  <div class="bg-[var(--nieve-calida)] rounded-xl p-4 border border-[var(--ceniza-claro)]">
+                    <p class="text-[var(--carbon)] leading-relaxed whitespace-pre-wrap">{{ solicitud()!.respuesta!.fundamentoLegal }}</p>
                   </div>
                 </div>
               }
@@ -184,11 +190,11 @@
 
           @if (activeTab() === 'respuesta' && !solicitud()!.respuesta) {
             <div class="text-center py-12">
-              <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              <p class="text-gray-400 mb-4">Aún no se ha registrado respuesta</p>
+              <svg class="w-12 h-12 text-[var(--ceniza)] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <p class="text-[var(--niebla)] mb-4">Aún no se ha registrado respuesta</p>
               @if (puedeResponder()) {
                 <a [routerLink]="['/funcionario/responder', solicitud()!.expediente]"
-                  class="inline-flex items-center px-5 py-2.5 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl text-sm font-medium transition-colors">
+                  class="inline-flex items-center px-5 py-2.5 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-[var(--carbon)] rounded-xl text-sm font-medium transition-colors">
                   Responder Ahora
                 </a>
               }
@@ -200,35 +206,35 @@
             <div class="space-y-6">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">Número de Expediente</h4>
-                  <p class="font-mono text-[#1a1a2e]">{{ solicitud()!.expediente }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">Número de Expediente</h4>
+                  <p class="font-mono text-[var(--carbon)]">{{ solicitud()!.expediente }}</p>
                 </div>
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">Entidad Responsable</h4>
-                  <p class="text-[#1a1a2e]">{{ solicitud()!.entidadNombre }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">Entidad Responsable</h4>
+                  <p class="text-[var(--carbon)]">{{ solicitud()!.entidadNombre }}</p>
                 </div>
               </div>
               <div>
-                <h4 class="text-sm text-gray-400 mb-1">Asunto</h4>
-                <p class="text-[#1a1a2e] font-medium">{{ solicitud()!.asunto }}</p>
+                <h4 class="text-sm text-[var(--niebla)] mb-1">Asunto</h4>
+                <p class="text-[var(--carbon)] font-medium">{{ solicitud()!.asunto }}</p>
               </div>
               <div>
-                <h4 class="text-sm text-gray-400 mb-1">Descripción</h4>
-                <p class="text-gray-600 whitespace-pre-wrap leading-relaxed">{{ solicitud()!.descripcion }}</p>
+                <h4 class="text-sm text-[var(--niebla)] mb-1">Descripción</h4>
+                <p class="text-[var(--humo)] whitespace-pre-wrap leading-relaxed">{{ solicitud()!.descripcion }}</p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">Formato</h4>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">Formato</h4>
                   <div class="flex gap-2">
-                    @if (solicitud()!.formatoDigital) { <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Digital</span> }
-                    @if (solicitud()!.formatoFisico) { <span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">Físico</span> }
+                    @if (solicitud()!.formatoDigital) { <span class="px-2 py-0.5 bg-[var(--estado-azul-suave)] text-[var(--estado-azul)] text-xs rounded-full">Digital</span> }
+                    @if (solicitud()!.formatoFisico) { <span class="px-2 py-0.5 bg-[var(--nieve)] text-[var(--humo)] text-xs rounded-full">Físico</span> }
                   </div>
                 </div>
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">Tipo de Copia</h4>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">Tipo de Copia</h4>
                   <div class="flex gap-2">
-                    @if (solicitud()!.copiaSimple) { <span class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">Simple</span> }
-                    @if (solicitud()!.copiaCertificada) { <span class="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full">Certificada</span> }
+                    @if (solicitud()!.copiaSimple) { <span class="px-2 py-0.5 bg-[var(--nieve)] text-[var(--humo)] text-xs rounded-full">Simple</span> }
+                    @if (solicitud()!.copiaCertificada) { <span class="px-2 py-0.5 bg-[var(--accent-violet-soft)] text-[var(--accent-violet)] text-xs rounded-full">Certificada</span> }
                   </div>
                 </div>
               </div>
@@ -240,12 +246,12 @@
             <div class="space-y-6">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">Nombre Completo</h4>
-                  <p class="text-[#1a1a2e]">{{ solicitud()!.ciudadanoNombre }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">Nombre Completo</h4>
+                  <p class="text-[var(--carbon)]">{{ solicitud()!.ciudadanoNombre }}</p>
                 </div>
                 <div>
-                  <h4 class="text-sm text-gray-400 mb-1">DNI</h4>
-                  <p class="font-mono text-[#1a1a2e]">{{ solicitud()!.ciudadanoDni }}</p>
+                  <h4 class="text-sm text-[var(--niebla)] mb-1">DNI</h4>
+                  <p class="font-mono text-[var(--carbon)]">{{ solicitud()!.ciudadanoDni }}</p>
                 </div>
               </div>
             </div>
@@ -256,17 +262,17 @@
             @if (solicitud()!.documentos && solicitud()!.documentos!.length > 0) {
               <div class="space-y-3">
                 @for (doc of solicitud()!.documentos; track doc.id) {
-                  <div class="flex items-center justify-between p-4 bg-[#F8F9FB] rounded-xl hover:bg-gray-100 transition-colors">
+                  <div class="flex items-center justify-between p-4 bg-[var(--nieve)] rounded-xl hover:bg-[var(--nieve)] transition-colors">
                     <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
-                        <svg class="w-5 h-5 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-[var(--ceniza-claro)]">
+                        <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                       </div>
                       <div>
-                        <p class="font-medium text-[#1a1a2e] text-sm">{{ doc.nombreArchivo }}</p>
-                        <p class="text-xs text-gray-400">{{ doc.tipoArchivo }}</p>
+                        <p class="font-medium text-[var(--carbon)] text-sm">{{ doc.nombreArchivo }}</p>
+                        <p class="text-xs text-[var(--niebla)]">{{ doc.tipoArchivo }}</p>
                       </div>
                     </div>
-                    <button class="text-[#C8102E] hover:text-[#A00D24] text-sm font-medium flex items-center gap-1 transition-colors">
+                    <button class="text-[var(--peru-rojo)] hover:text-[var(--peru-rojo-hover)] text-sm font-medium flex items-center gap-1 transition-colors">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
                       Descargar
                     </button>
@@ -275,8 +281,8 @@
               </div>
             } @else {
               <div class="text-center py-12">
-                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                <p class="text-gray-400">No hay documentos adjuntos</p>
+                <svg class="w-12 h-12 text-[var(--ceniza)] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <p class="text-[var(--niebla)]">No hay documentos adjuntos</p>
               </div>
             }
           }
@@ -285,38 +291,38 @@
           @if (activeTab() === 'historial') {
             <div class="space-y-6">
               <div class="flex items-start gap-4">
-                <div class="w-3 h-3 mt-1.5 bg-green-500 rounded-full ring-4 ring-green-100"></div>
+                <div class="w-3 h-3 mt-1.5 bg-[var(--estado-verde-suave)] rounded-full ring-4 ring-[var(--estado-verde-borde)]"></div>
                 <div>
-                  <p class="font-medium text-[#1a1a2e]">Solicitud presentada</p>
-                  <p class="text-sm text-gray-400">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy HH:mm' }}</p>
-                  <p class="text-sm text-gray-500 mt-0.5">Solicitud registrada y asignada</p>
+                  <p class="font-medium text-[var(--carbon)]">Solicitud presentada</p>
+                  <p class="text-sm text-[var(--niebla)]">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy HH:mm' }}</p>
+                  <p class="text-sm text-[var(--niebla)] mt-0.5">Solicitud registrada y asignada</p>
                 </div>
               </div>
               @if (solicitud()!.respuesta) {
                 <div class="flex items-start gap-4">
-                  <div class="w-3 h-3 mt-1.5 bg-blue-500 rounded-full ring-4 ring-blue-100"></div>
+                  <div class="w-3 h-3 mt-1.5 bg-[var(--estado-azul-suave)] rounded-full ring-4 ring-[var(--estado-azul-borde)]"></div>
                   <div>
-                    <p class="font-medium text-[#1a1a2e]">Respuesta emitida — {{ solicitud()!.respuesta!.tipoRespuesta }}</p>
-                    <p class="text-sm text-gray-400">{{ solicitud()!.respuesta!.fechaRespuesta | date:'dd/MM/yyyy HH:mm' }}</p>
-                    <p class="text-sm text-gray-500 mt-0.5">Se envió respuesta al ciudadano</p>
+                    <p class="font-medium text-[var(--carbon)]">Respuesta emitida — {{ solicitud()!.respuesta!.tipoRespuesta }}</p>
+                    <p class="text-sm text-[var(--niebla)]">{{ solicitud()!.respuesta!.fechaRespuesta | date:'dd/MM/yyyy HH:mm' }}</p>
+                    <p class="text-sm text-[var(--niebla)] mt-0.5">Se envió respuesta al ciudadano</p>
                   </div>
                 </div>
               } @else if (esSilencioAdministrativo()) {
                 <div class="flex items-start gap-4">
-                  <div class="w-3 h-3 mt-1.5 bg-gray-500 rounded-full ring-4 ring-gray-100"></div>
+                  <div class="w-3 h-3 mt-1.5 bg-[var(--niebla)] rounded-full ring-4 ring-[var(--ceniza-claro)]"></div>
                   <div>
-                    <p class="font-medium text-[#1a1a2e]">Silencio administrativo automático</p>
-                    <p class="text-sm text-gray-400">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy HH:mm' }}</p>
-                    <p class="text-sm text-gray-500 mt-0.5">Se configuró por vencimiento del plazo sin respuesta de la entidad.</p>
+                    <p class="font-medium text-[var(--carbon)]">Silencio administrativo automático</p>
+                    <p class="text-sm text-[var(--niebla)]">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy HH:mm' }}</p>
+                    <p class="text-sm text-[var(--niebla)] mt-0.5">Se configuró por vencimiento del plazo sin respuesta de la entidad.</p>
                   </div>
                 </div>
               }
               @if (solicitud()?.apelacion) {
                 <div class="flex items-start gap-4">
-                  <div class="w-3 h-3 mt-1.5 bg-purple-500 rounded-full ring-4 ring-purple-100"></div>
+                  <div class="w-3 h-3 mt-1.5 bg-[var(--accent-violet)] rounded-full ring-4 ring-[var(--accent-violet-soft)]"></div>
                   <div>
-                    <p class="font-medium text-[#1a1a2e]">Apelación presentada — {{ solicitud()!.apelacion!.estado }}</p>
-                    <p class="text-sm text-gray-400">{{ solicitud()!.apelacion!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+                    <p class="font-medium text-[var(--carbon)]">Apelación presentada — {{ solicitud()!.apelacion!.estado }}</p>
+                    <p class="text-sm text-[var(--niebla)]">{{ solicitud()!.apelacion!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
                   </div>
                 </div>
               }
@@ -327,28 +333,28 @@
 
       <!-- Apelación Card (below tabs if exists) -->
       @if (solicitud()?.apelacion) {
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-5">
-          <div class="border-b border-gray-100 px-6 py-4">
-            <h3 class="text-[#1a1a2e] font-semibold flex items-center gap-2">
-              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <div class="card overflow-hidden mt-5">
+          <div class="border-b border-[var(--ceniza-claro)] px-6 py-4">
+            <h3 class="text-[var(--carbon)] font-semibold flex items-center gap-2">
+              <svg class="w-5 h-5 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               Apelación ante el TTAIP
             </h3>
           </div>
           <div class="p-6">
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <p class="text-sm text-blue-800">El ciudadano ha interpuesto una apelación. El Tribunal de Transparencia está revisando el caso.</p>
+            <div class="bg-[var(--estado-azul-suave)] border border-[var(--estado-azul-borde)] rounded-xl p-4 mb-6">
+              <p class="text-sm text-[var(--estado-azul)]">El ciudadano ha interpuesto una apelación. El Tribunal de Transparencia está revisando el caso.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <h4 class="text-sm text-gray-400 mb-1">Expediente TTAIP</h4>
-                <p class="font-mono font-semibold text-[#C8102E]">{{ solicitud()!.apelacion!.expediente }}</p>
+                <h4 class="text-sm text-[var(--niebla)] mb-1">Expediente TTAIP</h4>
+                <p class="font-mono font-semibold text-[var(--peru-rojo)]">{{ solicitud()!.apelacion!.expediente }}</p>
               </div>
               <div>
-                <h4 class="text-sm text-gray-400 mb-1">Fecha de Presentación</h4>
-                <p class="text-[#1a1a2e]">{{ solicitud()!.apelacion!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+                <h4 class="text-sm text-[var(--niebla)] mb-1">Fecha de Presentación</h4>
+                <p class="text-[var(--carbon)]">{{ solicitud()!.apelacion!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
               </div>
               <div>
-                <h4 class="text-sm text-gray-400 mb-1">Estado</h4>
+                <h4 class="text-sm text-[var(--niebla)] mb-1">Estado</h4>
                 <span [class]="'inline-flex px-3 py-1 text-xs rounded-full font-medium ' + getApelacionEstadoClass(solicitud()!.apelacion!.estado || '')">
                   {{ solicitud()!.apelacion!.estado }}
                 </span>
@@ -356,20 +362,20 @@
             </div>
 
             @if (solicitud()!.apelacion!.resultado === 'FUNDADO') {
-              <div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-                <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <div class="mt-6 bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-4 flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--estado-rojo)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 <div>
-                  <p class="font-semibold text-red-900 mb-0.5">Apelación Declarada FUNDADA</p>
-                  <p class="text-sm text-red-800">El TTAIP ha ordenado que la entidad entregue la información solicitada al ciudadano.</p>
+                  <p class="font-semibold text-[var(--estado-rojo)] mb-0.5">Apelación Declarada FUNDADA</p>
+                  <p class="text-sm text-[var(--estado-rojo)]">El TTAIP ha ordenado que la entidad entregue la información solicitada al ciudadano.</p>
                 </div>
               </div>
             }
             @if (solicitud()!.apelacion!.resultado === 'INFUNDADO') {
-              <div class="mt-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div class="mt-6 bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-4 flex items-start gap-3">
+                <svg class="w-5 h-5 text-[var(--estado-verde)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <div>
-                  <p class="font-semibold text-green-900 mb-0.5">Apelación Declarada INFUNDADA</p>
-                  <p class="text-sm text-green-800">El TTAIP ha confirmado la decisión de la entidad. La denegatoria fue válida.</p>
+                  <p class="font-semibold text-[var(--estado-verde)] mb-0.5">Apelación Declarada INFUNDADA</p>
+                  <p class="text-sm text-[var(--estado-verde)]">El TTAIP ha confirmado la decisión de la entidad. La denegatoria fue válida.</p>
                 </div>
               </div>
             }

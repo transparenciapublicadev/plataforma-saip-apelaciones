@@ -47,12 +47,12 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   getResultadoClass(resultado: string | undefined): string {
     if (!resultado) return 'bg-white/20 text-white';
-    if (resultado === 'FUNDADO' || resultado === 'FUNDADO_EN_PARTE') return 'bg-[#DCFCE7] text-[#065F46]';
-    if (resultado === 'INFUNDADO' || resultado === 'INFUNDADO_EN_PARTE') return 'bg-[#FEE2E2] text-[#991B1B]';
-    if (resultado === 'IMPROCEDENTE') return 'bg-[#FEF3C7] text-[#92400E]';
-    if (resultado === 'CONCLUSION_SUSTRACCION_MATERIA') return 'bg-[#EEF2FF] text-[#4338CA]';
-    if (resultado === 'CONCLUSION_DESISTIMIENTO') return 'bg-gray-100 text-gray-700';
-    if (resultado === 'TENER_POR_NO_PRESENTADO') return 'bg-gray-100 text-gray-700';
+    if (resultado === 'FUNDADO' || resultado === 'FUNDADO_EN_PARTE') return 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]';
+    if (resultado === 'INFUNDADO' || resultado === 'INFUNDADO_EN_PARTE') return 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]';
+    if (resultado === 'IMPROCEDENTE') return 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]';
+    if (resultado === 'CONCLUSION_SUSTRACCION_MATERIA') return 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]';
+    if (resultado === 'CONCLUSION_DESISTIMIENTO') return 'bg-[var(--nieve)] text-[var(--humo)]';
+    if (resultado === 'TENER_POR_NO_PRESENTADO') return 'bg-[var(--nieve)] text-[var(--humo)]';
     return 'bg-white/20 text-white';
   }
 }

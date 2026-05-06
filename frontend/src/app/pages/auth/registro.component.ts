@@ -1,6 +1,8 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { finalize, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { RegistroRequest } from '../../models/usuario.model';
 
@@ -14,6 +16,8 @@ import { RegistroRequest } from '../../models/usuario.model';
 export class RegistroComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  private readonly nombreRegex = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\s-]+$/;
 
   dni = '';
   nombres = '';
@@ -31,19 +35,30 @@ export class RegistroComponent {
   error = signal<string>('');
   mensaje = signal<string>('');
 
-  step1Valid = computed(() =>
-    this.dni.length === 8 && /^\d+$/.test(this.dni) &&
-    this.nombres.trim().length >= 2 &&
-    this.apellidoPaterno.trim().length >= 2 &&
-    this.apellidoMaterno.trim().length >= 2
-  );
+  step1Valid(): boolean {
+    return this.dni.length === 8
+      && /^\d+$/.test(this.dni)
+      && this.isNombreValido(this.nombres)
+      && this.isNombreValido(this.apellidoPaterno)
+      && this.isNombreValido(this.apellidoMaterno);
+  }
 
-  passwordRequirements = computed(() => [
-    { met: this.password.length >= 8, text: 'Mínimo 8 caracteres' },
-    { met: /[A-Z]/.test(this.password), text: 'Una mayúscula' },
-    { met: /[a-z]/.test(this.password), text: 'Una minúscula' },
-    { met: /\d/.test(this.password), text: 'Un número' },
-  ]);
+  passwordRequirements(): Array<{ met: boolean; text: string }> {
+    return [
+      { met: this.password.length >= 8, text: 'Mínimo 8 caracteres' },
+      { met: /[A-Z]/.test(this.password), text: 'Una mayúscula' },
+      { met: /[a-z]/.test(this.password), text: 'Una minúscula' },
+      { met: /\d/.test(this.password), text: 'Un número' },
+      { met: /[^A-Za-z\d]/.test(this.password), text: 'Un símbolo (!@#$...)' },
+    ];
+  }
+
+  canSubmitStep2(): boolean {
+    return this.emailRegex.test(this.email.trim())
+      && this.passwordRequirements().every((rule) => rule.met)
+      && this.password === this.confirmarPassword
+      && this.acceptTerms;
+  }
 
   goToStep2(): void {
     this.currentStep.set(2);
@@ -70,9 +85,14 @@ export class RegistroComponent {
   }
 
   registrar(): void {
-    const nombreCompleto = `${this.nombres} ${this.apellidoPaterno} ${this.apellidoMaterno}`.trim();
+    const nombres = this.normalizarTexto(this.nombres);
+    const apellidoPaterno = this.normalizarTexto(this.apellidoPaterno);
+    const apellidoMaterno = this.normalizarTexto(this.apellidoMaterno);
+    const email = this.email.trim().toLowerCase();
+    const telefono = this.telefono.trim();
+    const nombreCompleto = `${nombres} ${apellidoPaterno} ${apellidoMaterno}`.trim();
 
-    if (!this.dni || !nombreCompleto || !this.email || !this.password) {
+    if (!this.dni || !nombreCompleto || !email || !this.password) {
       this.error.set('Todos los campos obligatorios deben ser completados');
       return;
     }
@@ -80,12 +100,24 @@ export class RegistroComponent {
       this.error.set('El DNI debe tener 8 dígitos');
       return;
     }
+    if (!this.isNombreValido(nombres) || !this.isNombreValido(apellidoPaterno) || !this.isNombreValido(apellidoMaterno)) {
+      this.error.set('Los nombres y apellidos solo deben contener letras.');
+      return;
+    }
+    if (!this.emailRegex.test(email)) {
+      this.error.set('Ingrese un correo electrónico válido');
+      return;
+    }
+    if (telefono && telefono.length !== 9) {
+      this.error.set('El teléfono debe tener 9 dígitos');
+      return;
+    }
     if (this.password !== this.confirmarPassword) {
       this.error.set('Las contraseñas no coinciden');
       return;
     }
-    if (this.password.length < 8) {
-      this.error.set('La contraseña debe tener al menos 8 caracteres');
+    if (!this.passwordRequirements().every((rule) => rule.met)) {
+      this.error.set('La contraseña no cumple los requisitos de seguridad');
       return;
     }
     if (!this.acceptTerms) {
@@ -96,31 +128,60 @@ export class RegistroComponent {
     this.loading.set(true);
     this.error.set('');
 
-    const datos: RegistroRequest = {
-      dni: this.dni,
-      nombreCompleto,
-      email: this.email,
-      password: this.password,
-      telefono: this.telefono
-    };
+    forkJoin({
+      dni: this.authService.verificarDni(this.dni),
+      email: this.authService.verificarEmail(email),
+    })
+      .pipe(
+        switchMap(({ dni, email: emailResult }) => {
+          if (dni.existe) {
+            this.error.set('El DNI ya está registrado en la plataforma');
+            return of(null);
+          }
 
-    this.authService.registro(datos).subscribe({
-      next: (response) => {
-        this.loading.set(false);
-        if (response.success) {
-          this.mensaje.set('Registro exitoso. Redirigiendo al login...');
-          setTimeout(() => {
-            this.router.navigate(['/login']);
-          }, 2000);
-        } else {
-          this.error.set(response.mensaje || 'Error en el registro');
+          if (emailResult.existe) {
+            this.error.set('El correo ya se encuentra registrado');
+            return of(null);
+          }
+
+          const datos: RegistroRequest = {
+            dni: this.dni,
+            nombreCompleto,
+            email,
+            password: this.password,
+            telefono,
+          };
+
+          return this.authService.registro(datos);
+        }),
+        finalize(() => this.loading.set(false))
+      )
+      .subscribe({
+        next: (response) => {
+          if (!response) return;
+
+          if (response.success) {
+            this.mensaje.set('Registro exitoso. Redirigiendo al login ciudadano...');
+            setTimeout(() => {
+              this.router.navigate(['/login']);
+            }, 1800);
+          } else {
+            this.error.set(response.mensaje || 'Error en el registro');
+          }
+        },
+        error: (err) => {
+          this.error.set(err.error?.mensaje || 'No se pudo completar el registro. Intente nuevamente.');
         }
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(err.error?.mensaje || 'Error de conexión');
-      }
-    });
+      });
+  }
+
+  private normalizarTexto(value: string): string {
+    return value.replace(/\s+/g, ' ').trim();
+  }
+
+  private isNombreValido(value: string): boolean {
+    const normalizado = this.normalizarTexto(value);
+    return normalizado.length >= 2 && this.nombreRegex.test(normalizado);
   }
 }
 

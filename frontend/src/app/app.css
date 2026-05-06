@@ -1,0 +1,76 @@
+/* ================================================================
+   App Shell — Navigation Styles
+   ================================================================ */
+
+/* Desktop nav links */
+.nav-link-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--humo);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  transition: all 200ms cubic-bezier(0.19, 1, 0.22, 1);
+  position: relative;
+}
+
+.nav-link-desktop:hover {
+  background: var(--nieve);
+  color: var(--carbon);
+}
+
+.nav-link-desktop:active {
+  background: var(--ceniza-claro);
+}
+
+/* Mobile nav items */
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--humo);
+  border-radius: 0.75rem;
+  transition: all 150ms ease;
+}
+
+.mobile-nav-item:hover {
+  background: var(--nieve);
+  color: var(--carbon);
+}
+
+/* Dropdown chevron rotation */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  color: var(--humo);
+  border: 1px solid var(--ceniza-claro);
+  background: var(--card);
+  transition: all 200ms ease;
+}
+
+.theme-toggle-btn:hover {
+  color: var(--foreground);
+  border-color: var(--border);
+  background: var(--muted);
+}
+
+.saip-main-shell {
+  padding-top: 6.25rem;
+}
+
+.saip-main-shell.auth-main-shell {
+  padding-top: 4.25rem;
+}
