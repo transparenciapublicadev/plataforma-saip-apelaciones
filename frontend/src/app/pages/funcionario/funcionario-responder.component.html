@@ -1,27 +1,31 @@
-<div class="min-h-screen bg-[#FAFAFA]">
+<div class="saip-page min-h-screen bg-[var(--nieve)]">
   @if (loadingSolicitud()) {
-    <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
-      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-white">Cargando...</h1></div>
+    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
+      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-[var(--carbon)]">Cargando...</h1></div>
     </div>
     <div class="max-w-7xl mx-auto px-4 py-20 text-center">
-      <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
     </div>
   } @else if (solicitud()) {
     <!-- Header -->
-    <div class="bg-gradient-to-r from-[#C8102E] to-[#A00D24] pt-28 pb-10 px-4">
+    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
+
+      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
       <div class="max-w-7xl mx-auto">
-        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-4 transition-colors">
+        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-[var(--carbon)]/70 hover:text-[var(--carbon)] text-sm mb-4 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
           Volver al Dashboard
         </a>
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg class="w-5 h-5 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <div class="text-white">
+            <div class="text-[var(--carbon)]">
               <h1 class="text-2xl md:text-3xl">Responder Expediente {{ solicitud()!.expediente }}</h1>
-              <p class="text-white/70">{{ solicitud()!.entidadNombre }} — {{ solicitud()!.ciudadanoNombre }}</p>
+              <p class="text-[var(--carbon)]/70">{{ solicitud()!.entidadNombre }} — {{ solicitud()!.ciudadanoNombre }}</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -35,100 +39,100 @@
       <!-- Urgency Alert -->
       @if (solicitud()!.diasRestantes !== undefined && solicitud()!.diasRestantes! <= 3 && solicitud()!.diasRestantes! >= 0) {
         <div class="mb-6 bg-white shadow-sm rounded-xl p-4 flex items-start gap-3">
-          <div class="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </div>
           <div>
-            <p class="text-sm text-[#1a1a2e] font-medium mb-0.5">Solicitud Urgente</p>
-            <p class="text-sm text-gray-500">Quedan solo {{ solicitud()!.diasRestantes }} días hábiles para responder esta solicitud.</p>
+            <p class="text-sm text-[var(--carbon)] font-medium mb-0.5">Solicitud Urgente</p>
+            <p class="text-sm text-[var(--niebla)]">Quedan solo {{ solicitud()!.diasRestantes }} días hábiles para responder esta solicitud.</p>
           </div>
         </div>
       }
 
       <!-- Quick Stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           </div>
-          <div class="text-lg text-[#2563EB] truncate mt-1">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-gray-500">Fecha Solicitud</div>
+          <div class="text-lg text-[var(--estado-azul)] truncate mt-1">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+          <div class="text-sm text-[var(--niebla)]">Fecha Solicitud</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#FFFBEB] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
-          <div class="text-lg text-[#D97706] truncate mt-1">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-gray-500">Fecha Límite</div>
+          <div class="text-lg text-[var(--estado-ambar)] truncate mt-1">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy' }}</div>
+          <div class="text-sm text-[var(--niebla)]">Fecha Límite</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-2" [style.background-color]="(solicitud()!.diasRestantes ?? 0) < 0 ? '#FEF2F2' : '#F0FDF4'">
-            <svg class="w-4 h-4" [style.color]="(solicitud()!.diasRestantes ?? 0) < 0 ? '#DC2626' : '#059669'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-2" [style.background-color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo-suave)' : 'var(--estado-verde-suave)'">
+            <svg class="w-4 h-4" [style.color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo)' : 'var(--estado-verde)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           </div>
-          @if ((solicitud()!.diasRestantes ?? 0) < 0) {
-            <div class="text-lg text-[#DC2626] mt-1">{{ -(solicitud()!.diasRestantes ?? 0) }} días de retraso</div>
+          @if (solicitud()!.diasRestantes < 0) {
+            <div class="text-lg text-[var(--estado-rojo)] mt-1">{{ -solicitud()!.diasRestantes }} días de retraso</div>
           } @else {
-            <div class="text-lg text-[#059669] mt-1">{{ solicitud()!.diasRestantes }} días</div>
+            <div class="text-lg text-[var(--estado-verde)] mt-1">{{ solicitud()!.diasRestantes }} días</div>
           }
-          <div class="text-sm text-gray-500">Días Restantes</div>
+          <div class="text-sm text-[var(--niebla)]">Días Restantes</div>
         </div>
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[#F5F3FF] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <div class="card overflow-hidden p-5">
+          <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           </div>
-          <div class="text-lg text-[#7C3AED] mt-1 truncate">Acceso a Información</div>
-          <div class="text-sm text-gray-500">Tipo</div>
+          <div class="text-lg text-[var(--accent-violet)] mt-1 truncate">Acceso a Información</div>
+          <div class="text-sm text-[var(--niebla)]">Tipo</div>
         </div>
       </div>
 
       <!-- Response Form Card -->
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="border-b border-gray-100 px-6 py-4">
-          <h3 class="text-[#1a1a2e] font-semibold">Respuesta de la Entidad</h3>
+      <div class="card overflow-hidden">
+        <div class="border-b border-[var(--ceniza-claro)] px-6 py-4">
+          <h3 class="text-[var(--carbon)] font-semibold">Respuesta de la Entidad</h3>
         </div>
         <div class="p-6 space-y-6">
           @if (esSilencioAdministrativoAutomatico()) {
-            <div class="bg-gray-50 border border-gray-300 rounded-xl p-4 flex items-start gap-3">
-              <svg class="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="bg-[var(--nieve-calida)] border border-[var(--ceniza)] rounded-xl p-4 flex items-start gap-3">
+              <svg class="w-5 h-5 text-[var(--humo)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <div>
-                <p class="text-sm font-semibold text-gray-900 mb-0.5">SILENCIO_ADMINISTRATIVO automático</p>
-                <p class="text-sm text-gray-700">La solicitud superó el plazo legal de 10 días hábiles sin respuesta. Este estado se gestiona automáticamente por regla de negocio y no permite registrar respuesta manual.</p>
+                <p class="text-sm font-semibold text-[var(--carbon)] mb-0.5">SILENCIO_ADMINISTRATIVO automático</p>
+                <p class="text-sm text-[var(--humo)]">La solicitud superó el plazo legal de 10 días hábiles sin respuesta. Este estado se gestiona automáticamente por regla de negocio y no permite registrar respuesta manual.</p>
               </div>
             </div>
           }
 
           @if (error()) {
-            <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-              <svg class="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <p class="text-sm text-red-800">{{ error() }}</p>
+            <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+              <svg class="w-5 h-5 text-[var(--estado-rojo)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p class="text-sm text-[var(--estado-rojo)]">{{ error() }}</p>
             </div>
           }
           @if (mensaje()) {
-            <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-              <svg class="w-5 h-5 text-[#059669] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <p class="text-sm text-green-800">{{ mensaje() }}</p>
+            <div class="bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+              <svg class="w-5 h-5 text-[var(--estado-verde)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p class="text-sm text-[var(--estado-verde)]">{{ mensaje() }}</p>
             </div>
           }
 
           @if (puedeRegistrarRespuestaManual()) {
             <!-- Decision -->
             <div class="space-y-3">
-              <label class="block text-sm font-medium text-[#1a1a2e]">Decisión sobre la Solicitud <span class="text-[#D91E18]">*</span></label>
+              <label class="block label">Decisión sobre la Solicitud <span class="text-[var(--estado-rojo)]">*</span></label>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                  [class]="decision === 'aceptar' ? 'border-[#10B981] bg-[#F0FDF4]' : 'border-gray-200 hover:border-gray-300'">
-                  <input type="radio" [(ngModel)]="decision" name="decision" value="aceptar" class="w-4 h-4 text-[#10B981]">
+                  [class]="decision === 'aceptar' ? 'border-[var(--estado-verde)] bg-[var(--estado-verde-suave)]' : 'border-[var(--ceniza-claro)] hover:border-[var(--ceniza)]'">
+                  <input type="radio" [(ngModel)]="decision" name="decision" value="aceptar" class="w-4 h-4 text-[var(--estado-verde)]">
                   <div class="flex-1">
-                    <p class="font-semibold text-[#1a1a2e]">Aceptar Solicitud</p>
-                    <p class="text-xs text-gray-500">La información será entregada al ciudadano</p>
+                    <p class="font-semibold text-[var(--carbon)]">Aceptar Solicitud</p>
+                    <p class="text-xs text-[var(--niebla)]">La información será entregada al ciudadano</p>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                  [class]="decision === 'denegar' ? 'border-[#DC2626] bg-[#FEE2E2]' : 'border-gray-200 hover:border-gray-300'">
-                  <input type="radio" [(ngModel)]="decision" name="decision" value="denegar" class="w-4 h-4 text-[#DC2626]">
+                  [class]="decision === 'denegar' ? 'border-[var(--estado-rojo)] bg-[var(--estado-rojo-suave)]' : 'border-[var(--ceniza-claro)] hover:border-[var(--ceniza)]'">
+                  <input type="radio" [(ngModel)]="decision" name="decision" value="denegar" class="w-4 h-4 text-[var(--estado-rojo)]">
                   <div class="flex-1">
-                    <p class="font-semibold text-[#1a1a2e]">Denegar Solicitud</p>
-                    <p class="text-xs text-gray-500">La información no puede ser entregada</p>
+                    <p class="font-semibold text-[var(--carbon)]">Denegar Solicitud</p>
+                    <p class="text-xs text-[var(--niebla)]">La información no puede ser entregada</p>
                   </div>
                 </label>
               </div>
@@ -136,29 +140,29 @@
 
             <!-- Accept case -->
             @if (decision === 'aceptar') {
-            <div class="border border-[#10B981] bg-[#F0FDF4] rounded-xl p-5 space-y-4">
-              <h4 class="font-semibold text-[#065F46]">Detalles de Aceptación y Entrega</h4>
+            <div class="border border-[var(--estado-verde)] bg-[var(--estado-verde-suave)] rounded-xl p-5 space-y-4">
+              <h4 class="font-semibold text-[var(--estado-verde)]">Detalles de Aceptación y Entrega</h4>
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-[#065F46]">Descripción de la Aceptación <span class="text-[#D91E18]">*</span></label>
+                <label class="block text-sm font-medium text-[var(--estado-verde)]">Descripción de la Aceptación <span class="text-[var(--estado-rojo)]">*</span></label>
                 <textarea [(ngModel)]="contenido" name="contenido" rows="4"
                   placeholder="Explique qué información se está entregando y cualquier detalle relevante para el ciudadano..."
-                  class="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] text-sm resize-none transition-colors"></textarea>
-                <p class="text-xs text-[#065F46]">Describa la información que se entrega al ciudadano</p>
+                  class="w-full px-4 py-3 rounded-xl bg-white border border-[var(--ceniza-claro)] focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] text-sm resize-none transition-colors"></textarea>
+                <p class="text-xs text-[var(--estado-verde)]">Describa la información que se entrega al ciudadano</p>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[#065F46]">Formato de Entrega</label>
+                  <label class="block text-sm font-medium text-[var(--estado-verde)]">Formato de Entrega</label>
                   <select [(ngModel)]="formatoEntrega" name="formatoEntrega"
-                    class="w-full h-11 px-4 rounded-xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] cursor-pointer">
+                    class="w-full h-11 px-4 rounded-xl bg-white border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] cursor-pointer">
                     <option value="digital">Digital (correo electrónico)</option>
                     <option value="fisico">Físico (recojo en oficina)</option>
                     <option value="ambos">Ambos</option>
                   </select>
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[#065F46]">Plazo de Entrega (días)</label>
+                  <label class="block text-sm font-medium text-[var(--estado-verde)]">Plazo de Entrega (días)</label>
                   <select [(ngModel)]="plazoEntrega" name="plazoEntrega"
-                    class="w-full h-11 px-4 rounded-xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 focus:border-[#10B981] cursor-pointer">
+                    class="w-full h-11 px-4 rounded-xl bg-white border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] cursor-pointer">
                     <option [ngValue]="3">3 días hábiles</option>
                     <option [ngValue]="5">5 días hábiles</option>
                     <option [ngValue]="10">10 días hábiles</option>
@@ -172,9 +176,9 @@
             @if (decision === 'denegar') {
             <div class="space-y-4">
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-[#1a1a2e]">Causal de Denegatoria <span class="text-[#D91E18]">*</span></label>
+                <label class="block label">Causal de Denegatoria <span class="text-[var(--estado-rojo)]">*</span></label>
                 <select [(ngModel)]="causalDenegatoria" name="causalDenegatoria" required
-                  class="w-full h-11 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors cursor-pointer">
+                  class="w-full h-11 px-4 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] transition-colors cursor-pointer">
                   <option value="">Seleccione la causal</option>
                   @for (causal of causales(); track causal) {
                     <option [value]="causal">{{ causal }}</option>
@@ -186,28 +190,28 @@
               </div>
 
               @if (causalDenegatoria) {
-                <div class="bg-[#FFFBEB] border border-[#F59E0B] rounded-xl p-4 flex items-start gap-3">
-                  <svg class="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="bg-[var(--estado-ambar-suave)] border border-[var(--estado-ambar)] rounded-xl p-4 flex items-start gap-3">
+                  <svg class="w-5 h-5 text-[var(--estado-ambar)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                   <div>
-                    <p class="text-sm font-semibold text-[#92400E]">OBLIGATORIO completar todos los campos</p>
-                    <p class="text-sm text-[#92400E]">Debe proporcionar una descripción, el fundamento legal y evidencia que sustente la causal de denegatoria</p>
+                    <p class="text-sm font-semibold text-[var(--estado-ambar)]">OBLIGATORIO completar todos los campos</p>
+                    <p class="text-sm text-[var(--estado-ambar)]">Debe proporcionar una descripción, el fundamento legal y evidencia que sustente la causal de denegatoria</p>
                   </div>
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[#1a1a2e]">Descripción de la Denegación <span class="text-[#D91E18]">*</span></label>
+                  <label class="block label">Descripción de la Denegación <span class="text-[var(--estado-rojo)]">*</span></label>
                   <textarea [(ngModel)]="contenido" name="contenido" rows="4"
                     placeholder="Explique de manera clara los motivos por los cuales se deniega la solicitud..."
-                    class="w-full px-4 py-3 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] text-sm resize-none transition-colors"></textarea>
-                  <p class="text-xs text-gray-500">Proporcione una explicación clara y detallada para el ciudadano</p>
+                    class="w-full px-4 py-3 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] text-sm resize-none transition-colors"></textarea>
+                  <p class="text-xs text-[var(--niebla)]">Proporcione una explicación clara y detallada para el ciudadano</p>
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[#1a1a2e]">Fundamento Legal (Ley/Artículo) <span class="text-[#D91E18]">*</span></label>
+                  <label class="block label">Fundamento Legal (Ley/Artículo) <span class="text-[var(--estado-rojo)]">*</span></label>
                   <textarea [(ngModel)]="fundamentoLegal" name="fundamentoLegal" rows="6"
                     placeholder="Ej: Artículo 17° de la Ley N° 27806 - Información Confidencial: La información relacionada con..."
-                    class="w-full px-4 py-3 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] text-sm resize-none transition-colors"></textarea>
-                  <p class="text-xs text-gray-500">Debe citar la ley y artículo específico que respalda la denegatoria</p>
+                    class="w-full px-4 py-3 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] text-sm resize-none transition-colors"></textarea>
+                  <p class="text-xs text-[var(--niebla)]">Debe citar la ley y artículo específico que respalda la denegatoria</p>
                 </div>
               }
             </div>
@@ -216,7 +220,7 @@
             <!-- Submit -->
             <div class="space-y-3 pt-4">
               <button type="button" (click)="enviarRespuesta()" [disabled]="loading()"
-                class="w-full h-12 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                class="w-full h-12 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-[var(--carbon)] rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                 @if (loading()) {
                   <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Enviando...
@@ -229,9 +233,9 @@
           }
 
           <!-- Info -->
-          <div class="bg-blue-50/80 border border-blue-100 rounded-xl p-4 mt-2">
-            <h4 class="text-sm text-blue-900 font-medium mb-2">Información Importante</h4>
-            <ul class="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <div class="bg-[var(--estado-azul-suave)]/80 border border-[var(--estado-azul-borde)] rounded-xl p-4 mt-2">
+            <h4 class="text-sm text-[var(--estado-azul)] font-medium mb-2">Información Importante</h4>
+            <ul class="text-sm text-[var(--estado-azul)] space-y-1 list-disc list-inside">
               <li>Tiene 10 días hábiles para responder a la solicitud desde su recepción</li>
               <li>Si deniega por información confidencial/reservada/secreta, debe fundamentar legalmente</li>
               <li>El ciudadano puede apelar su decisión ante el TTAIP</li>
@@ -242,28 +246,28 @@
       </div>
 
       <!-- Solicitud Details Card -->
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden mt-5">
-        <div class="border-b border-gray-100 px-6 py-4">
-          <h3 class="text-[#1a1a2e] font-semibold">Datos de la Solicitud</h3>
+      <div class="card overflow-hidden mt-5">
+        <div class="border-b border-[var(--ceniza-claro)] px-6 py-4">
+          <h3 class="text-[var(--carbon)] font-semibold">Datos de la Solicitud</h3>
         </div>
         <div class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 class="text-sm text-gray-400 mb-1">Número de Expediente</h4>
-              <p class="font-mono text-[#1a1a2e]">{{ solicitud()!.expediente }}</p>
+              <h4 class="text-sm text-[var(--niebla)] mb-1">Número de Expediente</h4>
+              <p class="font-mono text-[var(--carbon)]">{{ solicitud()!.expediente }}</p>
             </div>
             <div>
-              <h4 class="text-sm text-gray-400 mb-1">Entidad Responsable</h4>
-              <p class="text-[#1a1a2e]">{{ solicitud()!.entidadNombre }}</p>
+              <h4 class="text-sm text-[var(--niebla)] mb-1">Entidad Responsable</h4>
+              <p class="text-[var(--carbon)]">{{ solicitud()!.entidadNombre }}</p>
             </div>
           </div>
           <div class="mt-6">
-            <h4 class="text-sm text-gray-400 mb-1">Asunto</h4>
-            <p class="text-[#1a1a2e]">{{ solicitud()!.asunto }}</p>
+            <h4 class="text-sm text-[var(--niebla)] mb-1">Asunto</h4>
+            <p class="text-[var(--carbon)]">{{ solicitud()!.asunto }}</p>
           </div>
           <div class="mt-6">
-            <h4 class="text-sm text-gray-400 mb-1">Descripción</h4>
-            <p class="text-gray-600 leading-relaxed">{{ solicitud()!.descripcion }}</p>
+            <h4 class="text-sm text-[var(--niebla)] mb-1">Descripción</h4>
+            <p class="text-[var(--humo)] leading-relaxed">{{ solicitud()!.descripcion }}</p>
           </div>
         </div>
       </div>

@@ -15,6 +15,18 @@ interface Usuario {
   activo: boolean;
 }
 
+interface ChartDatum {
+  label: string;
+  value: number;
+  percentage: number;
+  color: string;
+}
+
+interface DonutChartDatum extends ChartDatum {
+  dashArray: string;
+  dashOffset: string;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   imports: [FormsModule, DatePipe],
@@ -85,6 +97,8 @@ export class AdminDashboardComponent implements OnInit {
     password: '',
     tipoUsuario: ''
   };
+
+  readonly donutCircumference = 2 * Math.PI * 42;
 
   private entidadIdEditando: number | null = null;
 
@@ -241,6 +255,67 @@ export class AdminDashboardComponent implements OnInit {
       .slice(0, 5);
   }
 
+  solicitudesChartData(): ChartDatum[] {
+    const total = this.totalSolicitudes();
+    const source = [
+      { label: 'Pendientes', value: this.pendientes(), color: 'var(--estado-ambar)' },
+      { label: 'En proceso', value: this.enProceso(), color: 'var(--estado-azul)' },
+      { label: 'Respondidas', value: this.respondidas(), color: 'var(--estado-verde)' },
+      { label: 'Denegadas', value: this.denegadas(), color: 'var(--accent-violet)' },
+      { label: 'Vencidas', value: this.vencidas(), color: 'var(--estado-rojo)' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
+  apelacionesChartData(): ChartDatum[] {
+    const total = this.totalApelaciones();
+    const source = [
+      { label: 'Pendientes', value: this.apelacionesPendientes(), color: 'var(--estado-ambar)' },
+      { label: 'En analisis', value: this.apelacionesEnAnalisis(), color: 'var(--estado-azul)' },
+      { label: 'Resueltas', value: this.apelacionesResueltas(), color: 'var(--estado-verde)' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
+  apelacionesDonutChartData(): DonutChartDatum[] {
+    const segments = this.apelacionesChartData().filter((item) => item.value > 0);
+    let accumulated = 0;
+
+    return segments.map((item) => {
+      const arc = this.donutCircumference * (item.percentage / 100);
+      const donutItem: DonutChartDatum = {
+        ...item,
+        dashArray: `${arc} ${this.donutCircumference - arc}`,
+        dashOffset: `-${accumulated}`,
+      };
+      accumulated += arc;
+      return donutItem;
+    });
+  }
+
+  usuariosChartData(): ChartDatum[] {
+    const total = this.totalUsuarios();
+    const source = [
+      { label: 'Ciudadanos', value: this.ciudadanos(), color: 'var(--estado-azul)' },
+      { label: 'Funcionarios', value: this.funcionarios(), color: 'var(--accent-violet)' },
+      { label: 'Miembros TTAIP', value: this.miembrosTTAIP(), color: 'var(--estado-ambar)' },
+      { label: 'Administradores', value: this.administradores(), color: 'var(--estado-rojo)' },
+    ];
+
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
   abrirModalEntidad(): void {
     this.nuevaEntidad = { nombre: '', acronimo: '', direccion: '', telefono: '', email: '', descripcion: '' };
     this.entidadEditando.set(false);
@@ -340,30 +415,37 @@ export class AdminDashboardComponent implements OnInit {
 
   getTipoUsuarioClass(tipo: string): string {
     const clases: { [key: string]: string } = {
-      'CIUDADANO': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#EFF6FF] text-[#2563EB]',
-      'FUNCIONARIO': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#F5F3FF] text-[#7C3AED]',
-      'TTAIP': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FFFBEB] text-[#D97706]',
-      'ADMINISTRADOR': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FEF2F2] text-[#DC2626]'
+      'CIUDADANO': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'FUNCIONARIO': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--accent-violet-soft)] text-[var(--accent-violet)]',
+      'TTAIP': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'ADMINISTRADOR': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]'
     };
-    return clases[tipo] || 'px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800';
+    return clases[tipo] || 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
   getEstadoSolicitudClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FFFBEB] text-[#92400E]',
-      'EN_REVISION': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#EFF6FF] text-[#1E40AF]',
-      'PENDIENTE_INFORMACION': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FFF7ED] text-[#9A3412]',
-      'RESPONDIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#DCFCE7] text-[#065F46]',
-      'DENEGADA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FEE2E2] text-[#991B1B]',
-      'VENCIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700',
-      'CONCLUIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700'
+      'RECEPCIONADA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'EN_REVISION': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'PENDIENTE_INFORMACION': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'RESPONDIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
+      'DENEGADA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
+      'VENCIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--nieve)] text-[var(--humo)]',
+      'CONCLUIDA': 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--nieve)] text-[var(--humo)]'
     };
-    return clases[estado] || 'px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700';
+    return clases[estado] || 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--nieve)] text-[var(--humo)]';
   }
 
   private mostrarMensaje(msg: string): void {
     this.mensaje.set(msg);
     setTimeout(() => this.mensaje.set(''), 3000);
+  }
+
+  private toPercent(value: number, total: number): number {
+    if (value <= 0 || total <= 0) {
+      return 0;
+    }
+    return Number(((value / total) * 100).toFixed(1));
   }
 }
 

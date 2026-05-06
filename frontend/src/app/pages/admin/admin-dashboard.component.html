@@ -1,18 +1,18 @@
-<div class="min-h-screen bg-[#F8F9FB]">
+<div class="saip-page min-h-screen bg-[var(--nieve)]">
   <!-- Gradient Header -->
-  <div class="bg-gradient-to-br from-[#C8102E] via-[#A00D24] to-[#6B0919] pt-28 pb-12 px-4 relative overflow-hidden">
-    <div class="absolute top-[-20%] right-[-5%] w-[500px] h-[500px] rounded-full bg-white/[0.03]"></div>
+  <div class="bg-gradient-peru-hero pt-28 pb-12 px-4 relative overflow-hidden">
+    <div class="absolute top-[-20%] right-[-5%] w-[500px] h-[500px] rounded-full border border-white/[0.04]"></div>
     <div class="absolute bottom-[-30%] left-[-10%] w-[400px] h-[400px] rounded-full bg-white/[0.02]"></div>
     <div class="max-w-7xl mx-auto relative z-10">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
+        <div class="w-12 h-12 bg-black/[0.03] backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
           <!-- Shield icon -->
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg class="w-6 h-6 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <div class="text-white">
-          <p class="text-white/50 text-sm">Administrador del Sistema</p>
-          <h1 class="text-2xl md:text-3xl tracking-tight">Panel de Administración</h1>
-          <p class="text-white/60 text-sm">Sistema SAIP — Control Total</p>
+        <div class="text-[var(--carbon)]">
+          <p class="text-[var(--carbon)]/50 text-sm font-medium">Administrador del Sistema</p>
+          <h1 class="text-2xl md:text-3xl tracking-tight font-extrabold">Panel de Administración</h1>
+          <p class="text-[var(--carbon)]/50 text-sm">Sistema SAIP — Control Total</p>
         </div>
       </div>
     </div>
@@ -20,26 +20,26 @@
 
   <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16 relative z-10">
     @if (mensaje()) {
-      <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-6 animate-fade-in">
-        <p class="text-sm text-green-600">{{ mensaje() }}</p>
+      <div class="bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-3 mb-6 animate-fade-in">
+        <p class="text-sm text-[var(--estado-verde)]">{{ mensaje() }}</p>
       </div>
     }
     @if (error()) {
-      <div class="bg-[#FEF2F2] border border-[#C8102E]/15 rounded-xl p-3 mb-6 animate-fade-in">
-        <p class="text-sm text-[#991B1B]">{{ error() }}</p>
+      <div class="bg-[var(--peru-rojo-suave)] border border-[var(--peru-rojo)]/15 rounded-xl p-3 mb-6 animate-fade-in">
+        <p class="text-sm text-[var(--peru-rojo)]">{{ error() }}</p>
       </div>
     }
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div class="bg-white rounded-xl p-5 shadow-sm">
-        <div class="w-9 h-9 rounded-lg bg-[#FEF2F2] flex items-center justify-center mb-3">
-          <svg class="w-4 h-4 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-9 h-9 rounded-lg bg-[var(--peru-rojo-suave)] flex items-center justify-center mb-3">
+          <svg class="w-4 h-4 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
           </svg>
         </div>
-        <div class="text-2xl md:text-3xl font-bold text-[#1a1a2e] mb-0.5">{{ totalSolicitudes() }}</div>
-        <div class="text-sm text-gray-500">Total Solicitudes</div>
-        <div class="text-xs text-[#059669] flex items-center gap-1 mt-1.5">
+        <div class="text-2xl md:text-3xl font-bold text-[var(--carbon)] mb-0.5">{{ totalSolicitudes() }}</div>
+        <div class="text-sm text-[var(--niebla)]">Total Solicitudes</div>
+        <div class="text-xs text-[var(--estado-verde)] flex items-center gap-1 mt-1.5">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-width="2" d="m3 17 6-6 4 4 8-8"/>
           </svg>
@@ -48,38 +48,38 @@
       </div>
 
       <div class="bg-white rounded-xl p-5 shadow-sm">
-        <div class="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center mb-3">
-          <svg class="w-4 h-4 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center mb-3">
+          <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
           </svg>
         </div>
-        <div class="text-2xl md:text-3xl font-bold text-[#1a1a2e] mb-0.5">{{ totalUsuarios() }}</div>
-        <div class="text-sm text-gray-500">Usuarios Activos</div>
+        <div class="text-2xl md:text-3xl font-bold text-[var(--carbon)] mb-0.5">{{ totalUsuarios() }}</div>
+        <div class="text-sm text-[var(--niebla)]">Usuarios Activos</div>
       </div>
 
       <div class="bg-white rounded-xl p-5 shadow-sm">
-        <div class="w-9 h-9 rounded-lg bg-[#F5F3FF] flex items-center justify-center mb-3">
-          <svg class="w-4 h-4 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center mb-3">
+          <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10v11M20 10v11"/>
           </svg>
         </div>
-        <div class="text-2xl md:text-3xl font-bold text-[#1a1a2e] mb-0.5">{{ totalEntidades() }}</div>
-        <div class="text-sm text-gray-500">Entidades Registradas</div>
-        <div class="text-xs text-gray-400 mt-1">{{ entidadesActivas() }} activas</div>
+        <div class="text-2xl md:text-3xl font-bold text-[var(--carbon)] mb-0.5">{{ totalEntidades() }}</div>
+        <div class="text-sm text-[var(--niebla)]">Entidades Registradas</div>
+        <div class="text-xs text-[var(--niebla)] mt-1">{{ entidadesActivas() }} activas</div>
       </div>
 
       <div class="bg-white rounded-xl p-5 shadow-sm">
-        <div class="w-9 h-9 rounded-lg bg-[#F0FDF4] flex items-center justify-center mb-3">
-          <svg class="w-4 h-4 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-9 h-9 rounded-lg bg-[var(--estado-verde-suave)] flex items-center justify-center mb-3">
+          <svg class="w-4 h-4 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="8" r="6"/>
             <path stroke-width="2" d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
           </svg>
         </div>
-        <div class="text-2xl md:text-3xl font-bold text-[#059669] mb-0.5">{{ tasaCumplimiento() }}%</div>
-        <div class="text-sm text-gray-500">Tasa Cumplimiento</div>
-        <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-          <div class="bg-[#059669] h-1.5 rounded-full transition-all" [style.width]="tasaCumplimiento() + '%'"></div>
+        <div class="text-2xl md:text-3xl font-bold text-[var(--estado-verde)] mb-0.5">{{ tasaCumplimiento() }}%</div>
+        <div class="text-sm text-[var(--niebla)]">Tasa Cumplimiento</div>
+        <div class="w-full bg-[var(--ceniza-claro)] rounded-full h-1.5 mt-2">
+          <div class="bg-[var(--estado-verde)] h-1.5 rounded-full transition-all" [style.width]="tasaCumplimiento() + '%'"></div>
         </div>
       </div>
     </div>
@@ -88,11 +88,11 @@
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-2xl font-bold text-[#2563EB] mb-0.5">{{ enProceso() }}</div>
-            <p class="text-sm text-gray-500">En Proceso</p>
+            <div class="text-2xl font-bold text-[var(--estado-azul)] mb-0.5">{{ enProceso() }}</div>
+            <p class="text-sm text-[var(--niebla)]">En Proceso</p>
           </div>
-          <div class="w-9 h-9 rounded-lg bg-[#EFF6FF] flex items-center justify-center">
-            <svg class="w-4 h-4 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center">
+            <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           </div>
@@ -102,11 +102,11 @@
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-2xl font-bold text-[#059669] mb-0.5">{{ respondidas() }}</div>
-            <p class="text-sm text-gray-500">Respondidas</p>
+            <div class="text-2xl font-bold text-[var(--estado-verde)] mb-0.5">{{ respondidas() }}</div>
+            <p class="text-sm text-[var(--niebla)]">Respondidas</p>
           </div>
-          <div class="w-9 h-9 rounded-lg bg-[#F0FDF4] flex items-center justify-center">
-            <svg class="w-4 h-4 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-lg bg-[var(--estado-verde-suave)] flex items-center justify-center">
+            <svg class="w-4 h-4 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-width="2" d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/>
             </svg>
           </div>
@@ -116,11 +116,11 @@
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-2xl font-bold text-[#DC2626] mb-0.5">{{ vencidas() }}</div>
-            <p class="text-sm text-gray-500">Vencidas</p>
+            <div class="text-2xl font-bold text-[var(--estado-rojo)] mb-0.5">{{ vencidas() }}</div>
+            <p class="text-sm text-[var(--niebla)]">Vencidas</p>
           </div>
-          <div class="w-9 h-9 rounded-lg bg-[#FEF2F2] flex items-center justify-center">
-            <svg class="w-4 h-4 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-lg bg-[var(--peru-rojo-suave)] flex items-center justify-center">
+            <svg class="w-4 h-4 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
             </svg>
           </div>
@@ -130,11 +130,11 @@
       <div class="bg-white rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-2xl font-bold text-[#7C3AED] mb-0.5">{{ totalApelaciones() }}</div>
-            <p class="text-sm text-gray-500">Apelaciones</p>
+            <div class="text-2xl font-bold text-[var(--accent-violet)] mb-0.5">{{ totalApelaciones() }}</div>
+            <p class="text-sm text-[var(--niebla)]">Apelaciones</p>
           </div>
-          <div class="w-9 h-9 rounded-lg bg-[#F5F3FF] flex items-center justify-center">
-            <svg class="w-4 h-4 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center">
+            <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21"/>
             </svg>
           </div>
@@ -143,10 +143,10 @@
     </div>
 
     <!-- Tabs Section -->
-    <div class="bg-white rounded-xl shadow-sm p-1 mb-5 grid grid-cols-5 gap-1">
+    <div class="card p-1 mb-5 grid grid-cols-5 gap-1">
       <button (click)="cambiarTab('resumen')"
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        [class]="tabActual() === 'resumen' ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:bg-gray-50'">
+        [class]="tabActual() === 'resumen' ? 'bg-[var(--peru-rojo)] text-white' : 'text-[var(--niebla)] hover:bg-[var(--nieve)]'">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/>
         </svg>
@@ -154,7 +154,7 @@
       </button>
       <button (click)="cambiarTab('entidades')"
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        [class]="tabActual() === 'entidades' ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:bg-gray-50'">
+        [class]="tabActual() === 'entidades' ? 'bg-[var(--peru-rojo)] text-white' : 'text-[var(--niebla)] hover:bg-[var(--nieve)]'">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10v11M20 10v11"/>
         </svg>
@@ -162,7 +162,7 @@
       </button>
       <button (click)="cambiarTab('usuarios')"
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        [class]="tabActual() === 'usuarios' ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:bg-gray-50'">
+        [class]="tabActual() === 'usuarios' ? 'bg-[var(--peru-rojo)] text-white' : 'text-[var(--niebla)] hover:bg-[var(--nieve)]'">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
         </svg>
@@ -170,7 +170,7 @@
       </button>
       <button (click)="cambiarTab('solicitudes')"
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        [class]="tabActual() === 'solicitudes' ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:bg-gray-50'">
+        [class]="tabActual() === 'solicitudes' ? 'bg-[var(--peru-rojo)] text-white' : 'text-[var(--niebla)] hover:bg-[var(--nieve)]'">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
         </svg>
@@ -178,7 +178,7 @@
       </button>
       <button (click)="cambiarTab('reportes')"
         class="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        [class]="tabActual() === 'reportes' ? 'bg-[#C8102E] text-white' : 'text-gray-500 hover:bg-gray-50'">
+        [class]="tabActual() === 'reportes' ? 'bg-[var(--peru-rojo)] text-white' : 'text-[var(--niebla)] hover:bg-[var(--nieve)]'">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
         </svg>
@@ -191,10 +191,10 @@
         @if (tabActual() === 'resumen') {
           <div class="grid md:grid-cols-2 gap-5 mb-5">
             <!-- Top Entidades con Solicitudes -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div class="p-5 border-b border-gray-100">
-                <h3 class="font-semibold text-[#1a1a2e] flex items-center gap-2">
-                  <svg class="w-4 h-4 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
+            <div class="card overflow-hidden">
+              <div class="p-5 border-b border-[var(--ceniza-claro)]">
+                <h3 class="font-semibold text-[var(--carbon)] flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
                   Top Entidades con más Solicitudes
                 </h3>
               </div>
@@ -202,11 +202,11 @@
                 @for (entidad of topEntidades(); track entidad.id) {
                   <div>
                     <div class="flex justify-between items-center mb-1.5">
-                      <span class="text-sm text-gray-700 truncate">{{ entidad.nombre }}</span>
-                      <span class="text-sm font-semibold text-[#1a1a2e]">{{ entidad.solicitudesAsignadas || 0 }}</span>
+                      <span class="text-sm text-[var(--humo)] truncate">{{ entidad.nombre }}</span>
+                      <span class="text-sm font-semibold text-[var(--carbon)]">{{ entidad.solicitudesAsignadas || 0 }}</span>
                     </div>
-                    <div class="w-full bg-gray-100 rounded-full h-1.5">
-                      <div class="bg-[#C8102E] h-1.5 rounded-full transition-all" [style.width]="((entidad.solicitudesAsignadas || 0) / (totalSolicitudes() || 1) * 100) + '%'"></div>
+                    <div class="w-full bg-[var(--nieve)] rounded-full h-1.5">
+                      <div class="bg-[var(--peru-rojo)] h-1.5 rounded-full transition-all" [style.width]="((entidad.solicitudesAsignadas || 0) / (totalSolicitudes() || 1) * 100) + '%'"></div>
                     </div>
                   </div>
                 }
@@ -215,131 +215,189 @@
 
             <!-- Estado de Solicitudes + Apelaciones TTAIP -->
             <div class="space-y-5">
-              <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-gray-100">
-                  <h3 class="font-semibold text-[#1a1a2e] flex items-center gap-2">
-                    <svg class="w-4 h-4 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>
+              <div class="card overflow-hidden">
+                <div class="p-5 border-b border-[var(--ceniza-claro)]">
+                  <h3 class="font-semibold text-[var(--carbon)] flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>
                     Estado de Solicitudes
                   </h3>
                 </div>
-                <div class="p-5 space-y-2.5">
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Total</span><span class="text-sm font-bold text-[#1a1a2e]">{{ totalSolicitudes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Pendientes</span><span class="text-sm font-semibold text-[#D97706]">{{ pendientes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">En Proceso</span><span class="text-sm font-semibold text-[#2563EB]">{{ enProceso() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Respondidas</span><span class="text-sm font-semibold text-[#059669]">{{ respondidas() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Denegadas</span><span class="text-sm font-semibold text-[#D97706]">{{ denegadas() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Vencidas</span><span class="text-sm font-semibold text-[#DC2626]">{{ vencidas() }}</span></div>
+                <div class="p-5 space-y-4">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-[var(--niebla)]">Total</span>
+                    <span class="text-sm font-bold text-[var(--carbon)]">{{ totalSolicitudes() }}</span>
+                  </div>
+                  <div class="w-full h-3 bg-[var(--nieve)] rounded-full overflow-hidden flex">
+                    @for (segment of solicitudesChartData(); track segment.label) {
+                      @if (segment.value > 0) {
+                        <div class="h-full transition-all" [style.width.%]="segment.percentage" [style.background-color]="segment.color"></div>
+                      }
+                    }
+                  </div>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                    @for (segment of solicitudesChartData(); track segment.label) {
+                      <div class="flex items-center justify-between gap-2 text-sm">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background-color]="segment.color"></span>
+                          <span class="text-[var(--niebla)] truncate">{{ segment.label }}</span>
+                        </div>
+                        <span class="text-[var(--carbon)] font-semibold">{{ segment.value }}</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               </div>
 
-              <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-gray-100">
-                  <h3 class="font-semibold text-[#1a1a2e] flex items-center gap-2">
-                    <svg class="w-4 h-4 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912"/></svg>
+              <div class="card overflow-hidden">
+                <div class="p-5 border-b border-[var(--ceniza-claro)]">
+                  <h3 class="font-semibold text-[var(--carbon)] flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912"/></svg>
                     Apelaciones TTAIP
                   </h3>
                 </div>
-                <div class="p-5 space-y-2.5">
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Total</span><span class="text-sm font-bold text-[#1a1a2e]">{{ totalApelaciones() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Pendientes</span><span class="text-sm font-semibold text-[#D97706]">{{ apelacionesPendientes() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">En Análisis</span><span class="text-sm font-semibold text-[#2563EB]">{{ apelacionesEnAnalisis() }}</span></div>
-                  <div class="flex justify-between items-center"><span class="text-sm text-gray-500">Resueltas</span><span class="text-sm font-semibold text-[#059669]">{{ apelacionesResueltas() }}</span></div>
+                <div class="p-5">
+                  <div class="flex items-center gap-5">
+                    <div class="relative w-32 h-32 shrink-0">
+                      <svg class="w-32 h-32 -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                        <circle cx="60" cy="60" r="42" fill="none" stroke="var(--ceniza-claro)" stroke-width="14"></circle>
+                        @for (segment of apelacionesDonutChartData(); track segment.label) {
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r="42"
+                            fill="none"
+                            stroke-width="14"
+                            [attr.stroke]="segment.color"
+                            [attr.stroke-dasharray]="segment.dashArray"
+                            [attr.stroke-dashoffset]="segment.dashOffset"></circle>
+                        }
+                      </svg>
+                      <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-2xl font-bold text-[var(--carbon)]">{{ totalApelaciones() }}</span>
+                        <span class="text-[11px] text-[var(--niebla)] uppercase tracking-wide">Total</span>
+                      </div>
+                    </div>
+                    <div class="flex-1 space-y-2.5">
+                      @for (segment of apelacionesChartData(); track segment.label) {
+                        <div class="flex items-center justify-between text-sm gap-2">
+                          <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background-color]="segment.color"></span>
+                            <span class="text-[var(--niebla)] truncate">{{ segment.label }}</span>
+                          </div>
+                          <span class="text-[var(--carbon)] font-semibold">{{ segment.value }} ({{ segment.percentage }}%)</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Usuarios por Tipo -->
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-5 border-b border-gray-100">
-              <h3 class="font-semibold text-[#1a1a2e] flex items-center gap-2">
-                <svg class="w-4 h-4 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <div class="card overflow-hidden">
+            <div class="p-5 border-b border-[var(--ceniza-claro)]">
+              <h3 class="font-semibold text-[var(--carbon)] flex items-center gap-2">
+                <svg class="w-4 h-4 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                 Usuarios por Tipo
               </h3>
             </div>
             <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div class="text-center p-4 rounded-xl bg-[#EFF6FF]">
-                <div class="text-2xl font-bold text-[#2563EB]">{{ ciudadanos() }}</div>
-                <div class="text-xs text-[#2563EB]/70 mt-1">Ciudadanos</div>
+              <div class="text-center p-4 rounded-xl bg-[var(--estado-azul-suave)]">
+                <div class="text-2xl font-bold text-[var(--estado-azul)]">{{ ciudadanos() }}</div>
+                <div class="text-xs text-[var(--estado-azul)]/70 mt-1">Ciudadanos</div>
               </div>
-              <div class="text-center p-4 rounded-xl bg-[#F5F3FF]">
-                <div class="text-2xl font-bold text-[#7C3AED]">{{ funcionarios() }}</div>
-                <div class="text-xs text-[#7C3AED]/70 mt-1">Funcionarios</div>
+              <div class="text-center p-4 rounded-xl bg-[var(--accent-violet-soft)]">
+                <div class="text-2xl font-bold text-[var(--accent-violet)]">{{ funcionarios() }}</div>
+                <div class="text-xs text-[var(--accent-violet)]/70 mt-1">Funcionarios</div>
               </div>
-              <div class="text-center p-4 rounded-xl bg-[#FFFBEB]">
-                <div class="text-2xl font-bold text-[#D97706]">{{ miembrosTTAIP() }}</div>
-                <div class="text-xs text-[#D97706]/70 mt-1">Miembros TTAIP</div>
+              <div class="text-center p-4 rounded-xl bg-[var(--estado-ambar-suave)]">
+                <div class="text-2xl font-bold text-[var(--estado-ambar)]">{{ miembrosTTAIP() }}</div>
+                <div class="text-xs text-[var(--estado-ambar)]/70 mt-1">Miembros TTAIP</div>
               </div>
-              <div class="text-center p-4 rounded-xl bg-[#FEF2F2]">
-                <div class="text-2xl font-bold text-[#DC2626]">{{ administradores() }}</div>
-                <div class="text-xs text-[#DC2626]/70 mt-1">Administradores</div>
+              <div class="text-center p-4 rounded-xl bg-[var(--peru-rojo-suave)]">
+                <div class="text-2xl font-bold text-[var(--estado-rojo)]">{{ administradores() }}</div>
+                <div class="text-xs text-[var(--estado-rojo)]/70 mt-1">Administradores</div>
               </div>
+            </div>
+            <div class="px-5 pb-5 space-y-2.5">
+              @for (segment of usuariosChartData(); track segment.label) {
+                <div>
+                  <div class="flex items-center justify-between text-sm mb-1.5">
+                    <span class="text-[var(--niebla)]">{{ segment.label }}</span>
+                    <span class="font-semibold text-[var(--carbon)]">{{ segment.value }} ({{ segment.percentage }}%)</span>
+                  </div>
+                  <div class="w-full h-2 bg-[var(--nieve)] rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all" [style.width.%]="segment.percentage" [style.background-color]="segment.color"></div>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         }
 
         @if (tabActual() === 'entidades') {
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h3 class="font-semibold text-[#1a1a2e]">Gestión de Entidades</h3>
-              <button (click)="abrirModalEntidad()" class="px-4 py-2 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+          <div class="card overflow-hidden">
+            <div class="p-5 border-b border-[var(--ceniza-claro)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h3 class="font-semibold text-[var(--carbon)]">Gestión de Entidades</h3>
+              <button (click)="abrirModalEntidad()" class="px-4 py-2 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14M5 12h14"/></svg>
                 Nueva Entidad
               </button>
             </div>
 
-            <div class="p-4 border-b border-gray-100">
+            <div class="p-4 border-b border-[var(--ceniza-claro)]">
               <input type="text" [(ngModel)]="busquedaEntidad" placeholder="Buscar por nombre o acrónimo..."
-                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+                class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
             </div>
 
             @if (loading()) {
               <div class="py-16 text-center">
-                <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
             } @else {
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="bg-[#F8F9FB]">
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entidad</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitudes</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cumplimiento</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    <tr class="bg-[var(--nieve)]">
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Entidad</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Email</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Solicitudes</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Cumplimiento</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Estado</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
                     @for (entidad of entidadesFiltradas(); track entidad.id) {
-                      <tr class="hover:bg-[#F8F9FB]/60 transition-colors">
+                      <tr class="hover:bg-[var(--nieve)]/60 transition-colors">
                         <td class="px-4 py-3.5">
-                          <div class="font-medium text-[#1a1a2e]">{{ entidad.nombre }}</div>
-                          <div class="text-xs text-gray-400">{{ entidad.acronimo }}</div>
+                          <div class="font-medium text-[var(--carbon)]">{{ entidad.nombre }}</div>
+                          <div class="text-xs text-[var(--niebla)]">{{ entidad.acronimo }}</div>
                         </td>
-                        <td class="px-4 py-3.5 text-gray-500">{{ entidad.email }}</td>
-                        <td class="px-4 py-3.5 font-medium text-[#1a1a2e]">{{ entidad.solicitudesAsignadas || 0 }}</td>
+                        <td class="px-4 py-3.5 text-[var(--niebla)]">{{ entidad.email }}</td>
+                        <td class="px-4 py-3.5 font-medium text-[var(--carbon)]">{{ entidad.solicitudesAsignadas || 0 }}</td>
                         <td class="px-4 py-3.5">
                           <div class="flex items-center gap-2">
-                            <div class="flex-1 bg-gray-100 rounded-full h-1.5 w-20">
-                              <div [class]="(entidad.tasaCumplimiento || 0) >= 85 ? 'bg-[#059669] h-1.5 rounded-full' : ((entidad.tasaCumplimiento || 0) >= 70 ? 'bg-[#D97706] h-1.5 rounded-full' : 'bg-[#DC2626] h-1.5 rounded-full')"
+                            <div class="flex-1 bg-[var(--nieve)] rounded-full h-1.5 w-20">
+                              <div [class]="(entidad.tasaCumplimiento || 0) >= 85 ? 'bg-[var(--estado-verde)] h-1.5 rounded-full' : ((entidad.tasaCumplimiento || 0) >= 70 ? 'bg-[var(--estado-ambar)] h-1.5 rounded-full' : 'bg-[var(--estado-rojo)] h-1.5 rounded-full')"
                                    [style.width]="(entidad.tasaCumplimiento || 0) + '%'"></div>
                             </div>
-                            <span class="text-sm font-medium text-[#1a1a2e]">{{ entidad.tasaCumplimiento || 0 }}%</span>
+                            <span class="label">{{ entidad.tasaCumplimiento || 0 }}%</span>
                           </div>
                         </td>
                         <td class="px-4 py-3.5">
-                          <span [class]="entidad.activa ? 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#DCFCE7] text-[#065F46]' : 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FEE2E2] text-[#991B1B]'">
+                          <span [class]="entidad.activa ? 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]' : 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-rojo-suave)] text-[var(--peru-rojo)]'">
                             {{ entidad.activa ? 'Activa' : 'Inactiva' }}
                           </span>
                         </td>
                         <td class="px-4 py-3.5 text-right">
                           <div class="flex items-center justify-end gap-1">
-                            <button (click)="editarEntidad(entidad)" class="p-2 rounded-lg hover:bg-[#FFFBEB] transition-colors" title="Editar">
-                              <svg class="w-4 h-4 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path stroke-width="2" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <button (click)="editarEntidad(entidad)" class="p-2 rounded-lg hover:bg-[var(--estado-ambar-suave)] transition-colors" title="Editar">
+                              <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path stroke-width="2" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button (click)="cambiarEstadoEntidad(entidad)" class="p-2 rounded-lg hover:bg-[#FEF2F2] transition-colors" [title]="entidad.activa ? 'Desactivar' : 'Activar'">
-                              <svg class="w-4 h-4 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <button (click)="cambiarEstadoEntidad(entidad)" class="p-2 rounded-lg hover:bg-[var(--peru-rojo-suave)] transition-colors" [title]="entidad.activa ? 'Desactivar' : 'Activar'">
+                              <svg class="w-4 h-4 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                             </button>
                           </div>
                         </td>
@@ -353,10 +411,10 @@
         }
 
         @if (tabActual() === 'usuarios') {
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h3 class="font-semibold text-[#1a1a2e]">Gestión de Usuarios</h3>
-              <button (click)="abrirModalUsuario()" class="px-4 py-2 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+          <div class="card overflow-hidden">
+            <div class="p-5 border-b border-[var(--ceniza-claro)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h3 class="font-semibold text-[var(--carbon)]">Gestión de Usuarios</h3>
+              <button (click)="abrirModalUsuario()" class="px-4 py-2 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-width="2" d="M22 11v6M19 14h6"/>
                 </svg>
@@ -364,10 +422,10 @@
               </button>
             </div>
 
-            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
+            <div class="p-4 border-b border-[var(--ceniza-claro)] flex flex-col sm:flex-row gap-3">
               <input type="text" [(ngModel)]="busquedaUsuario" placeholder="Buscar por email..."
-                class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
-              <select [(ngModel)]="filtroTipoUsuario" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm min-w-[180px]">
+                class="flex-1 px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
+              <select [(ngModel)]="filtroTipoUsuario" class="px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm min-w-[180px]">
                 <option value="">Todos los tipos</option>
                 <option value="CIUDADANO">Ciudadano</option>
                 <option value="FUNCIONARIO">Funcionario</option>
@@ -378,50 +436,50 @@
 
             @if (loadingUsuarios()) {
               <div class="py-16 text-center">
-                <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
             } @else {
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="bg-[#F8F9FB]">
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Registro</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                    <tr class="bg-[var(--nieve)]">
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Usuario</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Tipo</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Fecha Registro</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Estado</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
                     @for (usuario of usuariosFiltrados(); track usuario.id) {
-                      <tr class="hover:bg-[#F8F9FB]/60 transition-colors">
+                      <tr class="hover:bg-[var(--nieve)]/60 transition-colors">
                         <td class="px-4 py-3.5">
                           <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-[#F5F3FF] flex items-center justify-center text-xs font-semibold text-[#7C3AED]">
+                            <div class="w-8 h-8 rounded-full bg-[var(--accent-violet-soft)] flex items-center justify-center text-xs font-semibold text-[var(--accent-violet)]">
                               {{ usuario.email.charAt(0).toUpperCase() }}
                             </div>
                             <div>
-                              <div class="font-medium text-[#1a1a2e]">{{ usuario.email }}</div>
-                              <div class="text-xs text-gray-400">ID #{{ usuario.id }}</div>
+                              <div class="font-medium text-[var(--carbon)]">{{ usuario.email }}</div>
+                              <div class="text-xs text-[var(--niebla)]">ID #{{ usuario.id }}</div>
                             </div>
                           </div>
                         </td>
                         <td class="px-4 py-3.5">
                           <span [class]="getTipoUsuarioClass(usuario.tipoUsuario)">{{ usuario.tipoUsuario }}</span>
                         </td>
-                        <td class="px-4 py-3.5 text-gray-500">{{ usuario.fechaRegistro | date:'dd/MM/yyyy' }}</td>
+                        <td class="px-4 py-3.5 text-[var(--niebla)]">{{ usuario.fechaRegistro | date:'dd/MM/yyyy' }}</td>
                         <td class="px-4 py-3.5">
-                          <span [class]="usuario.activo ? 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#DCFCE7] text-[#065F46]' : 'px-2.5 py-1 text-xs font-medium rounded-full bg-[#FEE2E2] text-[#991B1B]'">
+                          <span [class]="usuario.activo ? 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]' : 'px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--estado-rojo-suave)] text-[var(--peru-rojo)]'">
                             {{ usuario.activo ? 'Activo' : 'Inactivo' }}
                           </span>
                         </td>
                         <td class="px-4 py-3.5 text-right">
                           <div class="flex items-center justify-end gap-1">
-                            <button (click)="cambiarEstadoUsuario(usuario)" class="p-2 rounded-lg hover:bg-[#FFFBEB] transition-colors" [title]="usuario.activo ? 'Desactivar' : 'Activar'">
-                              <svg class="w-4 h-4 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            <button (click)="cambiarEstadoUsuario(usuario)" class="p-2 rounded-lg hover:bg-[var(--estado-ambar-suave)] transition-colors" [title]="usuario.activo ? 'Desactivar' : 'Activar'">
+                              <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                             </button>
-                            <button (click)="eliminarUsuario(usuario)" class="p-2 rounded-lg hover:bg-[#FEF2F2] transition-colors" title="Eliminar">
-                              <svg class="w-4 h-4 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path stroke-width="2" d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <button (click)="eliminarUsuario(usuario)" class="p-2 rounded-lg hover:bg-[var(--peru-rojo-suave)] transition-colors" title="Eliminar">
+                              <svg class="w-4 h-4 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path stroke-width="2" d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           </div>
                         </td>
@@ -435,15 +493,15 @@
         }
 
         @if (tabActual() === 'solicitudes') {
-          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="p-5 border-b border-gray-100">
-              <h3 class="font-semibold text-[#1a1a2e]">Todas las Solicitudes</h3>
+          <div class="card overflow-hidden">
+            <div class="p-5 border-b border-[var(--ceniza-claro)]">
+              <h3 class="font-semibold text-[var(--carbon)]">Todas las Solicitudes</h3>
             </div>
 
-            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
+            <div class="p-4 border-b border-[var(--ceniza-claro)] flex flex-col sm:flex-row gap-3">
               <input type="text" [(ngModel)]="busquedaSolicitud" placeholder="Buscar por expediente..."
-                class="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
-              <select [(ngModel)]="filtroEstadoSolicitud" class="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm min-w-[180px]">
+                class="flex-1 px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
+              <select [(ngModel)]="filtroEstadoSolicitud" class="px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm min-w-[180px]">
                 <option value="">Todos los estados</option>
                 <option value="RECEPCIONADA">Recepcionada</option>
                 <option value="EN_REVISION">En Revisión</option>
@@ -457,38 +515,38 @@
 
             @if (loadingSolicitudes()) {
               <div class="py-16 text-center">
-                <div class="w-8 h-8 border-3 border-[#C8102E] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
               </div>
             } @else {
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
-                    <tr class="bg-[#F8F9FB]">
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expediente</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ciudadano</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entidad</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apelación</th>
+                    <tr class="bg-[var(--nieve)]">
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Expediente</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Ciudadano</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Entidad</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Fecha</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Estado</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-[var(--niebla)] uppercase tracking-wider">Apelación</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100">
                     @for (solicitud of solicitudesFiltradas(); track solicitud.id) {
-                      <tr class="hover:bg-[#F8F9FB]/60 transition-colors">
-                        <td class="px-4 py-3.5 font-mono text-sm font-medium text-[#2563EB]">{{ solicitud.expediente }}</td>
-                        <td class="px-4 py-3.5 text-[#1a1a2e]">{{ solicitud.ciudadanoNombre }}</td>
-                        <td class="px-4 py-3.5 text-gray-500">{{ solicitud.entidadNombre }}</td>
-                        <td class="px-4 py-3.5 text-gray-500">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</td>
+                      <tr class="hover:bg-[var(--nieve)]/60 transition-colors">
+                        <td class="px-4 py-3.5 font-expediente text-sm font-medium text-[var(--estado-azul)]">{{ solicitud.expediente }}</td>
+                        <td class="px-4 py-3.5 text-[var(--carbon)]">{{ solicitud.ciudadanoNombre }}</td>
+                        <td class="px-4 py-3.5 text-[var(--niebla)]">{{ solicitud.entidadNombre }}</td>
+                        <td class="px-4 py-3.5 text-[var(--niebla)]">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</td>
                         <td class="px-4 py-3.5">
                           <span [class]="getEstadoSolicitudClass(solicitud.estado)">{{ solicitud.estado }}</span>
                         </td>
                         <td class="px-4 py-3.5">
                           @if (solicitud.apelacion) {
-                            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-[#F5F3FF] text-[#7C3AED]">
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--accent-violet-soft)] text-[var(--accent-violet)]">
                               {{ solicitud.apelacion.estado }}
                             </span>
                           } @else {
-                            <span class="text-gray-300">—</span>
+                            <span class="text-[var(--ceniza)]">—</span>
                           }
                         </td>
                       </tr>
@@ -503,124 +561,124 @@
         @if (tabActual() === 'reportes') {
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
             <!-- Solicitudes SAIP -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#059669]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--estado-verde)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#F0FDF4] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#059669]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>
+                  <div class="w-10 h-10 bg-[var(--estado-verde-suave)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-verde)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Solicitudes SAIP</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Solicitudes SAIP</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Exportar todas las solicitudes con filtros aplicados</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Exportar todas las solicitudes con filtros aplicados</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('solicitudes', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('solicitudes', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('solicitudes', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('solicitudes', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('solicitudes', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('solicitudes', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
 
             <!-- Entidades -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#2563EB]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--estado-azul)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#EFF6FF] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
+                  <div class="w-10 h-10 bg-[var(--estado-azul-suave)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Entidades</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Entidades</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Estadísticas de cumplimiento por entidad pública</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Estadísticas de cumplimiento por entidad pública</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('entidades', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('entidades', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('entidades', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('entidades', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('entidades', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('entidades', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
 
             <!-- Usuarios -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#7C3AED]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--accent-violet)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#F5F3FF] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#7C3AED]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  <div class="w-10 h-10 bg-[var(--accent-violet-soft)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Usuarios</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Usuarios</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Listado completo de usuarios del sistema</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Listado completo de usuarios del sistema</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('usuarios', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('usuarios', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('usuarios', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('usuarios', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('usuarios', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('usuarios', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
 
             <!-- Apelaciones -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#D97706]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--estado-ambar)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#FFFBEB] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#D97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg>
+                  <div class="w-10 h-10 bg-[var(--estado-ambar-suave)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Apelaciones</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Apelaciones</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Apelaciones del Tribunal TTAIP</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Apelaciones del Tribunal TTAIP</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('apelaciones', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('apelaciones', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('apelaciones', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('apelaciones', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('apelaciones', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('apelaciones', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
 
             <!-- Tiempos de Respuesta -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#DC2626]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--estado-rojo)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#FEF2F2] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#DC2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <div class="w-10 h-10 bg-[var(--peru-rojo-suave)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--estado-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Tiempos de Respuesta</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Tiempos de Respuesta</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Análisis de tiempos por entidad</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Análisis de tiempos por entidad</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('tiempos', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('tiempos', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('tiempos', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('tiempos', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('tiempos', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('tiempos', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
 
             <!-- Consolidado -->
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="h-1 bg-[#C8102E]"></div>
+            <div class="card overflow-hidden border border-[var(--ceniza-claro)] hover:shadow-md transition-shadow">
+              <div class="h-1 bg-[var(--peru-rojo)]"></div>
               <div class="p-5">
                 <div class="flex items-center gap-3 mb-3">
-                  <div class="w-10 h-10 bg-[#FEF2F2] rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg>
+                  <div class="w-10 h-10 bg-[var(--peru-rojo-suave)] rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg>
                   </div>
-                  <h3 class="font-semibold text-[#1a1a2e]">Consolidado</h3>
+                  <h3 class="font-semibold text-[var(--carbon)]">Consolidado</h3>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">Resumen ejecutivo completo del sistema</p>
+                <p class="text-sm text-[var(--niebla)] mb-4">Resumen ejecutivo completo del sistema</p>
                 <div class="flex gap-2">
-                  <button (click)="exportarReporte('resumen', 'pdf')" class="flex-1 px-3 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
-                  <button (click)="exportarReporte('resumen', 'excel')" class="flex-1 px-3 py-2 bg-[#059669] hover:bg-[#047857] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
-                  <button (click)="exportarReporte('resumen', 'csv')" class="flex-1 px-3 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
+                  <button (click)="exportarReporte('resumen', 'pdf')" class="flex-1 px-3 py-2 bg-[var(--estado-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-lg text-xs font-medium transition-colors">PDF</button>
+                  <button (click)="exportarReporte('resumen', 'excel')" class="flex-1 px-3 py-2 bg-[var(--estado-verde)] hover:bg-[var(--estado-verde)] text-white rounded-lg text-xs font-medium transition-colors">Excel</button>
+                  <button (click)="exportarReporte('resumen', 'csv')" class="flex-1 px-3 py-2 bg-[var(--estado-azul)] hover:bg-[var(--estado-azul)] text-white rounded-lg text-xs font-medium transition-colors">CSV</button>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Info banner -->
-          <div class="bg-[#EFF6FF] border border-[#2563EB]/20 rounded-xl p-4 flex items-start gap-3">
-            <svg class="w-5 h-5 text-[#2563EB] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <p class="text-sm text-[#1E40AF]">Los reportes se generan con los datos actuales del sistema. Para reportes históricos, contacte al administrador de base de datos.</p>
+          <div class="bg-[var(--estado-azul-suave)] border border-[var(--estado-azul)]/20 rounded-xl p-4 flex items-start gap-3">
+            <svg class="w-5 h-5 text-[var(--estado-azul)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <p class="text-sm text-[var(--estado-azul)]">Los reportes se generan con los datos actuales del sistema. Para reportes históricos, contacte al administrador de base de datos.</p>
           </div>
         }
       </div>
@@ -629,48 +687,48 @@
   @if (modalEntidadAbierto()) {
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
-        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-[#1a1a2e]">{{ entidadEditando() ? 'Editar Entidad' : 'Nueva Entidad' }}</h3>
-          <button (click)="cerrarModalEntidad()" class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <div class="p-6 border-b border-[var(--ceniza-claro)] flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-[var(--carbon)]">{{ entidadEditando() ? 'Editar Entidad' : 'Nueva Entidad' }}</h3>
+          <button (click)="cerrarModalEntidad()" class="p-1.5 rounded-lg hover:bg-[var(--nieve)] transition-colors">
+            <svg class="w-5 h-5 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <form (ngSubmit)="guardarEntidad()" class="p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Nombre *</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Nombre *</label>
             <input type="text" [(ngModel)]="nuevaEntidad.nombre" name="nombre" required
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Acrónimo *</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Acrónimo *</label>
             <input type="text" [(ngModel)]="nuevaEntidad.acronimo" name="acronimo" required
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Email</label>
             <input type="email" [(ngModel)]="nuevaEntidad.email" name="email"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Teléfono</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Teléfono</label>
             <input type="text" [(ngModel)]="nuevaEntidad.telefono" name="telefono"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Dirección</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Dirección</label>
             <input type="text" [(ngModel)]="nuevaEntidad.direccion" name="direccion"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Descripción</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Descripción</label>
             <textarea [(ngModel)]="nuevaEntidad.descripcion" name="descripcion" rows="3"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm resize-none"></textarea>
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm resize-none"></textarea>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="submit" class="flex-1 py-2.5 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl text-sm font-medium transition-colors">
+            <button type="submit" class="flex-1 py-2.5 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-xl text-sm font-medium transition-colors">
               {{ entidadEditando() ? 'Guardar Cambios' : 'Crear Entidad' }}
             </button>
-            <button type="button" (click)="cerrarModalEntidad()" class="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+            <button type="button" (click)="cerrarModalEntidad()" class="px-5 py-2.5 border border-[var(--ceniza-claro)] rounded-xl hover:bg-[var(--nieve)] text-sm font-medium text-[var(--humo)] transition-colors">
               Cancelar
             </button>
           </div>
@@ -682,27 +740,27 @@
   @if (modalUsuarioAbierto()) {
     <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
-        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-[#1a1a2e]">Nuevo Usuario</h3>
-          <button (click)="cerrarModalUsuario()" class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <div class="p-6 border-b border-[var(--ceniza-claro)] flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-[var(--carbon)]">Nuevo Usuario</h3>
+          <button (click)="cerrarModalUsuario()" class="p-1.5 rounded-lg hover:bg-[var(--nieve)] transition-colors">
+            <svg class="w-5 h-5 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <form (ngSubmit)="crearUsuario()" class="p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Email *</label>
             <input type="email" [(ngModel)]="nuevoUsuario.email" name="email" required
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Contraseña *</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Contraseña *</label>
             <input type="password" [(ngModel)]="nuevoUsuario.password" name="password" required
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Tipo de Usuario *</label>
+            <label class="block text-sm font-medium text-[var(--humo)] mb-1.5">Tipo de Usuario *</label>
             <select [(ngModel)]="nuevoUsuario.tipoUsuario" name="tipoUsuario" required
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] outline-none text-sm">
+              class="w-full px-4 py-2.5 border border-[var(--ceniza-claro)] rounded-xl focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] outline-none text-sm">
               <option value="">Seleccionar tipo</option>
               <option value="CIUDADANO">Ciudadano</option>
               <option value="FUNCIONARIO">Funcionario</option>
@@ -711,10 +769,10 @@
             </select>
           </div>
           <div class="flex gap-3 pt-2">
-            <button type="submit" class="flex-1 py-2.5 bg-[#C8102E] hover:bg-[#A00D24] text-white rounded-xl text-sm font-medium transition-colors">
+            <button type="submit" class="flex-1 py-2.5 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-white rounded-xl text-sm font-medium transition-colors">
               Crear Usuario
             </button>
-            <button type="button" (click)="cerrarModalUsuario()" class="px-5 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 transition-colors">
+            <button type="button" (click)="cerrarModalUsuario()" class="px-5 py-2.5 border border-[var(--ceniza-claro)] rounded-xl hover:bg-[var(--nieve)] text-sm font-medium text-[var(--humo)] transition-colors">
               Cancelar
             </button>
           </div>

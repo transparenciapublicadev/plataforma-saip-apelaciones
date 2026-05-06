@@ -2,6 +2,18 @@ import { Component, ChangeDetectionStrategy, inject, PLATFORM_ID } from '@angula
 import { isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
+interface HomeChartDatum {
+  label: string;
+  value: number;
+  color: string;
+  percentage: number;
+}
+
+interface HomeDonutChartDatum extends HomeChartDatum {
+  dashArray: string;
+  dashOffset: string;
+}
+
 @Component({
   selector: 'app-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -11,6 +23,40 @@ import { RouterLink } from '@angular/router';
 })
 export class HomeComponent {
   private readonly platformId = inject(PLATFORM_ID);
+
+  readonly indicadores = {
+    saipPresentadas: 2847,
+    respondidas: 1923,
+    apelaciones: 412,
+    entidades: 156,
+  };
+
+  readonly donutCircumference = 2 * Math.PI * 38;
+
+  readonly solicitudesChartData = this.createChartData(
+    [
+      { label: 'Respondidas', value: this.indicadores.respondidas, color: 'var(--estado-verde)' },
+      { label: 'En apelacion', value: this.indicadores.apelaciones, color: 'var(--estado-ambar)' },
+      {
+        label: 'En tramite',
+        value: this.indicadores.saipPresentadas - this.indicadores.respondidas - this.indicadores.apelaciones,
+        color: 'var(--estado-azul)',
+      },
+    ],
+    this.indicadores.saipPresentadas
+  );
+
+  readonly tipoRespuestaChartData = this.createChartData(
+    [
+      { label: 'Entrega total', value: 1284, color: 'var(--estado-verde)' },
+      { label: 'Entrega parcial', value: 639, color: 'var(--estado-verde-borde)' },
+      { label: 'Denegada', value: 412, color: 'var(--estado-rojo)' },
+      { label: 'Silencio administrativo', value: 512, color: 'var(--humo)' },
+    ],
+    this.indicadores.saipPresentadas
+  );
+
+  readonly tipoRespuestaDonutChartData = this.createDonutChartData(this.tipoRespuestaChartData);
 
   scrollToSection(sectionId: string): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -32,6 +78,40 @@ export class HomeComponent {
     if (isPlatformBrowser(this.platformId)) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }
+
+  private createChartData(
+    source: Array<{ label: string; value: number; color: string }>,
+    total: number
+  ): HomeChartDatum[] {
+    return source.map((item) => ({
+      ...item,
+      percentage: this.toPercent(item.value, total),
+    }));
+  }
+
+  private createDonutChartData(data: HomeChartDatum[]): HomeDonutChartDatum[] {
+    let accumulated = 0;
+
+    return data
+      .filter((item) => item.value > 0)
+      .map((item) => {
+        const arc = this.donutCircumference * (item.percentage / 100);
+        const result: HomeDonutChartDatum = {
+          ...item,
+          dashArray: `${arc} ${this.donutCircumference - arc}`,
+          dashOffset: `-${accumulated}`,
+        };
+        accumulated += arc;
+        return result;
+      });
+  }
+
+  private toPercent(value: number, total: number): number {
+    if (value <= 0 || total <= 0) {
+      return 0;
+    }
+    return Number(((value / total) * 100).toFixed(1));
   }
 }
 

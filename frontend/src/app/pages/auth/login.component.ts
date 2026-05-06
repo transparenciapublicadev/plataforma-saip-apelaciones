@@ -1,8 +1,12 @@
-import { Component, OnInit, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, computed, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LoginRequest } from '../../models/usuario.model';
+
+type TipoUsuarioRole = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
+type InternalRole = Exclude<TipoUsuarioRole, 'CIUDADANO'>;
+type AccessMode = 'citizen' | 'internal';
 
 @Component({
   selector: 'app-login',
@@ -14,23 +18,54 @@ import { LoginRequest } from '../../models/usuario.model';
 export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
   email = '';
   password = '';
-  tipoUsuario = signal<string>('ciudadano');
+
+  accessMode = signal<AccessMode>('citizen');
+  requiredRole = signal<InternalRole | null>(null);
+
   loading = signal<boolean>(false);
   error = signal<string>('');
   mensaje = signal<string>('');
 
+  portalTitle = computed(() => {
+    if (this.accessMode() === 'citizen') return 'Ingreso Ciudadano';
+    const role = this.requiredRole();
+    return `Acceso ${this.getRoleLabel(role)}`;
+  });
+
+  portalSubtitle = computed(() => {
+    if (this.accessMode() === 'citizen') {
+      return 'Portal público para solicitudes SAIP y apelaciones ciudadanas';
+    }
+    return 'Portal institucional para personal autorizado';
+  });
+
+  identifierLabel = computed(() => this.isCitizenPortal() ? 'Documento o Correo' : 'Usuario institucional');
+  identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'DNI o correo electrónico' : 'Usuario o correo institucional');
+
+  isCitizenPortal = computed(() => this.accessMode() === 'citizen');
+
   constructor() {}
 
   ngOnInit(): void {
+    const accessModeData = this.route.snapshot.data['accessMode'];
+    const requiredRoleData = this.route.snapshot.data['requiredRole'];
+    const requiredRole = this.toInternalRole(requiredRoleData);
+
+    if (accessModeData === 'internal' && requiredRole) {
+      this.accessMode.set('internal');
+      this.requiredRole.set(requiredRole);
+    } else {
+      this.accessMode.set('citizen');
+      this.requiredRole.set(null);
+    }
+
     if (this.authService.estaLogueado()) {
       this.redirigirSegunTipo();
     }
-  }
-
-  selectUserType(tipo: string): void {
-    this.tipoUsuario.set(tipo);
   }
 
   navigateToHome(): void {
@@ -45,9 +80,10 @@ export class LoginComponent implements OnInit {
 
     this.loading.set(true);
     this.error.set('');
+    this.mensaje.set('');
 
     const credentials: LoginRequest = {
-      identificador: this.email,
+      identificador: this.email.trim(),
       password: this.password
     };
 
@@ -55,6 +91,17 @@ export class LoginComponent implements OnInit {
       next: (response) => {
         this.loading.set(false);
         if (response.success) {
+          const userRole = this.toTipoUsuario(response.tipoUsuario);
+          if (!userRole) {
+            this.error.set('No se pudo validar su tipo de usuario. Intente nuevamente.');
+            return;
+          }
+
+          if (!this.canAccessPortal(userRole)) {
+            this.error.set(this.getPortalAccessError(userRole));
+            return;
+          }
+
           this.authService.guardarSesion(response);
           this.redirigirSegunTipo();
         } else {
@@ -86,6 +133,54 @@ export class LoginComponent implements OnInit {
       '/admin/dashboard': '/admin'
     };
     return mapeo[rutaBackend] || '/';
+  }
+
+  private canAccessPortal(userRole: TipoUsuarioRole): boolean {
+    if (this.accessMode() === 'citizen') {
+      return userRole === 'CIUDADANO';
+    }
+
+    const requiredRole = this.requiredRole();
+    if (!requiredRole) {
+      return userRole !== 'CIUDADANO';
+    }
+
+    return userRole === requiredRole;
+  }
+
+  private getPortalAccessError(userRole: TipoUsuarioRole): string {
+    if (this.accessMode() === 'citizen') {
+      return 'Esta entrada es exclusiva para ciudadanos.';
+    }
+
+    if (userRole === 'CIUDADANO') {
+      return 'Credenciales no autorizadas para este acceso institucional.';
+    }
+
+    return 'Su perfil no está autorizado para este portal institucional.';
+  }
+
+  private toTipoUsuario(value: string | undefined): TipoUsuarioRole | null {
+    const normalized = (value ?? '').toUpperCase();
+    if (normalized === 'CIUDADANO' || normalized === 'FUNCIONARIO' || normalized === 'TTAIP' || normalized === 'ADMINISTRADOR') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private toInternalRole(value: unknown): InternalRole | null {
+    const normalized = String(value ?? '').toUpperCase();
+    if (normalized === 'FUNCIONARIO' || normalized === 'TTAIP' || normalized === 'ADMINISTRADOR') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private getRoleLabel(role: InternalRole | null): string {
+    if (role === 'FUNCIONARIO') return 'Funcionario';
+    if (role === 'TTAIP') return 'TTAIP';
+    if (role === 'ADMINISTRADOR') return 'Administración';
+    return 'Interno';
   }
 }
 

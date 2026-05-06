@@ -50,12 +50,12 @@ export class ProcesoDisciplinarioComponent implements OnInit {
 
   getEstadoClass(estado: string): string {
     const clases: { [key: string]: string } = {
-      'EN_INVESTIGACION': 'bg-yellow-100 text-yellow-800',
-      'PENDIENTE_REMISION': 'bg-orange-100 text-orange-800',
-      'REMITIDO': 'bg-blue-100 text-blue-800',
-      'ARCHIVADO': 'bg-gray-100 text-gray-800'
+      'EN_INVESTIGACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'PENDIENTE_REMISION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
+      'REMITIDO': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
+      'ARCHIVADO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
     };
-    return clases[estado] || 'bg-gray-100 text-gray-800';
+    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
   getEstadoTexto(estado: string): string {
@@ -68,4 +68,5 @@ export class ProcesoDisciplinarioComponent implements OnInit {
     return textos[estado] || estado;
   }
 }
+
 

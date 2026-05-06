@@ -1,119 +1,133 @@
-<!-- Header Navigation — Design Reference -->
-<header class="fixed top-0 left-0 right-0 z-50">
-  <!-- Top institutional bar -->
-  <div class="bg-[#7A0A1B] text-white/70">
-    <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between h-7">
-      <span class="text-[11px] tracking-wide">Plataforma SAIP — Proyecto Académico</span>
-      <span class="text-[11px] hidden md:block">Trabajo de Tesis</span>
-    </div>
-  </div>
+<a class="saip-skip-link" href="#main-content">Saltar al contenido principal</a>
 
+<!-- Header — Redesign v2 -->
+<header class="saip-header fixed top-0 left-0 right-0 z-50" data-animate>
   <!-- Main navigation -->
-  <div class="bg-[#C8102E] shadow-lg shadow-red-900/20">
-    <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between h-16">
+  <div class="bg-white/95 backdrop-blur-xl shadow-sm border-b border-[var(--ceniza-claro)]">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between h-[4.25rem]">
       <!-- Logo -->
-      <a routerLink="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity group">
-        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+      <a routerLink="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity group" aria-label="Inicio SAIP">
+        <div class="w-10 h-10 bg-[var(--nieve)] rounded-xl flex items-center justify-center border border-[var(--ceniza-claro)] group-hover:bg-white transition-all duration-300 group-hover:scale-105 shadow-sm">
           <svg viewBox="0 0 32 32" class="w-7 h-7">
-            <rect x="4" y="8" width="24" height="16" fill="#C8102E" rx="1.5"/>
-            <rect x="4" y="8" width="24" height="5.33" fill="white"/>
-            <rect x="4" y="18.67" width="24" height="5.33" fill="white"/>
-            <circle cx="16" cy="16" r="3.5" fill="#C8A96E" stroke="#C8A96E" stroke-width="0.5"/>
+            <rect x="4" y="8" width="24" height="16" fill="white" rx="1.5"/>
+            <rect x="4" y="8" width="24" height="5.33" fill="#C8102E"/>
+            <rect x="4" y="18.67" width="24" height="5.33" fill="#C8102E"/>
+            <circle cx="16" cy="16" r="3" fill="#C8A96E" stroke="#C8A96E" stroke-width="0.5"/>
           </svg>
         </div>
-        <div class="text-white">
-          <h1 class="text-[16px] leading-tight tracking-tight">SAIP</h1>
-          <p class="text-[10px] text-white/60 leading-tight">Sistema de Atención Integral al Público</p>
+        <div class="text-[var(--carbon)]">
+          <h1 class="text-[17px] font-bold leading-tight tracking-tight">SAIP</h1>
+          <p class="text-[10px] text-[var(--niebla)] leading-tight font-medium tracking-wide">Acceso a Información Pública</p>
         </div>
       </a>
 
       <!-- Desktop Navigation -->
-      <nav class="hidden md:flex items-center gap-1">
+      <nav class="hidden md:flex items-center gap-1" aria-label="Navegación principal">
         @if (isLoggedIn()) {
           @switch (tipoUsuario()) {
             @case ('CIUDADANO') {
-              <a routerLink="/ciudadano" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/ciudadano" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                 Mi Panel
               </a>
-              <a routerLink="/ciudadano/nueva-saip" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+              <a routerLink="/ciudadano/nueva-saip" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
                 Nueva SAIP
               </a>
-              <a routerLink="/ciudadano/nueva-apelacion" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+              <a routerLink="/ciudadano/nueva-apelacion" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                 Apelar
               </a>
             }
             @case ('FUNCIONARIO') {
-              <a routerLink="/funcionario" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/funcionario" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                 Mi Panel
               </a>
             }
             @case ('TTAIP') {
-              <a routerLink="/ttaip" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/ttaip" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                 Panel TTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
-              <a routerLink="/admin" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/admin" class="nav-link-desktop">
+                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
                 Administración
               </a>
             }
           }
-          <div class="w-px h-6 bg-white/20 mx-2"></div>
+
+          <div class="w-px h-7 bg-[var(--ceniza-claro)] mx-1.5"></div>
+
+          <button
+            type="button"
+            (click)="toggleTheme()"
+            class="theme-toggle-btn"
+            [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
+          >
+            @if (currentTheme() === 'dark') {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+            }
+          </button>
+
           <!-- User dropdown -->
           <div class="relative">
-            <button (click)="toggleMenu()" class="flex items-center gap-2 text-white hover:bg-white/15 hover:text-white py-2 px-3 rounded-lg transition-colors cursor-pointer">
-              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/10">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                </svg>
+            <button (click)="toggleMenu()" class="flex items-center gap-2.5 text-[var(--humo)] hover:bg-[var(--nieve)] hover:text-[var(--carbon)] py-1.5 px-3 rounded-xl transition-all duration-200 cursor-pointer group" aria-label="Abrir menu de usuario" aria-haspopup="menu" [attr.aria-expanded]="menuAbierto()" aria-controls="desktop-user-menu">
+              <div class="w-8 h-8 rounded-full bg-[var(--peru-rojo-suave)] flex items-center justify-center ring-1 ring-[var(--peru-rojo)]/20 group-hover:ring-[var(--peru-rojo)]/40 transition-all">
+                <span class="text-sm font-bold text-[var(--peru-rojo)]">{{ nombreUsuario().charAt(0).toUpperCase() }}</span>
               </div>
-              <span class="max-w-[120px] truncate text-sm">{{ nombreUsuario() }}</span>
-              <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="text-left hidden lg:block">
+                <span class="block max-w-[110px] truncate text-sm font-medium leading-tight text-[var(--carbon)]">{{ nombreUsuario() }}</span>
+                <span class="block text-[10px] text-[var(--niebla)] font-medium">{{ tipoUsuario() }}</span>
+              </div>
+              <svg class="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-all" [class.rotate-180]="menuAbierto()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
+
             @if (menuAbierto()) {
-              <div class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 animate-fade-in">
-                <div class="px-3 py-3 border-b border-gray-100">
-                  <p class="text-sm font-medium text-foreground">{{ nombreUsuario() }}</p>
-                  <p class="text-xs text-muted-foreground mt-0.5">Sesión activa</p>
+              <div id="desktop-user-menu" class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-[var(--border)]/80 animate-scale-in origin-top-right" role="menu">
+                <div class="px-4 py-3.5 border-b border-[var(--border)]">
+                  <p class="text-sm font-semibold text-[var(--carbon)]">{{ nombreUsuario() }}</p>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-[var(--estado-verde)]"></div>
+                    <p class="text-xs text-[var(--niebla)]">Sesión activa</p>
+                  </div>
                 </div>
-                <div class="py-1">
+                <div class="py-1.5 px-1.5">
                   @switch (tipoUsuario()) {
                     @case ('CIUDADANO') {
-                      <a routerLink="/ciudadano" (click)="toggleMenu()" class="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors">
-                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+                      <a routerLink="/ciudadano" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                         Mi Panel
                       </a>
                     }
                     @case ('FUNCIONARIO') {
-                      <a routerLink="/funcionario" (click)="toggleMenu()" class="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors">
-                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+                      <a routerLink="/funcionario" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                         Mi Panel
                       </a>
                     }
                     @case ('TTAIP') {
-                      <a routerLink="/ttaip" (click)="toggleMenu()" class="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors">
-                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
-                        Mi Panel
+                      <a routerLink="/ttaip" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                        Panel TTAIP
                       </a>
                     }
                     @case ('ADMINISTRADOR') {
-                      <a routerLink="/admin" (click)="toggleMenu()" class="flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-muted transition-colors">
-                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
-                        Mi Panel
+                      <a routerLink="/admin" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                        Administración
                       </a>
                     }
                   }
                 </div>
-                <div class="border-t border-gray-100 py-1">
-                  <button (click)="logout()" class="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm text-red-600 hover:bg-muted transition-colors cursor-pointer">
+                <div class="border-t border-[var(--border)] py-1.5 px-1.5">
+                  <button (click)="logout()" class="dropdown-item dropdown-item-danger w-full" role="menuitem">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
@@ -124,71 +138,106 @@
             }
           </div>
         } @else {
-          <a routerLink="/" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors">Inicio</a>
-          <a routerLink="/" fragment="proceso" class="text-white/90 hover:bg-white/15 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors">Proceso</a>
-          <div class="w-px h-6 bg-white/20 mx-2"></div>
-          <a routerLink="/login" class="bg-white text-[#C8102E] hover:bg-white/95 shadow-sm text-sm px-5 py-2 rounded-lg font-medium transition-colors">
+          <a routerLink="/" class="nav-link-desktop">Inicio</a>
+          <a routerLink="/" fragment="proceso" class="nav-link-desktop">Proceso</a>
+          <a routerLink="/consultar" class="nav-link-desktop">Consultar</a>
+          <a routerLink="/ayuda" class="nav-link-desktop">Ayuda</a>
+          <div class="w-px h-7 bg-[var(--ceniza-claro)] mx-1.5"></div>
+          <button
+            type="button"
+            (click)="toggleTheme()"
+            class="theme-toggle-btn"
+            [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
+          >
+            @if (currentTheme() === 'dark') {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+            }
+          </button>
+          <a routerLink="/login" class="btn-primary text-sm px-5 py-2">
             Iniciar Sesión
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
           </a>
         }
       </nav>
 
-      <!-- Mobile hamburger -->
-      <button (click)="toggleMobileMenu()" class="md:hidden text-white hover:bg-white/15 p-2 rounded-lg transition-colors cursor-pointer">
-        @if (mobileMenuAbierto()) {
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        } @else {
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        }
-      </button>
+      <!-- Mobile actions -->
+      <div class="md:hidden flex items-center gap-1.5">
+        <button
+          type="button"
+          (click)="toggleTheme()"
+          class="theme-toggle-btn"
+          [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
+        >
+          @if (currentTheme() === 'dark') {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+          }
+        </button>
+
+        <button (click)="toggleMobileMenu()" class="text-[var(--carbon)] hover:bg-[var(--nieve)] p-2.5 rounded-xl transition-all cursor-pointer" aria-label="Abrir menu de navegacion" aria-controls="mobile-navigation-panel" [attr.aria-expanded]="mobileMenuAbierto()">
+          @if (mobileMenuAbierto()) {
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          } @else {
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          }
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Mobile menu -->
   @if (mobileMenuAbierto()) {
-    <div class="md:hidden bg-white border-t border-gray-100 shadow-lg animate-fade-in">
-      <div class="px-4 py-3 space-y-1">
+    <div id="mobile-navigation-panel" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-[var(--border)] shadow-2xl animate-fade-in-down">
+      <div class="px-4 py-4 space-y-1">
         @if (isLoggedIn()) {
-          <div class="px-3 py-3 mb-2">
-            <p class="text-sm font-medium text-foreground">{{ nombreUsuario() }}</p>
-            <p class="text-xs text-muted-foreground">Sesión activa</p>
+          <div class="flex items-center gap-3 px-3 py-3 mb-3 bg-[var(--nieve)] rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-[var(--peru-rojo)] flex items-center justify-center">
+              <span class="text-sm font-bold text-white">{{ nombreUsuario().charAt(0).toUpperCase() }}</span>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-[var(--carbon)]">{{ nombreUsuario() }}</p>
+              <p class="text-xs text-[var(--niebla)]">{{ tipoUsuario() }}</p>
+            </div>
           </div>
           @switch (tipoUsuario()) {
             @case ('CIUDADANO') {
-              <a routerLink="/ciudadano" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/ciudadano" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                 Mi Panel
               </a>
-              <a routerLink="/ciudadano/nueva-saip" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+              <a routerLink="/ciudadano/nueva-saip" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
                 Nueva SAIP
               </a>
-              <a routerLink="/ciudadano/nueva-apelacion" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3 2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+              <a routerLink="/ciudadano/nueva-apelacion" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                 Apelar
               </a>
             }
             @case ('FUNCIONARIO') {
-              <a routerLink="/funcionario" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/funcionario" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
                 Mi Panel
               </a>
             }
             @case ('TTAIP') {
-              <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                 Panel TTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
-              <a routerLink="/admin" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-                <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+              <a routerLink="/admin" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
                 Administración
               </a>
             }
           }
-          <div class="border-t border-gray-100 pt-2 mt-2">
-            <button (click)="logout()" class="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm text-red-600 hover:bg-muted rounded-lg transition-colors cursor-pointer">
+          <div class="border-t border-[var(--border)] pt-2 mt-2">
+            <button (click)="logout()" class="mobile-nav-item text-[var(--estado-rojo)] w-full">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
@@ -196,12 +245,20 @@
             </button>
           </div>
         } @else {
-          <a routerLink="/" (click)="toggleMobileMenu()" class="flex items-center gap-2 px-3 py-2.5 hover:bg-muted rounded-lg text-sm transition-colors">
-            <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <a routerLink="/" (click)="toggleMobileMenu()" class="mobile-nav-item">
+            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             Inicio
           </a>
-          <div class="border-t border-gray-100 pt-2 mt-2">
-            <a routerLink="/login" (click)="toggleMobileMenu()" class="block px-4 py-2.5 bg-[#C8102E] text-white rounded-lg text-center text-sm font-medium">
+          <a routerLink="/consultar" (click)="toggleMobileMenu()" class="mobile-nav-item">
+            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-width="2" d="m20 20-3-3"></path></svg>
+            Consultar Estado
+          </a>
+          <a routerLink="/ayuda" (click)="toggleMobileMenu()" class="mobile-nav-item">
+            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"></path><path stroke-width="2" d="M12 17h.01"></path></svg>
+            Ayuda
+          </a>
+          <div class="border-t border-[var(--border)] pt-3 mt-3">
+            <a routerLink="/login" (click)="toggleMobileMenu()" class="block w-full px-4 py-3 bg-[var(--peru-rojo)] text-white rounded-xl text-center text-sm font-semibold shadow-lg shadow-red-900/15 hover:shadow-xl transition-all">
               Iniciar Sesión
             </a>
           </div>
@@ -211,97 +268,77 @@
   }
 </header>
 
-<!-- Main Content — pt-[5.75rem] = institutional bar (1.75rem) + main nav (4rem) -->
-<main class="pt-[5.75rem]">
+<!-- Main Content -->
+<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" tabindex="-1">
   <router-outlet></router-outlet>
 </main>
 
-<!-- Footer — Design Reference -->
-<footer class="bg-[#0F0F1A] text-white mt-0">
-  <!-- Red accent bar -->
-  <div class="h-1 bg-gradient-to-r from-[#C8102E] via-[#E8243C] to-[#C8102E]"></div>
-
-  <div class="max-w-7xl mx-auto px-4 md:px-6 py-16">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-12">
-      <!-- Brand -->
+<footer class="border-t border-[var(--border)] bg-[var(--muted)] mt-0">
+  <div class="max-w-7xl mx-auto px-4 md:px-6 py-14">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
       <div class="md:col-span-1">
-        <div class="flex items-center gap-3 mb-6">
-          <div class="w-11 h-11 bg-white/[0.08] rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/[0.05]">
-            <svg viewBox="0 0 32 32" class="w-6 h-6">
-              <rect x="4" y="8" width="24" height="16" fill="#C8102E" rx="1.5"/>
-              <rect x="4" y="8" width="24" height="5.33" fill="white"/>
-              <rect x="4" y="18.67" width="24" height="5.33" fill="white"/>
-              <circle cx="16" cy="16" r="3.5" fill="#C8A96E"/>
-            </svg>
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-9 h-9 bg-[var(--peru-rojo)] rounded-lg flex items-center justify-center">
+            <span class="text-white text-sm font-bold">S</span>
           </div>
           <div>
-            <h3 class="text-[15px]">SAIP</h3>
-            <p class="text-[11px] text-white/40">Tribunal de Transparencia</p>
+            <h3 class="text-[15px] text-[var(--foreground)] font-semibold">SAIP</h3>
+            <p class="text-[11px] text-[var(--muted-foreground)]">Acceso a la Informacion</p>
           </div>
         </div>
-        <p class="text-sm text-white/50 leading-relaxed">
-          Promoviendo el acceso a la información pública como derecho fundamental de todos los ciudadanos.
+        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
+          Plataforma academica para la gestion de solicitudes de acceso a informacion publica. Proyecto de tesis.
         </p>
       </div>
 
-      <!-- Marco Legal -->
       <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-white/30 mb-6">Marco Legal</h4>
-        <ul class="space-y-3.5 text-sm">
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Ley N.° 27806</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Reglamento de la Ley</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Guía del Ciudadano</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Preguntas Frecuentes</a></li>
+        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Plataforma</h4>
+        <ul class="space-y-3 text-sm text-[var(--muted-foreground)]">
+          <li><a routerLink="/login" class="hover:text-[var(--foreground)] transition-colors">Presentar Solicitud</a></li>
+          <li><a routerLink="/consultar" class="hover:text-[var(--foreground)] transition-colors">Consultar Estado</a></li>
+          <li><a routerLink="/ayuda" class="hover:text-[var(--foreground)] transition-colors">Centro de Ayuda</a></li>
+          <li><a routerLink="/ayuda" class="hover:text-[var(--foreground)] transition-colors">Preguntas Frecuentes</a></li>
         </ul>
       </div>
 
-      <!-- Recursos -->
       <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-white/30 mb-6">Recursos</h4>
-        <ul class="space-y-3.5 text-sm">
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Portal de Transparencia</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Resoluciones del TTAIP</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Estadísticas de Acceso</a></li>
-          <li><a href="#" class="text-white/50 hover:text-white transition-colors">Capacitaciones</a></li>
+        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Recursos</h4>
+        <ul class="space-y-3 text-sm text-[var(--muted-foreground)]">
+          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Documentacion</a></li>
+          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Guia de Uso</a></li>
+          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Estadisticas</a></li>
+          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Acerca del Proyecto</a></li>
         </ul>
       </div>
 
-      <!-- Contacto -->
       <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-white/30 mb-6">Contacto</h4>
-        <ul class="space-y-4 text-sm">
-          <li class="flex items-center gap-3 text-white/50">
-            <div class="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center border border-white/[0.05]">
-              <svg class="w-4 h-4 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" stroke-width="2"/><path stroke-width="2" d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-            </div>
-            contacto&#64;plataforma-saip.test
+        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Contacto</h4>
+        <ul class="space-y-3.5 text-sm text-[var(--muted-foreground)]">
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">M</span>
+            contacto&#64;saip-tesis.edu
           </li>
-          <li class="flex items-center gap-3 text-white/50">
-            <div class="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center border border-white/[0.05]">
-              <svg class="w-4 h-4 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            </div>
-            (01) 630-2000
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">T</span>
+            (01) 000-0000
           </li>
-          <li class="flex items-start gap-3 text-white/50">
-            <div class="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center flex-shrink-0 border border-white/[0.05]">
-              <svg class="w-4 h-4 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3" stroke-width="2"/></svg>
-            </div>
-            <span>Campus Universitario, Lima</span>
+          <li class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">L</span>
+            Universidad - Lima
           </li>
         </ul>
       </div>
     </div>
 
-    <div class="border-t border-white/[0.06] mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-      <p class="text-[13px] text-white/30">
-        &copy; 2025 Plataforma SAIP — Proyecto de Tesis. Todos los derechos reservados.
+    <div class="border-t border-[var(--border)] mt-10 pt-7 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p class="text-[13px] text-[var(--muted-foreground)]/75">
+        2025 SAIP - Proyecto de Tesis. Todos los derechos reservados.
       </p>
-      <div class="flex items-center gap-6 text-[13px] text-white/30">
-        <a href="#" class="hover:text-white/60 transition-colors">Política de Privacidad</a>
-        <a href="#" class="hover:text-white/60 transition-colors">Términos de Uso</a>
-        <a href="#" class="hover:text-white/60 transition-colors">Accesibilidad</a>
+      <div class="flex items-center gap-6 text-[13px] text-[var(--muted-foreground)]/75">
+        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Privacidad</a>
+        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Terminos</a>
+        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Accesibilidad</a>
       </div>
     </div>
   </div>
 </footer>
-

@@ -1,223 +1,167 @@
-<div class="min-h-screen bg-[#F8F9FB]">
-  <!-- Red header accent -->
-  <div class="h-56 bg-gradient-to-br from-[#C8102E] via-[#A00D24] to-[#6B0919] relative overflow-hidden">
-    <div class="absolute top-0 right-[-10%] w-[400px] h-[400px] rounded-full bg-white/[0.03]"></div>
-  </div>
+<div class="saip-page min-h-[calc(100vh-68px)] relative overflow-hidden flex flex-col items-center justify-start pt-3 md:pt-4 pb-8 px-4 bg-[var(--background)]">
+  
+  <!-- Centered Concentric Halos (Responsive & Centered) -->
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] rounded-full border border-[var(--ceniza-claro)] opacity-50 pointer-events-none"></div>
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] rounded-full border border-[var(--ceniza-claro)] opacity-20 pointer-events-none"></div>
 
-  <div class="max-w-xl mx-auto px-4 -mt-36 pb-16 relative z-10">
-    <button (click)="navigateToHome()"
-      class="flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors cursor-pointer">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-      </svg>
-      Volver al Inicio
-    </button>
+  <!-- Form Container -->
+  <div class="relative z-10 w-full max-w-[440px] bg-[var(--card)] backdrop-blur-xl border border-[var(--border)] rounded-2xl p-5 shadow-xl shadow-black/5">
+    
+    <!-- Header Text -->
+    <div class="text-center mb-4 animate-fade-in-up">
+      <div class="inline-flex items-center justify-center w-10 h-10 bg-[var(--card)] rounded-xl border border-[var(--ceniza-claro)] shadow-sm mb-3">
+        <svg viewBox="0 0 32 32" class="w-6 h-6">
+          <rect x="4" y="8" width="24" height="16" fill="white" rx="1.5"/>
+          <rect x="4" y="8" width="24" height="5.33" fill="#C8102E"/>
+          <rect x="4" y="18.67" width="24" height="5.33" fill="#C8102E"/>
+          <circle cx="16" cy="16" r="3" fill="#C8A96E"/>
+        </svg>
+      </div>
+      <h2 class="text-xl md:text-2xl font-extrabold text-[var(--carbon)] tracking-tight mb-1">Registro Ciudadano</h2>
+      <p class="text-[var(--humo)] text-[12px]">Este formulario es exclusivo para ciudadanos</p>
+    </div>
 
-    <div class="bg-white border-0 shadow-2xl shadow-black/8 overflow-hidden rounded-2xl">
-      <div class="p-8 pb-0">
-        <div class="text-center mb-6">
-          <div class="w-16 h-16 mx-auto bg-[#C8102E]/[0.06] rounded-2xl flex items-center justify-center mb-4 border border-[#C8102E]/10">
-            <svg class="w-7 h-7 text-[#C8102E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-width="2" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-width="2" d="M22 21v-2a4 4 0 00-3-3.87"/><path stroke-width="2" d="M16 3.13a4 4 0 010 7.75"/>
-            </svg>
-          </div>
-          <h1 class="text-2xl font-bold text-[#1a1a2e] mb-1">Registro de Ciudadano</h1>
-          <p class="text-sm text-gray-500">Complete sus datos para crear una cuenta</p>
-        </div>
+    <div class="mb-4 rounded-xl border p-3 bg-[var(--estado-azul-suave)] border-[var(--estado-azul-borde)]">
+      <p class="text-[12px] text-[var(--estado-azul)] font-semibold">Alta pública de cuenta SAIP</p>
+      <p class="text-[11px] text-[var(--humo)] mt-1">Los accesos de Funcionario, TTAIP y Administración se gestionan por rutas institucionales separadas.</p>
+    </div>
 
-        <!-- Step indicator -->
-        <div class="flex items-center gap-3 mb-6">
-          <div class="flex-1 h-1.5 rounded-full transition-colors bg-[#C8102E]"></div>
-          <div class="flex-1 h-1.5 rounded-full transition-colors" [class]="currentStep() >= 2 ? 'bg-[#C8102E]' : 'bg-gray-200'"></div>
-        </div>
+    <!-- Stepper (Elevated slightly above the card) -->
+    <div class="flex items-center justify-center gap-2 md:gap-3 mb-4 animate-fade-in-up" style="animation-delay: 50ms">
+      <div class="flex items-center gap-1.5">
+        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm transition-all" [class]="currentStep() >= 1 ? 'bg-[var(--peru-rojo)] text-white' : 'bg-[var(--card)] border border-[var(--ceniza)] text-[var(--niebla)]'">1</div>
+        <span class="text-[11px] font-bold" [class]="currentStep() === 1 ? 'text-[var(--carbon)]' : 'text-[var(--niebla)]'">Datos Personales</span>
+      </div>
+      <div class="w-6 md:w-10 h-[2px] rounded-full" [class]="currentStep() >= 2 ? 'bg-[var(--peru-rojo)]/20' : 'bg-[var(--ceniza-claro)]'"></div>
+      <div class="flex items-center gap-1.5">
+        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm transition-all" [class]="currentStep() >= 2 ? 'bg-[var(--peru-rojo)] text-white' : 'bg-[var(--card)] border border-[var(--ceniza)] text-[var(--niebla)]'">2</div>
+        <span class="text-[11px] font-bold" [class]="currentStep() === 2 ? 'text-[var(--carbon)]' : 'text-[var(--niebla)]'">Cuenta</span>
+      </div>
+    </div>
+
+    <!-- Form Fields Internal Grid -->
+    <div class="animate-fade-in-up" style="animation-delay: 100ms">
+      <div class="text-center mb-6 hidden">
+        <h2 class="text-2xl font-bold text-[var(--carbon)] mb-2">Crear Cuenta</h2>
+        <p class="text-sm text-[var(--niebla)]">{{ currentStep() === 1 ? 'Ingresa tus datos personales' : 'Configura tu acceso' }}</p>
       </div>
 
-      <div class="p-8 pt-2">
-        <form (ngSubmit)="registrar()" class="space-y-5">
-          @if (error()) {
-            <div class="border border-[#DC2626]/15 bg-[#FEF2F2] rounded-xl p-3 animate-fade-in">
-              <p class="text-[#991B1B] text-sm">{{ error() }}</p>
-            </div>
-          }
-          @if (mensaje()) {
-            <div class="bg-green-50 border border-green-200 rounded-xl p-3 animate-fade-in">
-              <p class="text-sm text-green-600">{{ mensaje() }}</p>
-            </div>
-          }
+        @if (error()) {
+          <div class="alert alert-error mb-5 animate-fade-in"><svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-width="2" d="M15 9l-6 6M9 9l6 6"/></svg><p class="text-sm">{{ error() }}</p></div>
+        }
+        @if (mensaje()) {
+          <div class="alert alert-success mb-5 animate-fade-in"><svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="text-sm">{{ mensaje() }}</p></div>
+        }
 
-          <!-- STEP 1: Datos Personales -->
+        <form (ngSubmit)="registrar()">
+          <!-- Step 1: Personal Data -->
           @if (currentStep() === 1) {
-            <div class="space-y-5 animate-fade-in">
-              <!-- DNI -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">DNI <span class="text-[#C8102E]">*</span></label>
-                <input type="text" [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" maxlength="8" required
-                  class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                  placeholder="12345678">
-                @if (dni && dni.length === 8) {
-                  <p class="text-xs text-emerald-600 flex items-center gap-1 mt-1.5">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    DNI válido
-                  </p>
-                }
-                @if (dni && dni.length < 8) {
-                  <p class="text-xs text-gray-400">{{ 8 - dni.length }} dígitos restantes</p>
-                }
-              </div>
-
-              <!-- Nombres -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">Nombres <span class="text-[#C8102E]">*</span></label>
-                <input type="text" [(ngModel)]="nombres" name="nombres" required
-                  class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                  placeholder="Juan Carlos">
-              </div>
-
-              <!-- Apellidos -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="text-sm text-[#1a1a2e] font-medium">Apellido Paterno <span class="text-[#C8102E]">*</span></label>
-                  <input type="text" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" required
-                    class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                    placeholder="Pérez">
-                </div>
-                <div class="space-y-2">
-                  <label class="text-sm text-[#1a1a2e] font-medium">Apellido Materno <span class="text-[#C8102E]">*</span></label>
-                  <input type="text" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" required
-                    class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                    placeholder="García">
+            <div class="space-y-3 animate-fade-in">
+              <div>
+                <label for="reg-dni" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">DNI <span class="text-[var(--peru-rojo)]">*</span></label>
+                <div class="relative">
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16v12H4z"/><path stroke-width="2" d="M9 10h6M9 14h4"/></svg>
+                  <input id="reg-dni" type="text" [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="12345678" maxlength="8" autocomplete="off" />
                 </div>
               </div>
-
-              <button type="button" (click)="goToStep2()"
-                [disabled]="!step1Valid()"
-                class="w-full h-12 bg-[#C8102E] hover:bg-[#A00D24] text-white font-medium rounded-xl shadow-md shadow-[#C8102E]/15 text-[15px] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                Continuar
+              <div>
+                <label for="reg-nombres" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Nombres <span class="text-[var(--peru-rojo)]">*</span></label>
+                <div class="relative">
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
+                  <input id="reg-nombres" type="text" [(ngModel)]="nombres" name="nombres" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="Juan Carlos" autocomplete="given-name" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label for="reg-ap" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Ap. Paterno <span class="text-[var(--peru-rojo)]">*</span></label>
+                  <div class="relative">
+                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
+                    <input id="reg-ap" type="text" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="García" autocomplete="family-name" />
+                  </div>
+                </div>
+                <div>
+                  <label for="reg-am" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Ap. Materno <span class="text-[var(--peru-rojo)]">*</span></label>
+                  <div class="relative">
+                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
+                    <input id="reg-am" type="text" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="López" autocomplete="additional-name" />
+                  </div>
+                </div>
+              </div>
+              <button type="button" (click)="goToStep2()" [disabled]="!step1Valid()" class="btn-primary w-full h-[46px] rounded-xl text-[14px] mt-1 cursor-pointer">
+                Siguiente
+                <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
               </button>
             </div>
           }
 
-          <!-- STEP 2: Contacto y Seguridad -->
+          <!-- Step 2: Account -->
           @if (currentStep() === 2) {
-            <div class="space-y-5 animate-fade-in">
-              <!-- Email -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">Correo Electrónico <span class="text-[#C8102E]">*</span></label>
-                <input type="email" [(ngModel)]="email" name="email" required
-                  class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                  placeholder="correo&#64;ejemplo.com">
-              </div>
-
-              <!-- Teléfono -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">Teléfono Celular <span class="text-[#C8102E]">*</span></label>
-                <input type="tel" [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" maxlength="9"
-                  class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                  placeholder="987654321">
-                @if (telefono && telefono.length === 9) {
-                  <p class="text-xs text-emerald-600 flex items-center gap-1 mt-1.5">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    Teléfono válido
-                  </p>
-                }
-              </div>
-
-              <!-- Contraseña -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">Contraseña <span class="text-[#C8102E]">*</span></label>
+            <div class="space-y-3 animate-fade-in">
+              <div>
+                <label for="reg-email" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Correo electrónico <span class="text-[var(--peru-rojo)]">*</span></label>
                 <div class="relative">
-                  <input [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" required
-                    class="w-full h-12 px-4 pr-11 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                    placeholder="Mínimo 8 caracteres">
-                  <button type="button" (click)="toggleShowPassword()"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
-                    @if (showPassword()) {
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    } @else {
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
-                    }
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" stroke-width="2"/><path stroke-width="2" d="m22 7-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>
+                  <input id="reg-email" type="email" [(ngModel)]="email" name="email" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="correo@ejemplo.com" autocomplete="email" />
+                </div>
+                <p class="text-[11px] text-[var(--niebla)] mt-1 ml-1">Usaremos este correo para notificaciones oficiales.</p>
+              </div>
+              <div>
+                <label for="reg-telefono" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Teléfono</label>
+                <div class="relative">
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.86.32 1.7.59 2.5a2 2 0 0 1-.45 2.11L9.1 10.5a16 16 0 0 0 4.4 4.4l1.17-1.15a2 2 0 0 1 2.11-.45c.8.27 1.64.47 2.5.59A2 2 0 0 1 22 16.92z"/></svg>
+                  <input id="reg-telefono" type="text" [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="987654321" maxlength="9" autocomplete="tel" />
+                </div>
+              </div>
+              <div>
+                <label for="reg-password" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Contraseña <span class="text-[var(--peru-rojo)]">*</span></label>
+                <div class="relative">
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  <input id="reg-password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" class="input w-full h-[42px] pl-10 pr-10 bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none" placeholder="••••••••" autocomplete="new-password" />
+                  <button type="button" (click)="toggleShowPassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--niebla)] hover:text-[var(--carbon)] transition-colors" aria-label="Mostrar contraseña">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                   </button>
                 </div>
-                @if (password) {
-                  <div class="grid grid-cols-2 gap-2 pt-1">
-                    @for (req of passwordRequirements(); track req.text) {
-                      <div class="text-xs flex items-center gap-1.5" [class]="req.met ? 'text-emerald-600' : 'text-gray-400'">
-                        <div class="w-4 h-4 rounded-full flex items-center justify-center" [class]="req.met ? 'bg-emerald-600' : 'bg-gray-200'">
-                          @if (req.met) {
-                            <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                          }
-                        </div>
-                        {{ req.text }}
-                      </div>
-                    }
-                  </div>
-                }
               </div>
-
-              <!-- Confirmar Contraseña -->
-              <div class="space-y-2">
-                <label class="text-sm text-[#1a1a2e] font-medium">Confirmar Contraseña <span class="text-[#C8102E]">*</span></label>
-                <input type="password" [(ngModel)]="confirmarPassword" name="confirmarPassword" required
-                  class="w-full h-12 px-4 rounded-xl bg-[#F8F9FB] border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 focus:border-[#C8102E] transition-colors"
-                  placeholder="Repita su contraseña">
-                @if (confirmarPassword && password === confirmarPassword && password.length >= 8) {
-                  <p class="text-xs text-emerald-600 flex items-center gap-1 mt-1.5">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                    Las contraseñas coinciden
-                  </p>
-                }
+              <div>
+                <label for="reg-password-confirm" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Confirmar contraseña <span class="text-[var(--peru-rojo)]">*</span></label>
+                <div class="relative">
+                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                  <input id="reg-password-confirm" type="password" [(ngModel)]="confirmarPassword" name="confirmarPassword" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="••••••••" autocomplete="new-password" />
+                </div>
               </div>
-
-              <!-- Términos -->
-              <div class="flex items-start gap-3 p-4 border border-gray-100 rounded-xl bg-[#F8F9FB]">
-                <input type="checkbox" [(ngModel)]="acceptTerms" name="acceptTerms" id="terms"
-                  class="mt-1 w-4 h-4 rounded border-gray-300 text-[#C8102E] focus:ring-[#C8102E]">
-                <label for="terms" class="text-sm leading-relaxed cursor-pointer text-gray-600">
-                  Acepto los <a href="#" class="text-[#C8102E] hover:underline">términos y condiciones</a>
-                  y la <a href="#" class="text-[#C8102E] hover:underline">política de privacidad</a>
-                </label>
+              <div class="rounded-lg border border-[var(--ceniza-claro)] bg-[var(--card)] p-3">
+                <p class="text-[11px] font-semibold text-[var(--humo)] mb-2">Requisitos de contraseña</p>
+                <div class="space-y-1">
+                  @for (rule of passwordRequirements(); track rule.text) {
+                    <p class="text-[11px]" [class]="rule.met ? 'text-[var(--estado-verde)]' : 'text-[var(--niebla)]'">
+                      {{ rule.met ? '✓' : '•' }} {{ rule.text }}
+                    </p>
+                  }
+                </div>
               </div>
-
-              <div class="flex gap-3">
-                <button type="button" (click)="goToStep1()"
-                  class="flex-1 h-12 rounded-xl border border-gray-200 hover:bg-[#F8F9FB] text-[#1a1a2e] font-medium transition-colors cursor-pointer">
+              <div class="flex items-start gap-2 py-1 mt-1">
+                <input type="checkbox" id="reg-terms" [(ngModel)]="acceptTerms" name="acceptTerms" class="mt-0.5 w-3.5 h-3.5 accent-[var(--peru-rojo)]" />
+                <label for="reg-terms" class="text-[11px] text-[var(--humo)] leading-tight">Acepto los <a href="#" class="text-[var(--peru-rojo)] font-bold hover:underline">términos de servicio</a> y la <a href="#" class="text-[var(--peru-rojo)] font-bold hover:underline">política de privacidad</a></label>
+              </div>
+              <div class="flex gap-2 mt-1">
+                <button type="button" (click)="goToStep1()" class="btn-outline flex-1 h-[46px] rounded-xl text-[14px]">
                   Atrás
                 </button>
-                <button type="submit" [disabled]="loading()"
-                  class="flex-1 h-12 bg-[#C8102E] hover:bg-[#A00D24] text-white font-medium rounded-xl shadow-md shadow-[#C8102E]/15 text-[15px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                <button type="submit" [disabled]="loading() || !canSubmitStep2()" class="btn-primary flex-1 h-[46px] rounded-xl text-[14px] cursor-pointer">
                   @if (loading()) {
-                    Registrando...
+                    <div class="spinner spinner-sm"></div> Procesando
                   } @else {
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-width="2" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-width="2" d="M22 21v-2a4 4 0 00-3-3.87"/><path stroke-width="2" d="M16 3.13a4 4 0 010 7.75"/>
-                    </svg>
                     Crear Cuenta
                   }
                 </button>
               </div>
             </div>
           }
-
-          <div class="text-center pt-5 border-t border-gray-100">
-            <p class="text-sm text-gray-500 mb-3">¿Ya tiene una cuenta?</p>
-            <a routerLink="/login"
-              class="w-full h-12 inline-flex items-center justify-center rounded-xl border border-gray-200 hover:bg-[#F8F9FB] text-[#1a1a2e] font-medium transition-colors">
-              Iniciar Sesión
-            </a>
-          </div>
         </form>
+
+        <div class="mt-6 pt-5 border-t border-[var(--ceniza-claro)] text-center">
+          <p class="text-[12px] text-[var(--niebla)]">¿Ya tienes cuenta? <a routerLink="/login" class="text-[var(--primary)] font-bold hover:underline ml-1">Inicia sesión</a></p>
+        </div>
       </div>
     </div>
-
-    <!-- Security info -->
-    <div class="mt-5 flex items-center gap-3 px-5 py-4 bg-white border border-gray-100 rounded-xl shadow-sm">
-      <svg class="w-4 h-4 text-[#C8102E] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-width="2" d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
-      </svg>
-      <p class="text-xs text-gray-500">
-        <span class="text-[#1a1a2e] font-medium">Protección de Datos.</span> Conforme a la Ley N.° 29733 — Ley de Protección de Datos Personales.
-      </p>
-    </div>
   </div>
-</div>
-

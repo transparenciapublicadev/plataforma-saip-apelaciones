@@ -1,0 +1,84 @@
+<div class="saip-page min-h-screen bg-[var(--background)] pt-28 pb-16 px-4">
+  <div class="max-w-4xl mx-auto">
+    <section class="text-center mb-8">
+      <div class="w-14 h-14 mx-auto bg-[var(--peru-rojo-suave)] rounded-2xl flex items-center justify-center mb-4 border border-[var(--ceniza-claro)]">
+        <svg class="w-7 h-7 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"></path><path stroke-width="2" d="M12 17h.01"></path></svg>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-bold text-[var(--carbon)] mb-3">Centro de Ayuda</h1>
+      <p class="text-[var(--niebla)] max-w-2xl mx-auto">Encuentre respuestas frecuentes sobre solicitudes SAIP, apelaciones TTAIP y uso de la plataforma.</p>
+    </section>
+
+    <section class="card p-6 mb-6">
+      <label for="faq-search" class="label">Buscar en preguntas frecuentes</label>
+      <input
+        id="faq-search"
+        class="input h-12"
+        placeholder="Ej: plazo de respuesta, apelacion, registro..."
+        [value]="query()"
+        (input)="setQuery($event)"
+      />
+    </section>
+
+    @if (categories().length === 0) {
+      <section class="card p-7 text-center">
+        <h2 class="text-lg font-semibold text-[var(--carbon)] mb-2">Sin resultados</h2>
+        <p class="text-sm text-[var(--niebla)]">No se encontraron coincidencias para su busqueda.</p>
+      </section>
+    } @else {
+      <section class="space-y-4">
+        @for (category of categories(); track category.id) {
+          <article class="card overflow-hidden">
+            <button
+              type="button"
+              class="w-full p-5 text-left flex items-center justify-between hover:bg-[var(--muted)] transition-colors"
+              (click)="toggleCategory(category.id)"
+              [attr.aria-expanded]="openCategory() === category.id"
+            >
+              <span>
+                <span class="block text-base font-semibold text-[var(--carbon)]">{{ category.title }}</span>
+                <span class="text-sm text-[var(--niebla)]">{{ category.questions.length }} preguntas</span>
+              </span>
+              <svg class="w-5 h-5 text-[var(--niebla)] transition-transform" [class.rotate-180]="openCategory() === category.id" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            @if (openCategory() === category.id) {
+              <div class="border-t border-[var(--ceniza-claro)]">
+                @for (item of category.questions; track item.question; let i = $index) {
+                  <div class="border-b border-[var(--ceniza-claro)] last:border-b-0">
+                    <button
+                      type="button"
+                      class="w-full p-4 text-left flex items-start justify-between gap-3 hover:bg-[var(--muted)] transition-colors"
+                      (click)="toggleQuestion(category.id + '-' + i)"
+                      [attr.aria-expanded]="openQuestion() === category.id + '-' + i"
+                    >
+                      <span class="text-sm font-medium text-[var(--carbon)]">{{ item.question }}</span>
+                      <svg class="w-4 h-4 text-[var(--niebla)] mt-0.5 transition-transform" [class.rotate-180]="openQuestion() === category.id + '-' + i" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    @if (openQuestion() === category.id + '-' + i) {
+                      <div class="px-4 pb-4">
+                        <p class="text-sm text-[var(--humo)] bg-[var(--muted)] border border-[var(--ceniza-claro)] rounded-xl p-4">{{ item.answer }}</p>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+      </section>
+    }
+
+    <section class="mt-8 grid md:grid-cols-2 gap-4">
+      <article class="card p-6">
+        <h3 class="text-base font-semibold text-[var(--carbon)] mb-2">Presentar nueva SAIP</h3>
+        <p class="text-sm text-[var(--niebla)] mb-4">Ingrese con su cuenta para registrar solicitudes y adjuntar sustento.</p>
+        <a routerLink="/login" class="btn-outline">Ir a iniciar sesion</a>
+      </article>
+      <article class="card p-6">
+        <h3 class="text-base font-semibold text-[var(--carbon)] mb-2">Consulta publica</h3>
+        <p class="text-sm text-[var(--niebla)] mb-4">Puede consultar avance de su tramite sin autenticacion.</p>
+        <a routerLink="/consultar" class="btn-outline">Consultar expediente</a>
+      </article>
+    </section>
+  </div>
+</div>
