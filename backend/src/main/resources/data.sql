@@ -207,12 +207,12 @@ VALUES (3, 7, 6,
 
 -- ============================================
 -- 5. APELACIONES TTAIP (3 apelaciones, cubriendo flujos clave)
--- Formato expediente TTAIP: NNNNN-AAAA-JUS-TTAIP
+-- Formato expediente TTAIP: NNNNN-AAAA-JUS/TTAIP
 -- ============================================
 
 -- Apelación 1: María apela DENEGACION de sol 4 → EN_CALIFICACION_1 (esperando primera calificación)
 INSERT IGNORE INTO apelaciones (id_apelacion, expediente, id_solicitud, id_ciudadano, fundamentos, fecha_apelacion, estado)
-VALUES (1, '00001-2025-JUS-TTAIP', 4, 2,
+VALUES (1, '00001-2025-JUS/TTAIP', 4, 2,
   'Apelo la denegación de mi solicitud SAIP-2025-00004 por improcedente aplicación de la excepción de secreto comercial. Los contratos celebrados con fondos públicos son información de carácter público conforme al artículo 10 del TUO de la Ley N.° 27806. La excepción invocada (Art. 17 inc. 2 y 4) no resulta aplicable a contrataciones estatales sometidas al principio de publicidad de la Ley de Contrataciones del Estado (Ley N.° 30225).',
   DATE_SUB(NOW(), INTERVAL 10 DAY),
   'EN_CALIFICACION_1');
@@ -223,7 +223,7 @@ UPDATE apelaciones SET estado = 'EN_CALIFICACION_1' WHERE id_apelacion = 1 AND (
 -- BR-TTAIP-002: Primera calificación en 7 días
 -- BR-TTAIP-003: Subsanación en 2 días hábiles
 INSERT IGNORE INTO apelaciones (id_apelacion, expediente, id_solicitud, id_ciudadano, fundamentos, fecha_apelacion, estado, calificacion_primera, fecha_subsanacion, dias_subsanacion)
-VALUES (2, '00002-2025-JUS-TTAIP', 6, 1,
+VALUES (2, '00002-2025-JUS/TTAIP', 6, 1,
   'Apelo ante el Tribunal de Transparencia por silencio administrativo negativo. La Municipalidad Metropolitana de Lima no atendió mi solicitud SAIP-2025-00006 dentro del plazo legal de 10 días hábiles establecido en el artículo 11 del TUO de la Ley N.° 27806, configurándose el silencio administrativo negativo conforme al artículo 11-B de la misma norma.',
   DATE_SUB(NOW(), INTERVAL 15 DAY),
   'EN_SUBSANACION', 'INADMISIBLE',
@@ -232,7 +232,7 @@ VALUES (2, '00002-2025-JUS-TTAIP', 6, 1,
 -- Apelación 3: María apela ENTREGA_PARCIAL de sol 7 → RESUELTO_FUNDADO (ciclo completo terminado)
 -- Flujo: INADMISIBLE → EN_SUBSANACION → subsanación → ADMITIDO → resolución FUNDADO
 INSERT IGNORE INTO apelaciones (id_apelacion, expediente, id_solicitud, id_ciudadano, fundamentos, fecha_apelacion, estado, calificacion_primera, calificacion_segunda, resultado)
-VALUES (3, '00003-2025-JUS-TTAIP', 7, 2,
+VALUES (3, '00003-2025-JUS/TTAIP', 7, 2,
   'Apelo la respuesta parcial a mi solicitud SAIP-2025-00007. La EJDF entregó únicamente los informes de Lima Metropolitana, excluyendo los de provincias y las recomendaciones internas sin sustento legal válido. La excepción de documentos en elaboración (Art. 17 inc. 1 del TUO) no aplica a informes ya concluidos, conforme al criterio reiterado del TTAIP en resoluciones previas.',
   DATE_SUB(NOW(), INTERVAL 28 DAY),
   'RESUELTO_FUNDADO', 'INADMISIBLE', 'ADMITIDO', 'FUNDADO');
@@ -272,7 +272,7 @@ VALUES (3, 3, 8,
 INSERT IGNORE INTO resoluciones (id_resolucion, id_apelacion, id_miembro_ttaip, tipo_resolucion, decision, fundamentos, fundamento_legal, fecha_resolucion, numero_resolucion, causal_fundado, resultado, iniciar_proceso_disciplinario)
 VALUES (4, 3, 7,
   'RESOLUCION_FINAL', 'FUNDADO',
-  'VISTO el expediente de apelación N.° 00003-2025-JUS-TTAIP interpuesto por la ciudadana María López Fernández contra la respuesta parcial de la Entidad de Justicia y Derechos Fundamentales; y CONSIDERANDO que la entidad no ha acreditado que los informes de supervisión penitenciaria de provincias ni las recomendaciones emitidas se encuentren comprendidos en alguna de las excepciones taxativas del artículo 17 del TUO de la Ley N.° 27806; que la excepción de documentos en proceso de elaboración interna (Art. 17 inc. 1) no resulta aplicable a informes de supervisión ya concluidos y aprobados; SE RESUELVE declarar FUNDADO el recurso de apelación.',
+  'VISTO el expediente de apelación N.° 00003-2025-JUS/TTAIP interpuesto por la ciudadana María López Fernández contra la respuesta parcial de la Entidad de Justicia y Derechos Fundamentales; y CONSIDERANDO que la entidad no ha acreditado que los informes de supervisión penitenciaria de provincias ni las recomendaciones emitidas se encuentren comprendidos en alguna de las excepciones taxativas del artículo 17 del TUO de la Ley N.° 27806; que la excepción de documentos en proceso de elaboración interna (Art. 17 inc. 1) no resulta aplicable a informes de supervisión ya concluidos y aprobados; SE RESUELVE declarar FUNDADO el recurso de apelación.',
   'Artículos 10, 11-B y 17 del TUO de la Ley N.° 27806; artículo 218 del TUO de la Ley N.° 27444',
   DATE_SUB(NOW(), INTERVAL 5 DAY),
   '000001-2025-JUS/TTAIP-PRIMERA SALA',

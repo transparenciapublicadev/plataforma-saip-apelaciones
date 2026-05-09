@@ -3,13 +3,16 @@ package pe.gob.saip.backend.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,11 +52,44 @@ public class ApelacionRestController {
     }
 
     @Operation(summary = "Obtener apelación por expediente TTAIP", description = "Formato: NNNNN-AAAA-JUS/TTAIP")
-    @GetMapping("/expediente/{expediente}")
-    public ResponseEntity<ApelacionDTO> obtenerPorExpediente(@Parameter(description = "Número de expediente TTAIP") @PathVariable String expediente) {
-        Apelacion apelacion = apelacionService.findByExpediente(expediente)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con expediente: " + expediente));
-        return ResponseEntity.ok(ApelacionDTO.from(apelacion));
+    @GetMapping("/expediente")
+    public ResponseEntity<ApelacionDTO> obtenerPorExpedienteQuery(@RequestParam("numero") String expediente) {
+        return ResponseEntity.ok(ApelacionDTO.from(obtenerApelacionPorExpediente(expediente)));
+    }
+
+    @Operation(summary = "Obtener apelación por expediente TTAIP", description = "Formato: NNNNN-AAAA-JUS/TTAIP")
+    @GetMapping({"/expediente/{expediente}", "/expediente/**"})
+    public ResponseEntity<ApelacionDTO> obtenerPorExpediente(
+            @Parameter(description = "Número de expediente TTAIP") @PathVariable(required = false) String expediente,
+            HttpServletRequest request) {
+        String expedienteResuelto = resolverExpediente(expediente, request);
+        return ResponseEntity.ok(ApelacionDTO.from(obtenerApelacionPorExpediente(expedienteResuelto)));
+    }
+
+    private Apelacion obtenerApelacionPorExpediente(String expediente) {
+        if (expediente == null || expediente.trim().isEmpty()) {
+            throw new IllegalArgumentException("El expediente es obligatorio");
+        }
+
+        String expedienteNormalizado = expediente.trim();
+        return apelacionService.findByExpediente(expedienteNormalizado)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con expediente: " + expedienteNormalizado));
+    }
+
+    private String resolverExpediente(String expediente, HttpServletRequest request) {
+        if (expediente != null && !expediente.trim().isEmpty()) {
+            return expediente.trim();
+        }
+
+        final String prefix = "/api/apelaciones/expediente/";
+        String requestUri = request.getRequestURI();
+        int start = requestUri.indexOf(prefix);
+        if (start < 0) {
+            return expediente;
+        }
+
+        String expedienteEnRuta = requestUri.substring(start + prefix.length());
+        return UriUtils.decode(expedienteEnRuta, StandardCharsets.UTF_8);
     }
 
     @Operation(summary = "Listar apelaciones por estado")
@@ -201,10 +237,16 @@ public class ApelacionRestController {
 
     @Operation(summary = "Eliminar apelación")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@Parameter(description = "ID de la apelación") @PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> eliminar(@Parameter(description = "ID de la apelación") @PathVariable Long id) {
         apelacionService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
         apelacionService.eliminarApelacion(id);
-        return ResponseEntity.noContent().build();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("mensaje", "Apelación eliminada correctamente");
+        response.put("id", id);
+
+        return ResponseEntity.ok(response);
     }
 }
+

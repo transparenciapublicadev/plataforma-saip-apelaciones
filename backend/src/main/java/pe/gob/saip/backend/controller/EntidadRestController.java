@@ -16,12 +16,15 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/entidades")
 @Tag(name = "Entidades Públicas", description = "Gestión de entidades públicas del sistema")
 public class EntidadRestController {
+
+    private static final Set<String> ESTADOS_VALIDOS = Set.of("Activa", "Inactiva");
 
     private final EntidadService entidadService;
     private final SolicitudService solicitudService;
@@ -91,17 +94,20 @@ public class EntidadRestController {
     @Operation(summary = "Registrar entidad pública")
     @PostMapping
     public ResponseEntity<EntidadDTO> crear(@RequestBody EntidadDTO entidadDTO) {
-        if (entidadService.obtenerEntidadPorAcronimo(entidadDTO.acronimo()).isPresent()) {
-            throw new IllegalArgumentException("Ya existe una entidad con el acrónimo: " + entidadDTO.acronimo());
+        String nombre = sanitizeRequiredPlainText(entidadDTO.nombre(), "nombre", 200);
+        String acronimo = sanitizeRequiredPlainText(entidadDTO.acronimo(), "acronimo", 20).toUpperCase();
+
+        if (entidadService.obtenerEntidadPorAcronimo(acronimo).isPresent()) {
+            throw new IllegalArgumentException("Ya existe una entidad con el acrónimo: " + acronimo);
         }
 
         Entidad entidad = new Entidad();
-        entidad.setNombre(entidadDTO.nombre());
-        entidad.setAcronimo(entidadDTO.acronimo());
-        entidad.setDescripcion(entidadDTO.descripcion());
-        entidad.setDireccion(entidadDTO.direccion());
-        entidad.setTelefono(entidadDTO.telefono());
-        entidad.setEmail(entidadDTO.email());
+        entidad.setNombre(nombre);
+        entidad.setAcronimo(acronimo);
+        entidad.setDescripcion(sanitizeOptionalPlainText(entidadDTO.descripcion(), "descripcion", 500));
+        entidad.setDireccion(sanitizeOptionalPlainText(entidadDTO.direccion(), "direccion", 300));
+        entidad.setTelefono(sanitizeOptionalPlainText(entidadDTO.telefono(), "telefono", 20));
+        entidad.setEmail(sanitizeOptionalPlainText(entidadDTO.email(), "email", 100));
         entidad.setEstado("Activa");
         entidad.setActiva(true);
         entidad.setFechaRegistro(LocalDateTime.now());
@@ -117,16 +123,41 @@ public class EntidadRestController {
         Entidad entidad = entidadService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Entidad no encontrada con ID: " + id));
 
-        entidad.setNombre(entidadDTO.nombre());
-        entidad.setAcronimo(entidadDTO.acronimo());
-        entidad.setDescripcion(entidadDTO.descripcion());
-        entidad.setDireccion(entidadDTO.direccion());
-        entidad.setTelefono(entidadDTO.telefono());
-        entidad.setEmail(entidadDTO.email());
+        if (entidadDTO.acronimo() != null) {
+            String nuevoAcronimo = sanitizeRequiredPlainText(entidadDTO.acronimo(), "acronimo", 20).toUpperCase();
+            if (!nuevoAcronimo.equalsIgnoreCase(entidad.getAcronimo())) {
+                entidadService.obtenerEntidadPorAcronimo(nuevoAcronimo)
+                        .filter(existente -> !existente.getId().equals(id))
+                        .ifPresent(existente -> {
+                            throw new IllegalArgumentException("Ya existe una entidad con el acrónimo: " + nuevoAcronimo);
+                        });
+            }
+            entidad.setAcronimo(nuevoAcronimo);
+        }
+
+        if (entidadDTO.nombre() != null) {
+            entidad.setNombre(sanitizeRequiredPlainText(entidadDTO.nombre(), "nombre", 200));
+        }
+        if (entidadDTO.descripcion() != null) {
+            entidad.setDescripcion(sanitizeOptionalPlainText(entidadDTO.descripcion(), "descripcion", 500));
+        }
+        if (entidadDTO.direccion() != null) {
+            entidad.setDireccion(sanitizeOptionalPlainText(entidadDTO.direccion(), "direccion", 300));
+        }
+        if (entidadDTO.telefono() != null) {
+            entidad.setTelefono(sanitizeOptionalPlainText(entidadDTO.telefono(), "telefono", 20));
+        }
+        if (entidadDTO.email() != null) {
+            entidad.setEmail(sanitizeOptionalPlainText(entidadDTO.email(), "email", 100));
+        }
 
         if (entidadDTO.estado() != null) {
-            entidad.setEstado(entidadDTO.estado());
-            entidad.setActiva("Activa".equals(entidadDTO.estado()));
+            String estado = sanitizeRequiredPlainText(entidadDTO.estado(), "estado", 20);
+            if (!ESTADOS_VALIDOS.contains(estado)) {
+                throw new IllegalArgumentException("Estado no válido. Use Activa o Inactiva.");
+            }
+            entidad.setEstado(estado);
+            entidad.setActiva("Activa".equals(estado));
         }
 
         entidadService.save(entidad);
@@ -140,7 +171,11 @@ public class EntidadRestController {
         Entidad entidad = entidadService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Entidad no encontrada con ID: " + id));
 
-        String nuevoEstado = body.get("estado");
+        String nuevoEstado = sanitizeRequiredPlainText(body.get("estado"), "estado", 20);
+        if (!ESTADOS_VALIDOS.contains(nuevoEstado)) {
+            throw new IllegalArgumentException("Estado no válido. Use Activa o Inactiva.");
+        }
+
         entidad.setEstado(nuevoEstado);
         entidad.setActiva("Activa".equals(nuevoEstado));
 
@@ -167,5 +202,26 @@ public class EntidadRestController {
         response.put("id", id);
 
         return ResponseEntity.ok(response);
+    }
+
+    private String sanitizeRequiredPlainText(String value, String fieldName, int maxLength) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("El campo " + fieldName + " es obligatorio.");
+        }
+        return sanitizeOptionalPlainText(value, fieldName, maxLength);
+    }
+
+    private String sanitizeOptionalPlainText(String value, String fieldName, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException("El campo " + fieldName + " excede el tamaño máximo de " + maxLength + " caracteres.");
+        }
+        if (normalized.contains("<") || normalized.contains(">")) {
+            throw new IllegalArgumentException("El campo " + fieldName + " contiene caracteres no permitidos.");
+        }
+        return normalized;
     }
 }

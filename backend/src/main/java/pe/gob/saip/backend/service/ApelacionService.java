@@ -87,13 +87,13 @@ public class ApelacionService {
 
     /**
      * Genera el siguiente número de expediente TTAIP secuencial.
-     * Formato: NNNNN-AAAA-JUS-TTAIP (sin barra para compatibilidad con URLs REST y rutas Angular)
+     * Formato: NNNNN-AAAA-JUS/TTAIP.
      */
     @Transactional
     public String generarExpediente() {
         int year = LocalDate.now().getYear();
         long count = apelacionRepository.count() + 1;
-        return String.format("%05d", count) + "-" + year + "-JUS-TTAIP";
+        return String.format("%05d", count) + "-" + year + "-JUS/TTAIP";
     }
 
     @Transactional
@@ -129,3 +129,4 @@ public class ApelacionService {
         return apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(ciudadanoId).size();
     }
 }
+
