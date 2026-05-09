@@ -125,12 +125,17 @@ public class FuncionarioRestController {
 
     @Operation(summary = "Eliminar funcionario")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@Parameter(description = "ID del funcionario") @PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> eliminar(@Parameter(description = "ID del funcionario") @PathVariable Long id) {
         funcionarioService.obtenerFuncionarioPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario no encontrado con ID: " + id));
 
         funcionarioService.eliminarFuncionario(id);
 
-        return ResponseEntity.noContent().build();
+        Map<String, Object> response = new HashMap<>();
+        response.put("mensaje", "Funcionario eliminado correctamente");
+        response.put("id", id);
+
+        return ResponseEntity.ok(response);
     }
 }
+

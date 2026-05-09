@@ -145,9 +145,8 @@ public class CiudadanoRestController {
 
         return ResponseEntity.ok(CiudadanoDTO.from(ciudadano));
     }
-
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> eliminar(@PathVariable Long id) {
         ciudadanoService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
 
@@ -158,6 +157,12 @@ public class CiudadanoRestController {
 
         ciudadanoService.eliminarCiudadano(id);
 
-        return ResponseEntity.noContent().build();
+        Map<String, Object> response = Map.of(
+                "mensaje", "Ciudadano eliminado correctamente",
+                "id", id
+        );
+
+        return ResponseEntity.ok(response);
     }
 }
+
