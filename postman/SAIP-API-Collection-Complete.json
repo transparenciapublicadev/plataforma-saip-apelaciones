@@ -1,0 +1,3327 @@
+{
+  "info": {
+    "_postman_id": "saip-backend-api-v1",
+    "name": "SAIP Backend API - Colección Completa",
+    "description": "# SAIP Backend API - Colección Operativa Completa\n\nColección profesional para validar el ciclo end-to-end de SAIP (primera instancia) y TTAIP (segunda instancia), incluyendo autenticación, gestión de catálogos, solicitudes, respuestas, apelaciones, operaciones del tribunal, estadísticas y reportes.\n\n## Alcance funcional\n- Autenticación por rol: CIUDADANO, FUNCIONARIO, TTAIP y ADMIN.\n- Operaciones CRUD y flujos de negocio sobre Ciudadanos, Entidades, Funcionarios, Solicitudes y Apelaciones.\n- Flujo TTAIP completo: primera calificación, subsanación, segunda calificación, notificación y resolución final.\n- Consultas analíticas de Estadísticas y Reportes para seguimiento operativo.\n\n## Prerrequisitos\n- Backend activo en `{{baseUrl}}` (por defecto `http://localhost:8080/api`).\n- Base de datos cargada con datos seed de `database/script_saip_db.sql`.\n- Environment de Postman configurado con credenciales y variables de token.\n\n## Variables clave\n- Infraestructura: `baseUrl`.\n- Identificadores: `ciudadanoId`, `funcionarioId`, `entidadId`, `solicitudId`, `apelacionId`, `miembroTTAIPId`.\n- Tokens dinámicos (se generan automáticamente en login): `ciudadanoToken`, `funcionarioToken`, `ttaipToken`, `adminToken`.\n- Credenciales esperadas en environment: `ciudadanoUsername/password`, `funcionarioUsername/password`, `ttaipUsername/password`, `adminUsername/password`.\n\n## Flujo recomendado de ejecución\n1. Ejecutar carpeta **01. Autenticación** para poblar tokens por rol e IDs base.\n2. Validar catálogos y actores con **02–04** (Ciudadanos, Entidades, Funcionarios).\n3. Operar ciclo SAIP con **05. Solicitudes SAIP** y **06. Respuestas**.\n4. Escalar a segunda instancia con **07. Apelaciones** y resolver en **08. Tribunal TTAIP**.\n5. Cerrar análisis con **09. Estadísticas** y **10. Reportes**.\n\n## Convenciones de autorización\n- La mayoría de endpoints protegidos usan `Authorization: Bearer {{<rol>Token}}` definido en cada request/carpeta.\n- Para pruebas de seguridad, validar respuestas `401/403` cuando el rol no corresponde.\n\n## Criterios de validación sugeridos\n- Códigos HTTP esperados por operación (2xx, 4xx de validación, 401/403 por seguridad).\n- Integridad de estado en transiciones SAIP/TTAIP.\n- Persistencia de IDs y correlación expediente/solicitud/apelación durante todo el flujo.\n\n## Notas operativas\n- Todos los payloads `raw` fueron normalizados a formato JSON legible para evitar cuerpos con escapes inválidos de salto de línea.\n- Esta colección está diseñada para ejecución manual, smoke tests funcionales y validación de regresión API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "ciudadanoId",
+      "value": "1"
+    },
+    {
+      "key": "funcionarioId",
+      "value": "22"
+    },
+    {
+      "key": "entidadId",
+      "value": "1"
+    },
+    {
+      "key": "solicitudId",
+      "value": "1"
+    },
+    {
+      "key": "apelacionId",
+      "value": "1"
+    },
+    {
+      "key": "miembroTTAIPId",
+      "value": "11"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Autenticación",
+      "description": "## Objetivo\nInicializar sesión por rol y validar entradas de autenticación/registro.\n\n## Incluye\n- Login para CIUDADANO, FUNCIONARIO, TTAIP y ADMIN (con guardado automático de token e IDs).\n- Registro de ciudadano y validaciones de existencia (email/DNI).\n- Endpoint de usuario autenticado actual.\n\n## Uso recomendado\nEjecutar esta carpeta al inicio de cualquier sesión para garantizar contexto de variables y autorización.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Login - Ciudadano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identificador\": \"{{ciudadanoUsername}}\",\n    \"password\": \"{{ciudadanoPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Iniciar sesión como ciudadano. Retorna información del usuario y URL de redirección."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const previousToken = (pm.environment.get(\"ciudadanoToken\") || \"\").trim();",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.test(\"Token de ciudadano rota en re-login\", function () {",
+                  "    if (previousToken && !previousToken.startsWith(\"TOKEN_\")) {",
+                  "      pm.expect(json.token).to.not.eql(previousToken);",
+                  "    } else {",
+                  "      pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                  "    }",
+                  "  });",
+                  "  pm.environment.set(\"ciudadanoToken\", json.token);",
+                  "}",
+                  "if (json.ciudadanoId) pm.environment.set(\"ciudadanoId\", String(json.ciudadanoId));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Funcionario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identificador\": \"{{funcionarioLoginUsername}}\",\n    \"password\": \"{{funcionarioLoginPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Iniciar sesión como funcionario de entidad pública."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configuredUser = (pm.environment.get(\"funcionarioUsername\") || \"\").trim();",
+                  "const configuredPass = (pm.environment.get(\"funcionarioPassword\") || \"\").trim();",
+                  "const fallbackUser = (pm.environment.get(\"funcionarioUsernameFallback\") || \"func.enedu@enedu.test\").trim();",
+                  "const fallbackPass = (pm.environment.get(\"funcionarioPasswordFallback\") || \"123456\").trim();",
+                  "",
+                  "const shouldPreferFallback = configuredUser === \"func.minedu@minedu.gob.pe\" && configuredPass === \"Saip2026*\";",
+                  "const loginUser = shouldPreferFallback ? fallbackUser : configuredUser;",
+                  "const loginPass = shouldPreferFallback ? fallbackPass : configuredPass;",
+                  "",
+                  "pm.variables.set(\"funcionarioLoginUsername\", loginUser);",
+                  "pm.variables.set(\"funcionarioLoginPassword\", loginPass);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const previousToken = (pm.environment.get(\"funcionarioToken\") || \"\").trim();",
+                  "const configuredUser = (pm.environment.get(\"funcionarioUsername\") || \"\").trim();",
+                  "const configuredPass = (pm.environment.get(\"funcionarioPassword\") || \"\").trim();",
+                  "const fallbackUser = (pm.environment.get(\"funcionarioUsernameFallback\") || \"func.enedu@enedu.test\").trim();",
+                  "const fallbackPass = (pm.environment.get(\"funcionarioPasswordFallback\") || \"123456\").trim();",
+                  "const json = pm.response.json();",
+                  "",
+                  "const applyLogin = (payload, data) => {",
+                  "  pm.environment.set(\"funcionarioToken\", data.token);",
+                  "  if (data.funcionarioId) {",
+                  "    const funcionarioId = String(data.funcionarioId);",
+                  "    pm.environment.set(\"funcionarioId\", funcionarioId);",
+                  "    pm.environment.set(\"createdFuncionarioId\", funcionarioId);",
+                  "  }",
+                  "  if (data.entidadId) pm.environment.set(\"funcionarioEntidadId\", String(data.entidadId));",
+                  "  pm.environment.set(\"funcionarioUsername\", payload.identificador);",
+                  "  pm.environment.set(\"funcionarioPassword\", payload.password);",
+                  "};",
+                  "",
+                  "if (json.token) {",
+                  "  pm.test(\"Token de funcionario rota en re-login\", function () {",
+                  "    if (previousToken && !previousToken.startsWith(\"TOKEN_\")) {",
+                  "      pm.expect(json.token).to.not.eql(previousToken);",
+                  "    } else {",
+                  "      pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                  "    }",
+                  "  });",
+                  "  applyLogin({ identificador: configuredUser, password: configuredPass }, json);",
+                  "} else if (json.success === false && (json.mensaje === \"Usuario no encontrado\" || json.mensaje === \"Contraseña incorrecta\")) {",
+                  "  const baseUrl = (pm.environment.get(\"baseUrl\") || \"\").trim();",
+                  "  const candidates = [",
+                  "    { identificador: configuredUser, password: configuredPass },",
+                  "    { identificador: fallbackUser, password: fallbackPass },",
+                  "    { identificador: configuredUser, password: fallbackPass },",
+                  "    { identificador: fallbackUser, password: configuredPass }",
+                  "  ].filter(c => c.identificador && c.password);",
+                  "",
+                  "  const tried = new Set();",
+                  "  const uniqueCandidates = candidates.filter(c => {",
+                  "    const key = `${c.identificador}::${c.password}`;",
+                  "    if (tried.has(key)) return false;",
+                  "    tried.add(key);",
+                  "    return true;",
+                  "  });",
+                  "",
+                  "  const runTry = (idx) => {",
+                  "    if (!baseUrl || idx >= uniqueCandidates.length) return;",
+                  "    const payload = uniqueCandidates[idx];",
+                  "    pm.sendRequest({",
+                  "      url: `${baseUrl}/auth/login`,",
+                  "      method: \"POST\",",
+                  "      header: { \"Content-Type\": \"application/json\" },",
+                  "      body: { mode: \"raw\", raw: JSON.stringify(payload) }",
+                  "    }, (err, res) => {",
+                  "      if (!err && res && res.code === 200) {",
+                  "        const fb = res.json();",
+                  "        if (fb && fb.token) {",
+                  "          applyLogin(payload, fb);",
+                  "          return;",
+                  "        }",
+                  "      }",
+                  "      runTry(idx + 1);",
+                  "    });",
+                  "  };",
+                  "",
+                  "  runTry(0);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - TTAIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identificador\": \"{{ttaipUsername}}\",\n    \"password\": \"{{ttaipPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Iniciar sesión como miembro del Tribunal de Transparencia."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const previousToken = (pm.environment.get(\"ttaipToken\") || \"\").trim();",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.test(\"Token TTAIP rota en re-login\", function () {",
+                  "    if (previousToken && !previousToken.startsWith(\"TOKEN_\")) {",
+                  "      pm.expect(json.token).to.not.eql(previousToken);",
+                  "    } else {",
+                  "      pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                  "    }",
+                  "  });",
+                  "  pm.environment.set(\"ttaipToken\", json.token);",
+                  "}",
+                  "if (json.miembroId) pm.environment.set(\"miembroTTAIPId\", String(json.miembroId));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identificador\": \"{{adminUsername}}\",\n    \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Iniciar sesión como administrador del sistema."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const previousToken = (pm.environment.get(\"adminToken\") || \"\").trim();",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.test(\"Token de administrador rota en re-login\", function () {",
+                  "    if (previousToken && !previousToken.startsWith(\"TOKEN_\")) {",
+                  "      pm.expect(json.token).to.not.eql(previousToken);",
+                  "    } else {",
+                  "      pm.expect(json.token).to.be.a(\"string\").and.not.empty;",
+                  "    }",
+                  "  });",
+                  "  pm.environment.set(\"adminToken\", json.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registro de Ciudadano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{registroEmail}}\",\n    \"password\": \"123456\",\n    \"dni\": \"{{registroDni}}\",\n    \"nombreCompleto\": \"Nuevo Ciudadano Registro\",\n    \"telefono\": \"999888777\",\n    \"direccion\": \"Av. Nueva 123, Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/registro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "registro"
+              ]
+            },
+            "description": "Registrar un nuevo ciudadano en el sistema."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"registroEmail\", `registro.${now}@saip.test`);",
+                  "pm.variables.set(\"registroDni\", now.slice(-8));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar Email Existente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verificar-email?email=ciudadano01@gmail.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verificar-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "ciudadano01@gmail.com"
+                }
+              ]
+            },
+            "description": "Verificar si un email ya está registrado en el sistema."
+          }
+        },
+        {
+          "name": "Verificar DNI Existente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verificar-dni?dni=70000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verificar-dni"
+              ],
+              "query": [
+                {
+                  "key": "dni",
+                  "value": "70000001"
+                }
+              ]
+            },
+            "description": "Verificar si un DNI ya está registrado en el sistema."
+          }
+        },
+        {
+          "name": "Obtener Usuario Actual",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me/{{ciudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me",
+                "{{ciudadanoId}}"
+              ]
+            },
+            "description": "Obtener información del usuario por su ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Ciudadanos",
+      "description": "## Objetivo\nAdministrar el ciclo de vida de ciudadanos y consultar su información operativa.\n\n## Incluye\n- Listado general, búsquedas por ID y DNI, detalle con estadísticas.\n- Alta, actualización, cambio de estado y eliminación lógica/física según permisos.\n\n## Seguridad esperada\nAcceso controlado por rol; validar restricciones para operaciones de escritura.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ciudadanoToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todos los Ciudadanos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos"
+              ]
+            },
+            "description": "Obtener lista de todos los ciudadanos registrados."
+          }
+        },
+        {
+          "name": "Obtener Ciudadano por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/{{ciudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "{{ciudadanoId}}"
+              ]
+            },
+            "description": "Obtener información de un ciudadano por su ID."
+          }
+        },
+        {
+          "name": "Obtener Ciudadano por DNI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/dni/71234567",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "dni",
+                "71234567"
+              ]
+            },
+            "description": "Obtener información de un ciudadano por su DNI."
+          }
+        },
+        {
+          "name": "Obtener Ciudadano con Estadísticas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/{{ciudadanoId}}/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "{{ciudadanoId}}",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener ciudadano con estadísticas de solicitudes y apelaciones."
+          }
+        },
+        {
+          "name": "Crear Ciudadano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dni\": \"{{crearCiudadanoDni}}\",\n    \"nombreCompleto\": \"Ciudadano API CRUD\",\n    \"email\": \"{{crearCiudadanoEmail}}\",\n    \"password\": \"123456\",\n    \"telefono\": \"911222333\",\n    \"direccion\": \"Calle Nueva 456, Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos"
+              ]
+            },
+            "description": "Crear un nuevo ciudadano directamente (sin registro completo). El campo password es opcional, si no se envía se genera uno temporal."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"crearCiudadanoEmail\", `crud.ciudadano.${now}@saip.test`);",
+                  "pm.variables.set(\"crearCiudadanoDni\", now.slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdCiudadanoId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Ciudadano",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombreCompleto\": \"Ciudadano API CRUD Actualizado\",\n    \"email\": \"{{updateCiudadanoEmail}}\",\n    \"telefono\": \"999888777\",\n    \"direccion\": \"Av. Actualizada 999, Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/{{createdCiudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "{{createdCiudadanoId}}"
+              ]
+            },
+            "description": "Actualizar datos de un ciudadano existente."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"updateCiudadanoEmail\", `crud.ciudadano.upd.${now}@saip.test`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar Estado Ciudadano",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"activo\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/{{createdCiudadanoId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "{{createdCiudadanoId}}",
+                "estado"
+              ]
+            },
+            "description": "Activar o desactivar un ciudadano."
+          }
+        },
+        {
+          "name": "Eliminar Ciudadano",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ciudadanos/{{createdCiudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ciudadanos",
+                "{{createdCiudadanoId}}"
+              ]
+            },
+            "description": "Eliminar un ciudadano (solo si no tiene solicitudes)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Entidades Públicas",
+      "description": "## Objetivo\nGestionar entidades públicas y su información institucional.\n\n## Incluye\n- Consulta de entidades (todas, activas, por ID, por nombre).\n- Operaciones administrativas: crear, actualizar, cambio de estado y eliminación.\n\n## Reglas operativas\nLas mutaciones deben ejecutarse con rol ADMIN y verificarse contra reglas de unicidad y consistencia.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ciudadanoToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todas las Entidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades"
+              ]
+            },
+            "description": "Obtener lista de todas las entidades públicas."
+          }
+        },
+        {
+          "name": "Listar Entidades Activas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/activas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "activas"
+              ]
+            },
+            "description": "Obtener solo las entidades activas."
+          }
+        },
+        {
+          "name": "Obtener Entidad por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Obtener información de una entidad por su ID."
+          }
+        },
+        {
+          "name": "Obtener Entidad con Estadísticas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "{{entidadId}}",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener entidad con estadísticas de solicitudes."
+          }
+        },
+        {
+          "name": "Buscar Entidades por Nombre",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/buscar?nombre=Ministerio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "nombre",
+                  "value": "Ministerio"
+                }
+              ]
+            },
+            "description": "Buscar entidades por nombre parcial."
+          }
+        },
+        {
+          "name": "Crear Entidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombre\": \"{{createdEntidadNombre}}\",\n    \"acronimo\": \"{{createdEntidadAcronimo}}\",\n    \"descripcion\": \"Entidad creada para pruebas API\",\n    \"direccion\": \"Av. Nueva 456, Lima\",\n    \"telefono\": \"999888777\",\n    \"email\": \"{{createdEntidadEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades"
+              ]
+            },
+            "description": "Crear una nueva entidad pública.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"createdEntidadAcronimo\", `E${now.slice(-4)}`);",
+                  "pm.variables.set(\"createdEntidadNombre\", `Entidad Demo ${now.slice(-4)}`);",
+                  "pm.variables.set(\"createdEntidadEmail\", `entidad.${now}@saip.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) {",
+                  "  pm.environment.set(\"createdEntidadId\", String(json.id));",
+                  "  pm.environment.set(\"entidadId\", String(json.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Entidad",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombre\": \"{{createdEntidadNombre}} Actualizada\",\n    \"acronimo\": \"{{createdEntidadAcronimo}}\",\n    \"descripcion\": \"Entidad actualizada para pruebas API\",\n    \"direccion\": \"Av. Actualizada 777, Lima\",\n    \"telefono\": \"615-5801\",\n    \"email\": \"{{updatedEntidadEmail}}\",\n    \"estado\": \"Activa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Actualizar datos de una entidad existente.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId;",
+                  "if (!targetEntidadId) throw new Error(\"Falta entidadId/createdEntidadId para actualizar entidad\");",
+                  "pm.environment.set(\"entidadId\", targetEntidadId);",
+                  "pm.environment.set(\"createdEntidadId\", targetEntidadId);",
+                  "const entidadMap = {",
+                  "  \"1\": { acronimo: \"MINEDU\", nombre: \"Ministerio de Educacion\" },",
+                  "  \"2\": { acronimo: \"MINSA\", nombre: \"Ministerio de Salud\" },",
+                  "  \"3\": { acronimo: \"MININTER\", nombre: \"Ministerio del Interior\" },",
+                  "  \"4\": { acronimo: \"MINJUSDH\", nombre: \"Ministerio de Justicia y DDHH\" },",
+                  "  \"5\": { acronimo: \"MEF\", nombre: \"Ministerio de Economia y Finanzas\" },",
+                  "  \"6\": { acronimo: \"MTC\", nombre: \"Ministerio de Transportes y Comunicaciones\" },",
+                  "  \"7\": { acronimo: \"MIDIS\", nombre: \"Ministerio de Desarrollo e Inclusion Social\" },",
+                  "  \"8\": { acronimo: \"MINAM\", nombre: \"Ministerio del Ambiente\" },",
+                  "  \"9\": { acronimo: \"SUNAT\", nombre: \"Superintendencia Nacional de Aduanas y de Administracion Tributaria\" },",
+                  "  \"10\": { acronimo: \"OSIPTEL\", nombre: \"Organismo Supervisor de Inversion Privada en Telecomunicaciones\" }",
+                  "};",
+                  "const mapped = entidadMap[targetEntidadId];",
+                  "if (!pm.environment.get(\"createdEntidadAcronimo\")) pm.environment.set(\"createdEntidadAcronimo\", mapped ? mapped.acronimo : `ENT${targetEntidadId}`);",
+                  "if (!pm.environment.get(\"createdEntidadNombre\")) pm.environment.set(\"createdEntidadNombre\", mapped ? mapped.nombre : `Entidad ${targetEntidadId}`);",
+                  "if (!pm.environment.get(\"updatedEntidadEmail\")) pm.environment.set(\"updatedEntidadEmail\", `entidad.upd.${Date.now()}@saip.test`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar Estado Entidad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"Inactiva\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "{{entidadId}}",
+                "estado"
+              ]
+            },
+            "description": "Activar o desactivar una entidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Eliminar Entidad",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "entidades",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Eliminar una entidad (solo si no tiene solicitudes).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Funcionarios",
+      "description": "## Objetivo\nGestionar funcionarios asociados a entidades y su estado operativo.\n\n## Incluye\n- Listados globales y por entidad.\n- Alta, actualización, activación/desactivación y eliminación según permisos.\n\n## Validación clave\nCorrelación funcionario-entidad y control de permisos por rol.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{funcionarioToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todos los Funcionarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios"
+              ]
+            },
+            "description": "Obtener lista de todos los funcionarios."
+          }
+        },
+        {
+          "name": "Obtener Funcionario por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios/{{funcionarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios",
+                "{{funcionarioId}}"
+              ]
+            },
+            "description": "Obtener información de un funcionario por su ID."
+          }
+        },
+        {
+          "name": "Listar Funcionarios por Entidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios/entidad/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios",
+                "entidad",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Obtener funcionarios de una entidad específica."
+          }
+        },
+        {
+          "name": "Crear Funcionario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombreCompleto\": \"Funcionario API CRUD\",\n    \"cargo\": \"Especialista en Transparencia\",\n    \"email\": \"{{createdFuncionarioEmail}}\",\n    \"telefono\": \"987777888\",\n    \"entidadId\": {{targetEntidadId}},\n    \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios"
+              ]
+            },
+            "description": "Crear un nuevo funcionario asociado a una entidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);",
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"createdFuncionarioEmail\", `func.crud.${now}@saip.test`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdFuncionarioId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Funcionario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nombreCompleto\": \"Funcionario API CRUD Actualizado\",\n    \"cargo\": \"Director de Transparencia\",\n    \"email\": \"{{updatedFuncionarioEmail}}\",\n    \"telefono\": \"987999888\",\n    \"entidadId\": {{targetEntidadId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios/{{createdFuncionarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios",
+                "{{createdFuncionarioId}}"
+              ]
+            },
+            "description": "Actualizar datos de un funcionario.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId;",
+                  "if (!targetFuncionarioId) throw new Error(\"Falta createdFuncionarioId/funcionarioId para actualizar funcionario\");",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);",
+                  "const now = Date.now().toString();",
+                  "pm.variables.set(\"updatedFuncionarioEmail\", `func.crud.upd.${now}@saip.test`);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar Estado Funcionario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"activo\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios/{{createdFuncionarioId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios",
+                "{{createdFuncionarioId}}",
+                "estado"
+              ]
+            },
+            "description": "Activar o desactivar un funcionario.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId;",
+                  "if (!targetFuncionarioId) throw new Error(\"Falta createdFuncionarioId/funcionarioId para cambiar estado de funcionario\");",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar Funcionario",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/funcionarios/{{createdFuncionarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "funcionarios",
+                "{{createdFuncionarioId}}"
+              ]
+            },
+            "description": "Eliminar un funcionario del sistema.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId;",
+                  "if (!targetFuncionarioId) throw new Error(\"Falta createdFuncionarioId/funcionarioId para eliminar funcionario\");",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Solicitudes SAIP",
+      "description": "## Objetivo\nEjecutar el flujo de primera instancia SAIP sobre solicitudes de acceso a información.\n\n## Incluye\n- Consultas por ID, expediente, ciudadano, entidad y estado.\n- Métricas de solicitudes (globales y por actor).\n- Creación, actualización, transición de estado y eliminación.\n\n## Validación clave\nVerificar trazabilidad de expediente SAIP y consistencia de estados durante todo el ciclo.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{funcionarioToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todas las Solicitudes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Obtener lista de todas las solicitudes SAIP."
+          }
+        },
+        {
+          "name": "Obtener Solicitud por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{solicitudId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{solicitudId}}"
+              ]
+            },
+            "description": "Obtener detalle de una solicitud."
+          }
+        },
+        {
+          "name": "Obtener Solicitud por Expediente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/expediente/{{solicitudExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "expediente",
+                "{{solicitudExpediente}}"
+              ]
+            },
+            "description": "Buscar solicitud por expediente SAIP en formato SAIP-AAAA-NNNNN."
+          }
+        },
+        {
+          "name": "Listar Solicitudes por Ciudadano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/ciudadano/{{ciudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "ciudadano",
+                "{{ciudadanoId}}"
+              ]
+            },
+            "description": "Obtener solicitudes de un ciudadano específico."
+          }
+        },
+        {
+          "name": "Listar Solicitudes por Entidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/entidad/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "entidad",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Obtener solicitudes asignadas a una entidad."
+          }
+        },
+        {
+          "name": "Listar Solicitudes por Estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/estado/{{solicitudEstado}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "estado",
+                "{{solicitudEstado}}"
+              ]
+            },
+            "description": "Estados válidos: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA."
+          }
+        },
+        {
+          "name": "Estadísticas de Solicitudes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener estadísticas generales de solicitudes."
+          }
+        },
+        {
+          "name": "Estadísticas por Ciudadano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/ciudadano/{{ciudadanoId}}/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "ciudadano",
+                "{{ciudadanoId}}",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener estadísticas de solicitudes de un ciudadano."
+          }
+        },
+        {
+          "name": "Estadísticas por Entidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/entidad/{{entidadId}}/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "entidad",
+                "{{entidadId}}",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener estadísticas de solicitudes de una entidad."
+          }
+        },
+        {
+          "name": "Crear Solicitud SAIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crear una nueva solicitud SAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdSolicitudId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"solicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Solicitud SAIP (Respuesta Genérica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crear una nueva solicitud SAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdSolicitudId2\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Solicitud SAIP (Aceptar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crear una nueva solicitud SAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdSolicitudId3\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Solicitud SAIP (Denegar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crear una nueva solicitud SAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const createdEntidadId = (pm.environment.get(\"createdEntidadId\") || \"\").trim();",
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const targetEntidadId = entidadId || createdEntidadId || funcionarioEntidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdSolicitudId4\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Solicitud",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"asunto\": \"Solicitud actualizada - Presupuesto 2024\",\n    \"descripcion\": \"Solicitud actualizada con más detalle sobre la información requerida.\",\n    \"tipoInformacion\": \"Información Presupuestal Actualizada\",\n    \"prioridad\": \"ALTA\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{createdSolicitudId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{createdSolicitudId}}"
+              ]
+            },
+            "description": "Actualizar datos de una solicitud existente."
+          }
+        },
+        {
+          "name": "Cambiar Estado de Solicitud",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"EN_REVISION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{createdSolicitudId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{createdSolicitudId}}",
+                "estado"
+              ]
+            },
+            "description": "Cambiar estado de una solicitud. Estados válidos: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA."
+          }
+        },
+        {
+          "name": "Eliminar Solicitud",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{createdSolicitudId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{createdSolicitudId}}"
+              ]
+            },
+            "description": "Eliminar una solicitud del sistema.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Respuestas",
+      "description": "## Objetivo\nRegistrar y consultar respuestas emitidas por funcionarios sobre solicitudes SAIP.\n\n## Incluye\n- Consulta por respuesta, por solicitud y catálogo de causales.\n- Respuesta genérica, aceptación y denegación con payloads especializados.\n\n## Validación clave\nAsegurar congruencia entre tipo de respuesta, estado de solicitud y fundamentos registrados.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{funcionarioToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todas las Respuestas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/respuestas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas"
+              ]
+            },
+            "description": "Obtener lista de todas las respuestas."
+          }
+        },
+        {
+          "name": "Obtener Respuesta por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/respuestas/{{respuestaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas",
+                "{{respuestaId}}"
+              ]
+            },
+            "description": "Obtener detalle de una respuesta por su ID."
+          }
+        },
+        {
+          "name": "Obtener Respuesta de Solicitud",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/respuestas/solicitud/{{solicitudId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas",
+                "solicitud",
+                "{{solicitudId}}"
+              ]
+            },
+            "description": "Obtener la respuesta asociada a una solicitud."
+          }
+        },
+        {
+          "name": "Obtener Causales de Denegación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/respuestas/causales-denegacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas",
+                "causales-denegacion"
+              ]
+            },
+            "description": "Obtener lista de causales válidas para denegación según Ley 27806."
+          }
+        },
+        {
+          "name": "Crear Respuesta Genérica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": {{createdSolicitudId2}},\n    \"funcionarioId\": {{funcionarioId}},\n    \"tipoRespuesta\": \"ENTREGA_TOTAL\",\n    \"contenido\": \"Se adjunta la informacion solicitada en formato digital.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/respuestas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas"
+              ]
+            },
+            "description": "Crear una respuesta genérica con tipo de respuesta válido."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const specificSolicitudId = (pm.environment.get(\"createdSolicitudId2\") || \"\").trim();",
+                  "const createdSolicitudId = (pm.environment.get(\"createdSolicitudId\") || \"\").trim();",
+                  "const solicitudId = (pm.environment.get(\"solicitudId\") || \"\").trim();",
+                  "const targetSolicitudId = specificSolicitudId || createdSolicitudId || solicitudId || \"1\";",
+                  "pm.environment.set(\"createdSolicitudId2\", targetSolicitudId);",
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId || \"1\";",
+                  "pm.environment.set(\"funcionarioId\", targetFuncionarioId);",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aceptar Solicitud",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": {{createdSolicitudId3}},\n    \"funcionarioId\": {{funcionarioId}},\n    \"tipoRespuesta\": \"ENTREGA_TOTAL\",\n    \"contenido\": \"Se acepta su solicitud y se adjunta la informacion solicitada.\",\n    \"formatoEntrega\": \"Digital - PDF\",\n    \"plazoEntrega\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/respuestas/aceptar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas",
+                "aceptar"
+              ]
+            },
+            "description": "Aceptar una solicitud con detalles de entrega."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const specificSolicitudId = (pm.environment.get(\"createdSolicitudId3\") || \"\").trim();",
+                  "const createdSolicitudId = (pm.environment.get(\"createdSolicitudId\") || \"\").trim();",
+                  "const solicitudId = (pm.environment.get(\"solicitudId\") || \"\").trim();",
+                  "const targetSolicitudId = specificSolicitudId || createdSolicitudId || solicitudId || \"1\";",
+                  "pm.environment.set(\"createdSolicitudId3\", targetSolicitudId);",
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId || \"1\";",
+                  "pm.environment.set(\"funcionarioId\", targetFuncionarioId);",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Denegar Solicitud",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": {{createdSolicitudId4}},\n    \"funcionarioId\": {{funcionarioId}},\n    \"tipoRespuesta\": \"DENEGACION_TOTAL\",\n    \"contenido\": \"No es posible atender la solicitud por causal legal de reserva.\",\n    \"causalDenegatoria\": \"Información vinculada a investigaciones en trámite\",\n    \"fundamentoLegal\": \"Articulo 15-B de la Ley 27806\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/respuestas/denegar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "respuestas",
+                "denegar"
+              ]
+            },
+            "description": "Denegar una solicitud con causal y fundamento legal."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const specificSolicitudId = (pm.environment.get(\"createdSolicitudId4\") || \"\").trim();",
+                  "const createdSolicitudId = (pm.environment.get(\"createdSolicitudId\") || \"\").trim();",
+                  "const solicitudId = (pm.environment.get(\"solicitudId\") || \"\").trim();",
+                  "const targetSolicitudId = specificSolicitudId || createdSolicitudId || solicitudId || \"1\";",
+                  "pm.environment.set(\"createdSolicitudId4\", targetSolicitudId);",
+                  "const createdFuncionarioId = (pm.environment.get(\"createdFuncionarioId\") || \"\").trim();",
+                  "const funcionarioId = (pm.environment.get(\"funcionarioId\") || \"\").trim();",
+                  "const targetFuncionarioId = createdFuncionarioId || funcionarioId || \"1\";",
+                  "pm.environment.set(\"funcionarioId\", targetFuncionarioId);",
+                  "pm.environment.set(\"createdFuncionarioId\", targetFuncionarioId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Apelaciones",
+      "description": "## Objetivo\nGestionar la elevación a segunda instancia mediante apelaciones ciudadanas.\n\n## Incluye\n- Consultas por ID/expediente/estado/ciudadano y métricas del módulo.\n- Creación de apelación, subsanación y cambios de estado controlados.\n\n## Validación clave\nCorrelación entre solicitud original, expediente TTAIP y estados de admisibilidad/subsanación.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ciudadanoToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Listar Todas las Apelaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones"
+              ]
+            },
+            "description": "Obtener lista de todas las apelaciones."
+          }
+        },
+        {
+          "name": "Obtener Apelación por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{apelacionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{apelacionId}}"
+              ]
+            },
+            "description": "Obtener detalle de una apelación."
+          }
+        },
+        {
+          "name": "Obtener Apelación por Expediente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/expediente?numero={{apelacionExpediente}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "expediente"
+              ],
+              "query": [
+                {
+                  "key": "numero",
+                  "value": "{{apelacionExpediente}}"
+                }
+              ]
+            },
+            "description": "Buscar apelación por expediente TTAIP en formato NNNNN-AAAA-JUS/TTAIP usando query param."
+          }
+        },
+        {
+          "name": "Listar Apelaciones por Estado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/estado/{{apelacionEstado}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "estado",
+                "{{apelacionEstado}}"
+              ]
+            },
+            "description": "Estados válidos: PENDIENTE_ELEVACION, EN_CALIFICACION_1, EN_SUBSANACION, EN_CALIFICACION_2, NOTIFICACION_SEGUNDA_CALIFICACION, EN_RESOLUCION, RESUELTO, TENER_POR_NO_PRESENTADO, CONCLUSION_SUSTRACCION_MATERIA, CONCLUSION_DESISTIMIENTO, RESUELTO_FUNDADO, RESUELTO_FUNDADO_EN_PARTE, RESUELTO_INFUNDADO, RESUELTO_INFUNDADO_EN_PARTE, RESUELTO_IMPROCEDENTE."
+          }
+        },
+        {
+          "name": "Listar Apelaciones por Ciudadano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/ciudadano/{{ciudadanoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "ciudadano",
+                "{{ciudadanoId}}"
+              ]
+            },
+            "description": "Obtener apelaciones de un ciudadano."
+          }
+        },
+        {
+          "name": "Estadísticas de Apelaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener estadísticas generales de apelaciones."
+          }
+        },
+        {
+          "name": "Crear Apelación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": {{createdSolicitudId2}},\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"fundamentos\": \"Apelo la respuesta por considerar que la información solicitada es de interés público.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones"
+              ]
+            },
+            "description": "Crear una nueva apelación contra una solicitud denegada."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdSolicitudId2 = (pm.environment.get(\"createdSolicitudId2\") || \"\").trim();",
+                  "const createdSolicitudId = (pm.environment.get(\"createdSolicitudId\") || \"\").trim();",
+                  "const solicitudId = (pm.environment.get(\"solicitudId\") || \"\").trim();",
+                  "const targetSolicitudId = createdSolicitudId2 || createdSolicitudId || solicitudId || \"1\";",
+                  "pm.environment.set(\"createdSolicitudId2\", targetSolicitudId);",
+                  "const createdCiudadanoId = (pm.environment.get(\"createdCiudadanoId\") || \"\").trim();",
+                  "const ciudadanoId = (pm.environment.get(\"ciudadanoId\") || \"\").trim();",
+                  "const targetCiudadanoId = createdCiudadanoId || ciudadanoId || \"1\";",
+                  "pm.environment.set(\"ciudadanoId\", targetCiudadanoId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.environment.set(\"createdApelacionId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"apelacionExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar Apelación (Subsanación)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Fundamentos actualizados con documentacion adicional para subsanacion.\",\n    \"estado\": \"EN_CALIFICACION_2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{createdApelacionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{createdApelacionId}}"
+              ]
+            },
+            "description": "Actualizar apelación (usado por ciudadano para subsanar).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdApelacionId = (pm.environment.get(\"createdApelacionId\") || \"\").trim();",
+                  "const apelacionId = (pm.environment.get(\"apelacionId\") || \"\").trim();",
+                  "const targetApelacionId = createdApelacionId || apelacionId || \"1\";",
+                  "pm.environment.set(\"createdApelacionId\", targetApelacionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar Estado de Apelación",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"EN_SUBSANACION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{createdApelacionId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{createdApelacionId}}",
+                "estado"
+              ]
+            },
+            "description": "Cambiar estado de una apelación directamente.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdApelacionId = (pm.environment.get(\"createdApelacionId\") || \"\").trim();",
+                  "const apelacionId = (pm.environment.get(\"apelacionId\") || \"\").trim();",
+                  "const targetApelacionId = createdApelacionId || apelacionId || \"1\";",
+                  "pm.environment.set(\"createdApelacionId\", targetApelacionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subsanar Apelación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentosAdicionales\": \"Subsano las observaciones indicadas por el TTAIP. Adjunto la documentación faltante y corrijo los errores señalados en la primera calificación. Los fundamentos adicionales son los siguientes...\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{createdApelacionId}}/subsanacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{createdApelacionId}}",
+                "subsanacion"
+              ]
+            },
+            "description": "Permite al ciudadano presentar fundamentos adicionales cuando la apelación está EN_SUBSANACION. Cambia el estado a EN_CALIFICACION_2.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdApelacionId = (pm.environment.get(\"createdApelacionId\") || \"\").trim();",
+                  "const apelacionId = (pm.environment.get(\"apelacionId\") || \"\").trim();",
+                  "const targetApelacionId = createdApelacionId || apelacionId || \"1\";",
+                  "pm.environment.set(\"createdApelacionId\", targetApelacionId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar Apelación",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{createdApelacionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{createdApelacionId}}"
+              ]
+            },
+            "description": "Eliminar una apelación del sistema.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{adminToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdApelacionId = (pm.environment.get(\"createdApelacionId\") || \"\").trim();",
+                  "const apelacionId = (pm.environment.get(\"apelacionId\") || \"\").trim();",
+                  "const targetApelacionId = createdApelacionId || apelacionId || \"1\";",
+                  "pm.environment.set(\"createdApelacionId\", targetApelacionId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Tribunal TTAIP",
+      "description": "## Objetivo\nOperar la lógica del tribunal para calificación, notificación y resolución final de apelaciones.\n\n## Incluye\n- Bandejas operativas por etapa (pendientes, calificación, subsanación, resolución, resueltas).\n- Primera calificación (admisión/inadmisión/no presentado).\n- Segunda calificación y notificación.\n- Resoluciones finales para todos los escenarios del dominio.\n\n## Validación clave\nConfirmar transiciones válidas de estado y coherencia entre decisión, fundamentos y resultado final.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ttaipToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Estadísticas TTAIP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/estadisticas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "estadisticas"
+              ]
+            },
+            "description": "Obtener estadísticas del tribunal."
+          }
+        },
+        {
+          "name": "Listar Pendientes de Calificación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/pendientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "pendientes"
+              ]
+            },
+            "description": "Apelaciones pendientes de primera calificación."
+          }
+        },
+        {
+          "name": "Listar En Calificación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/en-calificacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "en-calificacion"
+              ]
+            },
+            "description": "Apelaciones en primera calificación."
+          }
+        },
+        {
+          "name": "Listar Esperando Subsanación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/subsanacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "subsanacion"
+              ]
+            },
+            "description": "Apelaciones que requieren subsanación del ciudadano."
+          }
+        },
+        {
+          "name": "Listar Segunda Calificación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/segunda-calificacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "segunda-calificacion"
+              ]
+            },
+            "description": "Apelaciones que ya recibieron subsanación y necesitan segunda calificación."
+          }
+        },
+        {
+          "name": "Listar Resueltas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resueltas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resueltas"
+              ]
+            },
+            "description": "Apelaciones que ya tienen resolución final."
+          }
+        },
+        {
+          "name": "Primera Calificación - Admitir",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"La apelación cumple con todos los requisitos formales establecidos en la Ley 27806. El ciudadano ha fundamentado adecuadamente su recurso y presenta documentación suficiente.\",\n    \"miembroId\": 13\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/calificacion/{{apelacionId}}/admitir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "calificacion",
+                "{{apelacionId}}",
+                "admitir"
+              ]
+            },
+            "description": "Admitir una apelación en primera calificación. Pasa a estado EN_CALIFICACION_2."
+          }
+        },
+        {
+          "name": "Primera Calificación - Requerir Subsanación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"La apelación presenta deficiencias formales que deben ser subsanadas.\",\n    \"observaciones\": \"1. Falta copia de DNI del solicitante\\n2. No se adjuntó copia de la respuesta denegatoria\\n3. Los fundamentos de la apelación no están claramente detallados\",\n    \"diasSubsanacion\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/calificacion/{{apelacionId}}/subsanar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "calificacion",
+                "{{apelacionId}}",
+                "subsanar"
+              ]
+            },
+            "description": "Requerir subsanación. El ciudadano tiene 2 días hábiles para corregir."
+          }
+        },
+        {
+          "name": "Primera Calificación - Inadmitir",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"La apelación no cumple con los requisitos establecidos en la Ley 27806 y su reglamento. Se declara INADMISIBLE por los siguientes motivos: presentación fuera de plazo legal.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/calificacion/{{apelacionId}}/inadmitir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "calificacion",
+                "{{apelacionId}}",
+                "inadmitir"
+              ]
+            },
+            "description": "Inadmitir/rechazar una apelación definitivamente."
+          }
+        },
+        {
+          "name": "Resolución Final - Fundado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Después de analizar los fundamentos de la apelación y la respuesta de la entidad, este Tribunal concluye que la denegación de información carece de fundamento legal válido. Se ORDENA a la entidad entregar la información solicitada en un plazo de 10 días hábiles.\",\n    \"iniciarProcesoDisciplinario\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/fundado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "fundado"
+              ]
+            },
+            "description": "Declarar apelación FUNDADA a favor del ciudadano."
+          }
+        },
+        {
+          "name": "Resolución Final - Infundado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Después de analizar los fundamentos de la apelación y la respuesta de la entidad, este Tribunal concluye que la denegación de información tiene sustento legal válido conforme al artículo 15 de la Ley 27806. Se declara INFUNDADA la apelación.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/infundado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "infundado"
+              ]
+            },
+            "description": "Declarar apelación INFUNDADA, confirmando la decisión de la entidad."
+          }
+        },
+        {
+          "name": "Listar En Resolución",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/en-resolucion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "en-resolucion"
+              ]
+            },
+            "description": "Apelaciones admitidas pendientes de resolución final."
+          }
+        },
+        {
+          "name": "Primera Calificación - No Presentado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/calificacion/{{apelacionId}}/no-presentado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "calificacion",
+                "{{apelacionId}}",
+                "no-presentado"
+              ]
+            },
+            "description": "Declarar tener por no presentado cuando no se subsana dentro del plazo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"No se presento subsanacion dentro del plazo de 2 dias habiles.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"observaciones\": \"Se verifica vencimiento del plazo de subsanacion\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Notificar Segunda Calificación",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/{{apelacionId}}/notificar-segunda-calificacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "{{apelacionId}}",
+                "notificar-segunda-calificacion"
+              ]
+            },
+            "description": "Registra la notificación de la segunda calificación al ciudadano."
+          }
+        },
+        {
+          "name": "Resolución Final - Fundado en Parte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/fundado-en-parte",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "fundado-en-parte"
+              ]
+            },
+            "description": "Declarar apelación fundada en parte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Luego del analisis integral del expediente, el Tribunal emite pronunciamiento.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"iniciarProcesoDisciplinario\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolución Final - Infundado en Parte",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/infundado-en-parte",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "infundado-en-parte"
+              ]
+            },
+            "description": "Declarar apelación infundada en parte.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Luego del analisis integral del expediente, el Tribunal emite pronunciamiento.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"iniciarProcesoDisciplinario\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolución Final - Improcedente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/improcedente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "improcedente"
+              ]
+            },
+            "description": "Declarar apelación improcedente en resolución final.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Luego del analisis integral del expediente, el Tribunal emite pronunciamiento.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"iniciarProcesoDisciplinario\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolución Final - Conclusión por Sustracción de Materia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/sustraccion-materia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "sustraccion-materia"
+              ]
+            },
+            "description": "Concluir por sustracción de materia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Luego del analisis integral del expediente, el Tribunal emite pronunciamiento.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"iniciarProcesoDisciplinario\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Resolución Final - Conclusión por Desistimiento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/resolucion/{{apelacionId}}/desistimiento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "resolucion",
+                "{{apelacionId}}",
+                "desistimiento"
+              ]
+            },
+            "description": "Concluir por desistimiento del ciudadano.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fundamentos\": \"Luego del analisis integral del expediente, el Tribunal emite pronunciamiento.\",\n    \"miembroId\": {{miembroTTAIPId}},\n    \"iniciarProcesoDisciplinario\": false\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Estadísticas",
+      "description": "## Objetivo\nMonitorear indicadores clave de desempeño del sistema SAIP/TTAIP.\n\n## Incluye\n- Estadística general, por periodo, por entidad, ranking, distribución y tendencias.\n\n## Uso recomendado\nConsumir después de ejecutar flujos funcionales para verificar consistencia de agregados.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{funcionarioToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Estadísticas Generales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/general",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "general"
+              ]
+            },
+            "description": "Obtener estadísticas generales del sistema."
+          }
+        },
+        {
+          "name": "Estadísticas por Periodo - Mes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/periodo?periodo=mes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "periodo"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "mes"
+                }
+              ]
+            },
+            "description": "Estadísticas del mes actual."
+          }
+        },
+        {
+          "name": "Estadísticas por Periodo - Año",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/periodo?periodo=año",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "periodo"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "año"
+                }
+              ]
+            },
+            "description": "Estadísticas del año actual."
+          }
+        },
+        {
+          "name": "Estadísticas por Entidad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/entidad/{{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "entidad",
+                "{{entidadId}}"
+              ]
+            },
+            "description": "Estadísticas específicas de una entidad."
+          }
+        },
+        {
+          "name": "Ranking de Entidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/ranking/entidades?limite=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "ranking",
+                "entidades"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Ranking de entidades por carga de solicitudes."
+          }
+        },
+        {
+          "name": "Distribución por Estados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/distribucion/estados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "distribucion",
+                "estados"
+              ]
+            },
+            "description": "Distribución de solicitudes por estado."
+          }
+        },
+        {
+          "name": "Tendencias Mensuales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/estadisticas/tendencias/mensual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "estadisticas",
+                "tendencias",
+                "mensual"
+              ]
+            },
+            "description": "Tendencias de solicitudes en los últimos 12 meses."
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Reportes",
+      "description": "## Objetivo\nGenerar salidas operativas y ejecutivas para análisis funcional y toma de decisiones.\n\n## Incluye\n- Reportes por módulo (solicitudes, apelaciones, entidades, funcionarios, ciudadanos).\n- Reporte filtrado y resumen ejecutivo.\n\n## Validación clave\nVerificar filtros, cobertura de datos y coherencia entre reporte y fuente transaccional.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{funcionarioToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Reporte de Solicitudes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "solicitudes"
+              ]
+            },
+            "description": "Reporte general de solicitudes."
+          }
+        },
+        {
+          "name": "Reporte de Solicitudes con Filtros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/solicitudes?estado=RESPONDIDA&entidadId=1&desde=2025-01-01&hasta=2025-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "solicitudes"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "RESPONDIDA"
+                },
+                {
+                  "key": "entidadId",
+                  "value": "1"
+                },
+                {
+                  "key": "desde",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2025-12-31"
+                }
+              ]
+            },
+            "description": "Reporte de solicitudes filtrado por estado, entidad y fechas."
+          }
+        },
+        {
+          "name": "Reporte de Apelaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/apelaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "apelaciones"
+              ]
+            },
+            "description": "Reporte general de apelaciones."
+          }
+        },
+        {
+          "name": "Reporte de Entidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/entidades",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "entidades"
+              ]
+            },
+            "description": "Reporte consolidado por entidad pública."
+          }
+        },
+        {
+          "name": "Reporte de Funcionarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/funcionarios?entidadId={{entidadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "funcionarios"
+              ],
+              "query": [
+                {
+                  "key": "entidadId",
+                  "value": "{{entidadId}}"
+                }
+              ]
+            },
+            "description": "Reporte de funcionarios por entidad."
+          }
+        },
+        {
+          "name": "Reporte de Ciudadanos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ciudadanos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ciudadanos"
+              ]
+            },
+            "description": "Reporte consolidado de ciudadanos."
+          }
+        },
+        {
+          "name": "Resumen Ejecutivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/resumen-ejecutivo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "resumen-ejecutivo"
+              ]
+            },
+            "description": "Resumen ejecutivo del sistema."
+          }
+        }
+      ]
+    }
+  ]
+}

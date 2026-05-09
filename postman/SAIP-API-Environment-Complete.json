@@ -1,0 +1,295 @@
+{
+  "id": "saip-backend-environment",
+  "name": "SAIP Backend - Environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ciudadanoId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "entidadId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "solicitudId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "apelacionId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "miembroTTAIPId",
+      "value": "11",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "respuestaId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "solicitudExpediente",
+      "value": "SAIP-2025-00001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "solicitudEstado",
+      "value": "RECEPCIONADA",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "apelacionExpediente",
+      "value": "01560-2025-JUS/TTAIP",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "apelacionEstado",
+      "value": "EN_CALIFICACION_1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "securityUsername",
+      "value": "admin@saip.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "securityPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "ciudadanoUsername",
+      "value": "ciudadano01@gmail.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ciudadanoPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioUsername",
+      "value": "func.minedu@minedu.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "ttaipUsername",
+      "value": "ttaip01@minjus.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ttaipPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin@saip.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "adminPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "ciudadanoToken",
+      "value": "TOKEN_CIUDADANO_LOGIN",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioToken",
+      "value": "TOKEN_FUNCIONARIO_LOGIN",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ttaipToken",
+      "value": "TOKEN_TTAIP_LOGIN",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "adminToken",
+      "value": "TOKEN_ADMIN_LOGIN",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdCiudadanoId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdEntidadId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdFuncionarioId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdSolicitudId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdApelacionId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "registroEmail",
+      "value": "registro.seed@saip.test",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "registroDni",
+      "value": "70000999",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "crearCiudadanoEmail",
+      "value": "ciudadano.api@saip.test",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "crearCiudadanoDni",
+      "value": "70000898",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "updateCiudadanoEmail",
+      "value": "ciudadano.api.update@saip.test",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdEntidadAcronimo",
+      "value": "MINEDU",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdEntidadNombre",
+      "value": "Ministerio de Educacion",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdEntidadEmail",
+      "value": "mesa.partes@minedu.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "updatedEntidadEmail",
+      "value": "mesa.partes.update@minedu.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdFuncionarioEmail",
+      "value": "func.api@minedu.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "updatedFuncionarioEmail",
+      "value": "func.api.update@minedu.gob.pe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdSolicitudId2",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdSolicitudId3",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "createdSolicitudId4",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioEntidadId",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioUsernameFallback",
+      "value": "func.enedu@enedu.test",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "funcionarioPasswordFallback",
+      "value": "123456",
+      "type": "secret",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}
