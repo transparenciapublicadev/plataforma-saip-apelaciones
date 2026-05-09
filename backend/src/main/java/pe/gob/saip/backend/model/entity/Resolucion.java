@@ -61,7 +61,7 @@ public class Resolucion {
     @Column(name = "causal_fundado", length = 500)
     private String causalFundado;
 
-    @Column(length = 20)
+    @Column(length = 60)
     private String resultado;
 
     @Column(name = "iniciar_proceso_disciplinario")
@@ -99,3 +99,4 @@ public class Resolucion {
         return this.idResolucion;
     }
 }
+

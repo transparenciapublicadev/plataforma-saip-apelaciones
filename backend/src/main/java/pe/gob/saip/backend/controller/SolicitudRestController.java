@@ -219,10 +219,16 @@ public class SolicitudRestController {
 
     @Operation(summary = "Eliminar solicitud SAIP")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> eliminar(@Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         solicitudService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
         solicitudService.eliminarSolicitud(id);
-        return ResponseEntity.noContent().build();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("mensaje", "Solicitud eliminada correctamente");
+        response.put("id", id);
+
+        return ResponseEntity.ok(response);
     }
 }
+
