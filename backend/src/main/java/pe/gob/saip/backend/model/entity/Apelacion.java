@@ -66,7 +66,7 @@ public class Apelacion {
     @Column(name = "dias_subsanacion")
     private Integer diasSubsanacion;
 
-    @Column(length = 20)
+    @Column(length = 60)
     private String resultado;
 
     @OneToMany(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
@@ -160,3 +160,4 @@ public class Apelacion {
                estado == EstadoApelacion.CONCLUSION_DESISTIMIENTO;
     }
 }
+

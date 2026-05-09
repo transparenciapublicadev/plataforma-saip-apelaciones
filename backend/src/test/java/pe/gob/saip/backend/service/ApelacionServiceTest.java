@@ -131,7 +131,7 @@ class ApelacionServiceTest {
 
         String expediente = apelacionService.generarExpediente();
 
-        assertThat(expediente).isEqualTo("00006-" + year + "-JUS-TTAIP");
+        assertThat(expediente).isEqualTo("00006-" + year + "-JUS/TTAIP");
     }
 
     @Test
@@ -146,7 +146,7 @@ class ApelacionServiceTest {
 
         Apelacion resultado = apelacionService.save(apelacion);
 
-        assertThat(resultado.getExpediente()).endsWith("-JUS-TTAIP");
+        assertThat(resultado.getExpediente()).endsWith("-JUS/TTAIP");
         verify(apelacionRepository).save(apelacion);
     }
 
