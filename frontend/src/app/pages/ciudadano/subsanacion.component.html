@@ -1,203 +1,203 @@
-<div class="saip-page min-h-screen bg-[var(--nieve)]">
-  <!-- Header -->
-    <div class="border-b border-[var(--ceniza-claro)] bg-[var(--nieve)] pt-28 pb-8 px-4">
-    <div class="max-w-5xl mx-auto">
-      <a routerLink="/ciudadano" class="flex items-center gap-1.5 text-[var(--carbon)]/70 hover:text-[var(--carbon)] text-sm mb-4 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        Volver al Dashboard
+<div class="min-h-screen bg-background">
+  <div class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        Volver al panel
       </a>
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        </div>
-        <div class="text-[var(--carbon)]">
-          <h1 class="text-2xl md:text-3xl font-bold">Subsanación de Apelación</h1>
-          @if (apelacion()) {
-            <p class="text-[var(--carbon)]/70">Expediente {{ apelacion()!.expediente }} — {{ apelacion()!.entidadNombre }}</p>
-          }
-        </div>
-      </div>
+
+      <span class="eyebrow">Etapa de subsanación · TTAIP</span>
+      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.4vw, 42px); line-height: 1.05; letter-spacing: -0.02em;">
+        Subsanación de <span class="italic" style="color: var(--brand-700)">apelación</span>
+      </h1>
+      @if (apelacion(); as ap) {
+        <p class="text-muted-foreground mt-2 font-mono text-sm">Expediente · {{ ap.expediente }}</p>
+      }
     </div>
   </div>
 
-  <div class="max-w-5xl mx-auto px-4 -mt-6 pb-16">
+  <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6">
     @if (loadingApelacion()) {
-      <div class="card p-16 text-center">
-        <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-[var(--niebla)]">Cargando...</p>
+      <div class="form-shell p-16 text-center">
+        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-4 text-muted-foreground">Cargando apelación...</p>
       </div>
-    } @else if (apelacion()) {
-      <!-- Alert - Plazo de subsanación -->
-      <div class="mb-6 bg-white border-0 shadow-sm rounded-xl p-4 flex items-start gap-4">
-        <div class="w-10 h-10 bg-[var(--estado-ambar)] rounded-full flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    } @else if (apelacion(); as ap) {
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
         </div>
         <div class="flex-1">
-          <p class="label mb-1">
-            Plazo de Subsanación: {{ calcularDiasRestantes() }} días restantes
+          <span class="eyebrow" style="color: var(--warning)">Plazo · {{ getPlazoSubsanacionDias() }} días hábiles</span>
+          <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
+            Su apelación fue calificada como <span class="font-semibold">INADMISIBLE</span>. Tiene
+            <span class="font-mono font-semibold">{{ getPlazoSubsanacionDias() }} días hábiles</span> desde la notificación para subsanar.
+            Si no subsana, se resolverá como <span class="font-semibold">TENER POR NO PRESENTADO</span>.
           </p>
-          <p class="text-sm text-[var(--niebla)] mb-2">
-            Su apelación fue calificada como <strong>INADMISIBLE</strong> debido a observaciones formales.
-            Tiene <strong>3 días hábiles</strong> desde la notificación para subsanar y completar los requisitos.
-          </p>
-          <div class="bg-[var(--nieve-calida)] rounded-lg p-3 text-sm">
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <span class="text-[var(--niebla)]">Fecha apelación:</span>
-                <p class="font-semibold text-[var(--carbon)]">{{ apelacion()!.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+              <div class="eyebrow">Notificación</div>
+              <div class="font-mono text-sm mt-1">
+                @if (getFechaNotificacion()) {
+                  {{ getFechaNotificacion() | date:'dd/MM/yyyy' }}
+                } @else {
+                  No registrada
+                }
               </div>
-              <div>
-                <span class="text-[var(--niebla)]">Estado:</span>
-                <p class="font-semibold text-[var(--estado-ambar)]">{{ apelacion()!.estado }}</p>
+            </div>
+            <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+              <div class="eyebrow" style="color: var(--warning)">Fecha límite</div>
+              <div class="font-mono text-sm mt-1" style="color: var(--warning)">
+                @if (getFechaLimite()) {
+                  {{ getFechaLimite() | date:'dd/MM/yyyy' }}
+                } @else {
+                  No registrada
+                }
               </div>
             </div>
           </div>
+          <p class="text-xs text-muted-foreground mt-2">Días restantes: <span class="font-semibold">{{ calcularDiasRestantes() }}</span></p>
         </div>
       </div>
 
       @if (error()) {
-        <div class="border border-[var(--estado-rojo)]/15 bg-[var(--peru-rojo-suave)] rounded-xl p-3 mb-6 animate-fade-in">
-          <p class="text-[var(--peru-rojo)] text-sm">{{ error() }}</p>
+        <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
+          <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
         </div>
       }
+
       @if (mensaje()) {
-        <div class="bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-3 mb-6 animate-fade-in">
-          <p class="text-sm text-[var(--estado-verde)]">{{ mensaje() }}</p>
+        <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
+          <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
         </div>
       }
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Left Panel - Observaciones -->
-        <div class="space-y-6">
-          <!-- Observaciones del TTAIP -->
-          <div class="card overflow-hidden border-l-4 border-l-[var(--estado-rojo)]">
-            <div class="px-6 py-4 border-b border-[var(--ceniza-claro)]">
-              <h3 class="font-semibold text-[var(--estado-rojo)] flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                Observaciones a Subsanar
-              </h3>
+        <div class="space-y-5">
+          <section class="form-shell">
+            <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
+              <span class="eyebrow" style="color: var(--brand-700)">Pendiente de subsanar</span>
+              <h2 class="form-section-title flex items-center gap-2">
+                <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                Observaciones del TTAIP
+              </h2>
             </div>
-            <div class="p-6 space-y-4">
-              <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <div class="w-6 h-6 bg-[var(--estado-rojo)] text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold">1</div>
-                  <p class="text-sm text-[var(--estado-rojo)]">Falta fundamentación legal específica del artículo vulnerado de la Ley N° 27806</p>
+            <div class="p-6 space-y-3">
+              @for (obs of observacionesTtaip; track obs.numero) {
+                <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                  <span class="font-display flex-shrink-0" style="font-size: 22px; line-height: 1; color: var(--brand-700); letter-spacing: -0.02em;">0{{ obs.numero }}</span>
+                  <p class="text-sm text-foreground/85 leading-relaxed">{{ obs.descripcion }}</p>
                 </div>
-              </div>
-              <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <div class="w-6 h-6 bg-[var(--estado-rojo)] text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold">2</div>
-                  <p class="text-sm text-[var(--estado-rojo)]">No se adjunta copia de la respuesta denegatoria de la entidad</p>
-                </div>
-              </div>
-              <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <div class="w-6 h-6 bg-[var(--estado-rojo)] text-white rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold">3</div>
-                  <p class="text-sm text-[var(--estado-rojo)]">Falta indicar el domicilio procesal para notificaciones</p>
-                </div>
-              </div>
+              }
 
-              <div class="bg-[var(--estado-azul-suave)] border border-[var(--estado-azul-borde)] rounded-lg p-3">
-                <p class="text-sm text-[var(--estado-azul)]">
-                  <strong>Nota importante:</strong> Debe subsanar TODAS las observaciones señaladas para que su apelación pueda ser admitida a trámite.
-                </p>
+              <div class="rounded-md p-3 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M12 16v-4m0-4h.01" /></svg>
+                <p class="text-xs text-foreground/80"><span class="font-semibold">Nota:</span> debe subsanar todas las observaciones para que su apelación sea admitida a trámite.</p>
               </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Documentos originales -->
-          <div class="card overflow-hidden">
-            <div class="px-6 py-4 border-b border-[var(--ceniza-claro)]">
-              <h3 class="font-semibold text-[var(--carbon)]">Documentos Presentados Originalmente</h3>
+          <section class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow">Antecedentes</span>
+              <h2 class="form-section-title">Documentos originales</h2>
             </div>
             <div class="p-6 space-y-2">
-              <div class="border border-[var(--ceniza-claro)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--nieve)] transition-colors">
-                <div class="flex items-center gap-2">
-                  <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  <span class="text-sm">Recurso_Apelacion.pdf</span>
+              @for (doc of documentosOriginales; track doc) {
+                <div class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+                    </div>
+                    <span class="text-sm font-medium">{{ doc }}</span>
+                  </div>
+                  <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" aria-label="Descargar documento">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
+                  </button>
                 </div>
-                <button class="p-1 text-[var(--niebla)] hover:text-[var(--peru-rojo)] transition-colors cursor-pointer">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </button>
-              </div>
-              <div class="border border-[var(--ceniza-claro)] rounded-xl p-3 flex items-center justify-between hover:bg-[var(--nieve)] transition-colors">
-                <div class="flex items-center gap-2">
-                  <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  <span class="text-sm">DNI_Copia.pdf</span>
-                </div>
-                <button class="p-1 text-[var(--niebla)] hover:text-[var(--peru-rojo)] transition-colors cursor-pointer">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </button>
-              </div>
+              }
             </div>
-          </div>
+          </section>
         </div>
 
-        <!-- Right Panel - Subsanación -->
-        <div class="space-y-6">
-          <!-- Instrucciones -->
-          <div class="card overflow-hidden border-l-4 border-l-[var(--estado-azul)]">
-            <div class="px-6 py-4 border-b border-[var(--ceniza-claro)]">
-              <h3 class="font-semibold text-[var(--estado-azul)]">Cómo Subsanar</h3>
+        <div class="space-y-5">
+          <section class="form-shell">
+            <div class="form-section-header" style="border-left: 3px solid var(--info)">
+              <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
+              <h2 class="form-section-title">Cómo subsanar</h2>
             </div>
-            <div class="p-6">
-              <ol class="space-y-3 text-sm text-[var(--estado-azul)]">
-                <li class="flex items-start gap-2"><span class="font-semibold flex-shrink-0">1.</span><span>Lea cuidadosamente cada observación señalada por el TTAIP</span></li>
-                <li class="flex items-start gap-2"><span class="font-semibold flex-shrink-0">2.</span><span>Prepare los documentos que subsanan las observaciones</span></li>
-                <li class="flex items-start gap-2"><span class="font-semibold flex-shrink-0">3.</span><span>Describa las correcciones realizadas en el campo de observaciones</span></li>
-                <li class="flex items-start gap-2"><span class="font-semibold flex-shrink-0">4.</span><span>Adjunte los documentos complementarios</span></li>
-                <li class="flex items-start gap-2"><span class="font-semibold flex-shrink-0">5.</span><span>Envíe su subsanación antes del plazo límite</span></li>
-              </ol>
+            <div class="p-6 space-y-3">
+              @for (paso of pasosSubsanacion; track paso; let i = $index) {
+                <div class="flex items-start gap-3">
+                  <span class="font-mono text-[11px] tracking-widest mt-0.5 flex-shrink-0" style="color: var(--brand-700)">0{{ i + 1 }}</span>
+                  <p class="text-sm text-foreground/85 leading-relaxed">{{ paso }}</p>
+                </div>
+              }
             </div>
-          </div>
+          </section>
 
-          <!-- Descripción de Subsanación -->
-          <div class="card overflow-hidden">
-            <div class="px-6 py-4 border-b border-[var(--ceniza-claro)]">
-              <h3 class="font-semibold text-[var(--carbon)]">Descripción de las Correcciones</h3>
+          <section class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow">01 · Correcciones</span>
+              <h2 class="form-section-title">Descripción</h2>
             </div>
             <div class="p-6">
-              <label class="label">Describa las correcciones realizadas <span class="text-[var(--peru-rojo)]">*</span></label>
-              <textarea [(ngModel)]="fundamentosAdicionales" name="fundamentosAdicionales" rows="6"
-                class="w-full mt-1.5 px-4 py-3 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] transition-colors resize-none"
-                placeholder="Ejemplo: En atención a las observaciones señaladas, procedo a subsanar lo siguiente:&#10;&#10;1. Se fundamenta la vulneración específica del artículo 10° de la Ley N° 27806...&#10;2. Se adjunta copia de la respuesta denegatoria emitida por la entidad...&#10;3. Se declara como domicilio procesal..."></textarea>
-              <p class="text-xs text-[var(--niebla)] mt-1">{{ fundamentosAdicionales.length }} caracteres</p>
-            </div>
-          </div>
-
-          <!-- Upload Zone -->
-          <div class="card overflow-hidden">
-            <div class="px-6 py-4 border-b border-[var(--ceniza-claro)]">
-              <h3 class="font-semibold text-[var(--carbon)]">Documentos de Subsanación</h3>
-              <p class="text-sm text-[var(--niebla)] mt-1">Adjunte los documentos que subsanan las observaciones señaladas</p>
-            </div>
-            <div class="p-6">
-              <div class="border-2 border-dashed border-[var(--ceniza-claro)] rounded-xl p-6 text-center hover:border-[var(--peru-rojo)]/30 transition-colors">
-                <label class="cursor-pointer">
-                  <svg class="w-8 h-8 mx-auto text-[var(--ceniza)] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                  </svg>
-                  <p class="text-sm text-[var(--niebla)]">Arrastra archivos o <span class="text-[var(--peru-rojo)] font-medium">haz clic para seleccionar</span></p>
-                  <p class="text-xs text-[var(--niebla)] mt-1">PDF, DOC, DOCX, JPG, PNG (máx. 5MB por archivo)</p>
-                  <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" multiple>
-                </label>
+              <div class="field">
+                <label class="field-label">Describa las correcciones realizadas <span class="req">*</span></label>
+                <textarea
+                  [(ngModel)]="fundamentosAdicionales"
+                  name="fundamentosAdicionales"
+                  rows="7"
+                  class="field-input"
+                  style="resize: vertical; min-height: 160px"
+                  placeholder="En atención a las observaciones señaladas, procedo a subsanar:&#10;&#10;1. Se fundamenta la vulneración del artículo 10° de la Ley N° 27806…&#10;2. Se adjunta la respuesta denegatoria de la entidad…&#10;3. Se declara domicilio procesal en…"></textarea>
+                <span class="field-hint font-mono">{{ fundamentosAdicionales.length }} caracteres</span>
               </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Submit Button -->
-          <button (click)="enviarSubsanacion()" [disabled]="loading()"
-            class="w-full py-3 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-[var(--carbon)] font-medium rounded-xl shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+          <section class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow">02 · Adjuntos</span>
+              <h2 class="form-section-title">Documentos de subsanación</h2>
+            </div>
+            <div class="p-6 space-y-3">
+              <label class="block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
+                <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" (change)="seleccionarDocumento($event)" />
+                <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+                <p class="text-sm text-foreground/85">Adjunte el documento de subsanación (opcional)</p>
+                <p class="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, JPG o PNG</p>
+              </label>
+
+              @if (documentoSeleccionado()) {
+                <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
+                  <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                  <span class="text-sm flex-1 font-medium">{{ documentoSeleccionado()!.name }}</span>
+                  <span class="font-mono text-[11px] text-muted-foreground">{{ getDocumentoTamanoKb() }} KB</span>
+                </div>
+              }
+            </div>
+          </section>
+
+          <button
+            type="button"
+            class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            (click)="enviarSubsanacion()"
+            [disabled]="loading() || !fundamentosAdicionales.trim()">
             @if (loading()) {
-              Enviando...
+              <span class="inline-flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
+                Enviando...
+              </span>
             } @else {
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-              Enviar Subsanación al TTAIP
+              <span class="inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                Enviar subsanación al TTAIP
+              </span>
             }
           </button>
-          <p class="text-xs text-center text-[var(--niebla)]">
-            Al enviar, su subsanación será revisada por el TTAIP quien emitirá una 2da Calificación
-          </p>
+
+          <p class="text-xs text-center text-muted-foreground">Su subsanación será revisada por el TTAIP y pasará a segunda calificación.</p>
         </div>
       </div>
     }

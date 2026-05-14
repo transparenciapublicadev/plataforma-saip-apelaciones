@@ -1,11 +1,24 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import {
+  LucideArrowRight,
+  LucideBookOpen,
+  LucideBuilding2,
+  LucideFileText,
+  LucideGavel,
+  LucideLock,
+  LucideScale,
+  LucideSearch,
+  LucideSend,
+  LucideShield,
+} from '@lucide/angular';
 
 interface TimelineEvent {
   title: string;
   description: string;
   date: string;
   status: 'completed' | 'current' | 'pending';
+  icon: 'send' | 'search' | 'file' | 'gavel' | 'scale' | 'book';
 }
 
 interface ConsultaResultado {
@@ -34,18 +47,21 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
         description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
         date: '15/10/2025',
         status: 'completed',
+        icon: 'send',
       },
       {
         title: 'En evaluacion',
         description: 'La entidad esta evaluando la solicitud dentro del plazo legal.',
         date: '16/10/2025',
         status: 'current',
+        icon: 'search',
       },
       {
         title: 'Respuesta de entidad',
         description: 'Pendiente de respuesta por parte de la entidad.',
         date: 'Pendiente',
         status: 'pending',
+        icon: 'file',
       },
     ],
   },
@@ -63,18 +79,21 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
         description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
         date: '02/10/2025',
         status: 'completed',
+        icon: 'send',
       },
       {
         title: 'En evaluacion',
         description: 'La entidad evaluo la solicitud y preparo respuesta formal.',
         date: '03/10/2025',
         status: 'completed',
+        icon: 'search',
       },
       {
         title: 'Respuesta emitida',
         description: 'La entidad entrego la informacion solicitada.',
         date: '12/10/2025',
         status: 'completed',
+        icon: 'file',
       },
     ],
   },
@@ -92,24 +111,35 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
         description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
         date: '15/09/2025',
         status: 'completed',
+        icon: 'send',
       },
       {
         title: 'Denegatoria de entidad',
         description: 'La entidad denego el acceso invocando excepcion legal.',
         date: '25/09/2025',
         status: 'completed',
+        icon: 'search',
       },
       {
         title: 'Apelacion presentada',
         description: 'El ciudadano presento recurso de apelacion ante TTAIP.',
         date: '02/10/2025',
         status: 'completed',
+        icon: 'gavel',
       },
       {
         title: 'En evaluacion por TTAIP',
         description: 'El tribunal esta evaluando la apelacion presentada.',
         date: '05/10/2025',
         status: 'current',
+        icon: 'scale',
+      },
+      {
+        title: 'Resolucion final',
+        description: 'Pendiente de emision de resolucion por parte del tribunal.',
+        date: 'Pendiente',
+        status: 'pending',
+        icon: 'book',
       },
     ],
   },
@@ -118,7 +148,19 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
 @Component({
   selector: 'app-consultar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [
+    RouterLink,
+    LucideArrowRight,
+    LucideBookOpen,
+    LucideBuilding2,
+    LucideFileText,
+    LucideGavel,
+    LucideLock,
+    LucideScale,
+    LucideSearch,
+    LucideSend,
+    LucideShield,
+  ],
   templateUrl: './consultar.component.html',
 })
 export class ConsultarComponent {
@@ -149,6 +191,12 @@ export class ConsultarComponent {
       this.noEncontrado.set(!match);
       this.buscando.set(false);
     }, 700);
+  }
+
+  limpiarBusqueda(): void {
+    this.query.set('');
+    this.noEncontrado.set(false);
+    this.resultado.set(null);
   }
 
   estadoEtiqueta(estado: ConsultaResultado['estado']): string {
@@ -197,5 +245,15 @@ export class ConsultarComponent {
       return 'bg-[var(--peru-rojo)] animate-pulse';
     }
     return 'bg-[var(--ceniza)]';
+  }
+
+  timelineIconClass(status: TimelineEvent['status']): string {
+    if (status === 'completed') {
+      return 'text-[var(--estado-verde)]';
+    }
+    if (status === 'current') {
+      return 'text-[var(--peru-rojo)]';
+    }
+    return 'text-[var(--niebla)]';
   }
 }

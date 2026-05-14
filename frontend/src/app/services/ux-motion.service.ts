@@ -61,17 +61,41 @@ export class UxMotionService {
     if (!canAnimate) return;
 
     const instBar = this.document.querySelector('[data-inst-bar]');
+    const mainNav = this.document.querySelector('[data-main-nav]');
     const header = this.document.querySelector('header');
     const footer = this.document.querySelector('footer');
 
-    const targets = [instBar, header, footer].filter(Boolean);
-    if (targets.length === 0) return;
+    const topTargets = [instBar, mainNav ?? header].filter(Boolean);
 
-    gsap.fromTo(
-      targets,
-      { autoAlpha: 0, y: -16 },
-      { autoAlpha: 1, y: 0, duration: 0.55, ease: 'power2.out', stagger: 0.08, clearProps: 'all' }
-    );
+    if (topTargets.length > 0) {
+      gsap.fromTo(
+        topTargets,
+        { autoAlpha: 0, y: -12 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.4,
+          ease: 'power2.out',
+          stagger: 0.04,
+          clearProps: 'opacity,visibility,transform',
+        }
+      );
+    }
+
+    if (mainNav) {
+      const navItems = mainNav.querySelectorAll('a, button');
+      if (navItems.length > 0) {
+        gsap.set(navItems, { autoAlpha: 1, y: 0, clearProps: 'opacity,visibility,transform' });
+      }
+    }
+
+    if (footer) {
+      gsap.fromTo(
+        footer,
+        { autoAlpha: 0, y: 12 },
+        { autoAlpha: 1, y: 0, duration: 0.45, delay: 0.12, ease: 'power2.out', clearProps: 'all' }
+      );
+    }
   }
 
   /* ─── Route: entrance + scroll-reveals + counters ─── */
@@ -111,53 +135,59 @@ export class UxMotionService {
         }
 
         /* 1) Route entrance fade */
+        const isLandingPage = Boolean(routeHost.querySelector('[data-landing-page]'));
+
         gsap.fromTo(
           routeHost,
-          { autoAlpha: 0, y: 18 },
-          { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out', clearProps: 'all' }
+          { autoAlpha: 0, y: 12 },
+          { autoAlpha: 1, y: 0, duration: 0.25, ease: 'power2.out', clearProps: 'all' }
         );
 
-        /* 2) Hero section parallax-like fade */
-        const heroTargets = routeHost.querySelectorAll('h1, h2, [data-hero], .text-gradient-hero');
+        this.runLandingIntro(gsap, routeHost);
+        this.runMotionGroups(gsap, routeHost);
+        this.runReferencePageMotion(gsap, routeHost);
+
+        /* 2) Hero section fade matching design-reference motion/react */
+        const heroTargets = routeHost.querySelectorAll('[data-hero], .text-gradient-hero');
         if (heroTargets.length > 0) {
           gsap.from(heroTargets, {
-            autoAlpha: 0, y: 28, duration: 0.6, ease: 'power3.out',
-            stagger: 0.08, delay: 0.05, overwrite: 'auto',
+            autoAlpha: 0, y: 20, duration: 0.7, ease: 'power2.out',
+            stagger: 0.08, delay: 0.04, overwrite: 'auto',
           });
         }
 
         /* 3) Metric cards: stagger with scale */
         const metricCards = gsap.utils.toArray<HTMLElement>(
-          routeHost.querySelectorAll('.metric-card, .glass')
+          routeHost.querySelectorAll('.metric-card, .stat-card:not([data-landing-stat])')
         );
-        if (metricCards.length > 0) {
+        if (!isLandingPage && metricCards.length > 0) {
           gsap.from(metricCards, {
-            autoAlpha: 0, y: 20, scale: 0.95,
-            duration: 0.45, ease: 'back.out(1.4)',
-            stagger: 0.06, delay: 0.12, overwrite: 'auto',
+            autoAlpha: 0, y: 12,
+            duration: 0.35, ease: 'power2.out',
+            stagger: 0.05, delay: 0.12, overwrite: 'auto',
           });
         }
 
         /* 4) Cards, sections, forms: basic stagger */
         const bodyTargets = routeHost.querySelectorAll(
-          'section, article, .card, .card-elevated, form, .table-container, .alert, [data-animate]'
+          '.form-shell:not([data-motion-item]), .process-tile, .data-table-wrapper, .table-container, .card:not([data-motion-item]), .card-elevated:not([data-motion-item]), .modal-panel, .alert, [data-animate]'
         );
-        if (bodyTargets.length > 0) {
+        if (!isLandingPage && bodyTargets.length > 0) {
           gsap.from(bodyTargets, {
-            autoAlpha: 0, y: 14, duration: 0.42,
-            ease: 'power2.out', stagger: 0.03, delay: 0.14, overwrite: 'auto',
+            autoAlpha: 0, y: 10, duration: 0.35,
+            ease: 'power2.out', stagger: 0.025, delay: 0.1, overwrite: 'auto',
           });
         }
 
         /* 5) Scroll-triggered reveals for below-fold content */
         const revealTargets = gsap.utils.toArray<HTMLElement>(
-          routeHost.querySelectorAll('.card, .card-elevated, .metric-card, .table-container, form, .timeline-item, [data-reveal]')
+          routeHost.querySelectorAll('.card:not([data-motion-item]), .card-elevated:not([data-motion-item]), .metric-card, .stat-card:not([data-landing-stat]), .form-shell:not([data-motion-item]), .process-tile, .table-container, .data-table-wrapper, form, .timeline-item, [data-reveal]:not([data-motion-item])')
         );
         revealTargets.forEach((target) => {
           gsap.fromTo(target, {
-            autoAlpha: 0, y: 24
+            autoAlpha: 0, y: 16
           }, {
-            autoAlpha: 1, y: 0, duration: 0.55,
+            autoAlpha: 1, y: 0, duration: 0.45,
             ease: 'power2.out',
             scrollTrigger: {
               trigger: target,
@@ -170,7 +200,7 @@ export class UxMotionService {
 
         /* 6) Number counter animation for metric values */
         const metricValues = gsap.utils.toArray<HTMLElement>(
-          routeHost.querySelectorAll('.metric-value')
+          routeHost.querySelectorAll('.metric-value, .stat-card:not([data-landing-stat]) .stat-card-value')
         );
         metricValues.forEach((el) => {
           const text = el.textContent?.trim() ?? '';
@@ -187,9 +217,9 @@ export class UxMotionService {
 
           gsap.to(obj, {
             val: endVal,
-            duration: 1.2,
+            duration: 0.9,
             ease: 'power2.out',
-            delay: 0.3,
+            delay: 0.2,
             scrollTrigger: {
               trigger: el,
               start: 'top 90%',
@@ -222,15 +252,18 @@ export class UxMotionService {
 
         /* 8) Dividers: width grow */
         const dividers = gsap.utils.toArray<HTMLElement>(
-          routeHost.querySelectorAll('.divider-rojo, .divider-oro')
+          routeHost.querySelectorAll('.divider-rojo, .divider-oro, .brand-divider')
         );
         dividers.forEach((div) => {
           gsap.from(div, {
             scaleX: 0, transformOrigin: 'center',
-            duration: 0.6, ease: 'power2.out',
+            duration: 0.5, ease: 'power2.out',
             scrollTrigger: { trigger: div, start: 'top 92%', once: true },
           });
         });
+
+        this.runChartMotion(gsap, routeHost);
+        this.runReferenceRowMotion(gsap, routeHost);
 
         ScrollTrigger.refresh();
       }
@@ -240,8 +273,217 @@ export class UxMotionService {
   private runBasicIntro(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
     gsap.fromTo(
       routeHost,
-      { autoAlpha: 0, y: 18 },
-      { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out', clearProps: 'all' }
+      { autoAlpha: 0, y: 12 },
+      { autoAlpha: 1, y: 0, duration: 0.25, ease: 'power2.out', clearProps: 'all' }
     );
+  }
+
+  private runLandingIntro(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
+    if (!routeHost.querySelector('[data-landing-page]')) return;
+
+    const copy = routeHost.querySelector('[data-landing-copy]');
+    const stats = routeHost.querySelector('[data-landing-stats]');
+    const statCards = gsap.utils.toArray<HTMLElement>(
+      routeHost.querySelectorAll('[data-landing-stat]')
+    );
+    const trust = routeHost.querySelector('[data-landing-trust]');
+
+    if (copy) {
+      gsap.from(copy, {
+        autoAlpha: 0,
+        y: 20,
+        duration: 0.7,
+        ease: 'power2.out',
+        delay: 0.03,
+        overwrite: 'auto',
+      });
+    }
+
+    if (stats) {
+      gsap.from(stats, {
+        autoAlpha: 0,
+        y: 20,
+        duration: 0.7,
+        ease: 'power2.out',
+        delay: 0.2,
+        overwrite: 'auto',
+      });
+    }
+
+    if (statCards.length > 0) {
+      gsap.from(statCards, {
+        autoAlpha: 0,
+        y: 16,
+        duration: 0.42,
+        ease: 'power2.out',
+        delay: 0.3,
+        stagger: 0.08,
+        overwrite: 'auto',
+      });
+    }
+
+    if (trust) {
+      gsap.from(trust, {
+        autoAlpha: 0,
+        y: 8,
+        duration: 0.4,
+        ease: 'power2.out',
+        delay: 0.36,
+        overwrite: 'auto',
+      });
+    }
+  }
+
+  private runMotionGroups(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
+    const groups = gsap.utils.toArray<HTMLElement>(
+      routeHost.querySelectorAll('[data-motion-stagger]')
+    );
+
+    groups.forEach((group) => {
+      const targets = gsap.utils.toArray<HTMLElement>(group.querySelectorAll('[data-motion-item]'));
+      if (targets.length === 0) return;
+
+      const x = this.readNumberAttribute(group, 'data-motion-x', 0);
+      const y = this.readNumberAttribute(group, 'data-motion-y', 16);
+      const duration = this.readNumberAttribute(group, 'data-motion-duration', 0.45);
+      const stagger = this.readNumberAttribute(group, 'data-motion-delay-step', 0.06);
+
+      gsap.from(targets, {
+        autoAlpha: 0,
+        x,
+        y,
+        duration,
+        ease: 'power2.out',
+        stagger,
+        overwrite: 'auto',
+        scrollTrigger: {
+          trigger: group,
+          start: 'top 88%',
+          once: true,
+          toggleActions: 'play none none none',
+        },
+      });
+    });
+  }
+
+  private runReferencePageMotion(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
+    if (routeHost.querySelector('[data-landing-page]')) return;
+
+    const hero = routeHost.querySelector<HTMLElement>(
+      '.relative.bg-paper.border-b.border-border.overflow-hidden'
+    );
+    const heroContent = hero?.querySelector<HTMLElement>(
+      '.max-w-7xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl'
+    );
+
+    if (heroContent) {
+      gsap.from(heroContent, {
+        autoAlpha: 0,
+        y: 10,
+        duration: 0.35,
+        ease: 'power2.out',
+        delay: 0.02,
+        overwrite: 'auto',
+      });
+    }
+
+    const primaryShell = routeHost.querySelector<HTMLElement>('.form-shell');
+    if (primaryShell && !primaryShell.hasAttribute('data-reveal')) {
+      gsap.from(primaryShell, {
+        autoAlpha: 0,
+        y: 8,
+        duration: 0.32,
+        ease: 'power2.out',
+        delay: 0.08,
+        overwrite: 'auto',
+      });
+    }
+  }
+
+  private runReferenceRowMotion(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
+    const rowTargets = gsap.utils.toArray<HTMLElement>(
+      routeHost.querySelectorAll('tbody tr, [data-table-row], .timeline-item')
+    );
+    if (rowTargets.length === 0) return;
+
+    gsap.from(rowTargets, {
+      autoAlpha: 0,
+      x: -6,
+      duration: 0.28,
+      ease: 'power2.out',
+      stagger: 0.03,
+      overwrite: 'auto',
+      scrollTrigger: {
+        trigger: rowTargets[0].closest('.form-shell, .table-container, .data-table-wrapper, section') ?? rowTargets[0],
+        start: 'top 90%',
+        once: true,
+      },
+    });
+  }
+
+  private runChartMotion(gsap: (typeof import('gsap'))['gsap'], routeHost: HTMLElement): void {
+    const bars = gsap.utils.toArray<SVGRectElement>(
+      routeHost.querySelectorAll('[data-chart-bar]')
+    );
+    if (bars.length > 0) {
+      gsap.from(bars, {
+        scaleY: 0,
+        transformOrigin: '50% 100%',
+        duration: 0.55,
+        ease: 'power2.out',
+        stagger: 0.04,
+        scrollTrigger: {
+          trigger: bars[0].closest('svg') ?? bars[0],
+          start: 'top 88%',
+          once: true,
+        },
+      });
+    }
+
+    const lines = gsap.utils.toArray<SVGPolylineElement>(
+      routeHost.querySelectorAll('[data-chart-line]')
+    );
+    lines.forEach((line) => {
+      const length = (line as SVGGeometryElement).getTotalLength?.() ?? 0;
+      if (length <= 0) return;
+
+      gsap.fromTo(
+        line,
+        { strokeDasharray: length, strokeDashoffset: length },
+        {
+          strokeDashoffset: 0,
+          duration: 0.75,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: line.closest('svg') ?? line,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    });
+
+    const points = gsap.utils.toArray<SVGCircleElement>(
+      routeHost.querySelectorAll('[data-chart-point]')
+    );
+    if (points.length > 0) {
+      gsap.from(points, {
+        scale: 0,
+        transformOrigin: '50% 50%',
+        duration: 0.25,
+        ease: 'back.out(1.7)',
+        stagger: 0.025,
+        scrollTrigger: {
+          trigger: points[0].closest('svg') ?? points[0],
+          start: 'top 88%',
+          once: true,
+        },
+      });
+    }
+  }
+
+  private readNumberAttribute(element: HTMLElement, attributeName: string, fallback: number): number {
+    const value = Number(element.getAttribute(attributeName));
+    return Number.isFinite(value) ? value : fallback;
   }
 }

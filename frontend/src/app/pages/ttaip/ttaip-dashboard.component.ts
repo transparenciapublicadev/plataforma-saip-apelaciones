@@ -1,10 +1,50 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { forkJoin } from 'rxjs';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { Apelacion } from '../../models/apelacion.model';
+
+type StageKey = 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
+type Priority = 'alta' | 'media' | 'baja';
+type Tone = 'critical' | 'warn' | 'ok' | 'done';
+
+interface StageMeta {
+  key: StageKey;
+  num: string;
+  label: string;
+  shortLabel: string;
+  plazoDias: number;
+  plazoLabel: string;
+  norma: string;
+  color: string;
+  bg: string;
+  icon: 'inbox' | 'scale' | 'hourglass' | 'layers' | 'gavel' | 'check';
+  actionLabel: string | null;
+  isResolved?: boolean;
+  esperaExterna?: boolean;
+}
+
+interface QueueItem {
+  apelacion: Apelacion;
+  stageKey: StageKey;
+  ciudadano: string;
+  iniciales: string;
+  entidad: string;
+  materia: string;
+  descripcion: string;
+  diasHabilesEnEtapa: number;
+  prioridad: Priority;
+  resultado: string | null;
+}
+
+interface PlazoStatus {
+  restantes: number;
+  pct: number;
+  tone: Tone;
+}
 
 @Component({
   selector: 'app-ttaip-dashboard',
@@ -17,148 +57,510 @@ export class TtaipDashboardComponent implements OnInit {
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
 
-  apelaciones = signal<Apelacion[]>([]);
-  loading = signal<boolean>(true);
-  error = signal<string>('');
+  readonly stages: StageMeta[] = [
+    {
+      key: 'elevacion',
+      num: '00',
+      label: 'Pendiente de elevacion',
+      shortLabel: 'Elevacion',
+      plazoDias: 2,
+      plazoLabel: '2 dias hab.',
+      norma: 'Reglamento TTAIP',
+      color: 'var(--muted-foreground)',
+      bg: 'var(--muted)',
+      icon: 'inbox',
+      actionLabel: 'Calificar'
+    },
+    {
+      key: 'calificacion1',
+      num: '01',
+      label: 'Primera calificacion',
+      shortLabel: '1ra Calif.',
+      plazoDias: 7,
+      plazoLabel: '7 dias hab.',
+      norma: 'Reglamento TTAIP',
+      color: 'var(--info)',
+      bg: 'rgba(29,78,216,0.08)',
+      icon: 'scale',
+      actionLabel: 'Calificar'
+    },
+    {
+      key: 'subsanacion',
+      num: '02',
+      label: 'Subsanacion',
+      shortLabel: 'Subsanacion',
+      plazoDias: 2,
+      plazoLabel: '2 dias hab.',
+      norma: 'Espera del ciudadano',
+      color: 'var(--gold-dark)',
+      bg: 'rgba(176,136,66,0.10)',
+      icon: 'hourglass',
+      actionLabel: null,
+      esperaExterna: true
+    },
+    {
+      key: 'calificacion2',
+      num: '03',
+      label: 'Segunda calificacion',
+      shortLabel: '2da Calif.',
+      plazoDias: 3,
+      plazoLabel: 'Post-subsan.',
+      norma: 'Reglamento TTAIP',
+      color: 'var(--brand-600)',
+      bg: 'var(--brand-subtle)',
+      icon: 'layers',
+      actionLabel: 'Resolver 2da'
+    },
+    {
+      key: 'resolucion',
+      num: '04',
+      label: 'Resolucion final',
+      shortLabel: 'Res. Final',
+      plazoDias: 10,
+      plazoLabel: '10 dias hab.',
+      norma: 'Reglamento TTAIP',
+      color: 'var(--brand-700)',
+      bg: 'var(--brand-subtle)',
+      icon: 'gavel',
+      actionLabel: 'Emitir resolucion'
+    },
+    {
+      key: 'resueltos',
+      num: '05',
+      label: 'Resueltos',
+      shortLabel: 'Resueltos',
+      plazoDias: 0,
+      plazoLabel: 'Cerrados',
+      norma: 'Archivo',
+      color: 'var(--success)',
+      bg: 'rgba(5,150,105,0.10)',
+      icon: 'check',
+      actionLabel: 'Ver',
+      isResolved: true
+    }
+  ];
 
-  pendientesAdmision = signal<number>(0);
-  enSegundaCalificacion = signal<number>(0);
-  enProceso = signal<number>(0);
-  enSubsanacion = signal<number>(0);
-  resueltos = signal<number>(0);
+  readonly donutRadius = 26;
+  readonly donutCirc = 2 * Math.PI * this.donutRadius;
 
-  filtroActual = signal<string>('pendientes');
-  nombreMiembro = signal<string>('');
+  readonly apelaciones = signal<Apelacion[]>([]);
+  readonly loading = signal<boolean>(true);
+  readonly error = signal<string>('');
+
+  readonly stageKey = signal<StageKey>('calificacion1');
+  readonly search = signal<string>('');
+  readonly nombreMiembro = signal<string>('Miembro TTAIP');
+
+  readonly fechaHoy = computed(() =>
+    new Date().toLocaleDateString('es-PE', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    })
+  );
+
+  readonly queueItems = computed(() => this.apelaciones().map((apelacion) => this.toQueueItem(apelacion)));
+
+  readonly counts = computed<Record<StageKey, number>>(() => {
+    const base: Record<StageKey, number> = {
+      elevacion: 0,
+      calificacion1: 0,
+      subsanacion: 0,
+      calificacion2: 0,
+      resolucion: 0,
+      resueltos: 0
+    };
+
+    for (const item of this.queueItems()) {
+      base[item.stageKey] += 1;
+    }
+
+    return base;
+  });
+
+  readonly activeStage = computed(() => this.stages.find((stage) => stage.key === this.stageKey()) ?? this.stages[0]);
+
+  readonly filtered = computed(() => {
+    const active = this.activeStage();
+    const query = this.search().trim().toLowerCase();
+
+    const base = this.queueItems().filter((item) => item.stageKey === active.key);
+    const searched = query
+      ? base.filter((item) => this.matchesQuery(item, query))
+      : base;
+
+    if (active.isResolved || active.esperaExterna) {
+      return searched;
+    }
+
+    return [...searched].sort((a, b) => this.plazoStatus(a, active).restantes - this.plazoStatus(b, active).restantes);
+  });
+
+  readonly riesgo = computed(() => {
+    const critical: QueueItem[] = [];
+    for (const item of this.queueItems()) {
+      const stage = this.stageFromKey(item.stageKey);
+      if (stage.isResolved || stage.esperaExterna) continue;
+      if (this.plazoStatus(item, stage).restantes <= 1) {
+        critical.push(item);
+      }
+    }
+    return critical;
+  });
+
+  readonly totalExpedientes = computed(() => this.queueItems().length);
+  readonly resueltas = computed(() => this.queueItems().filter((item) => item.stageKey === 'resueltos'));
+
+  readonly fundadasCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).startsWith('FUNDADO')).length);
+  readonly infundadasCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).startsWith('INFUNDADO')).length);
+  readonly improcedentesCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).includes('IMPROCEDENTE')).length);
+
+  readonly tasaFundadas = computed(() => {
+    const total = this.resueltas().length;
+    if (total <= 0) return 0;
+    return Math.round((this.fundadasCount() / total) * 100);
+  });
+
+  readonly donutOffset = computed(() => {
+    const value = Math.max(0, Math.min(100, this.tasaFundadas()));
+    return this.donutCirc - (value / 100) * this.donutCirc;
+  });
+
+  readonly topEntidades = computed(() => {
+    const map = new Map<string, number>();
+    for (const item of this.queueItems()) {
+      map.set(item.entidad, (map.get(item.entidad) || 0) + 1);
+    }
+
+    return Array.from(map.entries())
+      .map(([nombre, count]) => ({ nombre, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  });
+
+  readonly promedioDias = computed(() => {
+    const pendientes = this.queueItems().filter((item) => item.stageKey !== 'resueltos');
+    if (pendientes.length <= 0) return 0;
+
+    const total = pendientes.reduce((acc, item) => acc + item.diasHabilesEnEtapa, 0);
+    return Math.round((total / pendientes.length) * 10) / 10;
+  });
+
+  get searchModel(): string {
+    return this.search();
+  }
+
+  set searchModel(value: string) {
+    this.search.set(value);
+  }
 
   ngOnInit(): void {
     const sesion = this.authService.obtenerSesion();
-    if (sesion) {
-      this.nombreMiembro.set(sesion.nombre || 'Miembro TTAIP');
+    if (sesion?.nombre) {
+      this.nombreMiembro.set(sesion.nombre);
     }
-    this.cargarEstadisticas();
-    this.cargarPendientes();
+
+    this.cargarDashboard();
   }
 
-  cargarEstadisticas(): void {
-    this.ttaipService.getEstadisticas().subscribe({
+  selectStage(stage: StageKey): void {
+    this.stageKey.set(stage);
+  }
+
+  cargarDashboard(): void {
+    this.loading.set(true);
+    this.error.set('');
+
+    forkJoin({
+      pendientes: this.ttaipService.getPendientes(),
+      calificacion1: this.ttaipService.getEnAnalisis(),
+      subsanacion: this.ttaipService.getSubsanacion(),
+      calificacion2: this.ttaipService.getSegundaCalificacion(),
+      resolucion: this.ttaipService.getEnResolucion(),
+      resueltas: this.ttaipService.getResueltas()
+    }).subscribe({
       next: (data) => {
-        this.pendientesAdmision.set(data.pendientesAdmision || 0);
-        this.enProceso.set(data.enProceso || 0);
-        this.enSubsanacion.set(data.enSubsanacion || 0);
-        this.resueltos.set(data.resueltas || 0);
+        const merged = this.mergeUnique([
+          data.pendientes,
+          data.calificacion1,
+          data.subsanacion,
+          data.calificacion2,
+          data.resolucion,
+          data.resueltas
+        ]);
+
+        this.apelaciones.set(merged);
+
+        const firstWithData = this.stages.find((stage) => this.countByStage(merged, stage.key) > 0) ?? this.stages[0];
+        this.stageKey.set(firstWithData.key);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        const mensaje = err.error?.mensaje || err.message || 'Error al cargar datos del tribunal';
+        this.error.set(mensaje);
+        this.loading.set(false);
       }
     });
-    this.ttaipService.getSegundaCalificacion().subscribe({
-      next: (data) => this.enSegundaCalificacion.set(data.length)
-    });
   }
 
-  cargarPendientes(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.filtroActual.set('pendientes');
-    this.ttaipService.getPendientes().subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => { this.loading.set(false); this.error.set(err.error?.mensaje || 'Error al cargar pendientes'); }
-    });
+  formatCount(value: number): string {
+    return value.toString().padStart(2, '0');
   }
 
-  cargarEnAnalisis(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.filtroActual.set('analisis');
-    this.ttaipService.getEnAnalisis().subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => { this.loading.set(false); this.error.set(err.error?.mensaje || 'Error al cargar apelaciones en análisis'); }
-    });
+  getPriorityClass(priority: Priority): string {
+    if (priority === 'alta') return 'pill pill-high';
+    if (priority === 'media') return 'pill pill-medium';
+    return 'pill pill-low';
   }
 
-  cargarSubsanacion(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.filtroActual.set('subsanacion');
-    this.ttaipService.getSubsanacion().subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => { this.loading.set(false); this.error.set(err.error?.mensaje || 'Error al cargar subsanaciones'); }
-    });
+  getResultadoBadgeClass(resultado: string | null): string {
+    const decision = this.normalizeDecision(resultado);
+    if (decision.startsWith('FUNDADO')) return 'badge-success';
+    if (decision.startsWith('INFUNDADO')) return 'badge-muted';
+    if (decision.includes('IMPROCEDENTE')) return 'badge-danger';
+    return 'badge-in-process';
   }
 
-  cargarSegundaCalificacion(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.filtroActual.set('segunda');
-    this.ttaipService.getSegundaCalificacion().subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => { this.loading.set(false); this.error.set(err.error?.mensaje || 'Error al cargar segunda calificación'); }
-    });
+  getResultadoLabel(resultado: string | null): string {
+    const decision = this.normalizeDecision(resultado);
+
+    switch (decision) {
+      case 'FUNDADO':
+        return 'Fundado';
+      case 'FUNDADO_EN_PARTE':
+        return 'Fundado en parte';
+      case 'INFUNDADO':
+        return 'Infundado';
+      case 'INFUNDADO_EN_PARTE':
+        return 'Infundado en parte';
+      case 'RESUELTO_IMPROCEDENTE':
+      case 'IMPROCEDENTE':
+        return 'Improcedente';
+      case 'CONCLUSION_SUSTRACCION_MATERIA':
+        return 'Sustraccion';
+      case 'CONCLUSION_DESISTIMIENTO':
+        return 'Desistimiento';
+      case 'TENER_POR_NO_PRESENTADO':
+        return 'No presentado';
+      default:
+        return 'Resuelto';
+    }
   }
 
-  cargarResueltas(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.filtroActual.set('resueltas');
-    this.ttaipService.getResueltas().subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => { this.loading.set(false); this.error.set(err.error?.mensaje || 'Error al cargar resueltas'); }
-    });
+  getDiasColor(item: QueueItem): string {
+    const status = this.plazoStatus(item, this.stageFromKey(item.stageKey));
+    return this.toneColor(status.tone);
   }
 
-  getEstadoClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'PENDIENTE_ELEVACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_CALIFICACION_1': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_CALIFICACION_2': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_SUBSANACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
-      'EN_RESOLUCION': 'bg-[var(--accent-violet-soft)] text-[var(--accent-violet)]',
-      'RESUELTO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_FUNDADO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_FUNDADO_EN_PARTE': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_INFUNDADO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
-      'RESUELTO_IMPROCEDENTE': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
-      'TENER_POR_NO_PRESENTADO': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'CONCLUSION_DESISTIMIENTO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
+  getDiasValor(item: QueueItem): string {
+    const status = this.plazoStatus(item, this.stageFromKey(item.stageKey));
+    return `${status.restantes}d`;
+  }
+
+  getProgressWidth(item: QueueItem): number {
+    return this.plazoStatus(item, this.stageFromKey(item.stageKey)).pct;
+  }
+
+  getActionRoute(item: QueueItem): string[] {
+    const expediente = item.apelacion.expediente || '';
+
+    switch (item.stageKey) {
+      case 'elevacion':
+      case 'calificacion1':
+        return ['/ttaip/calificar', expediente];
+      case 'calificacion2':
+        return ['/ttaip/segunda-calificacion', expediente];
+      case 'resolucion':
+        return ['/ttaip/resolver', expediente];
+      case 'resueltos':
+        return ['/ttaip/apelacion', expediente];
+      default:
+        return ['/ttaip', expediente];
+    }
+  }
+
+  getActionLabel(item: QueueItem): string {
+    const stage = this.stageFromKey(item.stageKey);
+    return stage.actionLabel || 'Ver';
+  }
+
+  getTopEntidadWidth(count: number): number {
+    const top = this.topEntidades();
+    const max = top.length > 0 ? top[0].count : 1;
+    return (count / max) * 100;
+  }
+
+  getResolucionPct(value: number): number {
+    const total = this.resueltas().length;
+    if (total <= 0) return 0;
+    return Math.round((value / total) * 100);
+  }
+
+  private mergeUnique(groups: Apelacion[][]): Apelacion[] {
+    const byKey = new Map<string, Apelacion>();
+
+    for (const group of groups) {
+      for (const apelacion of group) {
+        const key = this.apelacionKey(apelacion);
+        byKey.set(key, apelacion);
+      }
+    }
+
+    return Array.from(byKey.values());
+  }
+
+  private apelacionKey(apelacion: Apelacion): string {
+    if (apelacion.id) return `id-${apelacion.id}`;
+    return `exp-${apelacion.expediente || 'sin-expediente'}`;
+  }
+
+  private countByStage(apelaciones: Apelacion[], key: StageKey): number {
+    return apelaciones.filter((apelacion) => this.mapEstadoToStage(apelacion.estado) === key).length;
+  }
+
+  private toQueueItem(apelacion: Apelacion): QueueItem {
+    const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
+    const entidad = (apelacion.entidadNombre || 'Entidad publica').trim();
+    const descripcion = (apelacion.solicitudAsunto || apelacion.fundamentos || 'Recurso en tramite').trim();
+    const stageKey = this.mapEstadoToStage(apelacion.estado);
+    const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
+    const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);
+
+    return {
+      apelacion,
+      stageKey,
+      ciudadano,
+      iniciales: this.obtenerIniciales(ciudadano),
+      entidad,
+      materia: this.inferirMateria(descripcion),
+      descripcion,
+      diasHabilesEnEtapa,
+      prioridad,
+      resultado: this.extractResultado(apelacion)
     };
-    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
   }
 
-  getEstadoBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'PENDIENTE_ELEVACION': 'badge-warning',
-      'EN_CALIFICACION_1': 'badge-warning',
-      'EN_CALIFICACION_2': 'badge-warning',
-      'EN_SUBSANACION': 'badge-warning',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'badge-in-process',
-      'EN_RESOLUCION': 'badge-in-process',
-      'RESUELTO': 'badge-success',
-      'RESUELTO_FUNDADO': 'badge-success',
-      'RESUELTO_FUNDADO_EN_PARTE': 'badge-success',
-      'RESUELTO_INFUNDADO': 'badge-muted',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
-      'RESUELTO_IMPROCEDENTE': 'badge-danger',
-      'TENER_POR_NO_PRESENTADO': 'badge-danger',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
-      'CONCLUSION_DESISTIMIENTO': 'badge-muted'
-    };
-    return clases[estado] || 'badge-muted';
+  private mapEstadoToStage(estadoRaw: string): StageKey {
+    const estado = this.normalizeDecision(estadoRaw);
+
+    if (estado === 'PENDIENTE_ELEVACION') return 'elevacion';
+    if (estado === 'EN_CALIFICACION_1') return 'calificacion1';
+    if (estado === 'EN_SUBSANACION') return 'subsanacion';
+    if (estado === 'EN_CALIFICACION_2' || estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') return 'calificacion2';
+    if (estado === 'EN_RESOLUCION') return 'resolucion';
+
+    return 'resueltos';
+  }
+
+  private estimateDiasEtapa(apelacion: Apelacion, stage: StageKey): number {
+    if (stage === 'subsanacion' && apelacion.fechaSubsanacion) {
+      return this.diasDesde(apelacion.fechaSubsanacion);
+    }
+
+    return this.diasDesde(apelacion.fechaApelacion);
+  }
+
+  private diasDesde(fechaRaw?: string): number {
+    if (!fechaRaw) return 0;
+
+    const parsed = new Date(fechaRaw);
+    if (Number.isNaN(parsed.getTime())) return 0;
+
+    const now = new Date();
+    const diff = now.getTime() - parsed.getTime();
+    if (diff <= 0) return 0;
+
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  private estimatePriority(stage: StageKey, diasHabilesEnEtapa: number): Priority {
+    const stageMeta = this.stageFromKey(stage);
+    if (stageMeta.isResolved) return 'baja';
+
+    const restantes = Math.max(0, stageMeta.plazoDias - diasHabilesEnEtapa);
+    if (restantes <= 1) return 'alta';
+    if (restantes <= 3) return 'media';
+    return 'baja';
+  }
+
+  private extractResultado(apelacion: Apelacion): string | null {
+    const raw = apelacion.resolucion?.decision || apelacion.resultado;
+    const normalized = this.normalizeDecision(raw);
+    return normalized || null;
+  }
+
+  private inferirMateria(texto: string): string {
+    const value = texto.toLowerCase();
+
+    if (value.includes('salud') || value.includes('hospital')) return 'Salud';
+    if (value.includes('educa') || value.includes('coleg')) return 'Educacion';
+    if (value.includes('presupuesto') || value.includes('financ') || value.includes('econom')) return 'Economia';
+    if (value.includes('transporte') || value.includes('vial') || value.includes('obra')) return 'Transportes';
+    if (value.includes('trabajo') || value.includes('personal') || value.includes('rrhh')) return 'Laboral';
+    if (value.includes('seguridad') || value.includes('policial') || value.includes('interior')) return 'Seguridad';
+
+    return 'General';
+  }
+
+  private obtenerIniciales(nombre: string): string {
+    const words = nombre
+      .trim()
+      .split(/\s+/)
+      .filter((part) => part.length > 0);
+
+    if (words.length === 0) return 'TT';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+
+  private matchesQuery(item: QueueItem, query: string): boolean {
+    const expediente = (item.apelacion.expediente || '').toLowerCase();
+    const ciudadano = item.ciudadano.toLowerCase();
+    const entidad = item.entidad.toLowerCase();
+    const materia = item.materia.toLowerCase();
+
+    return (
+      expediente.includes(query)
+      || ciudadano.includes(query)
+      || entidad.includes(query)
+      || materia.includes(query)
+    );
+  }
+
+  private plazoStatus(item: QueueItem, stage: StageMeta): PlazoStatus {
+    if (stage.isResolved) {
+      return { restantes: 0, pct: 100, tone: 'done' };
+    }
+
+    const restantes = Math.max(0, stage.plazoDias - item.diasHabilesEnEtapa);
+    const pct = Math.min(100, (item.diasHabilesEnEtapa / stage.plazoDias) * 100);
+
+    if (restantes <= 1) {
+      return { restantes, pct, tone: 'critical' };
+    }
+
+    if (restantes <= 2) {
+      return { restantes, pct, tone: 'warn' };
+    }
+
+    return { restantes, pct, tone: 'ok' };
+  }
+
+  private stageFromKey(key: StageKey): StageMeta {
+    return this.stages.find((stage) => stage.key === key) ?? this.stages[0];
+  }
+
+  private toneColor(tone: Tone): string {
+    if (tone === 'critical') return 'var(--brand-700)';
+    if (tone === 'warn') return 'var(--warning)';
+    return 'var(--success)';
+  }
+
+  private normalizeDecision(value: string | null | undefined): string {
+    return (value || '').trim().toUpperCase().replaceAll(' ', '_');
   }
 }
+
 
 

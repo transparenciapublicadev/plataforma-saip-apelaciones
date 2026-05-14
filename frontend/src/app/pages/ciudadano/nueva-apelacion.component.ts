@@ -34,10 +34,25 @@ export class NuevaApelacionComponent implements OnInit {
   file2 = signal<File | null>(null);
   file3 = signal<File | null>(null);
 
-  uploadedCount = computed(() => [this.file1(), this.file2(), this.file3()].filter(f => f !== null).length);
-  allFilesUploaded = computed(() => this.uploadedCount() === 3);
-
   fundamentos = '';
+
+  readonly uploadedCount = computed(() => [this.file1(), this.file2(), this.file3()].filter((file) => file !== null).length);
+  readonly allFilesUploaded = computed(() => this.uploadedCount() === 3);
+
+  readonly filteredSolicitudes = computed(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    const solicitudes = this.solicitudesApelables();
+    if (!term) {
+      return solicitudes;
+    }
+
+    return solicitudes.filter((sol) => {
+      const expediente = (sol.expediente || '').toLowerCase();
+      const entidad = (sol.entidadNombre || '').toLowerCase();
+      const asunto = (sol.asunto || '').toLowerCase();
+      return expediente.includes(term) || entidad.includes(term) || asunto.includes(term);
+    });
+  });
 
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
@@ -46,9 +61,9 @@ export class NuevaApelacionComponent implements OnInit {
       return;
     }
 
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.subscribe((params) => {
       if (params['solicitudId']) {
-        this.cargarSolicitudPorId(parseInt(params['solicitudId']));
+        this.cargarSolicitudPorId(parseInt(params['solicitudId'], 10));
       } else if (params['expediente']) {
         this.cargarSolicitud(params['expediente']);
       } else {
@@ -99,12 +114,13 @@ export class NuevaApelacionComponent implements OnInit {
 
     this.solicitudService.findByCiudadanoId(sesion.ciudadanoId).subscribe({
       next: (data) => {
-        const apelables = data.filter(s => s.estado === 'DENEGADA' && !s.apelacion);
+        const estadosApelables = new Set(['DENEGADA', 'RESPONDIDA', 'VENCIDA']);
+        const apelables = data.filter((sol) => estadosApelables.has(sol.estado) && !sol.apelacion);
         this.solicitudesApelables.set(apelables);
         this.loadingSolicitud.set(false);
 
         if (apelables.length === 0) {
-          this.error.set('No tienes solicitudes que puedan ser apeladas. Solo puedes apelar solicitudes con estado DENEGADA.');
+          this.error.set('No tiene solicitudes apelables en este momento.');
         }
       },
       error: () => {
@@ -124,33 +140,78 @@ export class NuevaApelacionComponent implements OnInit {
     this.solicitud.set(null);
     this.modoSeleccion.set(true);
     this.fundamentos = '';
+    this.file1.set(null);
+    this.file2.set(null);
+    this.file3.set(null);
+    this.searchTerm.set('');
     this.error.set('');
     this.mensaje.set('');
+  }
+
+  actualizarBusqueda(value: string): void {
+    this.searchTerm.set(value);
   }
 
   onFileChange(event: Event, fileNum: 1 | 2 | 3): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    if (fileNum === 1) this.file1.set(file);
-    else if (fileNum === 2) this.file2.set(file);
-    else this.file3.set(file);
+
+    if (fileNum === 1) {
+      this.file1.set(file);
+    } else if (fileNum === 2) {
+      this.file2.set(file);
+    } else {
+      this.file3.set(file);
+    }
   }
 
   removeFile(fileNum: 1 | 2 | 3): void {
-    if (fileNum === 1) this.file1.set(null);
-    else if (fileNum === 2) this.file2.set(null);
-    else this.file3.set(null);
+    if (fileNum === 1) {
+      this.file1.set(null);
+    } else if (fileNum === 2) {
+      this.file2.set(null);
+    } else {
+      this.file3.set(null);
+    }
+  }
+
+  getEstadoBadgeClass(estado: string): string {
+    if (estado === 'DENEGADA' || estado === 'VENCIDA') {
+      return 'pill pill-high';
+    }
+    if (estado === 'RESPONDIDA') {
+      return 'pill';
+    }
+    return 'pill pill-medium';
+  }
+
+  getEstadoDisplay(estado: string): string {
+    return estado.replaceAll('_', ' ');
+  }
+
+  puedeEnviar(): boolean {
+    return !!this.solicitud() && this.allFilesUploaded() && this.fundamentos.trim().length >= 50;
   }
 
   crearApelacion(): void {
-    if (!this.fundamentos.trim()) {
-      this.error.set('Los fundamentos de la apelación son obligatorios');
+    const sol = this.solicitud();
+    if (!sol) {
+      this.error.set('Debe seleccionar una solicitud para continuar');
+      return;
+    }
+
+    if (!this.allFilesUploaded()) {
+      this.error.set('Debe adjuntar los tres documentos obligatorios');
+      return;
+    }
+
+    if (this.fundamentos.trim().length < 50) {
+      this.error.set('Los fundamentos deben tener al menos 50 caracteres');
       return;
     }
 
     const sesion = this.authService.obtenerSesion();
-    const sol = this.solicitud();
-    if (!sesion?.ciudadanoId || !sol) {
+    if (!sesion?.ciudadanoId) {
       this.error.set('Error de sesión');
       return;
     }
@@ -161,7 +222,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.apelacionService.crear({
       solicitudId: sol.id,
       ciudadanoId: sesion.ciudadanoId,
-      fundamentos: this.fundamentos
+      fundamentos: this.fundamentos.trim()
     }).subscribe({
       next: (resp) => {
         this.loading.set(false);

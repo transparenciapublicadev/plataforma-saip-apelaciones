@@ -39,6 +39,10 @@ export class TtaipService {
     return this.http.get<Apelacion[]>(`${this.apiUrl}/segunda-calificacion`);
   }
 
+  getEnResolucion(): Observable<Apelacion[]> {
+    return this.http.get<Apelacion[]>(`${this.apiUrl}/en-resolucion`);
+  }
+
   getResueltas(): Observable<Apelacion[]> {
     return this.http.get<Apelacion[]>(`${this.apiUrl}/resueltas`);
   }

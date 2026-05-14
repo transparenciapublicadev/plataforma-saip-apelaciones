@@ -7,7 +7,8 @@ type ThemeMode = 'light' | 'dark';
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly storageKey = 'saip-theme-mode';
+  private readonly storageKey = 'saip-theme';
+  private readonly legacyStorageKey = 'saip-theme-mode';
 
   private readonly currentTheme = signal<ThemeMode>('light');
   readonly theme = this.currentTheme.asReadonly();
@@ -25,7 +26,7 @@ export class ThemeService {
       return;
     }
 
-    const savedTheme = localStorage.getItem(this.storageKey);
+    const savedTheme = localStorage.getItem(this.storageKey) ?? localStorage.getItem(this.legacyStorageKey);
     if (savedTheme === 'dark' || savedTheme === 'light') {
       this.applyTheme(savedTheme);
       return;
@@ -44,6 +45,9 @@ export class ThemeService {
     }
 
     this.document.documentElement.classList.toggle('dark', theme === 'dark');
+    this.document.documentElement.style.colorScheme = theme;
     localStorage.setItem(this.storageKey, theme);
+    localStorage.removeItem(this.legacyStorageKey);
   }
 }
+
