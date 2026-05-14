@@ -1,167 +1,209 @@
-<div class="saip-page min-h-[calc(100vh-68px)] relative overflow-hidden flex flex-col items-center justify-start pt-3 md:pt-4 pb-8 px-4 bg-[var(--background)]">
-  
-  <!-- Centered Concentric Halos (Responsive & Centered) -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] rounded-full border border-[var(--ceniza-claro)] opacity-50 pointer-events-none"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] rounded-full border border-[var(--ceniza-claro)] opacity-20 pointer-events-none"></div>
-
-  <!-- Form Container -->
-  <div class="relative z-10 w-full max-w-[440px] bg-[var(--card)] backdrop-blur-xl border border-[var(--border)] rounded-2xl p-5 shadow-xl shadow-black/5">
-    
-    <!-- Header Text -->
-    <div class="text-center mb-4 animate-fade-in-up">
-      <div class="inline-flex items-center justify-center w-10 h-10 bg-[var(--card)] rounded-xl border border-[var(--ceniza-claro)] shadow-sm mb-3">
-        <svg viewBox="0 0 32 32" class="w-6 h-6">
-          <rect x="4" y="8" width="24" height="16" fill="white" rx="1.5"/>
-          <rect x="4" y="8" width="24" height="5.33" fill="#C8102E"/>
-          <rect x="4" y="18.67" width="24" height="5.33" fill="#C8102E"/>
-          <circle cx="16" cy="16" r="3" fill="#C8A96E"/>
-        </svg>
-      </div>
-      <h2 class="text-xl md:text-2xl font-extrabold text-[var(--carbon)] tracking-tight mb-1">Registro Ciudadano</h2>
-      <p class="text-[var(--humo)] text-[12px]">Este formulario es exclusivo para ciudadanos</p>
-    </div>
-
-    <div class="mb-4 rounded-xl border p-3 bg-[var(--estado-azul-suave)] border-[var(--estado-azul-borde)]">
-      <p class="text-[12px] text-[var(--estado-azul)] font-semibold">Alta pública de cuenta SAIP</p>
-      <p class="text-[11px] text-[var(--humo)] mt-1">Los accesos de Funcionario, TTAIP y Administración se gestionan por rutas institucionales separadas.</p>
-    </div>
-
-    <!-- Stepper (Elevated slightly above the card) -->
-    <div class="flex items-center justify-center gap-2 md:gap-3 mb-4 animate-fade-in-up" style="animation-delay: 50ms">
-      <div class="flex items-center gap-1.5">
-        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm transition-all" [class]="currentStep() >= 1 ? 'bg-[var(--peru-rojo)] text-white' : 'bg-[var(--card)] border border-[var(--ceniza)] text-[var(--niebla)]'">1</div>
-        <span class="text-[11px] font-bold" [class]="currentStep() === 1 ? 'text-[var(--carbon)]' : 'text-[var(--niebla)]'">Datos Personales</span>
-      </div>
-      <div class="w-6 md:w-10 h-[2px] rounded-full" [class]="currentStep() >= 2 ? 'bg-[var(--peru-rojo)]/20' : 'bg-[var(--ceniza-claro)]'"></div>
-      <div class="flex items-center gap-1.5">
-        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm transition-all" [class]="currentStep() >= 2 ? 'bg-[var(--peru-rojo)] text-white' : 'bg-[var(--card)] border border-[var(--ceniza)] text-[var(--niebla)]'">2</div>
-        <span class="text-[11px] font-bold" [class]="currentStep() === 2 ? 'text-[var(--carbon)]' : 'text-[var(--niebla)]'">Cuenta</span>
-      </div>
-    </div>
-
-    <!-- Form Fields Internal Grid -->
-    <div class="animate-fade-in-up" style="animation-delay: 100ms">
-      <div class="text-center mb-6 hidden">
-        <h2 class="text-2xl font-bold text-[var(--carbon)] mb-2">Crear Cuenta</h2>
-        <p class="text-sm text-[var(--niebla)]">{{ currentStep() === 1 ? 'Ingresa tus datos personales' : 'Configura tu acceso' }}</p>
-      </div>
-
-        @if (error()) {
-          <div class="alert alert-error mb-5 animate-fade-in"><svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-width="2" d="M15 9l-6 6M9 9l6 6"/></svg><p class="text-sm">{{ error() }}</p></div>
-        }
-        @if (mensaje()) {
-          <div class="alert alert-success mb-5 animate-fade-in"><svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="text-sm">{{ mensaje() }}</p></div>
-        }
-
-        <form (ngSubmit)="registrar()">
-          <!-- Step 1: Personal Data -->
-          @if (currentStep() === 1) {
-            <div class="space-y-3 animate-fade-in">
-              <div>
-                <label for="reg-dni" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">DNI <span class="text-[var(--peru-rojo)]">*</span></label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16v12H4z"/><path stroke-width="2" d="M9 10h6M9 14h4"/></svg>
-                  <input id="reg-dni" type="text" [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="12345678" maxlength="8" autocomplete="off" />
-                </div>
-              </div>
-              <div>
-                <label for="reg-nombres" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Nombres <span class="text-[var(--peru-rojo)]">*</span></label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
-                  <input id="reg-nombres" type="text" [(ngModel)]="nombres" name="nombres" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="Juan Carlos" autocomplete="given-name" />
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label for="reg-ap" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Ap. Paterno <span class="text-[var(--peru-rojo)]">*</span></label>
-                  <div class="relative">
-                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
-                    <input id="reg-ap" type="text" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="García" autocomplete="family-name" />
-                  </div>
-                </div>
-                <div>
-                  <label for="reg-am" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Ap. Materno <span class="text-[var(--peru-rojo)]">*</span></label>
-                  <div class="relative">
-                    <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3" stroke-width="2"/><path stroke-width="2" d="M5 20c1.5-3 4-4 7-4s5.5 1 7 4"/></svg>
-                    <input id="reg-am" type="text" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="López" autocomplete="additional-name" />
-                  </div>
-                </div>
-              </div>
-              <button type="button" (click)="goToStep2()" [disabled]="!step1Valid()" class="btn-primary w-full h-[46px] rounded-xl text-[14px] mt-1 cursor-pointer">
-                Siguiente
-                <svg class="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-              </button>
-            </div>
-          }
-
-          <!-- Step 2: Account -->
-          @if (currentStep() === 2) {
-            <div class="space-y-3 animate-fade-in">
-              <div>
-                <label for="reg-email" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Correo electrónico <span class="text-[var(--peru-rojo)]">*</span></label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" stroke-width="2"/><path stroke-width="2" d="m22 7-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>
-                  <input id="reg-email" type="email" [(ngModel)]="email" name="email" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="correo@ejemplo.com" autocomplete="email" />
-                </div>
-                <p class="text-[11px] text-[var(--niebla)] mt-1 ml-1">Usaremos este correo para notificaciones oficiales.</p>
-              </div>
-              <div>
-                <label for="reg-telefono" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Teléfono</label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.1 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.12.86.32 1.7.59 2.5a2 2 0 0 1-.45 2.11L9.1 10.5a16 16 0 0 0 4.4 4.4l1.17-1.15a2 2 0 0 1 2.11-.45c.8.27 1.64.47 2.5.59A2 2 0 0 1 22 16.92z"/></svg>
-                  <input id="reg-telefono" type="text" [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="987654321" maxlength="9" autocomplete="tel" />
-                </div>
-              </div>
-              <div>
-                <label for="reg-password" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Contraseña <span class="text-[var(--peru-rojo)]">*</span></label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                  <input id="reg-password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password" class="input w-full h-[42px] pl-10 pr-10 bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none" placeholder="••••••••" autocomplete="new-password" />
-                  <button type="button" (click)="toggleShowPassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--niebla)] hover:text-[var(--carbon)] transition-colors" aria-label="Mostrar contraseña">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label for="reg-password-confirm" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Confirmar contraseña <span class="text-[var(--peru-rojo)]">*</span></label>
-                <div class="relative">
-                  <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                  <input id="reg-password-confirm" type="password" [(ngModel)]="confirmarPassword" name="confirmarPassword" class="input w-full h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none pl-10 pr-3" placeholder="••••••••" autocomplete="new-password" />
-                </div>
-              </div>
-              <div class="rounded-lg border border-[var(--ceniza-claro)] bg-[var(--card)] p-3">
-                <p class="text-[11px] font-semibold text-[var(--humo)] mb-2">Requisitos de contraseña</p>
-                <div class="space-y-1">
-                  @for (rule of passwordRequirements(); track rule.text) {
-                    <p class="text-[11px]" [class]="rule.met ? 'text-[var(--estado-verde)]' : 'text-[var(--niebla)]'">
-                      {{ rule.met ? '✓' : '•' }} {{ rule.text }}
-                    </p>
-                  }
-                </div>
-              </div>
-              <div class="flex items-start gap-2 py-1 mt-1">
-                <input type="checkbox" id="reg-terms" [(ngModel)]="acceptTerms" name="acceptTerms" class="mt-0.5 w-3.5 h-3.5 accent-[var(--peru-rojo)]" />
-                <label for="reg-terms" class="text-[11px] text-[var(--humo)] leading-tight">Acepto los <a href="#" class="text-[var(--peru-rojo)] font-bold hover:underline">términos de servicio</a> y la <a href="#" class="text-[var(--peru-rojo)] font-bold hover:underline">política de privacidad</a></label>
-              </div>
-              <div class="flex gap-2 mt-1">
-                <button type="button" (click)="goToStep1()" class="btn-outline flex-1 h-[46px] rounded-xl text-[14px]">
-                  Atrás
-                </button>
-                <button type="submit" [disabled]="loading() || !canSubmitStep2()" class="btn-primary flex-1 h-[46px] rounded-xl text-[14px] cursor-pointer">
-                  @if (loading()) {
-                    <div class="spinner spinner-sm"></div> Procesando
-                  } @else {
-                    Crear Cuenta
-                  }
-                </button>
-              </div>
-            </div>
-          }
-        </form>
-
-        <div class="mt-6 pt-5 border-t border-[var(--ceniza-claro)] text-center">
-          <p class="text-[12px] text-[var(--niebla)]">¿Ya tienes cuenta? <a routerLink="/login" class="text-[var(--primary)] font-bold hover:underline ml-1">Inicia sesión</a></p>
+<div class="min-h-screen grid lg:grid-cols-2 bg-background">
+  <!-- Brand panel -->
+  <div class="relative hidden lg:flex bg-brand-mesh text-white overflow-hidden">
+    <div class="absolute inset-0 bg-paper opacity-[0.07] pointer-events-none"></div>
+    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), var(--gold), transparent)"></div>
+    <div class="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18)">
+          <svg lucideUserPlus class="w-5 h-5 text-white"></svg>
         </div>
+        <div>
+          <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
+          <div class="text-[10px] tracking-[0.22em] uppercase opacity-65">Registro de administrado</div>
+        </div>
+      </div>
+
+      <div class="max-w-lg">
+        <div class="eyebrow mb-4" style="color: var(--gold-soft); letter-spacing: 0.32em">Cree su cuenta</div>
+        <h1 class="font-display text-balance" style="font-size: clamp(36px, 4vw, 52px); line-height: 1.04; letter-spacing: -0.025em">
+          Acceso a la información,
+          <span class="block italic" style="color: var(--gold-soft)">derecho de todos.</span>
+        </h1>
+        <div class="mt-8 mb-8 h-[1.5px] w-20" style="background: var(--gold-soft)"></div>
+        <p class="text-white/75 leading-relaxed" style="font-size: 16px">
+          Cree una cuenta para presentar solicitudes SAIP, dar seguimiento a sus expedientes y apelar ante el Tribunal cuando su derecho sea denegado.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-6 text-xs text-white/55">
+        <div class="flex items-center gap-1.5">
+          <svg lucideShield class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
+          Ley 29733
+        </div>
+        <div class="opacity-40">·</div>
+        <div>Datos cifrados</div>
+        <div class="opacity-40">·</div>
+        <div>WCAG 2.1 AA</div>
       </div>
     </div>
   </div>
+
+  <!-- Form panel -->
+  <div class="relative flex items-center justify-center px-6 py-16 lg:py-12 bg-paper">
+    <div class="w-full max-w-md hero-animate">
+      <button (click)="navigateToHome()" class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-8 transition-colors cursor-pointer">
+        <svg lucideArrowLeft class="w-4 h-4"></svg> Volver al inicio
+      </button>
+
+      <div class="mb-7">
+        <span class="eyebrow">Crear cuenta · Administrado</span>
+        <h2 class="font-display mt-2" style="font-size: 34px; line-height: 1.1; letter-spacing: -0.02em">Regístrese</h2>
+        <p class="mt-2 text-sm" style="color: var(--muted-foreground)">Complete sus datos en dos breves pasos.</p>
+      </div>
+
+      <!-- Step indicator -->
+      <div class="flex items-center gap-2 mb-7">
+        <div class="flex-1 flex items-center gap-2">
+          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">01</span>
+          <div class="flex-1 h-[3px] rounded-full" [style.background]="currentStep() >= 1 ? 'var(--brand-600)' : 'var(--border)'"></div>
+        </div>
+        <div class="flex-1 flex items-center gap-2">
+          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 2 ? 'var(--brand-700)' : 'var(--muted-foreground)'">02</span>
+          <div class="flex-1 h-[3px] rounded-full" [style.background]="currentStep() >= 2 ? 'var(--brand-600)' : 'var(--border)'"></div>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      @if (error()) {
+        <div class="rounded-lg px-4 py-3 text-sm mb-5" style="background: var(--brand-50); border: 1px solid var(--brand-200); color: var(--brand-800)">
+          {{ error() }}
+        </div>
+      }
+      @if (mensaje()) {
+        <div class="rounded-lg px-4 py-3 text-sm mb-5" style="background: var(--success-subtle); border: 1px solid rgba(21,128,61,0.25); color: var(--success)">
+          {{ mensaje() }}
+        </div>
+      }
+
+      <form (ngSubmit)="registrar()" class="space-y-5">
+        <!-- Step 1 -->
+        @if (currentStep() === 1) {
+          <div class="space-y-5">
+            <div class="field">
+              <label class="field-label">DNI <span class="req">*</span></label>
+              <input class="field-input font-mono" placeholder="12345678" maxlength="8"
+                [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" />
+              @if (dni && dni.length === 8) {
+                <span class="field-hint inline-flex items-center gap-1" style="color: var(--success)">
+                  <svg lucideCheck class="w-3 h-3"></svg> DNI válido
+                </span>
+              }
+              @if (dni && dni.length > 0 && dni.length < 8) {
+                <span class="field-hint font-mono">{{ 8 - dni.length }} dígitos restantes</span>
+              }
+            </div>
+
+            <div class="field">
+              <label class="field-label">Nombres <span class="req">*</span></label>
+              <input class="field-input" placeholder="Juan Carlos" [(ngModel)]="nombres" name="nombres" />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="field">
+                <label class="field-label">Apellido paterno <span class="req">*</span></label>
+                <input class="field-input" placeholder="Pérez" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" />
+              </div>
+              <div class="field">
+                <label class="field-label">Apellido materno <span class="req">*</span></label>
+                <input class="field-input" placeholder="García" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" />
+              </div>
+            </div>
+
+            <button type="button" [disabled]="!step1Valid()" (click)="goToStep2()"
+              class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed" style="padding: 11px 16px">
+              Continuar <svg lucideArrowRight class="w-4 h-4"></svg>
+            </button>
+          </div>
+        }
+
+        <!-- Step 2 -->
+        @if (currentStep() === 2) {
+          <div class="space-y-5">
+            <div class="field">
+              <label class="field-label">Correo electrónico <span class="req">*</span></label>
+              <input type="email" class="field-input" placeholder="correo@ejemplo.com" [(ngModel)]="email" name="email" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Teléfono celular <span class="req">*</span></label>
+              <input type="tel" class="field-input font-mono" placeholder="987654321" maxlength="9"
+                [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Contraseña <span class="req">*</span></label>
+              <div class="relative">
+                <input [type]="showPassword() ? 'text' : 'password'" class="field-input pr-11" placeholder="Mínimo 8 caracteres"
+                  [(ngModel)]="password" name="password" />
+                <button type="button" (click)="toggleShowPassword()"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                  [attr.aria-label]="showPassword() ? 'Ocultar' : 'Mostrar'">
+                  @if (showPassword()) {
+                    <svg lucideEyeOff class="w-4 h-4"></svg>
+                  } @else {
+                    <svg lucideEye class="w-4 h-4"></svg>
+                  }
+                </button>
+              </div>
+              @if (password) {
+                <div class="grid grid-cols-2 gap-1.5 pt-2">
+                  @for (r of passwordRequirements(); track r.text) {
+                    <div class="text-xs flex items-center gap-1.5" [style.color]="r.met ? 'var(--success)' : 'var(--muted-foreground)'">
+                      <span class="w-3.5 h-3.5 rounded-full flex items-center justify-center" [style.background]="r.met ? 'var(--success)' : 'var(--border)'">
+                        @if (r.met) { <svg lucideCheck class="w-2.5 h-2.5 text-white"></svg> }
+                      </span>
+                      {{ r.text }}
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="field">
+              <label class="field-label">Confirmar contraseña <span class="req">*</span></label>
+              <input type="password" class="field-input" placeholder="Repita su contraseña"
+                [(ngModel)]="confirmarPassword" name="confirmarPassword" />
+            </div>
+
+            <label class="flex items-start gap-3 p-4 rounded-lg cursor-pointer" style="background: var(--card); border: 1px solid var(--border)">
+              <input type="checkbox" class="mt-0.5" [(ngModel)]="acceptTerms" name="acceptTerms" />
+              <span class="text-sm leading-relaxed" style="color: var(--foreground); opacity: 0.8">
+                Acepto los <span class="font-medium hover:underline" style="color: var(--brand-700)">términos</span> y la
+                <span class="font-medium hover:underline" style="color: var(--brand-700)">política de privacidad</span>.
+              </span>
+            </label>
+
+            <div class="flex gap-3">
+              <button type="button" class="btn-ghost-brand flex-1 justify-center" style="padding: 11px 16px" (click)="goToStep1()">
+                <svg lucideArrowLeft class="w-4 h-4"></svg> Atrás
+              </button>
+              <button type="submit" [disabled]="!canSubmitStep2() || loading()"
+                class="btn-brand flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed" style="padding: 11px 16px">
+                @if (loading()) {
+                  <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12.73-5.66l-1.41 1.41M7.68 17.68l-1.41-1.41M17.68 17.68l-1.41-1.41M7.68 7.68l-1.41 1.41"/></svg>
+                  Registrando...
+                } @else {
+                  <svg lucideUserPlus class="w-4 h-4"></svg> Crear cuenta
+                }
+              </button>
+            </div>
+          </div>
+        }
+
+        <div class="rule-ornament my-6"><span class="text-xs uppercase tracking-widest">o</span></div>
+        <button type="button" routerLink="/login" class="btn-ghost-brand w-full justify-center" style="padding: 11px 16px">
+          Ya tengo cuenta · Iniciar sesión
+        </button>
+      </form>
+
+      <!-- Data protection notice -->
+      <div class="mt-7 flex items-center gap-3 px-5 py-4 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
+        <svg lucideShield class="w-4 h-4 flex-shrink-0" style="color: var(--gold)"></svg>
+        <p class="text-xs" style="color: var(--muted-foreground)">
+          <span style="color: var(--foreground)" class="font-medium">Protección de datos.</span> Conforme a la Ley N° 29733 — Protección de Datos Personales.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

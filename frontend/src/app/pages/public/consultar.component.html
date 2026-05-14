@@ -1,124 +1,239 @@
-<div class="saip-page min-h-screen bg-[var(--background)] pt-28 pb-16 px-4">
-  <div class="max-w-4xl mx-auto">
-    <section class="text-center mb-8">
-      <div class="w-14 h-14 mx-auto bg-[var(--peru-rojo-suave)] rounded-2xl flex items-center justify-center mb-4 border border-[var(--ceniza-claro)]">
-        <svg class="w-7 h-7 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-width="2" d="m20 20-3-3"></path></svg>
-      </div>
-      <h1 class="text-3xl md:text-4xl font-bold text-[var(--carbon)] mb-3">Consultar Estado de Solicitud</h1>
-      <p class="text-[var(--niebla)] max-w-2xl mx-auto">Ingrese su numero de expediente SAIP para visualizar el estado actual del tramite sin iniciar sesion.</p>
-    </section>
+<div class="min-h-screen bg-background">
+  <section class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="absolute top-0 right-0 w-[420px] h-[420px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
+    <div class="relative max-w-3xl mx-auto px-6 md:px-10 pt-28 pb-12">
+      <a routerLink="/" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+        <svg lucideArrowRight class="w-4 h-4 rotate-180"></svg>
+        Volver al inicio
+      </a>
 
-    <section class="card p-6 md:p-8 mb-6">
-      <label for="expediente" class="label">Numero de expediente</label>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <input
-          id="expediente"
-          class="input h-12"
-          placeholder="Ej: SAIP-2025-00847"
-          [value]="query()"
-          (input)="onQueryInput($event)"
-        />
-        <button
-          type="button"
-          class="btn-primary h-12 sm:px-6"
-          [disabled]="!query().trim() || buscando()"
-          (click)="buscar()"
-        >
-          @if (buscando()) {
-            <span class="inline-flex items-center gap-2">
-              <span class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
-              Buscando...
-            </span>
-          } @else {
-            Buscar
-          }
-        </button>
+      <div class="text-center">
+        <div class="w-14 h-14 mx-auto rounded-lg flex items-center justify-center mb-5" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
+          <svg lucideSearch class="w-7 h-7 text-white"></svg>
+        </div>
+        <span class="eyebrow">Consulta publica · Sin sesion</span>
+        <h1 class="font-display mt-3" style="font-size: clamp(32px, 3.6vw, 44px); line-height: 1.06; letter-spacing: -0.025em">
+          Estado de su <span class="italic" style="color: var(--brand-700)">solicitud</span>
+        </h1>
+        <div class="mt-5 mx-auto h-[1.5px] w-16" style="background: var(--gold)"></div>
+        <p class="text-muted-foreground max-w-lg mx-auto mt-5">
+          Ingrese el numero de expediente SAIP para consultar el estado sin necesidad de iniciar sesion.
+        </p>
       </div>
-      <p class="text-xs text-[var(--niebla)] mt-3">Expedientes demo: SAIP-2025-00847, SAIP-2025-00723, SAIP-2025-00654</p>
+    </div>
+  </section>
+
+  <div class="max-w-3xl mx-auto px-6 md:px-10 py-10">
+    <section class="form-shell mb-7">
+      <div class="p-6 md:p-7">
+        <label class="field-label" for="expediente">Numero de expediente</label>
+        <div class="flex flex-col sm:flex-row gap-3 mt-1.5">
+          <div class="flex-1 relative">
+            <svg lucideFileText class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+            <input
+              id="expediente"
+              class="field-input pl-10 font-mono"
+              placeholder="SAIP-2025-00847"
+              [value]="query()"
+              (input)="onQueryInput($event)"
+            />
+          </div>
+          <button
+            type="button"
+            class="btn-brand !px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="!query().trim() || buscando()"
+            (click)="buscar()"
+          >
+            @if (buscando()) {
+              <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            } @else {
+              <svg lucideSearch class="w-4 h-4"></svg>
+              Buscar
+            }
+          </button>
+        </div>
+        <span class="field-hint">Expedientes de prueba · <span class="font-mono">SAIP-2025-00847</span>, <span class="font-mono">SAIP-2025-00723</span>, <span class="font-mono">SAIP-2025-00654</span></span>
+      </div>
     </section>
 
     @if (noEncontrado()) {
-      <section class="card p-6 border border-[var(--estado-rojo-borde)] bg-[var(--estado-rojo-suave)]">
-        <h2 class="text-lg font-semibold text-[var(--estado-rojo)] mb-1">Expediente no encontrado</h2>
-        <p class="text-sm text-[var(--humo)]">No se encontro el expediente {{ query() }}. Verifique el numero e intente nuevamente.</p>
+      <section class="form-shell mb-7 border-[var(--brand-200)]">
+        <div class="p-8 text-center">
+          <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-50); border: 1px solid var(--brand-200)">
+            <svg lucideSearch class="w-6 h-6" style="color: var(--brand-700)"></svg>
+          </div>
+          <h3 class="font-display" style="font-size: 20px; letter-spacing: -0.015em">Expediente no encontrado</h3>
+          <p class="text-sm text-muted-foreground mt-2 mb-5">No existe expediente con numero <span class="code-chip">{{ query() }}</span></p>
+          <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Intentar de nuevo</button>
+        </div>
       </section>
     }
 
     @if (resultado(); as data) {
-      <section class="card overflow-hidden mb-6">
-        <div class="h-1.5 bg-[var(--peru-rojo)]"></div>
-        <div class="p-6 md:p-8">
-          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-            <div>
-              <p class="font-expediente text-xl text-[var(--carbon)]">{{ data.expediente }}</p>
-              <span [class]="estadoBadgeClass(data.estado)">{{ estadoEtiqueta(data.estado) }}</span>
-            </div>
-            <div class="text-left sm:text-right">
-              <p class="text-2xl font-bold text-[var(--peru-rojo)]">{{ data.diasTranscurridos }}</p>
-              <p class="text-xs text-[var(--niebla)] uppercase tracking-wider">dias transcurridos</p>
-            </div>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-3 mb-4">
-            <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
-              <p class="text-xs text-[var(--niebla)] mb-1">Entidad</p>
-              <p class="text-sm text-[var(--carbon)]">{{ data.entidad }}</p>
-            </div>
-            <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
-              <p class="text-xs text-[var(--niebla)] mb-1">Fecha de presentacion</p>
-              <p class="text-sm text-[var(--carbon)]">{{ data.fechaPresentacion }}</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)] mb-4">
-            <p class="text-xs text-[var(--niebla)] mb-1">Asunto</p>
-            <p class="text-sm text-[var(--carbon)]">{{ data.asunto }}</p>
-          </div>
-
-          <div class="p-4 rounded-xl bg-[var(--muted)] border border-[var(--ceniza-claro)]">
-            <p class="text-xs text-[var(--niebla)] mb-1">Solicitante</p>
-            <p class="text-sm text-[var(--carbon)]">{{ data.ciudadano }}</p>
-            <p class="text-[11px] text-[var(--niebla)] mt-1">Datos parcialmente ocultos por privacidad.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card p-6 md:p-8 mb-6">
-        <h3 class="text-lg font-semibold text-[var(--carbon)] mb-5">Historial del tramite</h3>
-        <div class="space-y-4">
-          @for (item of data.timeline; track item.title) {
-            <article class="flex gap-3">
-              <div class="pt-1">
-                <div class="w-3 h-3 rounded-full" [class]="timelineClass(item.status)"></div>
+      <div class="space-y-5">
+        <section class="form-shell">
+          <div class="form-section-header flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+                @switch (data.estado) {
+                  @case ('EN_PROCESO') {
+                    <svg lucideSearch class="w-5 h-5 text-[var(--brand-700)]"></svg>
+                  }
+                  @case ('RESPONDIDA') {
+                    <svg lucideFileText class="w-5 h-5 text-[var(--estado-verde)]"></svg>
+                  }
+                  @case ('APELADA') {
+                    <svg lucideScale class="w-5 h-5 text-[var(--gold-dark)]"></svg>
+                  }
+                  @case ('DENEGADA') {
+                    <svg lucideShield class="w-5 h-5 text-[var(--brand-700)]"></svg>
+                  }
+                  @case ('VENCIDA') {
+                    <svg lucideLock class="w-5 h-5 text-[var(--humo)]"></svg>
+                  }
+                  @default {
+                    <svg lucideBookOpen class="w-5 h-5 text-[var(--niebla)]"></svg>
+                  }
+                }
               </div>
               <div>
-                <p class="text-sm font-semibold text-[var(--carbon)]">{{ item.title }}</p>
-                <p class="text-sm text-[var(--humo)]">{{ item.description }}</p>
-                <p class="text-xs text-[var(--niebla)] mt-1">{{ item.date }}</p>
+                <span class="eyebrow">Expediente</span>
+                <div class="font-mono font-semibold mt-0.5" style="font-size: 15px">{{ data.expediente }}</div>
               </div>
-            </article>
-          }
-        </div>
-      </section>
+            </div>
+            <div class="text-right">
+              <div class="font-display" style="font-size: 36px; line-height: 1; letter-spacing: -0.025em; color: var(--brand-700)">
+                {{ data.diasTranscurridos }}
+              </div>
+              <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">dias transcurridos</div>
+            </div>
+          </div>
+
+          <div class="p-6 md:p-7 space-y-4">
+            <div class="flex items-center gap-3">
+              <span class="eyebrow">Estado</span>
+              <span [class]="estadoBadgeClass(data.estado)">{{ estadoEtiqueta(data.estado) }}</span>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-3">
+              <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border)">
+                <svg lucideBuilding2 class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
+                <div>
+                  <div class="text-[10px] tracking-widest uppercase text-muted-foreground">Entidad</div>
+                  <div class="text-sm text-foreground mt-0.5">{{ data.entidad }}</div>
+                </div>
+              </div>
+              <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border)">
+                <svg lucideFileText class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
+                <div>
+                  <div class="text-[10px] tracking-widest uppercase text-muted-foreground">Fecha de presentacion</div>
+                  <div class="text-sm text-foreground mt-0.5 font-mono">{{ data.fechaPresentacion }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <div class="eyebrow" style="color: var(--brand-700)">Asunto</div>
+              <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">{{ data.asunto }}</p>
+            </div>
+
+            <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+              <div class="eyebrow">Solicitante</div>
+              <p class="text-sm text-foreground mt-1 font-mono">{{ data.ciudadano }}</p>
+              <p class="text-[11px] text-muted-foreground mt-1 italic">Datos parcialmente ocultos por privacidad</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">Historial</span>
+            <div class="form-section-title">Trazabilidad del tramite</div>
+          </div>
+          <div class="p-6 md:p-7 space-y-4">
+            @for (item of data.timeline; track item.title + item.date) {
+              <article class="flex gap-3">
+                <div class="pt-0.5">
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center border border-[var(--border)] bg-[var(--card)]" [class]="timelineIconClass(item.status)">
+                    @switch (item.icon) {
+                      @case ('send') {
+                        <svg lucideSend class="w-4 h-4"></svg>
+                      }
+                      @case ('search') {
+                        <svg lucideSearch class="w-4 h-4"></svg>
+                      }
+                      @case ('file') {
+                        <svg lucideFileText class="w-4 h-4"></svg>
+                      }
+                      @case ('gavel') {
+                        <svg lucideGavel class="w-4 h-4"></svg>
+                      }
+                      @case ('scale') {
+                        <svg lucideScale class="w-4 h-4"></svg>
+                      }
+                      @default {
+                        <svg lucideBookOpen class="w-4 h-4"></svg>
+                      }
+                    }
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full" [class]="timelineClass(item.status)"></div>
+                    <p class="text-sm font-semibold text-foreground">{{ item.title }}</p>
+                  </div>
+                  <p class="text-sm text-muted-foreground mt-1">{{ item.description }}</p>
+                  <p class="text-xs text-[var(--niebla)] mt-1">{{ item.date }}</p>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+
+        <section class="rounded-lg p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 60%); border: 1px solid var(--brand-200)">
+          <div>
+            <span class="eyebrow" style="color: var(--brand-700)">Necesita mas detalle</span>
+            <h4 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">Inicie sesion para acceso completo</h4>
+            <p class="text-sm text-muted-foreground mt-1">Revise documentos adjuntos, respuestas y acciones sobre su expediente.</p>
+          </div>
+          <a routerLink="/login" class="btn-brand whitespace-nowrap">
+            Iniciar sesion
+            <svg lucideArrowRight class="w-4 h-4"></svg>
+          </a>
+        </section>
+      </div>
     }
 
-    <section class="grid md:grid-cols-3 gap-4">
-      <article class="card p-5">
-        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Consulta publica</h4>
-        <p class="text-sm text-[var(--niebla)]">No requiere inicio de sesion para seguimiento basico.</p>
-      </article>
-      <article class="card p-5">
-        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Seguimiento en tiempo real</h4>
-        <p class="text-sm text-[var(--niebla)]">Visualiza cada etapa del procedimiento SAIP/TTAIP.</p>
-      </article>
-      <article class="card p-5">
-        <h4 class="text-sm font-semibold text-[var(--carbon)] mb-2">Privacidad protegida</h4>
-        <p class="text-sm text-[var(--niebla)]">La identidad del solicitante se anonimiza parcialmente.</p>
-      </article>
-    </section>
-
-    <div class="mt-8 text-center">
-      <a routerLink="/login" class="btn-outline">Iniciar sesion para ver mas detalles</a>
-    </div>
+    @if (!resultado() && !noEncontrado() && !buscando()) {
+      <section class="grid md:grid-cols-3 gap-4">
+        <article class="form-shell">
+          <div class="p-6 text-center">
+            <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+              <svg lucideSearch class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            </div>
+            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Consulta publica</h4>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Sin iniciar sesion, vea el estado basico de cualquier expediente.</p>
+          </div>
+        </article>
+        <article class="form-shell">
+          <div class="p-6 text-center">
+            <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+              <svg lucideFileText class="w-5 h-5 text-[var(--info)]"></svg>
+            </div>
+            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Seguimiento trazable</h4>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Visualice eventos del tramite con fechas y estado actual.</p>
+          </div>
+        </article>
+        <article class="form-shell">
+          <div class="p-6 text-center">
+            <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+              <svg lucideShield class="w-5 h-5 text-[var(--gold-dark)]"></svg>
+            </div>
+            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Datos protegidos</h4>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">La identidad del solicitante se muestra parcialmente por privacidad.</p>
+          </div>
+        </article>
+      </section>
+    }
   </div>
 </div>
