@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
@@ -27,9 +27,11 @@ interface DonutChartDatum extends ChartDatum {
   dashOffset: string;
 }
 
+type AdminTab = 'resumen' | 'entidades' | 'usuarios' | 'reportes' | 'configuracion' | 'solicitudes';
+
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, DecimalPipe],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -72,7 +74,7 @@ export class AdminDashboardComponent implements OnInit {
   miembrosTTAIP = signal<number>(0);
   administradores = signal<number>(0);
 
-  tabActual = signal<string>('resumen');
+  tabActual = signal<AdminTab>('resumen');
   modalEntidadAbierto = signal<boolean>(false);
   modalUsuarioAbierto = signal<boolean>(false);
   entidadEditando = signal<boolean>(false);
@@ -201,7 +203,7 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  cambiarTab(tab: string): void {
+  cambiarTab(tab: AdminTab): void {
     this.tabActual.set(tab);
     if (tab === 'usuarios' && this.usuarios().length === 0) {
       this.cargarUsuarios();
@@ -411,6 +413,32 @@ export class AdminDashboardComponent implements OnInit {
 
   exportarReporte(tipo: string, formato: string): void {
     this.mostrarMensaje(`Generando reporte de ${tipo} en formato ${formato.toUpperCase()}...`);
+  }
+
+  userInitials(email: string): string {
+    const localPart = email.split('@')[0] ?? '';
+    const segments = localPart
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((segment) => segment.charAt(0).toUpperCase());
+
+    if (segments.length > 0) {
+      return segments.join('');
+    }
+
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  actividadUsuario(usuario: Usuario): string {
+    const activityByType: Record<string, string> = {
+      CIUDADANO: 'Solicitudes activas',
+      FUNCIONARIO: 'Gestion institucional',
+      TTAIP: 'Evaluacion de apelaciones',
+      ADMINISTRADOR: 'Administracion del sistema',
+    };
+
+    return activityByType[usuario.tipoUsuario] ?? 'Actividad no registrada';
   }
 
   getTipoUsuarioClass(tipo: string): string {
