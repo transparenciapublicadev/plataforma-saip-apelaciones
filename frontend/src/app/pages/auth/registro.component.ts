@@ -5,10 +5,18 @@ import { forkJoin, of } from 'rxjs';
 import { finalize, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { RegistroRequest } from '../../models/usuario.model';
+import {
+  LucideArrowLeft, LucideShield, LucideUserPlus, LucideCheck,
+  LucideEye, LucideEyeOff, LucideArrowRight, LucideScale,
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-registro',
-  imports: [FormsModule, RouterLink],
+  imports: [
+    FormsModule, RouterLink,
+    LucideArrowLeft, LucideShield, LucideUserPlus, LucideCheck,
+    LucideEye, LucideEyeOff, LucideArrowRight, LucideScale,
+  ],
   templateUrl: './registro.component.html',
   styleUrl: './registro.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
