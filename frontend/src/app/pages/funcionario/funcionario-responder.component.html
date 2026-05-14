@@ -1,277 +1,364 @@
-<div class="saip-page min-h-screen bg-[var(--nieve)]">
+<div class="min-h-screen bg-background">
   @if (loadingSolicitud()) {
-    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
-
-      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
-      <div class="max-w-7xl mx-auto"><h1 class="text-2xl text-[var(--carbon)]">Cargando...</h1></div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 py-20 text-center">
-      <div class="w-8 h-8 border-3 border-[var(--peru-rojo)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-    </div>
-  } @else if (solicitud()) {
-    <!-- Header -->
-    <div class="bg-gradient-peru-hero pt-28 pb-10 px-4 relative overflow-hidden">
-
-      <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
-      <div class="max-w-7xl mx-auto">
-        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-[var(--carbon)]/70 hover:text-[var(--carbon)] text-sm mb-4 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
-          Volver al Dashboard
-        </a>
-        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            </div>
-            <div class="text-[var(--carbon)]">
-              <h1 class="text-2xl md:text-3xl">Responder Expediente {{ solicitud()!.expediente }}</h1>
-              <p class="text-[var(--carbon)]/70">{{ solicitud()!.entidadNombre }} — {{ solicitud()!.ciudadanoNombre }}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getEstadoClass(solicitud()!.estado)">{{ solicitud()!.estado }}</span>
-          </div>
-        </div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+      <div class="form-shell p-16 text-center">
+        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-4 text-muted-foreground">Cargando solicitud...</p>
       </div>
     </div>
+  } @else if (solicitud(); as sol) {
+    <div class="relative bg-brand-gradient text-white overflow-hidden">
+      <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
+      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+        <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
+          Volver al panel
+        </a>
+        <span class="eyebrow !text-[color:var(--gold-soft)]">Respuesta institucional</span>
+        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em;">
+          Responder solicitud
+        </h1>
+        <p class="text-white/75 mt-2 font-mono text-sm">Expediente · {{ sol.expediente }}</p>
+      </div>
+      <div class="brand-divider"></div>
+    </div>
 
-    <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16">
-      <!-- Urgency Alert -->
-      @if (solicitud()!.diasRestantes !== undefined && solicitud()!.diasRestantes! <= 3 && solicitud()!.diasRestantes! >= 0) {
-        <div class="mb-6 bg-white shadow-sm rounded-xl p-4 flex items-start gap-3">
-          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
+      @if (esUrgente()) {
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           </div>
           <div>
-            <p class="text-sm text-[var(--carbon)] font-medium mb-0.5">Solicitud Urgente</p>
-            <p class="text-sm text-[var(--niebla)]">Quedan solo {{ solicitud()!.diasRestantes }} días hábiles para responder esta solicitud.</p>
+            <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Quedan solo <span class="font-mono font-semibold">{{ getDiasRestantes() }}</span> días hábiles para responder.</p>
           </div>
         </div>
       }
 
-      <!-- Quick Stats -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="card overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[var(--estado-azul-suave)] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[var(--estado-azul)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stat-card">
+          <span class="stat-card-bar" style="background: var(--info)"></span>
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
+            <span class="eyebrow">Fecha solicitud</span>
           </div>
-          <div class="text-lg text-[var(--estado-azul)] truncate mt-1">{{ solicitud()!.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-[var(--niebla)]">Fecha Solicitud</div>
+          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
         </div>
-        <div class="card overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[var(--estado-ambar-suave)] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[var(--estado-ambar)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+
+        <div class="stat-card">
+          <span class="stat-card-bar" style="background: var(--warning)"></span>
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+            <span class="eyebrow">Fecha límite</span>
           </div>
-          <div class="text-lg text-[var(--estado-ambar)] truncate mt-1">{{ solicitud()!.fechaLimite | date:'dd/MM/yyyy' }}</div>
-          <div class="text-sm text-[var(--niebla)]">Fecha Límite</div>
+          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
         </div>
-        <div class="card overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg flex items-center justify-center mb-2" [style.background-color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo-suave)' : 'var(--estado-verde-suave)'">
-            <svg class="w-4 h-4" [style.color]="solicitud()!.diasRestantes < 0 ? 'var(--estado-rojo)' : 'var(--estado-verde)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+
+        <div class="stat-card">
+          <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4" [style.color]="getDiasRestantesColor()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span class="eyebrow">Días restantes</span>
           </div>
-          @if (solicitud()!.diasRestantes < 0) {
-            <div class="text-lg text-[var(--estado-rojo)] mt-1">{{ -solicitud()!.diasRestantes }} días de retraso</div>
-          } @else {
-            <div class="text-lg text-[var(--estado-verde)] mt-1">{{ solicitud()!.diasRestantes }} días</div>
-          }
-          <div class="text-sm text-[var(--niebla)]">Días Restantes</div>
+          <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
         </div>
-        <div class="card overflow-hidden p-5">
-          <div class="w-9 h-9 rounded-lg bg-[var(--accent-violet-soft)] flex items-center justify-center mb-2">
-            <svg class="w-4 h-4 text-[var(--accent-violet)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+
+        <div class="stat-card">
+          <span class="stat-card-bar" style="background: var(--brand-700)"></span>
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+            <span class="eyebrow">Tipo</span>
           </div>
-          <div class="text-lg text-[var(--accent-violet)] mt-1 truncate">Acceso a Información</div>
-          <div class="text-sm text-[var(--niebla)]">Tipo</div>
+          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
         </div>
       </div>
 
-      <!-- Response Form Card -->
-      <div class="card overflow-hidden">
-        <div class="border-b border-[var(--ceniza-claro)] px-6 py-4">
-          <h3 class="text-[var(--carbon)] font-semibold">Respuesta de la Entidad</h3>
+      <div class="form-shell">
+        <div class="flex border-b overflow-x-auto" style="border-color: var(--border)">
+          @for (tab of tabs; track tab.id) {
+            <button
+              type="button"
+              (click)="cambiarTab(tab.id)"
+              class="px-5 py-3.5 text-sm transition-colors relative whitespace-nowrap"
+              [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'"
+              [style.font-weight]="activeTab() === tab.id ? '600' : '400'">
+              {{ tab.label }}
+              @if (activeTab() === tab.id) {
+                <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
+              }
+            </button>
+          }
         </div>
-        <div class="p-6 space-y-6">
-          @if (esSilencioAdministrativoAutomatico()) {
-            <div class="bg-[var(--nieve-calida)] border border-[var(--ceniza)] rounded-xl p-4 flex items-start gap-3">
-              <svg class="w-5 h-5 text-[var(--humo)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <div>
-                <p class="text-sm font-semibold text-[var(--carbon)] mb-0.5">SILENCIO_ADMINISTRATIVO automático</p>
-                <p class="text-sm text-[var(--humo)]">La solicitud superó el plazo legal de 10 días hábiles sin respuesta. Este estado se gestiona automáticamente por regla de negocio y no permite registrar respuesta manual.</p>
-              </div>
-            </div>
-          }
 
-          @if (error()) {
-            <div class="bg-[var(--peru-rojo-suave)] border border-[var(--estado-rojo-borde)] rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-              <svg class="w-5 h-5 text-[var(--estado-rojo)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <p class="text-sm text-[var(--estado-rojo)]">{{ error() }}</p>
-            </div>
-          }
-          @if (mensaje()) {
-            <div class="bg-[var(--estado-verde-suave)] border border-[var(--estado-verde-borde)] rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-              <svg class="w-5 h-5 text-[var(--estado-verde)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              <p class="text-sm text-[var(--estado-verde)]">{{ mensaje() }}</p>
-            </div>
-          }
-
-          @if (puedeRegistrarRespuestaManual()) {
-            <!-- Decision -->
-            <div class="space-y-3">
-              <label class="block label">Decisión sobre la Solicitud <span class="text-[var(--estado-rojo)]">*</span></label>
-              <div class="space-y-3">
-                <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                  [class]="decision === 'aceptar' ? 'border-[var(--estado-verde)] bg-[var(--estado-verde-suave)]' : 'border-[var(--ceniza-claro)] hover:border-[var(--ceniza)]'">
-                  <input type="radio" [(ngModel)]="decision" name="decision" value="aceptar" class="w-4 h-4 text-[var(--estado-verde)]">
-                  <div class="flex-1">
-                    <p class="font-semibold text-[var(--carbon)]">Aceptar Solicitud</p>
-                    <p class="text-xs text-[var(--niebla)]">La información será entregada al ciudadano</p>
-                  </div>
-                </label>
-                <label class="flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all"
-                  [class]="decision === 'denegar' ? 'border-[var(--estado-rojo)] bg-[var(--estado-rojo-suave)]' : 'border-[var(--ceniza-claro)] hover:border-[var(--ceniza)]'">
-                  <input type="radio" [(ngModel)]="decision" name="decision" value="denegar" class="w-4 h-4 text-[var(--estado-rojo)]">
-                  <div class="flex-1">
-                    <p class="font-semibold text-[var(--carbon)]">Denegar Solicitud</p>
-                    <p class="text-xs text-[var(--niebla)]">La información no puede ser entregada</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Accept case -->
-            @if (decision === 'aceptar') {
-            <div class="border border-[var(--estado-verde)] bg-[var(--estado-verde-suave)] rounded-xl p-5 space-y-4">
-              <h4 class="font-semibold text-[var(--estado-verde)]">Detalles de Aceptación y Entrega</h4>
-              <div class="space-y-2">
-                <label class="block text-sm font-medium text-[var(--estado-verde)]">Descripción de la Aceptación <span class="text-[var(--estado-rojo)]">*</span></label>
-                <textarea [(ngModel)]="contenido" name="contenido" rows="4"
-                  placeholder="Explique qué información se está entregando y cualquier detalle relevante para el ciudadano..."
-                  class="w-full px-4 py-3 rounded-xl bg-white border border-[var(--ceniza-claro)] focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] text-sm resize-none transition-colors"></textarea>
-                <p class="text-xs text-[var(--estado-verde)]">Describa la información que se entrega al ciudadano</p>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[var(--estado-verde)]">Formato de Entrega</label>
-                  <select [(ngModel)]="formatoEntrega" name="formatoEntrega"
-                    class="w-full h-11 px-4 rounded-xl bg-white border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] cursor-pointer">
-                    <option value="digital">Digital (correo electrónico)</option>
-                    <option value="fisico">Físico (recojo en oficina)</option>
-                    <option value="ambos">Ambos</option>
-                  </select>
-                </div>
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium text-[var(--estado-verde)]">Plazo de Entrega (días)</label>
-                  <select [(ngModel)]="plazoEntrega" name="plazoEntrega"
-                    class="w-full h-11 px-4 rounded-xl bg-white border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--estado-verde)]/20 focus:border-[var(--estado-verde)] cursor-pointer">
-                    <option [ngValue]="3">3 días hábiles</option>
-                    <option [ngValue]="5">5 días hábiles</option>
-                    <option [ngValue]="10">10 días hábiles</option>
-                  </select>
+        @if (activeTab() === 'responder') {
+          <div class="p-6 md:p-8 space-y-6">
+            @if (esSilencioAdministrativoAutomatico()) {
+              <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--muted) 18%, transparent); border: 1px solid var(--border); border-left: 3px solid var(--muted-foreground)">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--muted-foreground)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
+                <div class="text-sm text-foreground/85">
+                  <span class="font-semibold">SILENCIO_ADMINISTRATIVO automático.</span>
+                  La solicitud superó el plazo legal y no admite respuesta manual.
                 </div>
               </div>
-            </div>
             }
 
-            <!-- Deny case -->
-            @if (decision === 'denegar') {
-            <div class="space-y-4">
-              <div class="space-y-2">
-                <label class="block label">Causal de Denegatoria <span class="text-[var(--estado-rojo)]">*</span></label>
-                <select [(ngModel)]="causalDenegatoria" name="causalDenegatoria" required
-                  class="w-full h-11 px-4 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] transition-colors cursor-pointer">
-                  <option value="">Seleccione la causal</option>
-                  @for (causal of causales(); track causal) {
-                    <option [value]="causal">{{ causal }}</option>
+            @if (error()) {
+              <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0 2-2m-2 2-2-2m2 2 2 2m7-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
+                <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
+              </div>
+            }
+
+            @if (mensaje()) {
+              <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--success) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
+              </div>
+            }
+
+            @if (puedeRegistrarRespuestaManual()) {
+              <div>
+                <span class="eyebrow">01 · Tipo de respuesta</span>
+                <h2 class="form-section-title">Decisión institucional <span class="req">*</span></h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                  @for (item of decisions; track item.id) {
+                    <button
+                      type="button"
+                      (click)="seleccionarDecision(item.id)"
+                      class="rounded-lg p-4 text-left transition-all"
+                      [style.background]="decision() === item.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                      [style.border]="'1.5px solid ' + (decision() === item.id ? item.accent : 'var(--border)')"
+                      [style.box-shadow]="decision() === item.id ? '0 0 0 3px var(--brand-50)' : 'none'">
+                      <div class="flex items-start gap-2 mb-2">
+                        <span class="w-4 h-4 rounded-full flex-shrink-0 mt-0.5" [style.background]="decision() === item.id ? item.accent : 'transparent'" [style.border]="'1.5px solid ' + (decision() === item.id ? item.accent : 'var(--border-strong)')"></span>
+                        <div class="flex-1">
+                          <div class="text-sm font-semibold text-foreground">{{ item.title }}</div>
+                          <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ item.description }}</div>
+                        </div>
+                      </div>
+                    </button>
                   }
-                  <option value="confidencial">Información Confidencial</option>
-                  <option value="reservada">Información Reservada</option>
-                  <option value="secreta">Información Secreta</option>
-                </select>
+                </div>
               </div>
 
-              @if (causalDenegatoria) {
-                <div class="bg-[var(--estado-ambar-suave)] border border-[var(--estado-ambar)] rounded-xl p-4 flex items-start gap-3">
-                  <svg class="w-5 h-5 text-[var(--estado-ambar)] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              @if (decision() === 'denegacion_total') {
+                <div class="space-y-5">
+                  <div class="rule-ornament"></div>
                   <div>
-                    <p class="text-sm font-semibold text-[var(--estado-ambar)]">OBLIGATORIO completar todos los campos</p>
-                    <p class="text-sm text-[var(--estado-ambar)]">Debe proporcionar una descripción, el fundamento legal y evidencia que sustente la causal de denegatoria</p>
+                    <span class="eyebrow">02 · Sustento legal</span>
+                    <h2 class="form-section-title">Fundamentos de la denegatoria</h2>
+                  </div>
+
+                  <div class="field">
+                    <label class="field-label">Causal de denegatoria <span class="req">*</span></label>
+                    <select [(ngModel)]="causalDenegatoria" class="field-input">
+                      <option value="">Seleccione la causal</option>
+                      @for (causal of causales(); track causal) {
+                        <option [value]="causal">{{ causal }}</option>
+                      }
+                      <option value="confidencial">Información confidencial</option>
+                      <option value="reservada">Información reservada</option>
+                      <option value="secreta">Información secreta</option>
+                    </select>
+                  </div>
+
+                  @if (causalDenegatoria) {
+                    <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
+                      <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      <div class="text-sm text-foreground/85"><span class="font-semibold">Obligatorio:</span> complete descripción, fundamento legal y evidencia documental.</div>
+                    </div>
+
+                    <div class="field">
+                      <label class="field-label">Descripción de la denegación <span class="req">*</span></label>
+                      <textarea [(ngModel)]="descripcionDenegacion" class="field-input" rows="4" style="resize: vertical; min-height: 110px" placeholder="Explique claramente los motivos de la denegación..."></textarea>
+                    </div>
+
+                    <div class="field">
+                      <label class="field-label">Fundamento legal (ley / artículo) <span class="req">*</span></label>
+                      <textarea [(ngModel)]="fundamentoLegal" class="field-input" rows="5" style="resize: vertical; min-height: 130px" placeholder="Ej: Artículo 17° de la Ley N° 27806..."></textarea>
+                    </div>
+
+                    <div class="field">
+                      <label class="field-label">Evidencia documental <span class="req">*</span></label>
+                      <input type="file" (change)="onEvidenciaSelected($event)" class="field-input !py-2" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+                      @if (evidenciaDenegatoria(); as file) {
+                        <span class="field-hint">Adjunto: {{ file.name }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (decision() === 'entrega_total' || decision() === 'entrega_parcial') {
+                <div class="space-y-5">
+                  <div class="rule-ornament"></div>
+                  <div>
+                    <span class="eyebrow">02 · Detalles de entrega</span>
+                    <h2 class="form-section-title">{{ decision() === 'entrega_total' ? 'Entrega total' : 'Entrega parcial' }}</h2>
+                  </div>
+
+                  @if (decision() === 'entrega_parcial') {
+                    <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
+                      <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2" /></svg>
+                      <p class="text-sm text-foreground/85">Indique con claridad qué parte de la información se entrega y cuál queda exceptuada.</p>
+                    </div>
+                  }
+
+                  <div class="field">
+                    <label class="field-label">Descripción de la aceptación <span class="req">*</span></label>
+                    <textarea [(ngModel)]="descripcionAceptacion" class="field-input" rows="4" style="resize: vertical; min-height: 110px" placeholder="Explique qué información se entrega y los detalles relevantes..."></textarea>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="field">
+                      <label class="field-label">Formato de entrega</label>
+                      <select [(ngModel)]="formatoEntrega" class="field-input">
+                        <option value="digital">Digital (correo electrónico)</option>
+                        <option value="fisico">Físico (recojo en oficina)</option>
+                        <option value="ambos">Ambos</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="field-label">Plazo de entrega</label>
+                      <select [(ngModel)]="plazoEntrega" class="field-input">
+                        <option [ngValue]="3">3 días hábiles</option>
+                        <option [ngValue]="5">5 días hábiles</option>
+                        <option [ngValue]="10">10 días hábiles</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="field-label">Documentos para el ciudadano <span class="req">*</span></label>
+                    <input type="file" (change)="onDocumentosEntregaSelected($event)" class="field-input !py-2" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+                    @if (documentosEntrega(); as file) {
+                      <span class="field-hint">Adjunto: {{ file.name }}</span>
+                    }
                   </div>
                 </div>
+              }
 
-                <div class="space-y-2">
-                  <label class="block label">Descripción de la Denegación <span class="text-[var(--estado-rojo)]">*</span></label>
-                  <textarea [(ngModel)]="contenido" name="contenido" rows="4"
-                    placeholder="Explique de manera clara los motivos por los cuales se deniega la solicitud..."
-                    class="w-full px-4 py-3 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] text-sm resize-none transition-colors"></textarea>
-                  <p class="text-xs text-[var(--niebla)]">Proporcione una explicación clara y detallada para el ciudadano</p>
+              @if (decision() && !canSubmit()) {
+                <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
+                  <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <p class="text-sm text-foreground/85">
+                    @if (decision() === 'denegacion_total') {
+                      Complete descripción, fundamento legal y evidencia antes de enviar.
+                    } @else {
+                      Complete la descripción y adjunte los documentos para el ciudadano.
+                    }
+                  </p>
                 </div>
+              }
 
-                <div class="space-y-2">
-                  <label class="block label">Fundamento Legal (Ley/Artículo) <span class="text-[var(--estado-rojo)]">*</span></label>
-                  <textarea [(ngModel)]="fundamentoLegal" name="fundamentoLegal" rows="6"
-                    placeholder="Ej: Artículo 17° de la Ley N° 27806 - Información Confidencial: La información relacionada con..."
-                    class="w-full px-4 py-3 rounded-xl bg-[var(--nieve)] border border-[var(--ceniza-claro)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--peru-rojo)]/20 focus:border-[var(--peru-rojo)] text-sm resize-none transition-colors"></textarea>
-                  <p class="text-xs text-[var(--niebla)]">Debe citar la ley y artículo específico que respalda la denegatoria</p>
+              <button type="button" (click)="enviarRespuesta()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                @if (loading()) {
+                  <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Enviando...
+                } @else {
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  Enviar respuesta
+                }
+              </button>
+
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18m-9-9h18" /></svg>
+                  <div>
+                    <span class="eyebrow" style="color: var(--brand-700)">Información normativa</span>
+                    <ul class="text-sm text-foreground/80 space-y-1.5 mt-2 list-disc list-inside leading-relaxed">
+                      <li><span class="font-mono font-semibold">10 días hábiles</span> para responder.</li>
+                      <li>Si deniega, debe fundamentar legalmente (Art. 17° Ley 27806).</li>
+                      <li>El ciudadano puede apelar en <span class="font-mono font-semibold">15 días calendario</span> ante el TTAIP.</li>
+                      <li>Sin respuesta en plazo: silencio administrativo negativo.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="rounded-lg p-4 text-sm" style="background: var(--card); border: 1px solid var(--border)">
+                Esta solicitud ya no admite respuesta manual por su estado actual.
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'solicitud') {
+          <div class="p-6 md:p-8 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div><span class="eyebrow">Expediente</span><div class="mt-1.5 text-sm font-mono">{{ sol.expediente }}</div></div>
+              <div><span class="eyebrow">Entidad</span><div class="mt-1.5 text-sm">{{ sol.entidadNombre }}</div></div>
+              <div><span class="eyebrow">Tipo de información</span><div class="mt-1.5 text-sm">{{ sol.tipoInformacion || 'General' }}</div></div>
+              <div><span class="eyebrow">Estado</span><div class="mt-1.5"><span [class]="getEstadoClass(sol.estado)">{{ getEstadoDisplay(sol.estado) }}</span></div></div>
+            </div>
+            <div class="rule-ornament"></div>
+            <div><span class="eyebrow">Asunto</span><p class="text-sm mt-2">{{ sol.asunto }}</p></div>
+            <div>
+              <span class="eyebrow">Descripción detallada</span>
+              <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
+                {{ sol.descripcion }}
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'ciudadano') {
+          <div class="p-6 md:p-8 space-y-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-base font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(sol.ciudadanoNombre) }}</div>
+              <div>
+                <div class="text-sm font-medium">{{ sol.ciudadanoNombre || 'Ciudadano' }}</div>
+                <div class="font-mono text-xs text-muted-foreground">DNI {{ sol.ciudadanoDni || 'No registrado' }}</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="eyebrow">Correo</div>
+                <div class="text-sm font-mono mt-1">No disponible</div>
+              </div>
+              <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="eyebrow">Teléfono</div>
+                <div class="text-sm font-mono mt-1">No disponible</div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'adjuntos') {
+          @if (sol.documentos && sol.documentos.length > 0) {
+            <div class="p-6 md:p-8 space-y-3">
+              @for (doc of sol.documentos; track doc.id || doc.nombreArchivo) {
+                <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+                    </div>
+                    <div>
+                      <div class="text-sm font-medium">{{ doc.nombreArchivo }}</div>
+                      <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-ghost-brand !px-3 !py-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
+                  </button>
                 </div>
               }
             </div>
-            }
-
-            <!-- Submit -->
-            <div class="space-y-3 pt-4">
-              <button type="button" (click)="enviarRespuesta()" [disabled]="loading()"
-                class="w-full h-12 bg-[var(--peru-rojo)] hover:bg-[var(--peru-rojo-hover)] text-[var(--carbon)] rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                @if (loading()) {
-                  <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Enviando...
-                } @else {
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-                  Enviar Respuesta
-                }
-              </button>
+          } @else {
+            <div class="p-12 text-center">
+              <svg class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+              <p class="text-sm text-muted-foreground">No hay adjuntos en esta solicitud.</p>
             </div>
           }
-
-          <!-- Info -->
-          <div class="bg-[var(--estado-azul-suave)]/80 border border-[var(--estado-azul-borde)] rounded-xl p-4 mt-2">
-            <h4 class="text-sm text-[var(--estado-azul)] font-medium mb-2">Información Importante</h4>
-            <ul class="text-sm text-[var(--estado-azul)] space-y-1 list-disc list-inside">
-              <li>Tiene 10 días hábiles para responder a la solicitud desde su recepción</li>
-              <li>Si deniega por información confidencial/reservada/secreta, debe fundamentar legalmente</li>
-              <li>El ciudadano puede apelar su decisión ante el TTAIP</li>
-              <li>El incumplimiento de una resolución del TTAIP puede generar proceso disciplinario</li>
-            </ul>
-          </div>
-        </div>
+        }
       </div>
-
-      <!-- Solicitud Details Card -->
-      <div class="card overflow-hidden mt-5">
-        <div class="border-b border-[var(--ceniza-claro)] px-6 py-4">
-          <h3 class="text-[var(--carbon)] font-semibold">Datos de la Solicitud</h3>
-        </div>
-        <div class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 class="text-sm text-[var(--niebla)] mb-1">Número de Expediente</h4>
-              <p class="font-mono text-[var(--carbon)]">{{ solicitud()!.expediente }}</p>
-            </div>
-            <div>
-              <h4 class="text-sm text-[var(--niebla)] mb-1">Entidad Responsable</h4>
-              <p class="text-[var(--carbon)]">{{ solicitud()!.entidadNombre }}</p>
-            </div>
-          </div>
-          <div class="mt-6">
-            <h4 class="text-sm text-[var(--niebla)] mb-1">Asunto</h4>
-            <p class="text-[var(--carbon)]">{{ solicitud()!.asunto }}</p>
-          </div>
-          <div class="mt-6">
-            <h4 class="text-sm text-[var(--niebla)] mb-1">Descripción</h4>
-            <p class="text-[var(--humo)] leading-relaxed">{{ solicitud()!.descripcion }}</p>
-          </div>
-        </div>
+    </div>
+  } @else {
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
+        <p class="text-sm" style="color: var(--destructive)">{{ error() || 'No se pudo cargar la solicitud.' }}</p>
       </div>
     </div>
   }
 </div>
-

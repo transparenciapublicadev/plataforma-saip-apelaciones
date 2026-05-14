@@ -1,10 +1,23 @@
 import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+
+interface RequestTab {
+  id: 'solicitud' | 'respuesta' | 'adjuntos' | 'apelacion';
+  label: string;
+}
+
+interface TimelineEvent {
+  title: string;
+  description: string;
+  date?: string;
+  status: 'completed' | 'current' | 'pending';
+  icon: 'mail' | 'search' | 'check';
+}
 
 @Component({
   selector: 'app-solicitud-detalle',
@@ -15,20 +28,29 @@ import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.ut
 })
 export class SolicitudDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
 
   solicitud = signal<Solicitud | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
-  activeTab = signal<string>('solicitud');
+  activeTab = signal<RequestTab['id']>('solicitud');
+
+  readonly tabs: RequestTab[] = [
+    { id: 'solicitud', label: 'Solicitud' },
+    { id: 'respuesta', label: 'Respuesta' },
+    { id: 'adjuntos', label: 'Adjuntos' },
+    { id: 'apelacion', label: 'Apelación' }
+  ];
 
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (expediente) {
-      this.cargarSolicitud(expediente);
+    if (!expediente) {
+      this.error.set('No se recibió el expediente de la solicitud.');
+      this.loading.set(false);
+      return;
     }
+    this.cargarSolicitud(expediente);
   }
 
   cargarSolicitud(expediente: string): void {
@@ -38,92 +60,108 @@ export class SolicitudDetalleComponent implements OnInit {
         this.solicitud.set(data);
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Error al cargar la solicitud');
         this.loading.set(false);
       }
     });
   }
 
-  cambiarTab(tab: string): void {
+  cambiarTab(tab: RequestTab['id']): void {
     this.activeTab.set(tab);
   }
 
-  getEstadoClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_REVISION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
-      'PENDIENTE_INFORMACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'RESPONDIDA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'DENEGADA': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
-      'VENCIDA': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
-      'CONCLUIDA': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
-    };
-    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
+  isTabActive(tab: RequestTab['id']): boolean {
+    return this.activeTab() === tab;
   }
 
-  getEstadoBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'badge-warning',
-      'EN_REVISION': 'badge-in-process',
-      'PENDIENTE_INFORMACION': 'badge-warning',
-      'RESPONDIDA': 'badge-success',
-      'DENEGADA': 'badge-danger',
-      'VENCIDA': 'badge-muted',
-      'CONCLUIDA': 'badge-muted'
+  getEstadoClass(estado: string): string {
+    const classes: Record<string, string> = {
+      RECEPCIONADA: 'pill pill-medium',
+      EN_REVISION: 'pill pill-medium',
+      PENDIENTE_INFORMACION: 'pill pill-medium',
+      RESPONDIDA: 'pill pill-low',
+      DENEGADA: 'pill pill-high',
+      VENCIDA: 'pill pill-high',
+      CONCLUIDA: 'pill'
     };
-    return clases[estado] || 'badge-muted';
+    return classes[estado] || 'pill';
   }
 
   getApelacionEstadoClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'PENDIENTE_ELEVACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_CALIFICACION_1': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_CALIFICACION_2': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'EN_SUBSANACION': 'bg-[var(--estado-ambar-suave)] text-[var(--estado-ambar)]',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'bg-[var(--estado-azul-suave)] text-[var(--estado-azul)]',
-      'EN_RESOLUCION': 'bg-[var(--accent-violet-soft)] text-[var(--accent-violet)]',
-      'RESUELTO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_FUNDADO': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_FUNDADO_EN_PARTE': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'RESUELTO_INFUNDADO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'bg-[var(--nieve)] text-[var(--carbon-suave)]',
-      'RESUELTO_IMPROCEDENTE': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
-      'TENER_POR_NO_PRESENTADO': 'bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)]',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'bg-[var(--estado-verde-suave)] text-[var(--estado-verde)]',
-      'CONCLUSION_DESISTIMIENTO': 'bg-[var(--nieve)] text-[var(--carbon-suave)]'
+    const classes: Record<string, string> = {
+      PENDIENTE_ELEVACION: 'pill pill-medium',
+      EN_CALIFICACION_1: 'pill pill-medium',
+      EN_CALIFICACION_2: 'pill pill-medium',
+      EN_SUBSANACION: 'pill pill-medium',
+      NOTIFICACION_SEGUNDA_CALIFICACION: 'pill pill-medium',
+      EN_RESOLUCION: 'pill pill-medium',
+      RESUELTO: 'pill pill-low',
+      RESUELTO_FUNDADO: 'pill pill-low',
+      RESUELTO_FUNDADO_EN_PARTE: 'pill pill-low',
+      RESUELTO_INFUNDADO: 'pill',
+      RESUELTO_INFUNDADO_EN_PARTE: 'pill',
+      RESUELTO_IMPROCEDENTE: 'pill pill-high',
+      TENER_POR_NO_PRESENTADO: 'pill pill-high',
+      CONCLUSION_SUSTRACCION_MATERIA: 'pill pill-low',
+      CONCLUSION_DESISTIMIENTO: 'pill'
     };
-    return clases[estado] || 'bg-[var(--nieve)] text-[var(--carbon-suave)]';
+    return classes[estado] || 'pill';
   }
 
-  getApelacionBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'PENDIENTE_ELEVACION': 'badge-warning',
-      'EN_CALIFICACION_1': 'badge-warning',
-      'EN_CALIFICACION_2': 'badge-warning',
-      'EN_SUBSANACION': 'badge-warning',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'badge-in-process',
-      'EN_RESOLUCION': 'badge-in-process',
-      'RESUELTO': 'badge-success',
-      'RESUELTO_FUNDADO': 'badge-success',
-      'RESUELTO_FUNDADO_EN_PARTE': 'badge-success',
-      'RESUELTO_INFUNDADO': 'badge-muted',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
-      'RESUELTO_IMPROCEDENTE': 'badge-danger',
-      'TENER_POR_NO_PRESENTADO': 'badge-danger',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
-      'CONCLUSION_DESISTIMIENTO': 'badge-muted'
-    };
-    return clases[estado] || 'badge-muted';
+  getEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  getSolicitanteNombre(): string {
+    const sol = this.solicitud();
+    return sol?.ciudadanoNombre || this.authService.obtenerSesion()?.nombre || 'Ciudadano';
+  }
+
+  getSolicitanteIniciales(): string {
+    const base = this.getSolicitanteNombre()
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+    return base || 'CI';
+  }
+
+  getSolicitanteDni(): string {
+    return this.solicitud()?.ciudadanoDni || this.authService.obtenerSesion()?.dni || 'No disponible';
+  }
+
+  getSolicitanteEmail(): string {
+    return this.authService.obtenerSesion()?.email || 'No disponible';
+  }
+
+  formatosSeleccionados(): string[] {
+    const sol = this.solicitud();
+    if (!sol) {
+      return [];
+    }
+
+    const selected: string[] = [];
+    if (sol.formatoDigital) selected.push('Digital');
+    if (sol.formatoFisico) selected.push('Físico');
+    if (sol.copiaSimple) selected.push('Copia simple');
+    if (sol.copiaCertificada) selected.push('Copia certificada');
+    return selected;
   }
 
   puedeApelar(): boolean {
     const sol = this.solicitud();
-    return sol !== null && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA') && !sol.apelacion;
+    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA') && !sol.apelacion;
   }
 
   esSilencioAdministrativo(): boolean {
     return isSilencioAdministrativo(this.solicitud());
+  }
+
+  puedeVerRespuesta(): boolean {
+    const sol = this.solicitud();
+    return !!sol?.respuesta || this.esSilencioAdministrativo();
   }
 
   getTipoRespuestaDisplay(): string {
@@ -134,6 +172,81 @@ export class SolicitudDetalleComponent implements OnInit {
 
     return sol.respuesta?.tipoRespuesta || (this.esSilencioAdministrativo() ? 'SILENCIO_ADMINISTRATIVO' : '');
   }
+
+  getRespuestaResumenTitulo(): string {
+    const tipo = this.getTipoRespuestaDisplay();
+    const titles: Record<string, string> = {
+      DENEGACION_TOTAL: 'Solicitud denegada',
+      ENTREGA_TOTAL: 'Solicitud atendida',
+      ENTREGA_PARCIAL: 'Entrega parcial de información',
+      SILENCIO_ADMINISTRATIVO: 'Silencio administrativo automático'
+    };
+    return titles[tipo] || 'Respuesta de la entidad';
+  }
+
+  getRespuestaResumenDescripcion(): string {
+    const tipo = this.getTipoRespuestaDisplay();
+    if (tipo === 'SILENCIO_ADMINISTRATIVO') {
+      return 'La entidad no respondió dentro del plazo legal de 10 días hábiles.';
+    }
+    if (tipo === 'DENEGACION_TOTAL') {
+      return 'La entidad denegó el acceso a la información solicitada.';
+    }
+    if (tipo === 'ENTREGA_PARCIAL') {
+      return 'La entidad entregó parcialmente la información solicitada.';
+    }
+    if (tipo === 'ENTREGA_TOTAL') {
+      return 'La entidad atendió su solicitud y remitió la información.';
+    }
+    return 'La entidad emitió una respuesta para su solicitud.';
+  }
+
+  getTimelineEvents(): TimelineEvent[] {
+    const sol = this.solicitud();
+    if (!sol) {
+      return [];
+    }
+
+    const hasRespuesta = !!sol.respuesta || this.esSilencioAdministrativo();
+
+    const events: TimelineEvent[] = [
+      {
+        title: 'Solicitud presentada',
+        description: 'SAIP registrada y notificada a la entidad.',
+        date: sol.fechaPresentacion,
+        status: 'completed',
+        icon: 'mail'
+      },
+      {
+        title: 'En revisión',
+        description: 'La entidad evalúa la solicitud.',
+        date: sol.fechaPresentacion,
+        status: hasRespuesta ? 'completed' : 'current',
+        icon: 'search'
+      },
+      {
+        title: 'Respuesta emitida',
+        description: hasRespuesta ? this.getRespuestaResumenTitulo() : 'Pendiente de respuesta',
+        date: sol.respuesta?.fechaRespuesta,
+        status: hasRespuesta ? 'completed' : 'pending',
+        icon: 'check'
+      }
+    ];
+
+    return events;
+  }
+
+  getApelacionResultadoDisplay(): string {
+    const resultado = this.solicitud()?.apelacion?.resultado;
+    return this.getEstadoDisplay(resultado);
+  }
+
+  isApelacionResuelta(): boolean {
+    const estado = this.solicitud()?.apelacion?.estado || '';
+    return estado.startsWith('RESUELTO') || estado.startsWith('CONCLUSION') || estado === 'TENER_POR_NO_PRESENTADO';
+  }
+
+  showSubsanarAction(): boolean {
+    return this.solicitud()?.apelacion?.estado === 'EN_SUBSANACION';
+  }
 }
-
-

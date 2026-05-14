@@ -1,16 +1,28 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
 import { UxMotionService } from './services/ux-motion.service';
+import {
+  LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
+  LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
+  LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
+  LucideHome, LucideSearch, LucideHelpCircle,
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink],
+  imports: [
+    CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
+    LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
+    LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
+    LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
+    LucideHome, LucideSearch, LucideHelpCircle,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +40,9 @@ export class App {
   readonly mobileMenuAbierto = signal(false);
 
   constructor() {
-    this.motionService.animateShell();
+    setTimeout(() => {
+      this.motionService.animateShell();
+    });
 
     this.router.events
       .pipe(
@@ -38,6 +52,9 @@ export class App {
       .subscribe(() => {
         this.menuAbierto.set(false);
         this.mobileMenuAbierto.set(false);
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
         this.motionService.animateRoute(this.mainContent()?.nativeElement ?? null);
       });
 
@@ -57,6 +74,19 @@ export class App {
   nombreUsuario(): string {
     const sesion = this.authService.obtenerSesion();
     return sesion?.nombre || 'Usuario';
+  }
+
+  userInitials(): string {
+    return this.nombreUsuario()
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || 'U';
+  }
+
+  userFirstName(): string {
+    return this.nombreUsuario().split(' ').filter(Boolean)[0] || this.nombreUsuario();
   }
 
   tipoUsuario(): string {
@@ -87,6 +117,25 @@ export class App {
       || currentUrl === '/acceso-admin';
   }
 
+  isLandingRoute(): boolean {
+    const currentUrl = this.router.url.split('?')[0].split('#')[0];
+    return currentUrl === '/';
+  }
+
+  scrollToSection(sectionId: string): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const element = document.getElementById(sectionId);
+    if (!element) return;
+
+    const offset = 80;
+    const elementPosition = element.getBoundingClientRect().top;
+    window.scrollTo({
+      top: elementPosition + window.pageYOffset - offset,
+      behavior: 'smooth',
+    });
+  }
+
   currentTheme(): 'light' | 'dark' {
     return this.themeService.theme();
   }
@@ -95,4 +144,3 @@ export class App {
     this.themeService.toggleTheme();
   }
 }
-

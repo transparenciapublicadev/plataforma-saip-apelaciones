@@ -1,65 +1,83 @@
 <a class="saip-skip-link" href="#main-content">Saltar al contenido principal</a>
 
-<!-- Header — Redesign v2 -->
+<!-- Header — Editorial v3 -->
 <header class="saip-header fixed top-0 left-0 right-0 z-50" data-animate>
+  <!-- Top institutional bar -->
+  <div data-inst-bar class="saip-institutional-bar">
+    <div class="saip-institutional-bar-line"></div>
+    <div class="saip-institutional-bar-inner">
+      <span class="saip-institutional-bar-primary">República del Perú · TTAIP</span>
+      <span class="saip-institutional-bar-secondary">Sistema de Acceso a la Información Pública</span>
+    </div>
+  </div>
+
   <!-- Main navigation -->
-  <div class="bg-white/95 backdrop-blur-xl shadow-sm border-b border-[var(--ceniza-claro)]">
-    <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between h-[4.25rem]">
+  <div data-main-nav class="bg-background/85 backdrop-blur-xl border-b border-border">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center justify-between h-16">
       <!-- Logo -->
-      <a routerLink="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity group" aria-label="Inicio SAIP">
-        <div class="w-10 h-10 bg-[var(--nieve)] rounded-xl flex items-center justify-center border border-[var(--ceniza-claro)] group-hover:bg-white transition-all duration-300 group-hover:scale-105 shadow-sm">
-          <svg viewBox="0 0 32 32" class="w-7 h-7">
-            <rect x="4" y="8" width="24" height="16" fill="white" rx="1.5"/>
-            <rect x="4" y="8" width="24" height="5.33" fill="#C8102E"/>
-            <rect x="4" y="18.67" width="24" height="5.33" fill="#C8102E"/>
-            <circle cx="16" cy="16" r="3" fill="#C8A96E" stroke="#C8A96E" stroke-width="0.5"/>
+      <a routerLink="/" class="flex items-center gap-3 hover:opacity-90 transition-opacity" aria-label="Inicio SAIP">
+        <div
+          class="w-10 h-10 rounded-lg flex items-center justify-center"
+          style="background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-700) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)"
+        >
+          <svg viewBox="0 0 32 32" class="w-5 h-5" aria-hidden="true">
+            <defs>
+              <linearGradient id="hdr-gold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#E8D9B5" />
+                <stop offset="100%" stop-color="#B08842" />
+              </linearGradient>
+            </defs>
+            <rect x="4" y="8" width="24" height="16" fill="white" rx="1.5" opacity="0.95" />
+            <rect x="4" y="8" width="24" height="5.33" fill="#A81E2C" rx="1.5" />
+            <rect x="4" y="18.67" width="24" height="5.33" fill="#A81E2C" />
+            <circle cx="16" cy="16" r="3.5" fill="url(#hdr-gold)" />
           </svg>
         </div>
-        <div class="text-[var(--carbon)]">
-          <h1 class="text-[17px] font-bold leading-tight tracking-tight">SAIP</h1>
-          <p class="text-[10px] text-[var(--niebla)] leading-tight font-medium tracking-wide">Acceso a Información Pública</p>
+        <div class="text-left">
+          <h1 class="font-display leading-none text-[var(--foreground)]" style="font-size: 18px; letter-spacing: -0.015em; font-weight: 600">SAIP</h1>
+          <p class="text-[10px] tracking-[0.14em] uppercase mt-0.5" style="color: var(--muted-foreground)">Acceso a la información pública</p>
         </div>
       </a>
 
       <!-- Desktop Navigation -->
-      <nav class="hidden md:flex items-center gap-1" aria-label="Navegación principal">
+      <nav class="hidden md:flex items-center gap-0.5" aria-label="Navegación principal">
         @if (isLoggedIn()) {
           @switch (tipoUsuario()) {
             @case ('CIUDADANO') {
-              <a routerLink="/ciudadano" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+              <a routerLink="/ciudadano" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
+                <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi Panel
               </a>
-              <a routerLink="/ciudadano/nueva-saip" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+              <a routerLink="/ciudadano/nueva-saip" routerLinkActive="active" class="nav-link-desktop">
+                <svg lucidePlus class="w-4 h-4 opacity-70"></svg>
                 Nueva SAIP
               </a>
-              <a routerLink="/ciudadano/nueva-apelacion" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+              <a routerLink="/ciudadano/nueva-apelacion" routerLinkActive="active" class="nav-link-desktop">
+                <svg lucideScale class="w-4 h-4 opacity-70"></svg>
                 Apelar
               </a>
             }
             @case ('FUNCIONARIO') {
-              <a routerLink="/funcionario" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+              <a routerLink="/funcionario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
+                <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi Panel
               </a>
             }
             @case ('TTAIP') {
-              <a routerLink="/ttaip" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+              <a routerLink="/ttaip" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
+                <svg lucideScale class="w-4 h-4 opacity-70"></svg>
                 Panel TTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
-              <a routerLink="/admin" class="nav-link-desktop">
-                <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+              <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
+                <svg lucideSettings class="w-4 h-4 opacity-70"></svg>
                 Administración
               </a>
             }
           }
 
-          <div class="w-px h-7 bg-[var(--ceniza-claro)] mx-1.5"></div>
+          <div class="w-px h-5 bg-border mx-2"></div>
 
           <button
             type="button"
@@ -68,59 +86,57 @@
             [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
           >
             @if (currentTheme() === 'dark') {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+              <svg lucideSun class="w-4 h-4"></svg>
             } @else {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+              <svg lucideMoon class="w-4 h-4"></svg>
             }
           </button>
 
           <!-- User dropdown -->
           <div class="relative">
-            <button (click)="toggleMenu()" class="flex items-center gap-2.5 text-[var(--humo)] hover:bg-[var(--nieve)] hover:text-[var(--carbon)] py-1.5 px-3 rounded-xl transition-all duration-200 cursor-pointer group" aria-label="Abrir menu de usuario" aria-haspopup="menu" [attr.aria-expanded]="menuAbierto()" aria-controls="desktop-user-menu">
-              <div class="w-8 h-8 rounded-full bg-[var(--peru-rojo-suave)] flex items-center justify-center ring-1 ring-[var(--peru-rojo)]/20 group-hover:ring-[var(--peru-rojo)]/40 transition-all">
-                <span class="text-sm font-bold text-[var(--peru-rojo)]">{{ nombreUsuario().charAt(0).toUpperCase() }}</span>
+            <button (click)="toggleMenu()" class="saip-user-trigger group" aria-label="Abrir menu de usuario" aria-haspopup="menu" [attr.aria-expanded]="menuAbierto()" aria-controls="desktop-user-menu">
+              <div class="saip-user-avatar">
+                <span>{{ userInitials() }}</span>
               </div>
               <div class="text-left hidden lg:block">
-                <span class="block max-w-[110px] truncate text-sm font-medium leading-tight text-[var(--carbon)]">{{ nombreUsuario() }}</span>
-                <span class="block text-[10px] text-[var(--niebla)] font-medium">{{ tipoUsuario() }}</span>
+                <span class="block max-w-[110px] truncate text-sm font-medium leading-tight text-[var(--foreground)]">{{ userFirstName() }}</span>
+                <span class="block text-[10px] tracking-[0.18em] uppercase mt-0.5" style="color: var(--brand-700)">{{ tipoUsuario() }}</span>
               </div>
-              <svg class="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-all" [class.rotate-180]="menuAbierto()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M19 9l-7 7-7-7"/>
-              </svg>
+              <svg lucideChevronDown class="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-all" [class.rotate-180]="menuAbierto()"></svg>
             </button>
 
             @if (menuAbierto()) {
-              <div id="desktop-user-menu" class="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-[var(--border)]/80 animate-scale-in origin-top-right" role="menu">
-                <div class="px-4 py-3.5 border-b border-[var(--border)]">
-                  <p class="text-sm font-semibold text-[var(--carbon)]">{{ nombreUsuario() }}</p>
-                  <div class="flex items-center gap-1.5 mt-1">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[var(--estado-verde)]"></div>
-                    <p class="text-xs text-[var(--niebla)]">Sesión activa</p>
+              <div id="desktop-user-menu" class="absolute right-0 mt-2 w-64 rounded-lg animate-scale-in origin-top-right" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="menu">
+                <div class="px-4 py-3.5 flex items-center gap-3" style="background: var(--brand-subtle); border-bottom: 1px solid var(--brand-200)">
+                  <span class="saip-user-avatar saip-user-avatar-lg">{{ userInitials() }}</span>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium truncate text-[var(--foreground)]">{{ nombreUsuario() }}</p>
+                    <p class="text-[10px] tracking-[0.18em] uppercase mt-0.5" style="color: var(--brand-700)">Sesión activa</p>
                   </div>
                 </div>
                 <div class="py-1.5 px-1.5">
                   @switch (tipoUsuario()) {
                     @case ('CIUDADANO') {
                       <a routerLink="/ciudadano" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
-                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+                        <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                         Mi Panel
                       </a>
                     }
                     @case ('FUNCIONARIO') {
                       <a routerLink="/funcionario" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
-                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+                        <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                         Mi Panel
                       </a>
                     }
                     @case ('TTAIP') {
                       <a routerLink="/ttaip" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
-                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                        <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
                         Panel TTAIP
                       </a>
                     }
                     @case ('ADMINISTRADOR') {
                       <a routerLink="/admin" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
-                        <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                        <svg lucideSettings class="w-4 h-4 text-[var(--niebla)]"></svg>
                         Administración
                       </a>
                     }
@@ -128,9 +144,7 @@
                 </div>
                 <div class="border-t border-[var(--border)] py-1.5 px-1.5">
                   <button (click)="logout()" class="dropdown-item dropdown-item-danger w-full" role="menuitem">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
+                    <svg lucideLogOut class="w-4 h-4"></svg>
                     Cerrar Sesión
                   </button>
                 </div>
@@ -138,11 +152,24 @@
             }
           </div>
         } @else {
-          <a routerLink="/" class="nav-link-desktop">Inicio</a>
-          <a routerLink="/" fragment="proceso" class="nav-link-desktop">Proceso</a>
-          <a routerLink="/consultar" class="nav-link-desktop">Consultar</a>
-          <a routerLink="/ayuda" class="nav-link-desktop">Ayuda</a>
-          <div class="w-px h-7 bg-[var(--ceniza-claro)] mx-1.5"></div>
+          @if (isLandingRoute()) {
+            <button type="button" (click)="scrollToSection('inicio')" class="nav-link-desktop">Inicio</button>
+            <button type="button" (click)="scrollToSection('proceso')" class="nav-link-desktop">Proceso</button>
+          } @else {
+            <a routerLink="/" class="nav-link-desktop">
+              <svg lucideHome class="w-4 h-4"></svg>
+              Inicio
+            </a>
+          }
+          <a routerLink="/consultar" routerLinkActive="active" class="nav-link-desktop">
+            <svg lucideSearch class="w-4 h-4"></svg>
+            Consultar
+          </a>
+          <a routerLink="/ayuda" routerLinkActive="active" class="nav-link-desktop">
+            <svg lucideHelpCircle class="w-4 h-4"></svg>
+            Ayuda
+          </a>
+          <div class="w-px h-5 bg-border mx-2"></div>
           <button
             type="button"
             (click)="toggleTheme()"
@@ -150,14 +177,13 @@
             [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
           >
             @if (currentTheme() === 'dark') {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+              <svg lucideSun class="w-4 h-4"></svg>
             } @else {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+              <svg lucideMoon class="w-4 h-4"></svg>
             }
           </button>
-          <a routerLink="/login" class="btn-primary text-sm px-5 py-2">
+          <a routerLink="/login" class="btn-brand ml-1" style="height: 36px; padding: 0 16px; font-size: 13px">
             Iniciar Sesión
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
           </a>
         }
       </nav>
@@ -171,9 +197,9 @@
           [attr.aria-label]="currentTheme() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
         >
           @if (currentTheme() === 'dark') {
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"></path></svg>
+            <svg lucideSun class="w-4 h-4"></svg>
           } @else {
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3c.5 0 .73.62.34.94A7 7 0 0 0 20.06 12.45c.32-.39.94-.16.94.34z"></path></svg>
+            <svg lucideMoon class="w-4 h-4"></svg>
           }
         </button>
 
@@ -190,12 +216,12 @@
 
   <!-- Mobile menu -->
   @if (mobileMenuAbierto()) {
-    <div id="mobile-navigation-panel" class="md:hidden bg-white/95 backdrop-blur-xl border-t border-[var(--border)] shadow-2xl animate-fade-in-down">
+    <div id="mobile-navigation-panel" class="md:hidden backdrop-blur-xl border-t border-[var(--border)] animate-fade-in-down" style="background: color-mix(in srgb, var(--card) 95%, transparent); box-shadow: var(--shadow-xl)">
       <div class="px-4 py-4 space-y-1">
         @if (isLoggedIn()) {
           <div class="flex items-center gap-3 px-3 py-3 mb-3 bg-[var(--nieve)] rounded-xl">
             <div class="w-10 h-10 rounded-full bg-[var(--peru-rojo)] flex items-center justify-center">
-              <span class="text-sm font-bold text-white">{{ nombreUsuario().charAt(0).toUpperCase() }}</span>
+              <span class="text-[11px] font-bold tracking-wide text-white">{{ userInitials() }}</span>
             </div>
             <div>
               <p class="text-sm font-semibold text-[var(--carbon)]">{{ nombreUsuario() }}</p>
@@ -205,7 +231,7 @@
           @switch (tipoUsuario()) {
             @case ('CIUDADANO') {
               <a routerLink="/ciudadano" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+                <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi Panel
               </a>
               <a routerLink="/ciudadano/nueva-saip" (click)="toggleMobileMenu()" class="mobile-nav-item">
@@ -213,34 +239,32 @@
                 Nueva SAIP
               </a>
               <a routerLink="/ciudadano/nueva-apelacion" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
                 Apelar
               </a>
             }
             @case ('FUNCIONARIO') {
               <a routerLink="/funcionario" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke-width="2"/></svg>
+                <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi Panel
               </a>
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
                 Panel TTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
               <a routerLink="/admin" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                <svg lucideSettings class="w-4 h-4 text-[var(--niebla)]"></svg>
                 Administración
               </a>
             }
           }
           <div class="border-t border-[var(--border)] pt-2 mt-2">
             <button (click)="logout()" class="mobile-nav-item text-[var(--estado-rojo)] w-full">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-              </svg>
+              <svg lucideLogOut class="w-4 h-4"></svg>
               Cerrar Sesión
             </button>
           </div>
@@ -258,7 +282,7 @@
             Ayuda
           </a>
           <div class="border-t border-[var(--border)] pt-3 mt-3">
-            <a routerLink="/login" (click)="toggleMobileMenu()" class="block w-full px-4 py-3 bg-[var(--peru-rojo)] text-white rounded-xl text-center text-sm font-semibold shadow-lg shadow-red-900/15 hover:shadow-xl transition-all">
+            <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-brand w-full" style="height: 44px">
               Iniciar Sesión
             </a>
           </div>
@@ -269,75 +293,102 @@
 </header>
 
 <!-- Main Content -->
-<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" tabindex="-1">
+<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" tabindex="-1">
   <router-outlet></router-outlet>
 </main>
 
-<footer class="border-t border-[var(--border)] bg-[var(--muted)] mt-0">
-  <div class="max-w-7xl mx-auto px-4 md:px-6 py-14">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
-      <div class="md:col-span-1">
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-9 h-9 bg-[var(--peru-rojo)] rounded-lg flex items-center justify-center">
-            <span class="text-white text-sm font-bold">S</span>
+<footer class="saip-footer relative overflow-hidden">
+  <!-- Top brand accent -->
+  <div class="brand-divider"></div>
+  <div class="absolute inset-0 bg-paper opacity-[0.04] pointer-events-none"></div>
+
+  <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-16 pb-8">
+    <!-- Editorial masthead -->
+    <div class="saip-footer-masthead flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 pb-12">
+      <div class="max-w-2xl">
+        <div class="eyebrow" style="color: var(--gold-soft); letter-spacing: 0.28em">
+          República del Perú · Acceso a la información pública
+        </div>
+        <h3 class="font-display mt-3" style="font-size: 32px; line-height: 1.1; letter-spacing: -0.02em; color: var(--sidebar-foreground)">
+          La transparencia es un derecho, <span class="italic" style="color: var(--gold-soft)">no un privilegio.</span>
+        </h3>
+      </div>
+      <a href="#" class="btn-ghost-brand saip-footer-cta">
+        Marco legal — Ley N° 27806
+        <svg lucideArrowUpRight class="w-3.5 h-3.5"></svg>
+      </a>
+    </div>
+
+    <!-- Columns -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-10 py-12">
+      <div class="md:col-span-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.15)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
           </div>
           <div>
-            <h3 class="text-[15px] text-[var(--foreground)] font-semibold">SAIP</h3>
-            <p class="text-[11px] text-[var(--muted-foreground)]">Acceso a la Informacion</p>
+            <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
+            <div class="text-[11px] tracking-wider uppercase opacity-60">TTAIP — Tribunal de Transparencia</div>
           </div>
         </div>
-        <p class="text-sm text-[var(--muted-foreground)] leading-relaxed">
-          Plataforma academica para la gestion de solicitudes de acceso a informacion publica. Proyecto de tesis.
+        <p class="text-sm opacity-70 leading-relaxed max-w-sm">
+          Plataforma académica para la gestión de solicitudes de acceso a información pública. Proyecto de tesis, basado en el marco normativo peruano.
         </p>
       </div>
 
-      <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Plataforma</h4>
-        <ul class="space-y-3 text-sm text-[var(--muted-foreground)]">
-          <li><a routerLink="/login" class="hover:text-[var(--foreground)] transition-colors">Presentar Solicitud</a></li>
-          <li><a routerLink="/consultar" class="hover:text-[var(--foreground)] transition-colors">Consultar Estado</a></li>
-          <li><a routerLink="/ayuda" class="hover:text-[var(--foreground)] transition-colors">Centro de Ayuda</a></li>
-          <li><a routerLink="/ayuda" class="hover:text-[var(--foreground)] transition-colors">Preguntas Frecuentes</a></li>
+      <div class="md:col-span-2">
+        <h4 class="eyebrow mb-4" style="color: rgba(255,255,255,0.5)">Plataforma</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a routerLink="/login" class="saip-footer-link">Presentar solicitud</a></li>
+          <li><a routerLink="/consultar" class="saip-footer-link">Consultar estado</a></li>
+          <li><a routerLink="/ayuda" class="saip-footer-link">Centro de ayuda</a></li>
+          <li><a routerLink="/ayuda" class="saip-footer-link">Preguntas frecuentes</a></li>
         </ul>
       </div>
 
-      <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Recursos</h4>
-        <ul class="space-y-3 text-sm text-[var(--muted-foreground)]">
-          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Documentacion</a></li>
-          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Guia de Uso</a></li>
-          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Estadisticas</a></li>
-          <li><a href="#" class="hover:text-[var(--foreground)] transition-colors">Acerca del Proyecto</a></li>
+      <div class="md:col-span-2">
+        <h4 class="eyebrow mb-4" style="color: rgba(255,255,255,0.5)">Recursos</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a href="#" class="saip-footer-link">Documentación</a></li>
+          <li><a href="#" class="saip-footer-link">Guía de uso</a></li>
+          <li><a href="#" class="saip-footer-link">Estadísticas</a></li>
+          <li><a href="#" class="saip-footer-link">Acerca del proyecto</a></li>
         </ul>
       </div>
 
-      <div>
-        <h4 class="text-[13px] uppercase tracking-wider text-[var(--muted-foreground)]/70 mb-5">Contacto</h4>
-        <ul class="space-y-3.5 text-sm text-[var(--muted-foreground)]">
+      <div class="md:col-span-4">
+        <h4 class="eyebrow mb-4" style="color: rgba(255,255,255,0.5)">Contacto</h4>
+        <ul class="space-y-3 text-sm">
           <li class="flex items-center gap-3">
-            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">M</span>
-            contacto&#64;saip-tesis.edu
+            <span class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(221, 88, 98, 0.12); border: 1px solid rgba(221, 88, 98, 0.22)">
+              <svg lucideMail class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
+            </span>
+            <span class="text-white/85 font-mono" style="font-size: 13px">contacto&#64;saip-tesis.edu</span>
           </li>
           <li class="flex items-center gap-3">
-            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">T</span>
-            (01) 000-0000
+            <span class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(221, 88, 98, 0.12); border: 1px solid rgba(221, 88, 98, 0.22)">
+              <svg lucidePhone class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
+            </span>
+            <span class="text-white/85 font-mono" style="font-size: 13px">(01) 000-0000</span>
           </li>
-          <li class="flex items-center gap-3">
-            <span class="w-8 h-8 rounded-lg bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--peru-rojo)]">L</span>
-            Universidad - Lima
+          <li class="flex items-start gap-3">
+            <span class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(221, 88, 98, 0.12); border: 1px solid rgba(221, 88, 98, 0.22)">
+              <svg lucideMapPin class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
+            </span>
+            <span class="text-white/85">Universidad — Lima, Perú</span>
           </li>
         </ul>
       </div>
     </div>
 
-    <div class="border-t border-[var(--border)] mt-10 pt-7 flex flex-col md:flex-row items-center justify-between gap-4">
-      <p class="text-[13px] text-[var(--muted-foreground)]/75">
-        2025 SAIP - Proyecto de Tesis. Todos los derechos reservados.
-      </p>
-      <div class="flex items-center gap-6 text-[13px] text-[var(--muted-foreground)]/75">
-        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Privacidad</a>
-        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Terminos</a>
-        <a href="#" class="hover:text-[var(--foreground)] transition-colors">Accesibilidad</a>
+    <div class="saip-footer-bottom pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p class="text-xs saip-footer-fine">© 2025 SAIP · Proyecto académico. Todos los derechos reservados.</p>
+      <div class="flex items-center gap-6 text-xs saip-footer-fine">
+        <a href="#" class="saip-footer-fine-link">Privacidad</a>
+        <span class="opacity-40">·</span>
+        <a href="#" class="saip-footer-fine-link">Términos</a>
+        <span class="opacity-40">·</span>
+        <a href="#" class="saip-footer-fine-link">Accesibilidad WCAG 2.1</a>
       </div>
     </div>
   </div>

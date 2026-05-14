@@ -1,62 +1,152 @@
-<div class="saip-page min-h-screen bg-[var(--background)] pt-28 pb-16 px-4">
-  <div class="max-w-4xl mx-auto">
-    <section class="text-center mb-8">
-      <div class="w-14 h-14 mx-auto bg-[var(--peru-rojo-suave)] rounded-2xl flex items-center justify-center mb-4 border border-[var(--ceniza-claro)]">
-        <svg class="w-7 h-7 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"></path><path stroke-width="2" d="M12 17h.01"></path></svg>
-      </div>
-      <h1 class="text-3xl md:text-4xl font-bold text-[var(--carbon)] mb-3">Centro de Ayuda</h1>
-      <p class="text-[var(--niebla)] max-w-2xl mx-auto">Encuentre respuestas frecuentes sobre solicitudes SAIP, apelaciones TTAIP y uso de la plataforma.</p>
-    </section>
+<div class="min-h-screen bg-background">
+  <section class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="absolute inset-0 opacity-[0.05]" style="background: radial-gradient(60% 80% at 80% 0%, var(--brand-500), transparent 70%)"></div>
+    <div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12">
+      <a routerLink="/" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+        <svg lucideArrowRight class="w-4 h-4 rotate-180"></svg>
+        Volver al inicio
+      </a>
 
-    <section class="card p-6 mb-6">
-      <label for="faq-search" class="label">Buscar en preguntas frecuentes</label>
-      <input
-        id="faq-search"
-        class="input h-12"
-        placeholder="Ej: plazo de respuesta, apelacion, registro..."
-        [value]="query()"
-        (input)="setQuery($event)"
-      />
+      <div class="flex items-start gap-5 mb-8">
+        <div class="w-14 h-14 rounded-lg flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
+          <svg lucideHelpCircle class="w-7 h-7 text-white"></svg>
+        </div>
+        <div>
+          <span class="eyebrow">Centro de ayuda · TTAIP</span>
+          <h1 class="font-display mt-1.5" style="font-size: clamp(34px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.025em">
+            Resuelva sus <span class="italic" style="color: var(--brand-700)">dudas</span>
+          </h1>
+          <p class="text-muted-foreground mt-2 max-w-xl">
+            {{ totalQuestions() }} preguntas frecuentes sobre el sistema SAIP y el proceso de acceso a informacion publica.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-shell max-w-2xl">
+        <div class="p-3">
+          <div class="relative">
+            <svg lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+            <input
+              id="faq-search"
+              class="field-input pl-10"
+              placeholder="Buscar en preguntas frecuentes..."
+              [value]="query()"
+              (input)="setQuery($event)"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="max-w-5xl mx-auto px-6 md:px-10 py-10 space-y-7">
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      @for (category of categories(); track category.id) {
+        <button
+          type="button"
+          [class]="openCategory() === category.id
+            ? 'rounded-lg p-4 text-left border border-[var(--brand-300)] bg-[var(--brand-subtle)] shadow-sm transition-all'
+            : 'rounded-lg p-4 text-left border border-[var(--border)] bg-[var(--card)] hover:border-[var(--brand-200)] transition-all'"
+          (click)="seleccionarCategoria(category.id)"
+        >
+          <div
+            [class]="iconClassForCategory(openCategory() === category.id)"
+            [style.background]="openCategory() === category.id ? category.accent : 'var(--background)'"
+            [style.color]="openCategory() === category.id ? '#ffffff' : category.accent"
+          >
+            @switch (category.icon) {
+              @case ('file') {
+                <svg lucideFileText class="w-5 h-5"></svg>
+              }
+              @case ('scale') {
+                <svg lucideScale class="w-5 h-5"></svg>
+              }
+              @case ('process') {
+                <svg lucideZap class="w-5 h-5"></svg>
+              }
+              @default {
+                <svg lucideShield class="w-5 h-5"></svg>
+              }
+            }
+          </div>
+          <div class="text-sm font-medium text-foreground">{{ category.title }}</div>
+          <div class="font-mono text-[11px] tracking-widest text-muted-foreground mt-1">{{ category.questions.length }} preguntas</div>
+        </button>
+      }
     </section>
 
     @if (categories().length === 0) {
-      <section class="card p-7 text-center">
-        <h2 class="text-lg font-semibold text-[var(--carbon)] mb-2">Sin resultados</h2>
-        <p class="text-sm text-[var(--niebla)]">No se encontraron coincidencias para su busqueda.</p>
+      <section class="form-shell">
+        <div class="p-12 text-center">
+          <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+            <svg lucideSearch class="w-5 h-5 text-[var(--brand-700)]"></svg>
+          </div>
+          <h3 class="font-display" style="font-size: 18px">Sin resultados</h3>
+          <p class="text-sm text-muted-foreground mt-1 mb-4">No hay preguntas que coincidan con "{{ query() }}".</p>
+          <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Limpiar busqueda</button>
+        </div>
       </section>
     } @else {
       <section class="space-y-4">
-        @for (category of categories(); track category.id) {
-          <article class="card overflow-hidden">
+        @for (category of categories(); track category.id; let ci = $index) {
+          <article class="form-shell overflow-hidden">
             <button
               type="button"
-              class="w-full p-5 text-left flex items-center justify-between hover:bg-[var(--muted)] transition-colors"
+              class="w-full text-left"
               (click)="toggleCategory(category.id)"
               [attr.aria-expanded]="openCategory() === category.id"
             >
-              <span>
-                <span class="block text-base font-semibold text-[var(--carbon)]">{{ category.title }}</span>
-                <span class="text-sm text-[var(--niebla)]">{{ category.questions.length }} preguntas</span>
-              </span>
-              <svg class="w-5 h-5 text-[var(--niebla)] transition-transform" [class.rotate-180]="openCategory() === category.id" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              <div class="form-section-header flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center bg-[var(--brand-subtle)] border border-[var(--brand-200)]" [style.color]="category.accent">
+                    @switch (category.icon) {
+                      @case ('file') {
+                        <svg lucideFileText class="w-5 h-5"></svg>
+                      }
+                      @case ('scale') {
+                        <svg lucideScale class="w-5 h-5"></svg>
+                      }
+                      @case ('process') {
+                        <svg lucideZap class="w-5 h-5"></svg>
+                      }
+                      @default {
+                        <svg lucideShield class="w-5 h-5"></svg>
+                      }
+                    }
+                  </div>
+                  <div>
+                    <span class="eyebrow">0{{ ci + 1 }} · {{ category.questions.length }} preguntas</span>
+                    <h2 class="form-section-title">{{ category.title }}</h2>
+                  </div>
+                </div>
+                <svg lucideChevronDown class="w-5 h-5 text-muted-foreground transition-transform" [class.rotate-180]="openCategory() === category.id"></svg>
+              </div>
             </button>
 
             @if (openCategory() === category.id) {
-              <div class="border-t border-[var(--ceniza-claro)]">
+              <div class="border-t border-[var(--border)]">
                 @for (item of category.questions; track item.question; let i = $index) {
-                  <div class="border-b border-[var(--ceniza-claro)] last:border-b-0">
+                  <div class="border-b last:border-0 border-[var(--border)]">
                     <button
                       type="button"
-                      class="w-full p-4 text-left flex items-start justify-between gap-3 hover:bg-[var(--muted)] transition-colors"
+                      class="w-full px-6 py-4 flex items-start justify-between text-left gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
                       (click)="toggleQuestion(category.id + '-' + i)"
                       [attr.aria-expanded]="openQuestion() === category.id + '-' + i"
                     >
-                      <span class="text-sm font-medium text-[var(--carbon)]">{{ item.question }}</span>
-                      <svg class="w-4 h-4 text-[var(--niebla)] mt-0.5 transition-transform" [class.rotate-180]="openQuestion() === category.id + '-' + i" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                      <div class="flex items-start gap-3 flex-1">
+                        <span class="font-mono text-[11px] tracking-widest mt-1 shrink-0" style="color: var(--brand-700)">
+                          {{ (i + 1).toString().padStart(2, '0') }}
+                        </span>
+                        <span class="text-sm text-foreground leading-relaxed">{{ item.question }}</span>
+                      </div>
+                      <svg lucideArrowRight class="w-4 h-4 mt-1 shrink-0 transition-transform" [class.rotate-90]="openQuestion() === category.id + '-' + i" [style.color]="category.accent"></svg>
                     </button>
+
                     @if (openQuestion() === category.id + '-' + i) {
-                      <div class="px-4 pb-4">
-                        <p class="text-sm text-[var(--humo)] bg-[var(--muted)] border border-[var(--ceniza-claro)] rounded-xl p-4">{{ item.answer }}</p>
+                      <div class="px-6 pb-5 pl-[68px]">
+                        <div class="rounded-md p-4 text-sm text-foreground/85 leading-relaxed bg-[var(--brand-subtle)]" [style.border-left]="'3px solid ' + category.accent">
+                          {{ item.answer }}
+                        </div>
                       </div>
                     }
                   </div>
@@ -68,17 +158,84 @@
       </section>
     }
 
-    <section class="mt-8 grid md:grid-cols-2 gap-4">
-      <article class="card p-6">
-        <h3 class="text-base font-semibold text-[var(--carbon)] mb-2">Presentar nueva SAIP</h3>
-        <p class="text-sm text-[var(--niebla)] mb-4">Ingrese con su cuenta para registrar solicitudes y adjuntar sustento.</p>
-        <a routerLink="/login" class="btn-outline">Ir a iniciar sesion</a>
-      </article>
-      <article class="card p-6">
-        <h3 class="text-base font-semibold text-[var(--carbon)] mb-2">Consulta publica</h3>
-        <p class="text-sm text-[var(--niebla)] mb-4">Puede consultar avance de su tramite sin autenticacion.</p>
-        <a routerLink="/consultar" class="btn-outline">Consultar expediente</a>
-      </article>
+    <section class="grid md:grid-cols-2 gap-4">
+      <a
+        routerLink="/login"
+        class="form-shell text-left transition-all hover:-translate-y-[1px]"
+        style="box-shadow: var(--shadow-sm)"
+      >
+        <div class="p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-md flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+            <svg lucideFileText class="w-6 h-6 text-white"></svg>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Presentar una SAIP</h4>
+            <p class="text-sm text-muted-foreground mt-1">Complete el formulario digital para solicitar informacion publica.</p>
+            <span class="inline-flex items-center gap-1 text-sm mt-2" style="color: var(--brand-700)">
+              Ir al formulario <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+            </span>
+          </div>
+        </div>
+      </a>
+
+      <a
+        routerLink="/consultar"
+        class="form-shell text-left transition-all hover:-translate-y-[1px]"
+        style="box-shadow: var(--shadow-sm)"
+      >
+        <div class="p-6 flex items-start gap-4">
+          <div class="w-12 h-12 rounded-md flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+            <svg lucideSearch class="w-6 h-6 text-white"></svg>
+          </div>
+          <div class="flex-1">
+            <h4 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Consultar estado</h4>
+            <p class="text-sm text-muted-foreground mt-1">Busque el estado de su solicitud con el numero de expediente.</p>
+            <span class="inline-flex items-center gap-1 text-sm mt-2" style="color: var(--brand-700)">
+              Consultar <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+            </span>
+          </div>
+        </div>
+      </a>
+    </section>
+
+    <section class="form-shell overflow-hidden">
+      <div class="h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), var(--gold), transparent)"></div>
+      <div class="p-7 md:p-9">
+        <div class="text-center mb-7">
+          <span class="eyebrow">Contacto institucional</span>
+          <h3 class="font-display mt-1.5" style="font-size: 26px; letter-spacing: -0.02em">No encontro lo que buscaba?</h3>
+          <p class="text-sm text-muted-foreground mt-1.5">Comuniquese directamente con el equipo del TTAIP.</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg lucidePhone class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            </div>
+            <div>
+              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Telefono</div>
+              <div class="text-sm text-foreground font-medium">(01) 630-2000</div>
+            </div>
+          </div>
+          <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg lucideMail class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            </div>
+            <div>
+              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Correo</div>
+              <div class="text-sm text-foreground font-medium">contacto&#64;saip-tesis.edu</div>
+            </div>
+          </div>
+          <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg lucideBuilding2 class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            </div>
+            <div>
+              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Direccion</div>
+              <div class="text-sm text-foreground font-medium">Universidad · Lima</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 </div>

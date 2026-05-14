@@ -1,5 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import {
+  LucideArrowRight,
+  LucideBuilding2,
+  LucideChevronDown,
+  LucideFileText,
+  LucideHelpCircle,
+  LucideMail,
+  LucidePhone,
+  LucideScale,
+  LucideSearch,
+  LucideShield,
+  LucideZap,
+} from '@lucide/angular';
 
 interface FaqItem {
   question: string;
@@ -9,6 +22,8 @@ interface FaqItem {
 interface FaqCategory {
   id: string;
   title: string;
+  icon: 'file' | 'scale' | 'process' | 'shield';
+  accent: string;
   questions: FaqItem[];
 }
 
@@ -16,63 +31,117 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   {
     id: 'saip',
     title: 'Solicitudes SAIP',
+    icon: 'file',
+    accent: 'var(--brand-700)',
     questions: [
       {
         question: 'Que es una solicitud SAIP?',
         answer:
-          'Es el mecanismo formal para solicitar informacion a una entidad publica en el marco de la Ley N. 27806.',
+          'Es el mecanismo formal para solicitar informacion a una entidad publica conforme a la Ley N. 27806.',
+      },
+      {
+        question: 'Que informacion puedo solicitar?',
+        answer:
+          'Documentos, contratos, presupuestos, informes y actas en poder de entidades publicas, salvo excepciones legales.',
+      },
+      {
+        question: 'Como presento una SAIP?',
+        answer:
+          'Registre su cuenta, seleccione entidad, describa el pedido, adjunte sustento y envie el formulario digital.',
       },
       {
         question: 'Cuanto tiempo tiene la entidad para responder?',
         answer:
-          'La entidad tiene 10 dias habiles para responder, contados desde el dia habil siguiente a la recepcion.',
+          'El plazo maximo es de 10 dias habiles desde el dia habil siguiente a la recepcion de la solicitud.',
       },
       {
         question: 'La presentacion tiene costo?',
         answer:
-          'La presentacion de la solicitud es gratuita. Solo puede cobrarse el costo de reproduccion de documentos.',
+          'La solicitud es gratuita. Solo puede cobrarse el costo de reproduccion cuando corresponda.',
       },
     ],
   },
   {
     id: 'apelaciones',
     title: 'Apelaciones TTAIP',
+    icon: 'scale',
+    accent: 'var(--gold-dark)',
     questions: [
       {
         question: 'Cuando puedo apelar?',
         answer:
-          'Puede apelar ante denegatoria expresa o silencio administrativo, dentro del plazo legal de 15 dias.',
+          'Cuando hay denegatoria expresa o silencio administrativo. El plazo es de 15 dias calendario.',
+      },
+      {
+        question: 'Que documentos necesito para apelar?',
+        answer:
+          'Solicitud SAIP, respuesta de la entidad (o silencio) y fundamentos del recurso con adjuntos pertinentes.',
       },
       {
         question: 'Quien resuelve la apelacion?',
         answer:
-          'El Tribunal de Transparencia y Acceso a la Informacion Publica (TTAIP) resuelve en segunda instancia.',
+          'El Tribunal de Transparencia y Acceso a la Informacion Publica (TTAIP) en segunda instancia.',
       },
       {
         question: 'Cuanto demora una apelacion?',
         answer:
-          'La resolucion final tiene un plazo de 10 dias habiles luego de culminar las etapas previas del procedimiento.',
+          'El TTAIP resuelve en 10 dias habiles luego de la etapa de admision y actuaciones previas.',
+      },
+      {
+        question: 'Que resultados puede tener mi apelacion?',
+        answer:
+          'Fundado, fundado en parte, infundado, improcedente o conclusiones especiales conforme a normativa.',
+      },
+    ],
+  },
+  {
+    id: 'proceso',
+    title: 'Proceso y plazos',
+    icon: 'process',
+    accent: 'var(--info)',
+    questions: [
+      {
+        question: 'Que es la subsanacion?',
+        answer:
+          'Cuando faltan requisitos, el tribunal solicita subsanar para continuar con la evaluacion del recurso.',
+      },
+      {
+        question: 'Como se calculan los dias habiles?',
+        answer:
+          'De lunes a viernes, excluyendo feriados. El conteo inicia desde el dia habil siguiente al acto que corresponda.',
+      },
+      {
+        question: 'Puedo dar seguimiento sin iniciar sesion?',
+        answer:
+          'Si. La consulta publica permite revisar estado y trazabilidad basica con el numero de expediente SAIP.',
+      },
+      {
+        question: 'Que pasa si la entidad no responde?',
+        answer:
+          'Se configura silencio administrativo negativo y usted puede presentar apelacion ante el TTAIP.',
       },
     ],
   },
   {
     id: 'cuenta',
     title: 'Cuenta y registro',
+    icon: 'shield',
+    accent: 'var(--success)',
     questions: [
       {
-        question: 'Que necesito para registrarme?',
+        question: 'Necesito cuenta para presentar SAIP?',
         answer:
-          'DNI, nombres completos, correo valido, telefono y una contrasena robusta para su cuenta ciudadana.',
+          'Si. El registro ciudadano requiere DNI, datos basicos y correo electronico valido.',
       },
       {
-        question: 'Puedo consultar sin registrarme?',
+        question: 'Que datos necesito para registrarme?',
         answer:
-          'Si. Puede usar la opcion de consulta publica con el numero de expediente SAIP.',
+          'DNI, nombres completos, correo, telefono y una contrasena robusta.',
       },
       {
-        question: 'Como recupero mi contrasena?',
+        question: 'Olvide mi contrasena, que hago?',
         answer:
-          'Desde login puede seleccionar recuperacion de contrasena para restablecer acceso de forma segura.',
+          'Use la recuperacion de acceso desde login para restablecer su contrasena de forma segura.',
       },
     ],
   },
@@ -81,13 +150,29 @@ const FAQ_CATEGORIES: FaqCategory[] = [
 @Component({
   selector: 'app-ayuda',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [
+    RouterLink,
+    LucideArrowRight,
+    LucideBuilding2,
+    LucideChevronDown,
+    LucideFileText,
+    LucideHelpCircle,
+    LucideMail,
+    LucidePhone,
+    LucideScale,
+    LucideSearch,
+    LucideShield,
+    LucideZap,
+  ],
   templateUrl: './ayuda.component.html',
 })
 export class AyudaComponent {
   readonly query = signal('');
   readonly openCategory = signal<string>('saip');
   readonly openQuestion = signal<string | null>(null);
+  readonly totalQuestions = computed(() =>
+    FAQ_CATEGORIES.reduce((sum, category) => sum + category.questions.length, 0)
+  );
 
   readonly categories = computed(() => {
     const search = this.query().trim().toLowerCase();
@@ -111,11 +196,27 @@ export class AyudaComponent {
     this.query.set((event.target as HTMLInputElement).value);
   }
 
+  limpiarBusqueda(): void {
+    this.query.set('');
+  }
+
+  seleccionarCategoria(categoryId: string): void {
+    this.openCategory.set(categoryId);
+    this.openQuestion.set(null);
+  }
+
   toggleCategory(categoryId: string): void {
     this.openCategory.set(this.openCategory() === categoryId ? '' : categoryId);
   }
 
   toggleQuestion(questionId: string): void {
     this.openQuestion.set(this.openQuestion() === questionId ? null : questionId);
+  }
+
+  iconClassForCategory(active: boolean): string {
+    if (active) {
+      return 'w-10 h-10 rounded-md flex items-center justify-center mb-3 text-white';
+    }
+    return 'w-10 h-10 rounded-md flex items-center justify-center mb-3 border border-[var(--border)]';
   }
 }

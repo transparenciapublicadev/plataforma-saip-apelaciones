@@ -3,6 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LoginRequest } from '../../models/usuario.model';
+import {
+  LucideArrowLeft, LucideShield, LucideLogIn,
+  LucideScale, LucideEye, LucideEyeOff, LucideArrowRight,
+} from '@lucide/angular';
 
 type TipoUsuarioRole = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
 type InternalRole = Exclude<TipoUsuarioRole, 'CIUDADANO'>;
@@ -11,7 +15,11 @@ type AccessMode = 'citizen' | 'internal';
 @Component({
   selector: 'app-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [
+    FormsModule, RouterLink,
+    LucideArrowLeft, LucideShield, LucideLogIn,
+    LucideScale, LucideEye, LucideEyeOff, LucideArrowRight,
+  ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -22,6 +30,7 @@ export class LoginComponent implements OnInit {
 
   email = '';
   password = '';
+  showPassword = signal(false);
 
   accessMode = signal<AccessMode>('citizen');
   requiredRole = signal<InternalRole | null>(null);
@@ -70,6 +79,10 @@ export class LoginComponent implements OnInit {
 
   navigateToHome(): void {
     this.router.navigate(['/']);
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update(v => !v);
   }
 
   login(): void {
@@ -183,4 +196,3 @@ export class LoginComponent implements OnInit {
     return 'Interno';
   }
 }
-

@@ -1,82 +1,195 @@
-<div class="saip-page min-h-[calc(100vh-68px)] relative overflow-hidden flex flex-col items-center justify-start pt-3 md:pt-4 pb-8 px-4 bg-[var(--background)]">
-  
-  <!-- Centered Concentric Halos (Responsive & Centered) -->
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] rounded-full border border-[var(--ceniza-claro)] opacity-50 pointer-events-none"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] rounded-full border border-[var(--ceniza-claro)] opacity-20 pointer-events-none"></div>
+<div class="min-h-screen grid lg:grid-cols-2 bg-background">
+  <!-- === Editorial brand panel (left, desktop only) === -->
+  <div class="relative hidden lg:flex bg-brand-mesh text-white overflow-hidden">
+    <div class="absolute inset-0 bg-paper opacity-[0.07] pointer-events-none"></div>
+    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), var(--gold), transparent)"></div>
 
-  <!-- Form Container -->
-  <div class="relative z-10 w-full max-w-[380px] bg-[var(--card)] backdrop-blur-xl border border-[var(--border)] rounded-2xl p-5 shadow-xl shadow-black/5">
-    
-    <!-- Header Text -->
-    <div class="text-center mb-5 animate-fade-in-up">
-      <div class="inline-flex items-center justify-center w-10 h-10 bg-[var(--peru-rojo-suave)] rounded-xl border border-[var(--border)] shadow-sm mb-3">
-        <svg class="w-5 h-5 text-[var(--peru-rojo)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 10l4.55-2.27A2 2 0 0 1 22 9.53v4.94a2 2 0 0 1-2.45 1.8L15 14M4 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
+    <div class="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
+      <div>
+        <a routerLink="/" class="flex items-center gap-3">
+          <div
+            class="w-11 h-11 rounded-lg flex items-center justify-center"
+            style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18)"
+          >
+            <svg lucideScale class="w-5 h-5 text-white"></svg>
+          </div>
+          <div>
+            <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
+            <div class="text-[10px] tracking-[0.22em] uppercase opacity-65">TTAIP · República del Perú</div>
+          </div>
+        </a>
       </div>
-      <h2 class="text-2xl font-extrabold text-[var(--carbon)] tracking-tight">{{ portalTitle() }}</h2>
-      <p class="text-[var(--humo)] text-[12px] mt-1">{{ portalSubtitle() }}</p>
-      <p class="text-[11px] text-[var(--niebla)] mt-2" [class]="isCitizenPortal() ? 'text-[var(--estado-azul)]' : 'text-[var(--humo)]'">
-        {{ isCitizenPortal() ? 'Acceso para ciudadanía' : 'Acceso para personal interno' }}
-      </p>
-    </div>
 
-    <!-- Form Fields Internal Grid -->
-    <div class="animate-fade-in-up" style="animation-delay: 50ms">
-      
+      <div class="max-w-lg">
+        <div class="eyebrow mb-4" style="color: var(--gold-soft); letter-spacing: 0.32em">
+          Acceso institucional
+        </div>
+        <h2 class="font-display text-balance" style="font-size: clamp(40px, 4vw, 56px); line-height: 1.04; letter-spacing: -0.025em">
+          El acceso a la información
+          <span class="block italic" style="color: var(--gold-soft)">fortalece la democracia.</span>
+        </h2>
+        <div class="mt-8 mb-8 h-[1.5px] w-20" style="background: var(--gold-soft)"></div>
+        <p class="text-white/75 text-pretty leading-relaxed" style="font-size: 16px">
+          Plataforma oficial para gestionar solicitudes de acceso a la información pública,
+          apelaciones ante el Tribunal y trazabilidad de expedientes en cumplimiento de la
+          Ley N° 27806.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-6 text-xs text-white/55">
+        <div class="flex items-center gap-1.5">
+          <svg lucideShield class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
+          Conexión SSL
+        </div>
+        <div class="opacity-40">·</div>
+        <div>Datos encriptados</div>
+        <div class="opacity-40">·</div>
+        <div>WCAG 2.1 AA</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === Form panel (right) === -->
+  <div class="relative flex items-center justify-center px-6 py-16 lg:py-12 bg-paper">
+    <div class="w-full max-w-md hero-animate">
+      <button
+        (click)="navigateToHome()"
+        class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-8 transition-colors cursor-pointer"
+      >
+        <svg lucideArrowLeft class="w-4 h-4"></svg>
+        Volver al inicio
+      </button>
+
+      <div class="mb-8">
+        <span class="eyebrow">Iniciar sesión</span>
+        <h2 class="font-display mt-2" style="font-size: 36px; line-height: 1.1; letter-spacing: -0.02em">
+          {{ portalTitle() }}
+        </h2>
+        <p class="mt-2" style="color: var(--muted-foreground); font-size: 14.5px">
+          {{ portalSubtitle() }}
+        </p>
+      </div>
+
       <!-- Alerts -->
       @if (error()) {
-        <div class="alert alert-error mb-3 animate-fade-in px-3 py-2 rounded-lg border border-[var(--estado-rojo-borde)] bg-[var(--estado-rojo-suave)] flex items-start gap-2">
-          <svg class="w-4 h-4 text-[var(--estado-rojo)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-width="2" d="M15 9l-6 6M9 9l6 6"/></svg>
-          <p class="text-[13px] text-[var(--estado-rojo)] font-medium">{{ error() }}</p>
+        <div
+          class="rounded-lg px-4 py-3 text-sm mb-5"
+          style="background: var(--brand-50); border: 1px solid var(--brand-200); color: var(--brand-800)"
+        >
+          {{ error() }}
         </div>
       }
 
       @if (mensaje()) {
-        <div class="alert alert-success mb-3 animate-fade-in px-3 py-2 rounded-lg border border-[var(--estado-verde-borde)] bg-[var(--estado-verde-suave)] flex items-start gap-2">
-          <svg class="w-4 h-4 text-[var(--estado-verde)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <p class="text-[13px] text-[var(--estado-verde)] font-medium">{{ mensaje() }}</p>
+        <div
+          class="rounded-lg px-4 py-3 text-sm mb-5"
+          style="background: var(--success-subtle); border: 1px solid rgba(21,128,61,0.25); color: var(--success)"
+        >
+          {{ mensaje() }}
         </div>
       }
 
       <!-- Form -->
-      <form (ngSubmit)="login()" class="space-y-3 cursor-default">
-        <div>
-          <label for="login-email" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">{{ identifierLabel() }}</label>
-          <div class="relative">
-            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" stroke-width="2"/><path stroke-width="2" d="m22 7-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>
-            <input id="login-email" type="text" [(ngModel)]="email" name="email" class="input w-full pl-11 h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none focus:border-[var(--peru-rojo)] focus:ring-1 focus:ring-[var(--peru-rojo)] transition-all" [placeholder]="identifierPlaceholder()" autocomplete="username" />
-          </div>
+      <form (ngSubmit)="login()" class="space-y-5">
+        <div class="field">
+          <label class="field-label" for="login-email">
+            {{ identifierLabel() }} <span class="req">*</span>
+          </label>
+          <input
+            id="login-email"
+            type="text"
+            [(ngModel)]="email"
+            name="email"
+            class="field-input"
+            [placeholder]="identifierPlaceholder()"
+            autocomplete="username"
+          />
         </div>
-        <div>
-          <label for="login-password" class="block text-[12px] font-bold text-[var(--humo)] mb-1 ml-1">Contraseña</label>
+
+        <div class="field">
+          <label class="field-label" for="login-password">Contraseña <span class="req">*</span></label>
           <div class="relative">
-            <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--niebla)] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            <input id="login-password" type="password" [(ngModel)]="password" name="password" class="input w-full pl-11 h-[42px] bg-[var(--input-background)] border border-[var(--input)] rounded-xl text-[13px] outline-none focus:border-[var(--peru-rojo)] focus:ring-1 focus:ring-[var(--peru-rojo)] transition-all" placeholder="••••••••" autocomplete="current-password" />
+            <input
+              id="login-password"
+              [type]="showPassword() ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              class="field-input pr-11"
+              placeholder="Ingrese su contraseña"
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              @if (showPassword()) {
+                <svg lucideEyeOff class="w-4 h-4"></svg>
+              } @else {
+                <svg lucideEye class="w-4 h-4"></svg>
+              }
+            </button>
           </div>
         </div>
 
-        <button type="submit" [disabled]="loading()" class="btn-primary w-full h-[46px] text-[14px] font-bold rounded-xl mt-1.5 cursor-pointer shadow-md shadow-black/10">
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none" style="color: var(--muted-foreground)">
+            <input type="checkbox" class="rounded border-[var(--border)]" />
+            Recordarme
+          </label>
+          <button
+            type="button"
+            class="text-sm font-medium hover:underline"
+            style="color: var(--brand-700)"
+          >
+            ¿Olvidó su contraseña?
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          [disabled]="loading()"
+          class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          style="height: 48px; font-size: 15px"
+        >
           @if (loading()) {
-            <svg class="w-5 h-5 animate-spin mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12.73-5.66l-1.41 1.41M7.68 17.68l-1.41-1.41M17.68 17.68l-1.41-1.41M7.68 7.68l-1.41 1.41"/></svg>
+            <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" d="M12 4v2m0 12v2m8-8h-2M6 12H4m12.73-5.66l-1.41 1.41M7.68 17.68l-1.41-1.41M17.68 17.68l-1.41-1.41M7.68 7.68l-1.41 1.41"/></svg>
             Ingresando...
           } @else {
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 10l4.55-2.27A2 2 0 0 1 22 9.53v4.94a2 2 0 0 1-2.45 1.8L15 14M4 6h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
-            Ingresar
-            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+            <svg lucideLogIn class="w-4 h-4"></svg>
+            Iniciar sesión
+            <svg lucideArrowRight class="w-4 h-4 ml-1"></svg>
           }
         </button>
       </form>
 
-      <div class="mt-6 pt-5 border-t border-[var(--ceniza-claro)] text-center">
+      <!-- Footer -->
+      <div class="mt-6 pt-5 border-t border-[var(--border)] text-center">
         @if (isCitizenPortal()) {
-          <p class="text-[12px] text-[var(--niebla)]">
-            ¿No tienes una cuenta?
-            <a routerLink="/registro" class="text-[var(--primary)] font-bold hover:underline ml-1">Regístrate gratis</a>
+          <div class="rule-ornament my-4"><span class="text-xs uppercase tracking-widest">o</span></div>
+          <button routerLink="/registro" class="btn-ghost-brand w-full justify-center" style="padding: 11px 16px">
+            Crear cuenta como administrado
+          </button>
+        } @else {
+          <p class="text-[12px]" style="color: var(--muted-foreground)">Si tienes inconvenientes, contacta a la mesa de ayuda institucional.</p>
+        }
+      </div>
+
+      <div class="mt-10 p-5 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
+        @if (isCitizenPortal()) {
+          <div class="eyebrow mb-3" style="color: var(--gold)">Portal ciudadano</div>
+          <p class="text-xs leading-relaxed" style="color: var(--muted-foreground)">
+            Esta entrada publica es solo para ciudadanos administrados. Los accesos de funcionario, TTAIP y administrador se mantienen en URLs internas separadas.
           </p>
         } @else {
-          <p class="text-[12px] text-[var(--niebla)]">Si tienes inconvenientes, contacta a la mesa de ayuda institucional.</p>
+          <div class="eyebrow mb-3" style="color: var(--gold)">Portal institucional</div>
+          <p class="text-xs leading-relaxed" style="color: var(--muted-foreground)">
+            Acceso reservado para personal autorizado. Si tienes inconvenientes, contacta a la mesa de ayuda institucional.
+          </p>
         }
       </div>
     </div>
-    
   </div>
+
 </div>

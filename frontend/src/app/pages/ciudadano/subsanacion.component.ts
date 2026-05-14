@@ -6,6 +6,11 @@ import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { Apelacion } from '../../models/apelacion.model';
 
+interface ObservacionSubsanacion {
+  numero: number;
+  descripcion: string;
+}
+
 @Component({
   selector: 'app-subsanacion',
   imports: [CommonModule, FormsModule, RouterLink],
@@ -24,21 +29,50 @@ export class SubsanacionComponent implements OnInit {
   loadingApelacion = signal<boolean>(true);
   error = signal<string>('');
   mensaje = signal<string>('');
+  documentoSeleccionado = signal<File | null>(null);
 
   fundamentosAdicionales = '';
 
-  nombreUsuario = signal<string>('');
+  readonly observacionesTtaip: ObservacionSubsanacion[] = [
+    {
+      numero: 1,
+      descripcion: 'Falta fundamentación legal específica del artículo vulnerado de la Ley N° 27806.'
+    },
+    {
+      numero: 2,
+      descripcion: 'No se adjunta copia de la respuesta denegatoria de la entidad.'
+    },
+    {
+      numero: 3,
+      descripcion: 'Falta indicar el domicilio procesal para notificaciones.'
+    }
+  ];
+
+  readonly pasosSubsanacion: string[] = [
+    'Lea cada observación señalada por el TTAIP.',
+    'Prepare los documentos que subsanan las observaciones.',
+    'Describa claramente las correcciones realizadas.',
+    'Adjunte los documentos complementarios.',
+    'Envíe la subsanación antes del plazo límite.'
+  ];
+
+  readonly documentosOriginales: string[] = [
+    'Recurso_Apelacion.pdf',
+    'DNI_Copia.pdf',
+    'Calificacion_Inadmisible.pdf'
+  ];
 
   ngOnInit(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (sesion) {
-      this.nombreUsuario.set(sesion.nombre || 'Usuario');
-    }
+    this.authService.obtenerSesion();
 
     const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (expediente) {
-      this.cargarApelacion(expediente);
+    if (!expediente) {
+      this.error.set('No se recibió el expediente para subsanar.');
+      this.loadingApelacion.set(false);
+      return;
     }
+
+    this.cargarApelacion(expediente);
   }
 
   cargarApelacion(expediente: string): void {
@@ -57,18 +91,60 @@ export class SubsanacionComponent implements OnInit {
 
   calcularDiasRestantes(): number {
     const ap = this.apelacion();
-    if (!ap || !ap.fechaSubsanacion || !ap.diasSubsanacion) return 0;
+    if (!ap || !ap.fechaSubsanacion) {
+      return 0;
+    }
 
     const fechaLimite = new Date(ap.fechaSubsanacion);
-    fechaLimite.setDate(fechaLimite.getDate() + ap.diasSubsanacion);
+    fechaLimite.setDate(fechaLimite.getDate() + this.getPlazoSubsanacionDias());
     const hoy = new Date();
-    const diff = Math.ceil((fechaLimite.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
+    const diff = Math.ceil((fechaLimite.getTime() - hoy.getTime()) / 86400000);
+    return Math.max(diff, 0);
+  }
+
+  getPlazoSubsanacionDias(): number {
+    return this.apelacion()?.diasSubsanacion || 2;
+  }
+
+  getFechaNotificacion(): Date | null {
+    const ap = this.apelacion();
+    if (!ap) {
+      return null;
+    }
+    return ap.fechaSubsanacion ? new Date(ap.fechaSubsanacion) : new Date(ap.fechaApelacion);
+  }
+
+  getFechaLimite(): Date | null {
+    const notificacion = this.getFechaNotificacion();
+    if (!notificacion) {
+      return null;
+    }
+
+    const limite = new Date(notificacion);
+    limite.setDate(limite.getDate() + this.getPlazoSubsanacionDias());
+    return limite;
+  }
+
+  seleccionarDocumento(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.documentoSeleccionado.set(file);
+  }
+
+  getDocumentoTamanoKb(): string {
+    const file = this.documentoSeleccionado();
+    if (!file) {
+      return '0.0';
+    }
+
+    return (file.size / 1024).toFixed(1);
   }
 
   enviarSubsanacion(): void {
     const ap = this.apelacion();
-    if (!ap) return;
+    if (!ap) {
+      return;
+    }
 
     if (!this.fundamentosAdicionales.trim()) {
       this.error.set('Debe ingresar los fundamentos adicionales o correcciones');
@@ -81,7 +157,7 @@ export class SubsanacionComponent implements OnInit {
     this.apelacionService.subsanar(ap.id, this.fundamentosAdicionales).subscribe({
       next: () => {
         this.loading.set(false);
-        this.mensaje.set('Subsanación enviada correctamente. Su apelación será revisada nuevamente.');
+        this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
         setTimeout(() => this.router.navigate(['/ciudadano']), 2000);
       },
       error: (err) => {
@@ -91,4 +167,3 @@ export class SubsanacionComponent implements OnInit {
     });
   }
 }
-
