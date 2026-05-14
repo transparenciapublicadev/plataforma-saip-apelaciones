@@ -1,142 +1,261 @@
-<div class="saip-page min-h-screen">
-  <!-- Header -->
-  <div class="bg-gradient-peru-hero pt-28 pb-14 px-4 relative overflow-hidden">
-    <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full border border-[var(--ceniza-claro)]"></div>
-    <div class="max-w-7xl mx-auto relative z-10">
-      <div class="flex items-center gap-4 mb-1">
-        <div class="w-12 h-12 bg-black/[0.03] backdrop-blur-md rounded-xl flex items-center justify-center border border-white/[0.08]">
-          <svg class="w-6 h-6 text-[var(--carbon)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+<div class="min-h-screen bg-background">
+  <div class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8">
+      <div class="flex items-start gap-5 flex-wrap">
+        <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
+          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l8-4v18"/><path stroke-width="2" d="M19 21V11l-6-4"/></svg>
         </div>
-        <div class="text-[var(--carbon)]">
-          <p class="text-[var(--carbon)]/40 text-sm font-medium">Panel de Entidad</p>
-          <h1 class="text-2xl md:text-3xl tracking-tight font-extrabold">Dashboard de Entidad</h1>
-          <p class="text-[var(--carbon)]/50 text-sm">{{ nombreEntidad() }}</p>
+
+        <div class="flex-1 min-w-0">
+          <span class="eyebrow">Bandeja del funcionario · {{ nombreEntidad() }}</span>
+          <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
+            Tu dia — <span class="italic" style="color: var(--brand-700)">{{ fechaHoy() }}</span>
+          </h1>
+          <p class="text-muted-foreground mt-1.5 text-sm">
+            <span class="font-mono font-semibold text-foreground">{{ totalActivas() }}</span> solicitudes en bandeja ·
+            @if (counts().san > 0) {
+              <span class="font-mono font-semibold" style="color: var(--brand-700)"> {{ counts().san }} en SAN</span> ·
+            }
+            @if (counts().hoy > 0) {
+              <span class="font-mono font-semibold" style="color: var(--brand-600)"> {{ counts().hoy }} para hoy</span>
+            }
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
+          <div class="relative" style="width: 70px; height: 70px">
+            <svg width="70" height="70" viewBox="0 0 70 70">
+              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" stroke="var(--muted)" stroke-width="6" />
+              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" [attr.stroke-dasharray]="donutCirc" [attr.stroke-dashoffset]="donutOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms"></circle>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center font-display" [style.color]="donutAccent()" style="font-size: 14px; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
+          </div>
+          <div class="min-w-[140px]">
+            <span class="eyebrow">Cumplimiento del plazo legal</span>
+            <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
+            <div class="flex items-center gap-1 text-xs mt-0.5" [style.color]="cumplimientoDelta() >= 0 ? 'var(--success)' : 'var(--brand-700)'">
+              <svg class="w-3 h-3" [style.transform]="cumplimientoDelta() < 0 ? 'rotate(180deg)' : 'none'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m3 17 6-6 4 4 8-8"/></svg>
+              {{ cumplimientoDelta() >= 0 ? '+' : '' }}{{ cumplimientoDelta() }}pp vs. mes ant.
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-4 -mt-6 pb-16 relative z-10">
-    <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-      <div class="metric-card metric-card-info" data-reveal>
-        <div class="icon-container icon-container-sm icon-container-info rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-        <div class="metric-value text-[var(--estado-azul)]">{{ pendientes() }}</div>
-        <div class="metric-label">Pendientes</div>
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-8">
+    @if (loading()) {
+      <div class="text-center py-16"><div class="spinner spinner-lg mx-auto"></div><p class="mt-4 text-sm text-[var(--niebla)]">Cargando solicitudes...</p></div>
+    } @else if (error()) {
+      <div class="alert alert-error p-6 text-center">
+        <p>{{ error() }}</p>
+        <button (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
-      <div class="metric-card metric-card-primary" data-reveal>
-        <div class="icon-container icon-container-sm icon-container-primary rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
-        <div class="metric-value text-[var(--peru-rojo)]">{{ vencidas() }}</div>
-        <div class="metric-label">Silencio Adm.</div>
-      </div>
-      <div class="metric-card metric-card-warning" data-reveal>
-        <div class="icon-container icon-container-sm icon-container-warning rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
-        <div class="metric-value text-[var(--estado-ambar)]">{{ urgentes() }}</div>
-        <div class="metric-label">Urgentes</div>
-      </div>
-      <div class="metric-card metric-card-success" data-reveal>
-        <div class="icon-container icon-container-sm icon-container-success rounded-lg mb-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-        <div class="metric-value text-[var(--estado-verde)]">{{ respondidas() }}</div>
-        <div class="metric-label">Respondidas</div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="card p-4 mb-5">
-      <div class="flex flex-col md:flex-row gap-3">
-        <div class="flex-1 relative">
-          <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input type="text" [(ngModel)]="busqueda" (keyup.enter)="filtrarPorEstado(filtroEstado || 'todas')" placeholder="Buscar por expediente, ciudadano o asunto..." class="input pl-10 h-11 bg-[var(--nieve)]" />
-        </div>
-        <select [(ngModel)]="filtroEstado" (change)="filtrarPorEstado(filtroEstado)" class="input h-11 md:w-[200px] bg-[var(--nieve)]">
-          <option value="">Todas</option>
-          <option value="todas">Todas</option>
-          <option value="RECEPCIONADA">Pendientes</option>
-          <option value="VENCIDA">Silencio Administrativo</option>
-          <option value="RESPONDIDA">Respondidas</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="card overflow-hidden" data-reveal>
-      <div class="border-b border-[var(--ceniza-claro)] px-5 py-4 flex items-center gap-2">
-        <div class="icon-container icon-container-sm icon-container-primary rounded-lg">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        </div>
-        <h3 class="text-[var(--carbon)] font-semibold">Solicitudes SAIP Asignadas</h3>
-      </div>
-
-      @if (loading()) {
-        <div class="text-center py-16"><div class="spinner spinner-lg mx-auto"></div><p class="mt-4 text-sm text-[var(--niebla)]">Cargando solicitudes...</p></div>
-      } @else if (solicitudes().length === 0) {
-        <div class="text-center py-16">
-          <div class="w-14 h-14 bg-[var(--nieve)] rounded-2xl flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-          <p class="text-[var(--niebla)]">No se encontraron solicitudes</p>
-        </div>
-      } @else {
-        <div class="overflow-x-auto">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Expediente</th>
-                <th>Ciudadano</th>
-                <th>Asunto</th>
-                <th>F. Límite</th>
-                <th>Días</th>
-                <th>Estado</th>
-                <th class="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (solicitud of solicitudes(); track solicitud.id) {
-                <tr [class]="getPrioridadClass(solicitud)">
-                  <td><span class="font-expediente text-sm text-[var(--carbon)]">{{ solicitud.expediente }}</span></td>
-                  <td class="text-sm text-[var(--humo)]">{{ solicitud.ciudadanoNombre }}</td>
-                  <td class="max-w-[180px]"><div class="truncate text-sm text-[var(--humo)]" [title]="solicitud.asunto">{{ solicitud.asunto }}</div></td>
-                  <td class="text-sm text-[var(--niebla)]">{{ solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}</td>
-                  <td>
-                    @if (solicitud.diasRestantes !== undefined && solicitud.diasRestantes >= 0) {
-                      <span class="text-sm font-semibold" [class]="solicitud.diasRestantes <= 3 ? 'text-[var(--estado-ambar)]' : 'text-[var(--estado-verde)]'">{{ solicitud.diasRestantes }}d</span>
-                    } @else if (solicitud.diasRestantes !== undefined && solicitud.diasRestantes < 0) {
-                      <span class="text-sm font-semibold text-[var(--estado-rojo)]">{{ -solicitud.diasRestantes }}d retraso</span>
-                    } @else {
-                      <span class="text-[var(--niebla)]">—</span>
-                    }
-                  </td>
-                  <td><span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ getEstadoDisplay(solicitud) }}</span></td>
-                  <td class="text-right">
-                    @if (solicitud.estado === 'RESPONDIDA') {
-                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]" class="text-[var(--peru-rojo)] hover:text-[var(--peru-rojo-hover)] text-sm font-medium inline-flex items-center gap-1 transition-colors">
-                        Ver <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                      </a>
-                    } @else if (canResponder(solicitud)) {
-                      <a [routerLink]="['/funcionario/responder', solicitud.expediente]" class="btn-primary h-8 px-4 text-xs">Responder</a>
-                    } @else {
-                      <a [routerLink]="['/funcionario/solicitud', solicitud.expediente]" class="text-[var(--peru-rojo)] hover:text-[var(--peru-rojo-hover)] text-sm font-medium inline-flex items-center gap-1 transition-colors">
-                        Ver <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                      </a>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+    } @else {
+      @if (counts().san > 0) {
+        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
+          <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
+          <div class="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-700); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg>
+          </div>
+          <div class="flex-1">
+            <span class="eyebrow" style="color: var(--brand-700)">Silencio administrativo negativo</span>
+            <h3 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
+              {{ counts().san }} solicitud(es) en SAN
+            </h3>
+            <p class="text-sm text-muted-foreground mt-0.5">El plazo legal vencio. Cada dia sin respuesta puede originar sancion para la entidad y derecho de apelacion del ciudadano.</p>
+          </div>
+          <button (click)="selectBucket('san')" class="btn-brand !px-5 self-center">
+            Atender ahora
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+          </button>
         </div>
       }
-    </div>
 
-    <!-- Help Card -->
-    <div class="card overflow-hidden mt-5 border-t-4 border-t-[var(--estado-azul)]" data-reveal>
-      <div class="p-5 flex items-start gap-4">
-        <div class="icon-container icon-container-sm icon-container-info rounded-lg shrink-0">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div class="mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+          <span class="eyebrow">Bandeja por SLA</span>
+          <span class="text-xs text-muted-foreground hidden md:inline">Click una columna para enfocar</span>
         </div>
-        <div>
-          <h3 class="font-semibold text-[var(--carbon)] mb-1">Información Importante</h3>
-          <p class="text-sm text-[var(--niebla)]">Las solicitudes SAIP deben ser respondidas en un plazo máximo de 10 días hábiles. Las solicitudes vencidas pueden generar sanciones para la entidad.</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+          @for (bucket of buckets; track bucket.key) {
+            <button (click)="selectBucket(bucket.key)" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="selectedBucket() === bucket.key ? bucket.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedBucket() === bucket.key ? bucket.color : 'var(--border)')" [style.boxShadow]="selectedBucket() === bucket.key ? '0 0 0 3px ' + bucket.bg : 'none'">
+              @if (selectedBucket() === bucket.key) {
+                <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="bucket.color"></span>
+              }
+
+              <div class="flex items-start justify-between mb-2">
+                @switch (bucket.icon) {
+                  @case ('alert') { <svg class="w-4 h-4" [style.color]="bucket.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg> }
+                  @case ('flame') { <svg class="w-4 h-4" [style.color]="bucket.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8.5 14.5A2.5 2.5 0 0 0 11 17h2a2.5 2.5 0 0 0 2.5-2.5c0-1.38-.7-2.06-1.4-2.74-.68-.67-1.35-1.33-1.35-2.64V7c-2.9 1-4.25 3.26-4.25 5.5Z"/><path stroke-width="2" d="M12 2s5 2 5 8a5 5 0 0 1-10 0c0-5 5-8 5-8Z"/></svg> }
+                  @case ('calendar') { <svg class="w-4 h-4" [style.color]="bucket.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><path stroke-width="2" d="M16 2v4M8 2v4M3 10h18"/></svg> }
+                  @case ('check') { <svg class="w-4 h-4" [style.color]="bucket.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg> }
+                  @default { <svg class="w-4 h-4" [style.color]="bucket.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg> }
+                }
+                @if (selectedBucket() === bucket.key) {
+                  <span class="w-2 h-2 rounded-full" [style.background]="bucket.color"></span>
+                }
+              </div>
+
+              <div class="font-display" [style.color]="counts()[bucket.key] > 0 ? bucket.color : 'var(--muted-foreground)'" style="font-size: 30px; line-height: 1; letter-spacing: -0.025em">{{ counts()[bucket.key].toString().padStart(2, '0') }}</div>
+              <div class="text-xs font-semibold mt-2" [style.color]="selectedBucket() === bucket.key ? bucket.color : 'var(--foreground)'">{{ bucket.label }}</div>
+              <div class="text-[10px] tracking-wide text-muted-foreground mt-0.5">{{ bucket.eyebrow }}</div>
+            </button>
+          }
         </div>
       </div>
-    </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-8">
+          <div class="form-shell">
+            <div class="form-section-header flex items-center gap-3">
+              <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="bucketActivoMeta().bg" [style.border]="'1px solid ' + bucketActivoMeta().color">
+                @switch (bucketActivoMeta().icon) {
+                  @case ('alert') { <svg class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg> }
+                  @case ('flame') { <svg class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 2s5 2 5 8a5 5 0 0 1-10 0c0-5 5-8 5-8Z"/></svg> }
+                  @case ('calendar') { <svg class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/></svg> }
+                  @case ('check') { <svg class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4"/></svg> }
+                  @default { <svg class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg> }
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="eyebrow">Bandeja enfocada</span>
+                <div class="font-display" style="font-size: 19px; letter-spacing: -0.015em">
+                  {{ bucketActivoMeta().label }}
+                  <span class="font-mono text-muted-foreground" style="font-size: 14px; margin-left: 8px">· {{ filtradas().length }}</span>
+                </div>
+              </div>
+
+              <div class="relative max-w-[260px] flex-1 hidden md:block">
+                <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/></svg>
+                <input class="field-input pl-9 !py-2 !text-sm" placeholder="Buscar..." [(ngModel)]="busquedaModel" />
+              </div>
+            </div>
+
+            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar">
+              @if (filtradas().length === 0) {
+                <div class="text-center py-12">
+                  <div class="w-12 h-12 mx-auto mb-3 rounded-lg flex items-center justify-center" style="background: var(--brand-subtle)">
+                    <svg class="w-5 h-5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>
+                  </div>
+                  <p class="text-sm text-foreground/85 font-medium">Sin solicitudes en esta bandeja</p>
+                  <p class="text-xs text-muted-foreground mt-1">Disfrute la calma o explore otra cola arriba.</p>
+                </div>
+              } @else {
+                @for (item of filtradas(); track item.solicitud.id) {
+                  <div class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand-600)">
+                    <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
+
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="code-chip">{{ item.solicitud.expediente }}</span>
+                        <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad.toUpperCase() }}</span>
+                        <span [class]="'badge ' + getEstadoBadgeClass(item.solicitud.estado)">{{ getEstadoDisplay(item.solicitud) }}</span>
+                      </div>
+
+                      <div class="text-sm font-medium text-foreground mt-1.5 truncate" [title]="item.solicitud.asunto">{{ item.solicitud.asunto }}</div>
+                      <div class="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                        <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4" stroke-width="2"/></svg>
+                        {{ item.solicitud.ciudadanoNombre }} · <span class="font-mono">{{ item.tema }}</span> · presentada {{ item.solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}
+                      </div>
+                    </div>
+
+                    @if (item.bucket !== 'respondidas') {
+                      <div class="hidden md:flex flex-col items-end gap-1.5 min-w-[110px]">
+                        <div class="text-right">
+                          <div class="font-display" [style.color]="getDiasColor(item.bucket)" style="font-size: 22px; line-height: 1; letter-spacing: -0.02em">
+                            {{ getDiasValor(item) }}
+                          </div>
+                          <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">
+                            {{ item.bucket === 'san' ? 'en SAN' : 'restantes' }}
+                          </div>
+                        </div>
+                      </div>
+                    }
+
+                    @if (canResponder(item.solicitud)) {
+                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 2 11 13"/><path stroke-width="2" d="m22 2-7 20-4-9-9-4Z"/></svg>
+                        Responder
+                      </a>
+                    } @else {
+                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
+                        Ver
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                      </a>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+
+        <aside class="lg:col-span-4 space-y-5">
+          <div class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow flex items-center gap-2">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>
+                Distribucion de carga
+              </span>
+              <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos proximos</div>
+            </div>
+            <div class="p-4 space-y-1.5">
+              @for (row of distribucionDias(); track row.dia) {
+                <div class="flex items-center gap-2.5">
+                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia === 0 ? 'hoy' : row.dia + 'd' }}</span>
+                  <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: var(--muted)">
+                    <div class="h-full rounded-full transition-all" [style.width.%]="row.width" [style.background]="row.count === 0 ? 'var(--border-strong)' : row.color" [style.opacity]="row.count === 0 ? 0.4 : 1"></div>
+                  </div>
+                  <span class="font-mono text-[11px] w-5 text-right" [style.color]="row.count > 0 ? row.color : 'var(--muted-foreground)'">{{ row.count }}</span>
+                </div>
+              }
+              <p class="text-[11px] text-muted-foreground pt-3 border-t border-border mt-3">
+                Vencimientos por dias habiles restantes.
+              </p>
+            </div>
+          </div>
+
+          @if (topTemas().length > 0) {
+            <div class="form-shell">
+              <div class="form-section-header">
+                <span class="eyebrow flex items-center gap-2">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h14M12 5v14"/></svg>
+                  Oportunidad
+                </span>
+                <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Temas para batch</div>
+              </div>
+              <div class="p-4 space-y-2.5">
+                @for (tema of topTemas(); track tema[0]) {
+                  <div>
+                    <div class="flex items-baseline justify-between mb-1">
+                      <span class="text-xs text-foreground/85">{{ tema[0] }}</span>
+                      <span class="font-mono text-[10px] text-muted-foreground">{{ tema[1] }} sol.</span>
+                    </div>
+                    <div class="h-1 rounded-full overflow-hidden" style="background: var(--muted)">
+                      <div class="h-full rounded-full" [style.width.%]="(tema[1] / topTemas()[0][1]) * 100" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
+                    </div>
+                  </div>
+                }
+                <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
+                  Considere preparar respuestas tipo para los temas recurrentes.
+                </p>
+              </div>
+            </div>
+          }
+
+          <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+            <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
+            <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
+              <li><span class="font-mono font-semibold">10 dias habiles</span> para responder · Ley N 27806.</li>
+              <li>Vencido el plazo aplica <span class="font-semibold">silencio administrativo negativo</span>.</li>
+              <li>El ciudadano puede apelar en <span class="font-mono font-semibold">15 dias calendario</span> ante el Tribunal.</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    }
   </div>
 </div>
