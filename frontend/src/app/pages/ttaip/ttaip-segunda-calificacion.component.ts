@@ -4,7 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
-import { Apelacion } from '../../models/apelacion.model';
+import { LocalStateOverrideService } from '../../services/local-state-override.service';
+import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
+import {
+  ReferenceConfirmModalComponent,
+  ReferenceConfirmSummary,
+  ReferenceConfirmWarning
+} from '../../shared/reference-confirm-modal.component';
+import {
+  ReferenceSuccessMeta,
+  ReferenceSuccessModalComponent,
+  ReferenceSuccessNextStep,
+  ReferenceSuccessTone
+} from '../../shared/reference-success-modal.component';
 
 type SegundaDecision = 'admitido' | 'improcedente';
 type SegundaTab = 'subsanacion' | 'adjuntos';
@@ -18,7 +30,7 @@ interface SegundaOption {
 
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
   templateUrl: './ttaip-segunda-calificacion.component.html',
   styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,12 +40,16 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
+  private readonly localStateOverride = inject(LocalStateOverrideService);
+  private readonly segundaCalificacionEstados = new Set<string>(['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION']);
 
   apelacion = signal<Apelacion | null>(null);
   loading = signal<boolean>(false);
   loadingApelacion = signal<boolean>(true);
   error = signal<string>('');
   mensaje = signal<string>('');
+  confirmModalAbierto = signal<boolean>(false);
+  successModalAbierto = signal<boolean>(false);
 
   activeTab = signal<SegundaTab>('subsanacion');
   selectedDecision = signal<SegundaDecision | null>(null);
@@ -66,9 +82,11 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     return this.options.find((option) => option.id === current);
   });
 
-  readonly canSubmit = computed<boolean>(() => {
-    return !!this.selectedDecision() && this.fundamentos.trim().length > 0;
-  });
+  canSubmit(): boolean {
+    return this.puedeEmitirSegundaCalificacion()
+      && !!this.selectedDecision()
+      && this.fundamentos.trim().length > 0;
+  }
 
   readonly documentosSubsanacion = computed(() => {
     return this.apelacion()?.documentosSubsanacion ?? [];
@@ -93,7 +111,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     this.loadingApelacion.set(true);
     this.apelacionService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        this.apelacion.set(data);
+        this.apelacion.set(this.applyLocalEstado(data));
         this.loadingApelacion.set(false);
       },
       error: () => {
@@ -108,6 +126,10 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   }
 
   seleccionarDecision(decision: SegundaDecision): void {
+    if (!this.puedeEmitirSegundaCalificacion()) {
+      return;
+    }
+
     this.selectedDecision.set(decision);
     this.error.set('');
   }
@@ -171,25 +193,23 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     ];
   }
 
+  abrirConfirmacionCalificacion(): void {
+    if (!this.validarSegundaCalificacion()) {
+      return;
+    }
+
+    this.confirmModalAbierto.set(true);
+  }
+
   enviarCalificacion(): void {
     const currentAppeal = this.apelacion();
     const decision = this.selectedDecision();
 
-    if (!currentAppeal) {
-      this.error.set('No se encontro la apelacion para evaluar.');
+    if (!this.validarSegundaCalificacion() || !currentAppeal || !decision) {
       return;
     }
 
-    if (!decision) {
-      this.error.set('Debe seleccionar una decision de segunda calificacion.');
-      return;
-    }
-
-    if (!this.fundamentos.trim()) {
-      this.error.set('Los fundamentos son obligatorios.');
-      return;
-    }
-
+    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
 
@@ -197,7 +217,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
       this.ttaipService.admitirApelacion(currentAppeal.id, {
         fundamentos: this.fundamentos.trim()
       }).subscribe({
-        next: () => this.handleSuccess('Apelacion declarada ADMITIDA A TRAMITE.'),
+        next: (updated) => this.handleSuccess('Apelacion declarada ADMITIDA A TRAMITE.', updated, 'EN_RESOLUCION'),
         error: (err) => this.handleError(err)
       });
       return;
@@ -206,20 +226,174 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     this.ttaipService.inadmitirApelacion(currentAppeal.id, {
       fundamentos: this.fundamentos.trim()
     }).subscribe({
-      next: () => this.handleSuccess('Apelacion declarada IMPROCEDENTE.'),
+      next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated, 'RESUELTO_IMPROCEDENTE'),
       error: (err) => this.handleError(err)
     });
   }
 
-  private handleSuccess(message: string): void {
+  private handleSuccess(message: string, updated?: Apelacion, nextEstado?: EstadoApelacion): void {
+    const nextAppeal = updated ?? this.apelacion();
+    if (nextAppeal) {
+      const resolved = nextEstado ? { ...nextAppeal, estado: nextEstado } : nextAppeal;
+      this.apelacion.set(resolved);
+      this.localStateOverride.setApelacionEstado(resolved, resolved.estado);
+    }
+
     this.loading.set(false);
     this.mensaje.set(message);
-    setTimeout(() => this.router.navigate(['/ttaip']), 2000);
+    this.successModalAbierto.set(true);
+  }
+
+  private applyLocalEstado(apelacion: Apelacion): Apelacion {
+    if (this.isEstadoResuelto(apelacion.estado)) {
+      return apelacion;
+    }
+
+    const overridden = this.localStateOverride.getApelacionEstado(apelacion);
+    if (!overridden || this.estadoRank(overridden) < this.estadoRank(apelacion.estado)) {
+      return apelacion;
+    }
+
+    return { ...apelacion, estado: overridden as EstadoApelacion };
+  }
+
+  private isEstadoResuelto(estado?: string): boolean {
+    const normalized = this.normalizeEstado(estado);
+    return normalized.startsWith('RESUELTO')
+      || normalized.startsWith('CONCLUSION')
+      || normalized === 'TENER_POR_NO_PRESENTADO';
+  }
+
+  private estadoRank(estado?: string): number {
+    const normalized = this.normalizeEstado(estado);
+    const ranks: Record<string, number> = {
+      PENDIENTE_ELEVACION: 0,
+      EN_CALIFICACION_1: 1,
+      EN_SUBSANACION: 2,
+      EN_CALIFICACION_2: 3,
+      NOTIFICACION_SEGUNDA_CALIFICACION: 4,
+      EN_RESOLUCION: 5
+    };
+
+    return this.isEstadoResuelto(normalized) ? 6 : ranks[normalized] ?? 0;
   }
 
   private handleError(err: unknown): void {
     this.loading.set(false);
     const apiError = err as { error?: { mensaje?: string } };
     this.error.set(apiError.error?.mensaje || 'Error al procesar la segunda calificacion.');
+  }
+
+  segundaConfirmSummary(): ReferenceConfirmSummary[] {
+    const selected = this.selectedOption();
+    return [
+      { label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true },
+      { label: 'Resultado', value: selected?.label || '—' },
+      { label: 'Efecto', value: selected?.description || '—' },
+      { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }
+    ];
+  }
+
+  segundaWarning(): ReferenceConfirmWarning {
+    return {
+      label: 'Decisión final',
+      detail: 'Si declara improcedente, el expediente quedará archivado. Si admite a trámite, pasa a Resolución Final.'
+    };
+  }
+
+  segundaSuccessTone(): ReferenceSuccessTone {
+    return this.selectedDecision() === 'admitido' ? 'success' : 'brand';
+  }
+
+  segundaSuccessTitle(): string {
+    return this.selectedDecision() === 'admitido'
+      ? 'Subsanación ADMITIDA A TRÁMITE'
+      : 'Recurso declarado IMPROCEDENTE';
+  }
+
+  segundaSuccessDescription(): string {
+    return this.selectedDecision() === 'admitido'
+      ? 'La subsanación cumple los requisitos. El expediente avanza a Resolución Final donde el Tribunal se pronunciará sobre el fondo.'
+      : 'La subsanación resulta insuficiente. El proceso queda archivado y se notifica al ciudadano.';
+  }
+
+  segundaPlazoDias(): number | null {
+    return this.selectedDecision() === 'admitido' ? 10 : null;
+  }
+
+  segundaPlazoDescripcion(): string {
+    return this.selectedDecision() === 'admitido'
+      ? 'Plazo en que el Tribunal emitirá Resolución Final.'
+      : '';
+  }
+
+  segundaSuccessMetadata(): ReferenceSuccessMeta[] {
+    const docsCount = this.documentosSubsanacion().length || this.getFallbackSubsanacionDocs().length;
+    return [
+      { label: 'Decisión', value: this.selectedDecision() === 'admitido' ? 'ADMITIDO A TRÁMITE' : 'IMPROCEDENTE' },
+      { label: 'Docs revisados', value: `${docsCount} archivos` },
+      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
+      { label: 'Secretaría', value: 'TTAIP' }
+    ];
+  }
+
+  segundaNextSteps(): ReferenceSuccessNextStep[] {
+    if (this.selectedDecision() === 'admitido') {
+      return [
+        { label: 'Notificación al ciudadano y a la entidad emplazada.' },
+        { label: 'El expediente avanza a Resolución Final.', hint: '10 días hábiles' },
+        { label: 'La sala emitirá fallo: FUNDADO o INFUNDADO.' }
+      ];
+    }
+
+    return [
+      { label: 'Se notifica al ciudadano la improcedencia.' },
+      { label: 'El expediente queda archivado.' }
+    ];
+  }
+
+  irPanelTtaip(): void {
+    this.successModalAbierto.set(false);
+    this.router.navigate(['/ttaip']);
+  }
+
+  puedeEmitirSegundaCalificacion(): boolean {
+    return this.segundaCalificacionEstados.has(this.normalizeEstado(this.apelacion()?.estado));
+  }
+
+  getEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  private validarSegundaCalificacion(): boolean {
+    const currentAppeal = this.apelacion();
+    const decision = this.selectedDecision();
+
+    if (!currentAppeal) {
+      this.error.set('No se encontro la apelacion para evaluar.');
+      return false;
+    }
+
+    if (!this.puedeEmitirSegundaCalificacion()) {
+      this.error.set(`Esta apelacion ya no se encuentra en segunda calificacion. Estado actual: ${this.getEstadoDisplay(currentAppeal.estado)}.`);
+      return false;
+    }
+
+    if (!decision) {
+      this.error.set('Debe seleccionar una decision de segunda calificacion.');
+      return false;
+    }
+
+    if (!this.fundamentos.trim()) {
+      this.error.set('Los fundamentos son obligatorios.');
+      return false;
+    }
+
+    this.error.set('');
+    return true;
+  }
+
+  private normalizeEstado(value: string | undefined | null): string {
+    return (value || '').trim().toUpperCase().replaceAll(' ', '_');
   }
 }
