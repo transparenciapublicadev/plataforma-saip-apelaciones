@@ -1,16 +1,22 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  LucideAlertTriangle,
+  LucideArchive,
   LucideArrowRight,
-  LucideBookOpen,
   LucideBuilding2,
+  LucideCalendar,
+  LucideCheckCircle2,
+  LucideClock,
+  LucideEye,
+  LucideFileCheck,
   LucideFileText,
   LucideGavel,
-  LucideLock,
+  LucideMail,
   LucideScale,
   LucideSearch,
-  LucideSend,
   LucideShield,
+  LucideXCircle,
 } from '@lucide/angular';
 
 interface TimelineEvent {
@@ -18,7 +24,7 @@ interface TimelineEvent {
   description: string;
   date: string;
   status: 'completed' | 'current' | 'pending';
-  icon: 'send' | 'search' | 'file' | 'gavel' | 'scale' | 'book';
+  icon: 'mail' | 'search' | 'filecheck' | 'gavel' | 'scale' | 'check';
 }
 
 interface ConsultaResultado {
@@ -44,24 +50,24 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
     timeline: [
       {
         title: 'Solicitud presentada',
-        description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
+        description: 'La SAIP fue registrada exitosamente.',
         date: '15/10/2025',
         status: 'completed',
-        icon: 'send',
+        icon: 'mail',
       },
       {
         title: 'En evaluacion',
-        description: 'La entidad esta evaluando la solicitud dentro del plazo legal.',
+        description: 'La entidad evalua la solicitud (10 dias hab.).',
         date: '16/10/2025',
         status: 'current',
         icon: 'search',
       },
       {
-        title: 'Respuesta de entidad',
-        description: 'Pendiente de respuesta por parte de la entidad.',
+        title: 'Respuesta',
+        description: 'Pendiente de respuesta de la entidad.',
         date: 'Pendiente',
         status: 'pending',
-        icon: 'file',
+        icon: 'filecheck',
       },
     ],
   },
@@ -76,10 +82,10 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
     timeline: [
       {
         title: 'Solicitud presentada',
-        description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
+        description: 'La SAIP fue registrada.',
         date: '02/10/2025',
         status: 'completed',
-        icon: 'send',
+        icon: 'mail',
       },
       {
         title: 'En evaluacion',
@@ -90,10 +96,10 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
       },
       {
         title: 'Respuesta emitida',
-        description: 'La entidad entrego la informacion solicitada.',
+        description: 'La entidad respondio con la informacion.',
         date: '12/10/2025',
         status: 'completed',
-        icon: 'file',
+        icon: 'filecheck',
       },
     ],
   },
@@ -108,14 +114,14 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
     timeline: [
       {
         title: 'Solicitud presentada',
-        description: 'La solicitud SAIP fue registrada correctamente en el sistema.',
+        description: 'La SAIP fue registrada.',
         date: '15/09/2025',
         status: 'completed',
-        icon: 'send',
+        icon: 'mail',
       },
       {
-        title: 'Denegatoria de entidad',
-        description: 'La entidad denego el acceso invocando excepcion legal.',
+        title: 'Solicitud denegada',
+        description: 'Excepcion de confidencialidad tributaria.',
         date: '25/09/2025',
         status: 'completed',
         icon: 'search',
@@ -128,18 +134,18 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
         icon: 'gavel',
       },
       {
-        title: 'En evaluacion por TTAIP',
+        title: 'En evaluacion TTAIP',
         description: 'El tribunal esta evaluando la apelacion presentada.',
         date: '05/10/2025',
         status: 'current',
         icon: 'scale',
       },
       {
-        title: 'Resolucion final',
+        title: 'Resolucion',
         description: 'Pendiente de emision de resolucion por parte del tribunal.',
         date: 'Pendiente',
         status: 'pending',
-        icon: 'book',
+        icon: 'check',
       },
     ],
   },
@@ -150,16 +156,22 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    LucideAlertTriangle,
+    LucideArchive,
     LucideArrowRight,
-    LucideBookOpen,
     LucideBuilding2,
+    LucideCalendar,
+    LucideCheckCircle2,
+    LucideClock,
+    LucideEye,
+    LucideFileCheck,
     LucideFileText,
     LucideGavel,
-    LucideLock,
+    LucideMail,
     LucideScale,
     LucideSearch,
-    LucideSend,
     LucideShield,
+    LucideXCircle,
   ],
   templateUrl: './consultar.component.html',
 })
@@ -201,7 +213,7 @@ export class ConsultarComponent {
 
   estadoEtiqueta(estado: ConsultaResultado['estado']): string {
     if (estado === 'EN_PROCESO') {
-      return 'En proceso';
+      return 'En Proceso';
     }
     if (estado === 'RESPONDIDA') {
       return 'Respondida';
@@ -237,23 +249,37 @@ export class ConsultarComponent {
     return 'badge bg-[var(--muted)] text-[var(--niebla)] border border-[var(--ceniza-claro)]';
   }
 
-  timelineClass(status: TimelineEvent['status']): string {
-    if (status === 'completed') {
-      return 'bg-[var(--estado-verde)]';
+  statusIconColor(estado: ConsultaResultado['estado']): string {
+    if (estado === 'EN_PROCESO') {
+      return 'var(--info)';
     }
-    if (status === 'current') {
-      return 'bg-[var(--peru-rojo)] animate-pulse';
+    if (estado === 'RESPONDIDA') {
+      return 'var(--success)';
     }
-    return 'bg-[var(--ceniza)]';
+    if (estado === 'APELADA') {
+      return 'var(--gold)';
+    }
+    if (estado === 'DENEGADA') {
+      return 'var(--brand-700)';
+    }
+    return 'var(--muted-foreground)';
   }
 
-  timelineIconClass(status: TimelineEvent['status']): string {
-    if (status === 'completed') {
-      return 'text-[var(--estado-verde)]';
-    }
-    if (status === 'current') {
-      return 'text-[var(--peru-rojo)]';
-    }
-    return 'text-[var(--niebla)]';
+  timelineIconShellClass(item: TimelineEvent): string {
+    return `reference-timeline-icon ${item.status} icon-${item.icon}`;
+  }
+
+  timelineCardClass(status: TimelineEvent['status']): string {
+    return `reference-timeline-card ${status}`;
+  }
+
+  timelineDateClass(status: TimelineEvent['status']): string {
+    return `reference-timeline-date ${status}`;
+  }
+
+  timelineLineClass(status: TimelineEvent['status']): string {
+    return status === 'completed'
+      ? 'reference-timeline-line completed'
+      : 'reference-timeline-line';
   }
 }

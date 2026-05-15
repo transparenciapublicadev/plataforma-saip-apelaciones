@@ -395,8 +395,8 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
 
       const exitAnimation = detail.animate(
         [
-          { opacity: 1, transform: 'translateY(0)' },
-          { opacity: 0, transform: 'translateY(-8px)' },
+          { opacity: 1, transform: 'translateY(0) scale(1)' },
+          { opacity: 0, transform: 'translateY(-8px) scale(0.992)' },
         ],
         {
           duration: 150,
@@ -415,12 +415,13 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
           const nextDetail = this.el.nativeElement.querySelector('[data-member-detail]') as HTMLElement | null;
           nextDetail?.animate(
             [
-              { opacity: 0, transform: 'translateY(16px)' },
-              { opacity: 1, transform: 'translateY(0)' },
+              { opacity: 0, transform: 'translateY(16px) scale(0.985)' },
+              { opacity: 1, transform: 'translateY(-2px) scale(1.003)', offset: 0.72 },
+              { opacity: 1, transform: 'translateY(0) scale(1)' },
             ],
             {
               duration: 420,
-              easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
               fill: 'both',
             }
           );
@@ -481,6 +482,14 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
 
   get selectedMemberData(): Miembro {
     return this.miembros.find((member) => member.id === this.selectedMemberId) ?? this.miembros[0];
+  }
+
+  memberFirstName(member: Miembro): string {
+    return member.nombre.split(' ').filter(Boolean)[0] ?? member.nombre;
+  }
+
+  memberNameRest(member: Miembro): string {
+    return member.nombre.split(' ').filter(Boolean).slice(1).join(' ');
   }
 
   ngAfterViewInit(): void {
