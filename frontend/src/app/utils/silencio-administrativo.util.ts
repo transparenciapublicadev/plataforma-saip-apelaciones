@@ -39,5 +39,10 @@ export function canSendManualResponse(context: SolicitudSilencioContext | null |
     return false;
   }
 
+  const estado = (context.estado ?? '').toUpperCase();
+  if (estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA') {
+    return false;
+  }
+
   return !context.respuesta?.tipoRespuesta;
 }
