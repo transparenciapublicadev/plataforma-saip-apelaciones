@@ -1,20 +1,20 @@
 <div class="min-h-screen bg-background">
   @if (loading()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="form-shell p-16 text-center">
         <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p class="mt-4 text-muted-foreground">Cargando solicitud...</p>
       </div>
     </div>
   } @else if (error()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
         <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
       </div>
     </div>
   } @else if (solicitud(); as sol) {
     <div class="relative bg-paper border-b border-border overflow-hidden">
-      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
         <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
           Volver al panel
@@ -48,7 +48,7 @@
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
       @if (isUrgente()) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           </div>
@@ -59,8 +59,8 @@
         </div>
       }
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="stat-card">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
+        <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
@@ -69,7 +69,7 @@
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--warning)"></span>
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-4 h-4" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
@@ -78,7 +78,7 @@
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-4 h-4" [style.color]="getDiasRestantesColor()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -87,7 +87,7 @@
           <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--brand-700)"></span>
           <div class="flex items-center gap-2 mb-2">
             <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 12a5 5 0 1 0-10 0v7h10v-7zm-5-8a4 4 0 0 0-4 4v4h8V8a4 4 0 0 0-4-4z" /></svg>
@@ -97,7 +97,7 @@
         </div>
       </div>
 
-      <div class="form-shell">
+      <div class="form-shell" data-reveal>
         <div class="flex border-b overflow-x-auto" style="border-color: var(--border)">
           @for (tab of tabs(); track tab.id) {
             <button
@@ -116,7 +116,7 @@
 
         @if (activeTab() === 'respuesta') {
           @if (puedeVerRespuesta()) {
-            <div class="p-6 md:p-8 space-y-5">
+            <div class="p-6 md:p-8 space-y-5 animate-fade-in">
               <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="'var(--brand-subtle)'" [style.border]="'1px solid var(--brand-200)'" [style.border-left]="'3px solid ' + getRespuestaAccentColor()">
                 <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="getRespuestaAccentColor()">
                   <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
@@ -176,7 +176,7 @@
         }
 
         @if (activeTab() === 'solicitud') {
-          <div class="p-6 md:p-8 space-y-5">
+          <div class="p-6 md:p-8 space-y-5 animate-fade-in">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <span class="eyebrow">Expediente</span>
@@ -210,7 +210,7 @@
         }
 
         @if (activeTab() === 'ciudadano') {
-          <div class="p-6 md:p-8 space-y-5">
+          <div class="p-6 md:p-8 space-y-5 animate-fade-in">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-base font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
                 {{ getInitials(sol.ciudadanoNombre) }}
@@ -236,9 +236,9 @@
 
         @if (activeTab() === 'adjuntos') {
           @if (sol.documentos && sol.documentos.length > 0) {
-            <div class="p-6 md:p-8 space-y-3">
+            <div class="p-6 md:p-8 space-y-3 animate-fade-in">
               @for (doc of sol.documentos; track doc.id || doc.nombreArchivo) {
-                <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                <div data-table-row class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
@@ -263,10 +263,10 @@
         }
 
         @if (activeTab() === 'historial') {
-          <div class="p-6 md:p-8">
+          <div class="p-6 md:p-8 animate-fade-in">
             <div class="space-y-5">
               @for (item of historialItems(); track item.accion + item.fecha) {
-                <div class="relative pl-7 pb-5 last:pb-0" style="border-left: 1px dashed var(--border)">
+                <div data-table-row class="relative pl-7 pb-5 last:pb-0" style="border-left: 1px dashed var(--border)">
                   <span class="absolute left-[-7px] top-1 w-3.5 h-3.5 rounded-full ring-4" [style.background]="getHistorialColorClass(item.color)" [style.box-shadow]="'0 0 0 4px var(--brand-50)'"></span>
                   <div class="flex items-baseline gap-2 flex-wrap">
                     <span class="text-sm font-semibold text-foreground">{{ item.accion }}</span>
@@ -282,7 +282,7 @@
       </div>
 
       @if (sol.apelacion?.expediente) {
-        <div class="form-shell">
+        <div class="form-shell" data-reveal>
           <div class="form-section-header">
             <span class="eyebrow">TTAIP</span>
             <h3 class="form-section-title flex items-center gap-2">

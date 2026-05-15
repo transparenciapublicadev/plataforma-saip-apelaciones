@@ -2,16 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import { RouterLink } from '@angular/router';
 import {
   LucideArrowRight,
-  LucideBuilding2,
   LucideChevronDown,
+  LucideClock,
   LucideFileText,
   LucideHelpCircle,
+  LucideMapPin,
   LucideMail,
   LucidePhone,
   LucideScale,
   LucideSearch,
   LucideShield,
-  LucideZap,
 } from '@lucide/angular';
 
 interface FaqItem {
@@ -22,7 +22,7 @@ interface FaqItem {
 interface FaqCategory {
   id: string;
   title: string;
-  icon: 'file' | 'scale' | 'process' | 'shield';
+  icon: 'file' | 'scale' | 'clock' | 'shield';
   accent: string;
   questions: FaqItem[];
 }
@@ -35,90 +35,90 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     accent: 'var(--brand-700)',
     questions: [
       {
-        question: 'Que es una solicitud SAIP?',
+        question: '¿Qué es una solicitud SAIP?',
         answer:
-          'Es el mecanismo formal para solicitar informacion a una entidad publica conforme a la Ley N. 27806.',
+          'Una Solicitud de Acceso a la Información Pública (SAIP) es el mecanismo formal mediante el cual cualquier ciudadano puede solicitar información a una entidad del Estado peruano, en ejercicio del derecho fundamental reconocido por la Constitución y la Ley N° 27806.',
       },
       {
-        question: 'Que informacion puedo solicitar?',
+        question: '¿Qué información puedo solicitar?',
         answer:
-          'Documentos, contratos, presupuestos, informes y actas en poder de entidades publicas, salvo excepciones legales.',
+          'Puede solicitar cualquier información que posea o produzca una entidad pública, salvo aquella que haya sido clasificada como secreta, reservada o confidencial conforme a ley. Esto incluye documentos, contratos, presupuestos, informes y actas.',
       },
       {
-        question: 'Como presento una SAIP?',
+        question: '¿Cómo presento una solicitud SAIP?',
         answer:
-          'Registre su cuenta, seleccione entidad, describa el pedido, adjunte sustento y envie el formulario digital.',
+          'Regístrese en la plataforma con su DNI, complete el formulario indicando la entidad, el asunto y la descripción detallada de la información que solicita; seleccione el formato de respuesta deseado y envíe.',
       },
       {
-        question: 'Cuanto tiempo tiene la entidad para responder?',
+        question: '¿Cuánto cuesta presentar una SAIP?',
         answer:
-          'El plazo maximo es de 10 dias habiles desde el dia habil siguiente a la recepcion de la solicitud.',
+          'La presentación es completamente gratuita. La reproducción (copias, CDs, etc.) puede tener un costo que corresponde únicamente al costo de reproducción.',
       },
       {
-        question: 'La presentacion tiene costo?',
+        question: '¿Cuánto tiempo tiene la entidad para responder?',
         answer:
-          'La solicitud es gratuita. Solo puede cobrarse el costo de reproduccion cuando corresponda.',
+          'La entidad tiene un plazo máximo de 10 días hábiles para responder, contados desde el día siguiente de su presentación. Puede prorrogarse 5 días hábiles adicionales de manera excepcional.',
       },
     ],
   },
   {
     id: 'apelaciones',
-    title: 'Apelaciones TTAIP',
+    title: 'Apelaciones',
     icon: 'scale',
     accent: 'var(--gold-dark)',
     questions: [
       {
-        question: 'Cuando puedo apelar?',
+        question: '¿Cuándo puedo presentar una apelación?',
         answer:
-          'Cuando hay denegatoria expresa o silencio administrativo. El plazo es de 15 dias calendario.',
+          'Cuando la entidad deniega total o parcialmente su solicitud, o cuando no responde dentro del plazo (silencio administrativo negativo). Plazo: 15 días calendario desde la notificación o vencimiento.',
       },
       {
-        question: 'Que documentos necesito para apelar?',
+        question: '¿Qué documentos necesito para apelar?',
         answer:
-          'Solicitud SAIP, respuesta de la entidad (o silencio) y fundamentos del recurso con adjuntos pertinentes.',
+          'Tres documentos: (1) copia de la SAIP presentada, (2) copia de la respuesta denegatoria (o declaración jurada en silencio administrativo) y (3) escrito fundamentado del recurso.',
       },
       {
-        question: 'Quien resuelve la apelacion?',
+        question: '¿Quién resuelve las apelaciones?',
         answer:
-          'El Tribunal de Transparencia y Acceso a la Informacion Publica (TTAIP) en segunda instancia.',
+          'El Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), órgano colegiado autónomo del Ministerio de Justicia y Derechos Humanos.',
       },
       {
-        question: 'Cuanto demora una apelacion?',
+        question: '¿Cuánto demora la resolución?',
         answer:
-          'El TTAIP resuelve en 10 dias habiles luego de la etapa de admision y actuaciones previas.',
+          'El TTAIP tiene 10 días hábiles para resolver. El proceso completo (calificación, posible subsanación y resolución final) puede tomar entre 15 y 30 días hábiles.',
       },
       {
-        question: 'Que resultados puede tener mi apelacion?',
+        question: '¿Qué resultados puede tener mi apelación?',
         answer:
-          'Fundado, fundado en parte, infundado, improcedente o conclusiones especiales conforme a normativa.',
+          'Fundada (se ordena entregar la información), Infundada (se confirma la denegación) o Improcedente (no cumple requisitos formales).',
       },
     ],
   },
   {
     id: 'proceso',
     title: 'Proceso y plazos',
-    icon: 'process',
+    icon: 'clock',
     accent: 'var(--info)',
     questions: [
       {
-        question: 'Que es la subsanacion?',
+        question: '¿Qué es la subsanación?',
         answer:
-          'Cuando faltan requisitos, el tribunal solicita subsanar para continuar con la evaluacion del recurso.',
+          'Cuando la apelación tiene defectos formales, el TTAIP otorga 2 días hábiles para subsanar las observaciones. Si no se subsana, la apelación se archiva.',
       },
       {
-        question: 'Como se calculan los dias habiles?',
+        question: '¿Cómo se calculan los días hábiles?',
         answer:
-          'De lunes a viernes, excluyendo feriados. El conteo inicia desde el dia habil siguiente al acto que corresponda.',
+          'De lunes a viernes, excluyendo feriados nacionales y días no laborables del sector público. El conteo inicia desde el día siguiente a la notificación.',
       },
       {
-        question: 'Puedo dar seguimiento sin iniciar sesion?',
+        question: '¿Puedo dar seguimiento a mi solicitud?',
         answer:
-          'Si. La consulta publica permite revisar estado y trazabilidad basica con el numero de expediente SAIP.',
+          'Sí. La plataforma permite seguimiento en tiempo real. También puede consultar de forma pública con el número de expediente, sin iniciar sesión.',
       },
       {
-        question: 'Que pasa si la entidad no responde?',
+        question: '¿Qué pasa si la entidad no responde a tiempo?',
         answer:
-          'Se configura silencio administrativo negativo y usted puede presentar apelacion ante el TTAIP.',
+          'Se configura el silencio administrativo negativo (denegación tácita). Puede presentar su apelación ante el TTAIP.',
       },
     ],
   },
@@ -129,19 +129,19 @@ const FAQ_CATEGORIES: FaqCategory[] = [
     accent: 'var(--success)',
     questions: [
       {
-        question: 'Necesito cuenta para presentar SAIP?',
+        question: '¿Necesito una cuenta para presentar una SAIP?',
         answer:
-          'Si. El registro ciudadano requiere DNI, datos basicos y correo electronico valido.',
+          'Sí. El registro es gratuito y solo requiere su DNI, datos personales básicos y un correo electrónico.',
       },
       {
-        question: 'Que datos necesito para registrarme?',
+        question: '¿Qué datos necesito para registrarme?',
         answer:
-          'DNI, nombres completos, correo, telefono y una contrasena robusta.',
+          'DNI (8 dígitos), nombres y apellidos completos, correo válido, teléfono celular (9 dígitos) y una contraseña de al menos 8 caracteres.',
       },
       {
-        question: 'Olvide mi contrasena, que hago?',
+        question: '¿Olvidé mi contraseña, qué hago?',
         answer:
-          'Use la recuperacion de acceso desde login para restablecer su contrasena de forma segura.',
+          'Solicite el restablecimiento desde la página de inicio de sesión. Se enviará un enlace de recuperación a su correo registrado.',
       },
     ],
   },
@@ -153,16 +153,16 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   imports: [
     RouterLink,
     LucideArrowRight,
-    LucideBuilding2,
     LucideChevronDown,
+    LucideClock,
     LucideFileText,
     LucideHelpCircle,
+    LucideMapPin,
     LucideMail,
     LucidePhone,
     LucideScale,
     LucideSearch,
     LucideShield,
-    LucideZap,
   ],
   templateUrl: './ayuda.component.html',
 })

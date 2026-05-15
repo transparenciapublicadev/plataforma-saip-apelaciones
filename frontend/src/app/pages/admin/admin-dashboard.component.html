@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute top-0 right-0 w-[420px] h-[420px] rounded-full opacity-[0.04] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <div class="flex items-start gap-5">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
           <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -25,8 +25,14 @@
       <div class="alert alert-error mb-5"><p>{{ error() }}</p></div>
     }
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-      <div class="stat-card">
+    <div
+      class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
+      data-motion-stagger
+      data-motion-y="12"
+      data-motion-duration="0.36"
+      data-motion-delay-step="0.05"
+    >
+      <div class="stat-card" data-motion-item>
         <span class="stat-card-accent" style="background: var(--brand-700)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Total solicitudes</div>
@@ -36,7 +42,7 @@
         <div class="stat-card-meta inline-flex items-center gap-1"><span>Sistema activo</span></div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" data-motion-item>
         <span class="stat-card-accent" style="background: var(--info)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Usuarios activos</div>
@@ -46,7 +52,7 @@
         <div class="stat-card-meta">+8% vs periodo anterior</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" data-motion-item>
         <span class="stat-card-accent" style="background: var(--gold)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Entidades</div>
@@ -56,7 +62,7 @@
         <div class="stat-card-meta">{{ entidadesActivas() }} activas</div>
       </div>
 
-      <div class="stat-card">
+      <div class="stat-card" data-motion-item>
         <span class="stat-card-accent" style="background: var(--success)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Cumplimiento</div>
@@ -67,26 +73,32 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+    <div
+      class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
+      data-motion-stagger
+      data-motion-y="10"
+      data-motion-duration="0.34"
+      data-motion-delay-step="0.04"
+    >
+      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">En proceso</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--info)">{{ enProceso() }}</div></div>
         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
       </div>
-      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Respondidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--success)">{{ respondidas() }}</div></div>
         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
       </div>
-      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Vencidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--brand-700)">{{ vencidas() }}</div></div>
         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div>
       </div>
-      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Apelaciones</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--gold)">{{ totalApelaciones() }}</div></div>
         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg></div>
       </div>
     </div>
 
-    <div class="form-shell p-1 mb-6">
+    <div class="form-shell p-1 mb-6" data-reveal>
       <div class="grid grid-cols-5 gap-1">
         <button (click)="cambiarTab('resumen')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'resumen' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg>
@@ -113,15 +125,21 @@
 
     <div>
       @if (tabActual() === 'resumen') {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-          <div class="form-shell">
+        <div
+          class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 animate-fade-in"
+          data-motion-stagger
+          data-motion-y="12"
+          data-motion-duration="0.36"
+          data-motion-delay-step="0.05"
+        >
+          <div class="form-shell" data-motion-item>
             <div class="form-section-header">
               <span class="eyebrow" style="color: var(--success)">Ranking</span>
               <div class="form-section-title">Mejor desempeño institucional</div>
             </div>
             <div class="p-6 space-y-4">
               @for (entidad of topEntidades(); track entidad.id; let i = $index) {
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3" data-table-row>
                   <span class="font-display flex-shrink-0 w-8 text-center" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">{{ (i + 1).toString().padStart(2, '0') }}</span>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm truncate text-foreground/85">{{ entidad.nombre }}</p>
@@ -137,14 +155,14 @@
             </div>
           </div>
 
-          <div class="form-shell">
+          <div class="form-shell" data-motion-item>
             <div class="form-section-header">
               <span class="eyebrow" style="color: var(--gold)">Atención</span>
               <div class="form-section-title">Entidades con riesgo de vencimiento</div>
             </div>
             <div class="p-6 space-y-3">
               @for (entidad of topEntidades(); track entidad.id) {
-                <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" data-table-row>
                   <div class="flex items-start justify-between gap-3">
                     <div>
                       <p class="text-sm text-foreground">{{ entidad.nombre }}</p>
@@ -161,7 +179,7 @@
           </div>
         </div>
 
-        <div class="form-shell mb-5">
+        <div class="form-shell mb-5" data-reveal>
           <div class="form-section-header">
             <span class="eyebrow">Sistema</span>
             <div class="form-section-title">Actividad reciente</div>
@@ -174,7 +192,7 @@
               { dot: 'var(--brand-700)', label: 'Solicitud vencida detectada', detail: 'SAIP-2025-00498 · hace 2 h' },
               { dot: 'var(--brand-500)', label: 'Apelación presentada', detail: 'TTAIP-2025-00236 · hace 3 h' }
             ]; track item.detail; let i = $index) {
-              <div class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors" [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'">
+              <div class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors" [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'" data-table-row>
                 <span class="mt-1.5 flex-shrink-0" style="width: 8px; height: 8px; border-radius: 999px" [style.background]="item.dot"></span>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-foreground">{{ item.label }}</p>
@@ -185,7 +203,7 @@
           </div>
         </div>
 
-        <div class="form-shell">
+        <div class="form-shell" data-reveal>
           <div class="form-section-header">
             <span class="eyebrow">Distribución</span>
             <div class="form-section-title">Usuarios por tipo</div>
@@ -208,7 +226,7 @@
       }
 
       @if (tabActual() === 'entidades') {
-        <div class="form-shell overflow-hidden">
+        <div class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
               <span class="eyebrow">Gestión</span>
@@ -242,7 +260,7 @@
                 </thead>
                 <tbody>
                   @for (entidad of entidadesFiltradas(); track entidad.id) {
-                    <tr>
+                    <tr data-table-row>
                       <td class="text-foreground/85">{{ entidad.nombre }}</td>
                       <td><span class="code-chip">{{ entidad.acronimo }}</span></td>
                       <td class="font-mono">{{ entidad.solicitudesAsignadas || 0 }}</td>
@@ -269,7 +287,7 @@
       }
 
       @if (tabActual() === 'usuarios') {
-        <div class="form-shell overflow-hidden">
+        <div class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
               <span class="eyebrow">Gestión</span>
@@ -311,7 +329,7 @@
                 </thead>
                 <tbody>
                   @for (usuario of usuariosFiltrados(); track usuario.id) {
-                    <tr>
+                    <tr data-table-row>
                       <td>
                         <div class="flex items-center gap-2.5">
                           <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ userInitials(usuario.email) }}</div>
@@ -339,23 +357,29 @@
       }
 
       @if (tabActual() === 'reportes') {
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5">
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-verde-suave)"><svg class="w-5 h-5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg></div><h3 class="font-semibold">Solicitudes</h3></div><p class="text-sm text-muted-foreground mb-4">Estado y plazos de solicitudes SAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('solicitudes','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('solicitudes','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('solicitudes','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-azul-suave)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg></div><h3 class="font-semibold">Entidades</h3></div><p class="text-sm text-muted-foreground mb-4">Cumplimiento y desempeño institucional.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('entidades','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('entidades','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('entidades','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--accent-violet-soft)"><svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><h3 class="font-semibold">Usuarios</h3></div><p class="text-sm text-muted-foreground mb-4">Registro consolidado de usuarios.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('usuarios','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('usuarios','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('usuarios','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-ambar-suave)"><svg class="w-5 h-5" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg></div><h3 class="font-semibold">Apelaciones</h3></div><p class="text-sm text-muted-foreground mb-4">Seguimiento de expedientes TTAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('apelaciones','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('apelaciones','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('apelaciones','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--peru-rojo-suave)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h3 class="font-semibold">Tiempos</h3></div><p class="text-sm text-muted-foreground mb-4">Análisis de cumplimiento de plazos.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('tiempos','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('tiempos','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('tiempos','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-subtle)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg></div><h3 class="font-semibold">Consolidado</h3></div><p class="text-sm text-muted-foreground mb-4">Resumen ejecutivo del sistema.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('resumen','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('resumen','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('resumen','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+        <div
+          class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5 animate-fade-in"
+          data-motion-stagger
+          data-motion-y="12"
+          data-motion-duration="0.36"
+          data-motion-delay-step="0.05"
+        >
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-verde-suave)"><svg class="w-5 h-5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg></div><h3 class="font-semibold">Solicitudes</h3></div><p class="text-sm text-muted-foreground mb-4">Estado y plazos de solicitudes SAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('solicitudes','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('solicitudes','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('solicitudes','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-azul-suave)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg></div><h3 class="font-semibold">Entidades</h3></div><p class="text-sm text-muted-foreground mb-4">Cumplimiento y desempeño institucional.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('entidades','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('entidades','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('entidades','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--accent-violet-soft)"><svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><h3 class="font-semibold">Usuarios</h3></div><p class="text-sm text-muted-foreground mb-4">Registro consolidado de usuarios.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('usuarios','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('usuarios','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('usuarios','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-ambar-suave)"><svg class="w-5 h-5" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg></div><h3 class="font-semibold">Apelaciones</h3></div><p class="text-sm text-muted-foreground mb-4">Seguimiento de expedientes TTAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('apelaciones','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('apelaciones','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('apelaciones','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--peru-rojo-suave)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h3 class="font-semibold">Tiempos</h3></div><p class="text-sm text-muted-foreground mb-4">Análisis de cumplimiento de plazos.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('tiempos','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('tiempos','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('tiempos','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
+          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-subtle)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg></div><h3 class="font-semibold">Consolidado</h3></div><p class="text-sm text-muted-foreground mb-4">Resumen ejecutivo del sistema.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('resumen','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('resumen','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('resumen','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
         </div>
 
-        <div class="form-shell p-5 flex items-start gap-4" style="border-left: 3px solid var(--info)">
+        <div class="form-shell p-5 flex items-start gap-4" style="border-left: 3px solid var(--info)" data-reveal>
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
           <div><span class="eyebrow" style="color: var(--info)">Nota</span><p class="text-sm text-foreground/85 leading-relaxed mt-1">Los reportes usan datos del momento de exportación. PDF para presentación; Excel/CSV para análisis.</p></div>
         </div>
       }
 
       @if (tabActual() === 'configuracion') {
-        <div class="form-shell">
+        <div class="form-shell animate-fade-in">
           <div class="form-section-header">
             <span class="eyebrow">Sistema</span>
             <div class="form-section-title">Configuración operativa</div>

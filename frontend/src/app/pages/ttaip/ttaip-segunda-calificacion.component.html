@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-background">
   @if (loadingApelacion()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="form-shell p-16 text-center">
         <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p class="mt-4 text-muted-foreground">Cargando apelacion...</p>
@@ -9,7 +9,7 @@
   } @else if (apelacion(); as ap) {
     <div class="relative bg-brand-gradient text-white overflow-hidden">
       <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
         <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
           Volver al panel TTAIP
@@ -24,7 +24,7 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+      <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(217,119,6,0.12)">
           <svg class="w-5 h-5" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2" /></svg>
         </div>
@@ -36,8 +36,13 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="form-shell">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        data-motion-stagger
+        data-motion-y="12"
+        data-motion-duration="0.38"
+        data-motion-delay-step="0.055">
+        <div class="form-shell" data-motion-item>
           <div class="flex border-b" style="border-color: var(--border)">
             @for (tab of tabs; track tab.id) {
               <button
@@ -55,7 +60,7 @@
           </div>
 
           @if (activeTab() === 'subsanacion') {
-            <div class="p-6 space-y-5 text-sm">
+            <div class="p-6 space-y-5 text-sm animate-fade-in">
               <div class="rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--info)">
                 <span class="eyebrow" style="color: var(--info)">Observaciones · 1ra calificacion</span>
                 @if (getObservaciones().length > 0) {
@@ -74,7 +79,7 @@
                 @if (documentosSubsanacion().length > 0) {
                   <div class="space-y-2 mt-2">
                     @for (doc of documentosSubsanacion(); track doc.id) {
-                      <div class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
+                      <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
                         <div class="flex items-center gap-3">
                           <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.1)">
                             <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
@@ -93,7 +98,7 @@
                 } @else {
                   <div class="space-y-2 mt-2">
                     @for (doc of getFallbackSubsanacionDocs(); track doc.nombre) {
-                      <div class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
+                      <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
                         <div class="flex items-center gap-3">
                           <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.1)">
                             <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
@@ -147,9 +152,9 @@
 
           @if (activeTab() === 'adjuntos') {
             @if (documentosOriginales().length > 0) {
-              <div class="p-6 space-y-2">
+              <div class="p-6 space-y-2 animate-fade-in">
                 @for (doc of documentosOriginales(); track doc.id) {
-                  <div class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                  <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                     <div class="flex items-center gap-3">
                       <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                         <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
@@ -189,7 +194,14 @@
             </div>
           }
 
-          <section class="form-shell">
+          @if (!puedeEmitirSegundaCalificacion()) {
+            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
+              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark, var(--gold))" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" /></svg>
+              <p class="text-sm text-foreground/85">Esta apelación ya avanzó de la segunda calificación. Estado actual: <span class="font-semibold">{{ getEstadoDisplay(ap.estado) }}</span>.</p>
+            </div>
+          }
+
+          <section class="form-shell" data-motion-item>
             <div class="form-section-header">
               <span class="eyebrow">01 · Resultado</span>
               <h2 class="form-section-title">Verificacion</h2>
@@ -199,7 +211,8 @@
                 <button
                   type="button"
                   (click)="seleccionarDecision(option.id)"
-                  class="w-full rounded-lg p-4 text-left transition-all"
+                  [disabled]="!puedeEmitirSegundaCalificacion() || loading()"
+                  class="reference-option-card w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed"
                   [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'"
                   [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')"
                   [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
@@ -231,7 +244,7 @@
             </div>
           }
 
-          <section class="form-shell">
+          <section class="form-shell" data-motion-item>
             <div class="form-section-header">
               <span class="eyebrow">02 · Sustento</span>
               <h2 class="form-section-title">Fundamentos de la verificacion</h2>
@@ -239,7 +252,7 @@
             <div class="p-6">
               <div class="field">
                 <label class="field-label">Fundamentos <span class="req">*</span></label>
-                <textarea [(ngModel)]="fundamentos" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa el analisis de la subsanacion y fundamentos de la decision..."></textarea>
+                <textarea [(ngModel)]="fundamentos" [disabled]="!puedeEmitirSegundaCalificacion() || loading()" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa el analisis de la subsanacion y fundamentos de la decision..."></textarea>
                 <span class="field-hint font-mono">{{ fundamentos.length }} caracteres</span>
               </div>
             </div>
@@ -255,7 +268,7 @@
           </button>
 
           @if (showPreview()) {
-            <div class="form-shell">
+            <div class="form-shell animate-fade-in">
               <div class="p-7 font-serif text-sm" style="background: var(--paper)">
                 <div class="text-center mb-6">
                   <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-3" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
@@ -279,7 +292,7 @@
             </div>
           }
 
-          <button type="button" (click)="enviarCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
             @if (loading()) {
               <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               Procesando...
@@ -292,10 +305,47 @@
       </div>
     </div>
   } @else {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-16">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
         <p class="text-sm" style="color: var(--destructive)">{{ error() || 'No se pudo cargar la apelacion.' }}</p>
       </div>
     </div>
   }
+
+  <app-reference-confirm-modal
+    [open]="confirmModalAbierto()"
+    [submitting]="loading()"
+    title="Confirme la 2da calificación"
+    titleLead="Confirme"
+    titleEmphasis="la 2da calificación"
+    eyebrow="Revisión final · 2da Calificación"
+    description="Verifique el resultado de la subsanación antes de emitir la resolución."
+    [summary]="segundaConfirmSummary()"
+    [warning]="segundaWarning()"
+    confirmLabel="Emitir resolución"
+    (close)="confirmModalAbierto.set(false)"
+    (confirm)="enviarCalificacion()">
+  </app-reference-confirm-modal>
+
+  <app-reference-success-modal
+    [open]="successModalAbierto()"
+    variant="calificacion-2da"
+    [tone]="segundaSuccessTone()"
+    eyebrow="2da calificación emitida"
+    [title]="segundaSuccessTitle()"
+    [description]="segundaSuccessDescription()"
+    [expediente]="apelacion()?.expediente || ''"
+    [expedienteHint]="'2da Calificación N° ' + (apelacion()?.expediente || '—') + '-C2'"
+    [plazoDias]="segundaPlazoDias()"
+    plazoTipo="hábiles"
+    [plazoDescripcion]="segundaPlazoDescripcion()"
+    plazoNorma="Reglamento TTAIP"
+    [metadata]="segundaSuccessMetadata()"
+    [nextSteps]="segundaNextSteps()"
+    primaryLabel="Ir al panel TTAIP"
+    secondaryLabel="Ver expediente"
+    (close)="irPanelTtaip()"
+    (primary)="irPanelTtaip()"
+    (secondary)="irPanelTtaip()">
+  </app-reference-success-modal>
 </div>

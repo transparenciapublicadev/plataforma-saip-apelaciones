@@ -35,4 +35,10 @@ describe('silencio-administrativo util', () => {
       }),
     ).toBe(false);
   });
+
+  it('bloquea respuesta manual si la solicitud ya tiene estado terminal', () => {
+    expect(canSendManualResponse({ estado: 'RESPONDIDA' })).toBe(false);
+    expect(canSendManualResponse({ estado: 'DENEGADA' })).toBe(false);
+    expect(canSendManualResponse({ estado: 'CONCLUIDA' })).toBe(false);
+  });
 });
