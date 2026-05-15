@@ -1,430 +1,494 @@
-# Plataforma SAIP — Sistema de Gestión de Acceso a la Información Pública
+# Plataforma SAIP y Apelaciones TTAIP
 
-Plataforma integral para la gestión de Solicitudes de Acceso a la Información Pública (SAIP) y Apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), desarrollada bajo el marco normativo de la **Ley N.° 27806** — Ley de Transparencia y Acceso a la Información Pública del Perú.
+> Plataforma integral para gestionar Solicitudes de Acceso a la Información Pública (SAIP), respuestas de entidades públicas y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), alineada al marco de la Ley N.° 27806 del Perú.
 
-El sistema permite a los ciudadanos presentar solicitudes de información a entidades públicas, a los funcionarios gestionar y responder dichas solicitudes dentro de los plazos legales, y al TTAIP calificar y resolver apelaciones cuando las solicitudes son denegadas o no son atendidas.
+[![Backend](https://img.shields.io/badge/backend-Spring%20Boot%204-6DB33F?style=flat-square&logo=springboot&logoColor=white)](backend/)
+[![Frontend](https://img.shields.io/badge/frontend-Angular%2021-DD0031?style=flat-square&logo=angular&logoColor=white)](frontend/)
+[![Mobile](https://img.shields.io/badge/mobile-Kotlin%20%2B%20Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](mobile/)
+[![Docs](https://img.shields.io/badge/docs-Astro%20%2B%20Starlight-FF5D01?style=flat-square&logo=astro&logoColor=white)](docs/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
 
-> **Nota**: Este proyecto no representa ni está afiliado a ninguna entidad gubernamental.
+La plataforma modela el ciclo completo de transparencia pública: el ciudadano solicita información, la entidad responde dentro de los plazos legales y, si corresponde, el TTAIP califica y resuelve la apelación. El repositorio está organizado como un monorepo con backend, frontend web, app mobile, documentación, base de datos, colecciones de API y automatización de contrato OpenAPI.
 
----
+> Este proyecto es una iniciativa académica y tecnológica. No representa ni está afiliado oficialmente a ninguna entidad gubernamental.
 
-## Tabla de Contenidos
+## Tabla de contenidos
 
-- [Plataforma SAIP — Sistema de Gestión de Acceso a la Información Pública](#plataforma-saip--sistema-de-gestión-de-acceso-a-la-información-pública)
-  - [Tabla de Contenidos](#tabla-de-contenidos)
-  - [Autores](#autores)
-  - [Arquitectura de la Plataforma](#arquitectura-de-la-plataforma)
-    - [Principios de diseño](#principios-de-diseño)
-    - [Flujo del contrato API](#flujo-del-contrato-api)
-  - [Stack Tecnológico](#stack-tecnológico)
-    - [Backend (`backend/`)](#backend-backend)
-    - [Frontend (`frontend/`)](#frontend-frontend)
-    - [Mobile (`mobile/`)](#mobile-mobile)
-  - [Estructura del Monorepo](#estructura-del-monorepo)
-  - [Módulos del Proyecto](#módulos-del-proyecto)
-    - [`backend/` — API REST](#backend--api-rest)
-    - [`frontend/` — SPA Angular](#frontend--spa-angular)
-    - [`mobile/` — App Android](#mobile--app-android)
-  - [Glosario de Dominio](#glosario-de-dominio)
-    - [Distinción crítica: SAIP ≠ Expediente](#distinción-crítica-saip--expediente)
-  - [Sistema de Roles](#sistema-de-roles)
-  - [Reglas de Negocio — Módulo SAIP](#reglas-de-negocio--módulo-saip)
-    - [Tipos de respuesta del funcionario](#tipos-de-respuesta-del-funcionario)
-    - [Semáforo de estado](#semáforo-de-estado)
-  - [Reglas de Negocio — Módulo Apelaciones TTAIP](#reglas-de-negocio--módulo-apelaciones-ttaip)
-    - [Tipos de Resolución del TTAIP](#tipos-de-resolución-del-ttaip)
-    - [Estados del expediente](#estados-del-expediente)
-  - [Reglas de Negocio — Motor de Notificaciones y Reprocesos](#reglas-de-negocio--motor-de-notificaciones-y-reprocesos)
-  - [Reglas de Numeración e Identificadores](#reglas-de-numeración-e-identificadores)
-  - [Compilación y Ejecución](#compilación-y-ejecución)
-    - [Backend](#backend)
-    - [Frontend](#frontend)
-    - [Mobile](#mobile)
-    - [Documentación](#documentación)
-    - [Sincronizar contrato OpenAPI](#sincronizar-contrato-openapi)
-  - [CI/CD](#cicd)
-  - [Documentación](#documentación-1)
-  - [Licencia](#licencia)
+- [Visión del producto](#visión-del-producto)
+- [Co-creadores](#co-creadores)
+- [Arquitectura general](#arquitectura-general)
+- [Stack tecnológico](#stack-tecnológico)
+- [Estructura del monorepo](#estructura-del-monorepo)
+- [Módulos principales](#módulos-principales)
+- [Modelo de dominio](#modelo-de-dominio)
+- [Contrato API y sincronización](#contrato-api-y-sincronización)
+- [Seguridad y roles](#seguridad-y-roles)
+- [Ejecución local](#ejecución-local)
+- [Validación y CI](#validación-y-ci)
+- [Documentación y herramientas](#documentación-y-herramientas)
+- [Licencia](#licencia)
 
----
+## Visión del producto
 
-## Autores
+Plataforma SAIP centraliza la gestión digital de solicitudes de acceso a la información pública y apelaciones TTAIP con una arquitectura preparada para tres experiencias independientes:
 
-| Nombre | Rol | Contribución |
-|--------|-----|--------------|
-| **Kelly Medalit De La Cruz Lopez** | Co-autora, Analista Funcional | Concepción e ideación del proyecto, levantamiento y especificación de requisitos funcionales, definición de reglas de negocio, modelado del flujo de trámite SAIP y apelaciones TTAIP, diseño del dominio y validación funcional |
-| **Daniel Angel Leon Salazar** | Co-autor, Arquitecto de Software | Diseño e implementación de la arquitectura Clean Architecture + MVVM multimodular, desarrollo integral de la aplicación Android nativa, backend Spring Boot, frontend Angular, integración con Firebase, sistema de notificaciones push y despliegue técnico |
+| Superficie | Usuario principal | Objetivo |
+| --- | --- | --- |
+| Web pública | Ciudadano | Presentar SAIP, consultar estado, registrar apelaciones y subsanar observaciones. |
+| Web interna | Funcionarios, TTAIP, administradores | Gestionar expedientes, responder solicitudes, calificar apelaciones, emitir resoluciones y revisar indicadores. |
+| Mobile Android | Ciudadano y operadores | Consultar y operar flujos clave desde una aplicación nativa con sincronización local. |
 
----
+El backend es la fuente de verdad del dominio y expone el contrato REST formal. El frontend Angular y la app Android consumen el mismo contrato, pero evolucionan como clientes independientes.
 
-## Arquitectura de la Plataforma
+## Co-creadores
 
-La plataforma sigue una arquitectura **Clean Architecture** en cada capa, con separación estricta de responsabilidades y comunicación unidireccional entre capas.
+| Nombre | Rol en el proyecto | Contribucion principal |
+| --- | --- | --- |
+| **Kelly Medalit De La Cruz Lopez** | Co-creadora, Analista Funcional | Ideación del producto, levantamiento funcional, reglas de negocio, flujo SAIP/TTAIP, criterios de validación y modelado del dominio. |
+| **Daniel Angel Leon Salazar** | Co-creador, Arquitecto de Software | Arquitectura técnica, backend Spring Boot, frontend Angular, app Android nativa, integración API, seguridad, automatización y despliegue técnico. |
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        CLIENTES                                     │
-│  ┌──────────────┐  ┌──────────────┐                                │
-│  │  mobile/     │  │  frontend/   │                                │
-│  │  Android     │  │  Angular 21  │                                │
-│  │  Kotlin +    │  │  SSR +       │                                │
-│  │  Compose     │  │  Tailwind    │                                │
-│  └──┬───────┬───┘  └──────┬───────┘                                │
-│     │       │              │                                        │
-│     │  ┌────┴──────────────┘  (REST API — Retrofit / HttpClient)   │
-│     │  │                                                            │
-│     │  ▼                                                            │
-│     │  ┌──────────────────────────────┐                             │
-│     │  │  backend/                    │                             │
-│     │  │  Spring Boot 4 (Java 21)    │                             │
-│     │  │  REST API + JPA + Security  │                             │
-│     │  └──────────────┬───────────────┘                             │
-│     │                 │                                             │
-│     │                 ▼                                             │
-│     │           ┌────────┐                                          │
-│     │           │ MySQL  │                                          │
-│     │           │ (RDBMS)│                                          │
-│     │           └────────┘                                          │
-│     │                                                               │
-│     ▼  (Auth + FCM — directo desde mobile)                         │
-│  ┌───────────────────┐                                              │
-│  │ Firebase          │                                              │
-│  │ Auth + FCM        │                                              │
-│  └───────────────────┘                                              │
-└─────────────────────────────────────────────────────────────────────┘
+## Arquitectura general
+
+La arquitectura prioriza separación de responsabilidades, contrato API versionable, clientes desacoplados y validación independiente por módulo.
+
+```mermaid
+flowchart TB
+    subgraph Users["Usuarios"]
+        Citizen["Ciudadano"]
+        Officer["Funcionario de entidad pública"]
+        Tribunal["Miembro TTAIP"]
+        Admin["Administrador"]
+    end
+
+    subgraph Clients["Clientes"]
+        Web["frontend/\nAngular 21 + SSR\nTailwind CSS"]
+        Android["mobile/\nKotlin + Jetpack Compose\nSQLDelight + Retrofit"]
+        Docs["docs/\nAstro + Starlight"]
+    end
+
+    subgraph Platform["Nucleo de plataforma"]
+        API["backend/\nSpring Boot 4 + Java 21\nREST + Security + OpenAPI"]
+        DB[("MySQL\nsaip_db")]
+        OpenAPI["/v3/api-docs\nContrato OpenAPI"]
+    end
+
+    subgraph External["Servicios externos"]
+        Firebase["Firebase\nAuth / FCM / Analytics"]
+    end
+
+    Citizen --> Web
+    Officer --> Web
+    Tribunal --> Web
+    Admin --> Web
+    Citizen --> Android
+
+    Web -->|HTTP JSON + JWT| API
+    Android -->|Retrofit + JWT| API
+    API --> DB
+    API --> OpenAPI
+    Android -. push / analytics .-> Firebase
+    Docs -. documenta .-> Platform
 ```
 
-### Principios de diseño
+### Decisiones arquitectónicas
 
-1. **Clean Architecture**: Separación estricta entre capas de presentación, dominio y datos en cada módulo.
-2. **API-First Contract**: El backend publica un OpenAPI spec (`/v3/api-docs`) que es el contrato formal. Frontend genera tipos TypeScript y mobile usa Retrofit — ambos consumidores son **independientes**.
-3. **Módulos independientes**: Cada módulo (backend, frontend, mobile) puede construirse, testearse y desplegarse de forma aislada. No comparten código fuente.
-4. **Offline-First (mobile)**: SQLDelight como Single Source of Truth. Retrofit sincroniza contra el backend REST API.
-5. **Smart Auth Gateway (mobile)**: Firebase Auth opcional para push/analytics. Autenticación principal mediante JWT contra el backend REST. Bypass de Firebase cuando hay conectividad directa al backend.
+| Decisión | Razón |
+| --- | --- |
+| Backend como source of truth | Centraliza reglas legales, seguridad, persistencia y transiciones de estado. |
+| OpenAPI como contrato formal | Permite sincronizar frontend y mobile sin compartir código fuente. |
+| Monorepo modular | Facilita consistencia técnica, CI por paths y versionado coordinado. |
+| Clientes desacoplados | Web y mobile consumen la API de forma independiente y pueden desplegarse por separado. |
+| Documentación viva | `docs/` y `README.md` explican arquitectura, dominio, operación y decisiones clave. |
 
-### Flujo del contrato API
-
-```
-Backend (Spring Boot)          Frontend (Angular)           Mobile (Android)
-       │                              │                           │
-       │  OpenAPI Spec                 │                           │
-       │  /v3/api-docs ──────────────► │  openapi-typescript        │
-       │       │                       │  genera schema.ts          │
-       │       │                       │                           │
-       │       └──────────────────────────────────────────────────► │
-       │                               │                    Retrofit DTOs
-       │◄──── REST API ──────────────────────────────────────────► │
-       │                               │                    mapeados a mano
-       │                               │                           │
-       ▼                               ▼                           ▼
-   MySQL + JPA                   HttpClient + RxJS       Retrofit + SQLDelight
-                                                         + Firebase (Auth/FCM)
-```
-
----
-
-## Stack Tecnológico
-
-### Backend (`backend/`)
-
-| Aspecto | Tecnología | Versión |
-|---------|------------|---------|
-| Framework | Spring Boot | 4.0.0 |
-| Lenguaje | Java | 21 |
-| Build | Maven | Wrapper incluido |
-| ORM | Spring Data JPA / Hibernate | — |
-| Seguridad | Spring Security | — |
-| Validación | Jakarta Bean Validation | — |
-| Base de datos | MySQL | 8.x |
-| Puerto | — | 8080 |
-
-### Frontend (`frontend/`)
-
-| Aspecto | Tecnología | Versión |
-|---------|------------|---------|
-| Framework | Angular | 21.0.0 |
-| Lenguaje | TypeScript | 5.9.2 |
-| Estilos | Tailwind CSS | 4.1.12 |
-| Testing | Vitest | 4.0.8 |
-| SSR | Express (Angular SSR) | 5.1.0 |
-| Gráficos | @swimlane/ngx-charts | — |
-| Package Manager | npm | 11.6.4 |
-
-### Mobile (`mobile/`)
-
-| Aspecto | Tecnología | Versión |
-|---------|------------|---------|
-| Lenguaje | Kotlin (exclusivo) | 2.3.10 |
-| UI | Jetpack Compose + Material 3 | — |
-| Arquitectura | Clean Architecture + MVVM | — |
-| Navegación | Navigation 3 (NavDisplay + NavKey) | 1.0.1 |
-| DI | Koin | 4.1.1 |
-| DB Local | SQLDelight | 2.2.1 |
-| Backend Remoto | Retrofit 2.11.0 + OkHttp 4.12.0 (REST API) | — |
-| Push / Analytics | Firebase (Auth + FCM) | BOM 34.10.0 |
-| Build | AGP 9.1.0, Gradle 9.3.1 | compileSdk 36, minSdk 24 |
-
-
----
-
-## Estructura del Monorepo
-
-```
-plataforma-saip/
-├── .github/
-│   └── workflows/                  ← CI/CD (GitHub Actions)
-│       ├── backend-ci.yml
-│       ├── docs-ci.yml
-│       ├── frontend-ci.yml
-│       └── mobile-ci.yml
-├── backend/                        ← API REST (Spring Boot 4, Java 21)
-│   ├── pom.xml
-│   └── src/
-│       ├── main/
-│       │   ├── java/pe/gob/saip/backend/
-│       │   │   ├── config/         ← CorsConfig
-│       │   │   ├── controller/     ← REST Controllers
-│       │   │   ├── exception/      ← GlobalExceptionHandler
-│       │   │   ├── model/
-│       │   │   │   ├── dto/        ← DTOs
-│       │   │   │   └── entity/     ← JPA Entities
-│       │   │   ├── repository/     ← Spring Data Repositories
-│       │   │   ├── security/       ← SecurityConfig
-│       │   │   └── service/        ← Business Services
-│       │   └── resources/
-│       │       └── application.properties
-│       └── test/
-├── frontend/                       ← SPA (Angular 21, Tailwind CSS)
-│   ├── angular.json
-│   ├── package.json
-│   └── src/
-│       └── app/
-│           ├── guards/             ← Auth guards
-│           ├── interceptors/       ← HTTP interceptors
-│           ├── models/             ← TypeScript interfaces
-│           ├── pages/
-│           │   ├── admin/
-│           │   ├── auth/
-│           │   ├── ciudadano/
-│           │   ├── funcionario/
-│           │   ├── home/
-│           │   └── ttaip/
-│           └── services/           ← HTTP services
-├── mobile/                         ← App Android (Kotlin, Compose, MVVM)
-│   ├── build.gradle.kts
-│   ├── settings.gradle.kts
-│   ├── gradle/libs.versions.toml
-│   ├── app/                        ← Capa de Presentación
-│   └── core/
-│       ├── domain/                 ← Kotlin puro (modelos, UseCases, interfaces) — LOCAL
-│       ├── data/                   ← Repository implementations, Mappers
-│       ├── database/               ← SQLDelight
-│       ├── network/                ← Retrofit (REST API) + Firebase (Push/Analytics)
-│       └── common/                 ← Utilidades compartidas
-├── scripts/                        ← Scripts de sincronización (OpenAPI spec)
-│   ├── sync-openapi.sh             ← Linux/macOS
-│   └── sync-openapi.ps1            ← Windows
-├── docs/                           ← Documentación técnica y funcional (en progreso)
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
----
-
-## Módulos del Proyecto
-
-### `backend/` — API REST
-
-API RESTful construida con Spring Boot 4 y Java 21. Gestiona la lógica de negocio centralizada, persistencia en MySQL y autenticación con Spring Security.
-
-**Controllers:**
-- `SolicitudRestController` — CRUD de solicitudes SAIP
-- `ApelacionRestController` — Gestión de apelaciones TTAIP
-- `AuthRestController` — Autenticación y registro
-- `RespuestaRestController` — Respuestas de funcionarios
-- `TTAIPRestController` — Operaciones del tribunal
-- `EntidadRestController` — Gestión de entidades públicas
-- `CiudadanoRestController` — Operaciones de ciudadanos
-- `FuncionarioRestController` — Operaciones de funcionarios
-- `EstadisticasRestController` — Dashboard estadísticas
-- `ReportesRestController` — Generación de reportes
-
-### `frontend/` — SPA Angular
-
-Aplicación web Angular 21 con Tailwind CSS. Consume la API REST del backend.
-
-**Páginas organizadas por rol:**
-- `pages/auth/` — Login, Registro
-- `pages/ciudadano/` — Dashboard ciudadano, Nueva SAIP, Detalle solicitud, Nueva apelación, Subsanación
-- `pages/funcionario/` — Dashboard funcionario, Responder solicitud, Detalle solicitud
-- `pages/ttaip/` — Dashboard TTAIP, Calificar, Segunda Calificación, Resolver, Resolución Detalle, Proceso Disciplinario
-- `pages/admin/` — Dashboard administrador
-
-### `mobile/` — App Android
-
-Aplicación Android nativa con Kotlin, Jetpack Compose + Material 3, Clean Architecture + MVVM, Navigation 3.
-
-**Módulos Gradle:**
-- `app/` — Presentación (Screens, ViewModels, Theme, Navigation)
-- `core/domain/` — Kotlin puro (Models, UseCases, Repository interfaces)
-- `core/data/` — Repository implementations, Mappers
-- `core/database/` — SQLDelight local DB
-- `core/network/` — Retrofit (REST API) + Firebase (Auth/FCM)
-- `core/common/` — Utilidades compartidas
-
----
-
-## Glosario de Dominio
-
-| Término | Definición |
-|---------|-----------|
-| **SAIP** | Solicitud de Acceso a la Información Pública (primera instancia). NO es un expediente. Formato `SAIP-AAAA-NNNNN`. |
-| **TTAIP** | Tribunal de Transparencia y Acceso a la Información Pública (segunda instancia). |
-| **Recurrente** | Ciudadano que solicita información o apela. |
-| **Entidad** | Organismo público que posee la información. |
-| **Expediente** | Contenedor digital del trámite TTAIP. Solo se crea cuando el ciudadano apela. Formato `NNNNN-AAAA-JUS/TTAIP`. |
-| **Resolución** | Decisión emitida por la entidad o el TTAIP (Admisibilidad, Improcedencia, Fundado, Infundado). |
-| **Cédula de Notificación** | Documento numerado que certifica un intento de notificación según la resolución emitida. |
-| **Reproceso** | Nueva cédula de notificación generada tras notificación fallida. |
-| **Cargo** | Acuse de recibo (evidencia de que la notificación fue recibida). |
-| **Silencio Administrativo Negativo** | Estado automático cuando la entidad no responde en plazo legal (10 días hábiles). |
-
-### Distinción crítica: SAIP ≠ Expediente
-
-- **Solicitud SAIP** = primera instancia. Número `SAIP-AAAA-NNNNN`. **NO es un expediente.**
-- **Expediente TTAIP** = segunda instancia. Se crea **únicamente** cuando el ciudadano apela. Número `NNNNN-AAAA-JUS/TTAIP`.
-- Las Resoluciones y Cédulas de Notificación solo existen dentro de un Expediente TTAIP.
-- En la UI: usar "N° SAIP" para solicitudes, "Expediente" solo para apelaciones TTAIP.
-
----
-
-## Sistema de Roles
-
-| Rol | Enum | Dashboard | Descripción |
-|-----|------|-----------|-------------|
-| Ciudadano | `CIUDADANO` | Dashboard Ciudadano | Presenta solicitudes SAIP y apelaciones |
-| Funcionario | `FUNCIONARIO` | Dashboard Entidad | Gestiona y responde solicitudes de su entidad |
-| Vocal TTAIP | `TTAIP` | Dashboard TTAIP | Califica y resuelve apelaciones |
-| Administrador | `ADMIN` | Dashboard Admin | Administración general del sistema |
-
----
-
-## Reglas de Negocio — Módulo SAIP
-
-Basadas en la Ley N.° 27806.
-
-| Regla | Descripción |
-|-------|-------------|
-| `BR‑SAIP‑001` | Plazo máximo: **10 días hábiles** para atender una solicitud. El conteo inicia el **día hábil siguiente** a la recepción (día de recepción = día 0). Si la SAIP se presenta fuera del horario laboral de la entidad, se considera recibida el siguiente día hábil y el plazo inicia al día hábil posterior |
-| `BR‑SAIP‑002` | Días hábiles: excluir sábados, domingos y feriados nacionales |
-| `BR‑SAIP‑003` | Subsanación solo en los **2 primeros días hábiles** |
-| `BR‑SAIP‑004` | Liquidación de costos: notificar a más tardar el **día 9** |
-| `BR‑SAIP‑005` | Silencio Administrativo Negativo si >10 días sin respuesta |
-| `BR‑SAIP‑006` | Plazo para apelar: **15 días calendario** contados desde la fecha de recepción de la respuesta de la entidad (aplica para cualquier tipo de respuesta: total, parcial, denegatoria) |
-
-### Tipos de respuesta del funcionario
-
-| TipoRespuesta | Estado resultante | Apelable |
-|---------------|-------------------|----------|
-| `ENTREGA_TOTAL` | Respondida | Sí (el ciudadano puede discrepar si la entrega fue realmente completa) |
-| `ENTREGA_PARCIAL` | Respondida | Sí |
-| `DENEGACION_TOTAL` | Denegada | Sí |
-| `SILENCIO_ADMINISTRATIVO` | Vencida | Sí |
-
-### Semáforo de estado
-
-| Color | Rango | Significado |
-|-------|-------|-------------|
-| 🟢 Verde | Días 0–5 | En plazo |
-| 🟡 Ámbar | Días 6–8 | Próximo a vencer |
-| 🔴 Rojo | Días 9–10 | Urgente |
-| ⚫ Negro | Vencido | Silencio Administrativo |
-
----
-
-## Reglas de Negocio — Módulo Apelaciones TTAIP
-
-Flujo secuencial según SRS v2.0:
-
-| Etapa | Plazo | Descripción |
-|-------|-------|-------------|
-| Presentación del recurso | 15 días calendario | Plazo del ciudadano para presentar apelación, contado desde la fecha de recepción de la respuesta de la entidad |
-| Elevación | 2 días hábiles | La entidad remite el recurso al TTAIP |
-| Primera Calificación | 7 días hábiles | Genera **Primera Resolución**: Improcedente (→ rechazo definitivo) / Inadmisible (→ subsanación) / Admisión |
-| Subsanación | 2 días hábiles | Solo si fue declarado Inadmisible. Si el ciudadano NO subsana, se genera resolución `TENER POR NO PRESENTADO` y finaliza el proceso |
-| Segunda Calificación | — | Post-subsanación. Genera **Segunda Resolución**: Admitido (→ trámite) / Improcedente (→ rechazo definitivo). **Debe notificarse al ciudadano** antes de continuar |
-| Notificación post-calificación | — | La resolución de admisibilidad o improcedencia se notifica al ciudadano. Solo después de notificación correcta inicia el plazo de resolución final |
-| Resolución Final | 10 días hábiles | Decisiones posibles: Fundado, Fundado en parte, Infundado, Infundado en parte, Improcedente, Conclusión por sustracción de la materia, Conclusión por desistimiento |
-
-### Tipos de Resolución del TTAIP
-
-| Decisión | Descripción | Cuándo aplica |
-|----------|-------------|---------------|
-| **Fundado** | Se ampara el recurso de apelación y se ordena a la entidad entregar la información | Resolución Final |
-| **Fundado en parte** | Se ampara parcialmente el recurso, ordenando la entrega parcial de información | Resolución Final |
-| **Infundado** | Se desestima el recurso de apelación, confirmando la conducta de la entidad | Resolución Final |
-| **Infundado en parte** | Se desestima parcialmente, confirmando parte de la conducta de la entidad | Resolución Final |
-| **Improcedente** | El recurso no cumple requisitos formales o de fondo para ser tramitado | Primera Resolución, Segunda Resolución o Resolución Final |
-| **Conclusión por sustracción de la materia** | La entidad entrega la información durante el trámite de apelación, haciendo innecesario el pronunciamiento de fondo | Resolución Final |
-| **Conclusión por desistimiento** | El ciudadano desiste voluntariamente de su recurso de apelación | Resolución Final |
-| **No presentado** | El ciudadano no subsana las observaciones dentro del plazo de 2 días hábiles tras ser declarado inadmisible | Primera Resolución |
-
-### Estados del expediente
-
-`PENDIENTE_ELEVACION` → `EN_CALIFICACION_1` → `EN_SUBSANACION` → `EN_CALIFICACION_2` → `NOTIFICACION_SEGUNDA_CALIFICACION` → `EN_RESOLUCION` → `RESUELTO`
-
-> Estados terminales alternativos: `TENER_POR_NO_PRESENTADO` (si el ciudadano no subsana en plazo), `CONCLUSION_SUSTRACCION_MATERIA`, `CONCLUSION_DESISTIMIENTO`
-
----
-
-## Reglas de Negocio — Motor de Notificaciones y Reprocesos
-
-| Regla | Descripción |
-|-------|-------------|
-| `BR‑REP‑001` | Inmutabilidad: cédula rechazada NO se edita, se conserva como histórico |
-| `BR‑REP‑002` | Ante rechazo, generar nueva cédula con ID correlativo |
-| `BR‑REP‑003` | Mientras exista rechazo sin nueva cédula, expediente en `EN_PROCESO_DE_SUBSANACION` |
-| `BR‑REP‑004` | **Notificaciones normales**: Etapa cierra solo cuando ambas partes tienen notificación `NOTIFICADO`. **Reprocesos**: Pueden afectar solo al recurrente, solo a la entidad, o ambos. El estado cambia a `SUBSANADO` cuando se re-notifica la nueva cédula a la parte afectada, se consigna la nueva fecha de notificación y el número de cédula/oficio utilizado |
-
----
-
-## Reglas de Numeración e Identificadores
-
-Todos los identificadores son **globalmente únicos**.
-
-| Formato | Ejemplo |
-|---------|---------|
-| `SAIP-AAAA-NNNNN` | `SAIP-2025-00512` |
-| `NNNNN-AAAA-JUS/TTAIP` | `01560-2025-JUS/TTAIP` |
-| `CÉDULA DE NOTIFICACIÓN N.° NNNNN-AAAA-JUS/TTAIP` | `15203-2025-JUS/TTAIP` |
-| `RESOLUCIÓN N.° NNNNNN-AAAA-JUS/TTAIP-[SALA]` | `001595-2025-JUS/TTAIP-PRIMERA SALA` |
-
-Firmante por defecto: José Ángel Dávila Córdova (Secretario Técnico).
-
----
-
-## Compilación y Ejecución
+## Stack tecnológico
 
 ### Backend
 
-```bash
-cd backend
-./mvnw spring-boot:run
-# o en Windows:
-mvnw.cmd spring-boot:run
+| Área | Tecnología |
+| --- | --- |
+| Runtime | Java 21 |
+| Framework | Spring Boot 4.0.0 |
+| API | Spring Web MVC, REST JSON |
+| Persistencia | Spring Data JPA, Hibernate, MySQL 8.x |
+| Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
+| Validación | Jakarta Bean Validation |
+| Documentación API | springdoc-openapi, Swagger UI |
+| Build y testing | Maven Wrapper, Spring Boot Test, H2 para escenarios de prueba |
+
+### Frontend web
+
+| Área | Tecnología |
+| --- | --- |
+| Framework | Angular 21.2.x |
+| Lenguaje | TypeScript 5.9 |
+| UI | Tailwind CSS 4.1, Lucide Angular, GSAP |
+| SSR | Angular SSR con Express 5 |
+| Formularios | Angular Forms / Reactive Forms |
+| API contract | `openapi-typescript` |
+| Testing | Vitest + Angular unit test builder |
+| Package manager | npm 11.6.x |
+
+### Mobile Android
+
+| Área | Tecnología |
+| --- | --- |
+| Lenguaje | Kotlin 2.3.x |
+| UI | Jetpack Compose + Material 3 |
+| Arquitectura | Clean Architecture + MVVM |
+| Navegación | Navigation 3 |
+| DI | Koin 4.1 |
+| Datos locales | SQLDelight 2.2 |
+| Red | Retrofit 3, OkHttp 5 |
+| Sincronización / jobs | Coroutines, Flow, WorkManager |
+| Firebase | Auth, Firestore, FCM, Analytics |
+| Build | Gradle 9.x, Android Gradle Plugin 9.x |
+
+### Documentación y automatización
+
+| Área | Tecnología |
+| --- | --- |
+| Docs | Astro 6, Starlight, Mermaid |
+| API collections | Postman collection operativa |
+| Database seed | `database/script_saip_db.sql` |
+| CI/CD | GitHub Actions por módulo |
+| OpenAPI sync | `scripts/sync-openapi.ps1` y `scripts/sync-openapi.sh` |
+
+## Estructura del monorepo
+
+```text
+plataforma-saip-apelaciones/
+├── backend/              # API REST Spring Boot 4 + Java 21
+├── frontend/             # Aplicación web Angular 21 + SSR
+├── mobile/               # App Android Kotlin + Jetpack Compose
+├── docs/                 # Documentación Astro + Starlight
+├── database/             # Scripts SQL de apoyo y datos seed
+├── postman/              # Colección operativa de API
+├── scripts/              # Sincronización OpenAPI y utilidades
+├── .github/workflows/    # CI independiente por módulo
+├── AGENTS.md             # Instrucciones locales para Codex
+├── LICENSE               # Apache License 2.0
+└── README.md             # Visión técnica y funcional del proyecto
 ```
 
-Requiere MySQL corriendo en `localhost:3306` con la base de datos `saip_db`.
+## Módulos principales
+
+### `backend/` - API REST y dominio transaccional
+
+El backend implementa las reglas centrales del sistema: solicitudes SAIP, respuestas de entidades, apelaciones TTAIP, calificación, resolución, estadísticas, reportes y autenticación.
+
+```mermaid
+flowchart LR
+    Controller["REST Controllers"]
+    Service["Services\nReglas de negocio"]
+    Repository["Repositories\nSpring Data JPA"]
+    Entity["Entities + DTOs"]
+    Security["Security\nJWT + Roles"]
+    MySQL[("MySQL")]
+
+    Controller --> Service
+    Service --> Repository
+    Repository --> Entity
+    Entity --> MySQL
+    Security --> Controller
+```
+
+Controladores principales:
+
+| Controller | Responsabilidad |
+| --- | --- |
+| `AuthRestController` | Login, registro y usuario autenticado. |
+| `SolicitudRestController` | Ciclo SAIP y consultas de solicitudes. |
+| `RespuestaRestController` | Respuestas de funcionarios a solicitudes. |
+| `ApelacionRestController` | Presentación y seguimiento de apelaciones. |
+| `TTAIPRestController` | Calificación, subsanación y resolución TTAIP. |
+| `EntidadRestController` | Gestión de entidades públicas. |
+| `CiudadanoRestController` | Operaciones del ciudadano. |
+| `FuncionarioRestController` | Operaciones de funcionarios. |
+| `EstadisticasRestController` | Indicadores operativos. |
+| `ReportesRestController` | Generación de reportes. |
+
+### `frontend/` - Web Angular multirol
+
+El frontend entrega la experiencia web pública e interna. La aplicación está organizada por rol y consume servicios HTTP tipados hacia el backend.
+
+```mermaid
+flowchart TB
+    App["Angular App"]
+    Routes["Rutas por rol"]
+    Guards["Auth Guards"]
+    Interceptors["Auth Interceptor"]
+    Pages["Pages\npublic / ciudadano / funcionario / ttaip / admin"]
+    Services["Services\nAuth, Solicitud, Apelación, TTAIP"]
+    API["Backend REST API"]
+
+    App --> Routes
+    Routes --> Guards
+    Routes --> Pages
+    Pages --> Services
+    Services --> Interceptors
+    Interceptors --> API
+```
+
+Áreas de interfaz:
+
+| Carpeta | Alcance |
+| --- | --- |
+| `pages/public/` | Consulta pública y ayuda. |
+| `pages/auth/` | Login y registro del ciudadano. |
+| `pages/ciudadano/` | Panel, nueva SAIP, detalle, apelación y subsanación. |
+| `pages/funcionario/` | Panel de entidad, detalle y respuesta de solicitud. |
+| `pages/ttaip/` | Bandeja TTAIP, calificaciones, resolución y procesos disciplinarios. |
+| `pages/admin/` | Administración general del sistema. |
+
+### `mobile/` - Android nativo
+
+La app mobile está construida con Kotlin, Jetpack Compose, arquitectura limpia y persistencia local. Su objetivo es ofrecer una experiencia nativa desacoplada del frontend web.
+
+```mermaid
+flowchart TB
+    UI["app/\nScreens + ViewModels + Navigation"]
+    Domain["core/domain\nModels + UseCases + Repository contracts"]
+    Data["core/data\nRepository implementations + Mappers"]
+    Network["core/network\nRetrofit + Firebase"]
+    Database["core/database\nSQLDelight"]
+    Common["core/common\nUtilities"]
+
+    UI --> Domain
+    Domain --> Data
+    Data --> Network
+    Data --> Database
+    UI --> Common
+    Data --> Common
+```
+
+| Módulo Gradle | Responsabilidad |
+| --- | --- |
+| `app/` | Presentación, tema, navegación, ViewModels y pantallas. |
+| `core/domain/` | Modelos de dominio, casos de uso e interfaces. |
+| `core/data/` | Repositorios concretos y mapeadores. |
+| `core/network/` | Cliente Retrofit, DTOs, Firebase y comunicación remota. |
+| `core/database/` | SQLDelight y persistencia local. |
+| `core/common/` | Utilidades compartidas. |
+
+### `docs/` - Documentación técnica y funcional
+
+Sitio de documentación construido con Astro + Starlight. Complementa este README con contenido navegable, diagramas y material técnico/funcional extendido.
+
+### `database/`, `postman/` y `scripts/`
+
+| Carpeta | Uso |
+| --- | --- |
+| `database/` | Script SQL de apoyo para inicialización o pruebas locales. |
+| `postman/` | Colección operativa para validar flujos API end-to-end. |
+| `scripts/` | Sincronización del contrato OpenAPI hacia consumidores. |
+
+## Modelo de dominio
+
+### Conceptos clave
+
+| Concepto | Definición |
+| --- | --- |
+| SAIP | Solicitud de Acceso a la Información Pública. Es primera instancia y usa formato `SAIP-AAAA-NNNNN`. |
+| Entidad pública | Organismo que posee o administra la información solicitada. |
+| Funcionario | Usuario interno de entidad pública encargado de evaluar y responder SAIP. |
+| Apelación | Recurso presentado por el ciudadano cuando la respuesta no satisface o no existe respuesta. |
+| Expediente TTAIP | Contenedor de segunda instancia. Solo existe cuando hay apelación y usa formato `NNNNN-AAAA-JUS/TTAIP`. |
+| TTAIP | Tribunal que califica y resuelve apelaciones. |
+| Resolución | Decisión formal emitida durante calificación o resolución final. |
+| Cédula de notificación | Documento que acredita notificación en el procedimiento. |
+
+### Distinción crítica
+
+SAIP no es expediente. La SAIP pertenece a la primera instancia ante la entidad pública. El expediente TTAIP solo nace cuando el ciudadano apela.
+
+```mermaid
+flowchart LR
+    SAIP["SAIP\nSAIP-AAAA-NNNNN"]
+    Response["Respuesta de entidad\no silencio administrativo"]
+    Appeal["Apelación ciudadana"]
+    Case["Expediente TTAIP\nNNNNN-AAAA-JUS/TTAIP"]
+
+    SAIP --> Response
+    Response -->|si corresponde| Appeal
+    Appeal --> Case
+```
+
+### Flujo SAIP
+
+```mermaid
+stateDiagram-v2
+    [*] --> Presentada
+    Presentada --> EnRevision: recepción por entidad
+    EnRevision --> Subsanacion: observación dentro de 2 días hábiles
+    Subsanacion --> EnRevision: ciudadano subsana
+    EnRevision --> Respondida: entrega total/parcial o denegatoria
+    EnRevision --> Vencida: silencio administrativo negativo
+    Respondida --> Apelable: 15 días calendario
+    Vencida --> Apelable
+    Apelable --> [*]
+```
+
+Reglas principales:
+
+| Regla | Criterio |
+| --- | --- |
+| Plazo SAIP | 10 días hábiles desde el día hábil siguiente a la recepción. |
+| Subsanación | Solo dentro de los 2 primeros días hábiles. |
+| Liquidación de costos | Debe notificarse antes del vencimiento del plazo legal. |
+| Silencio administrativo | Aplica si la entidad no responde dentro del plazo. |
+| Apelación | 15 días calendario desde la recepción de la respuesta o desde el vencimiento. |
+
+### Flujo TTAIP
+
+```mermaid
+stateDiagram-v2
+    [*] --> PendienteElevacion
+    PendienteElevacion --> EnCalificacionPrimera: elevación en 2 días hábiles
+    EnCalificacionPrimera --> Improcedente: rechazo definitivo
+    EnCalificacionPrimera --> EnSubsanacion: inadmisible
+    EnCalificacionPrimera --> Admitido: admisible
+    EnSubsanacion --> EnCalificacionSegunda: subsanado
+    EnSubsanacion --> NoPresentado: no subsana
+    EnCalificacionSegunda --> Improcedente
+    EnCalificacionSegunda --> NotificacionSegunda
+    NotificacionSegunda --> EnResolucion
+    Admitido --> EnResolucion
+    EnResolucion --> Resuelto
+    Improcedente --> [*]
+    NoPresentado --> [*]
+    Resuelto --> [*]
+```
+
+Reglas principales:
+
+| Etapa | Plazo / criterio |
+| --- | --- |
+| Elevación | 2 días hábiles para remitir el recurso al TTAIP. |
+| Primera calificación | 7 días hábiles para calificar admisibilidad. |
+| Subsanación | 2 días hábiles cuando el recurso es inadmisible. |
+| Segunda calificación | Determina admisión posterior o improcedencia. |
+| Notificación | La segunda calificación debe notificarse antes de iniciar resolución final. |
+| Resolución final | 10 días hábiles para emitir decisión final. |
+
+Decisiones de resolución final:
+
+| Decisión | Resultado |
+| --- | --- |
+| Fundado | Ordena entregar la información. |
+| Fundado en parte | Ordena entrega parcial. |
+| Infundado | Confirma la decisión o conducta de la entidad. |
+| Infundado en parte | Confirma parcialmente. |
+| Improcedente | Rechazo por causal formal o de fondo. |
+| Conclusión por sustracción de la materia | La entidad entrega información durante el trámite. |
+| Conclusión por desistimiento | El ciudadano desiste del recurso. |
+
+## Contrato API y sincronización
+
+El backend publica el contrato OpenAPI en `/v3/api-docs`. Ese contrato se sincroniza hacia el frontend y mobile para mantener consistencia entre clientes.
+
+```mermaid
+sequenceDiagram
+    participant B as backend/
+    participant O as OpenAPI /v3/api-docs
+    participant S as scripts/sync-openapi
+    participant F as frontend/
+    participant M as mobile/
+
+    B->>O: Publica contrato REST
+    S->>O: Descarga especificación JSON
+    S->>F: Actualiza frontend/openapi.json
+    S->>F: Regenera src/app/api/schema.ts
+    S->>M: Actualiza mobile/openapi.json como referencia
+```
+
+Sincronización en Windows:
+
+```powershell
+.\scripts\sync-openapi.ps1
+```
+
+Sincronización en Linux/macOS:
+
+```bash
+./scripts/sync-openapi.sh
+```
+
+Regla operativa: si cambian endpoints, DTOs o modelos de API en `backend/`, sincronizar OpenAPI y validar los consumidores impactados.
+
+## Seguridad y roles
+
+La autenticación principal se resuelve con JWT emitido por el backend. El frontend usa guards e interceptor de autenticación. Mobile consume el backend con Retrofit y puede integrarse con Firebase para capacidades complementarias como push notifications y analítica.
+
+| Rol | Enum | Superficie principal | Capacidades |
+| --- | --- | --- | --- |
+| Ciudadano | `CIUDADANO` | Web pública, mobile | Registro, login, SAIP, consulta, apelación y subsanación. |
+| Funcionario | `FUNCIONARIO` | Web interna | Gestionar solicitudes de su entidad y emitir respuestas. |
+| TTAIP | `TTAIP` | Web interna | Calificar, admitir, resolver y revisar expedientes. |
+| Administrador | `ADMIN` / `ADMINISTRADOR` | Web interna | Gestión de usuarios, entidades, reportes e indicadores. |
+
+Principios de seguridad:
+
+- Validar entradas en backend con Jakarta Bean Validation.
+- Proteger endpoints con Spring Security y roles.
+- Usar CORS configurable por entorno.
+- Mantener secretos fuera del repositorio y usar variables de entorno.
+- Validar tamaño, extensión y tipo de archivos cargados.
+- Evitar logs con tokens, credenciales o información sensible.
+
+## Ejecución local
+
+### Requisitos
+
+| Herramienta | Uso |
+| --- | --- |
+| Java 21 | Backend Spring Boot y build Android. |
+| MySQL 8.x | Base de datos `saip_db`. |
+| Node.js 22 | Frontend Angular y docs Astro. |
+| npm 11.x | Gestión de paquetes web. |
+| Android Studio / SDK | Build y ejecución mobile. |
+| PowerShell o Bash | Scripts de sincronización OpenAPI. |
+
+### Backend
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Comandos útiles:
+
+```powershell
+cd backend
+.\mvnw.cmd compile
+.\mvnw.cmd test
+.\mvnw.cmd package -DskipTests
+```
+
+Variables relevantes:
+
+| Variable | Default local |
+| --- | --- |
+| `DB_USERNAME` | `root` |
+| `DB_PASSWORD` | `cibertec` |
+| `JWT_SECRET` | Solo desarrollo local |
+| `JWT_EXPIRATION_MS` | `86400000` |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
 
 ### Frontend
 
-```bash
+```powershell
 cd frontend
 npm install
-npm start          # ng serve (dev server)
-npm run build      # Producción
-npm test           # Vitest
+npm start
+```
+
+Comandos útiles:
+
+```powershell
+cd frontend
+npm test
+npm run build
+npm run generate:api:live
 ```
 
 ### Mobile
@@ -434,65 +498,91 @@ cd mobile
 .\gradlew.bat assembleDebug
 ```
 
-Requiere `google-services.json` en `mobile/app/`.
-
-### Documentación
-
-```bash
-cd docs
-npm install
-npm run dev        # sitio de documentación en local
-npm run build      # build estático de Astro + Starlight
-```
-
-Los diagramas Mermaid están configurados para renderizar correctamente en tema claro y tema oscuro.
-
-### Sincronizar contrato OpenAPI
-
-Cuando el backend modifica endpoints o DTOs, los consumidores deben actualizar su contrato:
+Comandos útiles:
 
 ```powershell
-# Windows (requiere backend corriendo en localhost:8080)
-.\scripts\sync-openapi.ps1
-
-# Linux/macOS
-./scripts/sync-openapi.sh
+cd mobile
+.\gradlew.bat clean compileDebugKotlin
+.\gradlew.bat test
+.\gradlew.bat clean compileDebugKotlin test
 ```
 
-Esto descarga el OpenAPI spec, lo guarda en `frontend/openapi.json` y `mobile/openapi.json`,
-y regenera automáticamente los tipos TypeScript del frontend.
+> Para integraciones Firebase, colocar el archivo `google-services.json` requerido por el módulo Android correspondiente.
 
----
+### Docs
 
-## CI/CD
-
-El proyecto usa **GitHub Actions** con pipelines independientes por módulo:
-
-| Workflow | Trigger (paths) | Qué hace |
-|----------|-----------------|----------|
-| `backend-ci.yml` | `backend/**` | Maven build + tests (Java 21, H2) + genera OpenAPI spec |
-| `docs-ci.yml` | `docs/**` | npm ci + build de documentación Astro/Starlight + artifact `docs-dist` |
-| `frontend-ci.yml` | `frontend/**` | npm install + TypeScript check + Vitest + Angular build |
-| `mobile-ci.yml` | `mobile/**` | Gradle assembleDebug + tests + upload APK artifact |
-
-Cada pipeline se ejecuta solo cuando cambian archivos en su módulo correspondiente.
-
----
-
-## Documentación
-
-La carpeta `docs/` contiene la documentación técnica y funcional publicada con Astro + Starlight, incluyendo diagramas Mermaid adaptados para tema claro y oscuro.
-
-Comandos rápidos:
-
-```bash
+```powershell
 cd docs
-npm run dev
+npm ci
+npm start
 npm run build
 ```
 
----
+## Validación y CI
+
+Cada módulo tiene validaciones independientes. Esto reduce acoplamiento y permite que los cambios se revisen por superficie.
+
+| Módulo afectado | Validación local recomendada |
+| --- | --- |
+| `backend/` | `cd backend; .\mvnw.cmd test` |
+| `frontend/` | `cd frontend; npm test; npm run build` |
+| `mobile/` | `cd mobile; .\gradlew.bat clean compileDebugKotlin test` |
+| `docs/` | `cd docs; npm run build` |
+| API contract | Backend corriendo + `.\scripts\sync-openapi.ps1` |
+
+Pipelines de GitHub Actions:
+
+| Workflow | Trigger por paths | Validación |
+| --- | --- | --- |
+| `backend-ci.yml` | `backend/**` | Compile, test, package y export OpenAPI. |
+| `frontend-ci.yml` | `frontend/**` | `npm ci`, TypeScript check, tests y build Angular. |
+| `mobile-ci.yml` | `mobile/**` | Gradle wrapper validation, debug APK y tests. |
+| `docs-ci.yml` | `docs/**` | Build del sitio Astro/Starlight. |
+
+```mermaid
+flowchart LR
+    Change["Cambio en PR"]
+    BackendCI["Backend CI"]
+    FrontendCI["Frontend CI"]
+    MobileCI["Mobile CI"]
+    DocsCI["Docs CI"]
+    Review["Revisión técnica"]
+    Develop["develop"]
+
+    Change --> BackendCI
+    Change --> FrontendCI
+    Change --> MobileCI
+    Change --> DocsCI
+    BackendCI --> Review
+    FrontendCI --> Review
+    MobileCI --> Review
+    DocsCI --> Review
+    Review --> Develop
+```
+
+## Documentación y herramientas
+
+| Recurso | Descripción |
+| --- | --- |
+| `docs/` | Sitio técnico y funcional con Astro + Starlight. |
+| `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
+| `database/script_saip_db.sql` | Script SQL de apoyo para datos locales. |
+| `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
+
+## Roadmap técnico sugerido
+
+| Área | Próxima mejora |
+| --- | --- |
+| Backend | Endurecer perfiles por entorno, migraciones versionadas y pruebas de integración por flujo legal. |
+| Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
+| Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
+| Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |
+| DevOps | Incorporar release automation, coverage reports y quality gates por módulo. |
 
 ## Licencia
 
-Ver [LICENSE](LICENSE).
+Este proyecto está licenciado bajo **Apache License 2.0**.
+
+Copyright 2025-2026 Kelly Medalit De La Cruz Lopez y Daniel Angel Leon Salazar.
+
+Consulta el archivo [LICENSE](LICENSE) para los términos completos.
