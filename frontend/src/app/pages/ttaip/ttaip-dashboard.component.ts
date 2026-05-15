@@ -5,7 +5,8 @@ import { DatePipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
-import { Apelacion } from '../../models/apelacion.model';
+import { LocalStateOverrideService } from '../../services/local-state-override.service';
+import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
 
 type StageKey = 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
 type Priority = 'alta' | 'media' | 'baja';
@@ -56,15 +57,16 @@ interface PlazoStatus {
 export class TtaipDashboardComponent implements OnInit {
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
+  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   readonly stages: StageMeta[] = [
     {
       key: 'elevacion',
       num: '00',
-      label: 'Pendiente de elevacion',
-      shortLabel: 'Elevacion',
+      label: 'Pendiente de elevación',
+      shortLabel: 'Elevación',
       plazoDias: 2,
-      plazoLabel: '2 dias hab.',
+      plazoLabel: '2 días háb.',
       norma: 'Reglamento TTAIP',
       color: 'var(--muted-foreground)',
       bg: 'var(--muted)',
@@ -74,10 +76,10 @@ export class TtaipDashboardComponent implements OnInit {
     {
       key: 'calificacion1',
       num: '01',
-      label: 'Primera calificacion',
+      label: 'Primera calificación',
       shortLabel: '1ra Calif.',
       plazoDias: 7,
-      plazoLabel: '7 dias hab.',
+      plazoLabel: '7 días háb.',
       norma: 'Reglamento TTAIP',
       color: 'var(--info)',
       bg: 'rgba(29,78,216,0.08)',
@@ -87,10 +89,10 @@ export class TtaipDashboardComponent implements OnInit {
     {
       key: 'subsanacion',
       num: '02',
-      label: 'Subsanacion',
-      shortLabel: 'Subsanacion',
+      label: 'Subsanación',
+      shortLabel: 'Subsanación',
       plazoDias: 2,
-      plazoLabel: '2 dias hab.',
+      plazoLabel: '2 días háb.',
       norma: 'Espera del ciudadano',
       color: 'var(--gold-dark)',
       bg: 'rgba(176,136,66,0.10)',
@@ -101,7 +103,7 @@ export class TtaipDashboardComponent implements OnInit {
     {
       key: 'calificacion2',
       num: '03',
-      label: 'Segunda calificacion',
+      label: 'Segunda calificación',
       shortLabel: '2da Calif.',
       plazoDias: 3,
       plazoLabel: 'Post-subsan.',
@@ -114,15 +116,15 @@ export class TtaipDashboardComponent implements OnInit {
     {
       key: 'resolucion',
       num: '04',
-      label: 'Resolucion final',
+      label: 'Resolución final',
       shortLabel: 'Res. Final',
       plazoDias: 10,
-      plazoLabel: '10 dias hab.',
+      plazoLabel: '10 días háb.',
       norma: 'Reglamento TTAIP',
       color: 'var(--brand-700)',
       bg: 'var(--brand-subtle)',
       icon: 'gavel',
-      actionLabel: 'Emitir resolucion'
+      actionLabel: 'Emitir resolución'
     },
     {
       key: 'resueltos',
@@ -337,7 +339,7 @@ export class TtaipDashboardComponent implements OnInit {
       case 'IMPROCEDENTE':
         return 'Improcedente';
       case 'CONCLUSION_SUSTRACCION_MATERIA':
-        return 'Sustraccion';
+        return 'Sustracción';
       case 'CONCLUSION_DESISTIMIENTO':
         return 'Desistimiento';
       case 'TENER_POR_NO_PRESENTADO':
@@ -401,12 +403,43 @@ export class TtaipDashboardComponent implements OnInit {
 
     for (const group of groups) {
       for (const apelacion of group) {
-        const key = this.apelacionKey(apelacion);
-        byKey.set(key, apelacion);
+        const normalized = this.normalizeApelacionEstado(apelacion);
+        const key = this.apelacionKey(normalized);
+        const current = byKey.get(key);
+
+        if (!current || this.stageRank(normalized.estado) >= this.stageRank(current.estado)) {
+          byKey.set(key, normalized);
+        }
       }
     }
 
     return Array.from(byKey.values());
+  }
+
+  private normalizeApelacionEstado(apelacion: Apelacion): Apelacion {
+    if (this.mapEstadoToStage(apelacion.estado) === 'resueltos') {
+      return apelacion;
+    }
+
+    const overridden = this.localStateOverride.getApelacionEstado(apelacion);
+    if (!overridden || this.stageRank(overridden) < this.stageRank(apelacion.estado)) {
+      return apelacion;
+    }
+
+    return { ...apelacion, estado: overridden as EstadoApelacion };
+  }
+
+  private stageRank(estado: string): number {
+    const ranks: Record<StageKey, number> = {
+      elevacion: 0,
+      calificacion1: 1,
+      subsanacion: 2,
+      calificacion2: 3,
+      resolucion: 4,
+      resueltos: 5
+    };
+
+    return ranks[this.mapEstadoToStage(estado)];
   }
 
   private apelacionKey(apelacion: Apelacion): string {
@@ -420,8 +453,8 @@ export class TtaipDashboardComponent implements OnInit {
 
   private toQueueItem(apelacion: Apelacion): QueueItem {
     const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
-    const entidad = (apelacion.entidadNombre || 'Entidad publica').trim();
-    const descripcion = (apelacion.solicitudAsunto || apelacion.fundamentos || 'Recurso en tramite').trim();
+    const entidad = (apelacion.entidadNombre || 'Entidad pública').trim();
+    const descripcion = (apelacion.solicitudAsunto || apelacion.fundamentos || 'Recurso en trámite').trim();
     const stageKey = this.mapEstadoToStage(apelacion.estado);
     const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
     const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);

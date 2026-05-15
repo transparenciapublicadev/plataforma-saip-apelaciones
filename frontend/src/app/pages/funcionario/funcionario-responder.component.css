@@ -1,2 +1,7 @@
 /* Estilos funcionario responder */
 
+.reference-upload-zone-filled {
+  background: color-mix(in srgb, var(--success) 8%, var(--card)) !important;
+  border-color: color-mix(in srgb, var(--success) 32%, var(--border)) !important;
+}
+

@@ -1,7 +1,48 @@
 <a class="saip-skip-link" href="#main-content">Saltar al contenido principal</a>
 
+@if (showSplash()) {
+  <div class="saip-splash" [class.saip-splash-leaving]="splashLeaving()" aria-label="Cargando Plataforma SAIP">
+    <div class="saip-splash-paper"></div>
+    <div class="saip-splash-accent"></div>
+
+    <div class="saip-splash-content">
+      <div class="saip-splash-logo-stage">
+        <div class="saip-splash-logo-wrap">
+          <div class="saip-splash-logo-ring"></div>
+          <div class="saip-splash-logo">
+            <svg viewBox="0 0 48 48" class="w-14 h-14" aria-hidden="true">
+              <defs>
+                <linearGradient id="splash-gold-angular" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#E8D9B5" />
+                  <stop offset="100%" stop-color="#B08842" />
+                </linearGradient>
+              </defs>
+              <rect x="9" y="13" width="30" height="22" fill="white" rx="2" opacity="0.95" />
+              <rect x="9" y="13" width="30" height="6" fill="#A81E2C" rx="2" />
+              <rect x="9" y="29" width="30" height="6" fill="#A81E2C" />
+              <circle cx="24" cy="24" r="5" fill="url(#splash-gold-angular)" />
+              <circle cx="24" cy="24" r="2" fill="#5E0F18" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="saip-splash-eyebrow">República del Perú</div>
+      <h1 class="saip-splash-title">SAIP</h1>
+      <div class="saip-splash-divider"></div>
+      <p class="saip-splash-subtitle">Sistema de Acceso a la Información Pública</p>
+
+      <div class="saip-splash-dots" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+}
+
 <!-- Header — Editorial v3 -->
-<header class="saip-header fixed top-0 left-0 right-0 z-50" data-animate>
+<header class="saip-header fixed top-0 left-0 right-0 z-50" [class.saip-shell-suspended]="showSplash()" data-animate>
   <!-- Top institutional bar -->
   <div data-inst-bar class="saip-institutional-bar">
     <div class="saip-institutional-bar-line"></div>
@@ -46,7 +87,7 @@
             @case ('CIUDADANO') {
               <a routerLink="/ciudadano" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                Mi Panel
+                Mi panel
               </a>
               <a routerLink="/ciudadano/nueva-saip" routerLinkActive="active" class="nav-link-desktop">
                 <svg lucidePlus class="w-4 h-4 opacity-70"></svg>
@@ -60,19 +101,19 @@
             @case ('FUNCIONARIO') {
               <a routerLink="/funcionario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                Mi Panel
+                Mi panel
               </a>
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideScale class="w-4 h-4 opacity-70"></svg>
-                Panel TTAIP
+                Mi panel
               </a>
             }
             @case ('ADMINISTRADOR') {
               <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideSettings class="w-4 h-4 opacity-70"></svg>
-                Administración
+                Mi panel
               </a>
             }
           }
@@ -99,8 +140,7 @@
                 <span>{{ userInitials() }}</span>
               </div>
               <div class="text-left hidden lg:block">
-                <span class="block max-w-[110px] truncate text-sm font-medium leading-tight text-[var(--foreground)]">{{ userFirstName() }}</span>
-                <span class="block text-[10px] tracking-[0.18em] uppercase mt-0.5" style="color: var(--brand-700)">{{ tipoUsuario() }}</span>
+                <span class="block max-w-[110px] truncate text-sm font-medium text-[var(--foreground)]">{{ userFirstName() }}</span>
               </div>
               <svg lucideChevronDown class="w-3.5 h-3.5 opacity-50 group-hover:opacity-80 transition-all" [class.rotate-180]="menuAbierto()"></svg>
             </button>
@@ -119,25 +159,25 @@
                     @case ('CIUDADANO') {
                       <a routerLink="/ciudadano" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                        Mi Panel
+                        Mi panel
                       </a>
                     }
                     @case ('FUNCIONARIO') {
                       <a routerLink="/funcionario" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                        Mi Panel
+                        Mi panel
                       </a>
                     }
                     @case ('TTAIP') {
                       <a routerLink="/ttaip" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
-                        Panel TTAIP
+                        Mi panel
                       </a>
                     }
                     @case ('ADMINISTRADOR') {
                       <a routerLink="/admin" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideSettings class="w-4 h-4 text-[var(--niebla)]"></svg>
-                        Administración
+                        Mi panel
                       </a>
                     }
                   }
@@ -145,7 +185,7 @@
                 <div class="border-t border-[var(--border)] py-1.5 px-1.5">
                   <button (click)="logout()" class="dropdown-item dropdown-item-danger w-full" role="menuitem">
                     <svg lucideLogOut class="w-4 h-4"></svg>
-                    Cerrar Sesión
+                    Cerrar sesión
                   </button>
                 </div>
               </div>
@@ -183,7 +223,7 @@
             }
           </button>
           <a routerLink="/login" class="btn-brand ml-1" style="height: 36px; padding: 0 16px; font-size: 13px">
-            Iniciar Sesión
+            Iniciar sesión
           </a>
         }
       </nav>
@@ -203,7 +243,7 @@
           }
         </button>
 
-        <button (click)="toggleMobileMenu()" class="text-[var(--carbon)] hover:bg-[var(--nieve)] p-2.5 rounded-xl transition-all cursor-pointer" aria-label="Abrir menu de navegacion" aria-controls="mobile-navigation-panel" [attr.aria-expanded]="mobileMenuAbierto()">
+        <button (click)="toggleMobileMenu()" class="w-9 h-9 inline-flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer" aria-label="Abrir menu de navegacion" aria-controls="mobile-navigation-panel" [attr.aria-expanded]="mobileMenuAbierto()">
           @if (mobileMenuAbierto()) {
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           } @else {
@@ -225,14 +265,14 @@
             </div>
             <div>
               <p class="text-sm font-semibold text-[var(--carbon)]">{{ nombreUsuario() }}</p>
-              <p class="text-xs text-[var(--niebla)]">{{ tipoUsuario() }}</p>
+              <p class="text-[10px] tracking-[0.18em] uppercase mt-0.5" style="color: var(--brand-700)">Sesión activa</p>
             </div>
           </div>
           @switch (tipoUsuario()) {
             @case ('CIUDADANO') {
               <a routerLink="/ciudadano" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                Mi Panel
+                Mi panel
               </a>
               <a routerLink="/ciudadano/nueva-saip" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
@@ -246,26 +286,26 @@
             @case ('FUNCIONARIO') {
               <a routerLink="/funcionario" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
-                Mi Panel
+                Mi panel
               </a>
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
-                Panel TTAIP
+                Mi panel
               </a>
             }
             @case ('ADMINISTRADOR') {
               <a routerLink="/admin" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideSettings class="w-4 h-4 text-[var(--niebla)]"></svg>
-                Administración
+                Mi panel
               </a>
             }
           }
           <div class="border-t border-[var(--border)] pt-2 mt-2">
             <button (click)="logout()" class="mobile-nav-item text-[var(--estado-rojo)] w-full">
               <svg lucideLogOut class="w-4 h-4"></svg>
-              Cerrar Sesión
+              Cerrar sesión
             </button>
           </div>
         } @else {
@@ -275,7 +315,7 @@
           </a>
           <a routerLink="/consultar" (click)="toggleMobileMenu()" class="mobile-nav-item">
             <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-width="2" d="m20 20-3-3"></path></svg>
-            Consultar Estado
+            Consultar estado
           </a>
           <a routerLink="/ayuda" (click)="toggleMobileMenu()" class="mobile-nav-item">
             <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"></path><path stroke-width="2" d="M12 17h.01"></path></svg>
@@ -283,7 +323,7 @@
           </a>
           <div class="border-t border-[var(--border)] pt-3 mt-3">
             <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-brand w-full" style="height: 44px">
-              Iniciar Sesión
+              Iniciar sesión
             </a>
           </div>
         }
@@ -293,11 +333,11 @@
 </header>
 
 <!-- Main Content -->
-<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" tabindex="-1">
+<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" [class.saip-shell-suspended]="showSplash()" tabindex="-1">
   <router-outlet></router-outlet>
 </main>
 
-<footer class="saip-footer relative overflow-hidden">
+<footer class="saip-footer relative overflow-hidden" [class.saip-shell-suspended]="showSplash()">
   <!-- Top brand accent -->
   <div class="brand-divider"></div>
   <div class="absolute inset-0 bg-paper opacity-[0.04] pointer-events-none"></div>

@@ -34,6 +34,19 @@ interface TimelineStep {
   status: 'done' | 'active' | 'pending' | 'skipped';
 }
 
+interface PlazoEntidadView {
+  restantes: number;
+  pct: number;
+  tone: string;
+  fechaLimite?: string;
+}
+
+interface SubsanacionView {
+  dias: number;
+  observaciones: string;
+  expediente?: string;
+}
+
 interface GuideStep {
   num: string;
   titulo: string;
@@ -169,6 +182,7 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   readonly accionPrincipal = computed(() => this.construirAccionPrincipal(this.solicitudPrincipal()));
   readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
+  readonly timelineDisplaySteps = computed(() => this.timelinePrincipal().slice(0, 5));
 
   readonly timelineProgress = computed(() => {
     const steps = this.timelinePrincipal();
@@ -182,6 +196,46 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
 
     return Math.round((doneCount / steps.length) * 100);
+  });
+
+  readonly timelineLineProgress = computed(() => {
+    const steps = this.timelineDisplaySteps();
+    if (steps.length <= 1) return 0;
+
+    const doneCount = steps.filter((step) => step.status === 'done').length;
+    return Math.min(100, Math.round((doneCount / Math.max(steps.length - 1, 1)) * 100));
+  });
+
+  readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
+    const solicitud = this.solicitudPrincipal();
+    if (!solicitud) return null;
+
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (!this.estadosEnProceso.has(estado)) return null;
+
+    const totalDias = 10;
+    const restantes = Math.max(this.diasRestantesParaEntidad(solicitud), 0);
+    const consumidos = Math.max(0, totalDias - Math.min(restantes, totalDias));
+    const pct = Math.min(100, Math.round((consumidos / totalDias) * 100));
+    const tone = restantes <= 1 ? 'var(--brand-700)' : restantes <= 3 ? 'var(--warning)' : 'var(--success)';
+
+    return {
+      restantes,
+      pct,
+      tone,
+      fechaLimite: this.formatDate(solicitud.fechaLimite)
+    };
+  });
+
+  readonly subsanacionPrincipal = computed<SubsanacionView | null>(() => {
+    const solicitud = this.solicitudPrincipal();
+    if (!solicitud || (solicitud.apelacion?.estado || '').toUpperCase() !== 'EN_SUBSANACION') return null;
+
+    return {
+      dias: Math.max(this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud), 0),
+      observaciones: solicitud.apelacion?.resultado || 'observaciones',
+      expediente: solicitud.apelacion?.expediente
+    };
   });
 
   readonly resumenActivasTexto = computed(() => {
@@ -394,6 +448,33 @@ export class CiudadanoDashboardComponent implements OnInit {
     return clases[estadoKey] || 'badge-muted';
   }
 
+  timelineDotBackground(status: TimelineStep['status']): string {
+    if (status === 'done') return 'var(--success)';
+    if (status === 'active' || status === 'skipped') return 'var(--brand-700)';
+    return 'var(--card)';
+  }
+
+  timelineDotBorder(status: TimelineStep['status']): string {
+    const color = status === 'pending' ? 'var(--border-strong)' : this.timelineDotBackground(status);
+    return `1.5px solid ${color}`;
+  }
+
+  timelineDotShadow(status: TimelineStep['status']): string {
+    return status === 'active' ? '0 0 0 4px var(--brand-200)' : 'none';
+  }
+
+  timelineLabelColor(status: TimelineStep['status']): string {
+    return status === 'pending' ? 'var(--muted-foreground)' : 'var(--foreground)';
+  }
+
+  timelineMetaColor(status: TimelineStep['status']): string {
+    return status === 'active' ? 'var(--brand-700)' : 'var(--muted-foreground)';
+  }
+
+  accionResumenSolicitud(solicitud: Solicitud): DashboardAction | null {
+    return this.construirAccionPrincipal(solicitud);
+  }
+
   formatoEstado(estado?: string): string {
     if (!estado) return 'Sin estado';
     return estado.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (value) => value.toUpperCase());
@@ -547,18 +628,20 @@ export class CiudadanoDashboardComponent implements OnInit {
 
     if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(solicitud);
+      const vencimiento = this.formatDate(solicitud.fechaLimite);
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
-        meta: `${Math.max(dias, 0)}d restantes`,
+        meta: `${Math.max(dias, 0)}d restantes${vencimiento ? ` - vence ${vencimiento}` : ''}`,
         status: 'active'
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
     } else if (estado === 'RESPONDIDA') {
-      steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', status: 'done' });
+      const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'recibida';
+      steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', meta: 'Atencion cerrada', status: 'done' });
       steps.push({
         key: 'respuesta',
-        label: 'Respuesta recibida',
+        label: `Respuesta - ${resultado}`,
         date: this.formatDate(solicitud.respuesta?.fechaRespuesta),
         status: 'done'
       });

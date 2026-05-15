@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
         Volver al panel
@@ -36,7 +36,7 @@
       </div>
     } @else if (solicitud(); as sol) {
       @if (puedeApelar()) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, var(--brand-subtle), transparent); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, var(--brand-subtle), transparent); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3 2 7l10 4 10-4-10-4zm0 8v10m-7-6h14" /></svg>
           </div>
@@ -56,37 +56,69 @@
         </div>
       }
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        data-motion-stagger
+        data-motion-y="12"
+        data-motion-duration="0.38"
+        data-motion-delay-step="0.055">
         <aside class="lg:col-span-4">
-          <div class="form-shell sticky top-28">
+          <div data-motion-item class="form-shell sticky top-28">
             <div class="form-section-header">
               <span class="eyebrow">Trazabilidad</span>
               <h3 class="form-section-title">Línea de tiempo</h3>
             </div>
             <div class="p-6">
-              <div class="space-y-6">
+              <div class="reference-timeline">
                 @for (event of getTimelineEvents(); track event.title) {
-                  <div class="flex gap-3">
-                    <div class="flex flex-col items-center">
-                      <div class="w-8 h-8 rounded-full flex items-center justify-center" [style.background]="event.status === 'completed' ? 'color-mix(in srgb, var(--success) 15%, var(--card))' : (event.status === 'current' ? 'color-mix(in srgb, var(--info) 15%, var(--card))' : 'var(--muted)')">
+                  <div class="reference-timeline-item" data-table-row>
+                    @if (!$last) {
+                      <div
+                        class="reference-timeline-line"
+                        [class.completed]="event.status === 'completed'"></div>
+                    }
+
+                    <div
+                      class="reference-timeline-icon"
+                      [class.completed]="event.status === 'completed'"
+                      [class.current]="event.status === 'current'"
+                      [class.pending]="event.status === 'pending'"
+                      [class.icon-mail]="event.icon === 'mail'"
+                      [class.icon-search]="event.icon === 'search'"
+                      [class.icon-check]="event.icon === 'check'">
                         @if (event.icon === 'mail') {
-                          <svg class="w-4 h-4" [style.color]="event.status === 'pending' ? 'var(--muted-foreground)' : 'var(--success)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m3 7 9 6 9-6M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" /></svg>
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m3 7 9 6 9-6M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" /></svg>
                         } @else if (event.icon === 'search') {
-                          <svg class="w-4 h-4" [style.color]="event.status === 'pending' ? 'var(--muted-foreground)' : 'var(--info)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21 21-4.35-4.35m1.6-5.4a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" /></svg>
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21 21-4.35-4.35m1.6-5.4a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" /></svg>
                         } @else {
-                          <svg class="w-4 h-4" [style.color]="event.status === 'pending' ? 'var(--muted-foreground)' : 'var(--success)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
                         }
-                      </div>
-                      @if (!$last) {
-                        <div class="flex-1 w-px my-1" [style.background]="event.status === 'pending' ? 'var(--border)' : 'color-mix(in srgb, var(--success) 35%, var(--border))'"></div>
-                      }
                     </div>
-                    <div>
-                      <p class="text-sm font-medium text-foreground">{{ event.title }}</p>
-                      <p class="text-xs text-muted-foreground mt-0.5">{{ event.description }}</p>
-                      @if (event.date) {
-                        <p class="text-xs font-mono text-muted-foreground mt-1">{{ event.date | date:'dd MMM yyyy' }}</p>
-                      }
+
+                    <div class="flex-1 pb-6">
+                      <div
+                        class="reference-timeline-card"
+                        [class.completed]="event.status === 'completed'"
+                        [class.current]="event.status === 'current'"
+                        [class.pending]="event.status === 'pending'">
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="flex-1">
+                            <h4 class="text-sm font-medium" [class.text-muted-foreground]="event.status === 'pending'">{{ event.title }}</h4>
+                            <p class="text-sm mt-1" [class.reference-timeline-pending-copy]="event.status === 'pending'">{{ event.description }}</p>
+                          </div>
+                          <span
+                            class="reference-timeline-date"
+                            [class.completed]="event.status === 'completed'"
+                            [class.current]="event.status === 'current'"
+                            [class.pending]="event.status === 'pending'">
+                            @if (event.date) {
+                              {{ event.date | date:'dd MMM yyyy' }}
+                            } @else {
+                              Pendiente
+                            }
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -96,7 +128,7 @@
         </aside>
 
         <div class="lg:col-span-8 space-y-5">
-          <div class="form-shell overflow-hidden">
+          <div data-motion-item class="form-shell overflow-hidden">
             <div class="flex border-b" style="border-color: var(--border)">
               @for (tab of tabs; track tab.id) {
                 <button
@@ -114,7 +146,7 @@
             </div>
 
             @if (activeTab() === 'solicitud') {
-              <div class="p-6 md:p-8 space-y-5">
+              <div class="p-6 md:p-8 space-y-5 animate-fade-in">
                 <div>
                   <span class="eyebrow">01 · Solicitante</span>
                   <div class="mt-2 flex items-center gap-3">
@@ -176,7 +208,7 @@
 
             @if (activeTab() === 'respuesta') {
               @if (puedeVerRespuesta()) {
-                <div class="p-6 md:p-8 space-y-5">
+                <div class="p-6 md:p-8 space-y-5 animate-fade-in">
                   <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
                     <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.94 4h13.88c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.33 16c-.77 1.33.19 3 1.73 3z" /></svg>
                     <div>
@@ -245,9 +277,9 @@
 
             @if (activeTab() === 'adjuntos') {
               @if (sol.documentos && sol.documentos.length > 0) {
-                <div class="p-6 md:p-8 space-y-3">
+                <div class="p-6 md:p-8 space-y-3 animate-fade-in">
                   @for (doc of sol.documentos; track doc.id) {
-                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                    <div data-table-row class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                       <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                           <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
@@ -273,7 +305,7 @@
 
             @if (activeTab() === 'apelacion') {
               @if (sol.apelacion && sol.apelacion.expediente) {
-                <div class="p-6 md:p-8 space-y-6">
+                <div class="p-6 md:p-8 space-y-6 animate-fade-in">
                   <div class="rounded-lg p-5" style="background: color-mix(in srgb, var(--brand-subtle) 85%, var(--card)); border: 1px solid var(--brand-200)">
                     <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
                       <div class="flex items-center gap-3 flex-wrap">
