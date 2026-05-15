@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
-    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-10">
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
         Volver al panel
@@ -23,7 +23,7 @@
         <p class="mt-4 text-muted-foreground">Cargando apelación...</p>
       </div>
     } @else if (apelacion(); as ap) {
-      <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+      <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
         </div>
@@ -72,9 +72,14 @@
         </div>
       }
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        data-motion-stagger
+        data-motion-y="12"
+        data-motion-duration="0.38"
+        data-motion-delay-step="0.055">
         <div class="space-y-5">
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
               <span class="eyebrow" style="color: var(--brand-700)">Pendiente de subsanar</span>
               <h2 class="form-section-title flex items-center gap-2">
@@ -84,7 +89,7 @@
             </div>
             <div class="p-6 space-y-3">
               @for (obs of observacionesTtaip; track obs.numero) {
-                <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <div class="reference-option-card rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                   <span class="font-display flex-shrink-0" style="font-size: 22px; line-height: 1; color: var(--brand-700); letter-spacing: -0.02em;">0{{ obs.numero }}</span>
                   <p class="text-sm text-foreground/85 leading-relaxed">{{ obs.descripcion }}</p>
                 </div>
@@ -97,14 +102,14 @@
             </div>
           </section>
 
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow">Antecedentes</span>
               <h2 class="form-section-title">Documentos originales</h2>
             </div>
             <div class="p-6 space-y-2">
               @for (doc of documentosOriginales; track doc) {
-                <div class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
@@ -121,7 +126,7 @@
         </div>
 
         <div class="space-y-5">
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header" style="border-left: 3px solid var(--info)">
               <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
               <h2 class="form-section-title">Cómo subsanar</h2>
@@ -136,7 +141,7 @@
             </div>
           </section>
 
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow">01 · Correcciones</span>
               <h2 class="form-section-title">Descripción</h2>
@@ -156,13 +161,13 @@
             </div>
           </section>
 
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow">02 · Adjuntos</span>
               <h2 class="form-section-title">Documentos de subsanación</h2>
             </div>
             <div class="p-6 space-y-3">
-              <label class="block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
+              <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
                 <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" (change)="seleccionarDocumento($event)" />
                 <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
                 <p class="text-sm text-foreground/85">Adjunte el documento de subsanación (opcional)</p>
@@ -180,9 +185,10 @@
           </section>
 
           <button
+            data-motion-item
             type="button"
             class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-            (click)="enviarSubsanacion()"
+            (click)="abrirConfirmacionSubsanacion()"
             [disabled]="loading() || !fundamentosAdicionales.trim()">
             @if (loading()) {
               <span class="inline-flex items-center gap-2">
@@ -202,4 +208,38 @@
       </div>
     }
   </div>
+
+  <app-reference-confirm-modal
+    [open]="confirmModalAbierto()"
+    [submitting]="loading()"
+    title="Confirme la subsanación"
+    titleLead="Confirme"
+    titleEmphasis="la subsanación"
+    eyebrow="Revisión final · Subsanación"
+    description="Verifique que las correcciones respondan a todas las observaciones del Tribunal antes de enviar."
+    [summary]="subsanacionConfirmSummary()"
+    [warning]="subsanacionWarning()"
+    confirmLabel="Enviar al Tribunal"
+    (close)="confirmModalAbierto.set(false)"
+    (confirm)="enviarSubsanacion()">
+  </app-reference-confirm-modal>
+
+  <app-reference-success-modal
+    [open]="successModalAbierto()"
+    variant="subsanacion-enviada"
+    tone="success"
+    eyebrow="Subsanación recibida"
+    title="Documentación enviada al TTAIP"
+    description="Su escrito de subsanación fue cargado al expediente. El Tribunal procederá con la 2da calificación."
+    [expediente]="apelacion()?.expediente || ''"
+    expedienteHint="Subsanación recibida dentro del plazo legal"
+    [plazoDias]="5"
+    plazoTipo="hábiles"
+    plazoDescripcion="Tiempo aproximado en que el TTAIP emitirá la 2da calificación: ADMITIDO A TRÁMITE o IMPROCEDENTE."
+    [metadata]="subsanacionSuccessMetadata()"
+    [nextSteps]="subsanacionNextSteps()"
+    primaryLabel="Ir a mi panel"
+    (close)="irPanelCiudadano()"
+    (primary)="irPanelCiudadano()">
+  </app-reference-success-modal>
 </div>

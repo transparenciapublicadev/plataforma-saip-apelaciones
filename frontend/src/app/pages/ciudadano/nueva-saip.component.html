@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background">
   <div class="relative bg-brand-gradient text-white overflow-hidden">
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14">
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14" data-hero>
       <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
         Volver al panel
@@ -20,20 +20,25 @@
 
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-12">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div class="lg:col-span-8 space-y-6">
+      <div
+        class="lg:col-span-8 space-y-6"
+        data-motion-stagger
+        data-motion-y="12"
+        data-motion-duration="0.4"
+        data-motion-delay-step="0.055">
         @if (error()) {
-          <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--brand-700) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-700) 24%, transparent);">
+          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--brand-700) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-700) 24%, transparent);">
             <p class="text-sm" style="color: var(--brand-700);">{{ error() }}</p>
           </div>
         }
 
         @if (mensaje()) {
-          <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);">
+          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);">
             <p class="text-sm" style="color: var(--success);">{{ mensaje() }}</p>
           </div>
         }
 
-        <section class="relative overflow-hidden rounded-xl" style="background: linear-gradient(135deg, var(--brand-subtle), color-mix(in srgb, var(--gold-soft) 28%, var(--card))); border: 1px solid var(--brand-200); box-shadow: 0 1px 0 0 color-mix(in srgb, var(--brand-700) 6%, transparent);">
+        <section data-motion-item class="relative overflow-hidden rounded-xl" style="background: linear-gradient(135deg, var(--brand-subtle), color-mix(in srgb, var(--gold-soft) 28%, var(--card))); border: 1px solid var(--brand-200); box-shadow: 0 1px 0 0 color-mix(in srgb, var(--brand-700) 6%, transparent);">
           <span aria-hidden class="absolute inset-x-0 top-0 h-px" style="background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);"></span>
 
           <div class="p-5 md:p-6 flex items-start gap-4">
@@ -76,8 +81,8 @@
           </div>
         </section>
 
-        <form (ngSubmit)="crearSolicitud()" class="space-y-6">
-          <section class="form-shell">
+        <form (ngSubmit)="abrirConfirmacionSolicitud()" class="space-y-6">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header flex items-start justify-between gap-4">
               <div>
                 <span class="eyebrow">01 · Entidad e información requerida</span>
@@ -138,7 +143,7 @@
             </div>
           </section>
 
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header flex items-start justify-between gap-4">
               <div>
                 <span class="eyebrow">02 · Modalidad de entrega</span>
@@ -151,7 +156,7 @@
 
             <div class="p-6 md:p-8">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label class="cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoDigital ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoDigital" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoDigital ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <input type="checkbox" [(ngModel)]="formatoDigital" name="formatoDigital" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoDigital ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoDigital ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (formatoDigital) {
@@ -164,7 +169,7 @@
                   </div>
                 </label>
 
-                <label class="cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoFisico ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoFisico" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoFisico ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <input type="checkbox" [(ngModel)]="formatoFisico" name="formatoFisico" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoFisico ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoFisico ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (formatoFisico) {
@@ -177,7 +182,7 @@
                   </div>
                 </label>
 
-                <label class="cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [style.background]="copiaSimple ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaSimple ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaSimple ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaSimple" [style.background]="copiaSimple ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaSimple ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaSimple ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <input type="checkbox" [(ngModel)]="copiaSimple" name="copiaSimple" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaSimple ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaSimple ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (copiaSimple) {
@@ -190,7 +195,7 @@
                   </div>
                 </label>
 
-                <label class="cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [style.background]="copiaCertificada ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaCertificada ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaCertificada ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaCertificada" [style.background]="copiaCertificada ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaCertificada ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaCertificada ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <input type="checkbox" [(ngModel)]="copiaCertificada" name="copiaCertificada" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaCertificada ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaCertificada ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (copiaCertificada) {
@@ -206,7 +211,7 @@
             </div>
           </section>
 
-          <section class="form-shell">
+          <section data-motion-item class="form-shell">
             <div class="form-section-header flex items-start justify-between gap-4">
               <div>
                 <span class="eyebrow">03 · Sustento opcional</span>
@@ -217,7 +222,7 @@
               </span>
             </div>
             <div class="p-6 md:p-8">
-              <div class="border-2 border-dashed rounded-xl p-8 text-center transition-colors" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent);">
+              <div class="reference-upload-zone border-2 border-dashed rounded-xl p-8 text-center transition-colors" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent);">
                 <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-width="2" d="M12 16V4m0 0 4 4m-4-4-4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
                 </svg>
@@ -227,13 +232,13 @@
             </div>
           </section>
 
-          <div class="flex flex-col sm:flex-row gap-3">
+          <div data-motion-item class="flex flex-col sm:flex-row gap-3">
             <button type="button" (click)="guardarBorrador()" class="btn-ghost-brand flex-1 justify-center !py-3">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
               Guardar borrador
             </button>
 
-            <button type="submit" [disabled]="loading()" class="btn-brand flex-1 !py-3 justify-center disabled:opacity-60">
+            <button type="submit" [disabled]="loading() || !canSubmit()" class="btn-brand flex-1 !py-3 justify-center disabled:opacity-60 disabled:cursor-not-allowed">
               @if (loading()) {
                 <span class="inline-flex items-center gap-2">
                   <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
@@ -250,9 +255,9 @@
         </form>
       </div>
 
-      <aside class="lg:col-span-4">
+      <aside class="lg:col-span-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.36" data-motion-delay-step="0.05">
         <div class="sticky top-28 space-y-5">
-          <div class="form-shell">
+          <div data-motion-item class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow">Guía rápida</span>
               <h3 class="form-section-title flex items-center gap-2">
@@ -286,7 +291,7 @@
             </div>
           </div>
 
-          <div class="rounded-lg p-5 flex gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
+          <div data-motion-item class="rounded-lg p-5 flex gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
             <svg class="w-5 h-5 shrink-0 mt-0.5" style="color: var(--brand-700);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
             <div>
               <div class="eyebrow !text-[10px] mb-1.5" style="color: var(--brand-700);">Plazo legal</div>
@@ -301,4 +306,41 @@
       </aside>
     </div>
   </div>
+
+  <app-reference-confirm-modal
+    [open]="confirmModalAbierto()"
+    [submitting]="loading()"
+    title="Confirme su solicitud"
+    titleLead="Confirme"
+    titleEmphasis="su solicitud"
+    eyebrow="Revisión final · SAIP"
+    description="Antes de enviar, revise que la información esté correcta. Si algo no le convence, puede volver al formulario para editarlo."
+    [summary]="solicitudConfirmSummary()"
+    [warning]="solicitudWarning()"
+    confirmLabel="Confirmar y enviar"
+    (close)="confirmModalAbierto.set(false)"
+    (confirm)="crearSolicitud()">
+  </app-reference-confirm-modal>
+
+  <app-reference-success-modal
+    [open]="successModalAbierto()"
+    variant="saip-creada"
+    tone="success"
+    eyebrow="Solicitud recibida"
+    title="SAIP presentada correctamente"
+    [description]="'Su solicitud fue recibida por ' + getEntidadSeleccionadaNombre() + '. La entidad cuenta con un plazo legal para emitir respuesta.'"
+    [expediente]="expedienteCreado()"
+    [expedienteHint]="'Generado hoy · Notificaciones a ' + sesionVisual().email"
+    [plazoDias]="10"
+    plazoTipo="hábiles"
+    plazoDescripcion="La entidad debe responder dentro de este plazo. Puede ampliarse 5 días con justificación."
+    plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública"
+    [metadata]="solicitudSuccessMetadata()"
+    [nextSteps]="solicitudNextSteps()"
+    primaryLabel="Ir a mi panel"
+    secondaryLabel="Ver expediente"
+    (close)="irPanelCiudadano()"
+    (primary)="irPanelCiudadano()"
+    (secondary)="verSolicitudCreada()">
+  </app-reference-success-modal>
 </div>

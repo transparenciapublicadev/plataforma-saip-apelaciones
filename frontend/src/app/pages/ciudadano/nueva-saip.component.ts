@@ -7,6 +7,16 @@ import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { Entidad } from '../../models/entidad.model';
 import { SolicitudCreate } from '../../models/solicitud.model';
+import {
+  ReferenceConfirmModalComponent,
+  ReferenceConfirmSummary,
+  ReferenceConfirmWarning
+} from '../../shared/reference-confirm-modal.component';
+import {
+  ReferenceSuccessMeta,
+  ReferenceSuccessModalComponent,
+  ReferenceSuccessNextStep
+} from '../../shared/reference-success-modal.component';
 
 interface SesionVisual {
   nombre: string;
@@ -16,7 +26,7 @@ interface SesionVisual {
 
 @Component({
   selector: 'app-nueva-saip',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
   templateUrl: './nueva-saip.component.html',
   styleUrl: './nueva-saip.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,6 +41,9 @@ export class NuevaSaipComponent implements OnInit {
   loading = signal<boolean>(false);
   error = signal<string>('');
   mensaje = signal<string>('');
+  confirmModalAbierto = signal<boolean>(false);
+  successModalAbierto = signal<boolean>(false);
+  expedienteCreado = signal<string>('');
   sesionVisual = signal<SesionVisual>({
     nombre: 'Ciudadano autenticado',
     dni: 'No disponible',
@@ -79,6 +92,15 @@ export class NuevaSaipComponent implements OnInit {
     this.error.set('');
     this.mensaje.set('Borrador guardado correctamente.');
   }
+
+  abrirConfirmacionSolicitud(): void {
+    if (!this.validarSolicitud()) {
+      return;
+    }
+
+    this.confirmModalAbierto.set(true);
+  }
+
   cargarEntidades(): void {
     this.entidadService.findActivas().subscribe({
       next: (data) => {
@@ -91,20 +113,7 @@ export class NuevaSaipComponent implements OnInit {
   }
 
   crearSolicitud(): void {
-    if (!this.asunto.trim()) {
-      this.error.set('El asunto es obligatorio');
-      return;
-    }
-    if (!this.descripcion.trim()) {
-      this.error.set('La descripción es obligatoria');
-      return;
-    }
-    if (!this.entidadId) {
-      this.error.set('Debe seleccionar una entidad');
-      return;
-    }
-    if (!this.formatoDigital && !this.formatoFisico && !this.copiaSimple && !this.copiaCertificada) {
-      this.error.set('Seleccione al menos un formato de respuesta');
+    if (!this.validarSolicitud()) {
       return;
     }
 
@@ -114,6 +123,7 @@ export class NuevaSaipComponent implements OnInit {
       return;
     }
 
+    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
 
@@ -121,7 +131,7 @@ export class NuevaSaipComponent implements OnInit {
       asunto: this.asunto,
       descripcion: this.descripcion,
       ciudadanoId: sesion.ciudadanoId,
-      entidadId: this.entidadId,
+      entidadId: this.entidadId!,
       tipoInformacion: this.tipoInformacion,
       formatoDigital: this.formatoDigital,
       formatoFisico: this.formatoFisico,
@@ -132,16 +142,125 @@ export class NuevaSaipComponent implements OnInit {
     this.solicitudService.crear(solicitud).subscribe({
       next: (respuesta) => {
         this.loading.set(false);
+        this.expedienteCreado.set(respuesta.expediente || '');
         this.mensaje.set(`SAIP creada correctamente. Expediente: ${respuesta.expediente}`);
-        setTimeout(() => {
-          this.router.navigate(['/ciudadano']);
-        }, 2000);
+        this.successModalAbierto.set(true);
       },
       error: (err) => {
         this.loading.set(false);
         this.error.set(err.error?.mensaje || 'Error al crear la solicitud');
       }
     });
+  }
+
+  canSubmit(): boolean {
+    return !!this.asunto.trim()
+      && !!this.descripcion.trim()
+      && !!this.entidadId
+      && (this.formatoDigital || this.formatoFisico || this.copiaSimple || this.copiaCertificada);
+  }
+
+  solicitudConfirmSummary(): ReferenceConfirmSummary[] {
+    return [
+      { label: 'Solicitante', value: this.sesionVisual().nombre || '—' },
+      { label: 'DNI', value: this.sesionVisual().dni || '—', mono: true },
+      { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() },
+      { label: 'Asunto', value: this.asunto.trim() || '—' },
+      { label: 'Formatos', value: this.getFormatosSeleccionados().join(', ') || '—' }
+    ];
+  }
+
+  solicitudWarning(): ReferenceConfirmWarning {
+    return {
+      label: 'Plazo legal',
+      detail: 'La entidad tendrá 10 días hábiles para responder desde la fecha de envío (Ley N° 27806).'
+    };
+  }
+
+  solicitudSuccessMetadata(): ReferenceSuccessMeta[] {
+    const formatos = this.getFormatosSeleccionados();
+    return [
+      { label: 'Entidad receptora', value: this.getEntidadSeleccionadaNombre() },
+      { label: 'Asunto', value: this.asunto.trim() || '—' },
+      {
+        label: 'Modalidad',
+        value: formatos.length > 0 ? `${formatos.length} seleccionada${formatos.length > 1 ? 's' : ''}` : 'No definida'
+      },
+      { label: 'Solicitante', value: this.sesionVisual().nombre || '—' }
+    ];
+  }
+
+  solicitudNextSteps(): ReferenceSuccessNextStep[] {
+    return [
+      {
+        label: 'La entidad evaluará su solicitud y emitirá respuesta.',
+        hint: 'Recibirá notificación por correo cuando exista una decisión.'
+      },
+      {
+        label: 'Si no recibe respuesta en 10 días hábiles, podrá apelar ante el TTAIP.',
+        hint: 'Silencio Administrativo Negativo'
+      },
+      { label: 'Puede consultar el estado en cualquier momento desde su panel.' }
+    ];
+  }
+
+  irPanelCiudadano(): void {
+    this.successModalAbierto.set(false);
+    this.router.navigate(['/ciudadano']);
+  }
+
+  verSolicitudCreada(): void {
+    const expediente = this.expedienteCreado();
+    this.successModalAbierto.set(false);
+    this.router.navigate(expediente ? ['/ciudadano/solicitud', expediente] : ['/ciudadano']);
+  }
+
+  private validarSolicitud(): boolean {
+    if (!this.asunto.trim()) {
+      this.error.set('El asunto es obligatorio');
+      return false;
+    }
+    if (!this.descripcion.trim()) {
+      this.error.set('La descripción es obligatoria');
+      return false;
+    }
+    if (!this.entidadId) {
+      this.error.set('Debe seleccionar una entidad');
+      return false;
+    }
+    if (!this.formatoDigital && !this.formatoFisico && !this.copiaSimple && !this.copiaCertificada) {
+      this.error.set('Seleccione al menos un formato de respuesta');
+      return false;
+    }
+
+    this.error.set('');
+    return true;
+  }
+
+  getEntidadSeleccionadaNombre(): string {
+    return this.entidades().find((entidad) => entidad.id === this.entidadId)?.nombre || '—';
+  }
+
+  private getFormatosSeleccionados(): string[] {
+    const formatos: string[] = [];
+
+    if (this.formatoDigital) {
+      formatos.push('Digital');
+    }
+
+    if (this.formatoFisico) {
+      formatos.push('Físico');
+    }
+
+    if (this.copiaSimple) {
+      formatos.push('Copia simple');
+    }
+
+    if (this.copiaCertificada) {
+      formatos.push('Copia certificada');
+    }
+
+    return formatos;
   }
 }
 
