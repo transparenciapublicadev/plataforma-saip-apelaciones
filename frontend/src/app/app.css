@@ -104,6 +104,11 @@
   visibility: visible;
 }
 
+.saip-shell-suspended {
+  opacity: 0;
+  pointer-events: none;
+}
+
 @keyframes navUnderlineIn {
   from {
     opacity: 0;
@@ -200,15 +205,15 @@
 
 /* Main content spacing */
 .saip-main-shell {
-  padding-top: 5.6875rem; /* inst bar 28px + nav 64px = 92px ≈ 5.75rem */
+  padding-top: 0;
 }
 
 .saip-main-shell.auth-main-shell {
-  padding-top: 0; /* auth pages handle their own layout */
+  padding-top: 0;
 }
 
 .saip-main-shell.landing-main-shell {
-  padding-top: 0; /* landing already matches design-reference with pt-40 inside the hero */
+  padding-top: 0;
 }
 
 /* Dropdown menu */
