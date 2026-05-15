@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { LocalStateOverrideService } from '../../services/local-state-override.service';
+import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 type BucketKey = 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
@@ -44,6 +45,7 @@ interface DistribucionDia {
 export class FuncionarioDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
+  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   private readonly plazoLegal = 10;
   private readonly cumplimientoPrevio = 78;
@@ -52,15 +54,15 @@ export class FuncionarioDashboardComponent implements OnInit {
     {
       key: 'san',
       label: 'Vencidas (SAN)',
-      eyebrow: 'Silencio negativo · accion urgente',
+      eyebrow: 'Silencio negativo · acción urgente',
       icon: 'alert',
       color: 'var(--brand-700)',
       bg: 'var(--brand-subtle)'
     },
     {
       key: 'hoy',
-      label: 'Hoy o manana',
-      eyebrow: 'Vencen en <=1 dia hab.',
+      label: 'Hoy o mañana',
+      eyebrow: 'Vencen en ≤1 día háb.',
       icon: 'flame',
       color: 'var(--brand-600)',
       bg: 'rgba(200,16,46,0.06)'
@@ -68,15 +70,15 @@ export class FuncionarioDashboardComponent implements OnInit {
     {
       key: 'semana',
       label: 'Esta semana',
-      eyebrow: '2 a 5 dias habiles',
+      eyebrow: '2 a 5 días hábiles',
       icon: 'calendar',
       color: 'var(--warning)',
       bg: 'rgba(217,119,6,0.10)'
     },
     {
       key: 'plazo',
-      label: 'Comodo en plazo',
-      eyebrow: 'Mas de 5 dias hab.',
+      label: 'Cómodo en plazo',
+      eyebrow: 'Más de 5 días háb.',
       icon: 'check',
       color: 'var(--success)',
       bg: 'rgba(5,150,105,0.10)'
@@ -252,14 +254,14 @@ export class FuncionarioDashboardComponent implements OnInit {
     const entidadId = this.entidadId();
 
     if (entidadId === 0) {
-      this.error.set('No se encontro la entidad');
+      this.error.set('No se encontró la entidad');
       this.loading.set(false);
       return;
     }
 
     this.solicitudService.findByEntidadId(entidadId).subscribe({
       next: (data) => {
-        this.solicitudes.set(data);
+        this.solicitudes.set(data.map((solicitud) => this.normalizeSolicitudEstado(solicitud)));
         this.loading.set(false);
       },
       error: (err) => {
@@ -300,10 +302,7 @@ export class FuncionarioDashboardComponent implements OnInit {
   }
 
   getDiasColor(bucket: BucketKey): string {
-    if (bucket === 'san') return 'var(--brand-700)';
-    if (bucket === 'hoy') return 'var(--brand-600)';
-    if (bucket === 'semana') return 'var(--warning)';
-    return 'var(--success)';
+    return this.buckets.find((item) => item.key === bucket)?.color ?? 'var(--brand-600)';
   }
 
   getDiasValor(item: QueueItem): string {
@@ -328,23 +327,49 @@ export class FuncionarioDashboardComponent implements OnInit {
   }
 
   private mapSolicitud(solicitud: Solicitud): QueueItem {
-    const diasRestantes = this.calcularDiasRestantes(solicitud);
-    const bucket = this.obtenerBucket(solicitud, diasRestantes);
+    const normalized = this.normalizeSolicitudEstado(solicitud);
+    const diasRestantes = this.calcularDiasRestantes(normalized);
+    const bucket = this.obtenerBucket(normalized, diasRestantes);
 
     return {
-      solicitud,
+      solicitud: normalized,
       bucket,
       diasRestantes,
-      iniciales: this.obtenerIniciales(solicitud.ciudadanoNombre || 'Ciudadano'),
-      prioridad: this.obtenerPrioridad(solicitud, diasRestantes),
-      tema: this.inferirTema(solicitud.asunto || '')
+      iniciales: this.obtenerIniciales(normalized.ciudadanoNombre || 'Ciudadano'),
+      prioridad: this.obtenerPrioridad(normalized, diasRestantes),
+      tema: this.inferirTema(normalized.asunto || '')
     };
+  }
+
+  private normalizeSolicitudEstado(solicitud: Solicitud): Solicitud {
+    const currentEstado = (solicitud.estado || '').toUpperCase();
+    if (this.isSolicitudTerminal(currentEstado)) {
+      return solicitud;
+    }
+
+    const overridden = this.localStateOverride.getSolicitudEstado(solicitud);
+    if (overridden) {
+      return { ...solicitud, estado: overridden as EstadoSolicitud };
+    }
+
+    const respuesta = solicitud.respuesta;
+    if (!respuesta?.tipoRespuesta) {
+      return solicitud;
+    }
+
+    const tipoRespuesta = respuesta.tipoRespuesta.toUpperCase();
+    const estado: EstadoSolicitud = tipoRespuesta.includes('DENEGACION') ? 'DENEGADA' : 'RESPONDIDA';
+    return { ...solicitud, estado };
+  }
+
+  private isSolicitudTerminal(estado: string): boolean {
+    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA';
   }
 
   private obtenerBucket(solicitud: Solicitud, diasRestantes: number): BucketKey {
     const estado = (solicitud.estado || '').toUpperCase();
 
-    if (estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA') {
+    if (this.isSolicitudTerminal(estado)) {
       return 'respondidas';
     }
 
@@ -407,10 +432,10 @@ export class FuncionarioDashboardComponent implements OnInit {
     const texto = asunto.toLowerCase();
 
     if (texto.includes('presupuesto') || texto.includes('financ') || texto.includes('gasto')) return 'Presupuesto';
-    if (texto.includes('contrato') || texto.includes('licitacion') || texto.includes('adenda')) return 'Contratos';
+    if (texto.includes('contrato') || texto.includes('licitación') || texto.includes('licitacion') || texto.includes('adenda')) return 'Contratos';
     if (texto.includes('convenio')) return 'Convenios';
     if (texto.includes('planilla') || texto.includes('personal') || texto.includes('servir')) return 'Personal';
-    if (texto.includes('acta') || texto.includes('sesion') || texto.includes('directorio')) return 'Actas';
+    if (texto.includes('acta') || texto.includes('sesión') || texto.includes('sesion') || texto.includes('directorio')) return 'Actas';
 
     return 'General';
   }
