@@ -1,12 +1,25 @@
-import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { RespuestaService } from '../../services/respuesta.service';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { LocalStateOverrideService } from '../../services/local-state-override.service';
+import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
+import { Respuesta } from '../../models/respuesta.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import {
+  ReferenceConfirmModalComponent,
+  ReferenceConfirmSummary,
+  ReferenceConfirmWarning
+} from '../../shared/reference-confirm-modal.component';
+import {
+  ReferenceSuccessMeta,
+  ReferenceSuccessModalComponent,
+  ReferenceSuccessNextStep,
+  ReferenceSuccessTone
+} from '../../shared/reference-success-modal.component';
 
 type ResponseTabId = 'responder' | 'solicitud' | 'ciudadano' | 'adjuntos';
 type DecisionId = 'entrega_total' | 'entrega_parcial' | 'denegacion_total';
@@ -20,7 +33,7 @@ interface ResponseDecision {
 
 @Component({
   selector: 'app-funcionario-responder',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
   templateUrl: './funcionario-responder.component.html',
   styleUrl: './funcionario-responder.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,6 +44,7 @@ export class FuncionarioResponderComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly respuestaService = inject(RespuestaService);
   private readonly authService = inject(AuthService);
+  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   solicitud = signal<Solicitud | null>(null);
   causales = signal<string[]>([]);
@@ -38,6 +52,8 @@ export class FuncionarioResponderComponent implements OnInit {
   loadingSolicitud = signal<boolean>(true);
   error = signal<string>('');
   mensaje = signal<string>('');
+  confirmModalAbierto = signal<boolean>(false);
+  successModalAbierto = signal<boolean>(false);
 
   activeTab = signal<ResponseTabId>('responder');
   decision = signal<DecisionId | null>(null);
@@ -79,9 +95,9 @@ export class FuncionarioResponderComponent implements OnInit {
     }
   ];
 
-  readonly canSubmit = computed<boolean>(() => {
+  canSubmit(): boolean {
     const currentDecision = this.decision();
-    if (!currentDecision || this.esSilencioAdministrativoAutomatico()) {
+    if (!currentDecision || !this.puedeRegistrarRespuestaManual()) {
       return false;
     }
 
@@ -93,7 +109,7 @@ export class FuncionarioResponderComponent implements OnInit {
       && this.descripcionDenegacion.trim().length > 0
       && this.fundamentoLegal.trim().length > 0
       && !!this.evidenciaDenegatoria();
-  });
+  }
 
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
@@ -147,31 +163,28 @@ export class FuncionarioResponderComponent implements OnInit {
     this.evidenciaDenegatoria.set(input.files?.[0] || null);
   }
 
+  removeDocumentosEntrega(): void {
+    this.documentosEntrega.set(null);
+  }
+
+  removeEvidenciaDenegatoria(): void {
+    this.evidenciaDenegatoria.set(null);
+  }
+
+  fileSizeLabel(file: File): string {
+    return `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+  }
+
   enviarRespuesta(): void {
     const sesion = this.authService.obtenerSesion();
     const sol = this.solicitud();
     const currentDecision = this.decision();
 
-    if (!sesion?.funcionarioId || !sol) {
-      this.error.set('Error de sesión');
+    if (!this.validarRespuesta() || !sesion?.funcionarioId || !sol || !currentDecision) {
       return;
     }
 
-    if (!currentDecision) {
-      this.error.set('Debe seleccionar el tipo de respuesta institucional.');
-      return;
-    }
-
-    if (this.esSilencioAdministrativoAutomatico()) {
-      this.error.set('La solicitud venció y aplica SILENCIO_ADMINISTRATIVO automáticamente. No se permite registrar respuesta manual.');
-      return;
-    }
-
-    if (!this.canSubmit()) {
-      this.error.set('Complete todos los campos obligatorios antes de enviar.');
-      return;
-    }
-
+    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
 
@@ -186,7 +199,11 @@ export class FuncionarioResponderComponent implements OnInit {
         formatoEntrega: this.formatoEntrega,
         plazoEntrega: this.plazoEntrega
       }).subscribe({
-        next: () => this.handleSuccess('Respuesta enviada correctamente. El ciudadano fue notificado.'),
+        next: (respuesta) => this.handleSuccess(
+          'Respuesta enviada correctamente. El ciudadano fue notificado.',
+          'RESPONDIDA',
+          respuesta
+        ),
         error: (err) => this.handleError(err)
       });
 
@@ -201,15 +218,29 @@ export class FuncionarioResponderComponent implements OnInit {
       causalDenegatoria: this.causalDenegatoria,
       fundamentoLegal: this.fundamentoLegal.trim()
     }).subscribe({
-      next: () => this.handleSuccess('Denegatoria registrada y notificada al ciudadano.'),
+      next: (respuesta) => this.handleSuccess(
+        'Denegatoria registrada y notificada al ciudadano.',
+        'DENEGADA',
+        respuesta
+      ),
       error: (err) => this.handleError(err)
     });
   }
 
-  private handleSuccess(message: string): void {
+  private handleSuccess(message: string, nextEstado: EstadoSolicitud, respuesta: Respuesta): void {
+    const current = this.solicitud();
+    if (current) {
+      this.solicitud.set({
+        ...current,
+        estado: nextEstado,
+        respuesta
+      });
+      this.localStateOverride.setSolicitudEstado(current, nextEstado);
+    }
+
     this.loading.set(false);
     this.mensaje.set(message);
-    setTimeout(() => this.router.navigate(['/funcionario']), 2000);
+    this.successModalAbierto.set(true);
   }
 
   private handleError(err: { error?: { mensaje?: string } }): void {
@@ -275,6 +306,141 @@ export class FuncionarioResponderComponent implements OnInit {
 
   puedeRegistrarRespuestaManual(): boolean {
     return canSendManualResponse(this.solicitud());
+  }
+
+  abrirConfirmacionRespuesta(): void {
+    if (!this.validarRespuesta()) {
+      return;
+    }
+
+    this.confirmModalAbierto.set(true);
+  }
+
+  respuestaConfirmSummary(): ReferenceConfirmSummary[] {
+    const sol = this.solicitud();
+    const decision = this.decision();
+    const summary: ReferenceConfirmSummary[] = [
+      { label: 'Expediente', value: sol?.expediente || '—', mono: true },
+      { label: 'Ciudadano', value: sol?.ciudadanoNombre || 'Ciudadano' },
+      { label: 'Decisión', value: this.getDecisionTitle() },
+      { label: 'Documentos', value: this.getDocumentoRespuestaName() ? '1 adjunto' : 'sin adjuntos' }
+    ];
+
+    if (decision === 'denegacion_total') {
+      summary.splice(3, 0, { label: 'Causal', value: this.causalDenegatoria || '—' });
+    }
+
+    return summary;
+  }
+
+  respuestaWarning(): ReferenceConfirmWarning {
+    const denegacion = this.decision() === 'denegacion_total';
+    return {
+      label: 'Notificación oficial',
+      detail: denegacion
+        ? 'El ciudadano podrá apelar al TTAIP dentro de 15 días calendario.'
+        : 'El ciudadano será notificado por correo electrónico al confirmar el envío.'
+    };
+  }
+
+  respuestaSuccessTone(): ReferenceSuccessTone {
+    return this.decision() === 'denegacion_total' ? 'brand' : 'success';
+  }
+
+  respuestaSuccessEyebrow(): string {
+    return this.decision() === 'denegacion_total' ? 'Denegatoria registrada' : 'Respuesta entregada';
+  }
+
+  respuestaSuccessTitle(): string {
+    return this.decision() === 'denegacion_total'
+      ? 'Denegatoria notificada al ciudadano'
+      : 'Respuesta enviada al ciudadano';
+  }
+
+  respuestaSuccessDescription(): string {
+    return this.decision() === 'denegacion_total'
+      ? 'Se ha registrado la denegatoria con su fundamento legal. El ciudadano fue notificado y dispone de su derecho a apelar ante el TTAIP.'
+      : 'La información ha sido entregada al ciudadano dentro del plazo legal. La solicitud queda atendida en el expediente.';
+  }
+
+  respuestaSuccessMetadata(): ReferenceSuccessMeta[] {
+    const sol = this.solicitud();
+    if (this.decision() === 'denegacion_total') {
+      return [
+        { label: 'Ciudadano', value: sol?.ciudadanoNombre || 'Ciudadano' },
+        { label: 'Decisión', value: this.getDecisionTitle() },
+        { label: 'Causal', value: this.causalDenegatoria || '—' },
+        { label: 'Fundamento', value: this.fundamentoLegal.trim() || '—' }
+      ];
+    }
+
+    return [
+      { label: 'Ciudadano', value: sol?.ciudadanoNombre || 'Ciudadano' },
+      { label: 'Decisión', value: this.getDecisionTitle() },
+      { label: 'Documentos', value: this.documentosEntrega()?.name || '—' },
+      { label: 'Descripción', value: `${this.descripcionAceptacion.length} caracteres` }
+    ];
+  }
+
+  respuestaNextSteps(): ReferenceSuccessNextStep[] {
+    if (this.decision() === 'denegacion_total') {
+      return [
+        { label: 'El ciudadano recibirá la notificación con la causal y el fundamento legal invocado.' },
+        { label: 'Podrá apelar ante el TTAIP dentro del plazo legal.', hint: '15 días calendario' },
+        { label: 'De interponerse apelación, su entidad será emplazada por el Tribunal.' }
+      ];
+    }
+
+    return [
+      { label: 'El ciudadano recibirá los documentos por el formato seleccionado.' },
+      { label: 'La solicitud quedará cerrada salvo apelación del ciudadano.', hint: '15 días calendario para apelar' },
+      { label: 'El expediente permanece archivado en su panel para consulta.' }
+    ];
+  }
+
+  irPanelFuncionario(): void {
+    this.successModalAbierto.set(false);
+    this.router.navigate(['/funcionario']);
+  }
+
+  getDecisionTitle(): string {
+    const currentDecision = this.decision();
+    return this.decisions.find((option) => option.id === currentDecision)?.title || '—';
+  }
+
+  private getDocumentoRespuestaName(): string {
+    return this.decision() === 'denegacion_total'
+      ? this.evidenciaDenegatoria()?.name || ''
+      : this.documentosEntrega()?.name || '';
+  }
+
+  private validarRespuesta(): boolean {
+    const sesion = this.authService.obtenerSesion();
+    const sol = this.solicitud();
+    const currentDecision = this.decision();
+
+    if (!sesion?.funcionarioId || !sol) {
+      this.error.set('Error de sesión');
+      return false;
+    }
+
+    if (!currentDecision) {
+      this.error.set('Debe seleccionar el tipo de respuesta institucional.');
+      return false;
+    }
+
+    if (this.esSilencioAdministrativoAutomatico()) {
+      this.error.set('La solicitud venció y aplica SILENCIO_ADMINISTRATIVO automáticamente. No se permite registrar respuesta manual.');
+      return false;
+    }
+
+    if (!this.canSubmit()) {
+      this.error.set('Complete todos los campos obligatorios antes de enviar.');
+      return false;
+    }
+
+    this.error.set('');
+    return true;
   }
 
   getInitials(name: string | undefined): string {
