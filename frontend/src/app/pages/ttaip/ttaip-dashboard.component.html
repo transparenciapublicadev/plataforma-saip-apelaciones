@@ -3,14 +3,14 @@
     <div class="absolute top-0 right-0 w-[480px] h-[480px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
 
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8">
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero>
       <div class="flex items-start gap-5 flex-wrap">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
           <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M7 21h10"/><path stroke-width="2" d="M5 7h14"/><path stroke-width="2" d="M4 11h16"/><path stroke-width="2" d="M7 7c0 2.5-1.2 4.3-3 5"/><path stroke-width="2" d="M17 7c0 2.5 1.2 4.3 3 5"/></svg>
         </div>
 
         <div class="flex-1 min-w-0">
-          <span class="eyebrow">Mesa del Secretario Tecnico · {{ nombreMiembro() }}</span>
+          <span class="eyebrow">Mesa del Secretario Técnico · {{ nombreMiembro() }}</span>
           <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
             Tribunal de <span class="italic" style="color: var(--brand-700)">Transparencia</span>
           </h1>
@@ -18,9 +18,9 @@
             {{ fechaHoy() }} ·
             <span class="font-mono font-semibold text-foreground">{{ totalExpedientes() }}</span> expedientes en pipeline ·
             @if (riesgo().length > 0) {
-              <span class="font-mono font-semibold" style="color: var(--brand-700)"> {{ riesgo().length }} critico(s)</span>
+              <span class="font-mono font-semibold" style="color: var(--brand-700)"> {{ riesgo().length }} crítico(s)</span>
             } @else {
-              <span class="font-mono font-semibold" style="color: var(--success)"> sin criticos</span>
+              <span class="font-mono font-semibold" style="color: var(--success)"> sin críticos</span>
             }
           </p>
         </div>
@@ -57,7 +57,7 @@
       </div>
     } @else {
       @if (riesgo().length > 0) {
-        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
+        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
           <div class="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-700); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20)">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg>
@@ -65,17 +65,17 @@
           <div class="flex-1">
             <span class="eyebrow" style="color: var(--brand-700)">Riesgo de incumplimiento</span>
             <h3 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
-              {{ riesgo().length }} expediente(s) con plazo critico
+              {{ riesgo().length }} expediente(s) con plazo crítico
             </h3>
             <p class="text-sm text-muted-foreground mt-0.5">
-              Tienen <span class="font-mono font-semibold text-foreground">&lt;=1 dia habil</span> en su etapa actual conforme al reglamento del Tribunal.
+              Tienen <span class="font-mono font-semibold text-foreground">≤1 día hábil</span> en su etapa actual conforme al Reglamento del Tribunal.
             </p>
             <div class="flex items-center gap-2 mt-3 flex-wrap">
               @for (item of riesgo().slice(0, 3); track item.apelacion.id || item.apelacion.expediente) {
                 <a [routerLink]="getActionRoute(item)" class="code-chip hover:bg-[color:var(--brand-100)] transition-colors">{{ item.apelacion.expediente }}</a>
               }
               @if (riesgo().length > 3) {
-                <span class="text-xs text-muted-foreground">+{{ riesgo().length - 3 }} mas</span>
+                <span class="text-xs text-muted-foreground">+{{ riesgo().length - 3 }} más</span>
               }
             </div>
           </div>
@@ -84,13 +84,28 @@
 
       <div class="mb-6">
         <div class="flex items-baseline justify-between mb-3">
-          <span class="eyebrow">Pipeline del proceso · Reglamento TTAIP</span>
+          <span class="eyebrow flex items-center gap-2">
+            <svg class="w-3 h-3" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>
+            Pipeline del proceso · Reglamento TTAIP
+          </span>
           <span class="text-xs text-muted-foreground hidden md:inline">Click una etapa para enfocar</span>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          @for (stage of stages; track stage.key) {
-            <button (click)="selectStage(stage.key)" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="stageKey() === stage.key ? stage.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (stageKey() === stage.key ? stage.color : 'var(--border)')" [style.boxShadow]="stageKey() === stage.key ? '0 0 0 3px ' + stage.bg : 'none'">
+        <div
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
+          data-motion-stagger
+          data-motion-y="8"
+          data-motion-duration="0.32"
+          data-motion-delay-step="0.035"
+        >
+          @for (stage of stages; track stage.key; let isLast = $last) {
+            <button data-motion-item (click)="selectStage(stage.key)" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="stageKey() === stage.key ? stage.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (stageKey() === stage.key ? stage.color : 'var(--border)')" [style.boxShadow]="stageKey() === stage.key ? '0 0 0 3px ' + stage.bg : 'none'">
+              @if (!isLast) {
+                <span class="hidden lg:flex absolute top-1/2 -right-[10px] -translate-y-1/2 z-10 w-5 h-5 rounded-full items-center justify-center" style="background: var(--background); border: 1px solid var(--border)">
+                  <svg class="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                </span>
+              }
+
               @if (stageKey() === stage.key) {
                 <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="stage.color"></span>
               }
@@ -119,9 +134,15 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        data-motion-stagger
+        data-motion-y="14"
+        data-motion-duration="0.4"
+        data-motion-delay-step="0.055"
+      >
         <div class="lg:col-span-8">
-          <div class="form-shell">
+          <div class="form-shell" data-motion-item>
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="activeStage().bg" [style.border]="'1px solid ' + activeStage().color">
                 @switch (activeStage().icon) {
@@ -154,7 +175,7 @@
                 <div class="rounded-md p-3 flex items-start gap-3" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.30); border-left: 3px solid var(--gold-dark)">
                   <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/><path stroke-width="2" d="M8 3v5a4 4 0 0 0 2 3.46L12 13l2-1.54A4 4 0 0 0 16 8V3"/><path stroke-width="2" d="M8 21v-5a4 4 0 0 1 2-3.46L12 11l2 1.54A4 4 0 0 1 16 16v5"/></svg>
                   <p class="text-xs text-foreground/85 leading-relaxed">
-                    <span class="font-semibold">Espera externa.</span> El Tribunal aguarda los documentos del administrado. Sin accion del secretario tecnico salvo notificacion de vencimiento.
+                    <span class="font-semibold">Espera externa.</span> El Tribunal aguarda los documentos del administrado. Sin acción del Secretario Técnico salvo notificación de vencimiento.
                   </p>
                 </div>
               </div>
@@ -170,7 +191,7 @@
                 </div>
               } @else {
                 @for (item of filtered(); track item.apelacion.id || item.apelacion.expediente) {
-                  <div class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item)">
+                  <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
                     <div class="flex-1 min-w-0">
@@ -223,12 +244,12 @@
           </div>
         </div>
 
-        <aside class="lg:col-span-4 space-y-5">
+        <aside class="lg:col-span-4 space-y-5" data-motion-item>
           <div class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>
-                Estadistica institucional
+                Estadística institucional
               </span>
               <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Resoluciones del periodo</div>
             </div>
@@ -239,7 +260,7 @@
                 { label: 'Infundado', n: infundadasCount(), color: 'var(--brand-700)' },
                 { label: 'Improcedente', n: improcedentesCount(), color: 'var(--gold-dark)' }
               ]; track stat.label) {
-                <div>
+                <div data-table-row>
                   <div class="flex items-baseline justify-between text-xs mb-1">
                     <span class="text-foreground/85">{{ stat.label }}</span>
                     <span class="font-mono text-muted-foreground">{{ stat.n }} · {{ getResolucionPct(stat.n) }}%</span>
@@ -252,18 +273,18 @@
             </div>
           </div>
 
-          <div class="form-shell">
+          <div class="form-shell" data-reveal>
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l8-4v18"/><path stroke-width="2" d="M19 21V11l-6-4"/></svg>
-                Concentracion
+                Concentración
               </span>
-              <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Entidades mas apeladas</div>
+              <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Entidades más apeladas</div>
             </div>
 
             <div class="p-4 space-y-2.5">
               @for (entidad of topEntidades(); track entidad.nombre) {
-                <div>
+                <div data-table-row>
                   <div class="flex items-baseline justify-between mb-1">
                     <span class="text-xs text-foreground/85 truncate" [title]="entidad.nombre">{{ entidad.nombre }}</span>
                     <span class="font-mono text-[10px] text-muted-foreground">{{ entidad.count }}</span>
@@ -274,13 +295,13 @@
                 </div>
               }
               <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
-                Permite identificar patrones de denegacion recurrente.
+                Permite identificar patrones de denegación recurrente.
               </p>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)">
+          <div class="grid grid-cols-2 gap-3" data-motion-stagger data-motion-y="8" data-motion-duration="0.3" data-motion-delay-step="0.04">
+            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)" data-motion-item>
               <div class="flex items-center gap-1.5 mb-0.5">
                 <svg class="w-3 h-3" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
                 <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Tiempo prom.</span>
@@ -289,7 +310,7 @@
               <div class="text-[10px] text-muted-foreground mt-1">por etapa</div>
             </div>
 
-            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)" data-motion-item>
               <div class="flex items-center gap-1.5 mb-0.5">
                 <svg class="w-3 h-3" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 13h5l2 3h2l2-3h5"/></svg>
                 <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Carga total</span>
@@ -298,16 +319,16 @@
               <div class="text-[10px] text-muted-foreground mt-1">expedientes</div>
             </div>
 
-            <div class="rounded-lg p-3" [style.background]="riesgo().length > 0 ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1px solid ' + (riesgo().length > 0 ? 'var(--brand-200)' : 'var(--border)')">
+            <div class="rounded-lg p-3" [style.background]="riesgo().length > 0 ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1px solid ' + (riesgo().length > 0 ? 'var(--brand-200)' : 'var(--border)')" data-motion-item>
               <div class="flex items-center gap-1.5 mb-0.5">
                 <svg class="w-3 h-3" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg>
-                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Riesgo criti.</span>
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Riesgo críti.</span>
               </div>
               <div class="font-display" style="font-size: 22px; color: var(--brand-700); line-height: 1; letter-spacing: -0.02em">{{ riesgo().length }}</div>
-              <div class="text-[10px] text-muted-foreground mt-1">&lt;=1 dia habil</div>
+              <div class="text-[10px] text-muted-foreground mt-1">≤1 día háb.</div>
             </div>
 
-            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)" data-motion-item>
               <div class="flex items-center gap-1.5 mb-0.5">
                 <svg class="w-3 h-3" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m3 17 6-6 4 4 8-8"/></svg>
                 <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Resol. mes</span>
@@ -317,7 +338,7 @@
             </div>
           </div>
 
-          <a routerLink="/ttaip/procesos-disciplinarios" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--gold-dark)">
+          <a routerLink="/ttaip/procesos-disciplinarios" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--gold-dark)" data-reveal>
             <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(176,136,66,0.12)">
               <svg class="w-4 h-4" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m14 9-7 7"/><path stroke-width="2" d="m17 6 3 3"/></svg>
             </div>
