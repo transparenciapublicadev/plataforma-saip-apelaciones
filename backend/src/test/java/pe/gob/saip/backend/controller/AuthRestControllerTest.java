@@ -101,6 +101,11 @@ class AuthRestControllerTest {
                             {"identificador":"ciudadano@test.com","password":"wrongpass"}
                             """))
                 .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:unauthorized"))
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Contraseña incorrecta"))
+                .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.mensaje").value("Contraseña incorrecta"));
     }
@@ -115,6 +120,11 @@ class AuthRestControllerTest {
                             {"identificador":"noexiste@test.com","password":"pass123"}
                             """))
                 .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:unauthorized"))
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Usuario no encontrado"))
+                .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.mensaje").value("Usuario no encontrado"));
     }
@@ -127,6 +137,10 @@ class AuthRestControllerTest {
                             {"identificador":"","password":"pass123"}
                             """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:validation-failed"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
@@ -136,6 +150,10 @@ class AuthRestControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:validation-failed"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
@@ -152,6 +170,11 @@ class AuthRestControllerTest {
                             {"identificador":"ciudadano@test.com","password":"pass123"}
                             """))
                 .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:unauthorized"))
+                .andExpect(jsonPath("$.title").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Usuario desactivado"))
+                .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.mensaje").value("Usuario desactivado"));
     }
@@ -175,7 +198,7 @@ class AuthRestControllerTest {
     }
 
     @Test
-    void registro_emailDuplicado_debeRetornar400() throws Exception {
+    void registro_emailDuplicado_debeRetornar409() throws Exception {
         when(usuarioService.obtenerUsuarioPorEmail("existe@test.com")).thenReturn(Optional.of(crearCiudadano("hash")));
 
         mockMvc.perform(post("/api/auth/registro")
@@ -183,13 +206,18 @@ class AuthRestControllerTest {
                         .content("""
                             {"email":"existe@test.com","password":"pass123","dni":"87654321","nombreCompleto":"María García"}
                             """))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:conflict"))
+                .andExpect(jsonPath("$.title").value("Conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Ya existe un usuario con ese email"))
+                .andExpect(jsonPath("$.instance").value("/api/auth/registro"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.mensaje").value("Ya existe un usuario con ese email"));
     }
 
     @Test
-    void registro_dniDuplicado_debeRetornar400() throws Exception {
+    void registro_dniDuplicado_debeRetornar409() throws Exception {
         when(usuarioService.obtenerUsuarioPorEmail("nuevo@test.com")).thenReturn(Optional.empty());
         when(ciudadanoService.obtenerCiudadanoPorDni("12345678")).thenReturn(Optional.of(crearCiudadano("hash")));
 
@@ -198,7 +226,12 @@ class AuthRestControllerTest {
                         .content("""
                             {"email":"nuevo@test.com","password":"pass123","dni":"12345678","nombreCompleto":"María García"}
                             """))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:conflict"))
+                .andExpect(jsonPath("$.title").value("Conflict"))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail").value("Ya existe un ciudadano con ese DNI"))
+                .andExpect(jsonPath("$.instance").value("/api/auth/registro"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.mensaje").value("Ya existe un ciudadano con ese DNI"));
     }
@@ -211,6 +244,10 @@ class AuthRestControllerTest {
                             {"email":"nuevo@test.com","password":"pass123","dni":"123","nombreCompleto":"María García"}
                             """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:validation-failed"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/auth/registro"))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
@@ -222,6 +259,10 @@ class AuthRestControllerTest {
                             {"email":"nuevo@test.com","password":"ab","dni":"87654321","nombreCompleto":"María García"}
                             """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:validation-failed"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/auth/registro"))
                 .andExpect(jsonPath("$.success").value(false));
     }
 
@@ -233,6 +274,10 @@ class AuthRestControllerTest {
                             {"email":"nuevo@test.com"}
                             """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:saip:problem:validation-failed"))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.instance").value("/api/auth/registro"))
                 .andExpect(jsonPath("$.success").value(false));
     }
 }

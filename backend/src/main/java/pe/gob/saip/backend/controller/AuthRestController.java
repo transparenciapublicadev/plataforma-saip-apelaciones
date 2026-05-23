@@ -2,11 +2,14 @@ package pe.gob.saip.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import pe.gob.saip.backend.exception.ApiProblemDetails;
 import pe.gob.saip.backend.model.dto.LoginRequestDTO;
 import pe.gob.saip.backend.model.dto.RegistroRequestDTO;
 import pe.gob.saip.backend.model.entity.*;
@@ -48,31 +51,23 @@ public class AuthRestController {
 
     @Operation(summary = "Iniciar sesión", description = "Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.")
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequestDTO request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO request,
+                                   HttpServletRequest servletRequest) {
         Optional<Usuario> usuarioOpt = resolverUsuario(request.identificador());
 
         if (usuarioOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                    "success", false,
-                    "mensaje", "Usuario no encontrado"
-            ));
+            return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Usuario no encontrado", servletRequest);
         }
 
         Usuario usuario = usuarioOpt.get();
 
         // Soporta BCrypt y migración de contraseñas legacy (plaintext)
         if (!verificarPassword(request.password(), usuario)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                    "success", false,
-                    "mensaje", "Contraseña incorrecta"
-            ));
+            return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Contraseña incorrecta", servletRequest);
         }
 
         if (!usuario.getActivo()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                    "success", false,
-                    "mensaje", "Usuario desactivado"
-            ));
+            return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Usuario desactivado", servletRequest);
         }
 
         // Generar JWT token
@@ -131,19 +126,14 @@ public class AuthRestController {
 
     @Operation(summary = "Registrar ciudadano", description = "Registra un nuevo ciudadano en el sistema con email, DNI y datos personales")
     @PostMapping("/registro")
-    public ResponseEntity<Map<String, Object>> registro(@Valid @RequestBody RegistroRequestDTO request) {
+    public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequestDTO request,
+                                      HttpServletRequest servletRequest) {
         if (usuarioService.obtenerUsuarioPorEmail(request.email()).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "mensaje", "Ya existe un usuario con ese email"
-            ));
+            return problem(HttpStatus.CONFLICT, "Conflict", "Ya existe un usuario con ese email", servletRequest);
         }
 
         if (ciudadanoService.obtenerCiudadanoPorDni(request.dni()).isPresent()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "mensaje", "Ya existe un ciudadano con ese DNI"
-            ));
+            return problem(HttpStatus.CONFLICT, "Conflict", "Ya existe un ciudadano con ese DNI", servletRequest);
         }
 
         Ciudadano ciudadano = new Ciudadano();
@@ -186,7 +176,8 @@ public class AuthRestController {
         Optional<Usuario> usuarioOpt = usuarioService.obtenerUsuarioPorId(usuarioId);
 
         if (usuarioOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            throw new pe.gob.saip.backend.exception.RecursoNoEncontradoException(
+                    "Usuario no encontrado con ID: " + usuarioId);
         }
 
         Usuario usuario = usuarioOpt.get();
@@ -238,5 +229,13 @@ public class AuthRestController {
         }
 
         return false;
+    }
+
+    private ResponseEntity<ProblemDetail> problem(HttpStatus status,
+                                                  String title,
+                                                  String detail,
+                                                  HttpServletRequest request) {
+        ProblemDetail problem = ApiProblemDetails.create(status, title, detail, request.getRequestURI());
+        return ResponseEntity.status(status).body(problem);
     }
 }
