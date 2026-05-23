@@ -1,8 +1,8 @@
 [versions]
 # SDK & Core
-agp = "9.1.0"
-kotlin = "2.3.10"
-coreKtx = "1.17.0"
+agp = "9.2.1"
+kotlin = "2.3.21"
+coreKtx = "1.18.0"
 
 # Testing
 junit = "4.13.2"
@@ -13,32 +13,32 @@ turbine = "1.2.1"
 
 # AndroidX
 appcompat = "1.7.1"
-material = "1.13.0"
-activity = "1.12.4"
+material = "1.14.0"
+activity = "1.13.0"
 lifecycle = "2.10.0"
 
 # Jetpack Compose
-composeBom = "2026.02.01"
-navigation3 = "1.0.1"
+composeBom = "2026.05.01"
+navigation3 = "1.1.2"
 
 # Inyección de Dependencias - Koin
-koin = "4.1.1"
-koinCompose = "4.1.1"
+koin = "4.2.1"
+koinCompose = "4.2.1"
 
 # Base de Datos - SQLDelight
-sqldelight = "2.2.1"
+sqldelight = "2.3.2"
 
 # Coroutines & Flow
-coroutines = "1.10.2"
+coroutines = "1.11.0"
 
 # Firebase
-firebaseBom = "34.10.0"
+firebaseBom = "34.13.0"
 
 # WorkManager
-workmanager = "2.11.1"
+workmanager = "2.11.2"
 
 # Serialization
-kotlinxSerialization = "1.10.0"
+kotlinxSerialization = "1.11.0"
 
 # Timber (Logging)
 timber = "5.0.1"
@@ -95,11 +95,8 @@ sqldelight-primitive-adapters = { group = "app.cash.sqldelight", name = "primiti
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
-# Firebase
+# Firebase Cloud Messaging
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 
 # WorkManager
@@ -144,6 +141,5 @@ lifecycle = ["androidx-lifecycle-viewmodel-compose", "androidx-lifecycle-runtime
 navigation3 = ["navigation3-runtime", "navigation3-ui"]
 koin = ["koin-core", "koin-android", "koin-compose", "koin-compose-viewmodel"]
 coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-android"]
-firebase = ["firebase-analytics", "firebase-firestore", "firebase-auth", "firebase-messaging"]
 retrofit = ["retrofit-core", "retrofit-converter-kotlinx", "okhttp-core", "okhttp-logging"]
 testing = ["junit", "kotlinx-coroutines-test", "mockk", "turbine"]

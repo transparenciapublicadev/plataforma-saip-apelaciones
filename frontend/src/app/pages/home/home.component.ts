@@ -1,6 +1,6 @@
 import {
   Component, ChangeDetectionStrategy, inject, PLATFORM_ID,
-  AfterViewInit, OnDestroy, ElementRef, NgZone, ChangeDetectorRef,
+  AfterViewInit, OnDestroy, OnInit, ElementRef, NgZone, ChangeDetectorRef,
 } from '@angular/core';
 import { isPlatformBrowser, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -13,8 +13,10 @@ import {
   LucideCoins, LucideHammer, LucideGraduationCap, LucideStethoscope, LucideFileText,
   LucideCrown, LucideBriefcase, LucideMail, LucideAward, LucideGavel,
 } from '@lucide/angular';
+import { PortalMiembroTtaip, PortalPublicoService } from '../../services/portal-publico.service';
 
 type MiembroArea = 'presidencia' | 'sala1' | 'sala2' | 'secretaria';
+type ExampleIcon = 'coins' | 'hammer' | 'graduation-cap' | 'stethoscope' | 'file-text' | 'users';
 
 interface MiembroTrayectoria {
   rol: string;
@@ -27,9 +29,9 @@ interface Miembro {
   cargo: string;
   cargoCorto: string;
   area: MiembroArea;
-  foto: string;
+  foto?: string;
   iniciales: string;
-  periodo: string;
+  periodo?: string;
   bio: string;
   formacion: string[];
   trayectoria: MiembroTrayectoria[];
@@ -99,226 +101,39 @@ interface ChartTooltip {
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
-export class HomeComponent implements AfterViewInit, OnDestroy {
+export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly el = inject(ElementRef);
   private readonly zone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly portalPublicoService = inject(PortalPublicoService);
   private observer: IntersectionObserver | null = null;
 
-  readonly indicadores = {
-    saipPresentadas: 2847,
-    respondidas: 1923,
-    apelaciones: 412,
-    entidades: 156,
+  indicadores = {
+    saipPresentadas: 0,
+    respondidas: 0,
+    apelaciones: 0,
+    entidades: 0,
+    personasApelantes: 0,
+    tasaResolucion: 0,
   };
 
-  readonly ejemplos: Array<{
-    icon: 'coins' | 'hammer' | 'graduation-cap' | 'stethoscope' | 'file-text' | 'users';
-    text: string;
-  }> = [
-    { icon: 'coins', text: '¿En qué se gastó el presupuesto de mi municipalidad?' },
-    { icon: 'hammer', text: '¿Por qué se paralizó la obra de mi distrito?' },
-    { icon: 'graduation-cap', text: '¿Cuántos docentes contrató mi colegio público?' },
-    { icon: 'stethoscope', text: '¿Qué medicamentos tiene mi hospital del barrio?' },
-    { icon: 'file-text', text: '¿Qué contratos firmó la entidad este año?' },
-    { icon: 'users', text: '¿Cuántos funcionarios trabajan en mi municipio?' },
-  ];
+  ejemplos: Array<{ icon: ExampleIcon; text: string }> = [];
 
-  readonly faqs = [
-    { q: '¿Tengo que pagar algo para pedir información?', a: 'No. Es completamente gratis. La Constitución y la Ley N° 27806 garantizan su derecho de acceso a la información pública sin costo.' },
-    { q: '¿Necesito un abogado para presentar mi solicitud?', a: 'No. La plataforma está diseñada para que cualquier persona pueda usarla. Si necesita ayuda, tiene un asistente, una línea gratuita y correo de soporte.' },
-    { q: '¿Cuánto demora la respuesta?', a: 'La entidad tiene 10 días hábiles para responderle. Si no responde en ese plazo, usted puede reclamar al Tribunal.' },
-    { q: '¿Pueden negarme la información?', a: 'Solo en casos puntuales que indica la ley (información clasificada, datos personales protegidos). Si le niegan información que considera pública, puede apelar al Tribunal en 15 días calendario.' },
-    { q: '¿Qué pasa si la entidad no me responde?', a: 'Aplica el silencio administrativo negativo: se entiende que su solicitud fue denegada y usted puede reclamar al Tribunal de inmediato.' },
-    { q: '¿Mis datos están seguros?', a: 'Sí. La plataforma usa conexión cifrada (SSL), almacenamiento seguro y cumple los estándares del Estado peruano para datos personales.' },
-  ];
+  faqs: Array<{ q: string; a: string }> = [];
 
-  readonly miembros: Miembro[] = [
-    {
-      id: 'presidente',
-      nombre: 'Dr. Ricardo Quispe Mendoza',
-      cargo: 'Presidente del Tribunal',
-      cargoCorto: 'Presidencia',
-      area: 'presidencia',
-      foto: 'https://images.unsplash.com/photo-1775181316283-e57d3447184f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'RQ',
-      periodo: '2024 — 2027',
-      bio: 'Conduce la mesa plenaria del Tribunal y representa institucionalmente al órgano colegiado. Vela por la independencia, la coherencia jurisprudencial y la calidad del servicio al ciudadano.',
-      formacion: [
-        'Doctor en Derecho Constitucional · Pontificia Universidad Católica del Perú',
-        'Maestría en Derecho Administrativo · Universidad de Salamanca, España',
-        'Especialización en Transparencia y Anticorrupción · CEPAL',
-      ],
-      trayectoria: [
-        { rol: 'Magistrado del Tribunal Constitucional', lugar: 'TC del Perú', anio: '2018 — 2023' },
-        { rol: 'Procurador Público Anticorrupción', lugar: 'MINJUSDH', anio: '2014 — 2018' },
-        { rol: 'Catedrático de Derecho Administrativo', lugar: 'PUCP / UNMSM', anio: '2008 — actual' },
-      ],
-      contacto: 'presidencia@ttaip.gob.pe',
-    },
-    {
-      id: 'vocal-1-sala-1',
-      nombre: 'Dra. María Elena Vargas Soto',
-      cargo: 'Vocal Vicepresidenta · Sala 1',
-      cargoCorto: 'Vicepresidenta',
-      area: 'sala1',
-      foto: 'https://images.unsplash.com/photo-1763757321139-e7e4de128cd9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'MV',
-      periodo: '2023 — 2026',
-      bio: 'Preside la Sala 1 y reemplaza al Presidente en su ausencia. Especialista en acceso a la información y protección de datos personales.',
-      formacion: [
-        'Maestría en Derecho de la Información · Universidad de Lima',
-        'Doctorado (c) en Gestión Pública · Universidad del Pacífico',
-      ],
-      trayectoria: [
-        { rol: 'Directora General de Transparencia', lugar: 'PCM', anio: '2019 — 2023' },
-        { rol: 'Asesora del Defensor del Pueblo', lugar: 'Defensoría del Pueblo', anio: '2015 — 2019' },
-      ],
-      contacto: 'mvargas@ttaip.gob.pe',
-    },
-    {
-      id: 'vocal-2-sala-1',
-      nombre: 'Dr. Hugo Salinas Cárdenas',
-      cargo: 'Vocal Titular · Sala 1',
-      cargoCorto: 'Vocal',
-      area: 'sala1',
-      foto: 'https://images.unsplash.com/photo-1769636929231-3cd7f853d038?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'HS',
-      periodo: '2024 — 2027',
-      bio: 'Vocal con especialización en derecho administrativo sancionador y procedimientos disciplinarios.',
-      formacion: [
-        'Magíster en Derecho Administrativo · Universidad Nacional Mayor de San Marcos',
-      ],
-      trayectoria: [
-        { rol: 'Procurador Público Adjunto', lugar: 'Ministerio del Interior', anio: '2017 — 2023' },
-        { rol: 'Asesor Jurídico', lugar: 'Contraloría General', anio: '2012 — 2017' },
-      ],
-    },
-    {
-      id: 'vocal-3-sala-1',
-      nombre: 'Dr. Jorge Aliaga Ramírez',
-      cargo: 'Vocal Titular · Sala 1',
-      cargoCorto: 'Vocal',
-      area: 'sala1',
-      foto: 'https://images.unsplash.com/photo-1773645056335-8d17a12f16a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'JA',
-      periodo: '2025 — 2028',
-      bio: 'Especialista en gobierno digital, datos abiertos e interoperabilidad estatal. Aporta visión técnica al pleno.',
-      formacion: [
-        'Magíster en Políticas Públicas · Universidad de Chile',
-        'Ingeniero Informático · Universidad Nacional de Ingeniería',
-      ],
-      trayectoria: [
-        { rol: 'Subsecretario de Gobierno Digital', lugar: 'PCM', anio: '2020 — 2024' },
-        { rol: 'Consultor Senior', lugar: 'Banco Mundial', anio: '2015 — 2020' },
-      ],
-    },
-    {
-      id: 'vocal-1-sala-2',
-      nombre: 'Dra. Carmen Rosa Díaz Flores',
-      cargo: 'Vocal Presidenta · Sala 2',
-      cargoCorto: 'Presidenta Sala 2',
-      area: 'sala2',
-      foto: 'https://images.unsplash.com/photo-1765005204227-bf58bcdd4449?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'CD',
-      periodo: '2023 — 2026',
-      bio: 'Conduce la Sala 2, especializada en materias de gobierno regional y local. Reconocida por su jurisprudencia en obras públicas.',
-      formacion: [
-        'Doctorado en Derecho Constitucional · Universidad Complutense de Madrid',
-        'Especialización en Contrataciones del Estado · OSCE',
-      ],
-      trayectoria: [
-        { rol: 'Magistrada Supernumeraria', lugar: 'Corte Superior de Lima', anio: '2016 — 2023' },
-        { rol: 'Asesora del Congreso', lugar: 'Comisión de Fiscalización', anio: '2011 — 2016' },
-      ],
-      contacto: 'cdiaz@ttaip.gob.pe',
-    },
-    {
-      id: 'vocal-2-sala-2',
-      nombre: 'Dr. Luis Alberto Mendoza Ruiz',
-      cargo: 'Vocal Titular · Sala 2',
-      cargoCorto: 'Vocal',
-      area: 'sala2',
-      foto: 'https://images.unsplash.com/photo-1762810211495-d79a02ba7d0d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'LM',
-      periodo: '2024 — 2027',
-      bio: 'Investigador en derecho a la información y libertad de expresión. Autor de libros de referencia sobre transparencia.',
-      formacion: [
-        'Doctor en Derecho · Universidad de Buenos Aires',
-        'Posdoctorado en Derechos Humanos · Universidad de Heidelberg',
-      ],
-      trayectoria: [
-        { rol: 'Catedrático Principal', lugar: 'PUCP', anio: '2010 — actual' },
-        { rol: 'Relator Especial (consulta)', lugar: 'CIDH', anio: '2018 — 2022' },
-      ],
-    },
-    {
-      id: 'vocal-3-sala-2',
-      nombre: 'Dra. Ana Patricia Torres León',
-      cargo: 'Vocal Titular · Sala 2',
-      cargoCorto: 'Vocal',
-      area: 'sala2',
-      foto: 'https://images.unsplash.com/photo-1765005204058-10418f5123c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'AT',
-      periodo: '2025 — 2028',
-      bio: 'Vocal más joven del pleno. Especialista en gobierno abierto, participación ciudadana y datos personales.',
-      formacion: [
-        'Maestría en Open Government · Sciences Po Paris',
-        'Abogada · Universidad de Lima',
-      ],
-      trayectoria: [
-        { rol: 'Directora de Gobierno Abierto', lugar: 'Municipalidad de Lima', anio: '2021 — 2025' },
-        { rol: 'Investigadora', lugar: 'Hiperderecho', anio: '2017 — 2021' },
-      ],
-    },
-    {
-      id: 'secretario-tecnico',
-      nombre: 'Dr. Eduardo Castillo Bermúdez',
-      cargo: 'Secretario Técnico',
-      cargoCorto: 'Secretaría Técnica',
-      area: 'secretaria',
-      foto: 'https://images.unsplash.com/photo-1769636929261-e913ed023c83?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=600',
-      iniciales: 'EC',
-      periodo: '2022 — actual',
-      bio: 'Conduce el órgano de apoyo administrativo del Tribunal. Coordina la mesa de partes, las notificaciones y la gestión de expedientes.',
-      formacion: [
-        'Maestría en Gestión Pública · Universidad ESAN',
-        'Abogado · Pontificia Universidad Católica del Perú',
-      ],
-      trayectoria: [
-        { rol: 'Secretario General', lugar: 'INDECOPI', anio: '2017 — 2022' },
-        { rol: 'Jefe de Asesoría Jurídica', lugar: 'SUNAT', anio: '2013 — 2017' },
-      ],
-      contacto: 'secretariatecnica@ttaip.gob.pe',
-    },
-  ];
+  miembros: Miembro[] = [];
 
-  readonly presidente = this.miembros.find((m) => m.id === 'presidente') ?? null;
-  readonly secretarioTecnico = this.miembros.find((m) => m.id === 'secretario-tecnico') ?? null;
-  readonly apelacionesPorDepartamento: ApelacionDepartamento[] = [
-    { d: 'Lima', v: 245 },
-    { d: 'Arequipa', v: 87 },
-    { d: 'Cusco', v: 65 },
-    { d: 'La Libertad', v: 58 },
-    { d: 'Piura', v: 52 },
-    { d: 'Junín', v: 43 },
-    { d: 'Lambayeque', v: 38 },
-    { d: 'Áncash', v: 32 },
-    { d: 'Ica', v: 28 },
-  ];
+  get presidente(): Miembro | null {
+    return this.miembros.find((m) => m.area === 'presidencia') ?? null;
+  }
 
-  readonly tendenciaMensual: TendenciaMensual[] = [
-    { m: 'Ene', s: 85, a: 22 },
-    { m: 'Feb', s: 92, a: 28 },
-    { m: 'Mar', s: 108, a: 35 },
-    { m: 'Abr', s: 95, a: 30 },
-    { m: 'May', s: 115, a: 38 },
-    { m: 'Jun', s: 125, a: 42 },
-    { m: 'Jul', s: 130, a: 40 },
-    { m: 'Ago', s: 142, a: 45 },
-    { m: 'Sep', s: 135, a: 38 },
-  ];
+  get secretarioTecnico(): Miembro | null {
+    return this.miembros.find((m) => m.area === 'secretaria') ?? null;
+  }
+
+  apelacionesPorDepartamento: ApelacionDepartamento[] = [];
+  tendenciaMensual: TendenciaMensual[] = [];
 
   readonly departmentChart = {
     width: 620,
@@ -339,29 +154,17 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     paddingLeft: 36,
   };
 
-  readonly departmentMaxValue = Math.max(...this.apelacionesPorDepartamento.map((item) => item.v));
-  readonly departmentScaleMax = this.roundUpToStep(this.departmentMaxValue, 50);
-  readonly departmentGridLines = this.buildGridLines(
-    this.departmentChart.height,
-    this.departmentChart.paddingTop,
-    this.departmentChart.paddingBottom,
-    this.departmentScaleMax
-  );
-  readonly departmentBars = this.buildDepartmentBars();
+  departmentMaxValue = 1;
+  departmentScaleMax = 1;
+  departmentGridLines: ChartGridLine[] = [];
+  departmentBars: DepartmentBarColumn[] = [];
 
-  readonly trendMaxValue = Math.max(
-    ...this.tendenciaMensual.flatMap((item) => [item.s, item.a])
-  );
-  readonly trendScaleMax = this.roundUpToStep(this.trendMaxValue, 20);
-  readonly trendGridLines = this.buildGridLines(
-    this.trendChart.height,
-    this.trendChart.paddingTop,
-    this.trendChart.paddingBottom,
-    this.trendScaleMax
-  );
-  readonly trendPoints = this.buildTrendPoints();
-  readonly solicitudesLinePoints = this.trendPoints.map((p) => `${p.x},${p.sY}`).join(' ');
-  readonly apelacionesLinePoints = this.trendPoints.map((p) => `${p.x},${p.aY}`).join(' ');
+  trendMaxValue = 1;
+  trendScaleMax = 1;
+  trendGridLines: ChartGridLine[] = [];
+  trendPoints: TrendPoint[] = [];
+  solicitudesLinePoints = '';
+  apelacionesLinePoints = '';
 
   openFaq: number | null = 0;
   selectedMemberId = 'presidente';
@@ -480,8 +283,8 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     return this.miembros.filter((member) => member.area === area);
   }
 
-  get selectedMemberData(): Miembro {
-    return this.miembros.find((member) => member.id === this.selectedMemberId) ?? this.miembros[0];
+  get selectedMemberData(): Miembro | null {
+    return this.miembros.find((member) => member.id === this.selectedMemberId) ?? this.miembros[0] ?? null;
   }
 
   memberFirstName(member: Miembro): string {
@@ -490,6 +293,13 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
 
   memberNameRest(member: Miembro): string {
     return member.nombre.split(' ').filter(Boolean).slice(1).join(' ');
+  }
+
+  ngOnInit(): void {
+    this.rebuildChartData();
+    if (isPlatformBrowser(this.platformId)) {
+      this.cargarPortalPublico();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -519,6 +329,129 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  private cargarPortalPublico(): void {
+    this.portalPublicoService.getPortal().subscribe({
+      next: (portal) => {
+        this.indicadores = {
+          saipPresentadas: portal.metricas.saipPresentadas,
+          respondidas: portal.metricas.respondidas,
+          apelaciones: portal.metricas.apelaciones,
+          entidades: portal.metricas.entidades,
+          personasApelantes: portal.metricas.personasApelantes,
+          tasaResolucion: portal.metricas.tasaResolucion,
+        };
+        this.apelacionesPorDepartamento = portal.apelacionesPorEntidad.map((item) => ({
+          d: item.etiqueta,
+          v: item.valor,
+        }));
+        this.tendenciaMensual = portal.tendenciaMensual.map((item) => ({
+          m: item.etiqueta,
+          s: item.solicitudes,
+          a: item.apelaciones,
+        }));
+        this.ejemplos = (portal.ejemplosSolicitud ?? []).map((item) => ({
+          icon: this.toExampleIcon(item.icono),
+          text: item.texto,
+        }));
+        this.faqs = (portal.preguntasFrecuentes ?? []).map((item) => ({
+          q: item.pregunta,
+          a: item.respuesta,
+        }));
+        this.openFaq = this.faqs.length > 0 ? 0 : null;
+        this.miembros = portal.miembrosTTAIP.map((miembro) => this.toMiembro(miembro));
+        this.selectedMemberId = this.presidente?.id ?? this.miembros[0]?.id ?? '';
+        this.rebuildChartData();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.rebuildChartData();
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private toMiembro(miembro: PortalMiembroTtaip): Miembro {
+    const nombre = miembro.nombre?.trim() || 'Miembro TTAIP sin nombre registrado';
+    const cargo = miembro.cargo?.trim() || 'Miembro del Tribunal';
+    return {
+      id: String(miembro.id ?? nombre),
+      nombre,
+      cargo,
+      cargoCorto: this.shortCargo(cargo),
+      area: this.resolveMemberArea(cargo, miembro.sala, Boolean(miembro.presidenteTribunal)),
+      iniciales: this.initials(nombre),
+      periodo: this.formatMemberPeriod(miembro.periodoInicio, miembro.periodoFin),
+      bio: miembro.especialidad?.trim() || 'Especialidad no registrada por el backend.',
+      formacion: [],
+      trayectoria: [],
+      contacto: miembro.email ?? undefined,
+    };
+  }
+
+  private toExampleIcon(icono: string | null | undefined): ExampleIcon {
+    const allowed: ExampleIcon[] = ['coins', 'hammer', 'graduation-cap', 'stethoscope', 'file-text', 'users'];
+    return allowed.includes(icono as ExampleIcon) ? icono as ExampleIcon : 'file-text';
+  }
+
+  private shortCargo(cargo: string): string {
+    if (cargo.toLowerCase().includes('presidente')) return 'Presidencia de sala';
+    if (cargo.toLowerCase().includes('secret')) return 'Secretaría Técnica';
+    return cargo.replace('Vocal ', '').replace('Titular ', '').trim() || cargo;
+  }
+
+  private resolveMemberArea(cargo: string, sala?: string | null, presidenteTribunal = false): MiembroArea {
+    if (presidenteTribunal) return 'presidencia';
+    const value = `${cargo} ${sala ?? ''}`.toLowerCase();
+    if (value.includes('secret')) return 'secretaria';
+    if (value.includes('segunda') || value.includes('sala 2') || value.includes('2')) return 'sala2';
+    return 'sala1';
+  }
+
+  private formatMemberPeriod(inicio?: string | null, fin?: string | null): string | undefined {
+    if (!inicio && !fin) return undefined;
+    return `${this.formatCompactDate(inicio)} al ${this.formatCompactDate(fin)}`;
+  }
+
+  private formatCompactDate(raw?: string | null): string {
+    if (!raw) return 'vigente';
+    const date = new Date(`${raw}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return raw;
+    return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+  }
+
+  private initials(nombre: string): string {
+    return nombre
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('');
+  }
+
+  private rebuildChartData(): void {
+    this.departmentMaxValue = Math.max(1, ...this.apelacionesPorDepartamento.map((item) => item.v));
+    this.departmentScaleMax = Math.max(1, this.roundUpToStep(this.departmentMaxValue, 50));
+    this.departmentGridLines = this.buildGridLines(
+      this.departmentChart.height,
+      this.departmentChart.paddingTop,
+      this.departmentChart.paddingBottom,
+      this.departmentScaleMax
+    );
+    this.departmentBars = this.buildDepartmentBars();
+
+    this.trendMaxValue = Math.max(1, ...this.tendenciaMensual.flatMap((item) => [item.s, item.a]));
+    this.trendScaleMax = Math.max(1, this.roundUpToStep(this.trendMaxValue, 20));
+    this.trendGridLines = this.buildGridLines(
+      this.trendChart.height,
+      this.trendChart.paddingTop,
+      this.trendChart.paddingBottom,
+      this.trendScaleMax
+    );
+    this.trendPoints = this.buildTrendPoints();
+    this.solicitudesLinePoints = this.trendPoints.map((p) => `${p.x},${p.sY}`).join(' ');
+    this.apelacionesLinePoints = this.trendPoints.map((p) => `${p.x},${p.aY}`).join(' ');
+  }
+
   /** Reveal [data-reveal] elements when they enter viewport (IntersectionObserver) */
   private initScrollReveal(): void {
     const targets = this.el.nativeElement.querySelectorAll('[data-reveal]');
@@ -539,7 +472,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     targets.forEach((t: Element) => this.observer!.observe(t));
   }
   private roundUpToStep(value: number, step: number): number {
-    return Math.ceil(value / step) * step;
+    return Math.max(step, Math.ceil(value / step) * step);
   }
 
   private buildGridLines(
@@ -564,6 +497,9 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     const plotWidth = this.departmentChart.width - this.departmentChart.paddingLeft - this.departmentChart.paddingRight;
     const plotHeight = this.departmentChart.height - this.departmentChart.paddingTop - this.departmentChart.paddingBottom;
     const count = this.apelacionesPorDepartamento.length;
+    if (count === 0) {
+      return [];
+    }
     const totalGap = this.departmentChart.barGap * (count - 1);
     const barWidth = (plotWidth - totalGap) / count;
 

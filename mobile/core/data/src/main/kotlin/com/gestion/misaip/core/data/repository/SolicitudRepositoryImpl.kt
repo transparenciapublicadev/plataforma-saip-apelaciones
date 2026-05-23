@@ -32,7 +32,7 @@ import java.util.UUID
  * - WorkManager maneja la sincronización diferida
  *
  * @param database Base de datos SQLDelight
- * @param remoteDataSource Fuente de datos remota (Firebase)
+ * @param remoteDataSource Fuente de datos remota (backend REST)
  */
 class SolicitudRepositoryImpl(
     private val database: SaipDatabase,
@@ -88,7 +88,7 @@ class SolicitudRepositoryImpl(
      *
      * 1. Genera el expediente localmente
      * 2. Guarda en BD local (pendiente de sincronización)
-     * 3. Intenta subir a Firebase (si hay conexión)
+     * 3. Intenta subir al backend REST (si hay conexión)
      * 4. Si falla, WorkManager lo sincronizará después
      */
     override suspend fun crearSolicitud(solicitud: Solicitud): Solicitud = withContext(Dispatchers.IO) {
@@ -194,9 +194,9 @@ class SolicitudRepositoryImpl(
         try {
             remoteDataSource.crearSolicitud(solicitudCompleta)
             queries.marcarSolicitudSincronizada(id)
-            android.util.Log.d("MiSAIP", "Solicitud $expediente subida a Firebase exitosamente")
+            android.util.Log.d("MiSAIP", "Solicitud $expediente sincronizada con backend REST")
         } catch (e: Exception) {
-            android.util.Log.e("MiSAIP", "Error subiendo solicitud $expediente a Firebase: ${e.message}", e)
+            android.util.Log.e("MiSAIP", "Error sincronizando solicitud $expediente con backend REST: ${e.message}", e)
             // Se sincronizará después con WorkManager
         }
 
@@ -303,9 +303,9 @@ class SolicitudRepositoryImpl(
     }
 
     /**
-     * Sincroniza las solicitudes con Firebase.
+     * Sincroniza las solicitudes con el backend REST.
      * 1. Sube solicitudes pendientes locales (push)
-     * 2. Descarga cambios desde Firebase a la BD local (pull)
+     * 2. Descarga cambios desde el backend a la BD local (pull)
      */
     override suspend fun sincronizar() = withContext(Dispatchers.IO) {
         // 1. Push: Subir solicitudes pendientes (con timeout por ítem para no bloquear offline)
@@ -327,7 +327,7 @@ class SolicitudRepositoryImpl(
             }
         }
 
-        // 2. Pull: Descargar actualizaciones desde Firebase (con timeout global)
+        // 2. Pull: Descargar actualizaciones desde backend REST (con timeout global)
         try {
             val ultimaSync = queries.getAllSolicitudes().executeAsList()
                 .filter { it.sincronizado }
@@ -413,4 +413,3 @@ class SolicitudRepositoryImpl(
             }
     }
 }
-

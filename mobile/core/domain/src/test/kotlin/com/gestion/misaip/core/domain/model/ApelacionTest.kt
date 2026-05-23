@@ -6,7 +6,7 @@ import org.junit.Test
 class ApelacionTest {
 
     private fun crearApelacion(
-        estado: EstadoApelacion = EstadoApelacion.PENDIENTE_ELEVACION,
+        estado: EstadoApelacion = EstadoApelacion.EN_CALIFICACION_1,
         primeraCalificacion: Calificacion? = null,
         subsanacion: Subsanacion? = null
     ) = Apelacion(
@@ -155,8 +155,8 @@ class EstadoApelacionTest {
     }
 
     @Test
-    fun `fromString retorna PENDIENTE_ELEVACION como default`() {
-        assertEquals(EstadoApelacion.PENDIENTE_ELEVACION, EstadoApelacion.fromString("desconocido"))
+    fun `fromString retorna EN_CALIFICACION_1 como default`() {
+        assertEquals(EstadoApelacion.EN_CALIFICACION_1, EstadoApelacion.fromString("desconocido"))
     }
 
     @Test
@@ -167,7 +167,7 @@ class EstadoApelacionTest {
 
     @Test
     fun `toDisplayString retorna texto legible`() {
-        assertEquals("Pendiente de Elevación", EstadoApelacion.PENDIENTE_ELEVACION.toDisplayString())
+        assertEquals("En Primera Calificación", EstadoApelacion.PENDIENTE_ELEVACION.toDisplayString())
         assertEquals("Resuelto - Fundado", EstadoApelacion.RESUELTO_FUNDADO.toDisplayString())
     }
 }

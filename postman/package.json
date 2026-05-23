@@ -1,0 +1,17 @@
+{
+  "name": "saip-api-postman-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Newman validation and diagnostics for the SAIP backend Postman collection.",
+  "type": "module",
+  "scripts": {
+    "test:api": "node scripts/run-newman.mjs --mode api",
+    "test:api:diagnostic": "node scripts/run-newman.mjs --mode diagnostic",
+    "test:api:auth": "node scripts/run-newman.mjs --mode auth --folder \"01. Autenticación\"",
+    "test:api:bail": "node scripts/run-newman.mjs --mode bail --bail"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

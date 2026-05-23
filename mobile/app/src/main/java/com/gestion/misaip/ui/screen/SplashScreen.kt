@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gestion.misaip.config.AppRolePolicy
+import com.gestion.misaip.core.domain.usecase.auth.CerrarSesionUseCase
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
 import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.messaging.NotificationPushHelper
@@ -45,7 +47,8 @@ fun SplashScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
     onNavigateToDashboard: (com.gestion.misaip.core.domain.model.TipoUsuario) -> Unit,
-    getUsuarioActualUseCase: GetUsuarioActualUseCase = koinInject()
+    getUsuarioActualUseCase: GetUsuarioActualUseCase = koinInject(),
+    cerrarSesionUseCase: CerrarSesionUseCase = koinInject()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -54,10 +57,18 @@ fun SplashScreen(
         try {
             val usuario = getUsuarioActualUseCase().first()
             if (usuario != null) {
+                if (!AppRolePolicy.isRoleAllowed(usuario.tipo)) {
+                    Timber.w("Sesion ${usuario.tipo} bloqueada en APK ${AppRolePolicy.roleLabel}")
+                    runCatching { FCMHelper.unregisterTokenFromBackend() }
+                    runCatching { FCMHelper.unsubscribeAll(usuario.tipo.name, usuario.entidadId) }
+                    cerrarSesionUseCase()
+                    onNavigateToLogin()
+                    return@LaunchedEffect
+                }
                 Timber.d("Sesión activa encontrada: ${usuario.nombre} (${usuario.tipo})")
                 FCMHelper.getToken(
                     onTokenReceived = { token ->
-                        FCMHelper.saveTokenToFirestore(token)
+                        FCMHelper.registerTokenWithBackend(token)
                     },
                     onError = { e ->
                         Timber.e(e, "Error obteniendo token FCM")

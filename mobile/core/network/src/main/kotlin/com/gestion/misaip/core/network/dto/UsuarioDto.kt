@@ -4,7 +4,7 @@ import com.gestion.misaip.core.domain.model.*
 
 /**
  * DTO para Usuario.
- * Representa los datos de usuario tal como se almacenan en Firebase Firestore.
+ * Representa los datos de usuario provenientes del backend REST.
  */
 data class UsuarioDto(
     val id: String = "",

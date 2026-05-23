@@ -7,7 +7,7 @@ import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
 
 /**
  * Implementación REST del datasource de apelaciones.
- * Usa el backend Spring Boot en lugar de Firebase.
+ * Usa el backend Spring Boot + JWT como fuente remota.
  */
 class ApelacionRestDataSource(
     private val apelacionApi: ApelacionApiService,

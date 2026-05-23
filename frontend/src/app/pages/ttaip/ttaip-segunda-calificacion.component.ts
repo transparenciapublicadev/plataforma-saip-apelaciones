@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
-import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
+import { Apelacion } from '../../models/apelacion.model';
 import {
   ReferenceConfirmModalComponent,
   ReferenceConfirmSummary,
@@ -40,7 +39,6 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
   private readonly segundaCalificacionEstados = new Set<string>(['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION']);
 
   apelacion = signal<Apelacion | null>(null);
@@ -111,7 +109,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     this.loadingApelacion.set(true);
     this.apelacionService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        this.apelacion.set(this.applyLocalEstado(data));
+        this.apelacion.set(data);
         this.loadingApelacion.set(false);
       },
       error: () => {
@@ -185,14 +183,6 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     return 'IMPROCEDENTE';
   }
 
-  getFallbackSubsanacionDocs(): ReadonlyArray<{ nombre: string; size: string }> {
-    return [
-      { nombre: 'Escrito_Fundamentado.pdf', size: '450 KB' },
-      { nombre: 'Respuesta_Denegatoria.pdf', size: '320 KB' },
-      { nombre: 'Declaracion_Domicilio.pdf', size: '180 KB' }
-    ];
-  }
-
   abrirConfirmacionCalificacion(): void {
     if (!this.validarSegundaCalificacion()) {
       return;
@@ -217,7 +207,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
       this.ttaipService.admitirApelacion(currentAppeal.id, {
         fundamentos: this.fundamentos.trim()
       }).subscribe({
-        next: (updated) => this.handleSuccess('Apelacion declarada ADMITIDA A TRAMITE.', updated, 'EN_RESOLUCION'),
+        next: (updated) => this.handleSuccess('Apelacion declarada ADMITIDA A TRAMITE.', updated),
         error: (err) => this.handleError(err)
       });
       return;
@@ -226,56 +216,20 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     this.ttaipService.inadmitirApelacion(currentAppeal.id, {
       fundamentos: this.fundamentos.trim()
     }).subscribe({
-      next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated, 'RESUELTO_IMPROCEDENTE'),
+      next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
       error: (err) => this.handleError(err)
     });
   }
 
-  private handleSuccess(message: string, updated?: Apelacion, nextEstado?: EstadoApelacion): void {
+  private handleSuccess(message: string, updated?: Apelacion): void {
     const nextAppeal = updated ?? this.apelacion();
     if (nextAppeal) {
-      const resolved = nextEstado ? { ...nextAppeal, estado: nextEstado } : nextAppeal;
-      this.apelacion.set(resolved);
-      this.localStateOverride.setApelacionEstado(resolved, resolved.estado);
+      this.apelacion.set(nextAppeal);
     }
 
     this.loading.set(false);
     this.mensaje.set(message);
     this.successModalAbierto.set(true);
-  }
-
-  private applyLocalEstado(apelacion: Apelacion): Apelacion {
-    if (this.isEstadoResuelto(apelacion.estado)) {
-      return apelacion;
-    }
-
-    const overridden = this.localStateOverride.getApelacionEstado(apelacion);
-    if (!overridden || this.estadoRank(overridden) < this.estadoRank(apelacion.estado)) {
-      return apelacion;
-    }
-
-    return { ...apelacion, estado: overridden as EstadoApelacion };
-  }
-
-  private isEstadoResuelto(estado?: string): boolean {
-    const normalized = this.normalizeEstado(estado);
-    return normalized.startsWith('RESUELTO')
-      || normalized.startsWith('CONCLUSION')
-      || normalized === 'TENER_POR_NO_PRESENTADO';
-  }
-
-  private estadoRank(estado?: string): number {
-    const normalized = this.normalizeEstado(estado);
-    const ranks: Record<string, number> = {
-      PENDIENTE_ELEVACION: 0,
-      EN_CALIFICACION_1: 1,
-      EN_SUBSANACION: 2,
-      EN_CALIFICACION_2: 3,
-      NOTIFICACION_SEGUNDA_CALIFICACION: 4,
-      EN_RESOLUCION: 5
-    };
-
-    return this.isEstadoResuelto(normalized) ? 6 : ranks[normalized] ?? 0;
   }
 
   private handleError(err: unknown): void {
@@ -328,7 +282,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   }
 
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
-    const docsCount = this.documentosSubsanacion().length || this.getFallbackSubsanacionDocs().length;
+    const docsCount = this.documentosSubsanacion().length;
     return [
       { label: 'Decisión', value: this.selectedDecision() === 'admitido' ? 'ADMITIDO A TRÁMITE' : 'IMPROCEDENTE' },
       { label: 'Docs revisados', value: `${docsCount} archivos` },

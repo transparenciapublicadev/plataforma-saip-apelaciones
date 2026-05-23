@@ -1,6 +1,6 @@
 ---
 title: Despliegue Mobile
-description: Build de producción para la app Android MiSAIP con firma, ProGuard y configuración Firebase.
+description: Build y distribución de las tres apps Android por rol, con firma, R8, REST contra backend propio y FCM solo para push.
 ---
 
 import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
@@ -9,20 +9,31 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Android Studio" icon="laptop">
-    Hedgehog o superior con AGP 9.1.0.
+    Compatible con AGP 9.2.1 y Kotlin 2.3.10.
   </Card>
-  <Card title="JDK 17" icon="seti:java">
-    Requerido por AGP 9.x.
+  <Card title="JDK 17+" icon="seti:java">
+    Requerido por el toolchain Android moderno.
   </Card>
-  <Card title="Firebase" icon="setting">
-    Proyecto configurado con Auth + FCM.
+  <Card title="Backend SAIP" icon="server">
+    Spring Boot + JWT disponible para autenticación y datos.
+  </Card>
+  <Card title="Firebase FCM" icon="bell">
+    Solo para notificaciones push.
   </Card>
 </CardGrid>
+
+## Artefactos por Rol
+
+| Flavor | Application ID | Artefacto esperado | Distribución |
+| --- | --- | --- | --- |
+| `ciudadano` | `com.gestion.misaip.ciudadano` | AAB/APK público | Google Play Store |
+| `funcionario` | `com.gestion.misaip.funcionario` | APK interno | Distribución institucional |
+| `ttaip` | `com.gestion.misaip.ttaip` | APK restringido | Distribución controlada TTAIP |
 
 ## Build de Release
 
 <Steps>
-1. **Configurar** la firma del APK/AAB en `app/build.gradle.kts`
+1. **Configurar firma**
    ```kotlin
    android {
        signingConfigs {
@@ -33,74 +44,87 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
                keyPassword = System.getenv("KEY_PASSWORD")
            }
        }
-       buildTypes {
-           release {
-               isMinifyEnabled = true
-               isShrinkResources = true
-               proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-               signingConfig = signingConfigs.getByName("release")
-           }
-       }
    }
    ```
-2. **Compilar** el bundle de release
-   ```bash
+2. **Compilar bundles o APKs por flavor**
+   ```powershell
    cd mobile
-   .\gradlew.bat bundleRelease    # AAB para Play Store
-   .\gradlew.bat assembleRelease  # APK directo
+   .\gradlew.bat bundleCiudadanoRelease
+   .\gradlew.bat assembleFuncionarioRelease
+   .\gradlew.bat assembleTtaipRelease
    ```
-3. **Verificar** el artefacto
-   ```bash
-   ls app/build/outputs/bundle/release/
+3. **Validar antes de distribuir**
+   ```powershell
+   .\gradlew.bat :app:compileCiudadanoDebugKotlin
+   .\gradlew.bat :app:compileFuncionarioDebugKotlin
+   .\gradlew.bat :app:compileTtaipDebugKotlin
+   .\gradlew.bat test
    ```
 </Steps>
 
-## Variables de Entorno
+## Variables y Configuración
 
 | Variable | Descripción |
-|----------|-------------|
-| `KEYSTORE_PATH` | Ruta al archivo .jks de firma |
-| `KEYSTORE_PASSWORD` | Contraseña del keystore |
-| `KEY_ALIAS` | Alias de la clave de firma |
-| `KEY_PASSWORD` | Contraseña de la clave |
+| --- | --- |
+| `KEYSTORE_PATH` | Ruta del archivo `.jks`. |
+| `KEYSTORE_PASSWORD` | Contraseña del keystore. |
+| `KEY_ALIAS` | Alias de la clave. |
+| `KEY_PASSWORD` | Contraseña de la clave. |
+| `REST_BASE_URL` | URL base del backend Spring Boot. |
 
-## Firebase
-
-El archivo `google-services.json` debe estar en `app/` y configurado para el entorno de producción con:
-- **Firebase Auth** — Autenticación de usuarios
-- **Firebase Cloud Messaging (FCM)** — Notificaciones push
-
-:::danger[google-services.json]
-Este archivo contiene configuración sensible del proyecto Firebase. NUNCA incluir en repositorios públicos — debe estar en `.gitignore` y distribuirse de forma segura al equipo.
+:::danger[Secrets]
+No versionar keystores, passwords, tokens, `google-services.json` de producción ni archivos con credenciales.
 :::
 
-## ProGuard / R8
+## Firebase Cloud Messaging
 
-Las reglas de ofuscación están en `app/proguard-rules.pro`. Incluir reglas para:
-- Retrofit (DTOs que se deserializan con Gson)
-- SQLDelight (entidades generadas)
-- Firebase (clases de reflexión)
+El archivo `google-services.json` se usa únicamente para FCM. La app no debe usar Firebase Auth ni Firestore.
+
+Responsabilidades de FCM:
+
+- Obtener token push del dispositivo.
+- Suscribir topics por rol si aplica.
+- Recibir mensajes en `MiSaipMessagingService`.
+- Delegar persistencia o registro de token al backend cuando exista endpoint autenticado.
+
+## R8 / ProGuard
+
+Incluir reglas para librerías que usan reflexión o serialización:
 
 ```text
-# Retrofit
+# Retrofit / OkHttp
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class retrofit2.** { *; }
+-keep class okhttp3.** { *; }
 
-# Modelos de red (DTOs)
--keep class pe.gob.misaip.core.network.dto.** { *; }
+# DTOs de red
+-keep class com.gestion.misaip.core.network.dto.** { *; }
 
 # SQLDelight
--keep class pe.gob.misaip.core.database.** { *; }
+-keep class com.gestion.misaip.core.database.** { *; }
+
+# Firebase Messaging
+-keep class com.google.firebase.messaging.** { *; }
 ```
 
-## Especificaciones del APK
+## Checklist de Release
+
+- Compilar los tres flavors.
+- Confirmar que cada APK rechaza sesiones de otros roles.
+- Probar login contra backend real o staging.
+- Probar consulta de SAIP y apelaciones según rol.
+- Probar recepción de push FCM.
+- Verificar que no existan logs sensibles.
+- Confirmar que la app ciudadano es la única destinada a Play Store pública.
+
+## Especificaciones
 
 | Parámetro | Valor |
-|-----------|-------|
+| --- | --- |
 | `compileSdk` | 36 |
-| `minSdk` | 24 (Android 7.0) |
+| `minSdk` | 24 |
 | `targetSdk` | 36 |
 | Kotlin | 2.3.10 |
-| AGP | 9.1.0 |
-| Gradle | 9.3.1 |
+| AGP | 9.2.1 |
+| Gradle | 9.4.1 |

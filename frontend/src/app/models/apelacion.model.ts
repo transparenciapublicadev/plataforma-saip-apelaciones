@@ -1,5 +1,14 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
 import type { ApelacionDTO } from '../api/types';
+import type {
+    CedulaNotificacion,
+    HistorialTtaip,
+    MiembroTtaipResumen,
+    NotificacionTtaip,
+    ReprocesoNotificacion,
+    Resolucion,
+    SalaTtaipResumen
+} from './resolucion.model';
 
 // Enums tipados del lado cliente (el spec los expone como string)
 // TODO: Agregar @Schema(allowableValues) al backend para generar enums
@@ -27,6 +36,26 @@ export type CalificacionApelacion =
     | 'ADMITIDO';
 
 export type Apelacion = Required<ApelacionDTO> & {
+    expedienteTtaip?: {
+        id: number;
+        numeroExpediente: string;
+        estado?: EstadoApelacion | string | null;
+        fechaApertura?: string | null;
+        fechaActualizacion?: string | null;
+        fechaPrimeraCalificacion?: string | null;
+        fechaSegundaCalificacion?: string | null;
+        fechaResolucionFinal?: string | null;
+        fechaLimiteResolucion?: string | null;
+        trazabilidadMinima?: string | null;
+        sala?: SalaTtaipResumen | null;
+        miembros?: MiembroTtaipResumen[];
+        resoluciones?: Resolucion[];
+        cedulas?: CedulaNotificacion[];
+        notificaciones?: NotificacionTtaip[];
+        historial?: HistorialTtaip[];
+        reprocesos?: ReprocesoNotificacion[];
+    } | null;
+    resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;
     documentosSubsanacion?: { id: number; nombreArchivo: string; rutaArchivo: string; tipoArchivo: string }[];
 };

@@ -11,6 +11,15 @@ import java.util.Optional;
 @Service
 public class MiembroTTAIPService {
 
+    private static final List<String> CORREOS_OFICIALES_TTAIP = List.of(
+            "tvalverde@minjus.gob.pe",
+            "lagurto@minjus.gob.pe",
+            "szamora@minjus.gob.pe",
+            "jpichon@minjus.gob.pe",
+            "jmancilla@minjus.gob.pe",
+            "jrojasb@minjus.gob.pe"
+    );
+
     private final MiembroTTAIPRepository miembroTTAIPRepository;
 
     public MiembroTTAIPService(MiembroTTAIPRepository miembroTTAIPRepository) {
@@ -39,7 +48,32 @@ public class MiembroTTAIPService {
 
     @Transactional(readOnly = true)
     public List<MiembroTTAIP> obtenerMiembrosTTAIPActivos() {
-        return miembroTTAIPRepository.findAll();
+        List<MiembroTTAIP> oficiales = miembroTTAIPRepository
+                .findByEmailInAndActivoTrueOrderBySalaAscCargoAscNombreCompletoAsc(CORREOS_OFICIALES_TTAIP);
+        if (!oficiales.isEmpty()) {
+            return oficiales;
+        }
+
+        return obtenerMiembrosTTAIPActivosConPeriodo();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MiembroTTAIP> obtenerMiembrosTTAIPActivosPorSala(String sala) {
+        List<MiembroTTAIP> oficiales = miembroTTAIPRepository
+                .findBySalaAndEmailInAndActivoTrueOrderByCargoAscNombreCompletoAsc(sala, CORREOS_OFICIALES_TTAIP);
+        if (!oficiales.isEmpty()) {
+            return oficiales;
+        }
+
+        List<MiembroTTAIP> conPeriodo = miembroTTAIPRepository
+                .findBySalaAndActivoTrueAndPeriodoInicioIsNotNullAndPeriodoFinIsNotNullOrderByCargoAscNombreCompletoAsc(sala);
+        return conPeriodo.isEmpty() ? miembroTTAIPRepository.findBySala(sala) : conPeriodo;
+    }
+
+    private List<MiembroTTAIP> obtenerMiembrosTTAIPActivosConPeriodo() {
+        List<MiembroTTAIP> conPeriodo = miembroTTAIPRepository
+                .findByActivoTrueAndPeriodoInicioIsNotNullAndPeriodoFinIsNotNullOrderBySalaAscCargoAscNombreCompletoAsc();
+        return conPeriodo.isEmpty() ? miembroTTAIPRepository.findAll() : conPeriodo;
     }
 
     @Transactional

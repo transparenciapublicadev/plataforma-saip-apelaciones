@@ -87,12 +87,12 @@ export class TtaipService {
     return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/desistimiento`, data);
   }
 
-  declararNoPresentado(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
-    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/no-presentado`, data);
+  declararNoPresentado(apelacionId: number, data: CalificacionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/calificacion/${apelacionId}/no-presentado`, data);
   }
 
   notificarSegundaCalificacion(apelacionId: number): Observable<Apelacion> {
-    return this.http.post<Apelacion>(`${this.apiUrl}/notificar-segunda-calificacion/${apelacionId}`, {});
+    return this.http.post<Apelacion>(`${this.apiUrl}/${apelacionId}/notificar-segunda-calificacion`, {});
   }
 }
 

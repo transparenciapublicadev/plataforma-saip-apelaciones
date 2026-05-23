@@ -1,19 +1,13 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, computed, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
+import { UsuarioAdmin, UsuarioService } from '../../services/usuario.service';
 import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
-
-interface Usuario {
-  id: number;
-  email: string;
-  tipoUsuario: string;
-  fechaRegistro: string;
-  activo: boolean;
-}
+import { Apelacion } from '../../models/apelacion.model';
 
 interface ChartDatum {
   label: string;
@@ -28,6 +22,14 @@ interface DonutChartDatum extends ChartDatum {
 }
 
 type AdminTab = 'resumen' | 'entidades' | 'usuarios' | 'reportes' | 'configuracion' | 'solicitudes';
+type ActivityTone = 'success' | 'info' | 'warning' | 'danger' | 'brand';
+
+interface RecentActivity {
+  tone: ActivityTone;
+  label: string;
+  detail: string;
+  date: Date;
+}
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -40,6 +42,7 @@ export class AdminDashboardComponent implements OnInit {
   private readonly entidadService = inject(EntidadService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly usuarioService = inject(UsuarioService);
 
   loading = signal<boolean>(true);
   loadingUsuarios = signal<boolean>(false);
@@ -49,8 +52,9 @@ export class AdminDashboardComponent implements OnInit {
   mensaje = signal<string>('');
 
   entidades = signal<Entidad[]>([]);
-  usuarios = signal<Usuario[]>([]);
+  usuarios = signal<UsuarioAdmin[]>([]);
   solicitudes = signal<Solicitud[]>([]);
+  apelaciones = signal<Apelacion[]>([]);
 
   totalEntidades = signal<number>(0);
   entidadesActivas = signal<number>(0);
@@ -101,8 +105,45 @@ export class AdminDashboardComponent implements OnInit {
   };
 
   readonly donutCircumference = 2 * Math.PI * 42;
+  readonly plazoSaipDias = 10;
+  readonly plazoTtaipResolucionDias = 10;
 
   private entidadIdEditando: number | null = null;
+
+  readonly actividadReciente = computed<RecentActivity[]>(() => {
+    const items: RecentActivity[] = [];
+
+    for (const solicitud of this.solicitudes()) {
+      items.push({
+        tone: this.activityToneForSolicitud(solicitud.estado),
+        label: this.activityLabelForSolicitud(solicitud.estado),
+        detail: `${solicitud.expediente || 'Sin expediente'} · ${this.fechaRelativa(solicitud.fechaPresentacion)}`,
+        date: this.parseDate(solicitud.fechaPresentacion)
+      });
+    }
+
+    for (const apelacion of this.apelaciones()) {
+      items.push({
+        tone: this.activityToneForApelacion(apelacion.estado),
+        label: this.activityLabelForApelacion(apelacion.estado),
+        detail: `${apelacion.expediente || 'Sin expediente'} · ${this.fechaRelativa(apelacion.fechaApelacion)}`,
+        date: this.parseDate(apelacion.fechaApelacion)
+      });
+    }
+
+    for (const usuario of this.usuarios()) {
+      items.push({
+        tone: 'warning',
+        label: 'Usuario registrado',
+        detail: `${usuario.tipoUsuario} · ${this.fechaRelativa(usuario.fechaRegistro)}`,
+        date: this.parseDate(usuario.fechaRegistro)
+      });
+    }
+
+    return items
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5);
+  });
 
   ngOnInit(): void {
     this.cargarDatos();
@@ -153,40 +194,27 @@ export class AdminDashboardComponent implements OnInit {
     });
 
     this.cargarUsuarios();
+    this.cargarSolicitudes();
+    this.cargarApelaciones();
   }
 
   cargarUsuarios(): void {
     this.loadingUsuarios.set(true);
-    const usuariosSimulados: Usuario[] = [
-      { id: 1, email: 'juan.perez@gmail.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-02-01', activo: true },
-      { id: 2, email: 'maria.lopez@gmail.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-02-02', activo: true },
-      { id: 3, email: 'carlos.ramirez@hotmail.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-02-03', activo: true },
-      { id: 4, email: 'andrea.silva@outlook.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-02-04', activo: true },
-      { id: 5, email: 'roberto.flores@yahoo.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-02-05', activo: true },
-      { id: 6, email: 'ciudadano@test.com', tipoUsuario: 'CIUDADANO', fechaRegistro: '2024-03-01', activo: true },
-      { id: 7, email: 'ana.garcia@entidad1.test', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-02-06', activo: true },
-      { id: 8, email: 'pedro.sanchez@entidad2.test', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-02-07', activo: true },
-      { id: 9, email: 'luis.torres@entidad3.test', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-02-08', activo: true },
-      { id: 10, email: 'carmen.vega@entidad4.test', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-02-09', activo: true },
-      { id: 11, email: 'fernando.rios@entidad5.test', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-02-10', activo: true },
-      { id: 12, email: 'funcionario@test.com', tipoUsuario: 'FUNCIONARIO', fechaRegistro: '2024-03-02', activo: true },
-      { id: 13, email: 'rosa.mendez@ttaip.test', tipoUsuario: 'TTAIP', fechaRegistro: '2024-02-11', activo: true },
-      { id: 14, email: 'jorge.castro@ttaip.test', tipoUsuario: 'TTAIP', fechaRegistro: '2024-02-12', activo: true },
-      { id: 15, email: 'silvia.diaz@ttaip.test', tipoUsuario: 'TTAIP', fechaRegistro: '2024-02-13', activo: true },
-      { id: 16, email: 'miguel.ruiz@ttaip.test', tipoUsuario: 'TTAIP', fechaRegistro: '2024-02-14', activo: true },
-      { id: 17, email: 'patricia.morales@ttaip.test', tipoUsuario: 'TTAIP', fechaRegistro: '2024-02-15', activo: true },
-      { id: 18, email: 'admin@sistema.test', tipoUsuario: 'ADMINISTRADOR', fechaRegistro: '2024-01-10', activo: true },
-      { id: 19, email: 'superadmin@sistema.test', tipoUsuario: 'ADMINISTRADOR', fechaRegistro: '2024-01-11', activo: true },
-      { id: 20, email: 'sysadmin@sistema.test', tipoUsuario: 'ADMINISTRADOR', fechaRegistro: '2024-01-12', activo: true },
-    ];
-
-    this.usuarios.set(usuariosSimulados);
-    this.totalUsuarios.set(usuariosSimulados.length);
-    this.ciudadanos.set(usuariosSimulados.filter(u => u.tipoUsuario === 'CIUDADANO').length);
-    this.funcionarios.set(usuariosSimulados.filter(u => u.tipoUsuario === 'FUNCIONARIO').length);
-    this.miembrosTTAIP.set(usuariosSimulados.filter(u => u.tipoUsuario === 'TTAIP').length);
-    this.administradores.set(usuariosSimulados.filter(u => u.tipoUsuario === 'ADMINISTRADOR').length);
-    this.loadingUsuarios.set(false);
+    this.usuarioService.findAll().subscribe({
+      next: (usuarios) => {
+        this.usuarios.set(usuarios);
+        this.totalUsuarios.set(usuarios.length);
+        this.ciudadanos.set(usuarios.filter(u => u.tipoUsuario === 'CIUDADANO').length);
+        this.funcionarios.set(usuarios.filter(u => u.tipoUsuario === 'FUNCIONARIO').length);
+        this.miembrosTTAIP.set(usuarios.filter(u => u.tipoUsuario === 'TTAIP').length);
+        this.administradores.set(usuarios.filter(u => u.tipoUsuario === 'ADMINISTRADOR').length);
+        this.loadingUsuarios.set(false);
+      },
+      error: (err) => {
+        this.error.set(err.error?.mensaje || 'Error al cargar usuarios');
+        this.loadingUsuarios.set(false);
+      }
+    });
   }
 
   cargarSolicitudes(): void {
@@ -199,6 +227,15 @@ export class AdminDashboardComponent implements OnInit {
       error: () => {
         this.error.set('Error al cargar solicitudes');
         this.loadingSolicitudes.set(false);
+      }
+    });
+  }
+
+  cargarApelaciones(): void {
+    this.apelacionService.findAll().subscribe({
+      next: (data) => this.apelaciones.set(data),
+      error: () => {
+        this.apelaciones.set([]);
       }
     });
   }
@@ -225,7 +262,7 @@ export class AdminDashboardComponent implements OnInit {
     return resultado;
   }
 
-  usuariosFiltrados(): Usuario[] {
+  usuariosFiltrados(): UsuarioAdmin[] {
     let resultado = this.usuarios();
     if (this.busquedaUsuario) {
       const busqueda = this.busquedaUsuario.toLowerCase();
@@ -389,25 +426,39 @@ export class AdminDashboardComponent implements OnInit {
       return;
     }
 
-    this.mostrarMensaje('Usuario creado correctamente');
-    this.cerrarModalUsuario();
-    this.cargarUsuarios();
+    this.usuarioService.crear({
+      email: this.nuevoUsuario.email,
+      password: this.nuevoUsuario.password,
+      tipoUsuario: this.nuevoUsuario.tipoUsuario as UsuarioAdmin['tipoUsuario']
+    }).subscribe({
+      next: () => {
+        this.mostrarMensaje('Usuario creado correctamente');
+        this.cerrarModalUsuario();
+        this.cargarUsuarios();
+      },
+      error: (err) => this.error.set(err.error?.mensaje || 'Error al crear usuario')
+    });
   }
 
-  cambiarEstadoUsuario(usuario: Usuario): void {
-    usuario.activo = !usuario.activo;
-    this.mostrarMensaje('Estado de usuario actualizado');
+  cambiarEstadoUsuario(usuario: UsuarioAdmin): void {
+    this.usuarioService.cambiarEstado(usuario.id, !usuario.activo).subscribe({
+      next: () => {
+        this.mostrarMensaje('Estado de usuario actualizado');
+        this.cargarUsuarios();
+      },
+      error: (err) => this.error.set(err.error?.mensaje || 'Error al cambiar estado del usuario')
+    });
   }
 
-  eliminarUsuario(usuario: Usuario): void {
+  eliminarUsuario(usuario: UsuarioAdmin): void {
     if (confirm('¿Está seguro de eliminar este usuario?')) {
-      const index = this.usuarios().findIndex(u => u.id === usuario.id);
-      if (index > -1) {
-        const actualizados = [...this.usuarios()];
-        actualizados.splice(index, 1);
-        this.usuarios.set(actualizados);
-        this.mostrarMensaje('Usuario eliminado');
-      }
+      this.usuarioService.eliminar(usuario.id).subscribe({
+        next: () => {
+          this.mostrarMensaje('Usuario eliminado');
+          this.cargarUsuarios();
+        },
+        error: (err) => this.error.set(err.error?.mensaje || 'Error al eliminar usuario')
+      });
     }
   }
 
@@ -430,7 +481,7 @@ export class AdminDashboardComponent implements OnInit {
     return email.slice(0, 2).toUpperCase();
   }
 
-  actividadUsuario(usuario: Usuario): string {
+  actividadUsuario(usuario: UsuarioAdmin): string {
     const activityByType: Record<string, string> = {
       CIUDADANO: 'Solicitudes activas',
       FUNCIONARIO: 'Gestion institucional',
@@ -474,6 +525,78 @@ export class AdminDashboardComponent implements OnInit {
       return 0;
     }
     return Number(((value / total) * 100).toFixed(1));
+  }
+
+  activityToneClass(tone: ActivityTone): string {
+    const colors: Record<ActivityTone, string> = {
+      success: 'var(--success)',
+      info: 'var(--info)',
+      warning: 'var(--gold)',
+      danger: 'var(--brand-700)',
+      brand: 'var(--brand-500)'
+    };
+
+    return colors[tone];
+  }
+
+  private activityLabelForSolicitud(estado: string): string {
+    const normalized = (estado || '').toUpperCase();
+    if (normalized === 'RESPONDIDA') return 'Solicitud SAIP respondida';
+    if (normalized === 'DENEGADA') return 'Solicitud SAIP denegada';
+    if (normalized === 'VENCIDA') return 'Solicitud vencida detectada';
+    return 'Nueva solicitud SAIP registrada';
+  }
+
+  private activityToneForSolicitud(estado: string): ActivityTone {
+    const normalized = (estado || '').toUpperCase();
+    if (normalized === 'RESPONDIDA') return 'success';
+    if (normalized === 'DENEGADA' || normalized === 'VENCIDA') return 'danger';
+    if (normalized === 'EN_REVISION' || normalized === 'PENDIENTE_INFORMACION') return 'info';
+    return 'brand';
+  }
+
+  private activityLabelForApelacion(estado: string): string {
+    const normalized = (estado || '').toUpperCase();
+    if (normalized.includes('RESUELTO') || normalized.includes('CONCLUSION') || normalized === 'TENER_POR_NO_PRESENTADO') {
+      return 'Resolución TTAIP emitida';
+    }
+    return 'Apelación presentada';
+  }
+
+  private activityToneForApelacion(estado: string): ActivityTone {
+    const normalized = (estado || '').toUpperCase();
+    if (normalized.includes('RESUELTO') || normalized.includes('CONCLUSION') || normalized === 'TENER_POR_NO_PRESENTADO') {
+      return 'info';
+    }
+    if (normalized === 'EN_SUBSANACION') return 'warning';
+    return 'brand';
+  }
+
+  private fechaRelativa(value?: string): string {
+    const date = this.parseDate(value);
+    const diffMs = Date.now() - date.getTime();
+    if (Number.isNaN(diffMs) || diffMs < 0) {
+      return 'fecha reciente';
+    }
+
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return 'ahora';
+    if (minutes < 60) return `hace ${minutes} min`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `hace ${hours} h`;
+
+    const days = Math.floor(hours / 24);
+    return `hace ${days} d`;
+  }
+
+  private parseDate(value?: string): Date {
+    if (!value) {
+      return new Date(0);
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? new Date(0) : date;
   }
 }
 

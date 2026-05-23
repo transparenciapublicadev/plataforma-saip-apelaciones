@@ -99,6 +99,7 @@ export default defineConfig({
           items: [
             { slug: 'api/endpoints' },
             { slug: 'api/autenticacion' },
+            { slug: 'api/postman' },
             { slug: 'api/codigos-error' },
           ],
         },

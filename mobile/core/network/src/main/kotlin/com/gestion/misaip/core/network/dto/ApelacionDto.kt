@@ -4,7 +4,7 @@ import com.gestion.misaip.core.domain.model.*
 
 /**
  * DTO para Apelación TTAIP.
- * Representa los datos tal como se almacenan en Firebase Firestore.
+ * Representa los datos provenientes del backend REST.
  */
 data class ApelacionDto(
     val id: String = "",

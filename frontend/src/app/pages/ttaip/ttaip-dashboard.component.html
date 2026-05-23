@@ -92,7 +92,7 @@
         </div>
 
         <div
-          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2"
           data-motion-stagger
           data-motion-y="8"
           data-motion-duration="0.32"
@@ -113,7 +113,6 @@
               <div class="flex items-start justify-between mb-1.5">
                 <span class="font-display font-mono text-[11px] tracking-widest" [style.color]="stage.color" style="letter-spacing: 0.05em">{{ stage.num }}</span>
                 @switch (stage.icon) {
-                  @case ('inbox') { <svg class="w-4 h-4" [style.color]="stage.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 13h5l2 3h2l2-3h5"/><path stroke-width="2" d="M5 13V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path stroke-width="2" d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg> }
                   @case ('scale') { <svg class="w-4 h-4" [style.color]="stage.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M7 21h10"/><path stroke-width="2" d="M5 7h14"/><path stroke-width="2" d="M7 7c0 2.5-1.2 4.3-3 5"/><path stroke-width="2" d="M17 7c0 2.5 1.2 4.3 3 5"/></svg> }
                   @case ('hourglass') { <svg class="w-4 h-4" [style.color]="stage.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/><path stroke-width="2" d="M8 3v5a4 4 0 0 0 2 3.46L12 13l2-1.54A4 4 0 0 0 16 8V3"/><path stroke-width="2" d="M8 21v-5a4 4 0 0 1 2-3.46L12 11l2 1.54A4 4 0 0 1 16 16v5"/></svg> }
                   @case ('layers') { <svg class="w-4 h-4" [style.color]="stage.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3 9 4.5-9 4.5L3 7.5 12 3Z"/><path stroke-width="2" d="m3 12.5 9 4.5 9-4.5"/><path stroke-width="2" d="m3 17.5 9 4.5 9-4.5"/></svg> }
@@ -146,7 +145,6 @@
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="activeStage().bg" [style.border]="'1px solid ' + activeStage().color">
                 @switch (activeStage().icon) {
-                  @case ('inbox') { <svg class="w-4.5 h-4.5" [style.color]="activeStage().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 13h5l2 3h2l2-3h5"/></svg> }
                   @case ('scale') { <svg class="w-4.5 h-4.5" [style.color]="activeStage().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M5 7h14"/></svg> }
                   @case ('hourglass') { <svg class="w-4.5 h-4.5" [style.color]="activeStage().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/></svg> }
                   @case ('layers') { <svg class="w-4.5 h-4.5" [style.color]="activeStage().color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3 9 4.5-9 4.5L3 7.5 12 3Z"/></svg> }

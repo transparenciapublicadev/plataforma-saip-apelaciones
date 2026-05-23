@@ -17,6 +17,24 @@
   </div>
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
+    @if (loading()) {
+      <div class="form-shell p-16 text-center">
+        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="mt-4 text-muted-foreground">Cargando procesos disciplinarios...</p>
+      </div>
+    } @else if (error()) {
+      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
+        <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
+      </div>
+    } @else if (!selectedCase()) {
+      <div class="form-shell p-12 text-center">
+        <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+          <svg class="w-6 h-6" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M5 7h14"/></svg>
+        </div>
+        <h2 class="font-display" style="font-size: 22px">Sin procesos disciplinarios activos</h2>
+        <p class="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">El backend no registra resoluciones finales con orden de iniciar proceso disciplinario.</p>
+      </div>
+    } @else if (selectedCase(); as item) {
     <div
       class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6"
       data-motion-stagger
@@ -74,27 +92,27 @@
               <div class="rounded-md p-4 flex items-start gap-3" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
                 <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
                 <div>
-                  <div class="font-display tracking-wider font-semibold">RESOLUCION N° TTAIP-2025-00145-R · FUNDADA</div>
-                  <p class="text-xs text-foreground/80 mt-1">Se ordena a la entidad entregar la informacion solicitada en 10 dias habiles.</p>
+                  <div class="font-display tracking-wider font-semibold">RESOLUCIÓN · {{ item.apelacion.expediente }} · {{ formatDecision(item.resolucion.decision) }}</div>
+                  <p class="text-xs text-foreground/80 mt-1">{{ item.resolucion.fundamentos || 'Resolución final registrada por el backend.' }}</p>
                 </div>
               </div>
 
               <div>
                 <span class="eyebrow" style="color: var(--brand-700)">Motivo del proceso</span>
                 <div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
-                  <p class="leading-relaxed">La entidad no cumplio con la orden de entrega de informacion en el plazo establecido. Han transcurrido <span class="font-semibold">30 dias</span> desde la notificacion sin entrega.</p>
+                  <p class="leading-relaxed">La resolución final marcó <span class="font-semibold">iniciar proceso disciplinario</span>. El seguimiento específico de descargos y sanciones queda pendiente de registro backend.</p>
                 </div>
               </div>
 
               <div class="rule-ornament"></div>
 
               <div>
-                <span class="eyebrow">Funcionario responsable</span>
+                <span class="eyebrow">Entidad vinculada</span>
                 <div class="flex items-center gap-3 mt-2">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">MV</div>
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">EP</div>
                   <div>
-                    <div class="font-medium">Dra. Maria Elena Vega Torres</div>
-                    <div class="text-xs text-muted-foreground">Jefa de Transparencia · Ministerio de Educacion</div>
+                    <div class="font-medium">{{ item.apelacion.entidadNombre || 'Entidad pública' }}</div>
+                    <div class="text-xs text-muted-foreground">Miembro TTAIP · {{ item.resolucion.miembroTTAIPNombre || 'No registrado' }}</div>
                   </div>
                 </div>
               </div>
@@ -112,14 +130,14 @@
                 <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/><path stroke-width="2" d="M8 3v5a4 4 0 0 0 2 3.46L12 13l2-1.54A4 4 0 0 0 16 8V3"/><path stroke-width="2" d="M8 21v-5a4 4 0 0 1 2-3.46L12 11l2 1.54A4 4 0 0 1 16 16v5"/></svg>
                 <div>
                   <div class="font-display tracking-wider font-semibold" style="color: var(--warning)">PLAZO PARA DESCARGOS</div>
-                  <p class="text-xs text-foreground/80 mt-1">Quedan <span class="font-semibold font-mono">{{ diasRestantes() }} dias habiles</span> · vence el {{ fechaVencimiento() }}</p>
+                  <p class="text-xs text-foreground/80 mt-1">Plazo de descargos pendiente de registro por el backend.</p>
                 </div>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="eyebrow">Fecha de notificacion</div>
-                  <div class="font-mono mt-1">16/09/2025</div>
+                  <div class="font-mono mt-1">{{ formatDate(item.resolucion.fechaResolucion) }}</div>
                 </div>
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="eyebrow" [style.color]="colorEstadoNotificacion()">Estado</div>
@@ -132,7 +150,7 @@
 
               <div>
                 <span class="eyebrow">Medio de notificacion</span>
-                <p class="mt-1.5 text-foreground/85">Correo electronico certificado + carta notarial</p>
+                <p class="mt-1.5 text-foreground/85">No registrado por el backend.</p>
               </div>
 
               <button type="button" class="btn-ghost-brand w-full justify-center !py-3">
@@ -149,7 +167,7 @@
                   <svg class="w-6 h-6" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16"/><path stroke-width="2" d="M4 12h16"/></svg>
                 </div>
                 <h3 class="font-display tracking-wide mt-4" style="font-size: 18px">Aun no se han presentado descargos</h3>
-                <p class="text-sm text-muted-foreground mt-1">El funcionario tiene hasta el {{ fechaVencimiento() }} para presentar su defensa.</p>
+                <p class="text-sm text-muted-foreground mt-1">El backend aún no registra descargos asociados a este proceso.</p>
               </div>
 
               <div class="rule-ornament"></div>
@@ -206,5 +224,6 @@
         </div>
       </div>
     </div>
+    }
   </div>
 </div>

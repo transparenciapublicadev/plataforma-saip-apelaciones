@@ -14,5 +14,7 @@ public interface ResolucionRepository extends JpaRepository<Resolucion, Long> {
     List<Resolucion> findByMiembroTTAIP_IdUsuario(Long miembroId);
 
     List<Resolucion> findByTipoResolucion(Resolucion.TipoResolucion tipo);
+
+    long countByNumeroResolucionContaining(String yearToken);
 }
 

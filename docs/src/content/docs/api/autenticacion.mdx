@@ -102,13 +102,15 @@ filterChain.doFilter(request, response);
     | Ruta | Descripción |
     |------|-------------|
     | `POST /api/auth/login` | Autenticación |
-    | `POST /api/auth/registro/ciudadano` | Auto-registro de ciudadanos |
+    | `POST /api/auth/registro` | Auto-registro de ciudadanos |
+    | `GET /api/auth/verificar-email` | Verifica disponibilidad de email |
+    | `GET /api/auth/verificar-dni` | Verifica disponibilidad de DNI |
     | `GET /api/entidades` | Listar entidades (para formulario de registro) |
   </TabItem>
   <TabItem label="Autenticados">
     | Ruta | Roles permitidos |
     |------|-----------------|
-    | `GET /api/auth/perfil` | Cualquier usuario autenticado |
+    | `GET /api/auth/me/{usuarioId}` | Cualquier usuario autenticado |
     | `GET /api/solicitudes/*` | CIUDADANO, FUNCIONARIO, ADMIN |
     | `POST /api/solicitudes` | CIUDADANO |
     | `POST /api/respuestas` | FUNCIONARIO |

@@ -12,6 +12,7 @@ import pe.gob.saip.backend.model.entity.Resolucion;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,13 +24,16 @@ public class TTAIPService {
     private final ApelacionService apelacionService;
     private final ResolucionService resolucionService;
     private final MiembroTTAIPService miembroTTAIPService;
+    private final ExpedienteTtaipService expedienteTtaipService;
 
     public TTAIPService(ApelacionService apelacionService,
                         ResolucionService resolucionService,
-                        MiembroTTAIPService miembroTTAIPService) {
+                        MiembroTTAIPService miembroTTAIPService,
+                        ExpedienteTtaipService expedienteTtaipService) {
         this.apelacionService = apelacionService;
         this.resolucionService = resolucionService;
         this.miembroTTAIPService = miembroTTAIPService;
+        this.expedienteTtaipService = expedienteTtaipService;
     }
 
     // ============================================================
@@ -41,8 +45,8 @@ public class TTAIPService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
         stats.put("pendientesAdmision",
-                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
         stats.put("enProceso",
                 apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION)
@@ -63,7 +67,16 @@ public class TTAIPService {
 
     @Transactional(readOnly = true)
     public List<ApelacionDTO> listarPendientes() {
-        return apelacionService.findPendientes().stream()
+        return listarPrimeraCalificacion();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApelacionDTO> listarPrimeraCalificacion() {
+        List<Apelacion> apelaciones = new ArrayList<>();
+        apelaciones.addAll(apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
+        apelaciones.addAll(apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
+
+        return apelaciones.stream()
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
     }
@@ -100,15 +113,15 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setObservaciones(request.observaciones());
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         if (esSegundaCalificacion) {
             apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION);
             apelacion.setCalificacionSegunda(Apelacion.Calificacion.ADMITIDO);
         } else {
-            apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2);
+            apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
             apelacion.setCalificacionPrimera(Apelacion.Calificacion.ADMISIBLE);
         }
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -124,12 +137,12 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setObservaciones(request.observaciones());
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_SUBSANACION);
         apelacion.setCalificacionPrimera(Apelacion.Calificacion.INADMISIBLE);
         apelacion.setFechaSubsanacion(LocalDate.now());
         apelacion.setDiasSubsanacion(diasSubsanacion);
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -144,7 +157,7 @@ public class TTAIPService {
                 request.fundamentos(),
                 request.miembroId()
         );
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         if (esSegundaCalificacion) {
             apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE);
             apelacion.setCalificacionSegunda(Apelacion.Calificacion.IMPROCEDENTE);
@@ -152,7 +165,7 @@ public class TTAIPService {
             apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE);
             apelacion.setCalificacionPrimera(Apelacion.Calificacion.IMPROCEDENTE);
         }
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -172,10 +185,10 @@ public class TTAIPService {
         );
         resolucion.setResultado("FUNDADO");
         resolucion.setIniciarProcesoDisciplinario(request.iniciarProcesoDisciplinario());
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
         apelacion.setResultado("FUNDADO");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -190,10 +203,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setResultado("INFUNDADO");
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO);
         apelacion.setResultado("INFUNDADO");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -209,10 +222,10 @@ public class TTAIPService {
         );
         resolucion.setResultado("FUNDADO_EN_PARTE");
         resolucion.setIniciarProcesoDisciplinario(request.iniciarProcesoDisciplinario());
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE);
         apelacion.setResultado("FUNDADO_EN_PARTE");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -227,10 +240,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setResultado("INFUNDADO_EN_PARTE");
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE);
         apelacion.setResultado("INFUNDADO_EN_PARTE");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -245,10 +258,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setResultado("IMPROCEDENTE");
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE);
         apelacion.setResultado("IMPROCEDENTE");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -263,10 +276,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA);
         apelacion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -281,10 +294,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setResultado("CONCLUSION_DESISTIMIENTO");
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO);
         apelacion.setResultado("CONCLUSION_DESISTIMIENTO");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -299,10 +312,10 @@ public class TTAIPService {
                 request.miembroId()
         );
         resolucion.setObservaciones(request.observaciones());
-        resolucionService.save(resolucion);
+        guardarResolucionConDocumentos(resolucion);
         apelacion.setEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO);
         apelacion.setResultado("TENER_POR_NO_PRESENTADO");
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -310,7 +323,7 @@ public class TTAIPService {
     public ApelacionDTO notificarSegundaCalificacion(Long apelacionId) {
         Apelacion apelacion = buscarApelacion(apelacionId);
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
-        apelacionService.save(apelacion);
+        guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
@@ -335,7 +348,17 @@ public class TTAIPService {
         resolucion.setFundamentos(fundamentos);
         resolucion.setFechaResolucion(LocalDateTime.now());
         asignarMiembro(resolucion, miembroId);
-        return resolucion;
+        return expedienteTtaipService.prepararResolucion(resolucion);
+    }
+
+    private void guardarResolucionConDocumentos(Resolucion resolucion) {
+        resolucionService.save(resolucion);
+        expedienteTtaipService.registrarResolucion(resolucion);
+    }
+
+    private void guardarApelacionConExpediente(Apelacion apelacion) {
+        Apelacion saved = apelacionService.save(apelacion);
+        expedienteTtaipService.obtenerOCrearParaApelacion(saved);
     }
 
     private void asignarMiembro(Resolucion resolucion, Long miembroId) {

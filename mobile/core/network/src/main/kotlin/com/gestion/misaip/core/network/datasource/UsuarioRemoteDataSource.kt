@@ -4,7 +4,7 @@ import com.gestion.misaip.core.domain.model.Usuario
 
 /**
  * Interfaz para la fuente de datos remota de Usuarios.
- * Abstrae la autenticación remota (REST backend o Firebase Auth).
+ * Abstrae la autenticación remota contra el backend REST con JWT.
  */
 interface UsuarioRemoteDataSource {
 

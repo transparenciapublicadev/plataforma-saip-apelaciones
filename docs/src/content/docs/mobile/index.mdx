@@ -1,112 +1,126 @@
 ---
 title: Mobile — Android
-description: Módulo mobile de la Plataforma SAIP — App Android con Kotlin, Jetpack Compose y Material 3.
+description: Módulo mobile de la Plataforma SAIP con tres APKs por rol, Kotlin, Jetpack Compose, REST con Spring Boot + JWT y FCM solo para push.
 ---
 
 import { Card, CardGrid, LinkCard, Tabs, TabItem, FileTree, Badge } from '@astrojs/starlight/components';
 
+El módulo `mobile/` es una aplicación Android nativa en Kotlin que se distribuye como **tres APKs independientes** mediante flavors Gradle. Las tres apps comparten módulos comunes de red, dominio, datos, diseño y utilidades, pero cada APK expone únicamente las features permitidas para su rol.
+
 <CardGrid>
-  <Card title="Kotlin 2.3" icon="seti:kotlin">
-    Exclusivamente Kotlin — NO Java, NO XML.
+  <Card title="Tres APKs" icon="mobile">
+    `ciudadano`, `funcionario` y `ttaip`, cada uno con su propio `applicationId`.
   </Card>
-  <Card title="Jetpack Compose" icon="puzzle">
-    UI declarativa con Material 3 Design.
+  <Card title="Backend propio" icon="server">
+    Autenticación, datos y reglas de negocio vienen de Spring Boot + JWT.
   </Card>
-  <Card title="Navigation 3" icon="right-arrow">
-    Navegación moderna con `NavDisplay` + `NavKey`.
+  <Card title="Firebase limitado" icon="bell">
+    Firebase se conserva únicamente para Cloud Messaging (FCM).
   </Card>
-  <Card title="Offline-First" icon="approve-check">
-    SQLDelight local + Retrofit para sincronización.
+  <Card title="Compose + Material 3" icon="puzzle">
+    UI declarativa, single-Activity y Navigation 3.
   </Card>
 </CardGrid>
 
 ## Stack Técnico
 
 | Tecnología | Versión | Propósito |
-|------------|---------|-----------|
-| Kotlin | 2.3.10 | Lenguaje exclusivo |
-| AGP | 9.1.0 | Android Gradle Plugin |
-| Gradle | 9.3.1 | Build system |
-| Jetpack Compose | Última BOM | UI declarativa |
-| Material 3 | Última | Design system |
-| Navigation 3 | Última | Navegación single-Activity |
+| --- | --- | --- |
+| Kotlin | 2.3.10 | Lenguaje principal |
+| Android Gradle Plugin | 9.2.1 | Build Android |
+| Gradle Wrapper | 9.4.1 | Build reproducible |
+| Jetpack Compose BOM | 2026.02.01 | UI declarativa |
+| Material 3 | BOM Compose | Design system |
+| Navigation 3 | 1.0.1 | Navegación single-Activity |
 | Koin | 4.1.1 | Inyección de dependencias |
-| SQLDelight | 2.2.1 | Base de datos local |
-| Retrofit | 2.11.0 | HTTP client REST |
-| OkHttp | 4.12.0 | HTTP transport |
-| Firebase BOM | 34.10.0 | Auth + FCM push |
-| compileSdk | 36 | Target API level |
+| SQLDelight | 2.2.1 | Cache local |
+| Retrofit | 3.0.0 | Cliente REST |
+| OkHttp | 5.3.2 | Transporte HTTP e interceptores |
+| Firebase BOM | 34.10.0 | Solo FCM push |
+| compileSdk | 36 | SDK de compilación |
 | minSdk | 24 | Android 7.0+ |
+
+## APKs por Rol
+
+| Flavor | Application ID | Distribución | Funcionalidad permitida |
+| --- | --- | --- | --- |
+| `ciudadano` | `com.gestion.misaip.ciudadano` | Pública, Google Play | Registro, login ciudadano, SAIP, seguimiento, apelaciones y subsanaciones. |
+| `funcionario` | `com.gestion.misaip.funcionario` | Interna | Bandeja de entidad, atención y respuesta de solicitudes. |
+| `ttaip` | `com.gestion.misaip.ttaip` | Restringida | Primera calificación, subsanación, segunda calificación y resolución. |
+
+:::caution[Sin APK admin]
+La app mobile no genera aplicación de administrador. Los accesos `ADMINISTRADOR` se gestionan desde el frontend web.
+:::
 
 ## Arquitectura Multi-Módulo
 
 <FileTree>
-- MiSAIP/
+- mobile/
   - app/
-    - src/main/java/.../
-      - MainActivity.kt (NavDisplay + single-Activity)
-      - screen/ (13 Screens — Composables)
-      - viewmodel/ (11 ViewModels)
-      - theme/ (Theme.kt — light + dark)
-      - di/ (6 Koin modules)
-      - messaging/ (NotificationPushHelper)
+    - src/main/java/com/gestion/misaip/
+      - MainActivity.kt
+      - config/AppRolePolicy.kt
+      - messaging/MiSaipMessagingService.kt
+      - navigation/
+      - screen/
+      - viewmodel/
+      - theme/
+      - di/
   - core/
-    - domain/ (Kotlin puro — NO dependencias Android)
-      - model/ (Modelos de dominio)
-      - usecase/ (32 UseCases)
-      - repository/ (Interfaces)
-    - data/ (Implementaciones)
-      - repository/ (5 Repository impls)
-      - mapper/ (4 Mappers)
-    - database/ (SQLDelight)
-      - 5 tablas locales
-    - network/ (Retrofit + Firebase)
-      - datasource/ (RemoteDataSources)
-      - dto/ (DTOs de red)
-      - api/ (ApiServices Retrofit)
-    - common/ (Utilidades Android)
+    - domain/
+      - model/
+      - usecase/
+      - repository/
+    - data/
+      - repository/
+      - mapper/
+    - database/
+      - SQLDelight schemas
+    - network/
+      - Retrofit ApiServices
+      - OkHttp interceptors
+      - DTOs
+    - common/
   - gradle/
-    - libs.versions.toml (Version catalog)
+    - libs.versions.toml
 </FileTree>
 
-## Métricas del Módulo
+## Flujo de Datos
 
-| Concepto | Cantidad |
-|----------|----------|
-| Screens (Composables) | 13 |
-| ViewModels | 11 |
-| Use Cases | 32 |
-| Repository Implementations | 5 |
-| Mappers | 4 |
-| Tablas SQLDelight | 5 |
-| Koin DI Modules | 6 |
+```mermaid
+flowchart LR
+    UI["Compose Screen"] --> VM["ViewModel\nStateFlow"]
+    VM --> UC["UseCase\ncore/domain"]
+    UC --> Repo["Repository interface"]
+    Repo --> Impl["Repository impl\ncore/data"]
+    Impl --> DB["SQLDelight cache"]
+    Impl --> API["Retrofit + OkHttp"]
+    API --> Backend["Spring Boot API\nJWT"]
+    Backend --> MySQL["MySQL"]
+    Backend --> FCM["FCM push"]
+```
 
-## Ejecución
+## Build y Validación
 
-```bash
-# Compilar debug APK (Windows)
-cd mobile && .\gradlew.bat assembleDebug
-
-# Compilar + ejecutar tests
-.\gradlew.bat clean compileDebugKotlin test
-
-# Solo tests unitarios
+```powershell
+cd mobile
+.\gradlew.bat :app:compileCiudadanoDebugKotlin
+.\gradlew.bat :app:compileFuncionarioDebugKotlin
+.\gradlew.bat :app:compileTtaipDebugKotlin
 .\gradlew.bat test
+.\gradlew.bat assembleCiudadanoDebug assembleFuncionarioDebug assembleTtaipDebug
 ```
 
-:::caution[Gradle Cache]
-Al modificar módulos `core/*`, usar siempre `clean` para evitar que el cache de Gradle enmascare errores de compilación:
-```bash
-.\gradlew.bat clean compileDebugKotlin test
-```
+:::tip[Regla de backend]
+No usar Firebase Auth ni Firestore como backend de datos. La app consume autenticación, consulta de datos y lógica de negocio desde Spring Boot + JWT. FCM solo entrega notificaciones push.
 :::
 
 ## Subsecciones
 
 <CardGrid>
-  <LinkCard title="Arquitectura" href="/mobile/arquitectura/" description="Clean Architecture, capas, Koin DI" />
-  <LinkCard title="Navegación" href="/mobile/navegacion/" description="Navigation 3 con NavDisplay y NavKey" />
-  <LinkCard title="ViewModels" href="/mobile/viewmodels/" description="UiState + Events + StateFlow" />
-  <LinkCard title="Datos Offline" href="/mobile/datos-offline/" description="SQLDelight + Retrofit offline-first" />
-  <LinkCard title="Testing" href="/mobile/testing/" description="JUnit + MockK + Turbine + Compose Testing" />
+  <LinkCard title="Arquitectura" href="/mobile/arquitectura/" description="Clean Architecture, capas, Koin DI, Retrofit y SQLDelight." />
+  <LinkCard title="Navegación" href="/mobile/navegacion/" description="Navigation 3 con NavDisplay y NavKey." />
+  <LinkCard title="ViewModels" href="/mobile/viewmodels/" description="UiState, eventos y StateFlow." />
+  <LinkCard title="Datos Offline" href="/mobile/datos-offline/" description="Cache local y sincronización REST." />
+  <LinkCard title="Testing" href="/mobile/testing/" description="JUnit, MockK, Turbine y Compose testing." />
 </CardGrid>

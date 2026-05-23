@@ -1,105 +1,119 @@
 ---
 title: Descripción General
-description: Visión completa del proyecto Plataforma SAIP, sus objetivos, alcance y stakeholders.
+description: Visión completa del producto, alcance, actores, módulos y reglas centrales de la Plataforma SAIP.
 sidebar:
   order: 1
 ---
 
-import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
+import { Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
-## ¿Qué es la Plataforma SAIP?
+## Qué es la Plataforma SAIP
 
-La **Plataforma SAIP** es un sistema integral desarrollado para gestionar el ciclo completo de las **Solicitudes de Acceso a la Información Pública (SAIP)** en el Perú, conforme a la **Ley N° 27806** — Ley de Transparencia y Acceso a la Información Pública.
+La **Plataforma SAIP** es un sistema integral para gestionar digitalmente las Solicitudes de Acceso a la Información Pública en el Perú y las apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública.
 
-El sistema abarca dos instancias:
+El sistema cubre dos instancias:
 
-1. **Primera instancia** — Solicitudes SAIP dirigidas a entidades públicas.
-2. **Segunda instancia** — Apelaciones ante el **Tribunal de Transparencia y Acceso a la Información Pública (TTAIP)** del Ministerio de Justicia.
+1. **Primera instancia SAIP**: el ciudadano presenta una solicitud ante una entidad pública y la entidad responde dentro del plazo legal.
+2. **Segunda instancia TTAIP**: el ciudadano interpone apelación cuando no está conforme con la respuesta, cuando hay denegatoria o cuando opera el silencio administrativo.
 
-:::note
-Una **solicitud SAIP** NO es un expediente. El **expediente TTAIP** se crea únicamente cuando el ciudadano interpone un recurso de apelación.
+:::tip[Concepto clave]
+Una **SAIP no es un expediente TTAIP**. La SAIP usa formato `SAIP-AAAA-NNNNN`. El expediente TTAIP existe solo cuando se presenta una apelación y usa formato `NNNNN-AAAA-JUS/TTAIP`.
 :::
 
----
-
-## Objetivos del Sistema
+## Objetivos del Producto
 
 <CardGrid>
-  <Card title="Digitalización" icon="laptop">
-    Digitalizar el flujo completo de solicitudes SAIP y apelaciones TTAIP, eliminando procesos manuales y paper-based.
-  </Card>
   <Card title="Transparencia" icon="open-book">
-    Garantizar el derecho constitucional de acceso a la información pública con trazabilidad completa.
+    Facilitar que cualquier ciudadano pueda pedir información pública y hacer seguimiento del trámite.
   </Card>
-  <Card title="Eficiencia" icon="rocket">
-    Reducir los tiempos de respuesta y automatizar el control de plazos legales (10 días hábiles SAIP, 15 días calendario para apelación).
+  <Card title="Trazabilidad" icon="document">
+    Registrar estados, respuestas, apelaciones, calificaciones y resoluciones con evidencia auditable.
   </Card>
-  <Card title="Accesibilidad" icon="star">
-    Proporcionar acceso multiplataforma (web y móvil) para ciudadanos, funcionarios y miembros del tribunal.
+  <Card title="Cumplimiento de plazos" icon="clock">
+    Controlar plazos SAIP y TTAIP con estados claros y alertas operativas.
+  </Card>
+  <Card title="Operación multirol" icon="user">
+    Separar accesos de ciudadano, funcionario, miembro TTAIP y administrador.
   </Card>
 </CardGrid>
 
----
+## Actores
 
-## Stakeholders
+| Actor | Responsabilidad | Superficies |
+| --- | --- | --- |
+| Ciudadano | Presenta SAIP, consulta estado, apela y subsana observaciones. | Web pública, App Ciudadano |
+| Funcionario de entidad | Gestiona bandeja de la entidad, revisa solicitudes y emite respuestas. | Web interna, App Funcionario |
+| Miembro TTAIP | Califica apelaciones, revisa subsanaciones y emite resoluciones. | Web interna, App TTAIP |
+| Administrador | Mantiene usuarios, catálogos, reportes e indicadores generales. | Web admin |
 
-| Actor | Rol | Módulos que usa |
-|-------|-----|-----------------|
-| **Ciudadano** | Presenta solicitudes SAIP y apelaciones | Frontend, Mobile |
-| **Funcionario** | Responde solicitudes como representante de la entidad pública | Frontend |
-| **Miembro TTAIP** | Califica y resuelve apelaciones en el tribunal | Frontend |
-| **Administrador** | Gestiona usuarios, entidades y configuración del sistema | Frontend |
+## Módulos del Monorepo
 
----
+| Carpeta | Stack real | Responsabilidad |
+| --- | --- | --- |
+| `backend/` | Spring Boot 4.0.6, Java 25, Maven, MySQL | API REST, seguridad, reglas de negocio, OpenAPI. |
+| `frontend/` | Angular 21.2, TypeScript 5.9, Tailwind CSS 4.1, SSR | Experiencia web pública e interna multirol. |
+| `mobile/` | Kotlin 2.3, Compose, Navigation 3, SQLDelight, Retrofit | Tres APKs por rol: ciudadano, funcionario y TTAIP. |
+| `docs/` | Astro 6, Starlight, Mermaid | Documentación técnica y funcional del proyecto. |
+| `postman/` | Postman Collection + Environment | Validación operativa de API con ejemplos de request/response. |
+| `database/` | SQL | Scripts de apoyo y datos semilla para MySQL. |
+| `scripts/` | PowerShell/Bash | Sincronización del contrato OpenAPI. |
 
-## Estructura del Monorepo
-
-El proyecto se organiza como un **monorepo** con tres módulos independientes:
-
-| Módulo | Tecnología | Puerto | Propósito |
-|--------|-----------|--------|-----------|
-| `saip-backend/` | Spring Boot 4, Java 21, Maven | `:8080` | API REST + OpenAPI spec |
-| `saip-frontend/` | Angular 21, TypeScript 5.9, Tailwind CSS | `:4200` | SPA web |
-| `MiSAIP/` | Kotlin 2.3, Jetpack Compose, Material 3 | — | App Android nativa |
-
-:::tip
-Los módulos son **independientes**: no comparten código fuente. El **OpenAPI spec** del backend (`/v3/api-docs`) es el contrato formal que define la interfaz entre ellos.
-:::
-
----
-
-## Ciclo de Vida de una Solicitud
+## Flujo End-to-End
 
 <Steps>
-
-1. **Ciudadano presenta solicitud SAIP** a una entidad pública (web o móvil).
-
-2. **La entidad recepciona** la solicitud y tiene **10 días hábiles** para responder.
-
-3. **Funcionario responde** con entrega total, parcial, denegación, o el plazo vence (silencio administrativo).
-
-4. **Ciudadano puede apelar** dentro de los **15 días calendario** siguientes a la respuesta, creando un expediente TTAIP.
-
-5. **El TTAIP califica** la apelación (primera calificación → subsanación → segunda calificación).
-
-6. **El TTAIP resuelve** con resolución final: Fundado, Infundado, Improcedente u otras decisiones.
-
+1. El ciudadano se registra o inicia sesión con credenciales validadas por el backend.
+2. Presenta una SAIP contra una entidad pública.
+3. El backend genera el expediente `SAIP-AAAA-NNNNN`, registra fecha de presentación y calcula plazo.
+4. El funcionario de la entidad revisa la solicitud y responde con entrega total, entrega parcial o denegación fundamentada.
+5. Si corresponde, el ciudadano interpone apelación dentro del plazo legal.
+6. El backend crea el expediente TTAIP directamente en `EN_CALIFICACION_1`.
+7. El TTAIP puede admitir, requerir subsanación, declarar no presentado, notificar segunda calificación o resolver.
+8. La resolución final cierra el proceso con resultado fundado, infundado, improcedente, sustracción de materia o desistimiento.
 </Steps>
 
----
+```mermaid
+flowchart LR
+    SAIP["SAIP presentada"]
+    Revision["Entidad revisa"]
+    Respuesta["Respuesta o denegatoria"]
+    Apelacion["Apelacion ciudadana"]
+    Cal1["EN_CALIFICACION_1"]
+    Sub["EN_SUBSANACION"]
+    Cal2["EN_CALIFICACION_2"]
+    Notif["NOTIFICACION_SEGUNDA_CALIFICACION"]
+    Resol["EN_RESOLUCION"]
+    Final["Resultado final"]
 
-## Marco Legal
+    SAIP --> Revision --> Respuesta --> Apelacion --> Cal1
+    Cal1 -->|admitir| Cal2
+    Cal1 -->|subsanar| Sub --> Cal2
+    Cal1 -->|improcedente| Final
+    Sub -->|no subsana| Final
+    Cal2 --> Notif --> Resol --> Final
+```
 
-- **Ley N° 27806** — Ley de Transparencia y Acceso a la Información Pública
-- **D.S. N° 072-2003-PCM** — Reglamento de la Ley
-- **D.S. N° 019-2017-JUS** — Reglamento del TTAIP
-- **Ley N° 27444** — Ley del Procedimiento Administrativo General
+## Decisiones Actuales
 
----
+| Decisión | Estado |
+| --- | --- |
+| Backend como fuente de verdad | Vigente. Autenticación, datos y reglas se resuelven en Spring Boot. |
+| OpenAPI como contrato | Vigente. Frontend genera tipos desde `/v3/api-docs`; mobile consume REST con Retrofit. |
+| Mobile sin Firebase como backend | Vigente. Firebase queda limitado a FCM para push. No se usa Firebase Auth ni Firestore como fuente de datos. |
+| Tres APKs mobile | Vigente. `ciudadano`, `funcionario` y `ttaip` tienen applicationId propio y reglas por rol. |
+| Sin etapa funcional de elevación TTAIP | Vigente. La apelación entra directo a primera calificación. |
 
-## Autores
+## Co-creadores
 
 | Nombre | Rol | Contribución |
-|--------|-----|--------------|
-| **Kelly Medalit De La Cruz Lopez** | Co-autora, Analista Funcional | Concepción e ideación del proyecto, levantamiento y especificación de requisitos funcionales, definición de reglas de negocio, modelado del flujo de trámite SAIP y apelaciones TTAIP, diseño del dominio y validación funcional |
-| **Daniel Angel Leon Salazar** | Co-autor, Arquitecto de Software | Diseño e implementación de la arquitectura Clean Architecture + MVVM multimodular, desarrollo integral de la aplicación Android nativa, backend Spring Boot, frontend Angular, integración con Firebase, sistema de notificaciones push y despliegue técnico |
+| --- | --- | --- |
+| Kelly Medalit De La Cruz Lopez | Co-creadora, análisis funcional | Ideación, levantamiento funcional, reglas de negocio, dominio SAIP/TTAIP y criterios de validación. |
+| Daniel Angel Leon Salazar | Co-creador, arquitectura y desarrollo | Backend, frontend, mobile, integración API, seguridad, automatización y despliegue técnico. |
+
+## Siguientes Lecturas
+
+<CardGrid>
+  <LinkCard title="Arquitectura" href="/introduccion/arquitectura/" description="Cómo se conectan backend, frontend, mobile, OpenAPI y Postman." />
+  <LinkCard title="Comenzar" href="/introduccion/comenzar/" description="Configuración local y comandos por módulo." />
+  <LinkCard title="Reglas TTAIP" href="/dominio/reglas-ttaip/" description="Proceso vigente de apelaciones sin elevación funcional." />
+  <LinkCard title="Endpoints" href="/api/endpoints/" description="Contrato REST actualizado por controller." />
+</CardGrid>

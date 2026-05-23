@@ -5,7 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +36,14 @@ public class Resolucion {
     @JoinColumn(name = "id_miembro_ttaip")
     private MiembroTTAIP miembroTTAIP;
 
+    @ManyToOne
+    @JoinColumn(name = "id_expediente_ttaip")
+    private ExpedienteTtaip expedienteTtaip;
+
+    @ManyToOne
+    @JoinColumn(name = "id_sala_ttaip")
+    private SalaTtaip salaTtaip;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_resolucion", nullable = false, length = 30)
     private TipoResolucion tipoResolucion;
@@ -52,7 +62,7 @@ public class Resolucion {
     @Column(name = "fecha_resolucion", nullable = false)
     private LocalDateTime fechaResolucion;
 
-    @Column(name = "numero_resolucion", unique = true, length = 50)
+    @Column(name = "numero_resolucion", unique = true, length = 120)
     private String numeroResolucion;
 
     @Column(columnDefinition = "TEXT")
@@ -69,6 +79,11 @@ public class Resolucion {
 
     @OneToMany(mappedBy = "resolucion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Documento> documentos;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "resolucion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<CedulaNotificacion> cedulasNotificacion;
 
     @PrePersist
     protected void onCreate() {

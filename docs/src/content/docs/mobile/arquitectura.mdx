@@ -1,222 +1,147 @@
 ---
 title: Arquitectura Mobile
-description: Clean Architecture multi-módulo con Kotlin puro en domain, Koin DI y patrón offline-first.
+description: Clean Architecture multi-módulo para las tres apps Android, con Retrofit, SQLDelight, Koin y FCM limitado a push.
 ---
 
 import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
 
-La app mobile sigue **Clean Architecture** con separación estricta en capas y módulos Gradle independientes.
+La arquitectura mobile separa presentación, dominio, datos e infraestructura para que las apps `ciudadano`, `funcionario` y `ttaip` compartan base técnica sin mezclar permisos ni pantallas de roles.
 
-## Capas de la Arquitectura
+## Capas
 
-```
-┌─────────────────────────────────────────────┐
-│          PRESENTATION (app/)                │
-│  Screens (@Composable) + ViewModels         │
-│  Material 3 + Navigation 3                  │
-├─────────────────────────────────────────────┤
-│          DOMAIN (core/domain/)              │
-│  Modelos + UseCases + Repository interfaces │
-│  Kotlin puro — SIN dependencias Android     │
-├─────────────────────────────────────────────┤
-│          DATA (core/data/)                  │
-│  Repository impls + Mappers                 │
-│  Orquesta local (DB) ↔ remoto (API)        │
-├─────────────────────────────────────────────┤
-│          INFRASTRUCTURE                     │
-│  core/database/ → SQLDelight                │
-│  core/network/  → Retrofit + Firebase       │
-│  core/common/   → Utilidades Android        │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    App["app/\nCompose Screens\nViewModels\nNavigation 3\nAppRolePolicy"]
+    Domain["core/domain/\nModelos\nUseCases\nRepository interfaces\nKotlin puro"]
+    Data["core/data/\nRepository impls\nMappers\nSin reglas de UI"]
+    Network["core/network/\nRetrofit\nOkHttp\nDTOs\nJWT interceptor"]
+    Database["core/database/\nSQLDelight cache"]
+    Common["core/common/\nUtilidades compartidas"]
+    Backend["Spring Boot API\nMySQL + JWT"]
+    FCM["Firebase Cloud Messaging\nsolo push"]
+
+    App --> Domain
+    Domain --> Data
+    Data --> Network
+    Data --> Database
+    App --> Common
+    Network --> Backend
+    Backend --> FCM
 ```
 
 ## Módulos Gradle
 
 <Tabs>
-  <TabItem label="domain">
-    ### core/domain <Badge text="Kotlin puro" variant="success" />
+  <TabItem label="app">
+    ### `app/` <Badge text="Android app" variant="tip" />
 
-    Módulo de Kotlin puro — **NO tiene dependencias de Android**. Define:
+    Responsabilidades:
 
-    - **Modelos** — Clases de datos del dominio (`Solicitud`, `Apelacion`, `Usuario`, etc.)
-    - **UseCases** — 32 casos de uso con `operator fun invoke()`
-    - **Repository interfaces** — Contratos que la capa data implementa
+    - Declarar flavors `ciudadano`, `funcionario` y `ttaip`.
+    - Inicializar Koin.
+    - Renderizar pantallas Compose.
+    - Validar acceso por rol con `AppRolePolicy`.
+    - Gestionar FCM mediante `MiSaipMessagingService`.
 
     ```kotlin
-    // Modelo de dominio
-    data class Solicitud(
-        val id: String,
-        val expediente: String,
-        val asunto: String,
-        val descripcion: String,
-        val estado: EstadoSolicitud,
-        val fechaPresentacion: LocalDateTime,
-        val fechaLimite: LocalDate?,
-        val diasRestantes: Int?,
-        val semaforoEstado: SemaforoEstado?,
-    )
+    enum class AppRole {
+        CIUDADANO,
+        FUNCIONARIO,
+        TTAIP,
+    }
+    ```
+  </TabItem>
+  <TabItem label="domain">
+    ### `core/domain` <Badge text="Kotlin puro" variant="success" />
 
-    // UseCase con factory injection
+    No depende de Android, Retrofit, SQLDelight ni Firebase. Contiene:
+
+    - Modelos de dominio (`Solicitud`, `Apelacion`, `Usuario`, `EntidadPublica`).
+    - Use cases con `operator fun invoke()`.
+    - Interfaces de repositorio.
+
+    ```kotlin
     class CrearSolicitudUseCase(
-        private val repo: SolicitudRepository
+        private val repository: SolicitudRepository,
     ) {
         suspend operator fun invoke(params: Params): Solicitud =
-            repo.crearSolicitud(params.toSolicitud())
-    }
-
-    // Repository interface
-    interface SolicitudRepository {
-        fun getSolicitudesUsuario(usuarioId: String): Flow<List<Solicitud>>
-        suspend fun crearSolicitud(solicitud: Solicitud): Solicitud
-        suspend fun getSolicitudByExpediente(expediente: String): Solicitud?
+            repository.crearSolicitud(params)
     }
     ```
   </TabItem>
   <TabItem label="data">
-    ### core/data <Badge text="Orquestación" variant="note" />
+    ### `core/data` <Badge text="orquestación" variant="note" />
 
-    Implementa las interfaces de `domain/` orquestando datos locales y remotos:
+    Implementa repositorios y decide cómo combinar cache local con backend.
 
-    - **5 Repository implementations** — Implementan patrón offline-first
-    - **4 Mappers** — Conversión domain ↔ DB entity ↔ network DTO
-
-    ```kotlin
-    class SolicitudRepositoryImpl(
-        private val localDataSource: SolicitudLocalDataSource,
-        private val remoteDataSource: SolicitudRemoteDataSource,
-        private val mapper: SolicitudMapper,
-    ) : SolicitudRepository {
-
-        override fun getSolicitudesUsuario(
-            usuarioId: String
-        ): Flow<List<Solicitud>> = flow {
-            // 1. Emitir datos locales inmediatamente
-            val local = localDataSource.getByUsuarioId(usuarioId)
-            emit(local.map(mapper::toDomain))
-
-            // 2. Intentar sincronizar con servidor
-            try {
-                val remote = remoteDataSource.getByUsuarioId(usuarioId)
-                localDataSource.insertAll(remote.map(mapper::toEntity))
-                emit(remote.map(mapper::toDomain))
-            } catch (e: Exception) {
-                // Offline — mantener datos locales
-            }
-        }
-    }
-    ```
-  </TabItem>
-  <TabItem label="database">
-    ### core/database <Badge text="SQLDelight" variant="tip" />
-
-    **5 tablas SQLDelight** para persistencia local:
-
-    | Tabla | Campos clave |
-    |-------|-------------|
-    | `Usuario` | id, email, nombre, tipoUsuario, token |
-    | `Solicitud` | id, expediente, asunto, estado, fechaPresentacion |
-    | `Apelacion` | id, expediente, estado, fundamentos |
-    | `EntidadPublica` | id, nombre, acronimo, direccion |
-    | `Notificacion` | id, titulo, mensaje, leida, fecha |
+    - Lee primero SQLDelight cuando existe dato local útil.
+    - Sincroniza con Retrofit cuando hay conectividad.
+    - Mapea DTOs y entidades locales a modelos de dominio.
   </TabItem>
   <TabItem label="network">
-    ### core/network <Badge text="Retrofit + Firebase" variant="caution" />
+    ### `core/network` <Badge text="REST" variant="tip" />
 
-    - **Retrofit** — Cliente HTTP para la REST API (timeout: 10s)
-    - **Firebase Auth** — Autenticación federada
-    - **Firebase FCM** — Push notifications
-    - **DTOs** — Objetos de transferencia de red
-    - **ApiServices** — Interfaces Retrofit
+    Red exclusivamente contra el backend Spring Boot:
+
+    - Retrofit 3 para API services.
+    - OkHttp 5 para timeouts, logging seguro e interceptor JWT.
+    - DTOs alineados al OpenAPI.
+    - Sin Firebase Auth.
+    - Sin Firestore.
 
     ```kotlin
     interface SolicitudApiService {
         @GET("solicitudes/ciudadano/{id}")
-        suspend fun getByCiudadanoId(
-            @Path("id") ciudadanoId: Long
-        ): List<SolicitudDTO>
+        suspend fun getByCiudadanoId(@Path("id") ciudadanoId: Long): List<SolicitudDto>
 
         @POST("solicitudes")
-        suspend fun crear(
-            @Body request: CrearSolicitudRequest
-        ): SolicitudDTO
+        suspend fun crear(@Body request: CrearSolicitudRequest): SolicitudDto
     }
     ```
   </TabItem>
+  <TabItem label="database">
+    ### `core/database` <Badge text="SQLDelight" variant="success" />
+
+    Cache local para mejorar experiencia offline y reducir latencia. No reemplaza al backend como fuente de verdad.
+
+    | Tabla conceptual | Uso |
+    | --- | --- |
+    | `Usuario` | Sesión y perfil cacheado. |
+    | `Solicitud` | Bandeja y seguimiento SAIP. |
+    | `Apelacion` | Seguimiento TTAIP. |
+    | `EntidadPublica` | Catálogo para formularios. |
+    | `Notificacion` | Push y estado de lectura local. |
+  </TabItem>
 </Tabs>
 
-## Koin DI — Orden de Módulos
-
-Los 6 módulos Koin se registran en orden de dependencias:
+## Inyección de Dependencias
 
 <Steps>
-1. **databaseModule** — SQLDelight driver + instancia de DB
-2. **networkModule** — Firebase instances + RemoteDataSources + Retrofit
-3. **domainModule** — 32 UseCases (scope: `factory`)
-4. **dataModule** — 5 Repository implementations (scope: `single`)
-5. **appModule** — CredentialStorage, helpers
-6. **presentationModule** — 11 ViewModels (scope: `viewModel`)
+1. **databaseModule** — SQLDelight driver y base local.
+2. **networkModule** — Retrofit, OkHttp, ApiServices e interceptores.
+3. **dataModule** — repositorios concretos y mappers.
+4. **domainModule** — use cases como factories.
+5. **appModule** — almacenamiento seguro, helpers y políticas de rol.
+6. **presentationModule** — ViewModels por pantalla.
 </Steps>
 
-```kotlin
-// Application.onCreate()
-startKoin {
-    androidContext(this@MiSAIPApplication)
-    modules(
-        databaseModule,
-        networkModule,
-        domainModule,
-        dataModule,
-        appModule,
-        presentationModule,
-    )
-}
-```
+## Seguridad Mobile
 
-**Scopes:**
+| Regla | Implementación esperada |
+| --- | --- |
+| Token JWT | Guardar en almacenamiento seguro y enviarlo por `Authorization: Bearer`. |
+| Roles | Validar sesión contra `BuildConfig.APP_ROLE` y `AppRolePolicy`. |
+| Logs | No registrar tokens, contraseñas, DNI completo ni payloads sensibles. |
+| FCM | Registrar token push contra backend cuando exista endpoint; no escribir en Firestore. |
+| Offline | El cache local no decide reglas de negocio finales. |
 
-| Scope | Uso | Ejemplo |
-|-------|-----|---------|
-| `factory` | Nueva instancia cada vez | UseCases |
-| `single` | Singleton | Repositories, DataSources |
-| `viewModel` | Ciclo de vida del ViewModel | ViewModels |
+## Restricciones
 
-## Mapper Pattern
-
-```kotlin
-object SolicitudMapper {
-    fun toDomain(entity: SolicitudEntity): Solicitud {
-        return Solicitud(
-            id = entity.id,
-            expediente = entity.expediente,
-            asunto = entity.asunto,
-            estado = EstadoSolicitud.valueOf(entity.estado),
-            // ...
-        )
-    }
-
-    fun toEntity(
-        domain: Solicitud,
-        pendienteSubida: Boolean = true
-    ): SolicitudEntity {
-        return SolicitudEntity(
-            id = domain.id,
-            expediente = domain.expediente,
-            asunto = domain.asunto,
-            estado = domain.estado.name,
-            pendienteSubida = pendienteSubida,
-            // ...
-        )
-    }
-}
-```
-
-## Restricciones del Módulo
-
-| Regla | Detalle |
-|-------|---------|
-| NO Views/XML | Solo Jetpack Compose para UI |
-| NO Activities múltiples | Single-Activity con Navigation 3 |
-| NO Navigation viejo | NO `NavHost`, NO `NavController` |
-| NO Java | Exclusivamente Kotlin |
-| NO Android en domain | `core/domain/` es Kotlin puro |
-| NO `collectAsState()` | Usar `collectAsStateWithLifecycle()` |
+| Restricción | Motivo |
+| --- | --- |
+| No usar Firebase Auth | La autenticación oficial es Spring Boot + JWT. |
+| No usar Firestore | MySQL detrás del backend es la fuente de verdad. |
+| No app administrador | Admin se gestiona en frontend web. |
+| No XML Views | UI en Jetpack Compose. |
+| No múltiples Activities por flujo | Navegación single-Activity con Navigation 3. |
+| No Android en `core/domain` | Mantiene dominio testeable y portable. |
