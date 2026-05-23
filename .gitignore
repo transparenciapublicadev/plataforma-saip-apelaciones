@@ -136,3 +136,10 @@ design-reference/
 # ── Copilot / Agent internal ───────────────────────────────
 memories/
 GUIA-FLUJO-DIARIO.md
+
+# ── Base de Datos Local TTAIP ───────────────────────────────
+BaseDeDatos_APELACIONES_TTAIP_V1/
+
+# ── Newman Reports (local reports) ──────────────────────────
+postman/reports/
+
