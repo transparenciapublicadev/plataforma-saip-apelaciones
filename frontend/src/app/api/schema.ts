@@ -612,7 +612,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones pendientes de elevación */
+        /** Listar apelaciones en primera calificación */
         get: operations["listarPendientes"];
         put?: never;
         post?: never;
@@ -1552,6 +1552,7 @@ export interface components {
             /** Format: int64 */
             miembroTTAIPId?: number;
             miembroTTAIPNombre?: string;
+            iniciarProcesoDisciplinario?: boolean;
         };
         /** @description Datos para emitir resolución final de apelación */
         ResolucionRequest: {

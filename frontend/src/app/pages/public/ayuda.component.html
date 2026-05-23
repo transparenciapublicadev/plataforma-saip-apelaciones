@@ -234,7 +234,7 @@
             </div>
             <div>
               <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Telefono</div>
-              <div class="text-sm text-foreground font-medium">(01) 630-2000</div>
+              <div class="text-sm text-foreground font-medium">{{ contacto().telefono || 'No registrado' }}</div>
             </div>
           </div>
           <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
@@ -243,7 +243,7 @@
             </div>
             <div>
               <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Correo</div>
-              <div class="text-sm text-foreground font-medium">contacto&#64;saip-tesis.edu</div>
+              <div class="text-sm text-foreground font-medium">{{ contacto().correo || 'No registrado' }}</div>
             </div>
           </div>
           <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
@@ -252,7 +252,7 @@
             </div>
             <div>
               <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Direccion</div>
-              <div class="text-sm text-foreground font-medium">Universidad · Lima</div>
+              <div class="text-sm text-foreground font-medium">{{ contacto().direccion || 'No registrado' }}</div>
             </div>
           </div>
         </div>

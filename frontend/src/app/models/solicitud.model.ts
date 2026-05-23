@@ -10,9 +10,9 @@ export type EstadoSolicitud = _EstadoSolicitud;
 export type Prioridad = _Prioridad;
 export type SemaforoEstado = _SemaforoEstado;
 export type ApelacionInfo = Required<ApelacionInfoDTO>;
-export type Solicitud = Required<SolicitudDTO> & {
-    respuesta: Required<RespuestaDTO>;
-    apelacion: Required<ApelacionInfoDTO>;
+export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos'>> & {
+    respuesta?: Required<RespuestaDTO> | null;
+    apelacion?: Required<ApelacionInfoDTO> | null;
     documentos: Required<DocumentoDTO>[];
 };
 

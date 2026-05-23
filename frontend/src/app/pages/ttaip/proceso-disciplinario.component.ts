@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TtaipService } from '../../services/ttaip.service';
+import { Apelacion } from '../../models/apelacion.model';
 
 type ProcessTab = 'resolucion' | 'notificacion' | 'descargos' | 'sancion';
 type TimelineState = 'completed' | 'current' | 'pending';
@@ -14,6 +16,19 @@ interface TimelineEvent {
   icon: TimelineIcon;
 }
 
+interface ResolucionConProcesoDisciplinario {
+  decision?: string;
+  fechaResolucion?: string;
+  fundamentos?: string;
+  miembroTTAIPNombre?: string;
+  iniciarProcesoDisciplinario?: boolean;
+}
+
+interface DisciplinaryCase {
+  apelacion: Apelacion;
+  resolucion: ResolucionConProcesoDisciplinario;
+}
+
 @Component({
   selector: 'app-proceso-disciplinario',
   imports: [CommonModule, RouterLink],
@@ -21,8 +36,13 @@ interface TimelineEvent {
   styleUrl: './proceso-disciplinario.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProcesoDisciplinarioComponent {
+export class ProcesoDisciplinarioComponent implements OnInit {
+  private readonly ttaipService = inject(TtaipService);
+
   readonly activeTab = signal<ProcessTab>('resolucion');
+  readonly loading = signal<boolean>(true);
+  readonly error = signal<string>('');
+  readonly cases = signal<DisciplinaryCase[]>([]);
 
   readonly tabs = [
     { id: 'resolucion' as const, label: 'Resolucion TTAIP' },
@@ -31,37 +51,6 @@ export class ProcesoDisciplinarioComponent {
     { id: 'sancion' as const, label: 'Sancion' }
   ];
 
-  readonly timeline = signal<TimelineEvent[]>([
-    {
-      title: 'Apertura del proceso',
-      desc: 'Iniciado por incumplimiento de resolucion TTAIP.',
-      date: '15 Sep 2025',
-      status: 'completed',
-      icon: 'file'
-    },
-    {
-      title: 'Notificacion al funcionario',
-      desc: 'Dra. Maria Elena Vega Torres notificada.',
-      date: '16 Sep 2025',
-      status: 'completed',
-      icon: 'mail'
-    },
-    {
-      title: 'Plazo para descargos',
-      desc: 'Quedan 8 dias habiles para presentar descargos.',
-      date: '30 Sep 2025',
-      status: 'current',
-      icon: 'gavel'
-    },
-    {
-      title: 'Evaluacion y resolucion',
-      desc: 'Pendiente de evaluacion por el Tribunal.',
-      date: 'Pendiente',
-      status: 'pending',
-      icon: 'scale'
-    }
-  ]);
-
   readonly sanciones = [
     'Amonestacion escrita',
     'Suspension temporal sin goce de haber (hasta 30 dias)',
@@ -69,18 +58,78 @@ export class ProcesoDisciplinarioComponent {
     'Multa administrativa (0.5 a 2 UIT)'
   ];
 
-  readonly diasRestantes = signal<number>(8);
+  readonly selectedCase = computed(() => this.cases()[0] ?? null);
 
-  readonly estadoNotificacion = signal<'Recibida' | 'Pendiente'>('Recibida');
+  readonly timeline = computed<TimelineEvent[]>(() => {
+    const item = this.selectedCase();
+    if (!item) {
+      return [];
+    }
 
-  readonly fechaVencimiento = signal<string>('30 Sep 2025');
+    const decision = this.formatDecision(item.resolucion.decision);
+    const fechaResolucion = this.formatDate(item.resolucion.fechaResolucion);
+    return [
+      {
+        title: 'Resolución TTAIP',
+        desc: `${item.apelacion.expediente || 'Expediente'} · ${decision}`,
+        date: fechaResolucion,
+        status: 'completed',
+        icon: 'file'
+      },
+      {
+        title: 'Apertura del proceso',
+        desc: 'La resolución final ordenó iniciar proceso disciplinario.',
+        date: fechaResolucion,
+        status: 'current',
+        icon: 'gavel'
+      },
+      {
+        title: 'Notificación y descargos',
+        desc: 'Pendiente de registro por el backend.',
+        date: 'Pendiente',
+        status: 'pending',
+        icon: 'mail'
+      },
+      {
+        title: 'Evaluación y sanción',
+        desc: 'Pendiente de resolución disciplinaria.',
+        date: 'Pendiente',
+        status: 'pending',
+        icon: 'scale'
+      }
+    ];
+  });
+
+  readonly estadoNotificacion = computed<'Pendiente'>(() => 'Pendiente');
 
   readonly colorEstadoNotificacion = computed(() =>
-    this.estadoNotificacion() === 'Recibida' ? 'var(--success)' : 'var(--warning)'
+    this.estadoNotificacion() === 'Pendiente' ? 'var(--warning)' : 'var(--success)'
   );
+
+  ngOnInit(): void {
+    this.cargarProcesos();
+  }
 
   cambiarTab(tab: ProcessTab): void {
     this.activeTab.set(tab);
+  }
+
+  cargarProcesos(): void {
+    this.loading.set(true);
+    this.error.set('');
+
+    this.ttaipService.getResueltas().subscribe({
+      next: (apelaciones) => {
+        this.cases.set(apelaciones
+          .map((apelacion) => ({ apelacion, resolucion: apelacion.resolucion as ResolucionConProcesoDisciplinario | undefined }))
+          .filter((item): item is DisciplinaryCase => !!item.resolucion?.iniciarProcesoDisciplinario));
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.error.set(err.error?.mensaje || 'Error al cargar procesos disciplinarios');
+        this.loading.set(false);
+      }
+    });
   }
 
   timelineColor(status: TimelineState): string {
@@ -102,5 +151,28 @@ export class ProcesoDisciplinarioComponent {
   timelineShadow(status: TimelineState): string {
     if (status === 'pending') return 'none';
     return '0 0 0 4px var(--brand-50)';
+  }
+
+  formatDecision(value?: string | null): string {
+    return (value || 'RESOLUCIÓN')
+      .replaceAll('_', ' ')
+      .toUpperCase();
+  }
+
+  formatDate(value?: string | null): string {
+    if (!value) {
+      return 'Pendiente';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat('es-PE', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(date);
   }
 }

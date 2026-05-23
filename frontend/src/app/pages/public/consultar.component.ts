@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   LucideAlertTriangle,
@@ -18,6 +18,7 @@ import {
   LucideShield,
   LucideXCircle,
 } from '@lucide/angular';
+import { ConsultaPublicaSolicitud, SolicitudService } from '../../services/solicitud.service';
 
 interface TimelineEvent {
   title: string;
@@ -37,119 +38,6 @@ interface ConsultaResultado {
   asunto: string;
   timeline: TimelineEvent[];
 }
-
-const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
-  'SAIP-2025-00847': {
-    expediente: 'SAIP-2025-00847',
-    ciudadano: 'J*** C*** P*** M***',
-    entidad: 'Ministerio de Salud',
-    fechaPresentacion: '15/10/2025',
-    estado: 'EN_PROCESO',
-    diasTranscurridos: 3,
-    asunto: 'Solicitud de informacion sobre contratos de servicios de salud 2024-2025',
-    timeline: [
-      {
-        title: 'Solicitud presentada',
-        description: 'La SAIP fue registrada exitosamente.',
-        date: '15/10/2025',
-        status: 'completed',
-        icon: 'mail',
-      },
-      {
-        title: 'En evaluacion',
-        description: 'La entidad evalua la solicitud (10 dias hab.).',
-        date: '16/10/2025',
-        status: 'current',
-        icon: 'search',
-      },
-      {
-        title: 'Respuesta',
-        description: 'Pendiente de respuesta de la entidad.',
-        date: 'Pendiente',
-        status: 'pending',
-        icon: 'filecheck',
-      },
-    ],
-  },
-  'SAIP-2025-00723': {
-    expediente: 'SAIP-2025-00723',
-    ciudadano: 'M*** E*** V*** T***',
-    entidad: 'Municipalidad de Lima',
-    fechaPresentacion: '02/10/2025',
-    estado: 'RESPONDIDA',
-    diasTranscurridos: 16,
-    asunto: 'Acceso a registro de obras publicas del distrito de Miraflores',
-    timeline: [
-      {
-        title: 'Solicitud presentada',
-        description: 'La SAIP fue registrada.',
-        date: '02/10/2025',
-        status: 'completed',
-        icon: 'mail',
-      },
-      {
-        title: 'En evaluacion',
-        description: 'La entidad evaluo la solicitud y preparo respuesta formal.',
-        date: '03/10/2025',
-        status: 'completed',
-        icon: 'search',
-      },
-      {
-        title: 'Respuesta emitida',
-        description: 'La entidad respondio con la informacion.',
-        date: '12/10/2025',
-        status: 'completed',
-        icon: 'filecheck',
-      },
-    ],
-  },
-  'SAIP-2025-00654': {
-    expediente: 'SAIP-2025-00654',
-    ciudadano: 'R*** S*** C***',
-    entidad: 'SUNAT',
-    fechaPresentacion: '15/09/2025',
-    estado: 'APELADA',
-    diasTranscurridos: 33,
-    asunto: 'Informacion sobre recaudacion tributaria por departamento 2023',
-    timeline: [
-      {
-        title: 'Solicitud presentada',
-        description: 'La SAIP fue registrada.',
-        date: '15/09/2025',
-        status: 'completed',
-        icon: 'mail',
-      },
-      {
-        title: 'Solicitud denegada',
-        description: 'Excepcion de confidencialidad tributaria.',
-        date: '25/09/2025',
-        status: 'completed',
-        icon: 'search',
-      },
-      {
-        title: 'Apelacion presentada',
-        description: 'El ciudadano presento recurso de apelacion ante TTAIP.',
-        date: '02/10/2025',
-        status: 'completed',
-        icon: 'gavel',
-      },
-      {
-        title: 'En evaluacion TTAIP',
-        description: 'El tribunal esta evaluando la apelacion presentada.',
-        date: '05/10/2025',
-        status: 'current',
-        icon: 'scale',
-      },
-      {
-        title: 'Resolucion',
-        description: 'Pendiente de emision de resolucion por parte del tribunal.',
-        date: 'Pendiente',
-        status: 'pending',
-        icon: 'check',
-      },
-    ],
-  },
-};
 
 @Component({
   selector: 'app-consultar',
@@ -176,6 +64,8 @@ const RESULTADOS_MOCK: Record<string, ConsultaResultado> = {
   templateUrl: './consultar.component.html',
 })
 export class ConsultarComponent {
+  private readonly solicitudService = inject(SolicitudService);
+
   readonly query = signal('');
   readonly buscando = signal(false);
   readonly resultado = signal<ConsultaResultado | null>(null);
@@ -197,12 +87,18 @@ export class ConsultarComponent {
     this.noEncontrado.set(false);
     this.resultado.set(null);
 
-    setTimeout(() => {
-      const match = RESULTADOS_MOCK[normalizedQuery];
-      this.resultado.set(match ?? null);
-      this.noEncontrado.set(!match);
-      this.buscando.set(false);
-    }, 700);
+    this.solicitudService.consultarPublicamente(normalizedQuery).subscribe({
+      next: (data) => {
+        this.resultado.set(this.toConsultaResultado(data));
+        this.noEncontrado.set(false);
+        this.buscando.set(false);
+      },
+      error: () => {
+        this.resultado.set(null);
+        this.noEncontrado.set(true);
+        this.buscando.set(false);
+      }
+    });
   }
 
   limpiarBusqueda(): void {
@@ -281,5 +177,105 @@ export class ConsultarComponent {
     return status === 'completed'
       ? 'reference-timeline-line completed'
       : 'reference-timeline-line';
+  }
+
+  private toConsultaResultado(data: ConsultaPublicaSolicitud): ConsultaResultado {
+    return {
+      expediente: data.expediente,
+      ciudadano: data.ciudadano,
+      entidad: data.entidad,
+      fechaPresentacion: this.formatDate(data.fechaPresentacion),
+      estado: data.estado,
+      diasTranscurridos: data.diasTranscurridos ?? 0,
+      asunto: data.asunto,
+      timeline: this.buildTimeline(data)
+    };
+  }
+
+  private buildTimeline(data: ConsultaPublicaSolicitud): TimelineEvent[] {
+    const events: TimelineEvent[] = [
+      {
+        title: 'Solicitud presentada',
+        description: 'La SAIP fue registrada exitosamente.',
+        date: this.formatDate(data.fechaPresentacion),
+        status: 'completed',
+        icon: 'mail'
+      }
+    ];
+
+    if (data.respuestaFecha) {
+      events.push({
+        title: data.estado === 'DENEGADA' ? 'Solicitud denegada' : 'Respuesta emitida',
+        description: data.estado === 'DENEGADA'
+          ? 'La entidad emitió una denegatoria formal.'
+          : 'La entidad emitió respuesta a la solicitud.',
+        date: this.formatDate(data.respuestaFecha),
+        status: 'completed',
+        icon: 'filecheck'
+      });
+    } else if (data.estado === 'VENCIDA') {
+      events.push({
+        title: 'Plazo vencido',
+        description: 'La solicitud excedió el plazo legal de respuesta.',
+        date: this.formatDate(data.fechaLimite),
+        status: 'current',
+        icon: 'filecheck'
+      });
+    } else {
+      events.push({
+        title: 'En evaluación',
+        description: 'La entidad evalúa la solicitud dentro del plazo legal.',
+        date: this.formatDate(data.fechaPresentacion),
+        status: 'current',
+        icon: 'search'
+      });
+    }
+
+    if (data.apelacionExpediente) {
+      events.push({
+        title: 'Apelación presentada',
+        description: `Expediente ${data.apelacionExpediente} ante el TTAIP.`,
+        date: this.formatDate(data.apelacionFecha),
+        status: 'completed',
+        icon: 'gavel'
+      });
+
+      events.push({
+        title: data.resolucionFecha ? 'Resolución TTAIP' : 'En evaluación TTAIP',
+        description: data.resolucionResultado
+          ? `Resultado: ${data.resolucionResultado.replaceAll('_', ' ')}.`
+          : `Estado: ${(data.apelacionEstado || 'EN_TRAMITE').replaceAll('_', ' ')}.`,
+        date: this.formatDate(data.resolucionFecha) || 'Pendiente',
+        status: data.resolucionFecha ? 'completed' : 'current',
+        icon: data.resolucionFecha ? 'check' : 'scale'
+      });
+    } else if (!data.respuestaFecha && data.estado !== 'VENCIDA') {
+      events.push({
+        title: 'Respuesta',
+        description: 'Pendiente de respuesta de la entidad.',
+        date: 'Pendiente',
+        status: 'pending',
+        icon: 'filecheck'
+      });
+    }
+
+    return events;
+  }
+
+  private formatDate(value: string | null | undefined): string {
+    if (!value) {
+      return '';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(parsed);
   }
 }

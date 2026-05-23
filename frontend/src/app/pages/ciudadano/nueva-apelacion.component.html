@@ -313,10 +313,10 @@
     titleLead="Confirme"
     titleEmphasis="su apelación"
     eyebrow="Revisión final · Apelación"
-    description="Revise el expediente, los documentos y los fundamentos antes de elevar el recurso al Tribunal."
+    description="Revise el expediente, los documentos y los fundamentos antes de presentar el recurso al Tribunal."
     [summary]="apelacionConfirmSummary()"
     [warning]="apelacionWarning()"
-    confirmLabel="Elevar al Tribunal"
+    confirmLabel="Presentar al Tribunal"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="crearApelacion()">
   </app-reference-confirm-modal>
@@ -326,8 +326,8 @@
     variant="apelacion-presentada"
     tone="success"
     eyebrow="Apelación presentada"
-    title="Recurso elevado al Tribunal"
-    description="Su recurso fue elevado al Tribunal de Transparencia. Recibirá notificaciones en cada etapa del procedimiento."
+    title="Recurso recibido por el Tribunal"
+    description="Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento."
     [expediente]="expedienteTtaip()"
     [expedienteHint]="'Vinculado a ' + (solicitud()?.expediente || '—')"
     [plazoDias]="7"

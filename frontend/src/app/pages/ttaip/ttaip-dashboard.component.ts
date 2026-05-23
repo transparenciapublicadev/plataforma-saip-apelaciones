@@ -5,10 +5,9 @@ import { DatePipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
-import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
+import { Apelacion } from '../../models/apelacion.model';
 
-type StageKey = 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
+type StageKey = 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
 type Priority = 'alta' | 'media' | 'baja';
 type Tone = 'critical' | 'warn' | 'ok' | 'done';
 
@@ -22,7 +21,7 @@ interface StageMeta {
   norma: string;
   color: string;
   bg: string;
-  icon: 'inbox' | 'scale' | 'hourglass' | 'layers' | 'gavel' | 'check';
+  icon: 'scale' | 'hourglass' | 'layers' | 'gavel' | 'check';
   actionLabel: string | null;
   isResolved?: boolean;
   esperaExterna?: boolean;
@@ -57,22 +56,8 @@ interface PlazoStatus {
 export class TtaipDashboardComponent implements OnInit {
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   readonly stages: StageMeta[] = [
-    {
-      key: 'elevacion',
-      num: '00',
-      label: 'Pendiente de elevación',
-      shortLabel: 'Elevación',
-      plazoDias: 2,
-      plazoLabel: '2 días háb.',
-      norma: 'Reglamento TTAIP',
-      color: 'var(--muted-foreground)',
-      bg: 'var(--muted)',
-      icon: 'inbox',
-      actionLabel: 'Calificar'
-    },
     {
       key: 'calificacion1',
       num: '01',
@@ -165,7 +150,6 @@ export class TtaipDashboardComponent implements OnInit {
 
   readonly counts = computed<Record<StageKey, number>>(() => {
     const base: Record<StageKey, number> = {
-      elevacion: 0,
       calificacion1: 0,
       subsanacion: 0,
       calificacion2: 0,
@@ -274,7 +258,6 @@ export class TtaipDashboardComponent implements OnInit {
     this.error.set('');
 
     forkJoin({
-      pendientes: this.ttaipService.getPendientes(),
       calificacion1: this.ttaipService.getEnAnalisis(),
       subsanacion: this.ttaipService.getSubsanacion(),
       calificacion2: this.ttaipService.getSegundaCalificacion(),
@@ -283,7 +266,6 @@ export class TtaipDashboardComponent implements OnInit {
     }).subscribe({
       next: (data) => {
         const merged = this.mergeUnique([
-          data.pendientes,
           data.calificacion1,
           data.subsanacion,
           data.calificacion2,
@@ -367,7 +349,6 @@ export class TtaipDashboardComponent implements OnInit {
     const expediente = item.apelacion.expediente || '';
 
     switch (item.stageKey) {
-      case 'elevacion':
       case 'calificacion1':
         return ['/ttaip/calificar', expediente];
       case 'calificacion2':
@@ -403,12 +384,11 @@ export class TtaipDashboardComponent implements OnInit {
 
     for (const group of groups) {
       for (const apelacion of group) {
-        const normalized = this.normalizeApelacionEstado(apelacion);
-        const key = this.apelacionKey(normalized);
+        const key = this.apelacionKey(apelacion);
         const current = byKey.get(key);
 
-        if (!current || this.stageRank(normalized.estado) >= this.stageRank(current.estado)) {
-          byKey.set(key, normalized);
+        if (!current || this.stageRank(apelacion.estado) >= this.stageRank(current.estado)) {
+          byKey.set(key, apelacion);
         }
       }
     }
@@ -416,22 +396,8 @@ export class TtaipDashboardComponent implements OnInit {
     return Array.from(byKey.values());
   }
 
-  private normalizeApelacionEstado(apelacion: Apelacion): Apelacion {
-    if (this.mapEstadoToStage(apelacion.estado) === 'resueltos') {
-      return apelacion;
-    }
-
-    const overridden = this.localStateOverride.getApelacionEstado(apelacion);
-    if (!overridden || this.stageRank(overridden) < this.stageRank(apelacion.estado)) {
-      return apelacion;
-    }
-
-    return { ...apelacion, estado: overridden as EstadoApelacion };
-  }
-
   private stageRank(estado: string): number {
     const ranks: Record<StageKey, number> = {
-      elevacion: 0,
       calificacion1: 1,
       subsanacion: 2,
       calificacion2: 3,
@@ -476,7 +442,7 @@ export class TtaipDashboardComponent implements OnInit {
   private mapEstadoToStage(estadoRaw: string): StageKey {
     const estado = this.normalizeDecision(estadoRaw);
 
-    if (estado === 'PENDIENTE_ELEVACION') return 'elevacion';
+    if (estado === 'PENDIENTE_ELEVACION') return 'calificacion1';
     if (estado === 'EN_CALIFICACION_1') return 'calificacion1';
     if (estado === 'EN_SUBSANACION') return 'subsanacion';
     if (estado === 'EN_CALIFICACION_2' || estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') return 'calificacion2';

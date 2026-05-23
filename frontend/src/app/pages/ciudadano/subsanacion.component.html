@@ -88,10 +88,14 @@
               </h2>
             </div>
             <div class="p-6 space-y-3">
-              @for (obs of observacionesTtaip; track obs.numero) {
+              @for (obs of observacionesTtaip(); track obs.numero) {
                 <div class="reference-option-card rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                   <span class="font-display flex-shrink-0" style="font-size: 22px; line-height: 1; color: var(--brand-700); letter-spacing: -0.02em;">0{{ obs.numero }}</span>
                   <p class="text-sm text-foreground/85 leading-relaxed">{{ obs.descripcion }}</p>
+                </div>
+              } @empty {
+                <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                  El backend no registró observaciones detalladas para esta calificación.
                 </div>
               }
 
@@ -108,7 +112,7 @@
               <h2 class="form-section-title">Documentos originales</h2>
             </div>
             <div class="p-6 space-y-2">
-              @for (doc of documentosOriginales; track doc) {
+              @for (doc of documentosOriginales(); track doc) {
                 <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
@@ -119,6 +123,10 @@
                   <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" aria-label="Descargar documento">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
                   </button>
+                </div>
+              } @empty {
+                <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                  No hay documentos originales registrados por el backend para este expediente.
                 </div>
               }
             </div>

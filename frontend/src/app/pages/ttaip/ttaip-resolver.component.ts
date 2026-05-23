@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
-import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
+import { Apelacion } from '../../models/apelacion.model';
 import type { ResolucionRequest } from '../../api/types';
 import {
   ReferenceConfirmModalComponent,
@@ -49,7 +48,6 @@ export class TtaipResolverComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
   private readonly resolucionEstados = new Set<string>(['EN_RESOLUCION']);
 
   apelacion = signal<Apelacion | null>(null);
@@ -170,7 +168,7 @@ export class TtaipResolverComponent implements OnInit {
     this.loadingApelacion.set(true);
     this.apelacionService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        this.apelacion.set(this.applyLocalEstado(data));
+        this.apelacion.set(data);
         this.loadingApelacion.set(false);
       },
       error: () => {
@@ -264,15 +262,6 @@ export class TtaipResolverComponent implements OnInit {
     return summaries[decision];
   }
 
-  getFallbackAdjuntos(): ReadonlyArray<string> {
-    return [
-      'SAIP_Original.pdf',
-      'Respuesta_Entidad.pdf',
-      'Recurso_Fundamentado.pdf',
-      'Calificacion_Admisible.pdf'
-    ];
-  }
-
   private getResolucionRequest(includeDisciplinary: boolean): ResolucionRequest {
     return {
       fundamentos: this.fundamentos.trim(),
@@ -307,37 +296,37 @@ export class TtaipResolverComponent implements OnInit {
     const serviceMap: Record<ResolucionDecision, () => void> = {
       fundado: () =>
         this.ttaipService.declararFundado(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA.', updated),
           error: (err) => this.handleError(err)
         }),
       fundado_en_parte: () =>
         this.ttaipService.declararFundadoEnParte(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA EN PARTE.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA EN PARTE.', updated),
           error: (err) => this.handleError(err)
         }),
       infundado: () =>
         this.ttaipService.declararInfundado(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA.', updated),
           error: (err) => this.handleError(err)
         }),
       infundado_en_parte: () =>
         this.ttaipService.declararInfundadoEnParte(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA EN PARTE.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA EN PARTE.', updated),
           error: (err) => this.handleError(err)
         }),
       improcedente: () =>
         this.ttaipService.declararImprocedente(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
           error: (err) => this.handleError(err)
         }),
       sustraccion_materia: () =>
         this.ttaipService.declararSustraccionMateria(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Conclusión por sustraccion de la materia emitida.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Conclusión por sustraccion de la materia emitida.', updated),
           error: (err) => this.handleError(err)
         }),
       desistimiento: () =>
         this.ttaipService.declararDesistimiento(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Conclusión por desistimiento emitida.', updated, this.getNextEstado(decision)),
+          next: (updated) => this.handleSuccess('Conclusión por desistimiento emitida.', updated),
           error: (err) => this.handleError(err)
         })
     };
@@ -345,51 +334,15 @@ export class TtaipResolverComponent implements OnInit {
     serviceMap[decision]();
   }
 
-  private handleSuccess(message: string, updated?: Apelacion, nextEstado?: EstadoApelacion): void {
+  private handleSuccess(message: string, updated?: Apelacion): void {
     const nextAppeal = updated ?? this.apelacion();
     if (nextAppeal) {
-      const resolved = nextEstado ? { ...nextAppeal, estado: nextEstado } : nextAppeal;
-      this.apelacion.set(resolved);
-      this.localStateOverride.setApelacionEstado(resolved, resolved.estado);
+      this.apelacion.set(nextAppeal);
     }
 
     this.loading.set(false);
     this.mensaje.set(message);
     this.successModalAbierto.set(true);
-  }
-
-  private applyLocalEstado(apelacion: Apelacion): Apelacion {
-    if (this.isEstadoResuelto(apelacion.estado)) {
-      return apelacion;
-    }
-
-    const overridden = this.localStateOverride.getApelacionEstado(apelacion);
-    if (!overridden || this.estadoRank(overridden) < this.estadoRank(apelacion.estado)) {
-      return apelacion;
-    }
-
-    return { ...apelacion, estado: overridden as EstadoApelacion };
-  }
-
-  private isEstadoResuelto(estado?: string): boolean {
-    const normalized = this.normalizeEstado(estado);
-    return normalized.startsWith('RESUELTO')
-      || normalized.startsWith('CONCLUSION')
-      || normalized === 'TENER_POR_NO_PRESENTADO';
-  }
-
-  private estadoRank(estado?: string): number {
-    const normalized = this.normalizeEstado(estado);
-    const ranks: Record<string, number> = {
-      PENDIENTE_ELEVACION: 0,
-      EN_CALIFICACION_1: 1,
-      EN_SUBSANACION: 2,
-      EN_CALIFICACION_2: 3,
-      NOTIFICACION_SEGUNDA_CALIFICACION: 4,
-      EN_RESOLUCION: 5
-    };
-
-    return this.isEstadoResuelto(normalized) ? 6 : ranks[normalized] ?? 0;
   }
 
   private handleError(err: unknown): void {
@@ -536,20 +489,6 @@ export class TtaipResolverComponent implements OnInit {
 
     this.error.set('');
     return true;
-  }
-
-  private getNextEstado(decision: ResolucionDecision): EstadoApelacion {
-    const estados: Record<ResolucionDecision, EstadoApelacion> = {
-      fundado: 'RESUELTO_FUNDADO',
-      fundado_en_parte: 'RESUELTO_FUNDADO_EN_PARTE',
-      infundado: 'RESUELTO_INFUNDADO',
-      infundado_en_parte: 'RESUELTO_INFUNDADO_EN_PARTE',
-      improcedente: 'RESUELTO_IMPROCEDENTE',
-      sustraccion_materia: 'CONCLUSION_SUSTRACCION_MATERIA',
-      desistimiento: 'CONCLUSION_DESISTIMIENTO'
-    };
-
-    return estados[decision];
   }
 
   private normalizeEstado(value: string | undefined | null): string {

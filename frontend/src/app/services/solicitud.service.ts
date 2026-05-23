@@ -4,6 +4,25 @@ import { Observable } from 'rxjs';
 import { Solicitud, SolicitudCreate } from '../models/solicitud.model';
 import { environment } from '../../environments/environment';
 
+export interface ConsultaPublicaSolicitud {
+  expediente: string;
+  ciudadano: string;
+  entidad: string;
+  fechaPresentacion: string;
+  fechaLimite: string;
+  diasTranscurridos: number;
+  diasRestantes: number;
+  estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
+  asunto: string;
+  respuestaFecha: string | null;
+  respuestaTipo: string | null;
+  apelacionExpediente: string | null;
+  apelacionEstado: string | null;
+  apelacionFecha: string | null;
+  resolucionFecha: string | null;
+  resolucionResultado: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -21,6 +40,10 @@ export class SolicitudService {
 
   findByExpediente(expediente: string): Observable<Solicitud> {
     return this.http.get<Solicitud>(`${this.apiUrl}/expediente/${expediente}`);
+  }
+
+  consultarPublicamente(expediente: string): Observable<ConsultaPublicaSolicitud> {
+    return this.http.get<ConsultaPublicaSolicitud>(`${this.apiUrl}/publica/expediente/${encodeURIComponent(expediente)}`);
   }
 
   findByCiudadanoId(ciudadanoId: number): Observable<Solicitud[]> {

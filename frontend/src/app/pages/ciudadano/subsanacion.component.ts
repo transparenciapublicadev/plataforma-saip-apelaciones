@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
-import { Apelacion, EstadoApelacion } from '../../models/apelacion.model';
+import { Apelacion } from '../../models/apelacion.model';
 import {
   ReferenceConfirmModalComponent,
   ReferenceConfirmSummary,
@@ -34,7 +33,6 @@ export class SubsanacionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   apelacion = signal<Apelacion | null>(null);
   loading = signal<boolean>(false);
@@ -47,33 +45,12 @@ export class SubsanacionComponent implements OnInit {
 
   fundamentosAdicionales = '';
 
-  readonly observacionesTtaip: ObservacionSubsanacion[] = [
-    {
-      numero: 1,
-      descripcion: 'Falta fundamentación legal específica del artículo vulnerado de la Ley N° 27806.'
-    },
-    {
-      numero: 2,
-      descripcion: 'No se adjunta copia de la respuesta denegatoria de la entidad.'
-    },
-    {
-      numero: 3,
-      descripcion: 'Falta indicar el domicilio procesal para notificaciones.'
-    }
-  ];
-
   readonly pasosSubsanacion: string[] = [
     'Lea cada observación señalada por el TTAIP.',
     'Prepare los documentos que subsanan las observaciones.',
     'Describa claramente las correcciones realizadas.',
     'Adjunte los documentos complementarios.',
     'Envíe la subsanación antes del plazo límite.'
-  ];
-
-  readonly documentosOriginales: string[] = [
-    'Recurso_Apelacion.pdf',
-    'DNI_Copia.pdf',
-    'Calificacion_Inadmisible.pdf'
   ];
 
   ngOnInit(): void {
@@ -178,12 +155,7 @@ export class SubsanacionComponent implements OnInit {
 
     this.apelacionService.subsanar(ap.id, this.fundamentosAdicionales).subscribe({
       next: (updated) => {
-        const nextAppeal: Apelacion = {
-          ...(updated ?? ap),
-          estado: 'EN_CALIFICACION_2' as EstadoApelacion
-        };
-        this.apelacion.set(nextAppeal);
-        this.localStateOverride.setApelacionEstado(nextAppeal, nextAppeal.estado);
+        this.apelacion.set(updated ?? ap);
         this.loading.set(false);
         this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
         this.successModalAbierto.set(true);
@@ -199,7 +171,7 @@ export class SubsanacionComponent implements OnInit {
     const ap = this.apelacion();
     return [
       { label: 'Expediente', value: ap?.expediente || '—', mono: true },
-      { label: 'Observaciones', value: `${this.observacionesTtaip.length} observaciones del TTAIP` },
+      { label: 'Observaciones', value: `${this.observacionesTtaip().length} observaciones del TTAIP` },
       { label: 'Descripción', value: `${this.fundamentosAdicionales.trim().length} caracteres` },
       { label: 'Documento', value: this.documentoSeleccionado()?.name || '—' }
     ];
@@ -214,10 +186,30 @@ export class SubsanacionComponent implements OnInit {
 
   subsanacionSuccessMetadata(): ReferenceSuccessMeta[] {
     return [
-      { label: 'Observaciones cubiertas', value: `${this.observacionesTtaip.length} de ${this.observacionesTtaip.length}` },
+      { label: 'Observaciones cubiertas', value: `${this.observacionesTtaip().length} de ${this.observacionesTtaip().length}` },
       { label: 'Documento adjunto', value: this.documentoSeleccionado()?.name || '—' },
       { label: 'Fundamentación', value: `${this.fundamentosAdicionales.length} caracteres` }
     ];
+  }
+
+  observacionesTtaip(): ObservacionSubsanacion[] {
+    const observaciones = this.apelacion()?.resolucionPrimeraCalificacion?.observaciones?.trim();
+    if (!observaciones) {
+      return [];
+    }
+
+    return observaciones
+      .split(/\r?\n|;/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((descripcion, index) => ({ numero: index + 1, descripcion }));
+  }
+
+  documentosOriginales(): ReadonlyArray<string> {
+    const documentos = this.apelacion()?.documentos ?? [];
+    return documentos
+      .map((doc) => doc.nombreArchivo)
+      .filter((nombre): nombre is string => !!nombre);
   }
 
   subsanacionNextSteps(): ReferenceSuccessNextStep[] {
