@@ -69,6 +69,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gestion.misaip.config.AppRolePolicy
 import com.gestion.misaip.presentation.viewmodel.LoginEvent
 import com.gestion.misaip.presentation.viewmodel.LoginViewModel
 import com.gestion.misaip.ui.theme.BrandRed
@@ -131,6 +132,8 @@ private fun LoginContent(
     onRegistro: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
+    val isCitizenApp = AppRolePolicy.isCitizenApp
+    val roleLabel = AppRolePolicy.roleLabel
 
     // Animación de entrada
     var animationStarted by remember { mutableStateOf(false) }
@@ -217,37 +220,36 @@ private fun LoginContent(
                     .padding(top = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Selector tipo usuario con FilterChip profesional
+                // Selector restringido por APK/flavor.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
-                    FilterChip(
-                        selected = uiState.esCiudadano,
-                        onClick = { onCambiarTipoLogin(true) },
-                        label = { Text("Ciudadano", fontWeight = FontWeight.Medium) },
-                        leadingIcon = if (uiState.esCiudadano) {
-                            { Icon(Icons.Default.Person, null, Modifier.size(18.dp)) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = !uiState.esCiudadano,
-                        onClick = { onCambiarTipoLogin(false) },
-                        label = { Text("Funcionario", fontWeight = FontWeight.Medium) },
-                        leadingIcon = if (!uiState.esCiudadano) {
-                            { Icon(Icons.Default.Person, null, Modifier.size(18.dp)) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (isCitizenApp) {
+                        FilterChip(
+                            selected = uiState.esCiudadano,
+                            onClick = { onCambiarTipoLogin(true) },
+                            label = { Text("Ciudadano", fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Icon(Icons.Default.Person, null, Modifier.size(18.dp)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        FilterChip(
+                            selected = !uiState.esCiudadano,
+                            onClick = { onCambiarTipoLogin(false) },
+                            label = { Text(roleLabel, fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Icon(Icons.Default.Person, null, Modifier.size(18.dp)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 // Campo DNI o Usuario
@@ -389,7 +391,7 @@ private fun LoginContent(
                 }
 
                 // Registro solo para ciudadanos
-                AnimatedVisibility(visible = uiState.esCiudadano) {
+                AnimatedVisibility(visible = AppRolePolicy.allowsPublicRegistration && uiState.esCiudadano) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally

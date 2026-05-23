@@ -5,7 +5,7 @@ package com.gestion.misaip.messaging
  * Centraliza los IDs usados en MiSaipApplication, NotificationPushHelper y MiSaipMessagingService.
  */
 object NotificationChannels {
-    /** Canal genérico por defecto (Firebase default) */
+    /** Canal genérico por defecto (FCM default) */
     const val GENERAL = "misaip_notifications"
 
     /** Canal para solicitudes SAIP (nuevas, respuestas, subsanaciones) */

@@ -2,7 +2,7 @@ package com.gestion.misaip.data
 
 /**
  * Modelos de estadísticas para los dashboards.
- * Calculadas a partir de los datos reales de Firebase/SQLite.
+ * Calculadas a partir de los datos reales sincronizados desde backend REST/SQLite.
  */
 
 // Estadísticas para el dashboard del ciudadano

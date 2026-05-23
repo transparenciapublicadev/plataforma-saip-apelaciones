@@ -4,7 +4,7 @@ import com.gestion.misaip.core.domain.model.Apelacion
 
 /**
  * Interfaz para la fuente de datos remota de Apelaciones.
- * Abstrae la comunicación con Firebase Firestore.
+ * Abstrae la comunicación de apelaciones con el backend REST.
  */
 interface ApelacionRemoteDataSource {
 

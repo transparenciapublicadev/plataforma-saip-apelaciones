@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
  * Worker para sincronización de datos en segundo plano.
  *
  * Se ejecuta cuando hay conexión a internet para:
- * - Subir cambios locales pendientes a Firebase
+ * - Subir cambios locales pendientes al backend REST
  * - Descargar actualizaciones del servidor
  * - Sincronizar catálogo de entidades públicas
  *
@@ -140,4 +140,3 @@ class SyncWorkerFactory(
         }
     }
 }
-

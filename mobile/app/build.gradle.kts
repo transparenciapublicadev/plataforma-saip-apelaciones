@@ -25,6 +25,34 @@ android {
         buildConfigField("String", "REST_BASE_URL", "\"${project.findProperty("REST_BASE_URL") ?: "http://10.0.2.2:8080/"}\"")
     }
 
+    flavorDimensions += "role"
+
+    productFlavors {
+        create("ciudadano") {
+            dimension = "role"
+            applicationId = "com.gestion.misaip.ciudadano"
+            resValue("string", "app_name", "MiSAIP Ciudadano")
+            buildConfigField("String", "APP_ROLE", "\"CIUDADANO\"")
+            buildConfigField("Boolean", "PUBLIC_DISTRIBUTION", "true")
+        }
+
+        create("funcionario") {
+            dimension = "role"
+            applicationId = "com.gestion.misaip.funcionario"
+            resValue("string", "app_name", "MiSAIP Funcionario")
+            buildConfigField("String", "APP_ROLE", "\"FUNCIONARIO\"")
+            buildConfigField("Boolean", "PUBLIC_DISTRIBUTION", "false")
+        }
+
+        create("ttaip") {
+            dimension = "role"
+            applicationId = "com.gestion.misaip.ttaip"
+            resValue("string", "app_name", "MiSAIP TTAIP")
+            buildConfigField("String", "APP_ROLE", "\"TTAIP\"")
+            buildConfigField("Boolean", "PUBLIC_DISTRIBUTION", "false")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -46,6 +74,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 }
 
@@ -106,12 +135,9 @@ dependencies {
     implementation(libs.androidx.workmanager)
 
     // ===========================================
-    // FIREBASE
+    // FIREBASE CLOUD MESSAGING ONLY
     // ===========================================
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
 
     // ===========================================
@@ -131,4 +157,24 @@ dependencies {
     testImplementation(libs.koin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+afterEvaluate {
+    listOf(
+        "Ciudadano" to "com.gestion.misaip.ciudadano",
+        "Funcionario" to "com.gestion.misaip.funcionario",
+        "Ttaip" to "com.gestion.misaip.ttaip"
+    ).forEach { (flavor, appId) ->
+        tasks.register("run${flavor}Debug") {
+            dependsOn("install${flavor}Debug")
+            doLast {
+                Runtime.getRuntime().exec(
+                    arrayOf(
+                        "adb", "shell", "am", "start",
+                        "-n", "$appId/com.gestion.misaip.MainActivity"
+                    )
+                )
+            }
+        }
+    }
 }

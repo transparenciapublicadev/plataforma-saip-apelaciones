@@ -5,8 +5,8 @@ import com.gestion.misaip.core.domain.model.*
 /**
  * DTO (Data Transfer Object) para Solicitud.
  *
- * Representa los datos tal como se almacenan en Firebase Firestore.
- * Implementa el mapeo bidireccional entre Firebase y el modelo de dominio.
+ * Representa los datos provenientes del backend REST.
+ * Implementa el mapeo bidireccional entre la red y el modelo de dominio.
  */
 data class SolicitudDto(
     val id: String = "",
@@ -85,7 +85,7 @@ data class SolicitudDto(
     }
 
     /**
-     * Convierte el DTO a Map para Firestore.
+     * Convierte el DTO a Map para compatibilidad con almacenamiento local.
      */
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -163,7 +163,7 @@ data class SolicitudDto(
         }
 
         /**
-         * Crea un DTO desde un Map de Firestore.
+         * Crea un DTO desde un Map local.
          */
         @Suppress("UNCHECKED_CAST")
         fun fromMap(map: Map<String, Any?>): SolicitudDto {
@@ -199,4 +199,3 @@ data class SolicitudDto(
         }
     }
 }
-

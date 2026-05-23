@@ -14,6 +14,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.gestion.misaip.config.AppRolePolicy
 import com.gestion.misaip.core.domain.model.TipoUsuario
 import com.gestion.misaip.navigation.*
 import com.gestion.misaip.ui.screen.*
@@ -49,6 +50,11 @@ fun MiSAIPNavigation(
     var welcomeMessage by remember { mutableStateOf<String?>(null) }
 
     fun navigateAfterAuth(tipoUsuario: TipoUsuario) {
+        if (!AppRolePolicy.isRoleAllowed(tipoUsuario)) {
+            backStack.clear()
+            backStack.add(Login)
+            return
+        }
         backStack.clear()
         backStack.add(dashboardRouteForRole(tipoUsuario))
         if (!deepLinkExpediente.isNullOrBlank()) {
@@ -100,14 +106,21 @@ fun MiSAIPNavigation(
             }
 
             entry<Register> {
-                RegisterScreen(
-                    onNavigateBack = { backStack.removeLastOrNull() },
-                    onRegisterSuccess = { _ ->
-                        // Los ciudadanos registrados siempre van al CitizenDashboard
+                if (AppRolePolicy.allowsPublicRegistration) {
+                    RegisterScreen(
+                        onNavigateBack = { backStack.removeLastOrNull() },
+                        onRegisterSuccess = { _ ->
+                            // Los ciudadanos registrados siempre van al CitizenDashboard
+                            backStack.clear()
+                            backStack.add(CitizenDashboard)
+                        }
+                    )
+                } else {
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
                         backStack.clear()
-                        backStack.add(CitizenDashboard)
+                        backStack.add(Login)
                     }
-                )
+                }
             }
 
             entry<CitizenDashboard> {
@@ -156,14 +169,10 @@ fun MiSAIPNavigation(
             }
 
             entry<AdminDashboard> {
-                AdminDashboardScreen(
-                    onNavigateToLogin = {
-                        backStack.clear()
-                        backStack.add(Login)
-                    },
-                    welcomeMessage = welcomeMessage,
-                    onWelcomeShown = { welcomeMessage = null }
-                )
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    backStack.clear()
+                    backStack.add(Login)
+                }
             }
 
             entry<RequestDetail> { key ->
@@ -220,5 +229,5 @@ private fun dashboardRouteForRole(tipoUsuario: TipoUsuario): NavKey = when (tipo
     TipoUsuario.CIUDADANO -> CitizenDashboard
     TipoUsuario.FUNCIONARIO -> EntityDashboard
     TipoUsuario.TTAIP -> TTAIPDashboard
-    TipoUsuario.ADMIN -> AdminDashboard
+    TipoUsuario.ADMIN -> Login
 }

@@ -161,7 +161,7 @@ class EntityDashboardViewModel(
     }
 
     /**
-     * Sincroniza datos desde Firestore y recarga la UI.
+     * Sincroniza datos desde el backend REST y recarga la UI.
      * Se ejecuta cuando se recibe una notificación push relevante.
      */
     private fun sincronizarYRecargar() {
@@ -194,4 +194,3 @@ class EntityDashboardViewModel(
         return sdf.format(java.util.Date(timestamp))
     }
 }
-

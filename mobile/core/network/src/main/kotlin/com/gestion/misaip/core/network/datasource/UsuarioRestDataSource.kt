@@ -12,7 +12,7 @@ import java.io.IOException
 
 /**
  * Implementación REST del datasource de usuarios.
- * Usa el backend Spring Boot en lugar de Firebase.
+ * Usa el backend Spring Boot + JWT como fuente de autenticacion y perfil.
  */
 class UsuarioRestDataSource(
     private val authApi: AuthApiService,

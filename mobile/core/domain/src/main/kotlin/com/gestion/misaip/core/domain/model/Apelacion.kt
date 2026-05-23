@@ -94,7 +94,7 @@ enum class EstadoApelacion {
     companion object {
         fun fromString(value: String): EstadoApelacion {
             val normalized = value.trim().uppercase().replace(" ", "_").replace("-", "_")
-            return entries.find { it.name == normalized } ?: PENDIENTE_ELEVACION
+            return entries.find { it.name == normalized } ?: EN_CALIFICACION_1
         }
 
         /** Estados terminales del expediente */
@@ -109,7 +109,7 @@ enum class EstadoApelacion {
     fun isTerminal(): Boolean = this in TERMINALES
 
     fun toDisplayString(): String = when (this) {
-        PENDIENTE_ELEVACION -> "Pendiente de Elevación"
+        PENDIENTE_ELEVACION -> "En Primera Calificación"
         EN_CALIFICACION_1 -> "En Primera Calificación"
         EN_SUBSANACION -> "En Subsanación"
         EN_CALIFICACION_2 -> "En Segunda Calificación"
