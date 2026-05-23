@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
@@ -45,10 +44,8 @@ interface DistribucionDia {
 export class FuncionarioDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   private readonly plazoLegal = 10;
-  private readonly cumplimientoPrevio = 78;
 
   readonly buckets: BucketMeta[] = [
     {
@@ -144,8 +141,6 @@ export class FuncionarioDashboardComponent implements OnInit {
     if (cerradas <= 0) return 100;
     return Math.round((c.respondidas / cerradas) * 100);
   });
-
-  readonly cumplimientoDelta = computed(() => this.cumplimiento() - this.cumplimientoPrevio);
 
   readonly donutAccent = computed(() => {
     const val = this.cumplimiento();
@@ -345,11 +340,6 @@ export class FuncionarioDashboardComponent implements OnInit {
     const currentEstado = (solicitud.estado || '').toUpperCase();
     if (this.isSolicitudTerminal(currentEstado)) {
       return solicitud;
-    }
-
-    const overridden = this.localStateOverride.getSolicitudEstado(solicitud);
-    if (overridden) {
-      return { ...solicitud, estado: overridden as EstadoSolicitud };
     }
 
     const respuesta = solicitud.respuesta;

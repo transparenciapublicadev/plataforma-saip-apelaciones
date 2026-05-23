@@ -145,7 +145,7 @@ describe('TtaipService', () => {
 
   it('should POST declarar no presentado', () => {
     service.declararNoPresentado(3, {} as any).subscribe();
-    const req = httpMock.expectOne(`${apiUrl}/resolucion/3/no-presentado`);
+    const req = httpMock.expectOne(`${apiUrl}/calificacion/3/no-presentado`);
     expect(req.request.method).toBe('POST');
     req.flush({});
   });
@@ -154,7 +154,7 @@ describe('TtaipService', () => {
 
   it('should POST notificar segunda calificacion', () => {
     service.notificarSegundaCalificacion(7).subscribe();
-    const req = httpMock.expectOne(`${apiUrl}/notificar-segunda-calificacion/7`);
+    const req = httpMock.expectOne(`${apiUrl}/7/notificar-segunda-calificacion`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({});
     req.flush({});

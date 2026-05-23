@@ -41,16 +41,21 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly activeTab = signal<DetailTab>('apelacion');
 
   private readonly routeExpediente = signal<string>('');
-  private readonly estadoOverride = signal<string | null>(null);
-  private readonly resultadoOverride = signal<string | null>(null);
-  private readonly viaSubsanacion = signal<boolean>(false);
 
   readonly expedienteDisplay = computed(() => this.apelacion()?.expediente || this.routeExpediente() || '—');
+  readonly expedienteTtaip = computed(() => this.apelacion()?.expedienteTtaip ?? null);
+  readonly salaAsignada = computed(() => this.expedienteTtaip()?.sala?.nombre || 'Sala no asignada por el backend');
+  readonly miembrosSala = computed(() => this.expedienteTtaip()?.miembros ?? []);
+  readonly resolucionesExpediente = computed(() => this.expedienteTtaip()?.resoluciones ?? this.apelacion()?.resoluciones ?? []);
+  readonly cedulasExpediente = computed(() => this.expedienteTtaip()?.cedulas ?? []);
+  readonly notificacionesExpediente = computed(() => this.expedienteTtaip()?.notificaciones ?? []);
+  readonly historialExpediente = computed(() => this.expedienteTtaip()?.historial ?? []);
+  readonly reprocesosExpediente = computed(() => this.expedienteTtaip()?.reprocesos ?? []);
 
-  readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || this.estadoOverride() || 'PENDIENTE_ELEVACION'));
+  readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || 'EN_CALIFICACION_1'));
 
   readonly resultadoNormalizado = computed(() => {
-    const raw = this.apelacion()?.resolucion?.decision || this.apelacion()?.resultado || this.resultadoOverride();
+    const raw = this.apelacion()?.resolucion?.decision || this.apelacion()?.resultado;
     return this.normalizeKey(raw);
   });
 
@@ -93,9 +98,11 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       entidad: apelacion?.entidadNombre || 'Entidad publica',
       expedienteSAIP: apelacion?.solicitudExpediente || '—',
       asuntoSAIP: apelacion?.solicitudAsunto || 'Sin asunto registrado',
-      causalDenegatoria: 'Informacion confidencial',
-      fundamentoEntidad: 'Fundamento juridico invocado por la entidad en su respuesta original.',
-      fundamentosApelacion: apelacion?.fundamentos || 'Fundamentos del recurso interpuesto por el administrado.',
+      causalDenegatoria: apelacion?.resolucionPrimeraCalificacion?.decision || 'No registrada por el backend',
+      fundamentoEntidad: apelacion?.resolucionPrimeraCalificacion?.observaciones
+        || apelacion?.resolucionPrimeraCalificacion?.fundamentos
+        || 'No registrada por el backend',
+      fundamentosApelacion: apelacion?.fundamentos || 'Sin fundamentos registrados.',
       fechaApelacion: apelacion?.fechaApelacion || ''
     };
   });
@@ -109,12 +116,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       }));
     }
 
-    return [
-      { nombre: 'SAIP_Original.pdf', meta: 'PDF · 345 KB' },
-      { nombre: 'Respuesta_Entidad.pdf', meta: 'PDF · 512 KB' },
-      { nombre: 'Recurso_Fundamentado.pdf', meta: 'PDF · 876 KB' },
-      { nombre: 'Resolucion_Final.pdf', meta: 'PDF · 1.2 MB' }
-    ];
+    return [];
   });
 
   readonly timeline = computed<TimelineItem[]>(() => this.buildTimeline());
@@ -150,12 +152,6 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente') || '';
     this.routeExpediente.set(expediente);
-
-    this.estadoOverride.set(this.route.snapshot.queryParamMap.get('estado'));
-    this.resultadoOverride.set(this.route.snapshot.queryParamMap.get('resultado'));
-
-    const viaSubsanacionRaw = this.route.snapshot.queryParamMap.get('viaSubsanacion');
-    this.viaSubsanacion.set(viaSubsanacionRaw === 'true' || viaSubsanacionRaw === '1');
 
     if (!expediente) {
       this.loading.set(false);
@@ -201,70 +197,70 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   }
 
   private buildTimeline(): TimelineItem[] {
-    const resultado = this.resultadoNormalizado();
-    const estado = this.normalizeKey(this.apelacion()?.estado || this.estadoOverride());
-    const fechaBase = this.formatDateLabel(this.apelacion()?.fechaApelacion, true);
-
-    if ((resultado === 'IMPROCEDENTE' || resultado === 'RESUELTO_IMPROCEDENTE') && (estado === 'ARCHIVADO' || estado === 'RESUELTO_IMPROCEDENTE')) {
-      return [
-        { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado en el sistema.', icon: 'check' },
-        { fecha: '08/09/2025 10:15', titulo: '1ra calificacion · IMPROCEDENTE', descripcion: 'No cumple requisitos formales. Proceso archivado.', icon: 'x' }
-      ];
+    const apelacion = this.apelacion();
+    if (!apelacion) {
+      return [];
     }
 
-    if (resultado === 'TENER_POR_NO_PRESENTADO') {
-      return [
-        { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado en el sistema.', icon: 'check' },
-        { fecha: '08/09/2025 10:15', titulo: '1ra calificacion · INADMISIBLE', descripcion: 'Se detectaron observaciones por subsanar.', icon: 'alert' },
-        { fecha: '08/09/2025 10:20', titulo: 'Notificacion de subsanacion', descripcion: 'Plazo de 2 dias habiles otorgado.', icon: 'check' },
-        { fecha: '13/09/2025 18:00', titulo: '2da calificacion · NO PRESENTADO', descripcion: 'No se subsano en el plazo. Proceso archivado.', icon: 'x' }
-      ];
+    const historial = this.historialExpediente();
+    if (historial.length > 0) {
+      return historial.map((evento) => ({
+        fecha: this.formatDateLabel(evento.fechaEvento, true),
+        titulo: this.formatEventoTtaip(evento.tipoEvento),
+        descripcion: evento.descripcion || evento.referencia || 'Evento registrado por el backend.',
+        icon: this.iconForEventoTtaip(evento.tipoEvento)
+      }));
     }
 
-    if (resultado === 'IMPROCEDENTE' || resultado === 'RESUELTO_IMPROCEDENTE') {
-      return [
-        { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado.', icon: 'check' },
-        { fecha: '08/09/2025 10:15', titulo: '1ra calificacion · INADMISIBLE', descripcion: 'Se detectaron observaciones.', icon: 'alert' },
-        { fecha: '10/09/2025 15:30', titulo: 'Subsanacion presentada', descripcion: 'Documentacion complementaria recibida.', icon: 'check' },
-        { fecha: '11/09/2025 11:00', titulo: '2da calificacion · IMPROCEDENTE', descripcion: 'No cumple requisitos. Proceso archivado.', icon: 'x' }
-      ];
-    }
-
-    if ((resultado.startsWith('FUNDADO') || resultado.startsWith('INFUNDADO')) && this.viaSubsanacion()) {
-      return [
-        { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado.', icon: 'check' },
-        { fecha: '08/09/2025 10:15', titulo: '1ra calificacion · INADMISIBLE', descripcion: 'Se detectaron observaciones.', icon: 'alert' },
-        { fecha: '10/09/2025 15:30', titulo: 'Subsanacion presentada', descripcion: 'Documentacion complementaria.', icon: 'check' },
-        { fecha: '11/09/2025 11:00', titulo: '2da calificacion · ADMITIDO A TRAMITE', descripcion: 'Subsanacion aprobada. Pasa a fondo.', icon: 'check' },
-        {
-          fecha: this.formatDateLabel(this.apelacion()?.resolucion?.fechaResolucion, true),
-          titulo: `Resolucion final · ${this.resultadoMeta()?.label || 'RESUELTO'}`,
-          descripcion: resultado.startsWith('FUNDADO')
-            ? 'Apelacion amparada. Se ordena entrega en 10 dias habiles.'
-            : 'Apelacion desestimada. Se confirma la conducta de la entidad.',
-          icon: resultado.startsWith('FUNDADO') ? 'check' : 'x'
-        }
-      ];
-    }
-
-    if (resultado.startsWith('FUNDADO') || resultado.startsWith('INFUNDADO')) {
-      return [
-        { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado.', icon: 'check' },
-        { fecha: '08/09/2025 10:15', titulo: '1ra calificacion · ADMISIBLE', descripcion: 'Cumple requisitos formales. Pasa a fondo.', icon: 'check' },
-        {
-          fecha: this.formatDateLabel(this.apelacion()?.resolucion?.fechaResolucion, true),
-          titulo: `Resolucion final · ${this.resultadoMeta()?.label || 'RESUELTO'}`,
-          descripcion: resultado.startsWith('FUNDADO')
-            ? 'Apelacion amparada. Se ordena entrega de la informacion solicitada.'
-            : 'Apelacion desestimada y archivo del expediente.',
-          icon: resultado.startsWith('FUNDADO') ? 'check' : 'x'
-        }
-      ];
-    }
-
-    return [
-      { fecha: fechaBase, titulo: 'Apelacion presentada', descripcion: 'Recurso recibido y registrado en el Tribunal.', icon: 'check' }
+    const items: TimelineItem[] = [
+      {
+        fecha: this.formatDateLabel(apelacion.fechaApelacion, true),
+        titulo: 'Apelación presentada',
+        descripcion: 'Recurso recibido y registrado en el Tribunal.',
+        icon: 'check'
+      }
     ];
+
+    const primera = apelacion.resolucionPrimeraCalificacion;
+    if (primera) {
+      items.push({
+        fecha: this.formatDateLabel(primera.fechaResolucion, true),
+        titulo: `1ra calificación · ${this.formatDecision(primera.decision)}`,
+        descripcion: primera.observaciones || primera.fundamentos || 'Calificación registrada por el backend.',
+        icon: this.iconForDecision(primera.decision)
+      });
+    }
+
+    if (apelacion.fechaSubsanacion && this.normalizeKey(apelacion.estado) !== 'EN_SUBSANACION') {
+      items.push({
+        fecha: this.formatDateLabel(apelacion.fechaSubsanacion, false),
+        titulo: 'Subsanación registrada',
+        descripcion: 'El expediente avanzó a la revisión posterior a la subsanación.',
+        icon: 'check'
+      });
+    }
+
+    const segunda = apelacion.resolucionSegundaCalificacion;
+    if (segunda) {
+      items.push({
+        fecha: this.formatDateLabel(segunda.fechaResolucion, true),
+        titulo: `2da calificación · ${this.formatDecision(segunda.decision)}`,
+        descripcion: segunda.observaciones || segunda.fundamentos || 'Segunda calificación registrada por el backend.',
+        icon: this.iconForDecision(segunda.decision)
+      });
+    }
+
+    const final = apelacion.resolucion;
+    if (final) {
+      items.push({
+        fecha: this.formatDateLabel(final.fechaResolucion, true),
+        titulo: `Resolución final · ${this.formatDecision(final.decision)}`,
+        descripcion: final.fundamentos || 'Resolución final registrada por el backend.',
+        icon: this.iconForDecision(final.decision)
+      });
+    }
+
+    return items;
   }
 
   private normalizeKey(value?: string | null): string {
@@ -277,7 +273,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   private formatEstado(value: string): string {
     switch (this.normalizeKey(value)) {
       case 'PENDIENTE_ELEVACION':
-        return 'Pendiente de elevacion';
+        return 'En primera calificacion';
       case 'EN_CALIFICACION_1':
         return 'En primera calificacion';
       case 'EN_SUBSANACION':
@@ -311,7 +307,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     }
   }
 
-  private formatDateLabel(raw?: string, includeTime = false): string {
+  private formatDateLabel(raw?: string | null, includeTime = false): string {
     if (!raw) return 'Pendiente';
     const date = new Date(raw);
     if (Number.isNaN(date.getTime())) return 'Pendiente';
@@ -324,5 +320,37 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       minute: includeTime ? '2-digit' : undefined,
       hour12: false
     }).format(date);
+  }
+
+  private formatDecision(value?: string | null): string {
+    const normalized = this.normalizeKey(value);
+    return normalized ? normalized.replaceAll('_', ' ') : 'SIN DECISIÓN';
+  }
+
+  private formatEventoTtaip(value?: string | null): string {
+    const normalized = this.normalizeKey(value);
+    if (!normalized) return 'Evento TTAIP';
+    return normalized
+      .replaceAll('_', ' ')
+      .toLowerCase()
+      .replace(/^\w|\s\w/g, (letter) => letter.toUpperCase());
+  }
+
+  private iconForEventoTtaip(value?: string | null): TimelineIcon {
+    const normalized = this.normalizeKey(value);
+    if (normalized.includes('REPROCESO')) return 'alert';
+    if (normalized.includes('CAMBIO_ESTADO')) return 'check';
+    return 'check';
+  }
+
+  private iconForDecision(value?: string | null): TimelineIcon {
+    const normalized = this.normalizeKey(value);
+    if (normalized.includes('INADMISIBLE')) {
+      return 'alert';
+    }
+    if (normalized.includes('IMPROCEDENTE') || normalized.includes('INFUNDADO') || normalized.includes('NO_PRESENTADO')) {
+      return 'x';
+    }
+    return 'check';
   }
 }

@@ -110,6 +110,9 @@ export class SolicitudDetalleComponent implements OnInit {
   }
 
   getEstadoDisplay(value: string | undefined): string {
+    if ((value || '').toUpperCase() === 'PENDIENTE_ELEVACION') {
+      return 'EN CALIFICACION 1';
+    }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }
 

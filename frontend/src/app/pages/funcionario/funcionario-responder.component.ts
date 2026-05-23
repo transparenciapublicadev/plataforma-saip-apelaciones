@@ -5,7 +5,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { RespuestaService } from '../../services/respuesta.service';
 import { AuthService } from '../../services/auth.service';
-import { LocalStateOverrideService } from '../../services/local-state-override.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
 import { Respuesta } from '../../models/respuesta.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
@@ -44,7 +43,6 @@ export class FuncionarioResponderComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly respuestaService = inject(RespuestaService);
   private readonly authService = inject(AuthService);
-  private readonly localStateOverride = inject(LocalStateOverrideService);
 
   solicitud = signal<Solicitud | null>(null);
   causales = signal<string[]>([]);
@@ -235,7 +233,6 @@ export class FuncionarioResponderComponent implements OnInit {
         estado: nextEstado,
         respuesta
       });
-      this.localStateOverride.setSolicitudEstado(current, nextEstado);
     }
 
     this.loading.set(false);

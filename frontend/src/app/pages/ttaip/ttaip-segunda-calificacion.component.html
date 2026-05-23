@@ -96,23 +96,8 @@
                     }
                   </div>
                 } @else {
-                  <div class="space-y-2 mt-2">
-                    @for (doc of getFallbackSubsanacionDocs(); track doc.nombre) {
-                      <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
-                        <div class="flex items-center gap-3">
-                          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.1)">
-                            <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
-                          </div>
-                          <div>
-                            <div class="font-medium">{{ doc.nombre }}</div>
-                            <div class="font-mono text-[11px] text-muted-foreground">{{ doc.size }}</div>
-                          </div>
-                        </div>
-                        <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
-                        </button>
-                      </div>
-                    }
+                  <div class="rounded-md p-4 mt-2 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                    El backend no registra documentos de subsanación para este expediente.
                   </div>
                 }
               </div>
