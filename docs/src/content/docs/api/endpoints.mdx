@@ -1,208 +1,337 @@
 ---
 title: Endpoints
-description: Catálogo completo de endpoints REST API del backend SAIP con métodos HTTP, rutas y descripciones.
+description: Catálogo operativo de endpoints REST del backend SAIP, organizado por controlador y flujo de negocio.
 ---
 
-import { Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Badge, Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## Base URL
 
-```
+```http
 http://localhost:8080/api
 ```
 
-## Catálogo de Endpoints
+El backend Spring Boot publica el contrato vivo en:
+
+```http
+GET http://localhost:8080/v3/api-docs
+GET http://localhost:8080/swagger-ui/index.html
+```
+
+:::tip[Fuente de verdad]
+Esta página resume el contrato actual implementado en `backend/src/main/java/pe/gob/saip/backend/controller`.
+Para pruebas manuales completas usar también la colección Postman documentada en [Postman y Environments](/api/postman/).
+:::
+
+## Mapa de Controladores
+
+```mermaid
+graph LR
+    Auth["/auth\nLogin y registro"]
+    Ciudadanos["/ciudadanos\nPerfil ciudadano"]
+    Entidades["/entidades\nEntidades publicas"]
+    Solicitudes["/solicitudes\nSAIP"]
+    Respuestas["/respuestas\nRespuesta entidad"]
+    Apelaciones["/apelaciones\nRecurso TTAIP"]
+    TTAIP["/ttaip\nCalificacion y resolucion"]
+    Stats["/estadisticas\nMetricas"]
+    Reportes["/reportes\nExportables"]
+    Publico["/public\nPortal y ayuda"]
+
+    Auth --> Solicitudes
+    Ciudadanos --> Solicitudes
+    Entidades --> Solicitudes
+    Solicitudes --> Respuestas
+    Respuestas --> Apelaciones
+    Apelaciones --> TTAIP
+    Solicitudes --> Stats
+    Apelaciones --> Stats
+    Stats --> Reportes
+    Publico --> Solicitudes
+```
+
+## Catálogo
 
 <Tabs>
   <TabItem label="Auth">
     **`AuthRestController`** — `/api/auth`
 
-    | Método | Ruta | Descripción | Auth |
-    |--------|------|-------------|------|
-    | `POST` | `/auth/login` | Autenticar usuario (email/DNI + contraseña) | No |
-    | `POST` | `/auth/registro/ciudadano` | Registrar nuevo ciudadano | No |
-    | `POST` | `/auth/registro/funcionario` | Registrar nuevo funcionario | ADMIN |
-    | `POST` | `/auth/registro/miembro-ttaip` | Registrar miembro del TTAIP | ADMIN |
-    | `POST` | `/auth/registro/administrador` | Registrar administrador | ADMIN |
-    | `GET` | `/auth/perfil` | Obtener perfil del usuario autenticado | Sí |
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `POST` | `/auth/login` | Autentica con email, DNI o identificador y retorna JWT. | Público |
+    | `POST` | `/auth/registro` | Auto-registro público de ciudadano. | Público |
+    | `GET` | `/auth/verificar-email?email=` | Verifica disponibilidad de email. | Público |
+    | `GET` | `/auth/verificar-dni?dni=` | Verifica disponibilidad de DNI. | Público |
+    | `GET` | `/auth/me/{usuarioId}` | Datos básicos del usuario autenticado. | JWT |
 
     ```json
-    // POST /api/auth/login — Request
+    // POST /api/auth/login
     {
-      "identificador": "juan@ejemplo.com",
-      "password": "contraseña123"
+      "identificador": "70000001",
+      "password": "Password123!"
     }
+    ```
 
-    // Response 200
+    ```json
+    // 200 OK
     {
-      "token": "eyJhbGciOiJIUzI1NiIs...",
+      "success": true,
+      "token": "eyJhbGciOiJIUzI1NiJ9...",
+      "usuarioId": 1,
+      "email": "ciudadano01@example.com",
       "tipoUsuario": "CIUDADANO",
-      "nombreCompleto": "Juan Pérez",
-      "email": "juan@ejemplo.com"
+      "nombre": "Ciudadano Demo 01",
+      "dni": "70000001",
+      "ciudadanoId": 1,
+      "redirectUrl": "/ciudadano/dashboard"
     }
     ```
   </TabItem>
-  <TabItem label="Solicitudes">
+
+  <TabItem label="SAIP">
     **`SolicitudRestController`** — `/api/solicitudes`
 
-    | Método | Ruta | Descripción | Auth |
-    |--------|------|-------------|------|
-    | `GET` | `/solicitudes` | Listar todas las solicitudes (paginado) | ADMIN |
-    | `GET` | `/solicitudes/{id}` | Obtener solicitud por ID | Sí |
-    | `GET` | `/solicitudes/expediente/{expediente}` | Buscar por expediente | Sí |
-    | `GET` | `/solicitudes/ciudadano/{ciudadanoId}` | Solicitudes de un ciudadano | Sí |
-    | `GET` | `/solicitudes/entidad/{entidadId}` | Solicitudes de una entidad | FUNCIONARIO |
-    | `GET` | `/solicitudes/estado/{estado}` | Filtrar por estado | Sí |
-    | `POST` | `/solicitudes` | Crear nueva solicitud SAIP | CIUDADANO |
-    | `PUT` | `/solicitudes/{id}` | Actualizar solicitud | FUNCIONARIO |
-    | `PUT` | `/solicitudes/{id}/estado` | Cambiar estado | FUNCIONARIO |
-    | `DELETE` | `/solicitudes/{id}` | Eliminar solicitud | ADMIN |
-    | `GET` | `/solicitudes/{id}/documentos` | Listar documentos | Sí |
-    | `POST` | `/solicitudes/{id}/documentos` | Adjuntar documento | CIUDADANO |
-    | `GET` | `/solicitudes/{id}/dias-habiles` | Calcular días hábiles transcurridos | Sí |
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `GET` | `/solicitudes` | Lista global de solicitudes. | JWT |
+    | `GET` | `/solicitudes/publica/expediente/{expediente}` | Consulta pública por expediente SAIP. | Público |
+    | `GET` | `/solicitudes/{id}` | Detalle por ID. | JWT |
+    | `GET` | `/solicitudes/expediente/{expediente}` | Detalle por número SAIP. | JWT |
+    | `GET` | `/solicitudes/ciudadano/{ciudadanoId}` | Bandeja del ciudadano. | JWT |
+    | `GET` | `/solicitudes/entidad/{entidadId}` | Bandeja de la entidad pública. | JWT |
+    | `GET` | `/solicitudes/estado/{estado}` | Filtro por estado. | JWT |
+    | `POST` | `/solicitudes` | Crea una SAIP. | CIUDADANO |
+    | `PUT` | `/solicitudes/{id}` | Actualiza datos permitidos. | JWT |
+    | `PATCH` | `/solicitudes/{id}/estado` | Cambio controlado de estado. | JWT |
+    | `GET` | `/solicitudes/estadisticas` | Estadísticas generales SAIP. | JWT |
+    | `GET` | `/solicitudes/ciudadano/{id}/estadisticas` | Métricas por ciudadano. | JWT |
+    | `GET` | `/solicitudes/entidad/{id}/estadisticas` | Métricas por entidad. | JWT |
+    | `DELETE` | `/solicitudes/{id}` | Eliminación administrativa. | ADMIN |
 
     ```json
-    // POST /api/solicitudes — Request
+    // POST /api/solicitudes
     {
-      "asunto": "Presupuesto ejecutado 2024",
-      "descripcion": "Solicito información detallada...",
-      "entidadId": 5
+      "asunto": "Presupuesto institucional 2026",
+      "descripcion": "Solicito el presupuesto ejecutado y sus anexos.",
+      "ciudadanoId": 1,
+      "entidadId": 3,
+      "formatoDigital": true,
+      "copiaSimple": true
     }
+    ```
 
-    // Response 201
+    ```json
+    // 201 Created
     {
       "id": 42,
-      "expediente": "SAIP-2025-00042",
-      "asunto": "Presupuesto ejecutado 2024",
+      "expediente": "SAIP-2026-00042",
       "estado": "RECEPCIONADA",
-      "fechaPresentacion": "2025-01-15T10:30:00"
+      "fechaPresentacion": "2026-05-19T10:30:00",
+      "fechaLimite": "2026-06-02",
+      "diasRestantes": 10,
+      "semaforoEstado": "VERDE"
     }
     ```
   </TabItem>
+
+  <TabItem label="Respuesta">
+    **`RespuestaRestController`** — `/api/respuestas`
+
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `GET` | `/respuestas` | Lista respuestas registradas. | JWT |
+    | `GET` | `/respuestas/{id}` | Detalle de una respuesta. | JWT |
+    | `GET` | `/respuestas/solicitud/{solicitudId}` | Respuesta asociada a una SAIP. | JWT |
+    | `POST` | `/respuestas` | Crea respuesta general. | FUNCIONARIO |
+    | `POST` | `/respuestas/aceptar` | Responde con entrega de información. | FUNCIONARIO |
+    | `POST` | `/respuestas/denegar` | Responde con denegatoria y causal. | FUNCIONARIO |
+    | `GET` | `/respuestas/causales-denegacion` | Catálogo de causales bajo Ley 27806. | JWT |
+
+    ```json
+    // POST /api/respuestas/aceptar
+    {
+      "solicitudId": 42,
+      "funcionarioId": 5,
+      "contenido": "Se entrega la información solicitada.",
+      "fundamentoLegal": "Ley N. 27806",
+      "documentos": []
+    }
+    ```
+  </TabItem>
+
   <TabItem label="Apelaciones">
     **`ApelacionRestController`** — `/api/apelaciones`
 
-    | Método | Ruta | Descripción | Auth |
-    |--------|------|-------------|------|
-    | `GET` | `/apelaciones` | Listar todas (paginado) | ADMIN, TTAIP |
-    | `GET` | `/apelaciones/{id}` | Obtener por ID | Sí |
-    | `GET` | `/apelaciones/expediente/{expediente}` | Buscar por expediente TTAIP | Sí |
-    | `GET` | `/apelaciones/ciudadano/{ciudadanoId}` | Apelaciones de un ciudadano | Sí |
-    | `GET` | `/apelaciones/estado/{estado}` | Filtrar por estado | TTAIP |
-    | `POST` | `/apelaciones` | Crear recurso de apelación | CIUDADANO |
-    | `PUT` | `/apelaciones/{id}/subsanar` | Presentar subsanación | CIUDADANO |
-    | `PUT` | `/apelaciones/{id}/elevar` | Elevar expediente al TTAIP | FUNCIONARIO |
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `GET` | `/apelaciones` | Lista global de apelaciones. | JWT |
+    | `GET` | `/apelaciones/{id}` | Detalle por ID. | JWT |
+    | `GET` | `/apelaciones/expediente?numero=` | Búsqueda por expediente TTAIP. | JWT |
+    | `GET` | `/apelaciones/expediente/{expediente}` | Búsqueda por expediente TTAIP en ruta. | JWT |
+    | `GET` | `/apelaciones/estado/{estado}` | Filtro por estado. | TTAIP |
+    | `GET` | `/apelaciones/ciudadano/{ciudadanoId}` | Bandeja del ciudadano. | JWT |
+    | `POST` | `/apelaciones` | Crea apelación vinculada a una SAIP. | CIUDADANO |
+    | `PUT` | `/apelaciones/{id}` | Actualización administrativa. | JWT |
+    | `PATCH` | `/apelaciones/{id}/estado` | Cambio controlado de estado. | JWT |
+    | `POST` | `/apelaciones/{id}/subsanacion` | Presenta subsanación ciudadana. | CIUDADANO |
+    | `GET` | `/apelaciones/estadisticas` | Métricas de apelaciones. | JWT |
+    | `DELETE` | `/apelaciones/{id}` | Eliminación administrativa. | ADMIN |
+
+    :::caution[Flujo vigente]
+    Al crear una apelación, el backend la registra directamente en `EN_CALIFICACION_1`.
+    No existe endpoint funcional de elevación en el flujo actual.
+    :::
 
     ```json
-    // POST /api/apelaciones — Request
+    // POST /api/apelaciones
     {
       "solicitudId": 42,
-      "fundamentos": "La información entregada está incompleta...",
-      "petitorio": "Se ordene la entrega completa..."
+      "ciudadanoId": 1,
+      "fundamentos": "La entidad no entregó la información solicitada dentro del plazo legal."
+    }
+    ```
+
+    ```json
+    // 201 Created
+    {
+      "id": 7,
+      "expediente": "00007-2026-JUS/TTAIP",
+      "estado": "EN_CALIFICACION_1",
+      "fundamentos": "La entidad no entregó la información solicitada dentro del plazo legal."
     }
     ```
   </TabItem>
+
   <TabItem label="TTAIP">
     **`TTAIPRestController`** — `/api/ttaip`
 
-    | Método | Ruta | Descripción | Auth |
-    |--------|------|-------------|------|
-    | `GET` | `/ttaip/pendientes` | Apelaciones pendientes de calificación | TTAIP |
-    | `GET` | `/ttaip/en-resolucion` | Apelaciones en resolución | TTAIP |
-    | `GET` | `/ttaip/resueltas` | Apelaciones resueltas | TTAIP |
-    | `GET` | `/ttaip/por-calificar` | Pendientes de primera calificación | TTAIP |
-    | `GET` | `/ttaip/en-subsanacion` | En proceso de subsanación | TTAIP |
-    | `GET` | `/ttaip/segunda-calificacion` | Pendientes de segunda calificación | TTAIP |
-    | `POST` | `/ttaip/calificar/{apelacionId}` | Primera calificación | TTAIP |
-    | `POST` | `/ttaip/segunda-calificacion/{apelacionId}` | Segunda calificación | TTAIP |
-    | `POST` | `/ttaip/no-presentado/{apelacionId}` | Marcar como no presentado | TTAIP |
-    | `POST` | `/ttaip/resolver/{apelacionId}` | Emitir resolución final | TTAIP |
-    | `GET` | `/ttaip/resoluciones/{apelacionId}` | Obtener resoluciones de apelación | TTAIP |
-    | `GET` | `/ttaip/estadisticas` | Estadísticas del tribunal | TTAIP |
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `GET` | `/ttaip/estadisticas` | Indicadores del tribunal. | TTAIP |
+    | `GET` | `/ttaip/pendientes` | Apelaciones pendientes de primera calificación. | TTAIP |
+    | `GET` | `/ttaip/en-calificacion` | Apelaciones en `EN_CALIFICACION_1`. | TTAIP |
+    | `GET` | `/ttaip/subsanacion` | Apelaciones en subsanación. | TTAIP |
+    | `GET` | `/ttaip/segunda-calificacion` | Apelaciones en segunda calificación. | TTAIP |
+    | `GET` | `/ttaip/en-resolucion` | Apelaciones listas para resolución final. | TTAIP |
+    | `GET` | `/ttaip/resueltas` | Apelaciones con estado terminal. | TTAIP |
+    | `POST` | `/ttaip/calificacion/{apelacionId}/admitir` | Primera calificación admisible. | TTAIP |
+    | `POST` | `/ttaip/calificacion/{apelacionId}/subsanar` | Requiere subsanación al ciudadano. | TTAIP |
+    | `POST` | `/ttaip/calificacion/{apelacionId}/inadmitir` | Rechazo por improcedencia. | TTAIP |
+    | `POST` | `/ttaip/calificacion/{apelacionId}/rechazar` | Alias de rechazo. | TTAIP |
+    | `POST` | `/ttaip/calificacion/{apelacionId}/no-presentado` | Cierra por falta de subsanación. | TTAIP |
+    | `POST` | `/ttaip/{apelacionId}/notificar-segunda-calificacion` | Notifica segunda calificación e inicia resolución final. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/fundado` | Resolución final fundada. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/fundada` | Alias femenino. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/infundado` | Resolución final infundada. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/infundada` | Alias femenino. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/fundado-en-parte` | Fundado parcial. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/infundado-en-parte` | Infundado parcial. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/improcedente` | Improcedente final. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/sustraccion-materia` | Conclusión por sustracción de materia. | TTAIP |
+    | `POST` | `/ttaip/resolucion/{apelacionId}/desistimiento` | Conclusión por desistimiento. | TTAIP |
 
     ```json
-    // POST /api/ttaip/calificar/15 — Request
+    // POST /api/ttaip/calificacion/7/subsanar
     {
-      "calificacion": "INADMISIBLE",
-      "observaciones": "Falta adjuntar copia de la solicitud original",
-      "miembroId": 3
+      "miembroId": 3,
+      "fundamentos": "Faltan datos mínimos para evaluar la apelación.",
+      "observaciones": "Debe precisar el documento solicitado y adjuntar sustento."
     }
     ```
   </TabItem>
-  <TabItem label="Respuestas">
-    **`RespuestaRestController`** — `/api/respuestas`
 
-    | Método | Ruta | Descripción | Auth |
-    |--------|------|-------------|------|
-    | `GET` | `/respuestas/{id}` | Obtener respuesta por ID | Sí |
-    | `GET` | `/respuestas/solicitud/{solicitudId}` | Respuesta de una solicitud | Sí |
-    | `POST` | `/respuestas` | Crear respuesta a solicitud | FUNCIONARIO |
-    | `POST` | `/respuestas/{id}/documentos` | Adjuntar documentos | FUNCIONARIO |
+  <TabItem label="Catálogos">
+    **Ciudadanos, Entidades, Funcionarios y Usuarios**
 
-    ```json
-    // POST /api/respuestas — Request
-    {
-      "solicitudId": 42,
-      "tipoRespuesta": "ENTREGA_PARCIAL",
-      "contenido": "Se adjunta la información disponible..."
-    }
-    ```
+    | Controlador | Método | Ruta | Uso principal |
+    | --- | --- | --- | --- |
+    | `CiudadanoRestController` | `GET` | `/ciudadanos` | Lista ciudadanos. |
+    | `CiudadanoRestController` | `GET` | `/ciudadanos/{id}` | Detalle ciudadano. |
+    | `CiudadanoRestController` | `GET` | `/ciudadanos/dni/{dni}` | Búsqueda por DNI. |
+    | `CiudadanoRestController` | `GET` | `/ciudadanos/{id}/estadisticas` | Métricas personales. |
+    | `CiudadanoRestController` | `POST` | `/ciudadanos` | Alta administrativa. |
+    | `CiudadanoRestController` | `PUT` | `/ciudadanos/{id}` | Actualización. |
+    | `CiudadanoRestController` | `PATCH` | `/ciudadanos/{id}/estado` | Activar/desactivar. |
+    | `CiudadanoRestController` | `DELETE` | `/ciudadanos/{id}` | Eliminación administrativa. |
+    | `EntidadRestController` | `GET` | `/entidades` | Lista entidades. |
+    | `EntidadRestController` | `GET` | `/entidades/activas` | Entidades activas. |
+    | `EntidadRestController` | `GET` | `/entidades/{id}` | Detalle entidad. |
+    | `EntidadRestController` | `GET` | `/entidades/{id}/estadisticas` | Indicadores por entidad. |
+    | `EntidadRestController` | `GET` | `/entidades/buscar?nombre=` | Búsqueda por nombre. |
+    | `EntidadRestController` | `POST` | `/entidades` | Crear entidad. |
+    | `EntidadRestController` | `PUT` | `/entidades/{id}` | Actualizar entidad. |
+    | `EntidadRestController` | `PATCH` | `/entidades/{id}/estado` | Activar/desactivar. |
+    | `EntidadRestController` | `DELETE` | `/entidades/{id}` | Eliminación administrativa. |
+    | `FuncionarioRestController` | `GET` | `/funcionarios` | Lista funcionarios. |
+    | `FuncionarioRestController` | `GET` | `/funcionarios/{id}` | Detalle funcionario. |
+    | `FuncionarioRestController` | `GET` | `/funcionarios/entidad/{entidadId}` | Funcionarios por entidad. |
+    | `FuncionarioRestController` | `POST` | `/funcionarios` | Alta administrativa. |
+    | `FuncionarioRestController` | `PUT` | `/funcionarios/{id}` | Actualización. |
+    | `FuncionarioRestController` | `PATCH` | `/funcionarios/{id}/estado` | Activar/desactivar. |
+    | `FuncionarioRestController` | `DELETE` | `/funcionarios/{id}` | Eliminación administrativa. |
+    | `UsuarioRestController` | `GET` | `/usuarios` | Administración de usuarios. |
+    | `UsuarioRestController` | `POST` | `/usuarios` | Crear usuario por rol. |
+    | `UsuarioRestController` | `PATCH` | `/usuarios/{id}/estado` | Activar/desactivar usuario. |
+    | `UsuarioRestController` | `DELETE` | `/usuarios/{id}` | Eliminar usuario. |
   </TabItem>
-  <TabItem label="Otros">
-    **`EntidadRestController`** — `/api/entidades`
 
-    | Método | Ruta | Descripción |
-    |--------|------|-------------|
-    | `GET` | `/entidades` | Listar todas las entidades |
-    | `GET` | `/entidades/{id}` | Obtener entidad por ID |
-    | `POST` | `/entidades` | Crear entidad (ADMIN) |
+  <TabItem label="Analítica">
+    **Estadísticas, reportes y portal público**
 
-    **`CiudadanoRestController`** — `/api/ciudadanos`
-
-    | Método | Ruta | Descripción |
-    |--------|------|-------------|
-    | `GET` | `/ciudadanos/{id}` | Obtener ciudadano por ID |
-    | `GET` | `/ciudadanos/dni/{dni}` | Buscar por DNI |
-
-    **`FuncionarioRestController`** — `/api/funcionarios`
-
-    | Método | Ruta | Descripción |
-    |--------|------|-------------|
-    | `GET` | `/funcionarios/entidad/{entidadId}` | Funcionarios de una entidad |
-
-    **`EstadisticasRestController`** — `/api/estadisticas`
-
-    | Método | Ruta | Descripción |
-    |--------|------|-------------|
-    | `GET` | `/estadisticas/resumen` | Estadísticas globales |
-    | `GET` | `/estadisticas/por-entidad` | Stats por entidad |
-    | `GET` | `/estadisticas/por-estado` | Stats por estado |
-
-    **`ReportesRestController`** — `/api/reportes`
-
-    | Método | Ruta | Descripción |
-    |--------|------|-------------|
-    | `GET` | `/reportes/solicitudes` | Reporte de solicitudes |
-    | `GET` | `/reportes/apelaciones` | Reporte de apelaciones |
+    | Controlador | Método | Ruta | Uso principal |
+    | --- | --- | --- | --- |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/general` | Resumen ejecutivo global. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/periodo` | Métricas por rango temporal. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/entidad/{entidadId}` | Indicadores por entidad. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/ranking/entidades` | Ranking de cumplimiento. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/distribucion/estados` | Distribución por estados. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/tendencias/mensual` | Tendencia mensual. |
+    | `EstadisticasRestController` | `GET` | `/estadisticas/mensual` | Alias de tendencia mensual. |
+    | `ReportesRestController` | `GET` | `/reportes/solicitudes` | Reporte de solicitudes. |
+    | `ReportesRestController` | `GET` | `/reportes/apelaciones` | Reporte de apelaciones. |
+    | `ReportesRestController` | `GET` | `/reportes/entidades` | Reporte de entidades. |
+    | `ReportesRestController` | `GET` | `/reportes/funcionarios` | Reporte de funcionarios. |
+    | `ReportesRestController` | `GET` | `/reportes/ciudadanos` | Reporte de ciudadanos. |
+    | `ReportesRestController` | `GET` | `/reportes/resumen-ejecutivo` | Resumen ejecutivo. |
+    | `PortalPublicoRestController` | `GET` | `/public/portal` | Datos públicos de portada. |
+    | `AyudaPublicaRestController` | `GET` | `/public/ayuda` | Contenido de ayuda pública. |
   </TabItem>
 </Tabs>
 
-## Paginación
+## Ciclo End-to-End
 
-Los endpoints que retornan listas usan paginación de Spring Data:
+```mermaid
+sequenceDiagram
+    actor C as Ciudadano
+    participant API as Backend API
+    participant E as Entidad
+    participant T as TTAIP
 
-```
-GET /api/solicitudes?page=0&size=20&sort=fechaPresentacion,desc
+    C->>API: POST /auth/registro
+    C->>API: POST /auth/login
+    C->>API: POST /solicitudes
+    API-->>C: SAIP-AAAA-NNNNN
+    E->>API: POST /respuestas/aceptar o /denegar
+    API-->>C: Notificacion de respuesta
+    C->>API: POST /apelaciones
+    API-->>T: Estado EN_CALIFICACION_1
+    T->>API: POST /ttaip/calificacion/{id}/subsanar o /admitir
+    C->>API: POST /apelaciones/{id}/subsanacion
+    T->>API: POST /ttaip/{id}/notificar-segunda-calificacion
+    T->>API: POST /ttaip/resolucion/{id}/fundado
 ```
 
-```json
-{
-  "content": [...],
-  "totalElements": 150,
-  "totalPages": 8,
-  "number": 0,
-  "size": 20,
-  "first": true,
-  "last": false
-}
-```
+## Convenciones
+
+<CardGrid>
+  <Card title="Autenticación" icon="lock">
+    Usar `Authorization: Bearer <token>` en toda operación protegida.
+  </Card>
+  <Card title="Errores" icon="warning">
+    Los errores se centralizan en `GlobalExceptionHandler`; ver [Códigos de Error](/api/codigos-error/).
+  </Card>
+  <Card title="Contrato" icon="puzzle">
+    Si cambian DTOs o rutas, regenerar OpenAPI y sincronizar consumidores.
+  </Card>
+  <LinkCard title="Postman" href="/api/postman/" description="Colección completa, ambientes y ejemplos documentados." />
+</CardGrid>

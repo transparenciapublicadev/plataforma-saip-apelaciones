@@ -453,7 +453,7 @@ graph TB
     end
     
     subgraph Mobile["📱 Mobile (Android)"]
-        MB_Auth["Firebase Auth<br/>Biometric"]
+        MB_Auth["JWT Session<br/>Secure Storage"]
         MB_Screen["Screens<br/>Compose UI"]
         MB_VM["ViewModels<br/>StateFlow"]
         MB_DB["SQLDelight<br/>Offline Storage"]
@@ -504,11 +504,9 @@ stateDiagram-v2
     VENCIDA --> [*]
     CONCLUIDA --> [*]
     
-    RESPONDIDA --> PENDIENTE_ELEVACION : Ciudadano apela (15 días)
-    DENEGADA --> PENDIENTE_ELEVACION : Ciudadano apela (15 días)
-    VENCIDA --> PENDIENTE_ELEVACION : Ciudadano apela
-    
-    PENDIENTE_ELEVACION --> EN_CALIFICACION_1 : Elevación (2 días)
+    RESPONDIDA --> EN_CALIFICACION_1 : Ciudadano apela (15 días)
+    DENEGADA --> EN_CALIFICACION_1 : Ciudadano apela (15 días)
+    VENCIDA --> EN_CALIFICACION_1 : Ciudadano apela
     EN_CALIFICACION_1 --> EN_SUBSANACION : Inadmisible
     EN_CALIFICACION_1 --> RESUELTO_IMPROCEDENTE : Improcedente
     
