@@ -6,289 +6,400 @@
       "key": "baseUrl",
       "value": "http://localhost:8080/api",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "URL base de la API backend sin slash final. Ejemplo local: http://localhost:8080/api."
     },
     {
       "key": "ciudadanoId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de ciudadano seed usado para crear y consultar SAIP."
     },
     {
       "key": "funcionarioId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de funcionario seed usado para respuestas de entidad."
     },
     {
       "key": "entidadId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de entidad pública seed receptora de solicitudes."
     },
     {
       "key": "solicitudId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de SAIP existente para consultas y respuestas."
     },
     {
       "key": "apelacionId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de apelación existente para operaciones TTAIP."
     },
     {
       "key": "miembroTTAIPId",
       "value": "11",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de miembro TTAIP que firma calificaciones/resoluciones."
     },
     {
       "key": "respuestaId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "ID de respuesta existente para consultas."
     },
     {
       "key": "solicitudExpediente",
       "value": "SAIP-2025-00001",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Expediente SAIP autenticado, formato SAIP-AAAA-NNNNN."
     },
     {
       "key": "solicitudEstado",
       "value": "RECEPCIONADA",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Estado SAIP usado para filtros."
     },
     {
       "key": "apelacionExpediente",
       "value": "01560-2025-JUS/TTAIP",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Expediente TTAIP, formato NNNNN-AAAA-JUS/TTAIP."
     },
     {
       "key": "apelacionEstado",
       "value": "EN_CALIFICACION_1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Estado TTAIP usado para filtros."
     },
     {
       "key": "securityUsername",
       "value": "admin@saip.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "securityPassword",
       "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "ciudadanoUsername",
       "value": "ciudadano01@gmail.com",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "ciudadanoPassword",
       "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "funcionarioUsername",
-      "value": "func.minedu@minedu.gob.pe",
+      "value": "func.minjusdh@minjusdh.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "funcionarioPassword",
       "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "ttaipUsername",
-      "value": "ttaip01@minjus.gob.pe",
+      "value": "tvalverde@minjus.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Usuario TTAIP real de la Primera Sala para validar login y operaciones de tribunal."
     },
     {
       "key": "ttaipPassword",
       "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "adminUsername",
       "value": "admin@saip.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "adminPassword",
       "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "ciudadanoToken",
       "value": "TOKEN_CIUDADANO_LOGIN",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "JWT dinámico generado por Login - Ciudadano."
     },
     {
       "key": "funcionarioToken",
       "value": "TOKEN_FUNCIONARIO_LOGIN",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "JWT dinámico generado por Login - Funcionario."
     },
     {
       "key": "ttaipToken",
       "value": "TOKEN_TTAIP_LOGIN",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "JWT dinámico generado por Login - TTAIP."
     },
     {
       "key": "adminToken",
       "value": "TOKEN_ADMIN_LOGIN",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "JWT dinámico generado por Login - Administrador."
     },
     {
       "key": "createdCiudadanoId",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdEntidadId",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdFuncionarioId",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdSolicitudId",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdApelacionId",
       "value": "1",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "registroEmail",
       "value": "registro.seed@saip.test",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "registroDni",
       "value": "70000999",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "crearCiudadanoEmail",
       "value": "ciudadano.api@saip.test",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "crearCiudadanoDni",
       "value": "70000898",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "updateCiudadanoEmail",
       "value": "ciudadano.api.update@saip.test",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdEntidadAcronimo",
       "value": "MINEDU",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdEntidadNombre",
       "value": "Ministerio de Educacion",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdEntidadEmail",
       "value": "mesa.partes@minedu.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "updatedEntidadEmail",
       "value": "mesa.partes.update@minedu.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdFuncionarioEmail",
       "value": "func.api@minedu.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "updatedFuncionarioEmail",
       "value": "func.api.update@minedu.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdSolicitudId2",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdSolicitudId3",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "createdSolicitudId4",
-      "value": "1",
+      "value": "",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "funcionarioEntidadId",
-      "value": "1",
+      "value": "8",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     },
     {
       "key": "funcionarioUsernameFallback",
-      "value": "func.enedu@enedu.test",
+      "value": "func.minjusdh@minjusdh.gob.pe",
       "type": "default",
-      "enabled": true
+      "enabled": true,
+      "description": "Fallback alineado con database/script_saip_db.sql para login de funcionario."
     },
     {
       "key": "funcionarioPasswordFallback",
-      "value": "123456",
+      "value": "Saip2026*",
       "type": "secret",
-      "enabled": true
+      "enabled": true,
+      "description": "Fallback alineado con database/script_saip_db.sql para login de funcionario."
+    },
+    {
+      "key": "usuarioId",
+      "value": "1",
+      "type": "default",
+      "enabled": true,
+      "description": "ID de usuario base para activar/desactivar."
+    },
+    {
+      "key": "createdUsuarioId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID capturado al crear usuario desde administración."
+    },
+    {
+      "key": "adminUsuarioEmail",
+      "value": "usuario.api.generated@saip.test",
+      "type": "default",
+      "enabled": true,
+      "description": "Email único para crear usuario desde administración."
+    },
+    {
+      "key": "adminUsuarioPassword",
+      "value": "Saip2026*",
+      "type": "secret",
+      "enabled": true,
+      "description": "Password del usuario creado desde administración."
+    },
+    {
+      "key": "consultaPublicaExpediente",
+      "value": "SAIP-2025-00001",
+      "type": "default",
+      "enabled": true,
+      "description": "Expediente SAIP usado por consulta pública enmascarada; debe existir en database/script_saip_db.sql."
+    },
+    {
+      "key": "reportDesde",
+      "value": "2026-01-01",
+      "type": "default",
+      "enabled": true,
+      "description": "Fecha inicial para filtros de reportes en formato YYYY-MM-DD."
+    },
+    {
+      "key": "reportHasta",
+      "value": "2026-12-31",
+      "type": "default",
+      "enabled": true,
+      "description": "Fecha final para filtros de reportes en formato YYYY-MM-DD."
+    },
+    {
+      "key": "rankingLimite",
+      "value": "10",
+      "type": "default",
+      "enabled": true,
+      "description": "Cantidad máxima de entidades en ranking."
+    },
+    {
+      "key": "periodo",
+      "value": "mes",
+      "type": "default",
+      "enabled": true,
+      "description": "Variable operativa usada por la colección SAIP."
     }
   ],
   "_postman_variable_scope": "environment"
