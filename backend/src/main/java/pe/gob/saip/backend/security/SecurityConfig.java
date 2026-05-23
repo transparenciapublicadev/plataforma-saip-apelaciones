@@ -4,7 +4,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,7 +19,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import pe.gob.saip.backend.exception.ApiProblemDetails;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
 import java.util.List;
 
 @Configuration
@@ -25,12 +31,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final JsonMapper jsonMapper;
 
     @Value("${app.cors.allowed-origin-patterns:http://localhost:4200,http://localhost:4201,http://localhost:4300,http://localhost:5173,http://127.0.0.1:4200,http://127.0.0.1:4201,http://127.0.0.1:4300,http://127.0.0.1:5173,https://web.postman.co,https://*.postman.com,https://*.postman.co}")
     private List<String> allowedOriginPatterns;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, JsonMapper jsonMapper) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.jsonMapper = jsonMapper;
     }
 
     @Bean
@@ -46,16 +54,30 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .anonymous(anonymous -> anonymous.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(
-                        (request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado")))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> writeProblem(response,
+                                ApiProblemDetails.create(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Unauthorized",
+                                        "Token faltante, inválido o expirado.",
+                                        request.getRequestURI())))
+                        .accessDeniedHandler((request, response, accessDeniedException) -> writeProblem(response,
+                                ApiProblemDetails.create(
+                                        HttpStatus.FORBIDDEN,
+                                        "Forbidden",
+                                        "El usuario autenticado no tiene permisos para ejecutar esta operación.",
+                                        request.getRequestURI()))))
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.GET, resourceMatchers("/api/public")).permitAll()
+                        .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes/publica/expediente")).permitAll()
 
                         .requestMatchers(resourceMatchers("/api/ciudadanos")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(resourceMatchers("/api/usuarios")).hasRole("ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "ADMINISTRADOR")
@@ -129,6 +151,13 @@ public class SecurityConfig {
 
     private static String[] resourceMatchers(String basePath) {
         return new String[]{basePath, basePath + "/**"};
+    }
+
+    private void writeProblem(HttpServletResponse response, ProblemDetail problem) throws IOException {
+        response.setStatus(problem.getStatus());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        jsonMapper.writeValue(response.getOutputStream(), problem);
     }
 }
 
