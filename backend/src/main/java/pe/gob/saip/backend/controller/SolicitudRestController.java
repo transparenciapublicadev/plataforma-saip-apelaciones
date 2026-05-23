@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
@@ -54,6 +55,15 @@ public class SolicitudRestController {
         Solicitud solicitud = solicitudService.findByExpediente(expediente)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+    }
+
+    @Operation(summary = "Consulta pública enmascarada de solicitud por expediente")
+    @GetMapping("/publica/expediente/{expediente}")
+    public ResponseEntity<ConsultaPublicaSolicitudDTO> obtenerPublicaPorExpediente(
+            @Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
+        Solicitud solicitud = solicitudService.findByExpediente(expediente)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
+        return ResponseEntity.ok(ConsultaPublicaSolicitudDTO.from(solicitud));
     }
 
     @Operation(summary = "Listar solicitudes por ciudadano")
@@ -145,7 +155,11 @@ public class SolicitudRestController {
         if (solicitudDTO.prioridad() != null) {
             try {
                 solicitud.setPrioridad(Solicitud.Prioridad.valueOf(solicitudDTO.prioridad().toUpperCase()));
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Prioridad no válida: " + solicitudDTO.prioridad()
+                        + ". Valores permitidos: BAJA, NORMAL, MEDIA, ALTA, URGENTE");
+            }
         }
 
         solicitud = solicitudService.save(solicitud);
