@@ -112,7 +112,7 @@ class CrearApelacionUseCase(
             exposicionHechos = params.exposicionHechos,
             pretension = params.pretension,
             fechaPresentacion = fechaActual,
-            estado = EstadoApelacion.PENDIENTE_ELEVACION,
+            estado = EstadoApelacion.EN_CALIFICACION_1,
             timeline = listOf(
                 TimelineItem(
                     fecha = fechaActual,

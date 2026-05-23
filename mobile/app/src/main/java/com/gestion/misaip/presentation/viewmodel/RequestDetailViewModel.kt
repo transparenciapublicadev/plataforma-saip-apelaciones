@@ -106,7 +106,7 @@ class RequestDetailViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // Sincronizar datos desde Firestore antes de buscar localmente.
+            // Sincronizar datos desde el backend REST antes de buscar localmente.
             // Esto asegura que los datos estén disponibles cuando se abre
             // desde una notificación push en otro dispositivo.
             try {
@@ -120,7 +120,7 @@ class RequestDetailViewModel(
     }
 
     /**
-     * Recarga el detalle desde la BD local SIN sincronizar Firestore primero.
+     * Recarga el detalle desde la BD local sin sincronizar primero.
      * Usado por el listener de refreshSignal que ya sincronizó antes de llamar aquí.
      */
     private fun cargarDetalleSinSync(expediente: String) {
@@ -183,7 +183,7 @@ class RequestDetailViewModel(
                         apelacionRelacionada.estado.toDisplayString()
                     } else {
                         when (apelacionRelacionada.estado) {
-                            EstadoApelacion.PENDIENTE_ELEVACION -> "Pendiente de Elevación"
+                            EstadoApelacion.PENDIENTE_ELEVACION -> "En Primera Calificación"
                             EstadoApelacion.EN_CALIFICACION_1 -> "En Primera Calificación"
                             EstadoApelacion.EN_SUBSANACION -> "Requiere Subsanación"
                             EstadoApelacion.EN_CALIFICACION_2 -> "En Segunda Calificación"
@@ -431,7 +431,7 @@ class RequestDetailViewModel(
                         // Notificar al TTAIP que el ciudadano presentó subsanación
                         NotificationPushHelper.notificarSubsanacionPresentada(
                             expediente = apelacion.expediente,
-                            recurrente = apelacion.apelante?.nombre ?: ""
+                            recurrente = apelacion.apelante.nombre
                         )
 
                         // Recargar desde el expediente actual (SAIP o apelación)

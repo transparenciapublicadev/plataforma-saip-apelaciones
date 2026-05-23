@@ -114,7 +114,7 @@ class CitizenDashboardViewModel(
                     } else {
                         when (apelVinculada.estado) {
                             com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE_ELEVACION ->
-                                "Pendiente de Elevación"
+                                "En Primera Calificación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_1 ->
                                 "En Primera Calificación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_SUBSANACION ->
@@ -190,7 +190,7 @@ class CitizenDashboardViewModel(
     }
 
     /**
-     * Sincroniza datos desde Firestore y recarga la UI.
+     * Sincroniza datos desde el backend REST y recarga la UI.
      * Se ejecuta cuando se recibe una notificación push relevante.
      */
     private fun sincronizarYRecargar() {

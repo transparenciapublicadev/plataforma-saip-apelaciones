@@ -35,7 +35,7 @@
       </div>
     } @else {
       <div
-        class="grid grid-cols-1 md:grid-cols-3 gap-4"
+        class="grid grid-cols-1 md:grid-cols-4 gap-4"
         data-motion-stagger
         data-motion-y="10"
         data-motion-duration="0.34"
@@ -44,6 +44,7 @@
         @for (stat of [
           { label: 'Expediente SAIP', value: dataView().expedienteSAIP, icon: 'hash', mono: true },
           { label: 'Fecha apelacion', value: (dataView().fechaApelacion | date:'dd/MM/yyyy') || '—', icon: 'calendar', mono: true },
+          { label: 'Sala asignada', value: salaAsignada(), icon: 'entity', mono: false },
           { label: 'Entidad', value: dataView().entidad, icon: 'entity', mono: false }
         ]; track stat.label) {
           <div class="stat-card" data-motion-item>
@@ -128,6 +129,115 @@
                   </div>
                 </div>
 
+                @if (expedienteTtaip(); as expediente) {
+                  <div>
+                    <span class="eyebrow" style="color: var(--brand-700)">Expediente TTAIP · agregado principal</span>
+                    <div class="mt-2 rounded-lg p-4 space-y-4" style="background: var(--card); border: 1px solid var(--border)">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span class="eyebrow">Sala asignada</span>
+                          <div class="font-display text-lg mt-1">{{ salaAsignada() }}</div>
+                          <div class="text-xs text-muted-foreground mt-0.5">
+                            {{ expediente.sala?.periodoInicio || 'Periodo no registrado' }} · {{ expediente.sala?.periodoFin || 'vigente' }}
+                          </div>
+                        </div>
+                        <div>
+                          <span class="eyebrow">Miembros asignados</span>
+                          <div class="mt-1 space-y-1">
+                            @for (miembro of miembrosSala(); track miembro.id) {
+                              <div class="flex items-center justify-between gap-2 text-xs">
+                                <span class="truncate">{{ miembro.nombre }}</span>
+                                <span class="font-mono text-muted-foreground shrink-0">{{ miembro.cargo || 'Miembro' }}</span>
+                              </div>
+                            } @empty {
+                              <div class="text-xs text-muted-foreground">Sin miembros asignados por el backend.</div>
+                            }
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="rule-ornament"></div>
+
+                      <div class="space-y-3">
+                        <span class="eyebrow">Resoluciones, cédulas y notificaciones</span>
+                        @for (resolucion of resolucionesExpediente(); track resolucion.id) {
+                          <div class="rounded-md p-3" style="background: var(--background); border: 1px solid var(--border)">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <div class="font-mono text-xs">{{ resolucion.numeroResolucion || 'Resolución sin número' }}</div>
+                                <div class="text-xs text-muted-foreground mt-0.5">{{ resolucion.tipoResolucion }} · {{ resolucion.decision }}</div>
+                              </div>
+                              <span class="pill">{{ resolucion.sala?.nombre || salaAsignada() }}</span>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                              @for (cedula of resolucion.cedulas || []; track cedula.id) {
+                                <div class="rounded-md p-2 text-xs" style="background: var(--card); border: 1px dashed var(--border)">
+                                  <div class="font-mono">{{ cedula.documentoReferencia || cedula.numeroCedula }}</div>
+                                  <div class="text-muted-foreground mt-1">{{ cedula.destinatario === 'CIUDADANO' ? 'Ciudadano' : 'Entidad pública' }} · {{ cedula.estado || 'EMITIDA' }}</div>
+                                </div>
+                              } @empty {
+                                <div class="text-xs text-muted-foreground">Sin cédulas registradas para esta resolución.</div>
+                              }
+                            </div>
+                          </div>
+                        } @empty {
+                          <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--background); border: 1px dashed var(--border)">
+                            Sin resoluciones registradas por el backend.
+                          </div>
+                        }
+                      </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        @for (notificacion of notificacionesExpediente(); track notificacion.id) {
+                          <div class="rounded-md p-2 text-xs" style="background: var(--background); border: 1px solid var(--border)">
+                            <div class="font-semibold">{{ notificacion.destinatario === 'CIUDADANO' ? 'Notificación al ciudadano' : 'Notificación a la entidad pública' }}</div>
+                            <div class="font-mono text-muted-foreground mt-1">{{ notificacion.numeroCedula || 'Sin cédula' }} · {{ notificacion.estado || 'NOTIFICADA' }}</div>
+                          </div>
+                        }
+                      </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="rounded-md p-3" style="background: var(--background); border: 1px solid var(--border)">
+                          <span class="eyebrow">Trazabilidad del trámite</span>
+                          <div class="mt-3 space-y-2">
+                            @for (evento of historialExpediente(); track evento.id) {
+                              <div class="text-xs">
+                                <div class="flex items-center justify-between gap-2">
+                                  <span class="font-semibold">{{ evento.tipoEvento || 'EVENTO_TTAIP' }}</span>
+                                  <span class="font-mono text-muted-foreground">{{ evento.fechaEvento | date:'dd/MM/yyyy HH:mm' }}</span>
+                                </div>
+                                <p class="text-foreground/75 mt-1 leading-relaxed">{{ evento.descripcion || evento.referencia }}</p>
+                              </div>
+                            } @empty {
+                              <p class="text-xs text-muted-foreground">Sin historial estructurado registrado por el backend.</p>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="rounded-md p-3" style="background: var(--background); border: 1px solid var(--border)">
+                          <span class="eyebrow">Reprocesos de notificación</span>
+                          <div class="mt-3 space-y-2">
+                            @for (reproceso of reprocesosExpediente(); track reproceso.id) {
+                              <div class="rounded-md p-2 text-xs" style="background: var(--card); border: 1px dashed var(--border)">
+                                <div class="flex items-center justify-between gap-2">
+                                  <span class="font-mono">{{ reproceso.numeroCedulaOriginal || 'Cédula sin número' }}</span>
+                                  <span class="pill">{{ reproceso.estado || 'PENDIENTE' }}</span>
+                                </div>
+                                <div class="text-muted-foreground mt-1">
+                                  {{ reproceso.destinatario === 'CIUDADANO' ? 'Ciudadano' : 'Entidad pública' }} · intento {{ reproceso.numeroIntento || 1 }}
+                                </div>
+                                <p class="text-foreground/75 mt-1 leading-relaxed">{{ reproceso.observacionReproceso || 'Reproceso registrado por el backend.' }}</p>
+                              </div>
+                            } @empty {
+                              <p class="text-xs text-muted-foreground">Sin reprocesos registrados para este expediente.</p>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
                 @if (mostrarCajaResultado()) {
                   <div>
                     <span class="eyebrow">Resolucion final</span>
@@ -166,6 +276,10 @@
                     <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" aria-label="Descargar adjunto">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
+                  </div>
+                } @empty {
+                  <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
+                    No hay adjuntos registrados por el backend para este expediente.
                   </div>
                 }
               </div>

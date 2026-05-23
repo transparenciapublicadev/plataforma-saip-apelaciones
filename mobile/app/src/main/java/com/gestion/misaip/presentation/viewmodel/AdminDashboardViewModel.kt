@@ -124,7 +124,7 @@ class AdminDashboardViewModel(
 
     /**
      * Carga todos los datos desde la BD local (SQLDelight).
-     * Los datos fueron previamente sincronizados desde Firebase.
+     * Los datos fueron previamente sincronizados desde el backend REST.
      */
     fun cargarDatos() {
         viewModelScope.launch {
@@ -144,9 +144,7 @@ class AdminDashboardViewModel(
                 val solVencidas = solicitudes.count { it.estaVencida }
 
                 // Desglose de apelaciones por estado
-                val apelPendientes = apelaciones.count {
-                    it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE_ELEVACION
-                }
+                val apelPendientes = 0
                 val apelEnCalif = apelaciones.count {
                     it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_1 ||
                     it.estado == com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_2
@@ -257,7 +255,7 @@ class AdminDashboardViewModel(
     }
 
     /**
-     * Sincroniza datos desde Firestore y recarga la UI.
+     * Sincroniza datos desde el backend REST y recarga la UI.
      * Se ejecuta cuando se recibe una notificación push relevante.
      */
     private fun sincronizarYRecargar() {

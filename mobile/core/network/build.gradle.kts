@@ -47,11 +47,6 @@ dependencies {
     // Coroutines
     implementation(libs.bundles.coroutines)
 
-    // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
-
     // Koin
     implementation(libs.koin.android)
 
@@ -64,4 +59,3 @@ dependencies {
     // Testing
     testImplementation(libs.bundles.testing)
 }
-

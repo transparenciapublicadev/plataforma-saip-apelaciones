@@ -1,0 +1,84 @@
+{
+  "collection": "SAIP-API-Collection-Complete.json",
+  "environment": "SAIP-API-Environment-Complete.json",
+  "reportsDir": "reports",
+  "timeoutRequest": 15000,
+  "delayRequest": 75,
+  "reporters": [
+    "cli",
+    "json",
+    "junit",
+    "htmlextra"
+  ],
+  "diagnosticStatusCodes": [
+    400,
+    401,
+    403,
+    404,
+    409,
+    422,
+    500
+  ],
+  "seedExpectations": [
+    {
+      "key": "ciudadanoUsername",
+      "expected": "ciudadano01@gmail.com",
+      "category": "credenciales incorrectas",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "funcionarioUsername",
+      "expected": "func.minjusdh@minjusdh.gob.pe",
+      "category": "credenciales incorrectas",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "funcionarioUsernameFallback",
+      "expected": "func.minjusdh@minjusdh.gob.pe",
+      "category": "credenciales incorrectas",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "ttaipUsername",
+      "expected": "tvalverde@minjus.gob.pe",
+      "category": "credenciales incorrectas",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "adminUsername",
+      "expected": "admin@saip.gob.pe",
+      "category": "credenciales incorrectas",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "solicitudExpediente",
+      "expected": "SAIP-2025-00001",
+      "category": "seed SQL desalineado",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "consultaPublicaExpediente",
+      "expected": "SAIP-2025-00001",
+      "category": "seed SQL desalineado",
+      "source": "database/script_saip_db.sql"
+    },
+    {
+      "key": "apelacionExpediente",
+      "expected": "01560-2025-JUS/TTAIP",
+      "category": "seed SQL desalineado",
+      "source": "database/script_saip_db.sql"
+    }
+  ],
+  "runtimeVariables": [
+    "funcionarioLoginUsername",
+    "funcionarioLoginPassword",
+    "targetEntidadId",
+    "adminUsuarioEmail"
+  ],
+  "tokenVariables": [
+    "ciudadanoToken",
+    "funcionarioToken",
+    "ttaipToken",
+    "adminToken"
+  ]
+}

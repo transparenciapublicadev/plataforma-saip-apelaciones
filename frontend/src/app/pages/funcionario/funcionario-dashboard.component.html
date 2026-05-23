@@ -34,9 +34,9 @@
           <div class="min-w-[140px]">
             <span class="eyebrow">Cumplimiento del plazo legal</span>
             <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
-            <div class="flex items-center gap-1 text-xs mt-0.5" [style.color]="cumplimientoDelta() >= 0 ? 'var(--success)' : 'var(--brand-700)'">
-              <svg class="w-3 h-3" [style.transform]="cumplimientoDelta() < 0 ? 'rotate(180deg)' : 'none'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m3 17 6-6 4 4 8-8"/></svg>
-              {{ cumplimientoDelta() >= 0 ? '+' : '' }}{{ cumplimientoDelta() }}pp vs. mes ant.
+            <div class="flex items-center gap-1 text-xs mt-0.5" style="color: var(--muted-foreground)">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 12h16M4 6h16M4 18h10"/></svg>
+              Calculado con datos actuales del backend
             </div>
           </div>
         </div>

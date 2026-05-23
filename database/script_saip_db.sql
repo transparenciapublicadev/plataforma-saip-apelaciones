@@ -9,6 +9,165 @@ USE saip_db;
 -- Normalizar columnas de resultado para decisiones/resoluciones largas
 ALTER TABLE apelaciones MODIFY COLUMN resultado VARCHAR(60) NULL;
 ALTER TABLE resoluciones MODIFY COLUMN resultado VARCHAR(60) NULL;
+ALTER TABLE resoluciones MODIFY COLUMN numero_resolucion VARCHAR(120) NULL;
+
+-- Estructura TTAIP idempotente: expediente agregado, salas, cédulas y notificaciones.
+DROP PROCEDURE IF EXISTS add_column_if_missing;
+DELIMITER //
+CREATE PROCEDURE add_column_if_missing(IN p_table VARCHAR(64), IN p_column VARCHAR(64), IN p_definition TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = p_table
+          AND COLUMN_NAME = p_column
+    ) THEN
+        SET @ddl = CONCAT('ALTER TABLE ', p_table, ' ADD COLUMN ', p_column, ' ', p_definition);
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
+CALL add_column_if_missing('miembros_ttaip', 'periodo_inicio', 'DATE NULL');
+CALL add_column_if_missing('miembros_ttaip', 'periodo_fin', 'DATE NULL');
+CALL add_column_if_missing('miembros_ttaip', 'presidente_tribunal', 'TINYINT(1) NULL DEFAULT 0');
+CALL add_column_if_missing('resoluciones', 'id_expediente_ttaip', 'BIGINT NULL');
+CALL add_column_if_missing('resoluciones', 'id_sala_ttaip', 'BIGINT NULL');
+
+DROP PROCEDURE IF EXISTS add_column_if_missing;
+
+CREATE TABLE IF NOT EXISTS salas_ttaip (
+    id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(40) NOT NULL,
+    periodo_inicio DATE NOT NULL,
+    periodo_fin DATE NOT NULL,
+    id_presidente_sala BIGINT NULL,
+    activa TINYINT(1) NOT NULL DEFAULT 1,
+    PRIMARY KEY (id_sala_ttaip),
+    UNIQUE KEY uk_salas_ttaip_nombre (nombre),
+    KEY idx_sala_ttaip_presidente (id_presidente_sala),
+    CONSTRAINT fk_sala_ttaip_presidente FOREIGN KEY (id_presidente_sala) REFERENCES miembros_ttaip (id_usuario)
+);
+
+CREATE TABLE IF NOT EXISTS expedientes_ttaip (
+    id_expediente_ttaip BIGINT NOT NULL AUTO_INCREMENT,
+    numero_expediente VARCHAR(50) NOT NULL,
+    id_apelacion BIGINT NOT NULL,
+    id_sala_ttaip BIGINT NOT NULL,
+    estado VARCHAR(40) NOT NULL,
+    fecha_apertura DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL,
+    fecha_primera_calificacion DATETIME NULL,
+    fecha_segunda_calificacion DATETIME NULL,
+    fecha_resolucion_final DATETIME NULL,
+    fecha_limite_resolucion DATE NULL,
+    trazabilidad_minima TEXT NULL,
+    PRIMARY KEY (id_expediente_ttaip),
+    UNIQUE KEY uk_expedientes_ttaip_numero (numero_expediente),
+    UNIQUE KEY uk_expedientes_ttaip_apelacion (id_apelacion),
+    KEY idx_expedientes_ttaip_sala (id_sala_ttaip),
+    KEY idx_expedientes_ttaip_estado (estado),
+    CONSTRAINT fk_expediente_ttaip_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelaciones (id_apelacion),
+    CONSTRAINT fk_expediente_ttaip_sala FOREIGN KEY (id_sala_ttaip) REFERENCES salas_ttaip (id_sala_ttaip)
+);
+
+CREATE TABLE IF NOT EXISTS expediente_ttaip_miembros (
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_miembro_ttaip BIGINT NOT NULL,
+    PRIMARY KEY (id_expediente_ttaip, id_miembro_ttaip),
+    KEY idx_expediente_miembro_ttaip_miembro (id_miembro_ttaip),
+    CONSTRAINT fk_expediente_miembro_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_expediente_miembro_ttaip_miembro FOREIGN KEY (id_miembro_ttaip) REFERENCES miembros_ttaip (id_usuario)
+);
+
+CREATE TABLE IF NOT EXISTS cedulas_notificacion (
+    id_cedula BIGINT NOT NULL AUTO_INCREMENT,
+    id_resolucion BIGINT NOT NULL,
+    numero_cedula VARCHAR(50) NOT NULL,
+    destinatario VARCHAR(30) NOT NULL,
+    destinatario_nombre VARCHAR(200) NULL,
+    destinatario_email VARCHAR(150) NULL,
+    fecha_emision DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    canal VARCHAR(40) NULL DEFAULT 'CASILLA_ELECTRONICA',
+    estado VARCHAR(40) NULL DEFAULT 'EMITIDA',
+    documento_referencia VARCHAR(500) NULL,
+    PRIMARY KEY (id_cedula),
+    UNIQUE KEY uk_cedula_numero_destinatario (numero_cedula, destinatario),
+    KEY idx_cedula_resolucion (id_resolucion),
+    CONSTRAINT fk_cedula_resolucion FOREIGN KEY (id_resolucion) REFERENCES resoluciones (id_resolucion)
+);
+
+CREATE TABLE IF NOT EXISTS notificaciones_ttaip (
+    id_notificacion BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_cedula BIGINT NOT NULL,
+    destinatario VARCHAR(30) NOT NULL,
+    destinatario_nombre VARCHAR(200) NULL,
+    destinatario_email VARCHAR(150) NULL,
+    fecha_notificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    medio VARCHAR(40) NULL DEFAULT 'CASILLA_ELECTRONICA',
+    estado VARCHAR(40) NULL DEFAULT 'NOTIFICADA',
+    detalle TEXT NULL,
+    PRIMARY KEY (id_notificacion),
+    UNIQUE KEY uk_notificacion_cedula (id_cedula),
+    KEY idx_notificacion_expediente (id_expediente_ttaip),
+    KEY idx_notificacion_destinatario (destinatario),
+    CONSTRAINT fk_notificacion_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_notificacion_cedula FOREIGN KEY (id_cedula) REFERENCES cedulas_notificacion (id_cedula)
+);
+
+CREATE TABLE IF NOT EXISTS historial_ttaip (
+    id_historial BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    tipo_evento VARCHAR(40) NOT NULL,
+    descripcion TEXT NOT NULL,
+    estado_anterior VARCHAR(60) NULL,
+    estado_nuevo VARCHAR(60) NULL,
+    actor VARCHAR(120) NULL DEFAULT 'SISTEMA',
+    referencia VARCHAR(180) NULL,
+    fecha_evento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_historial),
+    KEY idx_historial_ttaip_expediente (id_expediente_ttaip),
+    KEY idx_historial_ttaip_tipo (tipo_evento),
+    KEY idx_historial_ttaip_fecha (fecha_evento),
+    CONSTRAINT fk_historial_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip)
+);
+
+CREATE TABLE IF NOT EXISTS reprocesos_notificacion (
+    id_reproceso BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_notificacion BIGINT NULL,
+    id_cedula_original BIGINT NOT NULL,
+    id_reproceso_padre BIGINT NULL,
+    destinatario VARCHAR(30) NOT NULL,
+    numero_cedula_original VARCHAR(50) NOT NULL,
+    fecha_ingreso_cargo DATE NULL,
+    observacion_reproceso TEXT NULL,
+    fecha_subsanacion DATE NULL,
+    cedula_subsanacion VARCHAR(50) NULL,
+    fecha_cedula_subsanacion DATE NULL,
+    numero_intento INT NOT NULL DEFAULT 1,
+    estado VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+    responsable_notificacion VARCHAR(120) NULL,
+    responsable_subsanacion VARCHAR(120) NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_reproceso),
+    UNIQUE KEY uk_reproceso_cedula_destinatario_intento (id_cedula_original, destinatario, numero_intento),
+    KEY idx_reproceso_expediente (id_expediente_ttaip),
+    KEY idx_reproceso_cedula (id_cedula_original),
+    KEY idx_reproceso_destinatario (destinatario),
+    KEY idx_reproceso_estado (estado),
+    KEY idx_reproceso_notificacion (id_notificacion),
+    KEY idx_reproceso_padre (id_reproceso_padre),
+    CONSTRAINT fk_reproceso_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_reproceso_notificacion FOREIGN KEY (id_notificacion) REFERENCES notificaciones_ttaip (id_notificacion),
+    CONSTRAINT fk_reproceso_cedula FOREIGN KEY (id_cedula_original) REFERENCES cedulas_notificacion (id_cedula),
+    CONSTRAINT fk_reproceso_padre FOREIGN KEY (id_reproceso_padre) REFERENCES reprocesos_notificacion (id_reproceso)
+);
 
 START TRANSACTION;
 
@@ -105,61 +264,118 @@ ON DUPLICATE KEY UPDATE dni             = VALUES(dni),
                         direccion       = VALUES(direccion);
 
 -- -----------------------------------------------------------------------------
--- 3) Miembros TTAIP (10) - acceso frontend: /acceso-ttaip (email + password)
+-- 3) Presidencia y miembros reales TTAIP - acceso frontend: /acceso-ttaip
 -- -----------------------------------------------------------------------------
 INSERT INTO usuarios (email, password, tipo_usuario, fecha_registro, activo)
-VALUES ('ttaip01@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip02@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip03@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip04@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip05@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip06@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip07@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip08@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip09@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
-       ('ttaip10@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE)
+VALUES ('tvalverde@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
+       ('lagurto@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
+       ('szamora@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
+       ('jpichon@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
+       ('jmancilla@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE),
+       ('jrojasb@minjus.gob.pe', 'Saip2026*', 'TTAIP', NOW(), TRUE)
 ON DUPLICATE KEY UPDATE password     = VALUES(password),
                         tipo_usuario = VALUES(tipo_usuario),
                         activo       = VALUES(activo);
 
-INSERT INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-SELECT u.id_usuario, t.nombre_completo, t.cargo, t.sala, t.especialidad
-FROM (SELECT 'ttaip01@minjus.gob.pe'             AS email,
+INSERT INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+SELECT u.id_usuario,
+       t.nombre_completo,
+       t.cargo,
+       t.sala,
+       t.especialidad,
+       t.periodo_inicio,
+       t.periodo_fin,
+       t.presidente_tribunal
+FROM (SELECT 'tvalverde@minjus.gob.pe'            AS email,
              'Tatiana Azucena Valverde Alvarado' AS nombre_completo,
              'Presidenta'                        AS cargo,
              'PRIMERA SALA'                      AS sala,
-             'Derecho administrativo'            AS especialidad
+             'Derecho administrativo'            AS especialidad,
+             DATE '2025-03-22'                   AS periodo_inicio,
+             DATE '2026-03-21'                   AS periodo_fin,
+             FALSE                               AS presidente_tribunal
       UNION ALL
-      SELECT 'ttaip02@minjus.gob.pe',
+      SELECT 'lagurto@minjus.gob.pe',
              'Luis Guillermo Agurto Villegas',
              'Vocal',
              'PRIMERA SALA',
-             'Transparencia y acceso'
+             'Transparencia y acceso a la informacion',
+             DATE '2025-03-22',
+             DATE '2026-03-21',
+             FALSE
       UNION ALL
-      SELECT 'ttaip03@minjus.gob.pe', 'Segundo Ulises Zamora Barboza', 'Vocal', 'PRIMERA SALA', 'Gestion publica'
+      SELECT 'szamora@minjus.gob.pe',
+             'Segundo Ulises Zamora Barboza',
+             'Vocal',
+             'PRIMERA SALA',
+             'Gestion publica',
+             DATE '2025-03-22',
+             DATE '2026-03-21',
+             FALSE
       UNION ALL
-      SELECT 'ttaip04@minjus.gob.pe',
+      SELECT 'jpichon@minjus.gob.pe',
              'Junior Pichon De la Cruz',
              'Presidente',
              'SEGUNDA SALA',
-             'Procedimiento administrativo'
+             'Procedimiento administrativo',
+             DATE '2025-06-04',
+             DATE '2026-06-03',
+             FALSE
       UNION ALL
-      SELECT 'ttaip05@minjus.gob.pe', 'Julio Cesar Mancilla Crespo', 'Vocal', 'SEGUNDA SALA', 'Derecho constitucional'
+      SELECT 'jmancilla@minjus.gob.pe',
+             'Julio Cesar Mancilla Crespo',
+             'Vocal',
+             'SEGUNDA SALA',
+             'Derecho constitucional',
+             DATE '2025-06-09',
+             DATE '2026-06-08',
+             TRUE
       UNION ALL
-      SELECT 'ttaip06@minjus.gob.pe', 'Jessica Martha Rojas Barrueta', 'Vocal', 'SEGUNDA SALA', 'Proteccion de datos'
-      UNION ALL
-      SELECT 'ttaip07@minjus.gob.pe', 'Miembro TTAIP Demo 07', 'Vocal', 'PRIMERA SALA', 'Acceso a la informacion'
-      UNION ALL
-      SELECT 'ttaip08@minjus.gob.pe', 'Miembro TTAIP Demo 08', 'Vocal', 'SEGUNDA SALA', 'Gestion documental'
-      UNION ALL
-      SELECT 'ttaip09@minjus.gob.pe', 'Miembro TTAIP Demo 09', 'Vocal', 'PRIMERA SALA', 'Gobierno digital'
-      UNION ALL
-      SELECT 'ttaip10@minjus.gob.pe', 'Miembro TTAIP Demo 10', 'Vocal', 'SEGUNDA SALA', 'Analisis normativo') t
+      SELECT 'jrojasb@minjus.gob.pe',
+             'Jessica Martha Rojas Barrueta',
+             'Vocal',
+             'SEGUNDA SALA',
+             'Proteccion de datos',
+             DATE '2025-06-04',
+             DATE '2026-06-03',
+             FALSE) t
          JOIN usuarios u ON u.email = t.email
 ON DUPLICATE KEY UPDATE nombre_completo = VALUES(nombre_completo),
                         cargo           = VALUES(cargo),
                         sala            = VALUES(sala),
-                        especialidad    = VALUES(especialidad);
+                        especialidad    = VALUES(especialidad),
+                        periodo_inicio  = VALUES(periodo_inicio),
+                        periodo_fin     = VALUES(periodo_fin),
+                        presidente_tribunal = VALUES(presidente_tribunal);
+
+UPDATE usuarios u
+    JOIN miembros_ttaip mt ON mt.id_usuario = u.id_usuario
+SET u.activo = FALSE
+WHERE u.tipo_usuario = 'TTAIP'
+  AND u.email NOT IN ('tvalverde@minjus.gob.pe', 'lagurto@minjus.gob.pe', 'szamora@minjus.gob.pe',
+                      'jpichon@minjus.gob.pe', 'jmancilla@minjus.gob.pe', 'jrojasb@minjus.gob.pe');
+
+INSERT INTO salas_ttaip (nombre, periodo_inicio, periodo_fin, id_presidente_sala, activa)
+SELECT 'PRIMERA SALA',
+       DATE '2025-03-22',
+       DATE '2026-03-21',
+       (SELECT u.id_usuario FROM usuarios u WHERE u.email = 'tvalverde@minjus.gob.pe'),
+       TRUE
+ON DUPLICATE KEY UPDATE periodo_inicio = VALUES(periodo_inicio),
+                        periodo_fin = VALUES(periodo_fin),
+                        id_presidente_sala = VALUES(id_presidente_sala),
+                        activa = VALUES(activa);
+
+INSERT INTO salas_ttaip (nombre, periodo_inicio, periodo_fin, id_presidente_sala, activa)
+SELECT 'SEGUNDA SALA',
+       DATE '2025-06-04',
+       DATE '2026-06-03',
+       (SELECT u.id_usuario FROM usuarios u WHERE u.email = 'jpichon@minjus.gob.pe'),
+       TRUE
+ON DUPLICATE KEY UPDATE periodo_inicio = VALUES(periodo_inicio),
+                        periodo_fin = VALUES(periodo_fin),
+                        id_presidente_sala = VALUES(id_presidente_sala),
+                        activa = VALUES(activa);
 
 -- -----------------------------------------------------------------------------
 -- 4) Administrador - acceso frontend: /acceso-admin (email + password)
@@ -478,6 +694,443 @@ WHERE s.expediente = 'SAIP-2025-00005'
                   WHERE a.expediente = '01561-2025-JUS/TTAIP'
                      OR a.id_solicitud = s.id_solicitud);
 
+INSERT INTO apelaciones (expediente,
+                         fundamentos,
+                         estado,
+                         resultado,
+                         calificacion_primera,
+                         calificacion_segunda,
+                         id_solicitud,
+                         id_ciudadano,
+                         fecha_apelacion,
+                         fecha_subsanacion,
+                         dias_subsanacion)
+SELECT '01562-2025-JUS/TTAIP',
+       'Apelo la respuesta emitida y adjunto subsanacion para que el Tribunal emita pronunciamiento de fondo.',
+       'RESUELTO_FUNDADO_EN_PARTE',
+       'FUNDADO_EN_PARTE',
+       'INADMISIBLE',
+       'ADMITIDO',
+       s.id_solicitud,
+       s.id_ciudadano,
+       DATE_SUB(NOW(), INTERVAL 18 DAY),
+       DATE_SUB(CURDATE(), INTERVAL 12 DAY),
+       2
+FROM solicitudes s
+WHERE s.expediente = 'SAIP-2025-00003'
+  AND NOT EXISTS (SELECT 1
+                  FROM apelaciones a
+                  WHERE a.expediente = '01562-2025-JUS/TTAIP'
+                     OR a.id_solicitud = s.id_solicitud);
+
+UPDATE apelaciones
+SET estado = 'EN_RESOLUCION',
+    calificacion_primera = 'ADMISIBLE'
+WHERE expediente = '01560-2025-JUS/TTAIP';
+
+UPDATE apelaciones
+SET estado = 'EN_CALIFICACION_2',
+    calificacion_primera = 'INADMISIBLE',
+    fecha_subsanacion = COALESCE(fecha_subsanacion, CURDATE()),
+    dias_subsanacion = COALESCE(dias_subsanacion, 2)
+WHERE expediente = '01561-2025-JUS/TTAIP';
+
+-- Expediente TTAIP como agregado principal: apelacion -> sala -> miembros -> resoluciones.
+INSERT INTO expedientes_ttaip (numero_expediente,
+                               id_apelacion,
+                               id_sala_ttaip,
+                               estado,
+                               fecha_apertura,
+                               fecha_actualizacion,
+                               fecha_primera_calificacion,
+                               fecha_segunda_calificacion,
+                               fecha_resolucion_final,
+                               fecha_limite_resolucion,
+                               trazabilidad_minima)
+SELECT a.expediente,
+       a.id_apelacion,
+       st.id_sala_ttaip,
+       a.estado,
+       a.fecha_apelacion,
+       NOW(),
+       CASE WHEN a.expediente IN ('01560-2025-JUS/TTAIP', '01561-2025-JUS/TTAIP', '01562-2025-JUS/TTAIP')
+            THEN DATE_ADD(a.fecha_apelacion, INTERVAL 2 DAY) ELSE NULL END,
+       CASE WHEN a.expediente = '01562-2025-JUS/TTAIP'
+            THEN DATE_ADD(a.fecha_apelacion, INTERVAL 7 DAY) ELSE NULL END,
+       CASE WHEN a.expediente = '01562-2025-JUS/TTAIP'
+            THEN DATE_ADD(a.fecha_apelacion, INTERVAL 14 DAY) ELSE NULL END,
+       CASE WHEN a.expediente IN ('01561-2025-JUS/TTAIP', '01562-2025-JUS/TTAIP')
+            THEN DATE_ADD(CURDATE(), INTERVAL 10 DAY) ELSE NULL END,
+       CONCAT(DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), ' - Expediente TTAIP abierto sin etapa de elevacion; sala asignada: ', st.nombre)
+FROM apelaciones a
+         JOIN (SELECT '01560-2025-JUS/TTAIP' AS expediente, 'PRIMERA SALA' AS sala
+               UNION ALL SELECT '01561-2025-JUS/TTAIP', 'SEGUNDA SALA'
+               UNION ALL SELECT '01562-2025-JUS/TTAIP', 'SEGUNDA SALA') map ON map.expediente = a.expediente
+         JOIN salas_ttaip st ON st.nombre = map.sala
+ON DUPLICATE KEY UPDATE id_apelacion = VALUES(id_apelacion),
+                        id_sala_ttaip = VALUES(id_sala_ttaip),
+                        estado = VALUES(estado),
+                        fecha_actualizacion = VALUES(fecha_actualizacion),
+                        fecha_primera_calificacion = VALUES(fecha_primera_calificacion),
+                        fecha_segunda_calificacion = VALUES(fecha_segunda_calificacion),
+                        fecha_resolucion_final = VALUES(fecha_resolucion_final),
+                        fecha_limite_resolucion = VALUES(fecha_limite_resolucion),
+                        trazabilidad_minima = VALUES(trazabilidad_minima);
+
+INSERT IGNORE INTO expediente_ttaip_miembros (id_expediente_ttaip, id_miembro_ttaip)
+SELECT et.id_expediente_ttaip, mt.id_usuario
+FROM expedientes_ttaip et
+         JOIN salas_ttaip st ON st.id_sala_ttaip = et.id_sala_ttaip
+         JOIN miembros_ttaip mt ON mt.sala = st.nombre
+WHERE et.numero_expediente IN ('01560-2025-JUS/TTAIP', '01561-2025-JUS/TTAIP', '01562-2025-JUS/TTAIP');
+
+-- Resoluciones de prueba: la resolucion incluye sala; la cedula mantiene JUS/TTAIP sin sufijo de sala.
+INSERT INTO resoluciones (id_apelacion,
+                          id_expediente_ttaip,
+                          id_sala_ttaip,
+                          id_miembro_ttaip,
+                          tipo_resolucion,
+                          decision,
+                          fundamentos,
+                          fundamento_legal,
+                          fecha_resolucion,
+                          numero_resolucion,
+                          observaciones,
+                          resultado,
+                          iniciar_proceso_disciplinario)
+SELECT a.id_apelacion,
+       et.id_expediente_ttaip,
+       st.id_sala_ttaip,
+       mt.id_usuario,
+       r.tipo_resolucion,
+       r.decision,
+       r.fundamentos,
+       r.fundamento_legal,
+       r.fecha_resolucion,
+       r.numero_resolucion,
+       r.observaciones,
+       r.resultado,
+       r.iniciar_proceso_disciplinario
+FROM (SELECT '01560-2025-JUS/TTAIP' AS expediente,
+             'tvalverde@minjus.gob.pe' AS email_miembro,
+             'PRIMERA_CALIFICACION' AS tipo_resolucion,
+             'ADMISIBLE' AS decision,
+             'La apelacion cumple requisitos formales y pasa a resolucion final.' AS fundamentos,
+             'Ley N. 27806 y Reglamento del TTAIP.' AS fundamento_legal,
+             DATE_SUB(NOW(), INTERVAL 1 DAY) AS fecha_resolucion,
+             'RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA' AS numero_resolucion,
+             'Primera calificacion emitida por la Primera Sala.' AS observaciones,
+             NULL AS resultado,
+             FALSE AS iniciar_proceso_disciplinario
+      UNION ALL
+      SELECT '01561-2025-JUS/TTAIP',
+             'jpichon@minjus.gob.pe',
+             'PRIMERA_CALIFICACION',
+             'INADMISIBLE',
+             'Se requiere subsanacion del recurso dentro del plazo legal.',
+             'Reglas de admisibilidad del procedimiento TTAIP.',
+             DATE_SUB(NOW(), INTERVAL 3 DAY),
+             'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA',
+             'Primera calificacion emitida por la Segunda Sala.',
+             NULL,
+             FALSE
+      UNION ALL
+      SELECT '01562-2025-JUS/TTAIP',
+             'jpichon@minjus.gob.pe',
+             'PRIMERA_CALIFICACION',
+             'INADMISIBLE',
+             'El recurso fue observado y se notifico plazo de subsanacion.',
+             'Reglas de admisibilidad del procedimiento TTAIP.',
+             DATE_SUB(NOW(), INTERVAL 16 DAY),
+             'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA',
+             'Primera calificacion con observaciones subsanables.',
+             NULL,
+             FALSE
+      UNION ALL
+      SELECT '01562-2025-JUS/TTAIP',
+             'jpichon@minjus.gob.pe',
+             'SEGUNDA_CALIFICACION',
+             'ADMITIDO',
+             'La subsanacion presentada cumple las observaciones formuladas.',
+             'Reglas de admisibilidad del procedimiento TTAIP.',
+             DATE_SUB(NOW(), INTERVAL 11 DAY),
+             'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA',
+             'Segunda calificacion emitida y notificada antes del plazo de resolucion final.',
+             NULL,
+             FALSE
+      UNION ALL
+      SELECT '01562-2025-JUS/TTAIP',
+             'jmancilla@minjus.gob.pe',
+             'RESOLUCION_FINAL',
+             'FUNDADO_EN_PARTE',
+             'El Tribunal declara fundado en parte el recurso y ordena entregar la informacion publica no exceptuada.',
+             'Ley N. 27806, jurisprudencia administrativa y Reglamento del TTAIP.',
+             DATE_SUB(NOW(), INTERVAL 4 DAY),
+             'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA',
+             'Resolucion final emitida por la Segunda Sala.',
+             'FUNDADO_EN_PARTE',
+             TRUE) r
+         JOIN apelaciones a ON a.expediente = r.expediente
+         JOIN expedientes_ttaip et ON et.numero_expediente = a.expediente
+         JOIN salas_ttaip st ON st.id_sala_ttaip = et.id_sala_ttaip
+         JOIN usuarios u ON u.email = r.email_miembro
+         JOIN miembros_ttaip mt ON mt.id_usuario = u.id_usuario
+ON DUPLICATE KEY UPDATE id_apelacion = VALUES(id_apelacion),
+                        id_expediente_ttaip = VALUES(id_expediente_ttaip),
+                        id_sala_ttaip = VALUES(id_sala_ttaip),
+                        id_miembro_ttaip = VALUES(id_miembro_ttaip),
+                        tipo_resolucion = VALUES(tipo_resolucion),
+                        decision = VALUES(decision),
+                        fundamentos = VALUES(fundamentos),
+                        fundamento_legal = VALUES(fundamento_legal),
+                        fecha_resolucion = VALUES(fecha_resolucion),
+                        observaciones = VALUES(observaciones),
+                        resultado = VALUES(resultado),
+                        iniciar_proceso_disciplinario = VALUES(iniciar_proceso_disciplinario);
+
+INSERT INTO cedulas_notificacion (id_resolucion,
+                                  numero_cedula,
+                                  destinatario,
+                                  destinatario_nombre,
+                                  destinatario_email,
+                                  fecha_emision,
+                                  canal,
+                                  estado,
+                                  documento_referencia)
+SELECT r.id_resolucion,
+       c.numero_cedula,
+       c.destinatario,
+       CASE WHEN c.destinatario = 'CIUDADANO' THEN ci.nombre_completo ELSE e.nombre END,
+       CASE WHEN c.destinatario = 'CIUDADANO' THEN uci.email ELSE e.email END,
+       c.fecha_emision,
+       'CASILLA_ELECTRONICA',
+       'EMITIDA',
+       CONCAT('CÉDULA DE NOTIFICACIÓN N.° ', c.numero_cedula)
+FROM (SELECT 'RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA' AS numero_resolucion,
+             '15203-2025-JUS/TTAIP' AS numero_cedula,
+             'CIUDADANO' AS destinatario,
+             DATE_SUB(NOW(), INTERVAL 1 DAY) AS fecha_emision
+      UNION ALL SELECT 'RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA', '15203-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 1 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA', '15204-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 3 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA', '15204-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 3 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA', '15205-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 16 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA', '15205-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 16 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA', '15206-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 11 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA', '15206-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 11 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15207-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 4 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15207-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 4 DAY)) c
+         JOIN resoluciones r ON r.numero_resolucion = c.numero_resolucion
+         JOIN apelaciones a ON a.id_apelacion = r.id_apelacion
+         JOIN ciudadanos ci ON ci.id_usuario = a.id_ciudadano
+         JOIN usuarios uci ON uci.id_usuario = ci.id_usuario
+         JOIN solicitudes s ON s.id_solicitud = a.id_solicitud
+         JOIN entidades e ON e.id_entidad = s.id_entidad
+ON DUPLICATE KEY UPDATE id_resolucion = VALUES(id_resolucion),
+                        destinatario_nombre = VALUES(destinatario_nombre),
+                        destinatario_email = VALUES(destinatario_email),
+                        fecha_emision = VALUES(fecha_emision),
+                        canal = VALUES(canal),
+                        estado = VALUES(estado),
+                        documento_referencia = VALUES(documento_referencia);
+
+INSERT INTO notificaciones_ttaip (id_expediente_ttaip,
+                                  id_cedula,
+                                  destinatario,
+                                  destinatario_nombre,
+                                  destinatario_email,
+                                  fecha_notificacion,
+                                  medio,
+                                  estado,
+                                  detalle)
+SELECT et.id_expediente_ttaip,
+       cn.id_cedula,
+       cn.destinatario,
+       cn.destinatario_nombre,
+       cn.destinatario_email,
+       cn.fecha_emision,
+       'CASILLA_ELECTRONICA',
+       'NOTIFICADA',
+       CONCAT('Notificacion oficial de ', r.numero_resolucion, ' para ', cn.destinatario)
+FROM cedulas_notificacion cn
+         JOIN resoluciones r ON r.id_resolucion = cn.id_resolucion
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
+WHERE r.numero_resolucion IN ('RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA',
+                              'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA',
+                              'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA',
+                              'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA',
+                              'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA')
+ON DUPLICATE KEY UPDATE id_expediente_ttaip = VALUES(id_expediente_ttaip),
+                        destinatario = VALUES(destinatario),
+                        destinatario_nombre = VALUES(destinatario_nombre),
+                        destinatario_email = VALUES(destinatario_email),
+                        fecha_notificacion = VALUES(fecha_notificacion),
+                        medio = VALUES(medio),
+                        estado = VALUES(estado),
+                        detalle = VALUES(detalle);
+
+-- Historial estructurado del expediente TTAIP: evita depender solo de texto libre.
+INSERT INTO historial_ttaip (id_expediente_ttaip,
+                             tipo_evento,
+                             descripcion,
+                             estado_anterior,
+                             estado_nuevo,
+                             actor,
+                             referencia,
+                             fecha_evento)
+SELECT et.id_expediente_ttaip,
+       'APERTURA_EXPEDIENTE',
+       CONCAT('Expediente TTAIP abierto sin etapa de elevacion; sala asignada: ', st.nombre),
+       NULL,
+       et.estado,
+       'SISTEMA',
+       et.numero_expediente,
+       COALESCE(et.fecha_apertura, NOW())
+FROM expedientes_ttaip et
+         JOIN salas_ttaip st ON st.id_sala_ttaip = et.id_sala_ttaip
+WHERE NOT EXISTS (SELECT 1
+                  FROM historial_ttaip h
+                  WHERE h.id_expediente_ttaip = et.id_expediente_ttaip
+                    AND h.tipo_evento = 'APERTURA_EXPEDIENTE'
+                    AND h.referencia = et.numero_expediente);
+
+INSERT INTO historial_ttaip (id_expediente_ttaip,
+                             tipo_evento,
+                             descripcion,
+                             estado_anterior,
+                             estado_nuevo,
+                             actor,
+                             referencia,
+                             fecha_evento)
+SELECT et.id_expediente_ttaip,
+       'RESOLUCION_EMITIDA',
+       CONCAT(r.tipo_resolucion, ' registrada por ', st.nombre),
+       NULL,
+       et.estado,
+       'TTAIP',
+       r.numero_resolucion,
+       COALESCE(r.fecha_resolucion, NOW())
+FROM resoluciones r
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
+         JOIN salas_ttaip st ON st.id_sala_ttaip = et.id_sala_ttaip
+WHERE r.numero_resolucion IS NOT NULL
+  AND NOT EXISTS (SELECT 1
+                  FROM historial_ttaip h
+                  WHERE h.id_expediente_ttaip = et.id_expediente_ttaip
+                    AND h.tipo_evento = 'RESOLUCION_EMITIDA'
+                    AND h.referencia = r.numero_resolucion);
+
+INSERT INTO historial_ttaip (id_expediente_ttaip,
+                             tipo_evento,
+                             descripcion,
+                             estado_anterior,
+                             estado_nuevo,
+                             actor,
+                             referencia,
+                             fecha_evento)
+SELECT et.id_expediente_ttaip,
+       'CEDULA_EMITIDA',
+       CONCAT('Cedula emitida para ', CASE WHEN cn.destinatario = 'CIUDADANO' THEN 'ciudadano' ELSE 'entidad publica' END,
+              ' por ', r.numero_resolucion),
+       NULL,
+       et.estado,
+       'TTAIP',
+       CONCAT(cn.numero_cedula, ':', cn.destinatario),
+       COALESCE(cn.fecha_emision, NOW())
+FROM cedulas_notificacion cn
+         JOIN resoluciones r ON r.id_resolucion = cn.id_resolucion
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
+WHERE NOT EXISTS (SELECT 1
+                  FROM historial_ttaip h
+                  WHERE h.id_expediente_ttaip = et.id_expediente_ttaip
+                    AND h.tipo_evento = 'CEDULA_EMITIDA'
+                    AND h.referencia = CONCAT(cn.numero_cedula, ':', cn.destinatario));
+
+INSERT INTO historial_ttaip (id_expediente_ttaip,
+                             tipo_evento,
+                             descripcion,
+                             estado_anterior,
+                             estado_nuevo,
+                             actor,
+                             referencia,
+                             fecha_evento)
+SELECT n.id_expediente_ttaip,
+       'NOTIFICACION_REGISTRADA',
+       CONCAT('Notificacion registrada para ', CASE WHEN n.destinatario = 'CIUDADANO' THEN 'ciudadano' ELSE 'entidad publica' END),
+       NULL,
+       et.estado,
+       'TTAIP',
+       CONCAT('NOTIFICACION-', cn.numero_cedula, ':', n.destinatario),
+       COALESCE(n.fecha_notificacion, NOW())
+FROM notificaciones_ttaip n
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = n.id_expediente_ttaip
+         JOIN cedulas_notificacion cn ON cn.id_cedula = n.id_cedula
+WHERE NOT EXISTS (SELECT 1
+                  FROM historial_ttaip h
+                  WHERE h.id_expediente_ttaip = n.id_expediente_ttaip
+                    AND h.tipo_evento = 'NOTIFICACION_REGISTRADA'
+                    AND h.referencia = CONCAT('NOTIFICACION-', cn.numero_cedula, ':', n.destinatario));
+
+-- Reproceso de notificacion de prueba alineado con la referencia SQL Server.
+INSERT INTO reprocesos_notificacion (id_expediente_ttaip,
+                                     id_notificacion,
+                                     id_cedula_original,
+                                     destinatario,
+                                     numero_cedula_original,
+                                     fecha_ingreso_cargo,
+                                     observacion_reproceso,
+                                     numero_intento,
+                                     estado,
+                                     responsable_notificacion,
+                                     fecha_creacion,
+                                     fecha_actualizacion)
+SELECT et.id_expediente_ttaip,
+       n.id_notificacion,
+       cn.id_cedula,
+       cn.destinatario,
+       cn.numero_cedula,
+       DATE(COALESCE(n.fecha_notificacion, cn.fecha_emision)),
+       'Cargo de notificacion observado; requiere reproceso de cedula a entidad publica.',
+       1,
+       'PENDIENTE',
+       'Mesa de Partes TTAIP',
+       NOW(),
+       NOW()
+FROM cedulas_notificacion cn
+         JOIN resoluciones r ON r.id_resolucion = cn.id_resolucion
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
+         LEFT JOIN notificaciones_ttaip n ON n.id_cedula = cn.id_cedula
+WHERE cn.numero_cedula = '15204-2025-JUS/TTAIP'
+  AND cn.destinatario = 'ENTIDAD_PUBLICA'
+  AND NOT EXISTS (SELECT 1
+                  FROM reprocesos_notificacion rp
+                  WHERE rp.id_cedula_original = cn.id_cedula
+                    AND rp.destinatario = cn.destinatario
+                    AND rp.numero_intento = 1);
+
+INSERT INTO historial_ttaip (id_expediente_ttaip,
+                             tipo_evento,
+                             descripcion,
+                             estado_anterior,
+                             estado_nuevo,
+                             actor,
+                             referencia,
+                             fecha_evento)
+SELECT rp.id_expediente_ttaip,
+       'REPROCESO_REGISTRADO',
+       CONCAT('Reproceso de notificacion registrado para ', CASE WHEN rp.destinatario = 'CIUDADANO' THEN 'ciudadano' ELSE 'entidad publica' END),
+       NULL,
+       et.estado,
+       COALESCE(rp.responsable_notificacion, 'TTAIP'),
+       CONCAT('REPROCESO-', rp.numero_cedula_original, ':', rp.destinatario, ':', rp.numero_intento),
+       COALESCE(rp.fecha_creacion, NOW())
+FROM reprocesos_notificacion rp
+         JOIN expedientes_ttaip et ON et.id_expediente_ttaip = rp.id_expediente_ttaip
+WHERE NOT EXISTS (SELECT 1
+                  FROM historial_ttaip h
+                  WHERE h.id_expediente_ttaip = rp.id_expediente_ttaip
+                    AND h.tipo_evento = 'REPROCESO_REGISTRADO'
+                    AND h.referencia = CONCAT('REPROCESO-', rp.numero_cedula_original, ':', rp.destinatario, ':', rp.numero_intento));
+
 COMMIT;
 
 -- -----------------------------------------------------------------------------
@@ -499,7 +1152,28 @@ SELECT 'miembros_ttaip', COUNT(*)
 FROM miembros_ttaip
 UNION ALL
 SELECT 'administradores', COUNT(*)
-FROM administradores;
+FROM administradores
+UNION ALL
+SELECT 'salas_ttaip', COUNT(*)
+FROM salas_ttaip
+UNION ALL
+SELECT 'expedientes_ttaip', COUNT(*)
+FROM expedientes_ttaip
+UNION ALL
+SELECT 'resoluciones', COUNT(*)
+FROM resoluciones
+UNION ALL
+SELECT 'cedulas_notificacion', COUNT(*)
+FROM cedulas_notificacion
+UNION ALL
+SELECT 'notificaciones_ttaip', COUNT(*)
+FROM notificaciones_ttaip
+UNION ALL
+SELECT 'historial_ttaip', COUNT(*)
+FROM historial_ttaip
+UNION ALL
+SELECT 'reprocesos_notificacion', COUNT(*)
+FROM reprocesos_notificacion;
 
 
 

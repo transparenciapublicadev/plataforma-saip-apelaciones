@@ -5,9 +5,8 @@ import com.gestion.misaip.core.domain.model.Solicitud
 /**
  * Interfaz para la fuente de datos remota de Solicitudes.
  *
- * Abstrae la comunicación con Firebase Firestore.
- * Esta interfaz permite cambiar la implementación de Firebase
- * sin afectar el resto de la aplicación (útil para testing y migración a KMP).
+ * Abstrae la comunicación de solicitudes con el backend REST.
+ * Esta interfaz mantiene desacoplada la capa de datos para testing y migración a KMP.
  */
 interface SolicitudRemoteDataSource {
 
@@ -57,4 +56,3 @@ interface SolicitudRemoteDataSource {
  * Excepción de red.
  */
 class NetworkException(message: String, cause: Throwable? = null) : Exception(message, cause)
-

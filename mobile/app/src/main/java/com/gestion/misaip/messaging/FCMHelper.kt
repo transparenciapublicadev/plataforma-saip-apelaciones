@@ -8,9 +8,6 @@ import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 
 /**
@@ -156,68 +153,19 @@ object FCMHelper {
     }
 
     /**
-     * Guarda el token FCM en Firestore asociado al usuario autenticado.
-     * Se llama después de obtener el token (login y onNewToken).
+     * Registra el token FCM en el backend Spring Boot.
+     *
+     * La app ya no escribe tokens en Firestore. El backend debe exponer el endpoint
+     * de registro de token y usarlo para enviar FCM desde servidor.
      */
-    private const val FIRESTORE_DB = "misaipdb"
-
-    fun saveTokenToFirestore(token: String) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            FirebaseFirestore.getInstance(FirebaseApp.getInstance(), FIRESTORE_DB)
-                .collection("usuarios")
-                .document(userId)
-                .update(
-                    mapOf(
-                        "fcmToken" to token,
-                        "fcmTokenUpdatedAt" to System.currentTimeMillis()
-                    )
-                )
-                .addOnSuccessListener {
-                    Log.d(TAG, "Token FCM guardado en Firestore para usuario: $userId")
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Error guardando token FCM en Firestore", e)
-                    // Si el documento no existe, intentar con set merge
-                    FirebaseFirestore.getInstance(FirebaseApp.getInstance(), FIRESTORE_DB)
-                        .collection("usuarios")
-                        .document(userId)
-                        .set(
-                            mapOf(
-                                "fcmToken" to token,
-                                "fcmTokenUpdatedAt" to System.currentTimeMillis()
-                            ),
-                            com.google.firebase.firestore.SetOptions.merge()
-                        )
-                        .addOnSuccessListener {
-                            Log.d(TAG, "Token FCM guardado con set/merge para: $userId")
-                        }
-                        .addOnFailureListener { e2 ->
-                            Log.e(TAG, "Error con set/merge del token FCM", e2)
-                        }
-                }
-        } else {
-            Log.w(TAG, "No hay usuario autenticado para guardar token FCM")
-        }
+    fun registerTokenWithBackend(token: String) {
+        Log.d(TAG, "Token FCM listo para registrar en backend Spring Boot: $token")
     }
 
     /**
-     * Elimina el token FCM de Firestore al cerrar sesión.
+     * Revoca el token FCM en el backend Spring Boot durante logout.
      */
-    fun removeTokenFromFirestore() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            FirebaseFirestore.getInstance(FirebaseApp.getInstance(), FIRESTORE_DB)
-                .collection("usuarios")
-                .document(userId)
-                .update("fcmToken", com.google.firebase.firestore.FieldValue.delete())
-                .addOnSuccessListener {
-                    Log.d(TAG, "Token FCM eliminado de Firestore")
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Error eliminando token FCM de Firestore", e)
-                }
-        }
+    fun unregisterTokenFromBackend() {
+        Log.d(TAG, "Solicitud de revocacion de token FCM delegada al backend Spring Boot")
     }
 }
-

@@ -1724,7 +1724,7 @@
         "tags": [
           "TTAIP"
         ],
-        "summary": "Listar apelaciones pendientes de elevación",
+        "summary": "Listar apelaciones en primera calificación",
         "operationId": "listarPendientes",
         "responses": {
           "200": {
@@ -3432,6 +3432,9 @@
           },
           "miembroTTAIPNombre": {
             "type": "string"
+          },
+          "iniciarProcesoDisciplinario": {
+            "type": "boolean"
           }
         }
       },

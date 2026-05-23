@@ -6,7 +6,7 @@ import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 
 /**
  * Implementación REST del datasource de solicitudes.
- * Usa el backend Spring Boot en lugar de Firebase.
+ * Usa el backend Spring Boot + JWT como fuente remota.
  */
 class SolicitudRestDataSource(
     private val solicitudApi: SolicitudApiService,

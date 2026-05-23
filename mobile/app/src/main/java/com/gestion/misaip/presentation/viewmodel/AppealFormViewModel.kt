@@ -215,7 +215,7 @@ class AppealFormViewModel(
                             expedienteApelacion = apelacion.expediente,
                             saipOrigen = state.expedienteSAIP,
                             recurrente = usuario.nombre,
-                            entidadNombre = state.solicitudEncontrada?.entidad ?: ""
+                            entidadNombre = state.solicitudEncontrada.entidad
                         )
 
                         kotlinx.coroutines.delay(1500)
@@ -234,4 +234,3 @@ class AppealFormViewModel(
         }
     }
 }
-

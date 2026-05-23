@@ -185,19 +185,17 @@
             <div class="form-section-title">Actividad reciente</div>
           </div>
           <div class="p-2">
-            @for (item of [
-              { dot: 'var(--success)', label: 'Nueva solicitud SAIP registrada', detail: 'SAIP-2025-00847 · hace 5 min' },
-              { dot: 'var(--info)', label: 'Resolución TTAIP emitida', detail: 'TTAIP-2025-00234 · hace 23 min' },
-              { dot: 'var(--gold)', label: 'Nuevo usuario registrado', detail: 'Ciudadano · hace 1 h' },
-              { dot: 'var(--brand-700)', label: 'Solicitud vencida detectada', detail: 'SAIP-2025-00498 · hace 2 h' },
-              { dot: 'var(--brand-500)', label: 'Apelación presentada', detail: 'TTAIP-2025-00236 · hace 3 h' }
-            ]; track item.detail; let i = $index) {
+            @for (item of actividadReciente(); track item.detail; let i = $index) {
               <div class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors" [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'" data-table-row>
-                <span class="mt-1.5 flex-shrink-0" style="width: 8px; height: 8px; border-radius: 999px" [style.background]="item.dot"></span>
+                <span class="mt-1.5 flex-shrink-0" style="width: 8px; height: 8px; border-radius: 999px" [style.background]="activityToneClass(item.tone)"></span>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-foreground">{{ item.label }}</p>
                   <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ item.detail }}</p>
                 </div>
+              </div>
+            } @empty {
+              <div class="px-4 py-10 text-center text-sm text-muted-foreground">
+                No hay actividad reciente registrada por el backend.
               </div>
             }
           </div>
@@ -333,7 +331,7 @@
                       <td>
                         <div class="flex items-center gap-2.5">
                           <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ userInitials(usuario.email) }}</div>
-                          <span class="text-sm">Usuario #{{ usuario.id }}</span>
+                          <span class="text-sm">{{ usuario.nombre || ('Usuario #' + usuario.id) }}</span>
                         </div>
                       </td>
                       <td><span class="font-mono text-xs text-muted-foreground">{{ usuario.email }}</span></td>
@@ -389,8 +387,8 @@
               <span class="eyebrow flex items-center gap-2">Plazos legales</span>
               <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Días hábiles por etapa</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="field"><label class="field-label">Plazo SAIP</label><input type="number" value="10" class="field-input font-mono" /><span class="field-hint">Días hábiles para responder al administrado.</span></div>
-                <div class="field"><label class="field-label">Plazo apelación</label><input type="number" value="10" class="field-input font-mono" /><span class="field-hint">Días hábiles para resolver en TTAIP.</span></div>
+                <div class="field"><label class="field-label">Plazo SAIP</label><input type="number" [value]="plazoSaipDias" class="field-input font-mono" readonly /><span class="field-hint">Días hábiles para responder al administrado.</span></div>
+                <div class="field"><label class="field-label">Plazo apelación</label><input type="number" [value]="plazoTtaipResolucionDias" class="field-input font-mono" readonly /><span class="field-hint">Días hábiles para resolver en TTAIP.</span></div>
               </div>
             </div>
 

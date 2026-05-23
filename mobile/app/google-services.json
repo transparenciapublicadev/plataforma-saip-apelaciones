@@ -23,6 +23,63 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:570857370610:android:52c9f03a5091b14943b16b",
+        "android_client_info": {
+          "package_name": "com.gestion.misaip.ciudadano"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1QY_Atqg-Qs3XUqow8VN6yGwM2xAOXR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:570857370610:android:52c9f03a5091b14943b16b",
+        "android_client_info": {
+          "package_name": "com.gestion.misaip.funcionario"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1QY_Atqg-Qs3XUqow8VN6yGwM2xAOXR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:570857370610:android:52c9f03a5091b14943b16b",
+        "android_client_info": {
+          "package_name": "com.gestion.misaip.ttaip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1QY_Atqg-Qs3XUqow8VN6yGwM2xAOXR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

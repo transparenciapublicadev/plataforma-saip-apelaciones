@@ -19,7 +19,7 @@ import java.util.UUID
 
 /**
  * Implementación Offline-First del repositorio de Apelaciones.
- * SQLDelight es la SSOT, Firebase se sincroniza en segundo plano.
+ * SQLDelight es la SSOT local y el backend REST es la fuente remota de datos.
  */
 class ApelacionRepositoryImpl(
     private val database: SaipDatabase,
@@ -96,7 +96,7 @@ class ApelacionRepositoryImpl(
             id = id,
             expediente = expediente,
             fechaPresentacion = System.currentTimeMillis(),
-            estado = EstadoApelacion.PENDIENTE_ELEVACION,
+            estado = EstadoApelacion.EN_CALIFICACION_1,
             diasRestantes = 7,
             timeline = listOf(
                 TimelineItem(
@@ -134,9 +134,9 @@ class ApelacionRepositoryImpl(
         try {
             remoteDataSource.crearApelacion(apelacionCompleta)
             queries.marcarApelacionSincronizada(id)
-            android.util.Log.d("MiSAIP", "Apelación $expediente subida a Firebase exitosamente")
+            android.util.Log.d("MiSAIP", "Apelación $expediente sincronizada con backend REST")
         } catch (e: Exception) {
-            android.util.Log.e("MiSAIP", "Error subiendo apelación $expediente a Firebase: ${e.message}", e)
+            android.util.Log.e("MiSAIP", "Error sincronizando apelación $expediente con backend REST: ${e.message}", e)
         }
 
         apelacionCompleta
@@ -276,9 +276,9 @@ class ApelacionRepositoryImpl(
     }
 
     /**
-     * Sincroniza apelaciones con Firebase.
+     * Sincroniza apelaciones con el backend REST.
      * 1. Sube apelaciones pendientes locales (push)
-     * 2. Descarga cambios desde Firebase a la BD local (pull)
+     * 2. Descarga cambios desde el backend a la BD local (pull)
      */
     override suspend fun sincronizar() = withContext(Dispatchers.IO) {
         // 1. Push: Subir apelaciones pendientes (con timeout por ítem)
@@ -298,7 +298,7 @@ class ApelacionRepositoryImpl(
             }
         }
 
-        // 2. Pull: Descargar actualizaciones desde Firebase (con timeout global)
+        // 2. Pull: Descargar actualizaciones desde backend REST (con timeout global)
         try {
             val ultimaSync = queries.getAllApelaciones().executeAsList()
                 .filter { it.sincronizado }

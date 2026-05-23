@@ -1,14 +1,14 @@
 ---
 title: Plataforma SAIP
-description: Sistema integral para la gestión de Solicitudes de Acceso a la Información Pública y apelaciones ante el Tribunal de Transparencia del Perú.
+description: Fuente central de documentación técnica y funcional para la Plataforma SAIP y apelaciones TTAIP.
 template: splash
 hero:
-  tagline: Documentación técnica del sistema de gestión de Solicitudes de Acceso a la Información Pública (SAIP) y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP).
+  tagline: Documentación viva del sistema de Solicitudes de Acceso a la Información Pública, respuestas de entidades y apelaciones ante el TTAIP.
   actions:
-    - text: Comenzar
+    - text: Entender el sistema
       link: /introduccion/descripcion-general/
       icon: right-arrow
-    - text: Ver Arquitectura
+    - text: Ver arquitectura
       link: /introduccion/arquitectura/
       icon: seti:config
       variant: secondary
@@ -16,53 +16,102 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Módulos del Sistema
+Esta documentación es la **fuente de verdad del proyecto**. Debe mantenerse alineada con el backend Spring Boot, el frontend Angular, las apps Android, la colección Postman, el contrato OpenAPI y las reglas de negocio SAIP/TTAIP.
+
+## Mapa del Sistema
+
+```mermaid
+flowchart TB
+    Citizen["Ciudadano"]
+    Officer["Funcionario de entidad"]
+    Tribunal["Miembro TTAIP"]
+    Admin["Administrador"]
+
+    Web["frontend/\nAngular 21 + SSR\nTailwind CSS"]
+    Mobile["mobile/\n3 APKs Android\nCompose + SQLDelight"]
+    Docs["docs/\nAstro + Starlight"]
+    Postman["postman/\n111 requests documentados"]
+
+    API["backend/\nSpring Boot 4.0.6\nREST + JWT + OpenAPI"]
+    DB[("MySQL")]
+    FCM["Firebase Cloud Messaging\nsolo push mobile"]
+
+    Citizen --> Web
+    Citizen --> Mobile
+    Officer --> Web
+    Officer --> Mobile
+    Tribunal --> Web
+    Tribunal --> Mobile
+    Admin --> Web
+
+    Web -->|"HTTP JSON + JWT"| API
+    Mobile -->|"Retrofit + JWT"| API
+    API --> DB
+    API -->|"/v3/api-docs"| Web
+    Postman --> API
+    Docs -. documenta .-> API
+    Mobile -. token push .-> FCM
+```
+
+## Módulos Principales
 
 <CardGrid stagger>
-  <Card title="Backend — Spring Boot 4" icon="setting">
-    API REST con Java 21, Spring Data JPA, MySQL, Spring Security y JWT.
-    Exposición de OpenAPI spec como contrato formal entre módulos.
+  <Card title="Backend" icon="setting">
+    Spring Boot 4.0.6 con Java 25, Spring Data JPA, MySQL, Spring Security,
+    JWT, OpenAPI y reglas transaccionales del dominio.
   </Card>
 
-  <Card title="Frontend — Angular 21" icon="laptop">
-    SPA con TypeScript 5.9, Tailwind CSS 4.1, SSR con Express.
-    Componentes standalone, signals y change detection OnPush.
+  <Card title="Frontend" icon="laptop">
+    Angular 21.2, TypeScript 5.9, Tailwind CSS 4.1, SSR con Express,
+    guards por rol, interceptor JWT y UI multirol.
   </Card>
 
-  <Card title="Mobile — Android Compose" icon="rocket">
-    App nativa con Kotlin 2.3, Jetpack Compose, Material 3, Navigation 3.
-    Arquitectura offline-first con SQLDelight y Retrofit.
+  <Card title="Mobile" icon="rocket">
+    Tres APKs por flavor: Ciudadano, Funcionario y TTAIP. Kotlin 2.3,
+    Jetpack Compose, Navigation 3, SQLDelight, Retrofit y FCM.
   </Card>
 
-  <Card title="Dominio SAIP/TTAIP" icon="document">
-    Reglas de negocio de la Ley N° 27806, plazos, estados, calificaciones
-    y resoluciones del Tribunal de Transparencia.
+  <Card title="API y Documentación" icon="document">
+    OpenAPI como contrato formal, Postman con ejemplos completos y Starlight
+    como documentación navegable del proyecto.
   </Card>
 </CardGrid>
 
----
+## Flujos Críticos
 
-## Explora la documentación
+```mermaid
+sequenceDiagram
+    actor C as Ciudadano
+    participant FE as Web/Mobile
+    participant API as Backend
+    participant E as Entidad
+    participant T as TTAIP
+
+    C->>FE: Presenta SAIP
+    FE->>API: POST /solicitudes
+    API-->>FE: SAIP-AAAA-NNNNN
+    E->>API: Registra respuesta
+    API-->>FE: RESPONDIDA o DENEGADA
+    C->>FE: Interpone apelacion si corresponde
+    FE->>API: POST /apelaciones
+    API-->>T: Expediente en EN_CALIFICACION_1
+    T->>API: Califica / subsana / resuelve
+    API-->>FE: Estado actualizado y resolucion
+```
+
+:::note[Regla vigente]
+El proyecto **no usa elevación TTAIP como etapa funcional**. Cuando el ciudadano presenta una apelación válida, el expediente entra directamente a `EN_CALIFICACION_1`.
+:::
+
+## Accesos Rápidos
 
 <CardGrid>
-  <LinkCard
-    title="Descripción General"
-    description="Visión completa del proyecto, objetivos y alcance del sistema."
-    href="/introduccion/descripcion-general/"
-  />
-  <LinkCard
-    title="Arquitectura del Sistema"
-    description="Arquitectura API-First, diagrama de capas y flujo de datos entre módulos."
-    href="/introduccion/arquitectura/"
-  />
-  <LinkCard
-    title="Guía de Inicio"
-    description="Instrucciones para configurar el entorno de desarrollo y ejecutar los módulos."
-    href="/introduccion/comenzar/"
-  />
-  <LinkCard
-    title="Reglas de Negocio"
-    description="Reglas SAIP y TTAIP, plazos, estados y flujos de trabajo."
-    href="/dominio/reglas-saip/"
-  />
+  <LinkCard title="Descripción general" href="/introduccion/descripcion-general/" description="Objetivo, alcance, stakeholders, módulos y decisiones de producto." />
+  <LinkCard title="Arquitectura" href="/introduccion/arquitectura/" description="Diagrama API-first, monorepo, contratos y responsabilidades por módulo." />
+  <LinkCard title="Guía de inicio" href="/introduccion/comenzar/" description="Cómo ejecutar backend, frontend, mobile, docs y sincronizar OpenAPI." />
+  <LinkCard title="Reglas SAIP" href="/dominio/reglas-saip/" description="Plazos, estados y reglas de primera instancia." />
+  <LinkCard title="Reglas TTAIP" href="/dominio/reglas-ttaip/" description="Apelación, calificación, subsanación, notificación y resolución." />
+  <LinkCard title="Endpoints API" href="/api/endpoints/" description="Catálogo actualizado de endpoints REST del backend." />
+  <LinkCard title="Postman" href="/api/postman/" description="Colección, environment, variables, ejemplos y estrategia de validación." />
+  <LinkCard title="Mobile" href="/mobile/" description="Apps por rol, Clean Architecture, REST + JWT y FCM." />
 </CardGrid>

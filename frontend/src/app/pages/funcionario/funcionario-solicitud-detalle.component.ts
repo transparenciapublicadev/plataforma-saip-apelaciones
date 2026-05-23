@@ -90,7 +90,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
         fecha: sol.apelacion.fechaApelacion,
         responsable: 'Ciudadano recurrente',
-        detalle: 'El expediente fue elevado para revisión del TTAIP.',
+        detalle: 'El recurso fue recibido por el TTAIP para primera calificación.',
         color: 'violet'
       });
     }
@@ -192,6 +192,9 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   }
 
   getEstadoDisplay(value: string | undefined): string {
+    if ((value || '').toUpperCase() === 'PENDIENTE_ELEVACION') {
+      return 'EN CALIFICACION 1';
+    }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }
 

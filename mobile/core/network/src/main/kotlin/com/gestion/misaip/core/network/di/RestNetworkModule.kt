@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit
  * Módulo Koin para la Capa de Red (REST API — Spring Boot Backend).
  *
  * Provee Retrofit, OkHttp y los DataSources que consumen el backend REST.
- * Reemplaza los DataSources de Firebase cuando se usa el backend como fuente de datos.
+ * El backend Spring Boot + JWT es la unica fuente remota de datos; Firebase se
+ * conserva solo para Cloud Messaging en el modulo app.
  *
  * @param baseUrl URL base del backend REST. Configurable via gradle.properties / local.properties.
  *   - Emulador: http://10.0.2.2:8080/ (default)

@@ -43,7 +43,7 @@ object Constants {
     // ===========================================
 
     object EstadoApelacion {
-        const val PENDIENTE_ELEVACION = "Pendiente de Elevación"
+        const val PENDIENTE_ELEVACION = "En Primera Calificación"
         const val EN_CALIFICACION_1 = "En Primera Calificación"
         const val EN_SUBSANACION = "En Subsanación"
         const val EN_CALIFICACION_2 = "En Segunda Calificación"

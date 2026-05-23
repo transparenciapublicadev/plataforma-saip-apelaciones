@@ -9,7 +9,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.gestion.misaip.MainActivity
 import com.gestion.misaip.R
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -53,6 +52,9 @@ class MiSaipMessagingService : FirebaseMessagingService() {
         val expediente = data["expediente"]
         val titulo = data["titulo"] ?: getString(R.string.nueva_notificacion)
         val mensaje = data["mensaje"] ?: ""
+        val notificationKey = data["notificationId"]
+            ?: data["id"]
+            ?: "fcm_${tipo}_${expediente ?: titulo}"
 
         // Procesar según el tipo de notificación
         when (tipo) {
@@ -77,7 +79,13 @@ class MiSaipMessagingService : FirebaseMessagingService() {
         }
 
         // Mostrar notificación local
-        showNotification(titulo, mensaje, data)
+        NotificationPushHelper.mostrarNotificacionLocal(
+            tipo = tipo,
+            titulo = titulo,
+            mensaje = mensaje,
+            expediente = expediente,
+            notificationKey = notificationKey
+        )
     }
 
     private fun showNotification(title: String, body: String, data: Map<String, String>) {
@@ -121,8 +129,7 @@ class MiSaipMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendTokenToServer(token: String) {
-        Log.d(TAG, "Guardando token renovado en Firestore: $token")
-        FCMHelper.saveTokenToFirestore(token)
+        Log.d(TAG, "Registrando token renovado en backend Spring Boot: $token")
+        FCMHelper.registerTokenWithBackend(token)
     }
 }
-

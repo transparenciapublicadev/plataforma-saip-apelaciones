@@ -141,7 +141,7 @@ class CrearApelacionUseCaseTest {
     }
 
     @Test
-    fun `apelacion creada tiene estado PENDIENTE_ELEVACION`() = runTest {
+    fun `apelacion creada entra a primera calificacion`() = runTest {
         val slot = slot<Apelacion>()
         every { solicitudRepository.getSolicitudPorExpediente("SAIP-2025-00001") } returns flowOf(solicitudApelable)
         every { apelacionRepository.getApelacionPorSAIP("SAIP-2025-00001") } returns flowOf(null)
@@ -149,7 +149,7 @@ class CrearApelacionUseCaseTest {
 
         val result = useCase(crearParams())
         assertTrue(result is CrearApelacionUseCase.Result.Success)
-        assertEquals(EstadoApelacion.PENDIENTE_ELEVACION, slot.captured.estado)
+        assertEquals(EstadoApelacion.EN_CALIFICACION_1, slot.captured.estado)
         assertEquals("Ministerio de Justicia", slot.captured.entidad)
         assertTrue(slot.captured.timeline.isNotEmpty())
     }

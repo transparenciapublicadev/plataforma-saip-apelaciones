@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 /**
  * Caso de Uso: Sincronizar Datos Completos
  *
- * Coordina la sincronización de todos los repositorios con Firebase.
+ * Coordina la sincronización de todos los repositorios con el backend REST.
  * Se invoca después del login exitoso para poblar la BD local con datos del servidor.
  * También es usado por WorkManager para sincronización periódica.
  *
