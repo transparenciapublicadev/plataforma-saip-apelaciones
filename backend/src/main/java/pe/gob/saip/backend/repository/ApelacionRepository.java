@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.entity.Apelacion;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,24 @@ public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
     List<Apelacion> findByEstadoIn(List<Apelacion.EstadoApelacion> estados);
 
     long countByEstado(Apelacion.EstadoApelacion estado);
+
+    long countByEstadoIn(Collection<Apelacion.EstadoApelacion> estados);
+
+    @Query("SELECT COUNT(DISTINCT a.ciudadano.idUsuario) FROM Apelacion a")
+    long countDistinctCiudadanos();
+
+    @Query("SELECT MONTH(a.fechaApelacion), COUNT(a) FROM Apelacion a WHERE YEAR(a.fechaApelacion) = :year GROUP BY MONTH(a.fechaApelacion)")
+    List<Object[]> countByMonth(@Param("year") int year);
+
+    @Query("""
+            SELECT COALESCE(s.entidad.acronimo, s.entidad.nombre), COUNT(a)
+            FROM Apelacion a
+            JOIN a.solicitud s
+            WHERE s.entidad IS NOT NULL
+            GROUP BY s.entidad.idEntidad, s.entidad.acronimo, s.entidad.nombre
+            ORDER BY COUNT(a) DESC
+            """)
+    List<Object[]> countByEntidad();
 
     @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud LEFT JOIN FETCH a.ciudadano WHERE a.id = :id")
     Optional<Apelacion> findByIdWithDetails(@Param("id") Long id);

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.entity.Solicitud;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     long countByEstado(Solicitud.EstadoSolicitud estado);
 
+    long countByEstadoIn(Collection<Solicitud.EstadoSolicitud> estados);
+
     long countByEntidad_IdEntidad(Long entidadId);
 
     @Query("SELECT s FROM Solicitud s WHERE s.fechaLimite < :hoy AND s.estado NOT IN :estadosFinales")
@@ -43,5 +46,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     @Query("SELECT MAX(CAST(SUBSTRING(s.expediente, 11, 5) AS int)) FROM Solicitud s WHERE s.expediente LIKE :prefix")
     Integer findMaxExpedienteNumber(@Param("prefix") String prefix);
+
+    @Query("SELECT MONTH(s.fechaPresentacion), COUNT(s) FROM Solicitud s WHERE YEAR(s.fechaPresentacion) = :year GROUP BY MONTH(s.fechaPresentacion)")
+    List<Object[]> countByMonth(@Param("year") int year);
 }
 

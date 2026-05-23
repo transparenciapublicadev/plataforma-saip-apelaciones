@@ -11,7 +11,7 @@ public record ApelacionDTO(
     @Schema(description = "Número de expediente TTAIP", example = "01560-2025-JUS/TTAIP")
     String expediente,
     String fundamentos,
-    @Schema(description = "Estado de la apelación", example = "PENDIENTE_ELEVACION")
+    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1")
     String estado,
     String resultado,
     String fechaApelacion,
@@ -32,6 +32,10 @@ public record ApelacionDTO(
     ResolucionDTO resolucionPrimeraCalificacion,
     @Schema(description = "Resolución de segunda calificación (SEGUNDA_CALIFICACION)")
     ResolucionDTO resolucionSegundaCalificacion,
+    @Schema(description = "Expediente TTAIP como agregado principal de la segunda instancia")
+    ExpedienteTtaipDTO expedienteTtaip,
+    @Schema(description = "Todas las resoluciones emitidas dentro del expediente")
+    List<ResolucionDTO> resoluciones,
     List<DocumentoDTO> documentos
 ) {
     public static ApelacionDTO from(Apelacion a) {
@@ -56,6 +60,8 @@ public record ApelacionDTO(
             a.getResolucion() != null ? ResolucionDTO.from(a.getResolucion()) : null,
             a.getResolucionPrimeraCalificacion() != null ? ResolucionDTO.from(a.getResolucionPrimeraCalificacion()) : null,
             a.getResolucionSegundaCalificacion() != null ? ResolucionDTO.from(a.getResolucionSegundaCalificacion()) : null,
+            a.getExpedienteTtaip() != null ? ExpedienteTtaipDTO.from(a.getExpedienteTtaip()) : null,
+            a.getResoluciones() != null ? a.getResoluciones().stream().map(ResolucionDTO::from).toList() : List.of(),
             a.getDocumentos() != null ? a.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of()
         );
     }

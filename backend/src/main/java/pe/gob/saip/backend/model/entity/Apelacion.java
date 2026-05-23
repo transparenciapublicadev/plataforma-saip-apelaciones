@@ -5,7 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -75,11 +77,16 @@ public class Apelacion {
     @OneToMany(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Resolucion> resoluciones;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToOne(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private ExpedienteTtaip expedienteTtaip;
+
     @PrePersist
     protected void onCreate() {
         fechaApelacion = LocalDateTime.now();
         if (estado == null) {
-            estado = EstadoApelacion.PENDIENTE_ELEVACION;
+            estado = EstadoApelacion.EN_CALIFICACION_1;
         }
     }
 
