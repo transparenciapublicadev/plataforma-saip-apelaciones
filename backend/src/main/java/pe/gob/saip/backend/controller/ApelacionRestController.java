@@ -24,13 +24,16 @@ public class ApelacionRestController {
     private final ApelacionService apelacionService;
     private final SolicitudService solicitudService;
     private final CiudadanoService ciudadanoService;
+    private final ExpedienteTtaipService expedienteTtaipService;
 
     public ApelacionRestController(ApelacionService apelacionService,
                                     SolicitudService solicitudService,
-                                    CiudadanoService ciudadanoService) {
+                                    CiudadanoService ciudadanoService,
+                                    ExpedienteTtaipService expedienteTtaipService) {
         this.apelacionService = apelacionService;
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
+        this.expedienteTtaipService = expedienteTtaipService;
     }
 
     @Operation(summary = "Listar todas las apelaciones")
@@ -142,9 +145,10 @@ public class ApelacionRestController {
         apelacion.setFundamentos(apelacionDTO.fundamentos());
         apelacion.setSolicitud(solicitud);
         apelacion.setCiudadano(ciudadano);
-        apelacion.setEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+        apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
 
         apelacion = apelacionService.save(apelacion);
+        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
 
         return ResponseEntity.status(201).body(ApelacionDTO.from(apelacion));
     }
@@ -168,6 +172,7 @@ public class ApelacionRestController {
         }
 
         apelacion = apelacionService.save(apelacion);
+        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
 
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
     }
@@ -186,6 +191,7 @@ public class ApelacionRestController {
         }
 
         apelacion = apelacionService.save(apelacion);
+        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
 
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
     }
@@ -211,6 +217,7 @@ public class ApelacionRestController {
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2);
 
         apelacion = apelacionService.save(apelacion);
+        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
 
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
     }
@@ -220,8 +227,10 @@ public class ApelacionRestController {
     public ResponseEntity<Map<String, Object>> obtenerEstadisticas() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
-        stats.put("pendientes", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
-        stats.put("enCalificacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
+        stats.put("pendientes", 0L);
+        stats.put("enCalificacion",
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
         stats.put("enSubsanacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_SUBSANACION));
         stats.put("resueltosFundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO));
         stats.put("resueltosInfundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO));
