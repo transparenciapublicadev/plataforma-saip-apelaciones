@@ -62,39 +62,71 @@ VALUES (6, 'func.ejdf@ejdf.test', '123456', 'FUNCIONARIO', TRUE, NOW());
 INSERT IGNORE INTO funcionarios (id_usuario, nombre_completo, cargo, area, telefono, id_entidad)
 VALUES (6, 'Carmen Flores Paredes', 'Responsable de Transparencia', 'Dirección General de Transparencia, Acceso a la Información Pública y Protección de Datos Personales', '(01) 204-8021', 4);
 
--- --- Miembros TTAIP — Primera Sala (3 vocales) ---
+-- --- Presidencia y miembros TTAIP oficiales ---
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (7, 'tatiana.valverde@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (7, 'Tatiana Azucena Valverde Alvarado', 'Presidenta de Sala', 'PRIMERA SALA', 'Derecho Administrativo y Gestión Pública');
+VALUES (7, 'tvalverde@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (7, 'Tatiana Azucena Valverde Alvarado', 'Presidenta', 'PRIMERA SALA', 'Derecho administrativo', DATE '2025-03-22', DATE '2026-03-21', FALSE);
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (8, 'luis.agurto@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (8, 'Luis Guillermo Agurto Villegas', 'Vocal', 'PRIMERA SALA', 'Derecho Constitucional');
+VALUES (8, 'lagurto@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (8, 'Luis Guillermo Agurto Villegas', 'Vocal', 'PRIMERA SALA', 'Transparencia y acceso a la informacion', DATE '2025-03-22', DATE '2026-03-21', FALSE);
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (9, 'segundo.zamora@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (9, 'Segundo Ulises Zamora Barboza', 'Vocal', 'PRIMERA SALA', 'Derecho a la Información y Transparencia');
-
--- --- Miembros TTAIP — Segunda Sala (3 vocales) ---
+VALUES (9, 'szamora@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (9, 'Segundo Ulises Zamora Barboza', 'Vocal', 'PRIMERA SALA', 'Gestion publica', DATE '2025-03-22', DATE '2026-03-21', FALSE);
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (10, 'junior.pichon@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (10, 'Junior Pichón De la Cruz', 'Presidente de Sala', 'SEGUNDA SALA', 'Derecho Administrativo');
+VALUES (10, 'jpichon@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (10, 'Junior Pichon De la Cruz', 'Presidente', 'SEGUNDA SALA', 'Procedimiento administrativo', DATE '2025-06-04', DATE '2026-06-03', FALSE);
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (11, 'julio.mancilla@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (11, 'Julio César Mancilla Crespo', 'Vocal y Presidente del TTAIP', 'SEGUNDA SALA', 'Derecho Público y Gobernanza');
+VALUES (11, 'jmancilla@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (11, 'Julio Cesar Mancilla Crespo', 'Vocal', 'SEGUNDA SALA', 'Derecho constitucional', DATE '2025-06-09', DATE '2026-06-08', TRUE);
 
 INSERT IGNORE INTO usuarios (id_usuario, email, password, tipo_usuario, activo, fecha_registro)
-VALUES (12, 'jessica.rojas@ttaip.test', '123456', 'TTAIP', TRUE, NOW());
-INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad)
-VALUES (12, 'Jessica Martha Rojas Barrueta', 'Vocal', 'SEGUNDA SALA', 'Derecho Constitucional y Derechos Humanos');
+VALUES (12, 'jrojasb@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+VALUES (12, 'Jessica Martha Rojas Barrueta', 'Vocal', 'SEGUNDA SALA', 'Proteccion de datos', DATE '2025-06-04', DATE '2026-06-03', FALSE);
+
+INSERT IGNORE INTO usuarios (email, password, tipo_usuario, activo, fecha_registro)
+VALUES ('tvalverde@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW()),
+       ('lagurto@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW()),
+       ('szamora@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW()),
+       ('jpichon@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW()),
+       ('jmancilla@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW()),
+       ('jrojasb@minjus.gob.pe', 'Saip2026*', 'TTAIP', TRUE, NOW());
+
+INSERT IGNORE INTO miembros_ttaip (id_usuario, nombre_completo, cargo, sala, especialidad, periodo_inicio, periodo_fin, presidente_tribunal)
+SELECT u.id_usuario, t.nombre_completo, t.cargo, t.sala, t.especialidad, t.periodo_inicio, t.periodo_fin, t.presidente_tribunal
+FROM (SELECT 'tvalverde@minjus.gob.pe' AS email, 'Tatiana Azucena Valverde Alvarado' AS nombre_completo, 'Presidenta' AS cargo, 'PRIMERA SALA' AS sala, 'Derecho administrativo' AS especialidad, DATE '2025-03-22' AS periodo_inicio, DATE '2026-03-21' AS periodo_fin, FALSE AS presidente_tribunal
+      UNION ALL SELECT 'lagurto@minjus.gob.pe', 'Luis Guillermo Agurto Villegas', 'Vocal', 'PRIMERA SALA', 'Transparencia y acceso a la informacion', DATE '2025-03-22', DATE '2026-03-21', FALSE
+      UNION ALL SELECT 'szamora@minjus.gob.pe', 'Segundo Ulises Zamora Barboza', 'Vocal', 'PRIMERA SALA', 'Gestion publica', DATE '2025-03-22', DATE '2026-03-21', FALSE
+      UNION ALL SELECT 'jpichon@minjus.gob.pe', 'Junior Pichon De la Cruz', 'Presidente', 'SEGUNDA SALA', 'Procedimiento administrativo', DATE '2025-06-04', DATE '2026-06-03', FALSE
+      UNION ALL SELECT 'jmancilla@minjus.gob.pe', 'Julio Cesar Mancilla Crespo', 'Vocal', 'SEGUNDA SALA', 'Derecho constitucional', DATE '2025-06-09', DATE '2026-06-08', TRUE
+      UNION ALL SELECT 'jrojasb@minjus.gob.pe', 'Jessica Martha Rojas Barrueta', 'Vocal', 'SEGUNDA SALA', 'Proteccion de datos', DATE '2025-06-04', DATE '2026-06-03', FALSE) t
+         JOIN usuarios u ON u.email = t.email;
+
+UPDATE usuarios
+SET activo = FALSE
+WHERE tipo_usuario = 'TTAIP'
+  AND email NOT IN ('tvalverde@minjus.gob.pe', 'lagurto@minjus.gob.pe', 'szamora@minjus.gob.pe',
+                    'jpichon@minjus.gob.pe', 'jmancilla@minjus.gob.pe', 'jrojasb@minjus.gob.pe');
+
+INSERT IGNORE INTO salas_ttaip (nombre, periodo_inicio, periodo_fin, id_presidente_sala, activa)
+SELECT 'PRIMERA SALA', DATE '2025-03-22', DATE '2026-03-21', u.id_usuario, TRUE
+FROM usuarios u
+WHERE u.email = 'tvalverde@minjus.gob.pe';
+
+INSERT IGNORE INTO salas_ttaip (nombre, periodo_inicio, periodo_fin, id_presidente_sala, activa)
+SELECT 'SEGUNDA SALA', DATE '2025-06-04', DATE '2026-06-03', u.id_usuario, TRUE
+FROM usuarios u
+WHERE u.email = 'jpichon@minjus.gob.pe';
 
 -- --- Administrador ---
 
