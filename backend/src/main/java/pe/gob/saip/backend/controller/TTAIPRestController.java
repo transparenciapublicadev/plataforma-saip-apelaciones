@@ -34,7 +34,7 @@ public class TTAIPRestController {
         return ResponseEntity.ok(ttaipService.obtenerEstadisticas());
     }
 
-    @Operation(summary = "Listar apelaciones pendientes de elevación")
+    @Operation(summary = "Listar apelaciones en primera calificación")
     @GetMapping("/pendientes")
     public ResponseEntity<List<ApelacionDTO>> listarPendientes() {
         return ResponseEntity.ok(ttaipService.listarPendientes());
@@ -43,7 +43,7 @@ public class TTAIPRestController {
     @Operation(summary = "Listar apelaciones en primera calificación")
     @GetMapping("/en-calificacion")
     public ResponseEntity<List<ApelacionDTO>> listarEnCalificacion() {
-        return ResponseEntity.ok(ttaipService.listarPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
+        return ResponseEntity.ok(ttaipService.listarPrimeraCalificacion());
     }
 
     @Operation(summary = "Listar apelaciones en subsanación")

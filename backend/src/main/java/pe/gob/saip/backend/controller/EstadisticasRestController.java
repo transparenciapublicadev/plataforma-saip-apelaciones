@@ -61,8 +61,8 @@ public class EstadisticasRestController {
         List<Apelacion> apelaciones = apelacionService.findAll();
         stats.put("totalApelaciones", apelaciones.size());
         stats.put("apelacionesPendientes", apelaciones.stream()
-                .filter(a -> Apelacion.EstadoApelacion.PENDIENTE_ELEVACION.equals(a.getEstado()) ||
-                           Apelacion.EstadoApelacion.EN_CALIFICACION_1.equals(a.getEstado()))
+                .filter(a -> Apelacion.EstadoApelacion.EN_CALIFICACION_1.equals(a.getEstado()) ||
+                           Apelacion.EstadoApelacion.PENDIENTE_ELEVACION.equals(a.getEstado()))
                 .count());
         stats.put("apelacionesResueltas", apelaciones.stream()
                 .filter(a -> a.isResuelta())
