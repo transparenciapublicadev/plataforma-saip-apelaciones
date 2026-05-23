@@ -3,6 +3,7 @@ package com.gestion.misaip.presentation.viewmodel
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gestion.misaip.config.AppRolePolicy
 import com.gestion.misaip.core.domain.usecase.auth.AutenticarUsuarioUseCase
 import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
 import com.gestion.misaip.data.CredentialStorage
@@ -58,12 +59,15 @@ class LoginViewModel(
         val ciudadano = credentialStorage.obtenerCiudadano()
         val funcionario = credentialStorage.obtenerFuncionario()
 
+        val isCitizenApp = AppRolePolicy.isCitizenApp
+        val savedCredentials = if (isCitizenApp) ciudadano else funcionario
+
         _uiState.value = LoginUiState(
-            dni = ciudadano?.first ?: "",
-            contrasena = if (ciudadano != null) ciudadano.second else if (funcionario != null) funcionario.second else "",
-            usuario = funcionario?.first ?: "",
-            recordarAcceso = ciudadano != null || funcionario != null,
-            esCiudadano = ciudadano != null || funcionario == null
+            dni = if (isCitizenApp) ciudadano?.first ?: "" else "",
+            contrasena = savedCredentials?.second ?: "",
+            usuario = if (isCitizenApp) "" else funcionario?.first ?: "",
+            recordarAcceso = savedCredentials != null,
+            esCiudadano = isCitizenApp
         )
     }
 
@@ -74,6 +78,10 @@ class LoginViewModel(
     }
 
     fun cambiarTipoLogin(esCiudadano: Boolean) {
+        if (AppRolePolicy.isCitizenApp != esCiudadano) {
+            return
+        }
+
         // Al cambiar de tab, cargar credenciales guardadas del tipo correspondiente
         val saved = if (esCiudadano) credentialStorage.obtenerCiudadano() else credentialStorage.obtenerFuncionario()
         _uiState.value = _uiState.value.copy(
@@ -160,6 +168,10 @@ class LoginViewModel(
                 when (result) {
                     is AutenticarUsuarioUseCase.AuthResult.Success -> {
                         val usuario = result.usuario
+                        if (!AppRolePolicy.isRoleAllowed(usuario.tipo)) {
+                            _events.emit(LoginEvent.ShowMessage("Esta aplicacion solo permite accesos de tipo ${AppRolePolicy.roleLabel}"))
+                            return@launch
+                        }
 
                         // Guardar o borrar credenciales según la preferencia del usuario
                         if (state.recordarAcceso) {
@@ -189,7 +201,7 @@ class LoginViewModel(
                             try {
                                 FCMHelper.getToken(
                                     onTokenReceived = { token ->
-                                        FCMHelper.saveTokenToFirestore(token)
+                                        FCMHelper.registerTokenWithBackend(token)
                                     }
                                 )
                                 FCMHelper.subscribeUserByType(
@@ -236,8 +248,11 @@ class LoginViewModel(
 
     fun navegarARegistro() {
         viewModelScope.launch {
-            _events.emit(LoginEvent.NavigateToRegister)
+            if (AppRolePolicy.allowsPublicRegistration) {
+                _events.emit(LoginEvent.NavigateToRegister)
+            } else {
+                _events.emit(LoginEvent.ShowMessage("El registro publico solo esta disponible en la App Ciudadano"))
+            }
         }
     }
 }
-

@@ -302,7 +302,7 @@ private fun TTAIPDashboardContent(
                         )
 
                         // Filtros
-                        val filtros = remember { listOf("todas", "Pendiente de Elevación", "En Calificación", "En Subsanación", "En Resolución", "Resuelto") }
+                        val filtros = remember { listOf("todas", "En Calificación", "En Subsanación", "En Resolución", "Resuelto") }
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -434,24 +434,6 @@ private fun ApelacionCard(
                 )
             }
 
-            if (item.estado == "Pendiente de Elevación") {
-                Spacer(modifier = Modifier.height(10.dp))
-                FilledTonalButton(
-                    onClick = onIniciarCalificacion,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
-                    Text("Iniciar Calificación")
-                }
-            }
         }
     }
 }

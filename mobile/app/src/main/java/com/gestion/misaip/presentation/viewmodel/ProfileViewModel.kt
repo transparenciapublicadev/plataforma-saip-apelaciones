@@ -119,10 +119,10 @@ class ProfileViewModel(
             NotificationPushHelper.detenerEscuchaNotificaciones()
             NotificationPushHelper.limpiarDatosSesion()
 
-            // Limpiar FCM antes de cerrar sesión (el token de Firebase Auth aún está disponible)
+            // Limpiar FCM antes de cerrar sesión en el backend REST.
             val state = _uiState.value
             try {
-                FCMHelper.removeTokenFromFirestore()
+                FCMHelper.unregisterTokenFromBackend()
                 FCMHelper.unsubscribeAll(
                     tipoUsuario = state.tipoUsuario.name,
                     entidadId = state.entidad
@@ -142,4 +142,3 @@ class ProfileViewModel(
         return sdf.format(java.util.Date(timestamp))
     }
 }
-

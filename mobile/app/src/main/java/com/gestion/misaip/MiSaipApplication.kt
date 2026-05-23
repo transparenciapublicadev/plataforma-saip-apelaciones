@@ -69,7 +69,7 @@ class MiSaipApplication : Application(), Configuration.Provider {
             val notificationManager = getSystemService(NotificationManager::class.java)
 
             val canales = listOf(
-                // Canal general (el default de Firebase)
+                // Canal general (default de FCM)
                 NotificationChannel(
                     com.gestion.misaip.messaging.NotificationChannels.GENERAL,
                     getString(R.string.channel_general_name),
@@ -246,4 +246,3 @@ class MiSaipApplication : Application(), Configuration.Provider {
             }
         }
 }
-

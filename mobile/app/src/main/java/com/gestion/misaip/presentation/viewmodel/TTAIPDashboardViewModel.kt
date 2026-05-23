@@ -27,7 +27,7 @@ data class TTAIPDashboardUiState(
     val estadisticas: EstadisticasTTAIP = EstadisticasTTAIP(0, 0, 0, 0, 0),
     val apelaciones: List<ApelacionItem> = emptyList(),
     val apelacionesFiltradas: List<ApelacionItem> = emptyList(),
-    val filtroActual: String = "Pendiente de Elevación",
+    val filtroActual: String = "En Calificación",
     val busqueda: String = "",
     val apelacionesUrgentes: List<Apelacion> = emptyList(),
     val isLoading: Boolean = false
@@ -91,7 +91,7 @@ class TTAIPDashboardViewModel(
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasTTAIP(
                 pendientesAdmision = apelaciones.count {
-                    it.estado.name == "PENDIENTE_ELEVACION" || it.estado.name == "EN_CALIFICACION_1"
+                    it.estado.name == "EN_CALIFICACION_1"
                 },
                 enProceso = apelaciones.count {
                     it.estado.name == "EN_CALIFICACION_2" ||
@@ -117,7 +117,7 @@ class TTAIPDashboardViewModel(
                 )
             }
 
-            val filtroPorDefecto = "Pendiente de Elevación"
+            val filtroPorDefecto = "En Calificación"
             val apelacionesFiltradas = filtrarApelaciones(
                 apelaciones = apelacionesItems,
                 filtro = filtroPorDefecto,
@@ -143,7 +143,7 @@ class TTAIPDashboardViewModel(
     }
 
     /**
-     * Sincroniza datos desde Firestore y recarga la UI.
+     * Sincroniza datos desde el backend REST y recarga la UI.
      * Se ejecuta cuando se recibe una notificación push relevante.
      */
     private fun sincronizarYRecargar() {
@@ -186,7 +186,6 @@ class TTAIPDashboardViewModel(
                 apel.entidad.lowercase().contains(query)
 
             val matchesFiltro = when (filtro) {
-                "Pendiente de Elevación" -> apel.estado == "Pendiente de Elevación"
                 "En Calificación" -> apel.estado == "En Primera Calificación" || apel.estado == "En Segunda Calificación"
                 "En Subsanación" -> apel.estado == "En Subsanación"
                 "En Resolución" -> apel.estado == "En Resolución" || apel.estado == "Notificación Segunda Calificación"

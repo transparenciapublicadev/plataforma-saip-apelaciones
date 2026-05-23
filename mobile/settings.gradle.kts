@@ -28,11 +28,11 @@ rootProject.name = "MiSAIP"
 // =============================================================================
 // ARQUITECTURA MULTIMODULAR - Clean Architecture + MVVM
 // =============================================================================
-// :app                 -> Capa de Presentación (Compose, ViewModels, DI, Theme)
+// :app                 -> Tres APKs por flavor: ciudadano, funcionario y ttaip
 // :core:domain         -> Kotlin Puro (Modelos, UseCases, Repository Interfaces) — LOCAL
 // :core:data           -> Implementación Repositorios, Mappers, DataSources
 // :core:database       -> SQLDelight, DAOs, Entidades BD
-// :core:network        -> REST API (Retrofit + OkHttp) + Firebase
+// :core:network        -> REST API (Retrofit + OkHttp) contra Spring Boot + JWT
 // :core:common         -> Utilidades compartidas (Android)
 // =============================================================================
 
@@ -44,4 +44,3 @@ include(":core:data")
 include(":core:database")
 include(":core:network")
 include(":core:common")
-

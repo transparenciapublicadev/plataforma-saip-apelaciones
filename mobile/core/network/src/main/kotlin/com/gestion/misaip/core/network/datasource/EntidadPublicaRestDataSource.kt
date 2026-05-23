@@ -5,7 +5,7 @@ import com.gestion.misaip.core.network.api.EntidadApiService
 
 /**
  * Implementación REST del datasource de entidades públicas.
- * Usa el backend Spring Boot en lugar de Firebase.
+ * Usa el backend Spring Boot + JWT como fuente remota.
  */
 class EntidadPublicaRestDataSource(
     private val entidadApi: EntidadApiService

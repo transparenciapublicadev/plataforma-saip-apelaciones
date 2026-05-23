@@ -70,7 +70,7 @@ class SAIPFormViewModel(
                 val entidades = listaEntidades
                 _uiState.value = _uiState.value.copy(entidades = entidades)
 
-                // Si la BD local está vacía, sincronizar desde Firebase
+                // Si la BD local está vacía, sincronizar desde el backend REST
                 if (entidades.isEmpty() && !sincronizacionIniciada) {
                     sincronizacionIniciada = true
                     viewModelScope.launch {
@@ -193,4 +193,3 @@ class SAIPFormViewModel(
         }
     }
 }
-

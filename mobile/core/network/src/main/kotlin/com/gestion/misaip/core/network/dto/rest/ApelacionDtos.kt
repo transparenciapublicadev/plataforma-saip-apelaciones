@@ -108,7 +108,7 @@ data class ApelacionRestDto(
  * Ahora los valores son idénticos entre backend y mobile.
  */
 private fun mapEstadoApelacion(estado: String?, resultado: String?): EstadoApelacion {
-    return EstadoApelacion.fromString(estado ?: "PENDIENTE_ELEVACION")
+    return EstadoApelacion.fromString(estado ?: "EN_CALIFICACION_1")
 }
 
 private fun parseApelacionDate(dateStr: String?): Long {
