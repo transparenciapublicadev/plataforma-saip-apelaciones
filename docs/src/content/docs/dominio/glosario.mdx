@@ -50,7 +50,7 @@ import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/compone
   <TabItem label="Estados Apelación">
     | Estado | Descripción |
     |--------|-------------|
-    | `PENDIENTE_ELEVACION` | Apelación creada, esperando elevación |
+    | `PENDIENTE_ELEVACION` | Estado legacy conservado en backend; no se usa en el flujo funcional nuevo |
     | `EN_CALIFICACION_1` | Primera calificación por TTAIP |
     | `EN_SUBSANACION` | Ciudadano debe subsanar (2 días hábiles) |
     | `EN_CALIFICACION_2` | Segunda calificación tras subsanación |
@@ -94,21 +94,20 @@ graph LR
     P1["📋 SAIP<br/>10 días hábiles"]
     P2["📝 Subsanación SAIP<br/>2 días hábiles"]
     P3["⚖️ Apelación<br/>15 días calendario"]
-    P4["📤 Elevación<br/>2 días hábiles"]
     P5["🔍 1ª Calificación<br/>7 días"]
     P6["📝 Subsanación TTAIP<br/>2 días hábiles"]
     P7["📜 Resolución Final<br/>10 días hábiles"]
     
+    P1 -. "si falta informacion" .-> P2
+    P2 --> P1
     P1 --> P3
-    P3 --> P4
-    P4 --> P5
+    P3 --> P5
     P5 --> P6
     P6 --> P7
     
     style P1 fill:#c8e6c9,color:#111827,stroke:#4b5563,stroke-width:1px
     style P2 fill:#fff9c4,color:#111827,stroke:#4b5563,stroke-width:1px
     style P3 fill:#ffe0b2,color:#111827,stroke:#4b5563,stroke-width:1px
-    style P4 fill:#bbdefb,color:#111827,stroke:#4b5563,stroke-width:1px
     style P5 fill:#f3e5f5,color:#111827,stroke:#4b5563,stroke-width:1px
     style P6 fill:#fff9c4,color:#111827,stroke:#4b5563,stroke-width:1px
     style P7 fill:#ffccbc,color:#111827,stroke:#4b5563,stroke-width:1px

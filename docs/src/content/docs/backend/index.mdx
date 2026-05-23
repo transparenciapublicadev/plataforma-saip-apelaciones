@@ -1,6 +1,6 @@
 ---
 title: Backend — Visión General
-description: Módulo API REST con Spring Boot 4, Java 21, MySQL y Spring Security para la Plataforma SAIP.
+description: Módulo API REST con Spring Boot 4, Java 25, MySQL y Spring Security para la Plataforma SAIP.
 ---
 
 import { Card, CardGrid, LinkCard, Tabs, TabItem, Steps, FileTree, Badge } from '@astrojs/starlight/components';
@@ -10,11 +10,11 @@ El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST
 ## Stack Tecnológico
 
 <CardGrid>
-  <Card title="Spring Boot 4.0.0" icon="rocket">
-    Framework principal con autoconfiguración, embedded Tomcat y soporte para Java 21.
+  <Card title="Spring Boot 4.0.6" icon="rocket">
+    Framework principal con autoconfiguración, embedded Tomcat y soporte para el JDK configurado.
   </Card>
-  <Card title="Java 21 (LTS)" icon="seti:java">
-    Records, pattern matching, virtual threads y sealed classes.
+  <Card title="Java 25" icon="seti:java">
+    Versión configurada en `backend/pom.xml` mediante `java.version`.
   </Card>
   <Card title="MySQL + JPA" icon="seti:db">
     Spring Data JPA con Hibernate y dialecto `MySQLDialect`. DDL auto-update en desarrollo.
@@ -31,7 +31,7 @@ El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST
 | **Puerto** | `8080` |
 | **Package base** | `pe.gob.saip.backend` |
 | **Build tool** | Maven Wrapper (`mvnw`) |
-| **Java version** | 21 |
+| **Java version** | 25 |
 | **Base de datos** | MySQL (`saip_db`) |
 | **OpenAPI** | `/v3/api-docs` |
 

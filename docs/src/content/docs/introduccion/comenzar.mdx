@@ -1,222 +1,188 @@
 ---
-title: Guía de Inicio
-description: Instrucciones para configurar el entorno de desarrollo y ejecutar cada módulo de la Plataforma SAIP.
+title: Comenzar
+description: Configuración local, comandos principales y orden recomendado para ejecutar la Plataforma SAIP.
 sidebar:
-  order: 3
+  order: 4
 ---
 
-import { Tabs, TabItem, Steps, Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-## Requisitos Previos
+## Requisitos
 
 <CardGrid>
   <Card title="Backend" icon="setting">
-    - Java 21 (JDK)
-    - MySQL 8.0+
-    - Maven 3.9+ (incluido vía wrapper)
+    JDK 25 según `backend/pom.xml`, Maven Wrapper incluido y MySQL disponible.
   </Card>
   <Card title="Frontend" icon="laptop">
-    - Node.js 22+ LTS
-    - npm 10+
+    Node compatible con Angular 21, npm 11.6.x y backend disponible para sincronizar OpenAPI.
   </Card>
   <Card title="Mobile" icon="rocket">
-    - Android Studio Meerkat+
-    - JDK 17+
-    - Android SDK 36 (min SDK 24)
+    Android Studio, JDK 17+ para Gradle/AGP, SDK 36 y `google-services.json` solo para FCM.
+  </Card>
+  <Card title="Docs" icon="document">
+    Node/npm para ejecutar Astro 6 + Starlight.
   </Card>
 </CardGrid>
 
----
-
-## Configuración del Backend
+## Orden Recomendado
 
 <Steps>
-
-1. **Crear la base de datos MySQL**
-
-   ```sql
-   CREATE DATABASE saip_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-
-2. **Configurar variables de entorno**
-
-   El backend usa variables externalizadas para secrets. Configurar en el sistema o en un archivo `.env`:
-
-   ```properties
-   DB_USERNAME=root
-   DB_PASSWORD=tu_password
-   JWT_SECRET=tu_secret_key_minimo_256_bits
-   ```
-
-   :::caution
-   **NUNCA** hardcodear credenciales en el código fuente. Usar siempre variables de entorno.
-   :::
-
-3. **Ejecutar el backend**
-
-   <Tabs syncKey="os">
-     <TabItem label="Windows">
-       ```powershell
-       cd saip-backend
-       .\mvnw.cmd spring-boot:run
-       ```
-     </TabItem>
-     <TabItem label="Linux / macOS">
-       ```bash
-       cd saip-backend
-       ./mvnw spring-boot:run
-       ```
-     </TabItem>
-   </Tabs>
-
-   El servidor se levantará en `http://localhost:8080`.
-
-4. **Verificar que funciona**
-
-   ```bash
-   curl http://localhost:8080/v3/api-docs
-   ```
-
-   Debe retornar el OpenAPI spec en formato JSON.
-
+1. Levantar MySQL y preparar la base de datos `saip_db`.
+2. Ejecutar backend y validar `/v3/api-docs`.
+3. Sincronizar contrato OpenAPI si hubo cambios de API.
+4. Ejecutar frontend Angular.
+5. Ejecutar mobile con el flavor requerido.
+6. Ejecutar docs Starlight y validar que la documentación compile.
 </Steps>
 
----
+## Backend
 
-## Configuración del Frontend
+```powershell
+cd backend
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
 
-<Steps>
+Variables habituales:
 
-1. **Instalar dependencias**
+| Variable | Uso |
+| --- | --- |
+| `DB_URL` | JDBC de MySQL. |
+| `DB_USERNAME` | Usuario de base de datos. |
+| `DB_PASSWORD` | Password de base de datos. |
+| `JWT_SECRET` | Secreto HMAC para firmar JWT. |
+| `APP_CORS_ALLOWED_ORIGINS` | Orígenes permitidos para frontend. |
 
-   ```bash
-   cd saip-frontend
-   npm install
-   ```
+Validaciones rápidas:
 
-2. **Iniciar el servidor de desarrollo**
+```powershell
+curl http://localhost:8080/v3/api-docs
+curl http://localhost:8080/swagger-ui.html
+```
 
-   ```bash
-   npm start
-   ```
+## Frontend
 
-   Angular CLI iniciará `ng serve` en `http://localhost:4200`.
+```powershell
+cd frontend
+npm install
+npm test
+npm run build
+npm start
+```
 
-3. **Verificar la conexión con el backend**
+Sincronizar tipos desde backend activo:
 
-   Asegurarse de que el backend está corriendo en `:8080`. El frontend se conecta a la API REST configurada en los services.
+```powershell
+cd frontend
+npm run generate:api:live
+```
 
-</Steps>
+La aplicación web corre por defecto en:
 
-:::tip
-El frontend usa **SSR con Express** para producción. En desarrollo, `ng serve` proporciona hot-reload automático.
+```text
+http://localhost:4200
+```
+
+## Mobile
+
+El módulo mobile genera tres APKs independientes por rol.
+
+```powershell
+cd mobile
+.\gradlew.bat :app:compileCiudadanoDebugKotlin
+.\gradlew.bat :app:compileFuncionarioDebugKotlin
+.\gradlew.bat :app:compileTtaipDebugKotlin
+```
+
+Build por flavor:
+
+```powershell
+.\gradlew.bat assembleCiudadanoDebug
+.\gradlew.bat assembleFuncionarioDebug
+.\gradlew.bat assembleTtaipDebug
+```
+
+Configurar backend para emulador o dispositivo:
+
+```properties
+# mobile/gradle.properties o local.properties
+REST_BASE_URL=http://10.0.2.2:8080/
+```
+
+:::caution[Firebase]
+Firebase ya no es backend de autenticación ni de datos. El único servicio conservado es **Firebase Cloud Messaging** para recibir push notifications.
 :::
 
----
+## Documentación Starlight
 
-## Configuración del Mobile
+```powershell
+cd docs
+npm ci
+npm run build
+npm start
+```
+
+La documentación local corre por defecto en:
+
+```text
+http://localhost:4321
+```
+
+## Postman
+
+Importar:
+
+- `postman/SAIP-API-Collection-Complete.json`
+- `postman/SAIP-API-Environment-Complete.json`
+
+Flujo recomendado:
 
 <Steps>
-
-1. **Abrir en Android Studio**
-
-   Abrir la carpeta `MiSAIP/` como proyecto en Android Studio.
-
-2. **Configurar Firebase**
-
-   El archivo `google-services.json` debe estar en `MiSAIP/app/`. Configurar Firebase Auth y FCM en la consola de Firebase.
-
-3. **Configurar la URL del backend**
-
-   En `MiSAIP/gradle.properties`, verificar que `REST_BASE_URL` apunte al backend:
-
-   ```properties
-   REST_BASE_URL=http://10.0.2.2:8080/api/
-   ```
-
-   :::note
-   `10.0.2.2` es la IP del host desde el emulador Android. Para dispositivo físico, usar la IP de la máquina.
-   :::
-
-4. **Compilar y ejecutar**
-
-   <Tabs syncKey="os">
-     <TabItem label="Windows">
-       ```powershell
-       cd MiSAIP
-       .\gradlew.bat assembleDebug
-       ```
-     </TabItem>
-     <TabItem label="Linux / macOS">
-       ```bash
-       cd MiSAIP
-       ./gradlew assembleDebug
-       ```
-     </TabItem>
-   </Tabs>
-
+1. Seleccionar environment `SAIP Backend - Environment`.
+2. Ejecutar los logins para poblar tokens por rol.
+3. Ejecutar carpetas por dominio: SAIP, respuestas, apelaciones, TTAIP, reportes.
+4. Revisar ejemplos de éxito y error en la pestaña **Examples** de cada request.
 </Steps>
 
----
+## Comandos por Módulo
 
-## Ejecución de Tests
-
-<Tabs syncKey="module">
-  <TabItem label="Backend" icon="setting">
-    ```bash
-    cd saip-backend
-    ./mvnw test          # Linux/macOS
-    .\mvnw.cmd test      # Windows
+<Tabs>
+  <TabItem label="Backend">
+    ```powershell
+    cd backend
+    .\mvnw.cmd test
+    .\mvnw.cmd spring-boot:run
     ```
-    Ejecuta JUnit 5 + Mockito. Cobertura objetivo: 80%.
   </TabItem>
-  <TabItem label="Frontend" icon="laptop">
-    ```bash
-    cd saip-frontend
+  <TabItem label="Frontend">
+    ```powershell
+    cd frontend
     npm test
+    npm run build
+    npm start
     ```
-    Ejecuta Vitest para tests unitarios y de componentes.
   </TabItem>
-  <TabItem label="Mobile" icon="rocket">
-    Importante: compilar **todos** los módulos antes de testear para evitar cache stale de Gradle.
-
-    ```bash
-    cd MiSAIP
-    # Paso 1: Compilar TODOS los módulos
-    ./gradlew clean compileDebugKotlin
-
-    # Paso 2: Ejecutar tests
-    ./gradlew test
+  <TabItem label="Mobile">
+    ```powershell
+    cd mobile
+    .\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin :core:domain:test
     ```
-
-    :::caution
-    Los módulos `core/network`, `core/data`, `core/database` y `core/common` **no tienen tests unitarios**. Solo `core/domain` y `app/` contienen tests.
-    :::
+  </TabItem>
+  <TabItem label="Docs">
+    ```powershell
+    cd docs
+    npm run build
+    npm start
+    ```
   </TabItem>
 </Tabs>
 
----
+## Checklist antes de Cerrar Cambios
 
-## Verificación Completa
-
-Para verificar que todo el entorno está configurado correctamente:
-
-```bash
-# Terminal 1 — Backend
-cd saip-backend && ./mvnw spring-boot:run
-
-# Terminal 2 — Frontend
-cd saip-frontend && npm start
-
-# Terminal 3 — Mobile (build)
-cd MiSAIP && ./gradlew assembleDebug
-```
-
-Una vez los tres módulos estén corriendo, el sistema estará disponible:
-
-| Módulo | URL / Método |
-|--------|-------------|
-| Backend API | `http://localhost:8080/api/` |
-| OpenAPI Spec | `http://localhost:8080/v3/api-docs` |
-| Frontend Web | `http://localhost:4200` |
-| Mobile | Emulador o dispositivo Android |
+| Área tocada | Validación mínima |
+| --- | --- |
+| Backend | `cd backend; .\mvnw.cmd test` |
+| Frontend | `cd frontend; npm test; npm run build` |
+| Mobile | `cd mobile; .\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin :core:domain:test` |
+| Docs | `cd docs; npm run build` |
+| API contract | Backend activo + `scripts/sync-openapi.ps1` |
