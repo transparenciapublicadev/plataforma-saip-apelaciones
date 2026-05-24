@@ -102,6 +102,34 @@ CREATE TABLE IF NOT EXISTS cronograma_entregas_parciales_solicitud (
     CONSTRAINT fk_cronograma_ampliacion FOREIGN KEY (id_ampliacion) REFERENCES ampliaciones_plazo_solicitud (id_ampliacion)
 );
 
+CREATE TABLE IF NOT EXISTS encauzamientos_solicitud (
+    id_encauzamiento BIGINT NOT NULL AUTO_INCREMENT,
+    id_solicitud BIGINT NOT NULL,
+    id_entidad_origen BIGINT NOT NULL,
+    id_entidad_destino BIGINT NOT NULL,
+    motivo_encauzamiento TEXT NOT NULL,
+    alcance VARCHAR(20) NOT NULL,
+    fecha_encauzamiento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_limite_encauzamiento DATE NOT NULL,
+    estado_encauzamiento VARCHAR(30) NOT NULL DEFAULT 'DERIVADO',
+    responsable VARCHAR(120) NULL,
+    observacion_sustento TEXT NULL,
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_encauzamiento),
+    KEY idx_enc_solicitud (id_solicitud),
+    KEY idx_enc_origen (id_entidad_origen),
+    KEY idx_enc_destino (id_entidad_destino),
+    KEY idx_enc_estado (estado_encauzamiento),
+    KEY idx_enc_limite (fecha_limite_encauzamiento),
+    CONSTRAINT fk_enc_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud),
+    CONSTRAINT fk_enc_entidad_origen FOREIGN KEY (id_entidad_origen) REFERENCES entidades (id_entidad),
+    CONSTRAINT fk_enc_entidad_destino FOREIGN KEY (id_entidad_destino) REFERENCES entidades (id_entidad),
+    CONSTRAINT chk_enc_alcance CHECK (alcance IN ('TOTAL', 'PARCIAL')),
+    CONSTRAINT chk_enc_estado CHECK (estado_encauzamiento IN ('REGISTRADO', 'DERIVADO', 'ATENDIDO', 'CANCELADO', 'VENCIDO'))
+);
+
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
