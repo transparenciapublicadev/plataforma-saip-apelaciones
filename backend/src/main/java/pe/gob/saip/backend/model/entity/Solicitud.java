@@ -79,6 +79,13 @@ public class Solicitud {
     @Column(name = "tipo_informacion", length = 100)
     private String tipoInformacion;
 
+    @Column(name = "consentimiento_datos_personales")
+    private Boolean consentimientoDatosPersonales;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "canal_notificacion", length = 40)
+    private CanalNotificacion canalNotificacion;
+
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Respuesta respuesta;
 
@@ -98,6 +105,12 @@ public class Solicitud {
         }
         if (prioridad == null) {
             prioridad = Prioridad.MEDIA;
+        }
+        if (consentimientoDatosPersonales == null) {
+            consentimientoDatosPersonales = false;
+        }
+        if (canalNotificacion == null) {
+            canalNotificacion = CanalNotificacion.CASILLA_ELECTRONICA;
         }
     }
 
@@ -123,6 +136,13 @@ public class Solicitud {
         MEDIA,
         ALTA,
         URGENTE
+    }
+
+    public enum CanalNotificacion {
+        CORREO_ELECTRONICO,
+        CASILLA_ELECTRONICA,
+        PLATAFORMA,
+        FISICA
     }
 
     public Long getId() {

@@ -112,6 +112,9 @@ public class SolicitudRestController {
         if (solicitudDTO.entidadId() == null) {
             throw new IllegalArgumentException("El ID de la entidad es obligatorio");
         }
+        if (!Boolean.TRUE.equals(solicitudDTO.consentimientoDatosPersonales())) {
+            throw new IllegalArgumentException("Debe aceptar el tratamiento de datos personales para presentar la SAIP");
+        }
 
         Ciudadano ciudadano = ciudadanoService.findById(solicitudDTO.ciudadanoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + solicitudDTO.ciudadanoId()));
@@ -127,6 +130,8 @@ public class SolicitudRestController {
         solicitud.setFormatoFisico(solicitudDTO.formatoFisico() != null ? solicitudDTO.formatoFisico() : false);
         solicitud.setCopiaSimple(solicitudDTO.copiaSimple() != null ? solicitudDTO.copiaSimple() : false);
         solicitud.setCopiaCertificada(solicitudDTO.copiaCertificada() != null ? solicitudDTO.copiaCertificada() : false);
+        solicitud.setConsentimientoDatosPersonales(true);
+        solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
         solicitud.setCiudadano(ciudadano);
         solicitud.setEntidad(entidad);
         solicitud.setEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
@@ -152,6 +157,15 @@ public class SolicitudRestController {
         if (solicitudDTO.tipoInformacion() != null) {
             solicitud.setTipoInformacion(solicitudDTO.tipoInformacion());
         }
+        if (solicitudDTO.consentimientoDatosPersonales() != null) {
+            if (!Boolean.TRUE.equals(solicitudDTO.consentimientoDatosPersonales())) {
+                throw new IllegalArgumentException("El consentimiento de tratamiento de datos personales no puede retirarse desde este endpoint");
+            }
+            solicitud.setConsentimientoDatosPersonales(true);
+        }
+        if (solicitudDTO.canalNotificacion() != null) {
+            solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
+        }
         if (solicitudDTO.prioridad() != null) {
             try {
                 solicitud.setPrioridad(Solicitud.Prioridad.valueOf(solicitudDTO.prioridad().toUpperCase()));
@@ -165,6 +179,20 @@ public class SolicitudRestController {
         solicitud = solicitudService.save(solicitud);
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+    }
+
+    private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {
+        if (canal == null || canal.isBlank()) {
+            throw new IllegalArgumentException("El canal de notificación es obligatorio");
+        }
+
+        try {
+            return Solicitud.CanalNotificacion.valueOf(canal.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Canal de notificación no válido: " + canal
+                    + ". Valores permitidos: CORREO_ELECTRONICO, CASILLA_ELECTRONICA, PLATAFORMA, FISICA");
+        }
     }
 
     @Operation(summary = "Cambiar estado de solicitud")
