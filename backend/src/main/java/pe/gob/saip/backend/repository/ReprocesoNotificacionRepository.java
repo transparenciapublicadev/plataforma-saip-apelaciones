@@ -2,6 +2,7 @@ package pe.gob.saip.backend.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.ReprocesoNotificacion;
 
 import java.util.List;
@@ -10,4 +11,9 @@ import java.util.List;
 public interface ReprocesoNotificacionRepository extends JpaRepository<ReprocesoNotificacion, Long> {
 
     List<ReprocesoNotificacion> findByExpediente_IdExpedienteTtaipOrderByFechaCreacionAsc(Long expedienteId);
+
+    long countByCedulaOriginal_IdCedulaAndDestinatario(
+            Long cedulaOriginalId,
+            CedulaNotificacion.DestinatarioNotificacion destinatario
+    );
 }

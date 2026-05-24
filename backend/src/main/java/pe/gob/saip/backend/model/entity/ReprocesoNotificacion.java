@@ -59,6 +59,18 @@ public class ReprocesoNotificacion {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @ManyToOne
+    @JoinColumn(name = "id_cedula_nueva")
+    private CedulaNotificacion cedulaNueva;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne
+    @JoinColumn(name = "id_notificacion_nueva")
+    private NotificacionTtaip notificacionNueva;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne
     @JoinColumn(name = "id_reproceso_padre")
     private ReprocesoNotificacion reprocesoPadre;
 

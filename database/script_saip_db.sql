@@ -36,8 +36,8 @@ CALL add_column_if_missing('miembros_ttaip', 'periodo_fin', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'presidente_tribunal', 'TINYINT(1) NULL DEFAULT 0');
 CALL add_column_if_missing('resoluciones', 'id_expediente_ttaip', 'BIGINT NULL');
 CALL add_column_if_missing('resoluciones', 'id_sala_ttaip', 'BIGINT NULL');
-
-DROP PROCEDURE IF EXISTS add_column_if_missing;
+CALL add_column_if_missing('solicitudes', 'consentimiento_datos_personales', 'TINYINT(1) NOT NULL DEFAULT 1');
+CALL add_column_if_missing('solicitudes', 'canal_notificacion', 'VARCHAR(40) NOT NULL DEFAULT ''CASILLA_ELECTRONICA''');
 
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
@@ -141,6 +141,8 @@ CREATE TABLE IF NOT EXISTS reprocesos_notificacion (
     id_expediente_ttaip BIGINT NOT NULL,
     id_notificacion BIGINT NULL,
     id_cedula_original BIGINT NOT NULL,
+    id_cedula_nueva BIGINT NULL,
+    id_notificacion_nueva BIGINT NULL,
     id_reproceso_padre BIGINT NULL,
     destinatario VARCHAR(30) NOT NULL,
     numero_cedula_original VARCHAR(50) NOT NULL,
@@ -162,12 +164,21 @@ CREATE TABLE IF NOT EXISTS reprocesos_notificacion (
     KEY idx_reproceso_destinatario (destinatario),
     KEY idx_reproceso_estado (estado),
     KEY idx_reproceso_notificacion (id_notificacion),
+    KEY idx_reproceso_cedula_nueva (id_cedula_nueva),
+    KEY idx_reproceso_notificacion_nueva (id_notificacion_nueva),
     KEY idx_reproceso_padre (id_reproceso_padre),
     CONSTRAINT fk_reproceso_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
     CONSTRAINT fk_reproceso_notificacion FOREIGN KEY (id_notificacion) REFERENCES notificaciones_ttaip (id_notificacion),
     CONSTRAINT fk_reproceso_cedula FOREIGN KEY (id_cedula_original) REFERENCES cedulas_notificacion (id_cedula),
+    CONSTRAINT fk_reproceso_cedula_nueva FOREIGN KEY (id_cedula_nueva) REFERENCES cedulas_notificacion (id_cedula),
+    CONSTRAINT fk_reproceso_notificacion_nueva FOREIGN KEY (id_notificacion_nueva) REFERENCES notificaciones_ttaip (id_notificacion),
     CONSTRAINT fk_reproceso_padre FOREIGN KEY (id_reproceso_padre) REFERENCES reprocesos_notificacion (id_reproceso)
 );
+
+CALL add_column_if_missing('reprocesos_notificacion', 'id_cedula_nueva', 'BIGINT NULL');
+CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', 'BIGINT NULL');
+
+DROP PROCEDURE IF EXISTS add_column_if_missing;
 
 START TRANSACTION;
 
@@ -447,7 +458,9 @@ INSERT INTO solicitudes (expediente,
                          formato_fisico,
                          copia_simple,
                          copia_certificada,
-                         tipo_informacion)
+                         tipo_informacion,
+                         consentimiento_datos_personales,
+                         canal_notificacion)
 SELECT 'SAIP-2025-00001',
        'Solicitud de informacion sobre presupuesto institucional',
        'Solicito el detalle del presupuesto institucional y su ejecucion del ultimo periodo.',
@@ -461,7 +474,9 @@ SELECT 'SAIP-2025-00001',
        FALSE,
        TRUE,
        FALSE,
-       'Informacion presupuestal'
+       'Informacion presupuestal',
+       TRUE,
+       'CASILLA_ELECTRONICA'
 FROM ciudadanos c
          JOIN usuarios u ON u.id_usuario = c.id_usuario
          JOIN entidades e ON e.acronimo = 'MINEDU'
@@ -481,7 +496,9 @@ INSERT INTO solicitudes (expediente,
                          formato_fisico,
                          copia_simple,
                          copia_certificada,
-                         tipo_informacion)
+                         tipo_informacion,
+                         consentimiento_datos_personales,
+                         canal_notificacion)
 SELECT 'SAIP-2025-00002',
        'Solicitud de contratos de adquisicion',
        'Solicito informacion sobre contratos de adquisicion del ultimo trimestre.',
@@ -495,7 +512,9 @@ SELECT 'SAIP-2025-00002',
        TRUE,
        TRUE,
        FALSE,
-       'Contrataciones del Estado'
+       'Contrataciones del Estado',
+       TRUE,
+       'CORREO_ELECTRONICO'
 FROM ciudadanos c
          JOIN usuarios u ON u.id_usuario = c.id_usuario
          JOIN entidades e ON e.acronimo = 'MINSA'
@@ -515,7 +534,9 @@ INSERT INTO solicitudes (expediente,
                          formato_fisico,
                          copia_simple,
                          copia_certificada,
-                         tipo_informacion)
+                         tipo_informacion,
+                         consentimiento_datos_personales,
+                         canal_notificacion)
 SELECT 'SAIP-2025-00003',
        'Solicitud de ejecucion de obras publicas',
        'Solicito reportes de avance y ejecucion de obras publicas del periodo anual.',
@@ -529,7 +550,9 @@ SELECT 'SAIP-2025-00003',
        FALSE,
        TRUE,
        FALSE,
-       'Obras publicas'
+       'Obras publicas',
+       TRUE,
+       'CASILLA_ELECTRONICA'
 FROM ciudadanos c
          JOIN usuarios u ON u.id_usuario = c.id_usuario
          JOIN entidades e ON e.acronimo = 'MININTER'
@@ -549,7 +572,9 @@ INSERT INTO solicitudes (expediente,
                          formato_fisico,
                          copia_simple,
                          copia_certificada,
-                         tipo_informacion)
+                         tipo_informacion,
+                         consentimiento_datos_personales,
+                         canal_notificacion)
 SELECT 'SAIP-2025-00004',
        'Solicitud de informes disciplinarios',
        'Solicito informes disciplinarios emitidos durante el ultimo semestre.',
@@ -563,7 +588,9 @@ SELECT 'SAIP-2025-00004',
        FALSE,
        TRUE,
        TRUE,
-       'Informes disciplinarios'
+       'Informes disciplinarios',
+       TRUE,
+       'CASILLA_ELECTRONICA'
 FROM ciudadanos c
          JOIN usuarios u ON u.id_usuario = c.id_usuario
          JOIN entidades e ON e.acronimo = 'MINJUSDH'
@@ -583,7 +610,9 @@ INSERT INTO solicitudes (expediente,
                          formato_fisico,
                          copia_simple,
                          copia_certificada,
-                         tipo_informacion)
+                         tipo_informacion,
+                         consentimiento_datos_personales,
+                         canal_notificacion)
 SELECT 'SAIP-2025-00005',
        'Solicitud de actas de comite tecnico',
        'Solicito actas y acuerdos del comite tecnico del ultimo bimestre.',
@@ -597,7 +626,9 @@ SELECT 'SAIP-2025-00005',
        TRUE,
        TRUE,
        FALSE,
-       'Actas institucionales'
+       'Actas institucionales',
+       TRUE,
+       'FISICA'
 FROM ciudadanos c
          JOIN usuarios u ON u.id_usuario = c.id_usuario
          JOIN entidades e ON e.acronimo = 'MEF'
@@ -912,13 +943,12 @@ FROM (SELECT 'RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA' AS numero_res
              DATE_SUB(NOW(), INTERVAL 1 DAY) AS fecha_emision
       UNION ALL SELECT 'RESOLUCIÓN N.° 001595-2025-JUS/TTAIP-PRIMERA SALA', '15203-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 1 DAY)
       UNION ALL SELECT 'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA', '15204-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 3 DAY)
-      UNION ALL SELECT 'RESOLUCIÓN N.° 002010-2025-JUS/TTAIP-SEGUNDA SALA', '15204-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 3 DAY)
       UNION ALL SELECT 'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA', '15205-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 16 DAY)
-      UNION ALL SELECT 'RESOLUCIÓN N.° 002100-2025-JUS/TTAIP-SEGUNDA SALA', '15205-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 16 DAY)
       UNION ALL SELECT 'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA', '15206-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 11 DAY)
       UNION ALL SELECT 'RESOLUCIÓN N.° 002101-2025-JUS/TTAIP-SEGUNDA SALA', '15206-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 11 DAY)
       UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15207-2025-JUS/TTAIP', 'CIUDADANO', DATE_SUB(NOW(), INTERVAL 4 DAY)
-      UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15207-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 4 DAY)) c
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15207-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 4 DAY)
+      UNION ALL SELECT 'RESOLUCIÓN N.° 002102-2025-JUS/TTAIP-SEGUNDA SALA', '15208-2025-JUS/TTAIP', 'ENTIDAD_PUBLICA', DATE_SUB(NOW(), INTERVAL 2 DAY)) c
          JOIN resoluciones r ON r.numero_resolucion = c.numero_resolucion
          JOIN apelaciones a ON a.id_apelacion = r.id_apelacion
          JOIN ciudadanos ci ON ci.id_usuario = a.id_ciudadano
@@ -967,6 +997,20 @@ ON DUPLICATE KEY UPDATE id_expediente_ttaip = VALUES(id_expediente_ttaip),
                         medio = VALUES(medio),
                         estado = VALUES(estado),
                         detalle = VALUES(detalle);
+
+UPDATE notificaciones_ttaip n
+    JOIN cedulas_notificacion cn ON cn.id_cedula = n.id_cedula
+SET n.estado = 'FALLIDA',
+    n.detalle = 'Notificacion original observada; se genero reproceso para la entidad publica.'
+WHERE cn.numero_cedula = '15207-2025-JUS/TTAIP'
+  AND cn.destinatario = 'ENTIDAD_PUBLICA';
+
+UPDATE notificaciones_ttaip n
+    JOIN cedulas_notificacion cn ON cn.id_cedula = n.id_cedula
+SET n.estado = 'PENDIENTE_REENVIO',
+    n.detalle = 'Nueva notificacion generada por reproceso de cedula observada.'
+WHERE cn.numero_cedula = '15208-2025-JUS/TTAIP'
+  AND cn.destinatario = 'ENTIDAD_PUBLICA';
 
 -- Historial estructurado del expediente TTAIP: evita depender solo de texto libre.
 INSERT INTO historial_ttaip (id_expediente_ttaip,
@@ -1074,24 +1118,36 @@ WHERE NOT EXISTS (SELECT 1
 INSERT INTO reprocesos_notificacion (id_expediente_ttaip,
                                      id_notificacion,
                                      id_cedula_original,
+                                     id_cedula_nueva,
+                                     id_notificacion_nueva,
                                      destinatario,
                                      numero_cedula_original,
                                      fecha_ingreso_cargo,
                                      observacion_reproceso,
+                                     fecha_subsanacion,
+                                     cedula_subsanacion,
+                                     fecha_cedula_subsanacion,
                                      numero_intento,
                                      estado,
                                      responsable_notificacion,
+                                     responsable_subsanacion,
                                      fecha_creacion,
                                      fecha_actualizacion)
 SELECT et.id_expediente_ttaip,
        n.id_notificacion,
        cn.id_cedula,
+       cn_new.id_cedula,
+       n_new.id_notificacion,
        cn.destinatario,
        cn.numero_cedula,
        DATE(COALESCE(n.fecha_notificacion, cn.fecha_emision)),
-       'Cargo de notificacion observado; requiere reproceso de cedula a entidad publica.',
+       'Cargo de notificacion observado; se genera nueva cedula para el mismo destinatario sin borrar la original.',
+       CURDATE(),
+       cn_new.numero_cedula,
+       CURDATE(),
        1,
-       'PENDIENTE',
+       'ATENDIDO',
+       'Mesa de Partes TTAIP',
        'Mesa de Partes TTAIP',
        NOW(),
        NOW()
@@ -1099,7 +1155,11 @@ FROM cedulas_notificacion cn
          JOIN resoluciones r ON r.id_resolucion = cn.id_resolucion
          JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
          LEFT JOIN notificaciones_ttaip n ON n.id_cedula = cn.id_cedula
-WHERE cn.numero_cedula = '15204-2025-JUS/TTAIP'
+         JOIN cedulas_notificacion cn_new ON cn_new.id_resolucion = cn.id_resolucion
+             AND cn_new.numero_cedula = '15208-2025-JUS/TTAIP'
+             AND cn_new.destinatario = cn.destinatario
+         LEFT JOIN notificaciones_ttaip n_new ON n_new.id_cedula = cn_new.id_cedula
+WHERE cn.numero_cedula = '15207-2025-JUS/TTAIP'
   AND cn.destinatario = 'ENTIDAD_PUBLICA'
   AND NOT EXISTS (SELECT 1
                   FROM reprocesos_notificacion rp

@@ -47,7 +47,7 @@ stateDiagram-v2
 El flujo funcional vigente inicia directamente en `EN_CALIFICACION_1`.
 
 :::note[Compatibilidad técnica]
-El enum backend aún declara `PENDIENTE_ELEVACION` por compatibilidad histórica, pero el flujo funcional actual no debe crear ni depender de esa etapa.
+El documento oficial contempla elevación por entidad en 2 días hábiles. El enum backend aún declara `PENDIENTE_ELEVACION` por compatibilidad histórica, pero el flujo funcional ciudadano actual no debe crear ni depender de esa etapa hasta que se apruebe su implementación.
 :::
 
 <Tabs>
@@ -57,7 +57,7 @@ El enum backend aún declara `PENDIENTE_ELEVACION` por compatibilidad histórica
     2. **EN_SUBSANACION**: ciudadano debe corregir observaciones en 2 días hábiles.
     3. **EN_CALIFICACION_2**: revisión posterior a la subsanación.
     4. **NOTIFICACION_SEGUNDA_CALIFICACION**: notificación de la segunda calificación.
-    5. **EN_RESOLUCION**: tribunal prepara resolución final.
+    5. **EN_RESOLUCION**: tribunal prepara resolución final luego de admisibilidad o segunda calificación notificada.
     6. **RESUELTO / estados finales**: resultado final o cierre del procedimiento.
     </Steps>
   </TabItem>
@@ -79,7 +79,7 @@ El enum backend aún declara `PENDIENTE_ELEVACION` por compatibilidad histórica
 ```mermaid
 stateDiagram-v2
     [*] --> EN_CALIFICACION_1
-    EN_CALIFICACION_1 --> EN_CALIFICACION_2: admitir
+    EN_CALIFICACION_1 --> EN_RESOLUCION: admitir
     EN_CALIFICACION_1 --> EN_SUBSANACION: requerir subsanacion
     EN_CALIFICACION_1 --> RESUELTO_IMPROCEDENTE: inadmitir/improcedente
     EN_SUBSANACION --> EN_CALIFICACION_2: ciudadano subsana
@@ -160,4 +160,8 @@ stateDiagram-v2
 
 :::caution[INADMISIBLE vs IMPROCEDENTE]
 `INADMISIBLE` significa que la apelación puede subsanarse. El rechazo definitivo debe expresarse con `IMPROCEDENTE` o con el estado final que corresponda.
+:::
+
+:::note[Brechas oficiales]
+El documento oficial también menciona decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, además de descargos, informe oral, información complementaria y cumplimiento de resolución fundada. Aún figuran como brechas documentadas.
 :::
