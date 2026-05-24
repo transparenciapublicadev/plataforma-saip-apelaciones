@@ -98,6 +98,9 @@ public class Solicitud {
     @OneToMany(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<AmpliacionPlazoSolicitud> ampliacionesPlazo;
 
+    @OneToMany(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<EncauzamientoSolicitud> encauzamientos;
+
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Apelacion apelacion;
 
