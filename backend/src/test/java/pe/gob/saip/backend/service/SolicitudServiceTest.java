@@ -5,12 +5,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
+import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.Ciudadano;
+import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
+import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
@@ -32,6 +39,12 @@ class SolicitudServiceTest {
 
     @Mock
     ObservacionSolicitudRepository observacionRepository;
+
+    @Mock
+    AmpliacionPlazoSolicitudRepository ampliacionRepository;
+
+    @Mock
+    CronogramaEntregaParcialSolicitudRepository cronogramaRepository;
 
     @InjectMocks
     SolicitudService solicitudService;
@@ -292,6 +305,154 @@ class SolicitudServiceTest {
         assertThat(resultado.getFirst().getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.NO_SUBSANADA);
         assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
         verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
+    void registrarAmpliacion_debeActualizarFechaLimiteYCrearCronograma() {
+        LocalDate hoy = LocalDate.now();
+        LocalDate fechaLimiteOriginal = DiasHabilesUtil.sumarDiasHabiles(hoy, 10);
+        LocalDate entrega1 = hoy.plusDays(15);
+        LocalDate entrega2 = hoy.plusDays(30);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        solicitud.setFechaLimite(fechaLimiteOriginal);
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(ampliacionRepository.save(any(AmpliacionPlazoSolicitud.class))).thenAnswer(inv -> {
+            AmpliacionPlazoSolicitud ampliacion = inv.getArgument(0);
+            ampliacion.setIdAmpliacion(50L);
+            return ampliacion;
+        });
+
+        AmpliacionPlazoSolicitud resultado = solicitudService.registrarAmpliacion(
+                1L,
+                new RegistrarAmpliacionPlazoRequest(
+                        "Pedido voluminoso",
+                        "Informe con cronograma de entregas parciales",
+                        hoy,
+                        "Funcionario",
+                        List.of(
+                                new RegistrarEntregaParcialRequest(1, "Primer bloque", entrega1, null),
+                                new RegistrarEntregaParcialRequest(2, "Segundo bloque", entrega2, "Cierre del cronograma")
+                        )
+                )
+        );
+
+        assertThat(resultado.getEstadoAmpliacion()).isEqualTo(AmpliacionPlazoSolicitud.EstadoAmpliacion.NOTIFICADA);
+        assertThat(resultado.getFechaLimiteOriginal()).isEqualTo(fechaLimiteOriginal);
+        assertThat(resultado.getFechaLimiteAmpliada()).isEqualTo(entrega2);
+        assertThat(resultado.getCronograma()).hasSize(2);
+        assertThat(solicitud.getFechaLimite()).isEqualTo(entrega2);
+        verify(solicitudRepository).save(solicitud);
+        verify(ampliacionRepository).save(any(AmpliacionPlazoSolicitud.class));
+    }
+
+    @Test
+    void registrarAmpliacion_despuesDelDia4_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(20));
+        solicitud.setFechaLimite(LocalDate.now().plusDays(10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                        1L,
+                        new RegistrarAmpliacionPlazoRequest(
+                                "Pedido voluminoso",
+                                "Informe con cronograma",
+                                LocalDate.now(),
+                                "Funcionario",
+                                List.of(new RegistrarEntregaParcialRequest(1, "Entrega", LocalDate.now().plusDays(20), null))
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("día 4");
+    }
+
+    @Test
+    void registrarAmpliacion_conEntregaMayorA30Dias_debeLanzarReglaNegocio() {
+        LocalDate hoy = LocalDate.now();
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                        1L,
+                        new RegistrarAmpliacionPlazoRequest(
+                                "Pedido voluminoso",
+                                "Informe con cronograma",
+                                hoy,
+                                "Funcionario",
+                                List.of(new RegistrarEntregaParcialRequest(1, "Entrega", hoy.plusDays(31), null))
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("30 días");
+    }
+
+    @Test
+    void registrarAmpliacion_conAmpliacionActiva_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        solicitud.setFechaLimite(LocalDate.now().plusDays(10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(true);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                        1L,
+                        new RegistrarAmpliacionPlazoRequest(
+                                "Pedido voluminoso",
+                                "Informe",
+                                LocalDate.now(),
+                                "Funcionario",
+                                List.of(new RegistrarEntregaParcialRequest(1, "Entrega", LocalDate.now().plusDays(20), null))
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ampliación activa");
+    }
+
+    @Test
+    void actualizarEntregaParcial_entregadaDebeMarcarFechaReal() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        var ampliacion = new AmpliacionPlazoSolicitud();
+        ampliacion.setIdAmpliacion(50L);
+        ampliacion.setSolicitud(solicitud);
+        ampliacion.setEstadoAmpliacion(AmpliacionPlazoSolicitud.EstadoAmpliacion.NOTIFICADA);
+        var entrega = new CronogramaEntregaParcialSolicitud();
+        entrega.setIdEntrega(80L);
+        entrega.setAmpliacion(ampliacion);
+        entrega.setNumeroEntrega(1);
+        entrega.setFechaProgramada(LocalDate.now().plusDays(5));
+        entrega.setEstado(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
+
+        when(solicitudRepository.existsById(1L)).thenReturn(true);
+        when(ampliacionRepository.findById(50L)).thenReturn(Optional.of(ampliacion));
+        when(cronogramaRepository.findById(80L)).thenReturn(Optional.of(entrega));
+        when(cronogramaRepository.save(entrega)).thenReturn(entrega);
+        when(cronogramaRepository.findByAmpliacion_IdAmpliacionOrderByNumeroEntregaAsc(50L)).thenReturn(List.of(entrega));
+
+        CronogramaEntregaParcialSolicitud resultado = solicitudService.actualizarEntregaParcial(
+                1L,
+                50L,
+                80L,
+                new ActualizarEntregaParcialRequest("ENTREGADA", LocalDate.now(), "Entregado por casilla")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA);
+        assertThat(resultado.getFechaEntregaReal()).isEqualTo(LocalDate.now());
+        verify(cronogramaRepository).save(entrega);
+        verify(ampliacionRepository).save(ampliacion);
     }
 
     @Test
