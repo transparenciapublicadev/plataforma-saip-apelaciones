@@ -1,9 +1,10 @@
 import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 interface RequestTab {
@@ -21,7 +22,7 @@ interface TimelineEvent {
 
 @Component({
   selector: 'app-solicitud-detalle',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -35,6 +36,11 @@ export class SolicitudDetalleComponent implements OnInit {
   loading = signal<boolean>(true);
   error = signal<string>('');
   activeTab = signal<RequestTab['id']>('solicitud');
+  subsanacionComentario = signal<string>('');
+  subsanacionDocumentoNombre = signal<string>('');
+  subsanacionLoading = signal<boolean>(false);
+  subsanacionError = signal<string>('');
+  subsanacionSuccess = signal<string>('');
 
   readonly tabs: RequestTab[] = [
     { id: 'solicitud', label: 'Solicitud' },
@@ -114,6 +120,51 @@ export class SolicitudDetalleComponent implements OnInit {
       return 'EN CALIFICACION 1';
     }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  observaciones(): ObservacionSolicitud[] {
+    return this.solicitud()?.observaciones || [];
+  }
+
+  observacionPendiente(): ObservacionSolicitud | null {
+    return this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null;
+  }
+
+  subsanarObservacion(): void {
+    const sol = this.solicitud();
+    const observacion = this.observacionPendiente();
+    const comentario = this.subsanacionComentario().trim();
+    const documento = this.subsanacionDocumentoNombre().trim();
+
+    if (!sol || !observacion) {
+      return;
+    }
+    if (!comentario && !documento) {
+      this.subsanacionError.set('Ingrese un comentario o referencia de documento para subsanar.');
+      return;
+    }
+
+    this.subsanacionLoading.set(true);
+    this.subsanacionError.set('');
+    this.subsanacionSuccess.set('');
+
+    this.solicitudService.subsanar(sol.id, observacion.id, {
+      comentarioSubsanacion: comentario || undefined,
+      documentoSubsanacionNombre: documento || undefined,
+      responsable: this.getSolicitanteNombre()
+    }).subscribe({
+      next: () => {
+        this.subsanacionComentario.set('');
+        this.subsanacionDocumentoNombre.set('');
+        this.subsanacionSuccess.set('Subsanación enviada. La solicitud volvió a revisión de la entidad.');
+        this.subsanacionLoading.set(false);
+        this.cargarSolicitud(sol.expediente);
+      },
+      error: (error) => {
+        this.subsanacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la subsanación.');
+        this.subsanacionLoading.set(false);
+      }
+    });
   }
 
   getSolicitanteNombre(): string {
@@ -235,6 +286,18 @@ export class SolicitudDetalleComponent implements OnInit {
         icon: 'check'
       }
     ];
+
+    for (const observacion of this.observaciones()) {
+      events.push({
+        title: observacion.estado === 'SUBSANADA' ? 'Observación subsanada' : 'Observación registrada',
+        description: observacion.estado === 'SUBSANADA'
+          ? 'La entidad recibió su subsanación y volvió a revisar la SAIP.'
+          : `Debe subsanar hasta ${observacion.fechaLimiteSubsanacion || 'la fecha indicada'}.`,
+        date: observacion.fechaSubsanacion || observacion.fechaObservacion,
+        status: observacion.estado === 'SUBSANADA' ? 'completed' : 'current',
+        icon: observacion.estado === 'SUBSANADA' ? 'check' : 'search'
+      });
+    }
 
     return events;
   }
