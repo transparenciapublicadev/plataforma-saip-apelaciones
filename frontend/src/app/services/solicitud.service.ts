@@ -2,8 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  ActualizarEntregaParcialPayload,
+  AmpliacionPlazoSolicitud,
+  CronogramaEntregaParcial,
   ObservacionSolicitud,
   ObservarSolicitudPayload,
+  RegistrarAmpliacionPlazoPayload,
   Solicitud,
   SolicitudCreate,
   SubsanarSolicitudPayload
@@ -102,6 +106,30 @@ export class SolicitudService {
 
   procesarObservacionesVencidas(): Observable<ObservacionSolicitud[]> {
     return this.http.post<ObservacionSolicitud[]>(`${this.apiUrl}/observaciones/vencidas/procesar`, {});
+  }
+
+  registrarAmpliacion(id: number, payload: RegistrarAmpliacionPlazoPayload): Observable<AmpliacionPlazoSolicitud> {
+    return this.http.post<AmpliacionPlazoSolicitud>(`${this.apiUrl}/${id}/ampliaciones`, payload);
+  }
+
+  listarAmpliaciones(id: number): Observable<AmpliacionPlazoSolicitud[]> {
+    return this.http.get<AmpliacionPlazoSolicitud[]>(`${this.apiUrl}/${id}/ampliaciones`);
+  }
+
+  listarCronogramaAmpliacion(id: number): Observable<CronogramaEntregaParcial[]> {
+    return this.http.get<CronogramaEntregaParcial[]>(`${this.apiUrl}/${id}/ampliaciones/cronograma`);
+  }
+
+  actualizarEntregaParcial(
+    id: number,
+    ampliacionId: number,
+    entregaId: number,
+    payload: ActualizarEntregaParcialPayload
+  ): Observable<CronogramaEntregaParcial> {
+    return this.http.patch<CronogramaEntregaParcial>(
+      `${this.apiUrl}/${id}/ampliaciones/${ampliacionId}/cronograma/${entregaId}`,
+      payload
+    );
   }
 
   eliminar(id: number): Observable<void> {

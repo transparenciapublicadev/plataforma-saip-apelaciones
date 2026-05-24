@@ -129,6 +129,44 @@ describe('SolicitudService', () => {
     req.flush({ id: 20, estado: 'SUBSANADA' });
   });
 
+  it('should POST registrar ampliacion de plazo', () => {
+    const payload = {
+      motivoAmpliacion: 'Pedido voluminoso',
+      informeAmpliacion: 'Informe con cronograma',
+      fechaNotificacionAmpliacion: '2026-05-25',
+      responsable: 'Funcionario',
+      cronograma: [{ numeroEntrega: 1, descripcion: 'Primer bloque', fechaProgramada: '2026-06-05' }]
+    };
+    service.registrarAmpliacion(1, payload).subscribe(res => expect(res.estadoAmpliacion).toBe('NOTIFICADA'));
+    const req = httpMock.expectOne(`${apiUrl}/1/ampliaciones`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 30, estadoAmpliacion: 'NOTIFICADA' });
+  });
+
+  it('should GET ampliaciones de solicitud', () => {
+    service.listarAmpliaciones(1).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/1/ampliaciones`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 30 }]);
+  });
+
+  it('should GET cronograma de ampliacion', () => {
+    service.listarCronogramaAmpliacion(1).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/1/ampliaciones/cronograma`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 40 }]);
+  });
+
+  it('should PATCH entrega parcial', () => {
+    const payload = { estado: 'ENTREGADA' as const, fechaEntregaReal: '2026-06-05', observacion: 'Entregada' };
+    service.actualizarEntregaParcial(1, 30, 40, payload).subscribe(res => expect(res.estado).toBe('ENTREGADA'));
+    const req = httpMock.expectOne(`${apiUrl}/1/ampliaciones/30/cronograma/40`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 40, estado: 'ENTREGADA' });
+  });
+
   it('should DELETE eliminar solicitud', () => {
     service.eliminar(1).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/1`);

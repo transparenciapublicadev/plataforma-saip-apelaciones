@@ -43,7 +43,8 @@ public record SolicitudDTO(
     RespuestaDTO respuesta,
     ApelacionInfoDTO apelacion,
     List<DocumentoDTO> documentos,
-    List<ObservacionSolicitudDTO> observaciones
+    List<ObservacionSolicitudDTO> observaciones,
+    List<AmpliacionPlazoSolicitudDTO> ampliacionesPlazo
 ) {
     public static SolicitudDTO from(Solicitud s) {
         return new SolicitudDTO(
@@ -79,6 +80,14 @@ public record SolicitudDTO(
                                     obs -> obs.getFechaObservacion() != null ? obs.getFechaObservacion() : java.time.LocalDateTime.MIN,
                                     Comparator.reverseOrder()))
                             .map(ObservacionSolicitudDTO::from)
+                            .toList()
+                    : List.of(),
+            s.getAmpliacionesPlazo() != null
+                    ? s.getAmpliacionesPlazo().stream()
+                            .sorted(Comparator.comparing(
+                                    amp -> amp.getFechaSolicitudAmpliacion() != null ? amp.getFechaSolicitudAmpliacion() : java.time.LocalDateTime.MIN,
+                                    Comparator.reverseOrder()))
+                            .map(AmpliacionPlazoSolicitudDTO::from)
                             .toList()
                     : List.of()
         );
