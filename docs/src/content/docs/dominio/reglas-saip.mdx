@@ -71,11 +71,26 @@ El flujo implementado exige motivo, informe formal, fecha de notificación, resp
 Si la ampliación no se registra/notifica dentro del plazo permitido, la SAIP mantiene el plazo ordinario de **10 días hábiles**.
 :::
 
-### BR-SAIP-006 — Silencio Administrativo Negativo
+### BR-SAIP-006 — Encauzamiento
+
+Si la entidad receptora no es competente para atender la SAIP, debe encauzarla a la entidad competente dentro de los **2 días hábiles** posteriores a la recepción.
+
+El flujo implementado registra entidad origen, entidad destino, motivo, responsable, fecha límite, estado, sustento y trazabilidad.
+
+| Alcance | Efecto |
+| --- | --- |
+| `TOTAL` | La entidad responsable de la SAIP pasa a la entidad destino y la solicitud permanece en revisión. |
+| `PARCIAL` | La entidad origen conserva la SAIP y se registra la parte derivada para trazabilidad. |
+
+:::note[Validaciones]
+Solo se permite encauzar SAIP `RECEPCIONADA` o `EN_REVISION`, hacia una entidad activa y distinta, dentro del plazo de 2 días hábiles y sin encauzamiento activo duplicado.
+:::
+
+### BR-SAIP-007 — Silencio Administrativo Negativo
 
 Si transcurren más de **10 días hábiles** sin respuesta de la entidad, opera el **silencio administrativo negativo** y la solicitud pasa a estado `VENCIDA`. Esto habilita automáticamente el derecho del ciudadano a apelar.
 
-### BR-SAIP-007 — Plazo para Apelar
+### BR-SAIP-008 — Plazo para Apelar
 
 El documento oficial contiene una diferencia interna que debe resolverse antes de modificar código: una tabla menciona **15 días calendario**, pero el Art. 34.2 citado en el mismo documento establece **15 días hábiles** para denegatoria expresa. Para denegatoria tácita o silencio administrativo negativo no existe plazo perentorio.
 
@@ -83,7 +98,7 @@ El documento oficial contiene una diferencia interna que debe resolverse antes d
 No hardcodear ni cambiar validaciones de plazo de apelación hasta que el equipo confirme si el criterio productivo será días calendario o días hábiles para denegatoria expresa.
 :::
 
-### BR-SAIP-008 — Consentimiento y canal de notificación
+### BR-SAIP-009 — Consentimiento y canal de notificación
 
 La creación de una SAIP exige consentimiento expreso para el tratamiento de datos personales y debe registrar el canal formal de notificación elegido por el ciudadano.
 

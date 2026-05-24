@@ -24,6 +24,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Un reproceso de notificacion conserva la cedula original y genera nueva cedula y nueva notificacion para el mismo destinatario afectado.
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
 - SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
+- SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 
 ## Nomenclaturas
 
@@ -132,6 +133,11 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 - Si la entidad no es competente, debe encauzar la SAIP dentro de 2 dias habiles.
 - Si no encauza y luego deniega, o si el ciudadano apela/reclama, la responsabilidad queda en la entidad que recibio la solicitud.
 - Si solo parte de la informacion corresponde a otra entidad, la entidad receptora debe atender la parte de su competencia y clasificar el resultado como entrega parcial o denegatoria parcial.
+- Implementacion actual: `EncauzamientoSolicitud` registra solicitud, entidad origen, entidad destino, motivo, alcance `TOTAL` o `PARCIAL`, fecha de encauzamiento, fecha limite, estado, responsable, sustento y trazabilidad.
+- El backend solo permite encauzar SAIP en estados `RECEPCIONADA` o `EN_REVISION`, dentro de los 2 dias habiles desde la recepcion, hacia una entidad activa y distinta a la entidad origen.
+- Encauzamiento `TOTAL`: actualiza la entidad responsable de la SAIP a la entidad destino y mantiene la solicitud en revision.
+- Encauzamiento `PARCIAL`: conserva la SAIP en la entidad origen y registra la parte derivada para trazabilidad, sin duplicar la solicitud.
+- No se permiten encauzamientos activos duplicados para la misma SAIP; los errores de regla de negocio responden con Problem Details RFC 9457.
 
 ### Liquidacion de costos y entrega fisica
 
