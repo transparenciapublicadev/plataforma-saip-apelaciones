@@ -59,6 +59,18 @@
         </div>
       }
 
+      @if (observacionPendiente(); as observacion) {
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M5 19h14L12 5 5 19z" /></svg>
+          </div>
+          <div>
+            <span class="eyebrow" style="color: var(--warning)">Subsanación pendiente</span>
+            <p class="text-sm text-foreground/85 mt-1.5">El ciudadano debe subsanar hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>.</p>
+          </div>
+        </div>
+      }
+
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
@@ -204,6 +216,87 @@
               <span class="eyebrow">Descripción detallada</span>
               <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
                 {{ sol.descripcion }}
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'observacion') {
+          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            @if (puedeObservar()) {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
+                <span class="eyebrow" style="color: var(--brand-700)">Revisión inicial · 2 días hábiles</span>
+                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Observar SAIP</h3>
+                <p class="text-sm text-foreground/80 mt-2">Use esta acción solo si faltan requisitos mínimos como identificación, pedido concreto o constancia equivalente.</p>
+                <div class="mt-4 space-y-3">
+                  <textarea
+                    class="field-input"
+                    rows="5"
+                    [ngModel]="observacionMotivo()"
+                    (ngModelChange)="observacionMotivo.set($event)"
+                    placeholder="Describa con precisión qué debe subsanar el ciudadano..."></textarea>
+                  @if (observacionError()) {
+                    <p class="text-sm" style="color: var(--destructive)">{{ observacionError() }}</p>
+                  }
+                  @if (observacionSuccess()) {
+                    <p class="text-sm" style="color: var(--success)">{{ observacionSuccess() }}</p>
+                  }
+                  <button type="button" class="btn-brand !px-5 !py-3" [disabled]="observacionLoading()" (click)="registrarObservacion()">
+                    @if (observacionLoading()) {
+                      Registrando...
+                    } @else {
+                      Registrar observación
+                    }
+                  </button>
+                </div>
+              </div>
+            } @else if (observacionPendiente()) {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow" style="color: var(--warning)">Observación activa</span>
+                <p class="text-sm text-foreground/85 mt-2">Ya existe una observación pendiente. Espere la subsanación ciudadana o el vencimiento del plazo.</p>
+              </div>
+            } @else {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow">Sin observación disponible</span>
+                <p class="text-sm text-muted-foreground mt-2">La solicitud no está en un estado válido para registrar una observación inicial.</p>
+              </div>
+            }
+
+            <div>
+              <span class="eyebrow">Historial de observaciones</span>
+              <div class="mt-3 space-y-3">
+                @for (observacion of observaciones(); track observacion.id) {
+                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                      <span [class]="observacion.estado === 'SUBSANADA' ? 'pill pill-low' : (observacion.estado === 'NO_SUBSANADA' ? 'pill pill-high' : 'pill pill-medium')">{{ getObservacionEstadoDisplay(observacion.estado) }}</span>
+                      <span class="font-mono text-[11px] text-muted-foreground">{{ observacion.fechaObservacion | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <p class="text-sm text-foreground/85 mt-3 whitespace-pre-wrap">{{ observacion.motivoObservacion }}</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                      <div>
+                        <span class="eyebrow">Límite de subsanación</span>
+                        <p class="font-mono mt-1">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Subsanado</span>
+                        <p class="font-mono mt-1">{{ observacion.fechaSubsanacion ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : 'Pendiente' }}</p>
+                      </div>
+                    </div>
+                    @if (observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre) {
+                      <div class="mt-4 rounded-md p-3 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <div class="font-medium">Subsanación ciudadana</div>
+                        <p class="mt-1 text-foreground/80 whitespace-pre-wrap">{{ observacion.comentarioSubsanacion || 'Documento adjunto' }}</p>
+                        @if (observacion.documentoSubsanacionNombre) {
+                          <p class="font-mono text-xs text-muted-foreground mt-1">{{ observacion.documentoSubsanacionNombre }}</p>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
+                    <p class="text-sm text-muted-foreground">No se han registrado observaciones para esta SAIP.</p>
+                  </div>
+                }
               </div>
             </div>
           </div>
