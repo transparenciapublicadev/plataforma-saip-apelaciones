@@ -10,7 +10,7 @@ import { Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
 <Steps>
 1. **RECEPCIONADA**: solicitud ingresada y asignada a entidad.
 2. **EN_REVISION**: funcionario evalúa la solicitud.
-3. **PENDIENTE_INFORMACION**: se requiere información adicional dentro de los primeros 2 días hábiles.
+3. **PENDIENTE_INFORMACION**: existe una observación formal y el ciudadano debe subsanar dentro de 2 días hábiles.
 4. **RESPONDIDA**: entidad entrega total o parcialmente la información.
 5. **DENEGADA**: entidad deniega con causal y fundamento legal.
 6. **CONCLUIDA**: solicitud cerrada administrativamente.
@@ -25,6 +25,7 @@ stateDiagram-v2
     EN_REVISION --> DENEGADA
     EN_REVISION --> PENDIENTE_INFORMACION
     PENDIENTE_INFORMACION --> EN_REVISION
+    PENDIENTE_INFORMACION --> CONCLUIDA: no subsana en plazo
     EN_REVISION --> VENCIDA
     RESPONDIDA --> CONCLUIDA
     DENEGADA --> CONCLUIDA
@@ -36,7 +37,7 @@ stateDiagram-v2
 | --- | --- |
 | `RECEPCIONADA` | `EN_REVISION` |
 | `EN_REVISION` | `RESPONDIDA`, `DENEGADA`, `PENDIENTE_INFORMACION`, `VENCIDA` |
-| `PENDIENTE_INFORMACION` | `EN_REVISION` |
+| `PENDIENTE_INFORMACION` | `EN_REVISION`, `CONCLUIDA` |
 | `RESPONDIDA` | `CONCLUIDA` |
 | `DENEGADA` | `CONCLUIDA` |
 | `VENCIDA` | Terminal |

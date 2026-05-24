@@ -461,6 +461,34 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "observacionSolicitudId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID dinámico de observación SAIP creada durante Newman."
+    },
+    {
+      "key": "observacionSolicitudEstado",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Estado dinámico de observación SAIP durante Newman."
+    },
+    {
+      "key": "observacionSolicitudSaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID runtime de la SAIP creada especificamente para validar observacion/subsanacion formal."
+    },
+    {
+      "key": "observacionSolicitudExpediente",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Expediente runtime de la SAIP creada especificamente para validar observacion/subsanacion formal."
     }
   ],
   "_postman_variable_scope": "environment"

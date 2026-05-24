@@ -3,11 +3,15 @@ package pe.gob.saip.backend.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
+import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
+import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
+import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
@@ -179,6 +183,53 @@ public class SolicitudRestController {
         solicitud = solicitudService.save(solicitud);
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+    }
+
+    @Operation(
+            summary = "Observar solicitud SAIP",
+            description = "Registra una observación formal dentro de los 2 primeros días hábiles y abre plazo de subsanación ciudadana de 2 días hábiles."
+    )
+    @PostMapping("/{id}/observaciones")
+    public ResponseEntity<ObservacionSolicitudDTO> observarSolicitud(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody ObservarSolicitudRequest request) {
+        return ResponseEntity.status(201).body(ObservacionSolicitudDTO.from(solicitudService.observarSolicitud(id, request)));
+    }
+
+    @Operation(summary = "Listar observaciones y subsanaciones SAIP")
+    @GetMapping("/{id}/observaciones")
+    public ResponseEntity<List<ObservacionSolicitudDTO>> listarObservaciones(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<ObservacionSolicitudDTO> observaciones = solicitudService.listarObservaciones(id)
+                .stream()
+                .map(ObservacionSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(observaciones);
+    }
+
+    @Operation(
+            summary = "Subsanar observación SAIP",
+            description = "Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión."
+    )
+    @PostMapping("/{id}/observaciones/{observacionId}/subsanar")
+    public ResponseEntity<ObservacionSolicitudDTO> subsanarSolicitud(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Parameter(description = "ID de la observación") @PathVariable Long observacionId,
+            @Valid @RequestBody SubsanarSolicitudRequest request) {
+        return ResponseEntity.ok(ObservacionSolicitudDTO.from(solicitudService.subsanarSolicitud(id, observacionId, request)));
+    }
+
+    @Operation(
+            summary = "Procesar observaciones SAIP vencidas",
+            description = "Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA."
+    )
+    @PostMapping("/observaciones/vencidas/procesar")
+    public ResponseEntity<List<ObservacionSolicitudDTO>> procesarObservacionesVencidas() {
+        List<ObservacionSolicitudDTO> observaciones = solicitudService.procesarObservacionesVencidas()
+                .stream()
+                .map(ObservacionSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(observaciones);
     }
 
     private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {

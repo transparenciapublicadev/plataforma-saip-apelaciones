@@ -1,11 +1,13 @@
 import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { AuthService } from '../../services/auth.service';
+import { ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'ciudadano' | 'adjuntos' | 'historial';
+type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'ciudadano' | 'adjuntos' | 'historial';
 
 interface DetailTab {
   id: DetailTabId;
@@ -22,7 +24,7 @@ interface HistorialItem {
 
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -30,15 +32,21 @@ interface HistorialItem {
 export class FuncionarioSolicitudDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
+  private readonly authService = inject(AuthService);
 
   solicitud = signal<Solicitud | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
   activeTab = signal<DetailTabId>('solicitud');
+  observacionMotivo = signal<string>('');
+  observacionLoading = signal<boolean>(false);
+  observacionError = signal<string>('');
+  observacionSuccess = signal<string>('');
 
   readonly tabs = computed<DetailTab[]>(() => {
     const base: DetailTab[] = [
       { id: 'solicitud', label: 'Solicitud' },
+      { id: 'observacion', label: 'Observación' },
       { id: 'ciudadano', label: 'Ciudadano' },
       { id: 'adjuntos', label: 'Adjuntos' },
       { id: 'historial', label: 'Historial' }
@@ -85,6 +93,25 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       });
     }
 
+    for (const observacion of this.observaciones()) {
+      items.push({
+        accion: `Observación SAIP · ${this.getObservacionEstadoDisplay(observacion.estado)}`,
+        fecha: observacion.fechaObservacion,
+        responsable: observacion.responsableObservacion || 'Entidad pública',
+        detalle: observacion.motivoObservacion,
+        color: observacion.estado === 'SUBSANADA' ? 'success' : (observacion.estado === 'NO_SUBSANADA' ? 'warning' : 'muted')
+      });
+      if (observacion.fechaSubsanacion) {
+        items.push({
+          accion: 'Subsanación ciudadana recibida',
+          fecha: observacion.fechaSubsanacion,
+          responsable: observacion.responsableSubsanacion || 'Ciudadano',
+          detalle: observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Subsanación registrada.',
+          color: 'success'
+        });
+      }
+    }
+
     if (sol.apelacion?.expediente) {
       items.push({
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
@@ -98,6 +125,12 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     return items;
   });
 
+  readonly observaciones = computed<ObservacionSolicitud[]>(() => this.solicitud()?.observaciones || []);
+
+  readonly observacionPendiente = computed<ObservacionSolicitud | null>(() =>
+    this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null
+  );
+
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
     if (!expediente) {
@@ -109,12 +142,12 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     this.cargarSolicitud(expediente);
   }
 
-  cargarSolicitud(expediente: string): void {
+  cargarSolicitud(expediente: string, preferredTab?: DetailTabId): void {
     this.loading.set(true);
     this.solicitudService.findByExpediente(expediente).subscribe({
       next: (data) => {
         this.solicitud.set(data);
-        this.activeTab.set(this.puedeVerRespuesta() ? 'respuesta' : 'solicitud');
+        this.activeTab.set(preferredTab || (this.puedeVerRespuesta() ? 'respuesta' : 'solicitud'));
         this.loading.set(false);
       },
       error: () => {
@@ -196,6 +229,42 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       return 'EN CALIFICACION 1';
     }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  puedeObservar(): boolean {
+    const sol = this.solicitud();
+    return !!sol
+      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION')
+      && !this.observacionPendiente();
+  }
+
+  registrarObservacion(): void {
+    const sol = this.solicitud();
+    const motivo = this.observacionMotivo().trim();
+    if (!sol || !motivo) {
+      this.observacionError.set('Ingrese el motivo de observación.');
+      return;
+    }
+
+    this.observacionLoading.set(true);
+    this.observacionError.set('');
+    this.observacionSuccess.set('');
+
+    this.solicitudService.observar(sol.id, {
+      motivoObservacion: motivo,
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
+    }).subscribe({
+      next: () => {
+        this.observacionMotivo.set('');
+        this.observacionSuccess.set('Observación registrada. El ciudadano tiene 2 días hábiles para subsanar.');
+        this.observacionLoading.set(false);
+        this.cargarSolicitud(sol.expediente, 'observacion');
+      },
+      error: (error) => {
+        this.observacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la observación.');
+        this.observacionLoading.set(false);
+      }
+    });
   }
 
   getEstadoBadgeClass(estado: string): string {
@@ -292,5 +361,9 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       violet: 'var(--accent-violet)'
     };
     return map[color];
+  }
+
+  getObservacionEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }
 }

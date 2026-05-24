@@ -1,7 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Solicitud, SolicitudCreate } from '../models/solicitud.model';
+import {
+  ObservacionSolicitud,
+  ObservarSolicitudPayload,
+  Solicitud,
+  SolicitudCreate,
+  SubsanarSolicitudPayload
+} from '../models/solicitud.model';
 import { environment } from '../../environments/environment';
 
 export interface ConsultaPublicaSolicitud {
@@ -80,6 +86,22 @@ export class SolicitudService {
 
   cambiarEstado(id: number, estado: string): Observable<Solicitud> {
     return this.http.patch<Solicitud>(`${this.apiUrl}/${id}/estado`, { estado });
+  }
+
+  observar(id: number, payload: ObservarSolicitudPayload): Observable<ObservacionSolicitud> {
+    return this.http.post<ObservacionSolicitud>(`${this.apiUrl}/${id}/observaciones`, payload);
+  }
+
+  listarObservaciones(id: number): Observable<ObservacionSolicitud[]> {
+    return this.http.get<ObservacionSolicitud[]>(`${this.apiUrl}/${id}/observaciones`);
+  }
+
+  subsanar(id: number, observacionId: number, payload: SubsanarSolicitudPayload): Observable<ObservacionSolicitud> {
+    return this.http.post<ObservacionSolicitud>(`${this.apiUrl}/${id}/observaciones/${observacionId}/subsanar`, payload);
+  }
+
+  procesarObservacionesVencidas(): Observable<ObservacionSolicitud[]> {
+    return this.http.post<ObservacionSolicitud[]>(`${this.apiUrl}/observaciones/vencidas/procesar`, {});
   }
 
   eliminar(id: number): Observable<void> {

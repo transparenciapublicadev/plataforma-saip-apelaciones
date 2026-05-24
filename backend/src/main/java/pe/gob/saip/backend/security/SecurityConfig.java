@@ -80,6 +80,9 @@ public class SecurityConfig {
                         .requestMatchers(resourceMatchers("/api/usuarios")).hasRole("ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones/*/subsanar").hasAnyRole("CIUDADANO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/solicitudes/observaciones/vencidas/procesar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/solicitudes")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/solicitudes")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")

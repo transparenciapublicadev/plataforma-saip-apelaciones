@@ -17190,6 +17190,815 @@
           ]
         },
         {
+          "name": "Crear Solicitud SAIP (Observación)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para observación SAIP\",\n    \"descripcion\": \"Solicito información para validar el flujo de observación y subsanación SAIP.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime dedicada al flujo formal de observación/subsanación. Se mantiene separada de `createdSolicitudId` para no romper la prueba de eliminación de una solicitud limpia.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const targetEntidadId = funcionarioEntidadId || entidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para observacion is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "    pm.expect(json.expediente, \"expediente\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"observacionSolicitudSaipId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"observacionSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created - Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": 101,\n  \"expediente\": \"SAIP-2026-00001\",\n  \"asunto\": \"Contratos de servicios 2026\",\n  \"descripcion\": \"Solicito copia digital de contratos y ordenes de servicio.\",\n  \"estado\": \"RECEPCIONADA\",\n  \"prioridad\": \"MEDIA\",\n  \"semaforo\": \"VERDE\",\n  \"fechaPresentacion\": \"2026-05-19T09:30:00\",\n  \"fechaLimite\": \"2026-06-02T23:59:59\",\n  \"diasRestantes\": 10,\n  \"ciudadanoId\": 1,\n  \"ciudadanoNombre\": \"Ciudadano Demo 01\",\n  \"ciudadanoDni\": \"70000001\",\n  \"entidadId\": 1,\n  \"entidadNombre\": \"Ministerio de Justicia y Derechos Humanos\",\n  \"entidadAcronimo\": \"MINJUSDH\",\n  \"formatoDigital\": true,\n  \"formatoFisico\": false,\n  \"copiaSimple\": true,\n  \"copiaCertificada\": false,\n  \"tipoInformacion\": \"Contrataciones\",\n  \"respuesta\": null,\n  \"apelacion\": null,\n  \"documentos\": []\n}"
+            },
+            {
+              "name": "400 Bad Request - Invalid input or business rule",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"La solicitud contiene parametros invalidos o una transicion de negocio no permitida.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "401 Unauthorized - Missing or invalid JWT",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Token JWT ausente, expirado o invalido.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "403 Forbidden - Insufficient role",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"El rol autenticado no tiene permisos para ejecutar esta operacion.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "404 Not Found - Resource not found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"No se encontro el recurso solicitado.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "409 Conflict - Duplicate or invalid state",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"El recurso ya existe o el estado actual impide completar la operacion.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "415 Unsupported Media Type - Expected JSON",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Unsupported Media Type",
+              "code": 415,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 415,\n  \"error\": \"Unsupported Media Type\",\n  \"message\": \"Content-Type no soportado. Use application/json.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            },
+            {
+              "name": "422 Validation Error - Field constraints",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 422,\n  \"error\": \"Validation Error\",\n  \"message\": \"Validacion de campos fallida.\",\n  \"path\": \"/api/solicitudes\",\n  \"fieldErrors\": [\n    {\n      \"field\": \"fundamentos\",\n      \"message\": \"Los fundamentos son obligatorios\"\n    },\n    {\n      \"field\": \"email\",\n      \"message\": \"Debe ser un correo valido\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "500 Internal Server Error - Unexpected failure",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/solicitudes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "solicitudes"
+                  ]
+                },
+                "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ciudadanoToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Observar Solicitud SAIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{observacionSolicitudSaipId}}/observaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{observacionSolicitudSaipId}}",
+                "observaciones"
+              ]
+            },
+            "description": "## Observar Solicitud SAIP\n\n**POST** `/solicitudes/{{createdSolicitudId}}/observaciones`\n\n## Lógica de negocio\nLa entidad puede observar una SAIP dentro de los 2 primeros días hábiles desde la recepción. Al observar, la solicitud pasa a `PENDIENTE_INFORMACION` y se abre un plazo de 2 días hábiles para que el ciudadano subsane.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Body\nIncluye motivo formal de observación y responsable operativo.\n\n## Respuesta esperada\n`201 Created` con `estado = PENDIENTE_SUBSANACION` y `fechaLimiteSubsanacion`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"motivoObservacion\": \"Debe precisar con mayor detalle la información pública requerida para que la entidad pueda ubicarla correctamente.\",\n    \"responsable\": \"Funcionario de Transparencia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const observacionSolicitudSaipId = pm.environment.get(\"observacionSolicitudSaipId\");",
+                  "if (!observacionSolicitudSaipId) {",
+                  "    throw new Error(\"Missing observacionSolicitudSaipId. Run Crear Solicitud SAIP (Observación) first.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"observacion SAIP is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"observacion id\").to.exist;",
+                  "    pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"observacionSolicitudSaipId\")));",
+                  "    pm.expect(json.estado).to.eql(\"PENDIENTE_SUBSANACION\");",
+                  "    pm.expect(json.fechaLimiteSubsanacion, \"fecha limite\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"observacionSolicitudId\", String(json.id));",
+                  "pm.environment.set(\"observacionSolicitudEstado\", json.estado);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Observaciones SAIP",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{observacionSolicitudSaipId}}/observaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{observacionSolicitudSaipId}}",
+                "observaciones"
+              ]
+            },
+            "description": "## Listar Observaciones SAIP\n\n**GET** `/solicitudes/{{createdSolicitudId}}/observaciones`\n\n## Lógica de negocio\nConsulta el historial formal de observaciones y subsanaciones de una SAIP. Permite verificar trazabilidad, estado, fecha de observación, fecha límite y eventual subsanación.\n\n## Respuesta esperada\n`200 OK` con una lista de observaciones.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"observacionSolicitudSaipId\") || !pm.environment.get(\"observacionSolicitudId\")) {",
+                  "    throw new Error(\"Missing SAIP observation runtime variables.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"observaciones SAIP are listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    const found = json.find((item) => item.id === Number(pm.environment.get(\"observacionSolicitudId\")));",
+                  "    pm.expect(found, \"created observation\").to.exist;",
+                  "    pm.expect(found.solicitudId).to.eql(Number(pm.environment.get(\"observacionSolicitudSaipId\")));",
+                  "    pm.expect(found.estado).to.eql(\"PENDIENTE_SUBSANACION\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subsanar Observación SAIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{observacionSolicitudSaipId}}/observaciones/{{observacionSolicitudId}}/subsanar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{observacionSolicitudSaipId}}",
+                "observaciones",
+                "{{observacionSolicitudId}}",
+                "subsanar"
+              ]
+            },
+            "description": "## Subsanar Observación SAIP\n\n**POST** `/solicitudes/{{createdSolicitudId}}/observaciones/{{observacionSolicitudId}}/subsanar`\n\n## Lógica de negocio\nEl ciudadano subsana la observación dentro del plazo de 2 días hábiles. La observación pasa a `SUBSANADA` y la solicitud vuelve a `EN_REVISION`.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Respuesta esperada\n`200 OK` con `estado = SUBSANADA`, `fechaSubsanacion` y trazabilidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"comentarioSubsanacion\": \"Preciso que solicito el reporte consolidado de contratos del periodo 2025, incluyendo objeto, proveedor, monto y fecha de contratación.\",\n    \"documentoSubsanacionNombre\": \"subsanacion-saip-api.pdf\",\n    \"responsable\": \"Ciudadano Demo 01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"observacionSolicitudSaipId\") || !pm.environment.get(\"observacionSolicitudId\")) {",
+                  "    throw new Error(\"Missing SAIP observation runtime variables.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"observacion SAIP is subsanada\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"observacionSolicitudId\")));",
+                  "    pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"observacionSolicitudSaipId\")));",
+                  "    pm.expect(json.estado).to.eql(\"SUBSANADA\");",
+                  "    pm.expect(json.fechaSubsanacion, \"fecha subsanacion\").to.exist;",
+                  "    pm.expect(json.comentarioSubsanacion).to.include(\"reporte consolidado\");",
+                  "});",
+                  "pm.environment.set(\"observacionSolicitudEstado\", json.estado);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Crear Solicitud SAIP (Respuesta Genérica)",
           "request": {
             "method": "POST",

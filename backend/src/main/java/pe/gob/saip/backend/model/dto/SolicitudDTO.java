@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.Solicitud;
 
 import java.util.List;
+import java.util.Comparator;
 
 @Schema(description = "Solicitud de Acceso a la Información Pública (SAIP)")
 public record SolicitudDTO(
@@ -41,7 +42,8 @@ public record SolicitudDTO(
     String canalNotificacion,
     RespuestaDTO respuesta,
     ApelacionInfoDTO apelacion,
-    List<DocumentoDTO> documentos
+    List<DocumentoDTO> documentos,
+    List<ObservacionSolicitudDTO> observaciones
 ) {
     public static SolicitudDTO from(Solicitud s) {
         return new SolicitudDTO(
@@ -70,7 +72,15 @@ public record SolicitudDTO(
             s.getCanalNotificacion() != null ? s.getCanalNotificacion().name() : null,
             s.getRespuesta() != null ? RespuestaDTO.from(s.getRespuesta()) : null,
             s.getApelacion() != null ? ApelacionInfoDTO.from(s.getApelacion()) : null,
-            s.getDocumentos() != null ? s.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of()
+            s.getDocumentos() != null ? s.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of(),
+            s.getObservaciones() != null
+                    ? s.getObservaciones().stream()
+                            .sorted(Comparator.comparing(
+                                    obs -> obs.getFechaObservacion() != null ? obs.getFechaObservacion() : java.time.LocalDateTime.MIN,
+                                    Comparator.reverseOrder()))
+                            .map(ObservacionSolicitudDTO::from)
+                            .toList()
+                    : List.of()
         );
     }
 }
