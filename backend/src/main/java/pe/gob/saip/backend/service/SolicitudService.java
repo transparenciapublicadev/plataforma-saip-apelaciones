@@ -6,14 +6,19 @@ import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
+import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
+import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
+import pe.gob.saip.backend.repository.EncauzamientoSolicitudRepository;
+import pe.gob.saip.backend.repository.EntidadRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
@@ -35,15 +40,21 @@ public class SolicitudService {
     private final ObservacionSolicitudRepository observacionRepository;
     private final AmpliacionPlazoSolicitudRepository ampliacionRepository;
     private final CronogramaEntregaParcialSolicitudRepository cronogramaRepository;
+    private final EncauzamientoSolicitudRepository encauzamientoRepository;
+    private final EntidadRepository entidadRepository;
 
     public SolicitudService(SolicitudRepository solicitudRepository,
                             ObservacionSolicitudRepository observacionRepository,
                             AmpliacionPlazoSolicitudRepository ampliacionRepository,
-                            CronogramaEntregaParcialSolicitudRepository cronogramaRepository) {
+                            CronogramaEntregaParcialSolicitudRepository cronogramaRepository,
+                            EncauzamientoSolicitudRepository encauzamientoRepository,
+                            EntidadRepository entidadRepository) {
         this.solicitudRepository = solicitudRepository;
         this.observacionRepository = observacionRepository;
         this.ampliacionRepository = ampliacionRepository;
         this.cronogramaRepository = cronogramaRepository;
+        this.encauzamientoRepository = encauzamientoRepository;
+        this.entidadRepository = entidadRepository;
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +134,72 @@ public class SolicitudService {
     public List<CronogramaEntregaParcialSolicitud> listarCronogramaAmpliacion(Long solicitudId) {
         validarSolicitudExiste(solicitudId);
         return cronogramaRepository.findByAmpliacion_Solicitud_IdSolicitudOrderByNumeroEntregaAsc(solicitudId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EncauzamientoSolicitud> listarEncauzamientos(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return encauzamientoRepository.findBySolicitud_IdSolicitudOrderByFechaEncauzamientoDesc(solicitudId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<EncauzamientoSolicitud> obtenerEncauzamientoActivo(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return encauzamientoRepository.findFirstBySolicitud_IdSolicitudAndEstadoEncauzamientoInOrderByFechaEncauzamientoDesc(
+                solicitudId,
+                ESTADOS_ENCAUZAMIENTO_ACTIVO
+        );
+    }
+
+    @Transactional
+    public EncauzamientoSolicitud registrarEncauzamiento(Long solicitudId, RegistrarEncauzamientoSolicitudRequest request) {
+        Solicitud solicitud = buscarSolicitud(solicitudId);
+        validarPuedeEncauzar(solicitud);
+        validarSinEncauzamientoActivo(solicitudId);
+
+        Entidad origen = solicitud.getEntidad();
+        if (origen == null || origen.getId() == null) {
+            throw new IllegalArgumentException("La solicitud no tiene entidad de origen asignada");
+        }
+
+        Entidad destino = entidadRepository.findById(request.entidadDestinoId())
+                .orElseThrow(() -> new RecursoNoEncontradoException("Entidad destino no encontrada con ID: " + request.entidadDestinoId()));
+        validarEntidadDestino(origen, destino);
+
+        LocalDate hoy = LocalDate.now();
+        LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
+                ? solicitud.getFechaPresentacion().toLocalDate()
+                : hoy;
+        LocalDate fechaLimiteEncauzamiento = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, 2);
+        if (hoy.isAfter(fechaLimiteEncauzamiento)) {
+            throw new IllegalArgumentException("El plazo de 2 días hábiles para encauzar la SAIP ya venció");
+        }
+
+        EncauzamientoSolicitud.AlcanceEncauzamiento alcance = parseAlcanceEncauzamiento(request.alcance());
+        String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
+        LocalDateTime ahora = LocalDateTime.now();
+
+        EncauzamientoSolicitud encauzamiento = new EncauzamientoSolicitud();
+        encauzamiento.setSolicitud(solicitud);
+        encauzamiento.setEntidadOrigen(origen);
+        encauzamiento.setEntidadDestino(destino);
+        encauzamiento.setMotivoEncauzamiento(request.motivoEncauzamiento().trim());
+        encauzamiento.setAlcance(alcance);
+        encauzamiento.setFechaEncauzamiento(ahora);
+        encauzamiento.setFechaLimiteEncauzamiento(fechaLimiteEncauzamiento);
+        encauzamiento.setEstadoEncauzamiento(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
+        encauzamiento.setResponsable(responsable);
+        encauzamiento.setObservacionSustento(trimToNull(request.observacionSustento()));
+        encauzamiento.setTrazabilidad("%s - Encauzamiento %s registrado por %s. Origen: %s; destino: %s; límite legal: %s."
+                .formatted(ahora, alcance, responsable, origen.getAcronimo(), destino.getAcronimo(), fechaLimiteEncauzamiento));
+
+        if (alcance == EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL) {
+            solicitud.setEntidad(destino);
+            solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
+            solicitudRepository.save(solicitud);
+        }
+
+        return encauzamientoRepository.save(encauzamiento);
     }
 
     @Transactional
@@ -303,6 +380,11 @@ public class SolicitudService {
             AmpliacionPlazoSolicitud.EstadoAmpliacion.NOTIFICADA
     );
 
+    private static final List<EncauzamientoSolicitud.EstadoEncauzamiento> ESTADOS_ENCAUZAMIENTO_ACTIVO = List.of(
+            EncauzamientoSolicitud.EstadoEncauzamiento.REGISTRADO,
+            EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO
+    );
+
     /**
      * BR-SAIP-005: Detecta y marca solicitudes vencidas (silencio administrativo negativo).
      */
@@ -413,9 +495,32 @@ public class SolicitudService {
         }
     }
 
+    private void validarPuedeEncauzar(Solicitud solicitud) {
+        if (solicitud.getEstado() == null
+                || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)) {
+            throw new IllegalArgumentException("La solicitud no está en un estado válido para encauzar");
+        }
+    }
+
     private void validarSinAmpliacionActiva(Long solicitudId) {
         if (ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(solicitudId, ESTADOS_AMPLIACION_ACTIVA)) {
             throw new IllegalArgumentException("La solicitud ya tiene una ampliación activa");
+        }
+    }
+
+    private void validarSinEncauzamientoActivo(Long solicitudId) {
+        if (encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(solicitudId, ESTADOS_ENCAUZAMIENTO_ACTIVO)) {
+            throw new IllegalArgumentException("La solicitud ya tiene un encauzamiento activo");
+        }
+    }
+
+    private void validarEntidadDestino(Entidad origen, Entidad destino) {
+        if (destino == null || !Boolean.TRUE.equals(destino.getActiva())) {
+            throw new IllegalArgumentException("La entidad destino debe existir y estar activa");
+        }
+        if (origen.getId().equals(destino.getId())) {
+            throw new IllegalArgumentException("La entidad destino debe ser distinta a la entidad de origen");
         }
     }
 
@@ -481,6 +586,15 @@ public class SolicitudService {
         } catch (RuntimeException e) {
             throw new IllegalArgumentException("Estado de entrega parcial no válido: " + estado
                     + ". Valores permitidos: PROGRAMADA, ENTREGADA, OBSERVADA, CANCELADA, VENCIDA");
+        }
+    }
+
+    private EncauzamientoSolicitud.AlcanceEncauzamiento parseAlcanceEncauzamiento(String alcance) {
+        try {
+            return EncauzamientoSolicitud.AlcanceEncauzamiento.valueOf(alcance.trim().toUpperCase());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Alcance de encauzamiento no válido: " + alcance
+                    + ". Valores permitidos: TOTAL, PARCIAL");
         }
     }
 

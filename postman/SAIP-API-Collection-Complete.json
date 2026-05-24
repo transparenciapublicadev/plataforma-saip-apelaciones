@@ -18537,6 +18537,431 @@
           }
         },
         {
+          "name": "Crear Solicitud SAIP (Encauzamiento)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const origenId = funcionarioEntidadId || entidadId || \"1\";",
+                  "let destinoId = (pm.environment.get(\"encauzamientoEntidadDestinoId\") || entidadId || \"1\").trim();",
+                  "if (destinoId === origenId) { destinoId = origenId === \"1\" ? \"2\" : \"1\"; }",
+                  "pm.variables.set(\"targetEntidadId\", origenId);",
+                  "pm.variables.set(\"encauzamientoEntidadDestinoIdRuntime\", destinoId);",
+                  "pm.environment.set(\"encauzamientoEntidadOrigenId\", origenId);",
+                  "pm.environment.set(\"encauzamientoEntidadDestinoId\", destinoId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para encauzamiento is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "    pm.expect(json.expediente, \"expediente\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"encauzamientoSolicitudSaipId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"encauzamientoSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para encauzamiento SAIP\",\n    \"descripcion\": \"Solicito informacion que corresponde a otra entidad para validar encauzamiento dentro de dos dias habiles.\",\n    \"tipoInformacion\": \"Competencia institucional\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime dedicada a validar encauzamiento dentro de 2 dias habiles. Captura ID, expediente y entidades runtime sin depender de IDs hardcodeados del flujo.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar Encauzamiento SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"encauzamientoSolicitudSaipId\")) { throw new Error(\"Missing encauzamientoSolicitudSaipId. Run Crear Solicitud SAIP (Encauzamiento) first.\"); }",
+                  "const destinoId = pm.environment.get(\"encauzamientoEntidadDestinoId\");",
+                  "if (!destinoId) { throw new Error(\"Missing encauzamientoEntidadDestinoId.\"); }",
+                  "pm.variables.set(\"encauzamientoEntidadDestinoIdRuntime\", destinoId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"encauzamiento SAIP is registered\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"encauzamiento id\").to.exist;",
+                  "    pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"encauzamientoSolicitudSaipId\")));",
+                  "    pm.expect(json.entidadOrigenId).to.eql(Number(pm.environment.get(\"encauzamientoEntidadOrigenId\")));",
+                  "    pm.expect(json.entidadDestinoId).to.eql(Number(pm.environment.get(\"encauzamientoEntidadDestinoId\")));",
+                  "    pm.expect(json.alcance).to.eql(\"TOTAL\");",
+                  "    pm.expect(json.estadoEncauzamiento).to.eql(\"DERIVADO\");",
+                  "    pm.expect(json.fechaLimiteEncauzamiento, \"fecha limite encauzamiento\").to.exist;",
+                  "    pm.expect(json.trazabilidad, \"trazabilidad\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"encauzamientoId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"entidadDestinoId\": {{encauzamientoEntidadDestinoIdRuntime}},\n    \"motivoEncauzamiento\": \"La informacion solicitada corresponde funcionalmente a la entidad destino seleccionada.\",\n    \"alcance\": \"TOTAL\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"observacionSustento\": \"Encauzamiento total registrado por Newman para validar trazabilidad de origen y destino.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{encauzamientoSolicitudSaipId}}/encauzamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{encauzamientoSolicitudSaipId}}",
+                "encauzamientos"
+              ]
+            },
+            "description": "## Registrar Encauzamiento SAIP\n\nValida la regla oficial de encauzamiento dentro de 2 dias habiles. El backend debe registrar entidad origen, entidad destino, alcance, motivo, responsable, fecha limite y trazabilidad. Para alcance TOTAL, la SAIP pasa a la entidad destino.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Encauzamientos SAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"encauzamientos SAIP are listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    const found = json.find((item) => item.id === Number(pm.environment.get(\"encauzamientoId\")));",
+                  "    pm.expect(found, \"created encauzamiento\").to.exist;",
+                  "    pm.expect(found.alcance).to.eql(\"TOTAL\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{encauzamientoSolicitudSaipId}}/encauzamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{encauzamientoSolicitudSaipId}}",
+                "encauzamientos"
+              ]
+            },
+            "description": "Consulta el historial de encauzamientos de la SAIP, incluyendo origen, destino, alcance, estado y trazabilidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Encauzamiento Activo SAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"active encauzamiento SAIP is returned\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"encauzamientoId\")));",
+                  "    pm.expect([\"REGISTRADO\", \"DERIVADO\"]).to.include(json.estadoEncauzamiento);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{encauzamientoSolicitudSaipId}}/encauzamientos/activo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{encauzamientoSolicitudSaipId}}",
+                "encauzamientos",
+                "activo"
+              ]
+            },
+            "description": "Consulta el encauzamiento activo de una SAIP. Debe devolver el encauzamiento DERIVADO creado en runtime.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Solicitud SAIP (Encauzamiento Inválido)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const origenId = funcionarioEntidadId || entidadId || \"1\";",
+                  "let destinoId = (pm.environment.get(\"encauzamientoEntidadDestinoId\") || entidadId || \"1\").trim();",
+                  "if (destinoId === origenId) { destinoId = origenId === \"1\" ? \"2\" : \"1\"; }",
+                  "pm.variables.set(\"targetEntidadId\", origenId);",
+                  "pm.variables.set(\"encauzamientoEntidadDestinoIdRuntime\", destinoId);",
+                  "pm.environment.set(\"encauzamientoEntidadOrigenId\", origenId);",
+                  "pm.environment.set(\"encauzamientoEntidadDestinoId\", destinoId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para encauzamiento invalido is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"encauzamientoInvalidaSolicitudSaipId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"encauzamientoInvalidaSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para encauzamiento inválido\",\n    \"descripcion\": \"Solicitud dedicada a validar que no se puede encauzar a la misma entidad de origen.\",\n    \"tipoInformacion\": \"Validacion negativa\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime separada para validar el error esperado de encauzamiento hacia la misma entidad origen.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Encauzamiento SAIP a Misma Entidad",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"encauzamientoInvalidaSolicitudSaipId\")) { throw new Error(\"Missing encauzamientoInvalidaSolicitudSaipId.\"); }",
+                  "const origenId = pm.environment.get(\"encauzamientoEntidadOrigenId\") || pm.environment.get(\"funcionarioEntidadId\") || pm.environment.get(\"entidadId\") || \"1\";",
+                  "pm.variables.set(\"encauzamientoEntidadOrigenIdRuntime\", origenId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"same-entity encauzamiento is rejected with Problem Details\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(json.type, \"type\").to.exist;",
+                  "    pm.expect(json.title, \"title\").to.exist;",
+                  "    pm.expect(json.status, \"status\").to.eql(400);",
+                  "    pm.expect(json.detail, \"detail\").to.include(\"distinta\");",
+                  "    pm.expect(json.instance, \"instance\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"entidadDestinoId\": {{encauzamientoEntidadOrigenIdRuntime}},\n    \"motivoEncauzamiento\": \"Intento inválido de derivar la SAIP a la misma entidad de origen.\",\n    \"alcance\": \"TOTAL\",\n    \"responsable\": \"Funcionario de Transparencia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{encauzamientoInvalidaSolicitudSaipId}}/encauzamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{encauzamientoInvalidaSolicitudSaipId}}",
+                "encauzamientos"
+              ]
+            },
+            "description": "Validación negativa esperada: el backend debe rechazar un encauzamiento hacia la misma entidad de origen y responder con RFC 9457 / Problem Details. El header X-Expected-Error permite clasificarlo como prueba negativa esperada.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Crear Solicitud SAIP (Respuesta Genérica)",
           "request": {
             "method": "POST",

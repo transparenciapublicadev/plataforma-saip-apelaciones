@@ -84,6 +84,20 @@
         </div>
       }
 
+      @if (encauzamientoActivo(); as encauzamiento) {
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(122,24,34,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--brand-700)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 7h10M7 17h10M17 7l-3-3m3 3-3 3M7 17l3-3m-3 3 3 3" /></svg>
+          </div>
+          <div class="flex-1">
+            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ getEstadoDisplay(encauzamiento.alcance) }}</span>
+            <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+              La entidad derivó competencia hacia <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span> el {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}.
+            </p>
+          </div>
+        </div>
+      }
+
       <div
         class="grid grid-cols-1 lg:grid-cols-12 gap-6"
         data-motion-stagger
@@ -433,6 +447,49 @@
                   <div class="p-12 text-center">
                     <svg class="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3M4 11h16M6 21h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
                     <p class="text-muted-foreground">La entidad no ha notificado ampliaciones de plazo.</p>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (activeTab() === 'encauzamiento') {
+              <div class="p-6 md:p-8 space-y-5 animate-fade-in">
+                @if (encauzamientos().length > 0) {
+                  @for (encauzamiento of encauzamientos(); track encauzamiento.id) {
+                    <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand-700)">
+                      <div class="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ getEstadoDisplay(encauzamiento.alcance) }}</span>
+                          <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">{{ getEstadoDisplay(encauzamiento.estadoEncauzamiento) }}</h3>
+                        </div>
+                        <span class="font-mono text-[11px] text-muted-foreground">{{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
+                      </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Entidad origen</div>
+                          <p class="text-sm mt-1">{{ encauzamiento.entidadOrigenNombre }}</p>
+                        </div>
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Entidad destino</div>
+                          <p class="text-sm mt-1">{{ encauzamiento.entidadDestinoNombre }}</p>
+                        </div>
+                      </div>
+
+                      <p class="text-sm text-foreground/85 mt-4 whitespace-pre-wrap">{{ encauzamiento.motivoEncauzamiento }}</p>
+
+                      @if (encauzamiento.observacionSustento) {
+                        <div class="mt-4 rounded-md p-4 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <span class="eyebrow">Sustento</span>
+                          <p class="mt-2 text-foreground/80 whitespace-pre-wrap">{{ encauzamiento.observacionSustento }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+                } @else {
+                  <div class="p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 7h10M7 17h10M17 7l-3-3m3 3-3 3M7 17l3-3m-3 3 3 3" /></svg>
+                    <p class="text-muted-foreground">La entidad no ha registrado encauzamientos para esta solicitud.</p>
                   </div>
                 }
               </div>
