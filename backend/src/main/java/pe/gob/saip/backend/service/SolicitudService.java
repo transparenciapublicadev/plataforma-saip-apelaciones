@@ -3,29 +3,47 @@ package pe.gob.saip.backend.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
+import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
+import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
+import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class SolicitudService {
 
     private final SolicitudRepository solicitudRepository;
     private final ObservacionSolicitudRepository observacionRepository;
+    private final AmpliacionPlazoSolicitudRepository ampliacionRepository;
+    private final CronogramaEntregaParcialSolicitudRepository cronogramaRepository;
 
     public SolicitudService(SolicitudRepository solicitudRepository,
-                            ObservacionSolicitudRepository observacionRepository) {
+                            ObservacionSolicitudRepository observacionRepository,
+                            AmpliacionPlazoSolicitudRepository ampliacionRepository,
+                            CronogramaEntregaParcialSolicitudRepository cronogramaRepository) {
         this.solicitudRepository = solicitudRepository;
         this.observacionRepository = observacionRepository;
+        this.ampliacionRepository = ampliacionRepository;
+        this.cronogramaRepository = cronogramaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +111,99 @@ public class SolicitudService {
     public List<ObservacionSolicitud> listarObservaciones(Long solicitudId) {
         validarSolicitudExiste(solicitudId);
         return observacionRepository.findBySolicitud_IdSolicitudOrderByFechaObservacionDesc(solicitudId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AmpliacionPlazoSolicitud> listarAmpliaciones(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return ampliacionRepository.findBySolicitud_IdSolicitudOrderByFechaSolicitudAmpliacionDesc(solicitudId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CronogramaEntregaParcialSolicitud> listarCronogramaAmpliacion(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return cronogramaRepository.findByAmpliacion_Solicitud_IdSolicitudOrderByNumeroEntregaAsc(solicitudId);
+    }
+
+    @Transactional
+    public AmpliacionPlazoSolicitud registrarAmpliacion(Long solicitudId, RegistrarAmpliacionPlazoRequest request) {
+        Solicitud solicitud = buscarSolicitud(solicitudId);
+        validarPuedeAmpliar(solicitud);
+        validarSinAmpliacionActiva(solicitudId);
+
+        LocalDate fechaNotificacion = request.fechaNotificacionAmpliacion();
+        LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
+                ? solicitud.getFechaPresentacion().toLocalDate()
+                : LocalDate.now();
+        LocalDate fechaLimiteRegistro = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, 4);
+        if (fechaNotificacion.isAfter(fechaLimiteRegistro) || LocalDate.now().isAfter(fechaLimiteRegistro)) {
+            throw new IllegalArgumentException("La ampliación debe notificarse como máximo hasta el día 4 de atención de la SAIP");
+        }
+
+        List<RegistrarEntregaParcialRequest> cronogramaOrdenado = validarCronogramaAmpliacion(
+                request.cronograma(),
+                fechaNotificacion,
+                solicitud.getFechaLimite()
+        );
+
+        LocalDate fechaLimiteOriginal = solicitud.getFechaLimite();
+        LocalDate fechaLimiteAmpliada = cronogramaOrdenado.getLast().fechaProgramada();
+        String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
+        LocalDateTime ahora = LocalDateTime.now();
+
+        AmpliacionPlazoSolicitud ampliacion = new AmpliacionPlazoSolicitud();
+        ampliacion.setSolicitud(solicitud);
+        ampliacion.setMotivoAmpliacion(request.motivoAmpliacion().trim());
+        ampliacion.setInformeAmpliacion(request.informeAmpliacion().trim());
+        ampliacion.setFechaSolicitudAmpliacion(ahora);
+        ampliacion.setFechaNotificacionAmpliacion(fechaNotificacion);
+        ampliacion.setFechaLimiteOriginal(fechaLimiteOriginal);
+        ampliacion.setFechaLimiteAmpliada(fechaLimiteAmpliada);
+        ampliacion.setEstadoAmpliacion(AmpliacionPlazoSolicitud.EstadoAmpliacion.NOTIFICADA);
+        ampliacion.setResponsable(responsable);
+        ampliacion.setTrazabilidad("%s - Ampliación registrada y notificada por %s. Plazo ordinario %s; nuevo plazo %s."
+                .formatted(ahora, responsable, fechaLimiteOriginal, fechaLimiteAmpliada));
+
+        List<CronogramaEntregaParcialSolicitud> entregas = new ArrayList<>();
+        for (RegistrarEntregaParcialRequest entregaRequest : cronogramaOrdenado) {
+            CronogramaEntregaParcialSolicitud entrega = new CronogramaEntregaParcialSolicitud();
+            entrega.setAmpliacion(ampliacion);
+            entrega.setNumeroEntrega(entregaRequest.numeroEntrega());
+            entrega.setDescripcion(entregaRequest.descripcion().trim());
+            entrega.setFechaProgramada(entregaRequest.fechaProgramada());
+            entrega.setEstado(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
+            entrega.setObservacion(trimToNull(entregaRequest.observacion()));
+            entregas.add(entrega);
+        }
+        ampliacion.setCronograma(entregas);
+
+        solicitud.setFechaLimite(fechaLimiteAmpliada);
+        solicitudRepository.save(solicitud);
+        return ampliacionRepository.save(ampliacion);
+    }
+
+    @Transactional
+    public CronogramaEntregaParcialSolicitud actualizarEntregaParcial(Long solicitudId,
+                                                                      Long ampliacionId,
+                                                                      Long entregaId,
+                                                                      ActualizarEntregaParcialRequest request) {
+        validarSolicitudExiste(solicitudId);
+        AmpliacionPlazoSolicitud ampliacion = buscarAmpliacionDeSolicitud(solicitudId, ampliacionId);
+        CronogramaEntregaParcialSolicitud entrega = buscarEntregaDeAmpliacion(ampliacionId, entregaId);
+
+        CronogramaEntregaParcialSolicitud.EstadoEntregaParcial nuevoEstado = parseEstadoEntrega(request.estado());
+        if (nuevoEstado == CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA
+                && request.fechaEntregaReal() == null) {
+            throw new IllegalArgumentException("La fecha real de entrega es obligatoria cuando el estado es ENTREGADA");
+        }
+
+        entrega.setEstado(nuevoEstado);
+        entrega.setFechaEntregaReal(request.fechaEntregaReal());
+        entrega.setObservacion(trimToNull(request.observacion()));
+
+        CronogramaEntregaParcialSolicitud guardada = cronogramaRepository.save(entrega);
+        actualizarEstadoAmpliacionSiCorresponde(ampliacion);
+        return guardada;
     }
 
     @Transactional
@@ -187,6 +298,11 @@ public class SolicitudService {
             Solicitud.EstadoSolicitud.VENCIDA
     );
 
+    private static final List<AmpliacionPlazoSolicitud.EstadoAmpliacion> ESTADOS_AMPLIACION_ACTIVA = List.of(
+            AmpliacionPlazoSolicitud.EstadoAmpliacion.REGISTRADA,
+            AmpliacionPlazoSolicitud.EstadoAmpliacion.NOTIFICADA
+    );
+
     /**
      * BR-SAIP-005: Detecta y marca solicitudes vencidas (silencio administrativo negativo).
      */
@@ -263,12 +379,81 @@ public class SolicitudService {
         return observacion;
     }
 
+    private AmpliacionPlazoSolicitud buscarAmpliacionDeSolicitud(Long solicitudId, Long ampliacionId) {
+        AmpliacionPlazoSolicitud ampliacion = ampliacionRepository.findById(ampliacionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Ampliación SAIP no encontrada con ID: " + ampliacionId));
+        if (ampliacion.getSolicitud() == null || !solicitudId.equals(ampliacion.getSolicitud().getId())) {
+            throw new RecursoNoEncontradoException("Ampliación SAIP no encontrada para la solicitud ID: " + solicitudId);
+        }
+        return ampliacion;
+    }
+
+    private CronogramaEntregaParcialSolicitud buscarEntregaDeAmpliacion(Long ampliacionId, Long entregaId) {
+        CronogramaEntregaParcialSolicitud entrega = cronogramaRepository.findById(entregaId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Entrega parcial SAIP no encontrada con ID: " + entregaId));
+        if (entrega.getAmpliacion() == null || !ampliacionId.equals(entrega.getAmpliacion().getId())) {
+            throw new RecursoNoEncontradoException("Entrega parcial SAIP no encontrada para la ampliación ID: " + ampliacionId);
+        }
+        return entrega;
+    }
+
     private void validarPuedeObservar(Solicitud solicitud) {
         if (solicitud.getEstado() == null
                 || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
                 || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)) {
             throw new IllegalArgumentException("La solicitud no está en un estado válido para ser observada");
         }
+    }
+
+    private void validarPuedeAmpliar(Solicitud solicitud) {
+        if (solicitud.getEstado() == null
+                || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)) {
+            throw new IllegalArgumentException("La solicitud no está en un estado válido para ampliar el plazo");
+        }
+    }
+
+    private void validarSinAmpliacionActiva(Long solicitudId) {
+        if (ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(solicitudId, ESTADOS_AMPLIACION_ACTIVA)) {
+            throw new IllegalArgumentException("La solicitud ya tiene una ampliación activa");
+        }
+    }
+
+    private List<RegistrarEntregaParcialRequest> validarCronogramaAmpliacion(List<RegistrarEntregaParcialRequest> cronograma,
+                                                                              LocalDate fechaNotificacion,
+                                                                              LocalDate fechaLimiteOriginal) {
+        if (cronograma == null || cronograma.isEmpty()) {
+            throw new IllegalArgumentException("Debe registrar al menos una entrega parcial");
+        }
+
+        List<RegistrarEntregaParcialRequest> ordenado = cronograma.stream()
+                .sorted(Comparator.comparing(RegistrarEntregaParcialRequest::numeroEntrega))
+                .toList();
+        Set<Integer> numeros = new HashSet<>();
+        LocalDate fechaAnterior = fechaNotificacion;
+
+        for (RegistrarEntregaParcialRequest entrega : ordenado) {
+            if (!numeros.add(entrega.numeroEntrega())) {
+                throw new IllegalArgumentException("El número de entrega parcial no puede repetirse");
+            }
+            if (isBlank(entrega.descripcion())) {
+                throw new IllegalArgumentException("La descripción de cada entrega parcial es obligatoria");
+            }
+            if (entrega.fechaProgramada().isBefore(fechaAnterior)) {
+                throw new IllegalArgumentException("Las fechas del cronograma deben ser progresivas");
+            }
+            long diasEntreEntregas = ChronoUnit.DAYS.between(fechaAnterior, entrega.fechaProgramada());
+            if (diasEntreEntregas > 30) {
+                throw new IllegalArgumentException("Cada entrega parcial debe programarse en un plazo máximo de 30 días");
+            }
+            fechaAnterior = entrega.fechaProgramada();
+        }
+
+        if (!ordenado.getLast().fechaProgramada().isAfter(fechaLimiteOriginal)) {
+            throw new IllegalArgumentException("La fecha límite ampliada debe ser posterior al plazo ordinario de la SAIP");
+        }
+
+        return ordenado;
     }
 
     private void validarObservacionPendiente(ObservacionSolicitud observacion) {
@@ -287,6 +472,30 @@ public class SolicitudService {
         if (observacion.getSolicitud() != null) {
             observacion.getSolicitud().setEstado(Solicitud.EstadoSolicitud.CONCLUIDA);
             solicitudRepository.save(observacion.getSolicitud());
+        }
+    }
+
+    private CronogramaEntregaParcialSolicitud.EstadoEntregaParcial parseEstadoEntrega(String estado) {
+        try {
+            return CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.valueOf(estado.trim().toUpperCase());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Estado de entrega parcial no válido: " + estado
+                    + ". Valores permitidos: PROGRAMADA, ENTREGADA, OBSERVADA, CANCELADA, VENCIDA");
+        }
+    }
+
+    private void actualizarEstadoAmpliacionSiCorresponde(AmpliacionPlazoSolicitud ampliacion) {
+        List<CronogramaEntregaParcialSolicitud> entregas = cronogramaRepository
+                .findByAmpliacion_IdAmpliacionOrderByNumeroEntregaAsc(ampliacion.getId());
+        boolean todasEntregadas = !entregas.isEmpty()
+                && entregas.stream().allMatch(entrega ->
+                entrega.getEstado() == CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA);
+        if (todasEntregadas && ampliacion.getEstadoAmpliacion() != AmpliacionPlazoSolicitud.EstadoAmpliacion.COMPLETADA) {
+            ampliacion.setEstadoAmpliacion(AmpliacionPlazoSolicitud.EstadoAmpliacion.COMPLETADA);
+            ampliacion.setTrazabilidad(agregarTraza(
+                    ampliacion.getTrazabilidad(),
+                    "%s - Cronograma de entregas parciales completado.".formatted(LocalDateTime.now())));
+            ampliacionRepository.save(ampliacion);
         }
     }
 
