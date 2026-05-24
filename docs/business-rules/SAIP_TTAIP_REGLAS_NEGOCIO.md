@@ -19,6 +19,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 
 - SAIP exige consentimiento expreso de tratamiento de datos personales antes de crear la solicitud.
 - SAIP registra canal formal de notificacion, incluyendo `CASILLA_ELECTRONICA`.
+- SAIP cuenta con observacion/subsanacion formal: la entidad observa dentro de 2 dias habiles, el ciudadano subsana dentro de 2 dias habiles y el tramite conserva trazabilidad.
 - Una resolucion TTAIP de `INADMISIBLE` genera cedula/notificacion solo para el ciudadano recurrente.
 - Un reproceso de notificacion conserva la cedula original y genera nueva cedula y nueva notificacion para el mismo destinatario afectado.
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
@@ -111,6 +112,7 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 - La observacion aplica cuando faltan requisitos minimos, especialmente identificacion, pedido concreto o firma/constancia equivalente.
 - El ciudadano tiene 2 dias habiles desde la notificacion para subsanar.
 - Si subsana, la solicitud vuelve a revision y luego a tramite si cumple.
+- Implementacion actual: `ObservacionSolicitud` registra motivo, fecha de observacion, fecha limite de subsanacion, fecha de subsanacion, comentario/documento de subsanacion, estado, responsables y trazabilidad. Al observar, la SAIP pasa a `PENDIENTE_INFORMACION`; al subsanar correctamente vuelve a `EN_REVISION`; si vence sin subsanacion, la observacion queda `NO_SUBSANADA` y la solicitud se cierra como `CONCLUIDA` segun el modelo actual.
 
 ### Ampliacion de plazo
 
@@ -161,7 +163,8 @@ Despues de responder, el estado de negocio es `Respondida` o `SAIP atendida`.
 | --- | --- | --- |
 | SAIP Presentada | `RECEPCIONADA` | Cubierto como estado inicial actual. |
 | EnRevision | `EN_REVISION` | Cubierto. |
-| Subsanacion | `PENDIENTE_INFORMACION` | Parcial; falta modelo detallado de observacion/subsanacion SAIP. |
+| Subsanacion | `PENDIENTE_INFORMACION` | Cubierto con `ObservacionSolicitud` y plazo de 2 dias habiles. |
+| No subsanada / archivada | `CONCLUIDA` | Cubierto como cierre administrativo por vencimiento de observacion no subsanada. |
 | En tramite / En proceso | No existe explicito | Debe evaluarse si se agrega o se mantiene `EN_REVISION`. |
 | Respondida / SAIP atendida | `RESPONDIDA` o `DENEGADA` | Cubierto para respuesta total/parcial/denegatoria. |
 | Vencida | `VENCIDA` | Cubierto para silencio administrativo negativo. |
