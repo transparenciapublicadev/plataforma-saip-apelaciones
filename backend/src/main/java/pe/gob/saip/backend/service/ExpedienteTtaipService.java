@@ -2,11 +2,13 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
 import pe.gob.saip.backend.repository.HistorialTtaipRepository;
 import pe.gob.saip.backend.repository.NotificacionTtaipRepository;
+import pe.gob.saip.backend.repository.ReprocesoNotificacionRepository;
 import pe.gob.saip.backend.repository.ResolucionRepository;
 import pe.gob.saip.backend.repository.SalaTtaipRepository;
 
@@ -29,6 +31,7 @@ public class ExpedienteTtaipService {
     private final ResolucionRepository resolucionRepository;
     private final CedulaNotificacionRepository cedulaRepository;
     private final NotificacionTtaipRepository notificacionRepository;
+    private final ReprocesoNotificacionRepository reprocesoRepository;
     private final HistorialTtaipRepository historialRepository;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
@@ -37,6 +40,7 @@ public class ExpedienteTtaipService {
                                   ResolucionRepository resolucionRepository,
                                   CedulaNotificacionRepository cedulaRepository,
                                   NotificacionTtaipRepository notificacionRepository,
+                                  ReprocesoNotificacionRepository reprocesoRepository,
                                   HistorialTtaipRepository historialRepository) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
@@ -44,6 +48,7 @@ public class ExpedienteTtaipService {
         this.resolucionRepository = resolucionRepository;
         this.cedulaRepository = cedulaRepository;
         this.notificacionRepository = notificacionRepository;
+        this.reprocesoRepository = reprocesoRepository;
         this.historialRepository = historialRepository;
     }
 
@@ -106,7 +111,22 @@ public class ExpedienteTtaipService {
         );
 
         crearCedulaYNotificacionSiFalta(resolucion, expediente, CedulaNotificacion.DestinatarioNotificacion.CIUDADANO);
-        crearCedulaYNotificacionSiFalta(resolucion, expediente, CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA);
+        if (debeNotificarEntidadPublica(resolucion)) {
+            crearCedulaYNotificacionSiFalta(resolucion, expediente, CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA);
+        }
+    }
+
+    @Transactional
+    public ReprocesoNotificacion reprocesarNotificacionFallida(String numeroCedulaOriginal,
+                                                               CedulaNotificacion.DestinatarioNotificacion destinatario,
+                                                               String observacion,
+                                                               String responsable) {
+        NotificacionTtaip notificacionOriginal = notificacionRepository
+                .findByCedula_NumeroCedulaAndDestinatario(numeroCedulaOriginal, destinatario)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Notificación no encontrada para la cédula " + numeroCedulaOriginal + " y destinatario " + destinatario));
+
+        return reprocesarNotificacionFallida(notificacionOriginal, observacion, responsable);
     }
 
     private ExpedienteTtaip crearExpediente(Apelacion apelacion) {
@@ -184,10 +204,39 @@ public class ExpedienteTtaipService {
         return "RESOLUCIÓN N.° %06d-%d-JUS/TTAIP-%s".formatted(sequence, year, expediente.getSala().getNombre());
     }
 
-    private String generarNumeroCedula() {
+    private String obtenerNumeroCedulaParaResolucion(Resolucion resolucion) {
+        return cedulaRepository.findFirstByResolucion_IdResolucionOrderByIdCedulaAsc(resolucion.getId())
+                .map(CedulaNotificacion::getNumeroCedula)
+                .orElseGet(this::generarSiguienteNumeroCedula);
+    }
+
+    private String generarSiguienteNumeroCedula() {
         int year = LocalDate.now().getYear();
-        long sequence = CEDULA_BASE + cedulaRepository.countByNumeroCedulaStartingWith("") / 2;
+        String suffix = "-" + year + "-JUS/TTAIP";
+        int sequence = cedulaRepository.findByNumeroCedulaEndingWith(suffix)
+                .stream()
+                .map(CedulaNotificacion::getNumeroCedula)
+                .mapToInt(this::extraerSecuenciaCedula)
+                .max()
+                .orElse(CEDULA_BASE - 1) + 1;
         return "%05d-%d-JUS/TTAIP".formatted(sequence, year);
+    }
+
+    private int extraerSecuenciaCedula(String numeroCedula) {
+        if (numeroCedula == null || numeroCedula.isBlank()) {
+            return CEDULA_BASE - 1;
+        }
+
+        int separator = numeroCedula.indexOf('-');
+        if (separator <= 0) {
+            return CEDULA_BASE - 1;
+        }
+
+        try {
+            return Integer.parseInt(numeroCedula.substring(0, separator));
+        } catch (NumberFormatException e) {
+            return CEDULA_BASE - 1;
+        }
     }
 
     private void crearCedulaYNotificacionSiFalta(Resolucion resolucion,
@@ -197,7 +246,7 @@ public class ExpedienteTtaipService {
             return;
         }
 
-        String numeroCedula = generarNumeroCedula();
+        String numeroCedula = obtenerNumeroCedulaParaResolucion(resolucion);
         CedulaNotificacion cedula = new CedulaNotificacion();
         cedula.setResolucion(resolucion);
         cedula.setNumeroCedula(numeroCedula);
@@ -235,6 +284,120 @@ public class ExpedienteTtaipService {
                     "NOTIFICACION-" + savedCedula.getNumeroCedula() + ":" + savedNotificacion.getDestinatario().name()
             );
         }
+    }
+
+    private ReprocesoNotificacion reprocesarNotificacionFallida(NotificacionTtaip notificacionOriginal,
+                                                                 String observacion,
+                                                                 String responsable) {
+        CedulaNotificacion cedulaOriginal = notificacionOriginal.getCedula();
+        if (cedulaOriginal == null || cedulaOriginal.getResolucion() == null) {
+            throw new IllegalStateException("La notificación original debe estar vinculada a una cédula y resolución");
+        }
+
+        ExpedienteTtaip expediente = notificacionOriginal.getExpediente();
+        Resolucion resolucion = cedulaOriginal.getResolucion();
+        CedulaNotificacion.DestinatarioNotificacion destinatario = cedulaOriginal.getDestinatario();
+        String responsableNormalizado = responsable != null && !responsable.isBlank() ? responsable.trim() : "TTAIP";
+
+        notificacionOriginal.setEstado("FALLIDA");
+        notificacionOriginal.setDetalle(agregarTraza(
+                notificacionOriginal.getDetalle(),
+                "Reproceso registrado por notificación fallida: " + observacion
+        ));
+        notificacionRepository.save(notificacionOriginal);
+
+        CedulaNotificacion nuevaCedula = new CedulaNotificacion();
+        nuevaCedula.setResolucion(resolucion);
+        nuevaCedula.setNumeroCedula(generarSiguienteNumeroCedula());
+        nuevaCedula.setDestinatario(destinatario);
+        nuevaCedula.setDestinatarioNombre(cedulaOriginal.getDestinatarioNombre());
+        nuevaCedula.setDestinatarioEmail(cedulaOriginal.getDestinatarioEmail());
+        nuevaCedula.setCanal(cedulaOriginal.getCanal());
+        nuevaCedula.setEstado("EMITIDA_REPROCESO");
+        nuevaCedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + nuevaCedula.getNumeroCedula());
+        CedulaNotificacion savedCedula = cedulaRepository.save(nuevaCedula);
+
+        NotificacionTtaip nuevaNotificacion = new NotificacionTtaip();
+        nuevaNotificacion.setExpediente(expediente);
+        nuevaNotificacion.setCedula(savedCedula);
+        nuevaNotificacion.setDestinatario(destinatario);
+        nuevaNotificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
+        nuevaNotificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
+        nuevaNotificacion.setMedio(notificacionOriginal.getMedio());
+        nuevaNotificacion.setEstado("PENDIENTE_REENVIO");
+        nuevaNotificacion.setDetalle("Reproceso de notificación fallida de la cédula "
+                + cedulaOriginal.getNumeroCedula() + ". " + observacion);
+        NotificacionTtaip savedNotificacion = notificacionRepository.save(nuevaNotificacion);
+
+        int numeroIntento = (int) reprocesoRepository.countByCedulaOriginal_IdCedulaAndDestinatario(
+                cedulaOriginal.getId(),
+                destinatario
+        ) + 1;
+
+        ReprocesoNotificacion reproceso = new ReprocesoNotificacion();
+        reproceso.setExpediente(expediente);
+        reproceso.setNotificacion(notificacionOriginal);
+        reproceso.setCedulaOriginal(cedulaOriginal);
+        reproceso.setCedulaNueva(savedCedula);
+        reproceso.setNotificacionNueva(savedNotificacion);
+        reproceso.setDestinatario(destinatario);
+        reproceso.setNumeroCedulaOriginal(cedulaOriginal.getNumeroCedula());
+        reproceso.setFechaIngresoCargo(LocalDate.now());
+        reproceso.setObservacionReproceso(observacion);
+        reproceso.setFechaSubsanacion(LocalDate.now());
+        reproceso.setCedulaSubsanacion(savedCedula.getNumeroCedula());
+        reproceso.setFechaCedulaSubsanacion(LocalDate.now());
+        reproceso.setNumeroIntento(numeroIntento);
+        reproceso.setEstado(ReprocesoNotificacion.EstadoReproceso.ATENDIDO);
+        reproceso.setResponsableNotificacion(responsableNormalizado);
+        reproceso.setResponsableSubsanacion(responsableNormalizado);
+        ReprocesoNotificacion savedReproceso = reprocesoRepository.save(reproceso);
+
+        expediente.setTrazabilidadMinima(agregarTraza(
+                expediente.getTrazabilidadMinima(),
+                "%s - Reproceso de notificación para %s; cédula original %s, nueva cédula %s".formatted(
+                        LocalDateTime.now(),
+                        etiquetaDestinatario(destinatario),
+                        cedulaOriginal.getNumeroCedula(),
+                        savedCedula.getNumeroCedula()
+                )
+        ));
+        expedienteRepository.save(expediente);
+
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.CEDULA_EMITIDA,
+                "Cédula de reproceso emitida para " + etiquetaDestinatario(destinatario)
+                        + " por notificación fallida de " + resolucion.getNumeroResolucion(),
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                responsableNormalizado,
+                savedCedula.getNumeroCedula() + ":" + destinatario.name()
+        );
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.NOTIFICACION_REGISTRADA,
+                "Notificación de reproceso registrada para " + etiquetaDestinatario(destinatario),
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                responsableNormalizado,
+                "NOTIFICACION-" + savedCedula.getNumeroCedula() + ":" + destinatario.name()
+        );
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.REPROCESO_REGISTRADO,
+                "Reproceso de notificación registrado para " + etiquetaDestinatario(destinatario),
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                responsableNormalizado,
+                "REPROCESO-" + cedulaOriginal.getNumeroCedula() + ":" + destinatario.name() + ":" + numeroIntento
+        );
+
+        return savedReproceso;
+    }
+
+    private boolean debeNotificarEntidadPublica(Resolucion resolucion) {
+        return resolucion.getDecision() != Resolucion.DecisionResolucion.INADMISIBLE;
     }
 
     private String resolveNombreDestinatario(ExpedienteTtaip expediente, CedulaNotificacion.DestinatarioNotificacion destinatario) {
