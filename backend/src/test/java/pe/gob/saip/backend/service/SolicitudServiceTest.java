@@ -8,16 +8,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
+import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
+import pe.gob.saip.backend.repository.EncauzamientoSolicitudRepository;
+import pe.gob.saip.backend.repository.EntidadRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
@@ -46,6 +50,12 @@ class SolicitudServiceTest {
     @Mock
     CronogramaEntregaParcialSolicitudRepository cronogramaRepository;
 
+    @Mock
+    EncauzamientoSolicitudRepository encauzamientoRepository;
+
+    @Mock
+    EntidadRepository entidadRepository;
+
     @InjectMocks
     SolicitudService solicitudService;
 
@@ -59,6 +69,16 @@ class SolicitudServiceTest {
         s.setFechaPresentacion(LocalDateTime.now());
         s.setFechaLimite(LocalDate.now().plusDays(10));
         return s;
+    }
+
+    private Entidad crearEntidad(Long id, String acronimo, boolean activa) {
+        Entidad entidad = new Entidad();
+        entidad.setIdEntidad(id);
+        entidad.setNombre("Entidad " + acronimo);
+        entidad.setAcronimo(acronimo);
+        entidad.setActiva(activa);
+        entidad.setEstado(activa ? "Activa" : "Inactiva");
+        return entidad;
     }
 
     @Test
@@ -420,6 +440,128 @@ class SolicitudServiceTest {
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ampliación activa");
+    }
+
+    @Test
+    void registrarEncauzamientoTotal_debeCambiarEntidadResponsable() {
+        var origen = crearEntidad(1L, "MINJUS", true);
+        var destino = crearEntidad(2L, "MINEDU", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> {
+            EncauzamientoSolicitud encauzamiento = inv.getArgument(0);
+            encauzamiento.setIdEncauzamiento(60L);
+            return encauzamiento;
+        });
+
+        EncauzamientoSolicitud resultado = solicitudService.registrarEncauzamiento(
+                1L,
+                new RegistrarEncauzamientoSolicitudRequest(
+                        2L,
+                        "La información solicitada corresponde a MINEDU",
+                        "TOTAL",
+                        "Funcionario",
+                        "Se deriva el íntegro de la solicitud"
+                )
+        );
+
+        assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL);
+        assertThat(resultado.getEstadoEncauzamiento()).isEqualTo(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
+        assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 2));
+        assertThat(solicitud.getEntidad()).isEqualTo(destino);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
+        verify(solicitudRepository).save(solicitud);
+        verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
+    }
+
+    @Test
+    void registrarEncauzamientoParcial_debeMantenerEntidadOrigen() {
+        var origen = crearEntidad(1L, "MINJUS", true);
+        var destino = crearEntidad(2L, "MINEDU", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EncauzamientoSolicitud resultado = solicitudService.registrarEncauzamiento(
+                1L,
+                new RegistrarEncauzamientoSolicitudRequest(
+                        2L,
+                        "Solo una parte corresponde a MINEDU",
+                        "PARCIAL",
+                        "Funcionario",
+                        "La entidad origen mantiene atención del resto"
+                )
+        );
+
+        assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.PARCIAL);
+        assertThat(solicitud.getEntidad()).isEqualTo(origen);
+        verify(solicitudRepository, never()).save(solicitud);
+        verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
+    }
+
+    @Test
+    void registrarEncauzamiento_fueraDePlazo_debeLanzarReglaNegocio() {
+        var origen = crearEntidad(1L, "MINJUS", true);
+        var destino = crearEntidad(2L, "MINEDU", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarEncauzamiento(
+                        1L,
+                        new RegistrarEncauzamientoSolicitudRequest(
+                                2L,
+                                "Competencia de otra entidad",
+                                "TOTAL",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("2 días hábiles");
+    }
+
+    @Test
+    void registrarEncauzamiento_conMismaEntidad_debeLanzarReglaNegocio() {
+        var origen = crearEntidad(1L, "MINJUS", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(1L)).thenReturn(Optional.of(origen));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarEncauzamiento(
+                        1L,
+                        new RegistrarEncauzamientoSolicitudRequest(
+                                1L,
+                                "Competencia de la misma entidad",
+                                "TOTAL",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("distinta");
     }
 
     @Test
