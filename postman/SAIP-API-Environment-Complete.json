@@ -489,6 +489,55 @@
       "type": "default",
       "enabled": true,
       "description": "Expediente runtime de la SAIP creada especificamente para validar observacion/subsanacion formal."
+    },
+    {
+      "key": "ampliacionSolicitudSaipId",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "ID runtime de la SAIP creada para validar ampliación de plazo."
+    },
+    {
+      "key": "ampliacionSolicitudExpediente",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "Expediente runtime de la SAIP creada para validar ampliación de plazo."
+    },
+    {
+      "key": "ampliacionId",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "ID runtime de ampliación de plazo SAIP creada durante Newman."
+    },
+    {
+      "key": "ampliacionEntregaId",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "ID runtime de entrega parcial creada durante Newman."
+    },
+    {
+      "key": "ampliacionFechaLimiteOriginal",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "Fecha límite ordinaria capturada al registrar ampliación."
+    },
+    {
+      "key": "ampliacionFechaLimiteAmpliada",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "Fecha límite ampliada capturada al registrar ampliación."
+    },
+    {
+      "key": "ampliacionInvalidaSolicitudSaipId",
+      "value": "",
+      "type": "any",
+      "enabled": true,
+      "description": "ID runtime de SAIP dedicada a la validación negativa de cronograma inválido."
     }
   ],
   "_postman_variable_scope": "environment"

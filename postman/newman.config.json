@@ -73,7 +73,12 @@
     "funcionarioLoginUsername",
     "funcionarioLoginPassword",
     "targetEntidadId",
-    "adminUsuarioEmail"
+    "adminUsuarioEmail",
+    "ampliacionFechaNotificacion",
+    "ampliacionEntrega1Fecha",
+    "ampliacionEntrega2Fecha",
+    "ampliacionEntregaInvalidaFecha",
+    "ampliacionFechaEntregaReal"
   ],
   "tokenVariables": [
     "ciudadanoToken",
