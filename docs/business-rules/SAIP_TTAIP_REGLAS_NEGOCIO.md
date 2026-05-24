@@ -23,6 +23,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Una resolucion TTAIP de `INADMISIBLE` genera cedula/notificacion solo para el ciudadano recurrente.
 - Un reproceso de notificacion conserva la cedula original y genera nueva cedula y nueva notificacion para el mismo destinatario afectado.
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
+- SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
 
 ## Nomenclaturas
 
@@ -121,6 +122,10 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 - Cada entrega parcial no debe exceder 30 dias.
 - La ampliacion debe notificarse como maximo hasta el dia 4 de atencion.
 - Si no se notifica dentro de ese limite, se mantiene el plazo ordinario de 10 dias habiles.
+- Implementacion actual: `AmpliacionPlazoSolicitud` registra motivo, informe, fecha de solicitud, fecha de notificacion, plazo original, plazo ampliado, estado, responsable, trazabilidad y `CronogramaEntregaParcialSolicitud`.
+- El backend solo permite registrar ampliacion en estados `RECEPCIONADA` o `EN_REVISION`, sin otra ampliacion activa, y actualiza `Solicitud.fechaLimite` al ultimo hito valido del cronograma.
+- El cronograma valida entregas progresivas: numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion; cada entrega debe ocurrir como maximo 30 dias despues del hito anterior.
+- Postman/Newman cubre el flujo positivo y una validacion negativa esperada para cronogramas que exceden 30 dias, manteniendo Problem Details RFC 9457.
 
 ### Encauzamiento
 
