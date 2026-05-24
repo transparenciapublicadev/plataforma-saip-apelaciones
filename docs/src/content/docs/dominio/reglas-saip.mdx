@@ -53,11 +53,29 @@ El flujo formal queda registrado como una observación SAIP: motivo, fecha de ob
 
 Si aplica cobro por costos de reproducción, la liquidación debe emitirse **a más tardar el día 9** del plazo.
 
-### BR-SAIP-005 — Silencio Administrativo Negativo
+### BR-SAIP-005 — Ampliación de plazo
+
+Cuando el pedido es amplio o requiere un volumen alto de información, la entidad puede registrar una ampliación de plazo siempre que la notifique como máximo hasta el **día 4 de atención** de la SAIP.
+
+El flujo implementado exige motivo, informe formal, fecha de notificación, responsable, plazo original, plazo ampliado y cronograma de entregas parciales.
+
+| Regla | Implementación |
+| --- | --- |
+| Registro oportuno | Solo procede si la SAIP está `RECEPCIONADA` o `EN_REVISION` y la notificación ocurre hasta el día 4. |
+| Cronograma | Debe tener al menos una entrega parcial con número, descripción y fecha programada. |
+| Límite de entrega | Cada entrega parcial no puede exceder **30 días** respecto del hito anterior. |
+| Ampliación activa | No se permite más de una ampliación activa para la misma SAIP. |
+| Trazabilidad | Se conserva motivo, informe, responsable, plazo original, plazo ampliado y estado de cada entrega. |
+
+:::note[Plazo ordinario]
+Si la ampliación no se registra/notifica dentro del plazo permitido, la SAIP mantiene el plazo ordinario de **10 días hábiles**.
+:::
+
+### BR-SAIP-006 — Silencio Administrativo Negativo
 
 Si transcurren más de **10 días hábiles** sin respuesta de la entidad, opera el **silencio administrativo negativo** y la solicitud pasa a estado `VENCIDA`. Esto habilita automáticamente el derecho del ciudadano a apelar.
 
-### BR-SAIP-006 — Plazo para Apelar
+### BR-SAIP-007 — Plazo para Apelar
 
 El documento oficial contiene una diferencia interna que debe resolverse antes de modificar código: una tabla menciona **15 días calendario**, pero el Art. 34.2 citado en el mismo documento establece **15 días hábiles** para denegatoria expresa. Para denegatoria tácita o silencio administrativo negativo no existe plazo perentorio.
 
@@ -65,7 +83,7 @@ El documento oficial contiene una diferencia interna que debe resolverse antes d
 No hardcodear ni cambiar validaciones de plazo de apelación hasta que el equipo confirme si el criterio productivo será días calendario o días hábiles para denegatoria expresa.
 :::
 
-### BR-SAIP-007 — Consentimiento y canal de notificación
+### BR-SAIP-008 — Consentimiento y canal de notificación
 
 La creación de una SAIP exige consentimiento expreso para el tratamiento de datos personales y debe registrar el canal formal de notificación elegido por el ciudadano.
 
