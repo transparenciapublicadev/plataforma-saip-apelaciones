@@ -5,8 +5,11 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
+import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.MiembroTTAIP;
 import pe.gob.saip.backend.model.entity.Resolucion;
 
@@ -327,6 +330,17 @@ public class TTAIPService {
         return ApelacionDTO.from(apelacion);
     }
 
+    @Transactional
+    public ReprocesoNotificacionDTO reprocesarNotificacionFallida(ReprocesarNotificacionRequest request) {
+        CedulaNotificacion.DestinatarioNotificacion destinatario = parseDestinatario(request.destinatario());
+        return ReprocesoNotificacionDTO.from(expedienteTtaipService.reprocesarNotificacionFallida(
+                request.numeroCedulaOriginal(),
+                destinatario,
+                request.observacion(),
+                request.responsable()
+        ));
+    }
+
     // ============================================================
     // HELPERS INTERNOS
     // ============================================================
@@ -334,6 +348,16 @@ public class TTAIPService {
     private Apelacion buscarApelacion(Long apelacionId) {
         return apelacionService.findById(apelacionId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + apelacionId));
+    }
+
+    private CedulaNotificacion.DestinatarioNotificacion parseDestinatario(String destinatario) {
+        try {
+            return CedulaNotificacion.DestinatarioNotificacion.valueOf(destinatario.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException(
+                    "Destinatario de notificación no válido: " + destinatario
+                    + ". Valores permitidos: CIUDADANO, ENTIDAD_PUBLICA");
+        }
     }
 
     private Resolucion crearResolucion(Apelacion apelacion,
