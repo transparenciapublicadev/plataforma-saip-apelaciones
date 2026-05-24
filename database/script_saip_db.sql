@@ -39,6 +39,29 @@ CALL add_column_if_missing('resoluciones', 'id_sala_ttaip', 'BIGINT NULL');
 CALL add_column_if_missing('solicitudes', 'consentimiento_datos_personales', 'TINYINT(1) NOT NULL DEFAULT 1');
 CALL add_column_if_missing('solicitudes', 'canal_notificacion', 'VARCHAR(40) NOT NULL DEFAULT ''CASILLA_ELECTRONICA''');
 
+CREATE TABLE IF NOT EXISTS observaciones_solicitud (
+    id_observacion BIGINT NOT NULL AUTO_INCREMENT,
+    id_solicitud BIGINT NOT NULL,
+    motivo_observacion TEXT NOT NULL,
+    fecha_observacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_limite_subsanacion DATE NOT NULL,
+    fecha_subsanacion DATETIME NULL,
+    comentario_subsanacion TEXT NULL,
+    documento_subsanacion_nombre VARCHAR(255) NULL,
+    documento_subsanacion_ruta VARCHAR(500) NULL,
+    estado VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE_SUBSANACION',
+    trazabilidad TEXT NULL,
+    responsable_observacion VARCHAR(120) NULL,
+    responsable_subsanacion VARCHAR(120) NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_observacion),
+    KEY idx_obs_solicitud_solicitud (id_solicitud),
+    KEY idx_obs_solicitud_estado (estado),
+    KEY idx_obs_solicitud_limite (fecha_limite_subsanacion),
+    CONSTRAINT fk_obs_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud)
+);
+
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
