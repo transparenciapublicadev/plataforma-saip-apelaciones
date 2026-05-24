@@ -47,6 +47,8 @@ Se excluyen del conteo:
 
 La entidad puede requerir subsanación solo dentro de los **2 primeros días hábiles** desde la recepción de la solicitud.
 
+El flujo formal queda registrado como una observación SAIP: motivo, fecha de observación, fecha límite de subsanación, comentario o documento del ciudadano, estado y trazabilidad. Al observar, la solicitud pasa a `PENDIENTE_INFORMACION`; al subsanar dentro del plazo vuelve a `EN_REVISION`; si vence sin subsanación, queda cerrada administrativamente como `CONCLUIDA` bajo el modelo actual.
+
 ### BR-SAIP-004 — Liquidación de Costos
 
 Si aplica cobro por costos de reproducción, la liquidación debe emitirse **a más tardar el día 9** del plazo.
@@ -136,7 +138,7 @@ El ciudadano puede apelar incluso ante una entrega total si considera que la inf
 <Steps>
 1. **RECEPCIONADA** — Solicitud ingresada al sistema
 2. **EN_REVISION** — Funcionario asignado revisa la solicitud
-3. **PENDIENTE_INFORMACION** — Se requiere subsanación del ciudadano (2 primeros días)
+3. **PENDIENTE_INFORMACION** — Observación formal pendiente de subsanación ciudadana (2 días hábiles)
 4. **RESPONDIDA** — Entrega total o parcial de información
 5. **DENEGADA** — Denegación total con fundamento legal
 6. **CONCLUIDA** — Solicitud cerrada administrativamente
