@@ -7,9 +7,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.AmpliacionPlazoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
+import pe.gob.saip.backend.model.dto.CronogramaEntregaParcialDTO;
 import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
@@ -230,6 +234,50 @@ public class SolicitudRestController {
                 .map(ObservacionSolicitudDTO::from)
                 .toList();
         return ResponseEntity.ok(observaciones);
+    }
+
+    @Operation(
+            summary = "Registrar ampliación de plazo SAIP",
+            description = "Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales."
+    )
+    @PostMapping("/{id}/ampliaciones")
+    public ResponseEntity<AmpliacionPlazoSolicitudDTO> registrarAmpliacion(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody RegistrarAmpliacionPlazoRequest request) {
+        return ResponseEntity.status(201).body(AmpliacionPlazoSolicitudDTO.from(solicitudService.registrarAmpliacion(id, request)));
+    }
+
+    @Operation(summary = "Listar ampliaciones de plazo de una SAIP")
+    @GetMapping("/{id}/ampliaciones")
+    public ResponseEntity<List<AmpliacionPlazoSolicitudDTO>> listarAmpliaciones(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<AmpliacionPlazoSolicitudDTO> ampliaciones = solicitudService.listarAmpliaciones(id)
+                .stream()
+                .map(AmpliacionPlazoSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(ampliaciones);
+    }
+
+    @Operation(summary = "Consultar cronograma de entregas parciales de una SAIP")
+    @GetMapping("/{id}/ampliaciones/cronograma")
+    public ResponseEntity<List<CronogramaEntregaParcialDTO>> listarCronogramaAmpliacion(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<CronogramaEntregaParcialDTO> entregas = solicitudService.listarCronogramaAmpliacion(id)
+                .stream()
+                .map(CronogramaEntregaParcialDTO::from)
+                .toList();
+        return ResponseEntity.ok(entregas);
+    }
+
+    @Operation(summary = "Actualizar estado de una entrega parcial SAIP")
+    @PatchMapping("/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}")
+    public ResponseEntity<CronogramaEntregaParcialDTO> actualizarEntregaParcial(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Parameter(description = "ID de la ampliación") @PathVariable Long ampliacionId,
+            @Parameter(description = "ID de la entrega parcial") @PathVariable Long entregaId,
+            @Valid @RequestBody ActualizarEntregaParcialRequest request) {
+        return ResponseEntity.ok(CronogramaEntregaParcialDTO.from(
+                solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request)));
     }
 
     private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {

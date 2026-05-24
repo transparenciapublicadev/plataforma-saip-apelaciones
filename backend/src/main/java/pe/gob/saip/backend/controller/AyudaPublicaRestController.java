@@ -45,7 +45,7 @@ public class AyudaPublicaRestController {
                                 pregunta("¿Cuánto cuesta presentar una SAIP?",
                                         "La presentación es completamente gratuita. La reproducción (copias, CDs, etc.) puede tener un costo que corresponde únicamente al costo de reproducción."),
                                 pregunta("¿Cuánto tiempo tiene la entidad para responder?",
-                                        "La entidad tiene un plazo máximo de 10 días hábiles para responder, contados desde el día siguiente de su presentación. Puede prorrogarse 5 días hábiles adicionales de manera excepcional.")
+                                        "La entidad tiene un plazo máximo de 10 días hábiles para responder, contados desde el día siguiente de su presentación. Si el pedido es amplio, puede notificar una ampliación hasta el día 4 de atención con informe y cronograma de entregas parciales.")
                         )
                 ),
                 new AyudaPublicaDTO.CategoriaAyudaDTO(

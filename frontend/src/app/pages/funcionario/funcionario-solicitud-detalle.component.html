@@ -71,6 +71,18 @@
         </div>
       }
 
+      @if (ampliacionActiva(); as ampliacion) {
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(5,150,105,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--success)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--success)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3M4 11h16M6 21h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
+          </div>
+          <div>
+            <span class="eyebrow" style="color: var(--success)">Ampliación notificada</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Nuevo plazo de atención hasta el <span class="font-mono font-semibold">{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</span> con {{ ampliacion.cronograma.length }} entrega(s) parcial(es).</p>
+          </div>
+        </div>
+      }
+
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
@@ -295,6 +307,161 @@
                 } @empty {
                   <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
                     <p class="text-sm text-muted-foreground">No se han registrado observaciones para esta SAIP.</p>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'ampliacion') {
+          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            @if (puedeAmpliar()) {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--success)">
+                <span class="eyebrow" style="color: var(--success)">Ampliación de plazo · día 4 máximo</span>
+                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Registrar ampliación</h3>
+                <p class="text-sm text-foreground/80 mt-2">Use esta acción para pedidos voluminosos. Debe existir informe y cronograma de entregas parciales; cada entrega no puede exceder 30 días respecto de la anterior.</p>
+
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label class="field md:col-span-2">
+                    <span class="field-label">Motivo de ampliación</span>
+                    <textarea
+                      class="field-input"
+                      rows="3"
+                      [ngModel]="ampliacionMotivo()"
+                      (ngModelChange)="ampliacionMotivo.set($event)"
+                      placeholder="Explique por qué el pedido requiere ampliación de plazo..."></textarea>
+                  </label>
+
+                  <label class="field md:col-span-2">
+                    <span class="field-label">Informe de ampliación</span>
+                    <textarea
+                      class="field-input"
+                      rows="4"
+                      [ngModel]="ampliacionInforme()"
+                      (ngModelChange)="ampliacionInforme.set($event)"
+                      placeholder="Informe formal con sustento y cronograma de entregas parciales..."></textarea>
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Fecha de notificación</span>
+                    <input
+                      class="field-input"
+                      type="date"
+                      [ngModel]="ampliacionFechaNotificacion()"
+                      (ngModelChange)="ampliacionFechaNotificacion.set($event)" />
+                  </label>
+                </div>
+
+                <div class="rule-ornament"></div>
+
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="eyebrow">Cronograma de entregas parciales</span>
+                    <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" (click)="agregarEntregaCronograma()">
+                      Agregar entrega
+                    </button>
+                  </div>
+
+                  @for (entrega of ampliacionCronograma(); track $index) {
+                    <div class="rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-3" style="background: var(--card); border: 1px solid var(--border)">
+                      <label class="field md:col-span-2">
+                        <span class="field-label">N.°</span>
+                        <input class="field-input" type="number" min="1" [ngModel]="entrega.numeroEntrega" (ngModelChange)="actualizarEntregaCronograma($index, 'numeroEntrega', $event)" />
+                      </label>
+                      <label class="field md:col-span-5">
+                        <span class="field-label">Descripción</span>
+                        <input class="field-input" type="text" [ngModel]="entrega.descripcion" (ngModelChange)="actualizarEntregaCronograma($index, 'descripcion', $event)" placeholder="Bloque documental a entregar" />
+                      </label>
+                      <label class="field md:col-span-3">
+                        <span class="field-label">Fecha programada</span>
+                        <input class="field-input" type="date" [ngModel]="entrega.fechaProgramada" (ngModelChange)="actualizarEntregaCronograma($index, 'fechaProgramada', $event)" />
+                      </label>
+                      <div class="md:col-span-2 flex items-end">
+                        <button type="button" class="btn-ghost-brand !px-3 !py-3 w-full" [disabled]="ampliacionCronograma().length <= 1" (click)="removerEntregaCronograma($index)">
+                          Quitar
+                        </button>
+                      </div>
+                      <label class="field md:col-span-12">
+                        <span class="field-label">Observación</span>
+                        <input class="field-input" type="text" [ngModel]="entrega.observacion" (ngModelChange)="actualizarEntregaCronograma($index, 'observacion', $event)" placeholder="Observación opcional de esta entrega" />
+                      </label>
+                    </div>
+                  }
+                </div>
+
+                @if (ampliacionError()) {
+                  <p class="text-sm mt-4" style="color: var(--destructive)">{{ ampliacionError() }}</p>
+                }
+                @if (ampliacionSuccess()) {
+                  <p class="text-sm mt-4" style="color: var(--success)">{{ ampliacionSuccess() }}</p>
+                }
+
+                <button type="button" class="btn-brand !px-5 !py-3 mt-5" [disabled]="ampliacionLoading()" (click)="registrarAmpliacion()">
+                  @if (ampliacionLoading()) {
+                    Registrando...
+                  } @else {
+                    Registrar ampliación
+                  }
+                </button>
+              </div>
+            } @else if (ampliacionActiva()) {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow" style="color: var(--success)">Ampliación activa</span>
+                <p class="text-sm text-foreground/85 mt-2">La solicitud ya tiene una ampliación vigente. No se permite registrar otra ampliación activa para la misma SAIP.</p>
+              </div>
+            } @else {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow">Sin ampliación disponible</span>
+                <p class="text-sm text-muted-foreground mt-2">La solicitud no está en un estado válido para registrar ampliación de plazo.</p>
+              </div>
+            }
+
+            <div>
+              <span class="eyebrow">Historial de ampliaciones</span>
+              <div class="mt-3 space-y-3">
+                @for (ampliacion of ampliaciones(); track ampliacion.id) {
+                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                      <span [class]="ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'pill pill-low' : (ampliacion.estadoAmpliacion === 'VENCIDA' ? 'pill pill-high' : 'pill pill-medium')">{{ getAmpliacionEstadoDisplay(ampliacion.estadoAmpliacion) }}</span>
+                      <span class="font-mono text-[11px] text-muted-foreground">{{ ampliacion.fechaNotificacionAmpliacion | date:'dd/MM/yyyy' }}</span>
+                    </div>
+                    <p class="text-sm text-foreground/85 mt-3 whitespace-pre-wrap">{{ ampliacion.motivoAmpliacion }}</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
+                      <div>
+                        <span class="eyebrow">Plazo original</span>
+                        <p class="font-mono mt-1">{{ ampliacion.fechaLimiteOriginal | date:'dd/MM/yyyy' }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Plazo ampliado</span>
+                        <p class="font-mono mt-1">{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Responsable</span>
+                        <p class="mt-1">{{ ampliacion.responsable || 'Entidad pública' }}</p>
+                      </div>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                      @for (entrega of ampliacion.cronograma; track entrega.id || entrega.numeroEntrega) {
+                        <div class="rounded-md p-3 flex items-center justify-between gap-3 flex-wrap" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div>
+                            <span class="eyebrow">Entrega {{ entrega.numeroEntrega }}</span>
+                            <p class="text-sm mt-1">{{ entrega.descripcion }}</p>
+                            @if (entrega.observacion) {
+                              <p class="text-xs text-muted-foreground mt-1">{{ entrega.observacion }}</p>
+                            }
+                          </div>
+                          <div class="text-right">
+                            <span [class]="getEntregaEstadoClass(entrega.estado)">{{ getEstadoDisplay(entrega.estado) }}</span>
+                            <p class="font-mono text-xs text-muted-foreground mt-1">{{ entrega.fechaProgramada | date:'dd/MM/yyyy' }}</p>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
+                    <p class="text-sm text-muted-foreground">No se han registrado ampliaciones para esta SAIP.</p>
                   </div>
                 }
               </div>

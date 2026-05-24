@@ -62,6 +62,46 @@ CREATE TABLE IF NOT EXISTS observaciones_solicitud (
     CONSTRAINT fk_obs_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud)
 );
 
+CREATE TABLE IF NOT EXISTS ampliaciones_plazo_solicitud (
+    id_ampliacion BIGINT NOT NULL AUTO_INCREMENT,
+    id_solicitud BIGINT NOT NULL,
+    motivo_ampliacion TEXT NOT NULL,
+    informe_ampliacion TEXT NOT NULL,
+    fecha_solicitud_ampliacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_notificacion_ampliacion DATE NOT NULL,
+    fecha_limite_original DATE NOT NULL,
+    fecha_limite_ampliada DATE NOT NULL,
+    estado_ampliacion VARCHAR(30) NOT NULL DEFAULT 'NOTIFICADA',
+    responsable VARCHAR(120) NULL,
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_ampliacion),
+    KEY idx_amp_solicitud (id_solicitud),
+    KEY idx_amp_estado (estado_ampliacion),
+    KEY idx_amp_fecha_notificacion (fecha_notificacion_ampliacion),
+    CONSTRAINT fk_amp_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud)
+);
+
+CREATE TABLE IF NOT EXISTS cronograma_entregas_parciales_solicitud (
+    id_entrega BIGINT NOT NULL AUTO_INCREMENT,
+    id_ampliacion BIGINT NOT NULL,
+    numero_entrega INT NOT NULL,
+    descripcion VARCHAR(1000) NOT NULL,
+    fecha_programada DATE NOT NULL,
+    estado VARCHAR(30) NOT NULL DEFAULT 'PROGRAMADA',
+    fecha_entrega_real DATE NULL,
+    observacion TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_entrega),
+    UNIQUE KEY uk_cronograma_ampliacion_numero (id_ampliacion, numero_entrega),
+    KEY idx_cronograma_ampliacion (id_ampliacion),
+    KEY idx_cronograma_estado (estado),
+    KEY idx_cronograma_fecha_programada (fecha_programada),
+    CONSTRAINT fk_cronograma_ampliacion FOREIGN KEY (id_ampliacion) REFERENCES ampliaciones_plazo_solicitud (id_ampliacion)
+);
+
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
