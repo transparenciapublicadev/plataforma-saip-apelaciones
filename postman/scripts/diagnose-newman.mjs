@@ -25,6 +25,7 @@ const diagnostics = {
     totalRequests: summary.run?.stats?.requests?.total || 0,
     failedTests: summary.run?.stats?.assertions?.failed || 0,
     httpErrors: 0,
+    expectedHttpErrors: 0,
     runtimeFailures: summary.run?.failures?.length || 0,
     problemDetailsViolations: 0,
     environmentProblems: 0,
@@ -37,6 +38,7 @@ const diagnostics = {
     env,
   }),
   httpErrors: [],
+  expectedHttpErrors: [],
   runtimeFailures: [],
   problemDetailsViolations: [],
 };
@@ -52,6 +54,7 @@ for (const execution of summary.run?.executions || []) {
     const itemName = execution.item?.name || 'Unnamed request';
     const method = request.method || 'UNKNOWN';
     const url = requestUrl(request);
+    const expectedError = isExpectedErrorRequest({ request, itemName });
     const classification = classifyError({
       status,
       itemName,
@@ -62,7 +65,7 @@ for (const execution of summary.run?.executions || []) {
       bodyText,
     });
 
-    diagnostics.httpErrors.push({
+    const errorFinding = {
       request: itemName,
       method,
       url,
@@ -71,7 +74,13 @@ for (const execution of summary.run?.executions || []) {
       source: classification.source,
       detail: classification.detail,
       backendDetail: parsedBody?.detail || parsedBody?.mensaje || response?.status || bodyText.slice(0, 240),
-    });
+    };
+
+    if (expectedError) {
+      diagnostics.expectedHttpErrors.push(errorFinding);
+    } else {
+      diagnostics.httpErrors.push(errorFinding);
+    }
 
     const violation = validateProblemDetails(status, parsedBody, itemName, method, url);
     if (violation) {
@@ -90,6 +99,7 @@ for (const failure of summary.run?.failures || []) {
 }
 
 diagnostics.summary.httpErrors = diagnostics.httpErrors.length;
+diagnostics.summary.expectedHttpErrors = diagnostics.expectedHttpErrors.length;
 diagnostics.summary.problemDetailsViolations = diagnostics.problemDetailsViolations.length;
 diagnostics.summary.environmentProblems = diagnostics.environmentProblems.filter((item) => item.severity !== 'warning').length;
 diagnostics.summary.environmentWarnings = diagnostics.environmentProblems.filter((item) => item.severity === 'warning').length;
@@ -253,6 +263,19 @@ function requestUrl(request) {
   return `${protocol}://${host}${port}/${requestPath}${query ? `?${query}` : ''}`;
 }
 
+function isExpectedErrorRequest({ request, itemName }) {
+  if (String(itemName || '').includes('[EXPECTED_ERROR]')) {
+    return true;
+  }
+  for (const header of request.header || []) {
+    if (String(header.key || '').toLowerCase() === 'x-expected-error'
+        && String(header.value || '').toLowerCase() === 'true') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function classifyError({ status, itemName, method, url, request, parsedBody, bodyText }) {
   const detail = `${parsedBody?.title || ''} ${parsedBody?.detail || ''} ${parsedBody?.mensaje || ''} ${bodyText}`.toLowerCase();
   const unresolvedVariable = url.includes('{{') || bodyText.includes('{{') || JSON.stringify(request).includes('{{');
@@ -396,6 +419,7 @@ function markdown(diagnostic) {
     `- Total requests: ${diagnostic.summary.totalRequests}`,
     `- Failed tests: ${diagnostic.summary.failedTests}`,
     `- HTTP errors: ${diagnostic.summary.httpErrors}`,
+    `- Expected HTTP errors: ${diagnostic.summary.expectedHttpErrors}`,
     `- Runtime/assertion failures: ${diagnostic.summary.runtimeFailures}`,
     `- Problem Details violations: ${diagnostic.summary.problemDetailsViolations}`,
     `- Environment problems: ${diagnostic.summary.environmentProblems}`,
@@ -413,6 +437,20 @@ function markdown(diagnostic) {
     ...table(
       ['Request', 'Method', 'Status', 'Category', 'Likely Source', 'Detail'],
       diagnostic.httpErrors.map((item) => [
+        item.request,
+        item.method,
+        String(item.status),
+        item.category,
+        item.source,
+        item.backendDetail || item.detail,
+      ]),
+    ),
+    '',
+    '## Expected Negative HTTP Checks',
+    '',
+    ...table(
+      ['Request', 'Method', 'Status', 'Category', 'Likely Source', 'Detail'],
+      diagnostic.expectedHttpErrors.map((item) => [
         item.request,
         item.method,
         String(item.status),
@@ -477,6 +515,7 @@ function printConsoleSummary(diagnostic) {
   console.log('');
   console.log('SAIP API diagnostic summary');
   console.log(`- HTTP errors: ${diagnostic.summary.httpErrors}`);
+  console.log(`- Expected HTTP errors: ${diagnostic.summary.expectedHttpErrors}`);
   console.log(`- Problem Details violations: ${diagnostic.summary.problemDetailsViolations}`);
   console.log(`- Environment problems: ${diagnostic.summary.environmentProblems}`);
   console.log(`- Environment warnings: ${diagnostic.summary.environmentWarnings}`);

@@ -15,6 +15,7 @@
         "type": "text/javascript",
         "exec": [
           "const statusCode = pm.response.code;",
+          "const expectedError = pm.info.requestName.includes('[EXPECTED_ERROR]') || pm.request.headers.get('X-Expected-Error') === 'true';",
           "",
           "if (typeof statusCode !== 'number') {",
           "    pm.test('HTTP response was received', function () {",
@@ -39,9 +40,13 @@
           "    });",
           "}",
           "",
-          "if (typeof statusCode === 'number') {",
+          "if (typeof statusCode === 'number' && !expectedError) {",
           "    pm.test('HTTP status is below 400', function () {",
           "        pm.expect(statusCode, `${pm.info.requestName} returned ${statusCode}`).to.be.below(400);",
+          "    });",
+          "} else if (typeof statusCode === 'number' && expectedError) {",
+          "    pm.test('Expected error response was received', function () {",
+          "        pm.expect(statusCode, `${pm.info.requestName} should return an expected 4xx/5xx error`).to.be.at.least(400);",
           "    });",
           "}"
         ]
@@ -17997,6 +18002,539 @@
               }
             }
           ]
+        },
+        {
+          "name": "Crear Solicitud SAIP (Ampliación)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const targetEntidadId = funcionarioEntidadId || entidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para ampliacion is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "    pm.expect(json.expediente, \"expediente\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"ampliacionSolicitudSaipId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"ampliacionSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para ampliación de plazo\",\n    \"descripcion\": \"Solicito un volumen amplio de documentos para validar ampliación de plazo con cronograma de entregas parciales.\",\n    \"tipoInformacion\": \"Archivo histórico\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime dedicada a validar la ampliación de plazo con cronograma de entregas parciales. Mantiene variables independientes para no interferir con observación, respuesta o eliminación.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar Ampliación de Plazo SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function isoPlusDays(days) {",
+                  "    const date = new Date();",
+                  "    date.setDate(date.getDate() + days);",
+                  "    return date.toISOString().slice(0, 10);",
+                  "}",
+                  "if (!pm.environment.get(\"ampliacionSolicitudSaipId\")) {",
+                  "    throw new Error(\"Missing ampliacionSolicitudSaipId. Run Crear Solicitud SAIP (Ampliación) first.\");",
+                  "}",
+                  "pm.variables.set(\"ampliacionFechaNotificacion\", isoPlusDays(0));",
+                  "pm.variables.set(\"ampliacionEntrega1Fecha\", isoPlusDays(15));",
+                  "pm.variables.set(\"ampliacionEntrega2Fecha\", isoPlusDays(30));",
+                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(31));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"ampliacion SAIP is registered\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"ampliacion id\").to.exist;",
+                  "    pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"ampliacionSolicitudSaipId\")));",
+                  "    pm.expect(json.estadoAmpliacion).to.eql(\"NOTIFICADA\");",
+                  "    pm.expect(json.fechaLimiteOriginal, \"fecha limite original\").to.exist;",
+                  "    pm.expect(json.fechaLimiteAmpliada, \"fecha limite ampliada\").to.exist;",
+                  "    pm.expect(json.cronograma).to.be.an(\"array\").with.length(2);",
+                  "});",
+                  "pm.environment.set(\"ampliacionId\", String(json.id));",
+                  "pm.environment.set(\"ampliacionFechaLimiteOriginal\", json.fechaLimiteOriginal);",
+                  "pm.environment.set(\"ampliacionFechaLimiteAmpliada\", json.fechaLimiteAmpliada);",
+                  "const primeraEntrega = (json.cronograma || [])[0];",
+                  "if (primeraEntrega?.id) pm.environment.set(\"ampliacionEntregaId\", String(primeraEntrega.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"motivoAmpliacion\": \"El pedido comprende un volumen amplio de documentos físicos que requieren búsqueda, clasificación y digitalización.\",\n    \"informeAmpliacion\": \"Informe de ampliación API: se comunica al ciudadano el cronograma de entregas parciales y el nuevo plazo de atención.\",\n    \"fechaNotificacionAmpliacion\": \"{{ampliacionFechaNotificacion}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"cronograma\": [\n        {\n            \"numeroEntrega\": 1,\n            \"descripcion\": \"Primer bloque de documentos digitalizados\",\n            \"fechaProgramada\": \"{{ampliacionEntrega1Fecha}}\",\n            \"observacion\": \"Entrega parcial por casilla electrónica\"\n        },\n        {\n            \"numeroEntrega\": 2,\n            \"descripcion\": \"Segundo bloque y cierre del requerimiento\",\n            \"fechaProgramada\": \"{{ampliacionEntrega2Fecha}}\",\n            \"observacion\": \"Entrega final dentro del cronograma\"\n        }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "ampliaciones"
+              ]
+            },
+            "description": "## Registrar Ampliación de Plazo SAIP\n\n**POST** `/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones`\n\n## Lógica de negocio\nLa entidad registra y notifica una ampliación de plazo dentro del día 4 de atención. La solicitud mantiene trazabilidad del plazo ordinario, nuevo plazo, informe y cronograma de entregas parciales. Cada entrega parcial no puede exceder 30 días respecto del hito anterior.\n\n## Respuesta esperada\n`201 Created` con ampliación `NOTIFICADA`, plazo original, plazo ampliado y cronograma.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Ampliaciones SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"ampliacionSolicitudSaipId\") || !pm.environment.get(\"ampliacionId\")) { throw new Error(\"Missing SAIP extension runtime variables.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"ampliaciones SAIP are listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    const found = json.find((item) => item.id === Number(pm.environment.get(\"ampliacionId\")));",
+                  "    pm.expect(found, \"created ampliacion\").to.exist;",
+                  "    pm.expect(found.estadoAmpliacion).to.eql(\"NOTIFICADA\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "ampliaciones"
+              ]
+            },
+            "description": "Consulta el historial de ampliaciones de plazo de una SAIP, incluyendo informe, plazo original, plazo ampliado y cronograma.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Cronograma de Ampliación SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"ampliacionSolicitudSaipId\") || !pm.environment.get(\"ampliacionEntregaId\")) { throw new Error(\"Missing SAIP extension schedule runtime variables.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"cronograma SAIP is listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\").with.length.greaterThan(0);",
+                  "    const found = json.find((item) => item.id === Number(pm.environment.get(\"ampliacionEntregaId\")));",
+                  "    pm.expect(found, \"created delivery\").to.exist;",
+                  "    pm.expect(found.estado).to.eql(\"PROGRAMADA\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones/cronograma",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "ampliaciones",
+                "cronograma"
+              ]
+            },
+            "description": "Consulta todas las entregas parciales programadas para la ampliación de plazo SAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actualizar Entrega Parcial SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"ampliacionSolicitudSaipId\") || !pm.environment.get(\"ampliacionId\") || !pm.environment.get(\"ampliacionEntregaId\")) {",
+                  "    throw new Error(\"Missing SAIP extension delivery runtime variables.\");",
+                  "}",
+                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }",
+                  "pm.variables.set(\"ampliacionFechaEntregaReal\", isoPlusDays(15));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"entrega parcial is updated\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"ampliacionEntregaId\")));",
+                  "    pm.expect(json.estado).to.eql(\"ENTREGADA\");",
+                  "    pm.expect(json.fechaEntregaReal).to.eql(pm.variables.get(\"ampliacionFechaEntregaReal\"));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"ENTREGADA\",\n    \"fechaEntregaReal\": \"{{ampliacionFechaEntregaReal}}\",\n    \"observacion\": \"Entrega parcial enviada por casilla electrónica durante la validación Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones/{{ampliacionId}}/cronograma/{{ampliacionEntregaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "ampliaciones",
+                "{{ampliacionId}}",
+                "cronograma",
+                "{{ampliacionEntregaId}}"
+              ]
+            },
+            "description": "Actualiza el estado de una entrega parcial del cronograma de ampliación. Cuando se marca como `ENTREGADA`, debe informar fecha real de entrega.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear Solicitud SAIP (Ampliación Inválida)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const targetEntidadId = funcionarioEntidadId || entidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para ampliacion invalida is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"ampliacionInvalidaSolicitudSaipId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para ampliación inválida\",\n    \"descripcion\": \"Solicito un volumen amplio de documentos para validar ampliación de plazo con cronograma de entregas parciales.\",\n    \"tipoInformacion\": \"Archivo histórico\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime separada para validar que el backend rechaza cronogramas de ampliación inválidos sin afectar la ampliación positiva.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Ampliación SAIP con Entrega Mayor a 30 Días",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }",
+                  "if (!pm.environment.get(\"ampliacionInvalidaSolicitudSaipId\")) { throw new Error(\"Missing ampliacionInvalidaSolicitudSaipId.\"); }",
+                  "pm.variables.set(\"ampliacionFechaNotificacion\", isoPlusDays(0));",
+                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(31));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"invalid ampliacion is rejected with Problem Details\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(json.type, \"type\").to.exist;",
+                  "    pm.expect(json.title, \"title\").to.exist;",
+                  "    pm.expect(json.status, \"status\").to.eql(422);",
+                  "    pm.expect(json.detail, \"detail\").to.include(\"30 días\");",
+                  "    pm.expect(json.instance, \"instance\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"motivoAmpliacion\": \"El cronograma excede el máximo permitido por entrega parcial.\",\n    \"informeAmpliacion\": \"Informe inválido para validar reglas de negocio RFC 9457.\",\n    \"fechaNotificacionAmpliacion\": \"{{ampliacionFechaNotificacion}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"cronograma\": [\n        {\n            \"numeroEntrega\": 1,\n            \"descripcion\": \"Entrega programada fuera del límite de 30 días\",\n            \"fechaProgramada\": \"{{ampliacionEntregaInvalidaFecha}}\"\n        }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionInvalidaSolicitudSaipId}}/ampliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionInvalidaSolicitudSaipId}}",
+                "ampliaciones"
+              ]
+            },
+            "description": "Validación negativa esperada: el backend debe rechazar una entrega parcial programada a más de 30 días del hito anterior y responder con RFC 9457 / Problem Details. El header `X-Expected-Error: true` permite al diagnóstico clasificarlo como prueba negativa esperada, no como falla oculta.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
         },
         {
           "name": "Crear Solicitud SAIP (Respuesta Genérica)",
