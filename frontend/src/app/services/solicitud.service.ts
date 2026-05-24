@@ -5,9 +5,11 @@ import {
   ActualizarEntregaParcialPayload,
   AmpliacionPlazoSolicitud,
   CronogramaEntregaParcial,
+  EncauzamientoSolicitud,
   ObservacionSolicitud,
   ObservarSolicitudPayload,
   RegistrarAmpliacionPlazoPayload,
+  RegistrarEncauzamientoPayload,
   Solicitud,
   SolicitudCreate,
   SubsanarSolicitudPayload
@@ -118,6 +120,18 @@ export class SolicitudService {
 
   listarCronogramaAmpliacion(id: number): Observable<CronogramaEntregaParcial[]> {
     return this.http.get<CronogramaEntregaParcial[]>(`${this.apiUrl}/${id}/ampliaciones/cronograma`);
+  }
+
+  registrarEncauzamiento(id: number, payload: RegistrarEncauzamientoPayload): Observable<EncauzamientoSolicitud> {
+    return this.http.post<EncauzamientoSolicitud>(`${this.apiUrl}/${id}/encauzamientos`, payload);
+  }
+
+  listarEncauzamientos(id: number): Observable<EncauzamientoSolicitud[]> {
+    return this.http.get<EncauzamientoSolicitud[]>(`${this.apiUrl}/${id}/encauzamientos`);
+  }
+
+  obtenerEncauzamientoActivo(id: number): Observable<EncauzamientoSolicitud> {
+    return this.http.get<EncauzamientoSolicitud>(`${this.apiUrl}/${id}/encauzamientos/activo`);
   }
 
   actualizarEntregaParcial(
