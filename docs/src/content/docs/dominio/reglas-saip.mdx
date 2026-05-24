@@ -9,6 +9,10 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 
 La Ley N° 27806 — **Ley de Transparencia y Acceso a la Información Pública** — regula el derecho de toda persona a solicitar información a entidades de la Administración Pública.
 
+:::caution[Fuente oficial mandatoria]
+El documento `Flujo SAIP Y TTAIP_081942.docx` es la referencia oficial de reglas de negocio. La versión consolidada vive en `docs/business-rules/SAIP_TTAIP_REGLAS_NEGOCIO.md` y las brechas contra el sistema actual en `docs/business-rules/SAIP_TTAIP_BRECHAS.md`.
+:::
+
 ## Reglas de Negocio
 
 ### BR-SAIP-001 — Plazo Máximo
@@ -53,7 +57,24 @@ Si transcurren más de **10 días hábiles** sin respuesta de la entidad, opera 
 
 ### BR-SAIP-006 — Plazo para Apelar
 
-El ciudadano tiene **15 días calendario** desde la fecha de recepción de la respuesta de la entidad para presentar un recurso de apelación. Esto aplica para cualquier tipo de respuesta (entrega total, parcial, denegación).
+El documento oficial contiene una diferencia interna que debe resolverse antes de modificar código: una tabla menciona **15 días calendario**, pero el Art. 34.2 citado en el mismo documento establece **15 días hábiles** para denegatoria expresa. Para denegatoria tácita o silencio administrativo negativo no existe plazo perentorio.
+
+:::caution[No cambiar sin decisión legal/producto]
+No hardcodear ni cambiar validaciones de plazo de apelación hasta que el equipo confirme si el criterio productivo será días calendario o días hábiles para denegatoria expresa.
+:::
+
+### BR-SAIP-007 — Consentimiento y canal de notificación
+
+La creación de una SAIP exige consentimiento expreso para el tratamiento de datos personales y debe registrar el canal formal de notificación elegido por el ciudadano.
+
+| Campo | Estado de implementación | Regla |
+| --- | --- | --- |
+| `consentimientoDatosPersonales` | Cubierto | Obligatorio y validado antes de crear la SAIP. |
+| `canalNotificacion` | Cubierto | Permite `CORREO_ELECTRONICO`, `CASILLA_ELECTRONICA`, `PLATAFORMA` y `FISICA`. |
+
+:::note[Casilla electrónica]
+`CASILLA_ELECTRONICA` ya está soportada como canal elegido. Las constancias, acuses y fallback automático pertenecen al motor de notificaciones y se mantienen como brecha separada.
+:::
 
 ## Semáforo de Estado
 

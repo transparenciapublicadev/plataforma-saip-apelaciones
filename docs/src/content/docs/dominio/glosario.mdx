@@ -9,6 +9,10 @@ import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/compone
 
 ## Términos Legales y Administrativos
 
+:::caution[Fuente oficial mandatoria]
+El documento `Flujo SAIP Y TTAIP_081942.docx` es la referencia oficial de reglas de negocio. Si hay diferencia con una tabla anterior, revisar `docs/business-rules/SAIP_TTAIP_REGLAS_NEGOCIO.md` y la matriz `docs/business-rules/SAIP_TTAIP_BRECHAS.md`.
+:::
+
 | Término | Definición | Base Legal |
 |---------|-----------|-----------|
 | **Administrado** | Toda persona natural o jurídica, nacional o extranjera, que participa en un procedimiento administrativo como titular de derechos o intereses legítimos. | Ley N.° 27444, Art. 55 |
@@ -80,10 +84,10 @@ import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/compone
 
 | Tipo | Formato | Ejemplo |
 |------|---------|---------|
-| **Solicitud SAIP** | `SAIP-YYYY-NNNNN` | `SAIP-2025-00512` |
-| **Expediente TTAIP** | `NNNNN-YYYY-JUS/TTAIP` | `01560-2025-JUS/TTAIP` |
-| **Cédula de Notificación** | `CÉDULA N.° NNNNN-YYYY-JUS/TTAIP` | `15203-2025-JUS/TTAIP` |
-| **Resolución** | `RESOLUCIÓN N.° NNNNNN-YYYY-JUS/TTAIP-[SALA]` | `001595-2025-JUS/TTAIP-PRIMERA SALA` |
+| **Solicitud SAIP** | `SAIP-AAAA-NNNNN` | `SAIP-2025-00512` |
+| **Expediente TTAIP** | `NNNNN-AAAA-JUS/TTAIP` | `01560-2025-JUS/TTAIP` |
+| **Cédula de Notificación** | `CÉDULA N.° NNNNN-AAAA-JUS/TTAIP` | `15203-2025-JUS/TTAIP` |
+| **Resolución** | `RESOLUCIÓN N.° NNNNNN-AAAA-JUS/TTAIP-[SALA]` | `001595-2025-JUS/TTAIP-PRIMERA SALA` |
 
 ---
 
@@ -93,7 +97,7 @@ import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/compone
 graph LR
     P1["📋 SAIP<br/>10 días hábiles"]
     P2["📝 Subsanación SAIP<br/>2 días hábiles"]
-    P3["⚖️ Apelación<br/>15 días calendario"]
+    P3["⚖️ Apelación<br/>plazo pendiente de decisión legal/producto"]
     P5["🔍 1ª Calificación<br/>7 días"]
     P6["📝 Subsanación TTAIP<br/>2 días hábiles"]
     P7["📜 Resolución Final<br/>10 días hábiles"]
