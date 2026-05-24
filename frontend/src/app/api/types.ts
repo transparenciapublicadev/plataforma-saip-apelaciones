@@ -7,6 +7,7 @@ import type { components } from './schema';
 
 // ── Entity DTOs ──────────────────────────────────────────────────────────
 export type SolicitudDTO = components['schemas']['SolicitudDTO'];
+export type ObservacionSolicitudDTO = components['schemas']['ObservacionSolicitudDTO'];
 export type ApelacionDTO = components['schemas']['ApelacionDTO'];
 export type ApelacionInfoDTO = components['schemas']['ApelacionInfoDTO'];
 export type RespuestaDTO = components['schemas']['RespuestaDTO'];
@@ -22,6 +23,8 @@ export type RegistroRequestDTO = components['schemas']['RegistroRequestDTO'];
 export type CalificacionRequest = components['schemas']['CalificacionRequest'];
 export type ResolucionRequest = components['schemas']['ResolucionRequest'];
 export type CrearRespuestaRequest = components['schemas']['CrearRespuestaRequest'];
+export type ObservarSolicitudRequest = components['schemas']['ObservarSolicitudRequest'];
+export type SubsanarSolicitudRequest = components['schemas']['SubsanarSolicitudRequest'];
 
 // ── Enums extraídos del spec ─────────────────────────────────────────────
 export type EstadoSolicitud = NonNullable<SolicitudDTO['estado']>;
