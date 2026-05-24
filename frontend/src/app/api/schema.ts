@@ -1438,6 +1438,62 @@ export interface components {
             respuesta?: components["schemas"]["RespuestaDTO"];
             apelacion?: components["schemas"]["ApelacionInfoDTO"];
             documentos?: components["schemas"]["DocumentoDTO"][];
+            observaciones?: components["schemas"]["ObservacionSolicitudDTO"][];
+        };
+        /** @description Observación y subsanación formal de una solicitud SAIP */
+        ObservacionSolicitudDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            solicitudId?: number;
+            expediente?: string;
+            motivoObservacion?: string;
+            fechaObservacion?: string;
+            fechaLimiteSubsanacion?: string;
+            fechaSubsanacion?: string;
+            comentarioSubsanacion?: string;
+            documentoSubsanacionNombre?: string;
+            documentoSubsanacionRuta?: string;
+            estado?: "PENDIENTE_SUBSANACION" | "SUBSANADA" | "NO_SUBSANADA" | "ARCHIVADA";
+            trazabilidad?: string;
+            responsableObservacion?: string;
+            responsableSubsanacion?: string;
+        };
+        /** @description Solicitud para observar una SAIP dentro de los 2 primeros días hábiles */
+        ObservarSolicitudRequest: {
+            /**
+             * @description Motivo formal de observación
+             * @example El pedido no identifica con claridad la información solicitada.
+             */
+            motivoObservacion: string;
+            /**
+             * @description Responsable que registra la observación
+             * @example Mesa de Partes de la entidad
+             */
+            responsable?: string;
+        };
+        /** @description Subsanación ciudadana de una observación SAIP */
+        SubsanarSolicitudRequest: {
+            /**
+             * @description Comentario o fundamento de subsanación
+             * @example Preciso que solicito el presupuesto ejecutado del programa X durante 2025.
+             */
+            comentarioSubsanacion?: string;
+            /**
+             * @description Nombre del documento de subsanación, si aplica
+             * @example subsanacion-saip.pdf
+             */
+            documentoSubsanacionNombre?: string;
+            /**
+             * @description Ruta o referencia del documento de subsanación, si aplica
+             * @example /uploads/saip/subsanacion-saip.pdf
+             */
+            documentoSubsanacionRuta?: string;
+            /**
+             * @description Responsable que registra la subsanación
+             * @example Ciudadano
+             */
+            responsable?: string;
         };
         /** @description Funcionario de entidad pública */
         FuncionarioDTO: {
