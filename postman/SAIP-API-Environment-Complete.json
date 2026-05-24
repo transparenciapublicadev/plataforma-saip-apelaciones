@@ -538,6 +538,55 @@
       "type": "any",
       "enabled": true,
       "description": "ID runtime de SAIP dedicada a la validación negativa de cronograma inválido."
+    },
+    {
+      "key": "encauzamientoSolicitudSaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID runtime de la SAIP creada para validar encauzamiento."
+    },
+    {
+      "key": "encauzamientoSolicitudExpediente",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Expediente runtime de la SAIP creada para validar encauzamiento."
+    },
+    {
+      "key": "encauzamientoId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID runtime del encauzamiento creado durante Newman."
+    },
+    {
+      "key": "encauzamientoEntidadOrigenId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Entidad origen runtime usada para encauzamiento."
+    },
+    {
+      "key": "encauzamientoEntidadDestinoId",
+      "value": "1",
+      "type": "default",
+      "enabled": true,
+      "description": "Entidad destino runtime para encauzamiento; se ajusta dinámicamente si coincide con el origen."
+    },
+    {
+      "key": "encauzamientoInvalidaSolicitudSaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID runtime de SAIP dedicada a validación negativa de encauzamiento."
+    },
+    {
+      "key": "encauzamientoInvalidaSolicitudExpediente",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Expediente runtime de SAIP dedicada a validación negativa de encauzamiento."
     }
   ],
   "_postman_variable_scope": "environment"
