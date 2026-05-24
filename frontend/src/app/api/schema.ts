@@ -1427,6 +1427,14 @@ export interface components {
             copiaSimple?: boolean;
             copiaCertificada?: boolean;
             tipoInformacion?: string;
+            /** @description Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP */
+            consentimientoDatosPersonales?: boolean;
+            /**
+             * @description Canal formal elegido para notificaciones
+             * @example CASILLA_ELECTRONICA
+             * @enum {string}
+             */
+            canalNotificacion?: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
             respuesta?: components["schemas"]["RespuestaDTO"];
             apelacion?: components["schemas"]["ApelacionInfoDTO"];
             documentos?: components["schemas"]["DocumentoDTO"][];
