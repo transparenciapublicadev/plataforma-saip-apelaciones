@@ -104,6 +104,31 @@ describe('SolicitudService', () => {
     req.flush({});
   });
 
+  it('should POST observar solicitud', () => {
+    const payload = { motivoObservacion: 'Debe precisar el pedido', responsable: 'Funcionario' };
+    service.observar(1, payload).subscribe(res => expect(res.id).toBe(20));
+    const req = httpMock.expectOne(`${apiUrl}/1/observaciones`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 20, estado: 'PENDIENTE_SUBSANACION' });
+  });
+
+  it('should GET observaciones de solicitud', () => {
+    service.listarObservaciones(1).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/1/observaciones`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 20 }]);
+  });
+
+  it('should POST subsanar solicitud', () => {
+    const payload = { comentarioSubsanacion: 'Precisión del pedido', responsable: 'Ciudadano' };
+    service.subsanar(1, 20, payload).subscribe(res => expect(res.estado).toBe('SUBSANADA'));
+    const req = httpMock.expectOne(`${apiUrl}/1/observaciones/20/subsanar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 20, estado: 'SUBSANADA' });
+  });
+
   it('should DELETE eliminar solicitud', () => {
     service.eliminar(1).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/1`);

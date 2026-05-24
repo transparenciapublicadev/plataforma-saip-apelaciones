@@ -5,10 +5,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.Entidad;
+import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
+import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +29,9 @@ class SolicitudServiceTest {
 
     @Mock
     SolicitudRepository solicitudRepository;
+
+    @Mock
+    ObservacionSolicitudRepository observacionRepository;
 
     @InjectMocks
     SolicitudService solicitudService;
@@ -193,6 +201,97 @@ class SolicitudServiceTest {
 
         assertThat(resultado).hasSize(1);
         assertThat(resultado.getFirst().getEstado()).isEqualTo(Solicitud.EstadoSolicitud.VENCIDA);
+    }
+
+    @Test
+    void observarSolicitud_debeCrearObservacionYMarcarPendienteInformacion() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(observacionRepository.existsBySolicitud_IdSolicitudAndEstado(
+                eq(1L),
+                eq(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION)))
+                .thenReturn(false);
+        when(observacionRepository.save(any(ObservacionSolicitud.class))).thenAnswer(inv -> {
+            ObservacionSolicitud observacion = inv.getArgument(0);
+            observacion.setIdObservacion(10L);
+            return observacion;
+        });
+
+        ObservacionSolicitud resultado = solicitudService.observarSolicitud(
+                1L,
+                new ObservarSolicitudRequest("Falta precisar la información solicitada", "Funcionario")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
+        assertThat(resultado.getFechaLimiteSubsanacion()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 2));
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION);
+        verify(solicitudRepository).save(solicitud);
+        verify(observacionRepository).save(any(ObservacionSolicitud.class));
+    }
+
+    @Test
+    void observarSolicitud_fueraDePlazo_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(10));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.observarSolicitud(
+                        1L,
+                        new ObservarSolicitudRequest("Falta DNI", "Funcionario")
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("plazo de 2 días hábiles");
+    }
+
+    @Test
+    void subsanarSolicitud_debeMarcarSubsanadaYVolverARevision() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION);
+        var observacion = new ObservacionSolicitud();
+        observacion.setIdObservacion(20L);
+        observacion.setSolicitud(solicitud);
+        observacion.setMotivoObservacion("Falta precisión");
+        observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
+        observacion.setFechaLimiteSubsanacion(LocalDate.now().plusDays(2));
+        observacion.setTrazabilidad("Observación registrada");
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(observacionRepository.findById(20L)).thenReturn(Optional.of(observacion));
+        when(observacionRepository.save(observacion)).thenReturn(observacion);
+
+        ObservacionSolicitud resultado = solicitudService.subsanarSolicitud(
+                1L,
+                20L,
+                new SubsanarSolicitudRequest("Preciso el pedido requerido", null, null, "Ciudadano")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.SUBSANADA);
+        assertThat(resultado.getFechaSubsanacion()).isNotNull();
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
+        verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
+    void procesarObservacionesVencidas_debeMarcarNoSubsanadaYConcluirSolicitud() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION);
+        var observacion = new ObservacionSolicitud();
+        observacion.setIdObservacion(20L);
+        observacion.setSolicitud(solicitud);
+        observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
+        observacion.setFechaLimiteSubsanacion(LocalDate.now().minusDays(1));
+
+        when(observacionRepository.findByEstadoAndFechaLimiteSubsanacionBefore(
+                eq(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION),
+                any(LocalDate.class)))
+                .thenReturn(List.of(observacion));
+        when(observacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<ObservacionSolicitud> resultado = solicitudService.procesarObservacionesVencidas();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.getFirst().getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.NO_SUBSANADA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
+        verify(solicitudRepository).save(solicitud);
     }
 
     @Test
