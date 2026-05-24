@@ -16628,7 +16628,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -16644,7 +16644,7 @@
                 "solicitudes"
               ]
             },
-            "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Crear Solicitud SAIP\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n- `consentimientoDatosPersonales`: debe ser `true` para confirmar tratamiento de datos personales.\n- `canalNotificacion`: canal formal elegido; incluye `CASILLA_ELECTRONICA`.\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -17205,7 +17205,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -17221,7 +17221,7 @@
                 "solicitudes"
               ]
             },
-            "description": "## Crear Solicitud SAIP (Respuesta Genérica)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Crear Solicitud SAIP (Respuesta Genérica)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n- `consentimientoDatosPersonales`: debe ser `true` para confirmar tratamiento de datos personales.\n- `canalNotificacion`: canal formal elegido; incluye `CASILLA_ELECTRONICA`.\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -17781,7 +17781,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -17797,7 +17797,7 @@
                 "solicitudes"
               ]
             },
-            "description": "## Crear Solicitud SAIP (Aceptar)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Crear Solicitud SAIP (Aceptar)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n- `consentimientoDatosPersonales`: debe ser `true` para confirmar tratamiento de datos personales.\n- `canalNotificacion`: canal formal elegido; incluye `CASILLA_ELECTRONICA`.\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -18357,7 +18357,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -18373,7 +18373,7 @@
                 "solicitudes"
               ]
             },
-            "description": "## Crear Solicitud SAIP (Denegar)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Crear Solicitud SAIP (Denegar)\n\n**POST** `/solicitudes`\n\n## Logica de negocio\nCrea una SAIP en primera instancia, genera expediente SAIP, asigna entidad receptora y calcula el plazo legal de 10 dias habiles.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n- `targetEntidadId`\n- `consentimientoDatosPersonales`: debe ser `true` para confirmar tratamiento de datos personales.\n- `canalNotificacion`: canal formal elegido; incluye `CASILLA_ELECTRONICA`.\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Body de ejemplo\n\n```json\n{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API sobre contratos\",\n    \"descripcion\": \"Solicito información de contratos y montos ejecutados.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -39970,6 +39970,161 @@
                 }
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/ttaip/resolucion/{{apelacionId}}/infundada\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "capture-reproceso-cedula",
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const expediente = json.expedienteTtaip || {};",
+                  "const resolucionFinal = json.resolucion || (expediente.resoluciones || []).slice(-1)[0] || {};",
+                  "const cedulasResolucion = resolucionFinal.cedulas || [];",
+                  "const cedulasExpediente = expediente.cedulas || [];",
+                  "const notificaciones = expediente.notificaciones || [];",
+                  "",
+                  "const candidate = cedulasResolucion.find((cedula) => cedula.destinatario === \"ENTIDAD_PUBLICA\" && cedula.numeroCedula)",
+                  "    || cedulasResolucion.find((cedula) => cedula.destinatario === \"CIUDADANO\" && cedula.numeroCedula)",
+                  "    || cedulasExpediente.slice().reverse().find((cedula) => cedula.destinatario === \"ENTIDAD_PUBLICA\" && cedula.numeroCedula)",
+                  "    || cedulasExpediente.slice().reverse().find((cedula) => cedula.destinatario === \"CIUDADANO\" && cedula.numeroCedula);",
+                  "",
+                  "pm.test(\"captures a real notification certificate for reproceso\", function () {",
+                  "    pm.expect(expediente.id, \"expedienteTtaipId\").to.exist;",
+                  "    pm.expect(resolucionFinal.id, \"resolucionId\").to.exist;",
+                  "    pm.expect(candidate, \"cedula candidate\").to.exist;",
+                  "    pm.expect(candidate.id, \"cedulaOriginalId\").to.exist;",
+                  "    pm.expect(candidate.numeroCedula, \"numeroCedulaOriginal\").to.match(/^\\d{5}-\\d{4}-JUS\\/TTAIP$/);",
+                  "    pm.expect(candidate.destinatario, \"tipoDestinatario\").to.be.oneOf([\"CIUDADANO\", \"ENTIDAD_PUBLICA\"]);",
+                  "});",
+                  "",
+                  "const notificacion = notificaciones.find((item) => item.numeroCedula === candidate.numeroCedula && item.destinatario === candidate.destinatario);",
+                  "",
+                  "pm.test(\"captures the original notification linked to the selected certificate\", function () {",
+                  "    pm.expect(notificacion, \"notificacionOriginal\").to.exist;",
+                  "    pm.expect(notificacion.id, \"notificacionOriginalId\").to.exist;",
+                  "});",
+                  "",
+                  "pm.environment.set(\"expedienteTtaipId\", String(expediente.id));",
+                  "pm.environment.set(\"resolucionId\", String(resolucionFinal.id));",
+                  "pm.environment.set(\"cedulaOriginalId\", String(candidate.id));",
+                  "pm.environment.set(\"numeroCedulaOriginal\", candidate.numeroCedula);",
+                  "pm.environment.set(\"notificacionOriginalId\", String(notificacion.id));",
+                  "pm.environment.set(\"tipoDestinatario\", candidate.destinatario);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reprocesar Notificación Fallida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numeroCedulaOriginal\": \"{{numeroCedulaOriginal}}\",\n    \"destinatario\": \"{{tipoDestinatario}}\",\n    \"observacion\": \"Cargo de notificación observado; corresponde emitir nueva cédula para el mismo destinatario.\",\n    \"responsable\": \"Mesa de Partes TTAIP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/notificaciones/reprocesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "notificaciones",
+                "reprocesar"
+              ]
+            },
+            "description": "## Reprocesar Notificación Fallida\n\n**POST** `/ttaip/notificaciones/reprocesar`\n\n## Lógica de negocio\nRegistra una notificación TTAIP fallida o defectuosa, conserva la cédula original y genera una nueva cédula para el mismo destinatario afectado. La nueva cédula queda vinculada al expediente, resolución, notificación original y destinatario.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables runtime capturadas en el flujo\n- `expedienteTtaipId`: expediente TTAIP generado durante la ejecución.\n- `resolucionId`: resolución que generó la cédula original.\n- `cedulaOriginalId`: identificador de la cédula original afectada.\n- `numeroCedulaOriginal`: número real de la cédula original afectada.\n- `notificacionOriginalId`: notificación original vinculada a la cédula.\n- `tipoDestinatario`: `CIUDADANO` o `ENTIDAD_PUBLICA`.\n\n## Headers\n- `Content-Type: application/json`\n- `Accept: application/json`\n\n## Body de ejemplo dinámico\n\n```json\n{\n    \"numeroCedulaOriginal\": \"{{numeroCedulaOriginal}}\",\n    \"destinatario\": \"{{tipoDestinatario}}\",\n    \"observacion\": \"Cargo de notificación observado; corresponde emitir nueva cédula para el mismo destinatario.\",\n    \"responsable\": \"Mesa de Partes TTAIP\"\n}\n```\n\n## Respuesta esperada\n`200 OK` con el reproceso registrado, la cédula original preservada, una nueva cédula/notificación generada y el mismo destinatario afectado.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const cedulaOriginalId = Number(pm.environment.get(\"cedulaOriginalId\"));",
+                  "const notificacionOriginalId = Number(pm.environment.get(\"notificacionOriginalId\"));",
+                  "const numeroCedulaOriginal = pm.environment.get(\"numeroCedulaOriginal\");",
+                  "const tipoDestinatario = pm.environment.get(\"tipoDestinatario\");",
+                  "",
+                  "pm.test(\"reproceso is created successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"reproceso id\").to.exist;",
+                  "});",
+                  "",
+                  "pm.test(\"reproceso preserves original certificate and notification linkage\", function () {",
+                  "    pm.expect(json.cedulaOriginalId).to.eql(cedulaOriginalId);",
+                  "    pm.expect(json.notificacionId).to.eql(notificacionOriginalId);",
+                  "    pm.expect(json.numeroCedulaOriginal).to.eql(numeroCedulaOriginal);",
+                  "});",
+                  "",
+                  "pm.test(\"reproceso creates a new certificate and notification\", function () {",
+                  "    pm.expect(json.cedulaNuevaId, \"cedulaNuevaId\").to.exist;",
+                  "    pm.expect(json.notificacionNuevaId, \"notificacionNuevaId\").to.exist;",
+                  "    pm.expect(json.numeroCedulaNueva, \"numeroCedulaNueva\").to.match(/^\\d{5}-\\d{4}-JUS\\/TTAIP$/);",
+                  "    pm.expect(json.numeroCedulaNueva).to.not.eql(numeroCedulaOriginal);",
+                  "});",
+                  "",
+                  "pm.test(\"reproceso keeps the same affected recipient\", function () {",
+                  "    pm.expect(json.destinatario).to.eql(tipoDestinatario);",
+                  "});",
+                  "",
+                  "pm.environment.set(\"reprocesoNotificacionId\", String(json.id));",
+                  "pm.environment.set(\"nuevaCedulaId\", String(json.cedulaNuevaId));",
+                  "pm.environment.set(\"nuevaNotificacionId\", String(json.notificacionNuevaId));",
+                  "pm.environment.set(\"numeroCedulaNueva\", json.numeroCedulaNueva);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [",
+                  "    \"expedienteTtaipId\",",
+                  "    \"resolucionId\",",
+                  "    \"cedulaOriginalId\",",
+                  "    \"numeroCedulaOriginal\",",
+                  "    \"notificacionOriginalId\",",
+                  "    \"tipoDestinatario\"",
+                  "];",
+                  "const missing = required.filter((key) => !pm.environment.get(key));",
+                  "if (missing.length > 0) {",
+                  "    throw new Error(`Missing runtime variables for reproceso: ${missing.join(\", \")}. Run the TTAIP final resolution request first.`);",
+                  "}"
+                ]
+              }
             }
           ]
         }

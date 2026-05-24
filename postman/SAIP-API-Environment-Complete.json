@@ -400,6 +400,67 @@
       "type": "default",
       "enabled": true,
       "description": "Variable operativa usada por la colección SAIP."
+    },
+    {
+      "key": "reprocesoNotificacionId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "ID dinámico del reproceso creado por Newman."
+    },
+    {
+      "key": "expedienteTtaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "resolucionId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "cedulaOriginalId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "numeroCedulaOriginal",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "notificacionOriginalId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "tipoDestinatario",
+      "value": "ENTIDAD_PUBLICA",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "nuevaCedulaId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "nuevaNotificacionId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "numeroCedulaNueva",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"
