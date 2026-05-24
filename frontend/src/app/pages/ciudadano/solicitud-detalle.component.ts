@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { AmpliacionPlazoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 interface RequestTab {
-  id: 'solicitud' | 'respuesta' | 'ampliacion' | 'adjuntos' | 'apelacion';
+  id: 'solicitud' | 'respuesta' | 'encauzamiento' | 'ampliacion' | 'adjuntos' | 'apelacion';
   label: string;
 }
 
@@ -45,6 +45,7 @@ export class SolicitudDetalleComponent implements OnInit {
   readonly tabs: RequestTab[] = [
     { id: 'solicitud', label: 'Solicitud' },
     { id: 'respuesta', label: 'Respuesta' },
+    { id: 'encauzamiento', label: 'Encauzamiento' },
     { id: 'ampliacion', label: 'Ampliación' },
     { id: 'adjuntos', label: 'Adjuntos' },
     { id: 'apelacion', label: 'Apelación' }
@@ -137,6 +138,14 @@ export class SolicitudDetalleComponent implements OnInit {
 
   ampliacionActiva(): AmpliacionPlazoSolicitud | null {
     return this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null;
+  }
+
+  encauzamientos(): EncauzamientoSolicitud[] {
+    return this.solicitud()?.encauzamientos || [];
+  }
+
+  encauzamientoActivo(): EncauzamientoSolicitud | null {
+    return this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null;
   }
 
   subsanarObservacion(): void {
@@ -315,6 +324,16 @@ export class SolicitudDetalleComponent implements OnInit {
         date: ampliacion.fechaNotificacionAmpliacion,
         status: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'completed' : 'current',
         icon: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'check' : 'search'
+      });
+    }
+
+    for (const encauzamiento of this.encauzamientos()) {
+      events.push({
+        title: `Encauzamiento ${this.getEstadoDisplay(encauzamiento.alcance)}`,
+        description: `${encauzamiento.entidadOrigenNombre} derivó competencia hacia ${encauzamiento.entidadDestinoNombre}.`,
+        date: encauzamiento.fechaEncauzamiento,
+        status: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'completed' : 'current',
+        icon: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'check' : 'search'
       });
     }
 

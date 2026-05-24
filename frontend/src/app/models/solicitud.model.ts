@@ -15,6 +15,8 @@ export type EstadoObservacionSolicitud = 'PENDIENTE_SUBSANACION' | 'SUBSANADA' |
 export type ObservacionSolicitud = Required<ObservacionSolicitudDTO>;
 export type EstadoAmpliacionPlazo = 'REGISTRADA' | 'NOTIFICADA' | 'COMPLETADA' | 'CANCELADA' | 'VENCIDA';
 export type EstadoEntregaParcial = 'PROGRAMADA' | 'ENTREGADA' | 'OBSERVADA' | 'CANCELADA' | 'VENCIDA';
+export type AlcanceEncauzamientoSolicitud = 'TOTAL' | 'PARCIAL';
+export type EstadoEncauzamientoSolicitud = 'REGISTRADO' | 'DERIVADO' | 'ATENDIDO' | 'CANCELADO' | 'VENCIDO';
 
 export interface CronogramaEntregaParcial {
     id: number;
@@ -43,12 +45,33 @@ export interface AmpliacionPlazoSolicitud {
     cronograma: CronogramaEntregaParcial[];
 }
 
-export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones'>> & {
+export interface EncauzamientoSolicitud {
+    id: number;
+    solicitudId: number;
+    expediente: string;
+    entidadOrigenId: number;
+    entidadOrigenNombre: string;
+    entidadOrigenAcronimo?: string | null;
+    entidadDestinoId: number;
+    entidadDestinoNombre: string;
+    entidadDestinoAcronimo?: string | null;
+    motivoEncauzamiento: string;
+    alcance: AlcanceEncauzamientoSolicitud;
+    fechaEncauzamiento: string;
+    fechaLimiteEncauzamiento: string;
+    estadoEncauzamiento: EstadoEncauzamientoSolicitud;
+    responsable?: string | null;
+    observacionSustento?: string | null;
+    trazabilidad?: string | null;
+}
+
+export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos'>> & {
     respuesta?: Required<RespuestaDTO> | null;
     apelacion?: Required<ApelacionInfoDTO> | null;
     documentos: Required<DocumentoDTO>[];
     observaciones: ObservacionSolicitud[];
     ampliacionesPlazo: AmpliacionPlazoSolicitud[];
+    encauzamientos: EncauzamientoSolicitud[];
 };
 
 // Tipo solo del lado cliente — no existe en el contrato OpenAPI
@@ -91,6 +114,14 @@ export interface RegistrarAmpliacionPlazoPayload {
     fechaNotificacionAmpliacion: string;
     responsable?: string;
     cronograma: RegistrarEntregaParcialPayload[];
+}
+
+export interface RegistrarEncauzamientoPayload {
+    entidadDestinoId: number;
+    motivoEncauzamiento: string;
+    alcance: AlcanceEncauzamientoSolicitud;
+    responsable?: string;
+    observacionSustento?: string;
 }
 
 export interface ActualizarEntregaParcialPayload {
