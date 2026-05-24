@@ -35,6 +35,10 @@ public record SolicitudDTO(
     Boolean copiaSimple,
     Boolean copiaCertificada,
     String tipoInformacion,
+    @Schema(description = "Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP", example = "true")
+    Boolean consentimientoDatosPersonales,
+    @Schema(description = "Canal formal elegido para notificaciones", example = "CASILLA_ELECTRONICA", allowableValues = {"CORREO_ELECTRONICO", "CASILLA_ELECTRONICA", "PLATAFORMA", "FISICA"})
+    String canalNotificacion,
     RespuestaDTO respuesta,
     ApelacionInfoDTO apelacion,
     List<DocumentoDTO> documentos
@@ -62,6 +66,8 @@ public record SolicitudDTO(
             s.getCopiaSimple(),
             s.getCopiaCertificada(),
             s.getTipoInformacion(),
+            s.getConsentimientoDatosPersonales(),
+            s.getCanalNotificacion() != null ? s.getCanalNotificacion().name() : null,
             s.getRespuesta() != null ? RespuestaDTO.from(s.getRespuesta()) : null,
             s.getApelacion() != null ? ApelacionInfoDTO.from(s.getApelacion()) : null,
             s.getDocumentos() != null ? s.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of()

@@ -9,6 +9,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.service.TTAIPService;
@@ -163,6 +165,16 @@ public class TTAIPRestController {
     public ResponseEntity<ApelacionDTO> notificarSegundaCalificacion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId) {
         return ResponseEntity.ok(ttaipService.notificarSegundaCalificacion(apelacionId));
+    }
+
+    @Operation(
+            summary = "Reprocesar notificación TTAIP fallida",
+            description = "Registra una falla de notificación y genera una nueva cédula para el mismo destinatario afectado, sin borrar la cédula original."
+    )
+    @PostMapping("/notificaciones/reprocesar")
+    public ResponseEntity<ReprocesoNotificacionDTO> reprocesarNotificacion(
+            @Valid @RequestBody ReprocesarNotificacionRequest request) {
+        return ResponseEntity.ok(ttaipService.reprocesarNotificacionFallida(request));
     }
 }
 

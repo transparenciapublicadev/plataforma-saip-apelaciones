@@ -10,6 +10,7 @@ export type EstadoSolicitud = _EstadoSolicitud;
 export type Prioridad = _Prioridad;
 export type SemaforoEstado = _SemaforoEstado;
 export type ApelacionInfo = Required<ApelacionInfoDTO>;
+export type CanalNotificacion = 'CORREO_ELECTRONICO' | 'CASILLA_ELECTRONICA' | 'PLATAFORMA' | 'FISICA';
 export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos'>> & {
     respuesta?: Required<RespuestaDTO> | null;
     apelacion?: Required<ApelacionInfoDTO> | null;
@@ -27,4 +28,6 @@ export interface SolicitudCreate {
     formatoFisico?: boolean;
     copiaSimple?: boolean;
     copiaCertificada?: boolean;
+    consentimientoDatosPersonales: boolean;
+    canalNotificacion: CanalNotificacion;
 }
