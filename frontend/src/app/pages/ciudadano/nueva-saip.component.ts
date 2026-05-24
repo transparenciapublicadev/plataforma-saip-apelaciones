@@ -6,7 +6,7 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { Entidad } from '../../models/entidad.model';
-import { SolicitudCreate } from '../../models/solicitud.model';
+import { CanalNotificacion, SolicitudCreate } from '../../models/solicitud.model';
 import {
   ReferenceConfirmModalComponent,
   ReferenceConfirmSummary,
@@ -58,6 +58,8 @@ export class NuevaSaipComponent implements OnInit {
   formatoFisico = false;
   copiaSimple = true;
   copiaCertificada = false;
+  consentimientoDatosPersonales = false;
+  canalNotificacion: CanalNotificacion = 'CASILLA_ELECTRONICA';
 
   ngOnInit(): void {
     this.cargarSesionVisual();
@@ -84,6 +86,8 @@ export class NuevaSaipComponent implements OnInit {
       formatoFisico: this.formatoFisico,
       copiaSimple: this.copiaSimple,
       copiaCertificada: this.copiaCertificada,
+      consentimientoDatosPersonales: this.consentimientoDatosPersonales,
+      canalNotificacion: this.canalNotificacion,
       ciudadanoId: sesion?.ciudadanoId ?? null,
       updatedAt: new Date().toISOString()
     };
@@ -136,7 +140,9 @@ export class NuevaSaipComponent implements OnInit {
       formatoDigital: this.formatoDigital,
       formatoFisico: this.formatoFisico,
       copiaSimple: this.copiaSimple,
-      copiaCertificada: this.copiaCertificada
+      copiaCertificada: this.copiaCertificada,
+      consentimientoDatosPersonales: this.consentimientoDatosPersonales,
+      canalNotificacion: this.canalNotificacion
     };
 
     this.solicitudService.crear(solicitud).subscribe({
@@ -157,6 +163,8 @@ export class NuevaSaipComponent implements OnInit {
     return !!this.asunto.trim()
       && !!this.descripcion.trim()
       && !!this.entidadId
+      && !!this.canalNotificacion
+      && this.consentimientoDatosPersonales
       && (this.formatoDigital || this.formatoFisico || this.copiaSimple || this.copiaCertificada);
   }
 
@@ -166,7 +174,8 @@ export class NuevaSaipComponent implements OnInit {
       { label: 'DNI', value: this.sesionVisual().dni || '—', mono: true },
       { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() },
       { label: 'Asunto', value: this.asunto.trim() || '—' },
-      { label: 'Formatos', value: this.getFormatosSeleccionados().join(', ') || '—' }
+      { label: 'Formatos', value: this.getFormatosSeleccionados().join(', ') || '—' },
+      { label: 'Notificación', value: this.getCanalNotificacionLabel() }
     ];
   }
 
@@ -186,6 +195,7 @@ export class NuevaSaipComponent implements OnInit {
         label: 'Modalidad',
         value: formatos.length > 0 ? `${formatos.length} seleccionada${formatos.length > 1 ? 's' : ''}` : 'No definida'
       },
+      { label: 'Notificación', value: this.getCanalNotificacionLabel() },
       { label: 'Solicitante', value: this.sesionVisual().nombre || '—' }
     ];
   }
@@ -232,6 +242,14 @@ export class NuevaSaipComponent implements OnInit {
       this.error.set('Seleccione al menos un formato de respuesta');
       return false;
     }
+    if (!this.canalNotificacion) {
+      this.error.set('Debe seleccionar un canal formal de notificación');
+      return false;
+    }
+    if (!this.consentimientoDatosPersonales) {
+      this.error.set('Debe aceptar el tratamiento de datos personales para presentar la SAIP');
+      return false;
+    }
 
     this.error.set('');
     return true;
@@ -261,6 +279,17 @@ export class NuevaSaipComponent implements OnInit {
     }
 
     return formatos;
+  }
+
+  getCanalNotificacionLabel(): string {
+    const labels: Record<CanalNotificacion, string> = {
+      CORREO_ELECTRONICO: 'Correo electrónico',
+      CASILLA_ELECTRONICA: 'Casilla electrónica',
+      PLATAFORMA: 'Plataforma',
+      FISICA: 'Notificación física'
+    };
+
+    return labels[this.canalNotificacion] || '—';
   }
 }
 
