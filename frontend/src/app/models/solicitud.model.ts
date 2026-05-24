@@ -13,11 +13,42 @@ export type ApelacionInfo = Required<ApelacionInfoDTO>;
 export type CanalNotificacion = 'CORREO_ELECTRONICO' | 'CASILLA_ELECTRONICA' | 'PLATAFORMA' | 'FISICA';
 export type EstadoObservacionSolicitud = 'PENDIENTE_SUBSANACION' | 'SUBSANADA' | 'NO_SUBSANADA' | 'ARCHIVADA';
 export type ObservacionSolicitud = Required<ObservacionSolicitudDTO>;
+export type EstadoAmpliacionPlazo = 'REGISTRADA' | 'NOTIFICADA' | 'COMPLETADA' | 'CANCELADA' | 'VENCIDA';
+export type EstadoEntregaParcial = 'PROGRAMADA' | 'ENTREGADA' | 'OBSERVADA' | 'CANCELADA' | 'VENCIDA';
+
+export interface CronogramaEntregaParcial {
+    id: number;
+    ampliacionId: number;
+    numeroEntrega: number;
+    descripcion: string;
+    fechaProgramada: string;
+    estado: EstadoEntregaParcial;
+    fechaEntregaReal?: string | null;
+    observacion?: string | null;
+}
+
+export interface AmpliacionPlazoSolicitud {
+    id: number;
+    solicitudId: number;
+    expediente: string;
+    motivoAmpliacion: string;
+    informeAmpliacion: string;
+    fechaSolicitudAmpliacion: string;
+    fechaNotificacionAmpliacion: string;
+    fechaLimiteOriginal: string;
+    fechaLimiteAmpliada: string;
+    estadoAmpliacion: EstadoAmpliacionPlazo;
+    responsable?: string | null;
+    trazabilidad?: string | null;
+    cronograma: CronogramaEntregaParcial[];
+}
+
 export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones'>> & {
     respuesta?: Required<RespuestaDTO> | null;
     apelacion?: Required<ApelacionInfoDTO> | null;
     documentos: Required<DocumentoDTO>[];
     observaciones: ObservacionSolicitud[];
+    ampliacionesPlazo: AmpliacionPlazoSolicitud[];
 };
 
 // Tipo solo del lado cliente — no existe en el contrato OpenAPI
@@ -45,4 +76,25 @@ export interface SubsanarSolicitudPayload {
     documentoSubsanacionNombre?: string;
     documentoSubsanacionRuta?: string;
     responsable?: string;
+}
+
+export interface RegistrarEntregaParcialPayload {
+    numeroEntrega: number;
+    descripcion: string;
+    fechaProgramada: string;
+    observacion?: string;
+}
+
+export interface RegistrarAmpliacionPlazoPayload {
+    motivoAmpliacion: string;
+    informeAmpliacion: string;
+    fechaNotificacionAmpliacion: string;
+    responsable?: string;
+    cronograma: RegistrarEntregaParcialPayload[];
+}
+
+export interface ActualizarEntregaParcialPayload {
+    estado: EstadoEntregaParcial;
+    fechaEntregaReal?: string;
+    observacion?: string;
 }

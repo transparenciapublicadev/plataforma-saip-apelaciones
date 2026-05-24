@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 interface RequestTab {
-  id: 'solicitud' | 'respuesta' | 'adjuntos' | 'apelacion';
+  id: 'solicitud' | 'respuesta' | 'ampliacion' | 'adjuntos' | 'apelacion';
   label: string;
 }
 
@@ -45,6 +45,7 @@ export class SolicitudDetalleComponent implements OnInit {
   readonly tabs: RequestTab[] = [
     { id: 'solicitud', label: 'Solicitud' },
     { id: 'respuesta', label: 'Respuesta' },
+    { id: 'ampliacion', label: 'Ampliación' },
     { id: 'adjuntos', label: 'Adjuntos' },
     { id: 'apelacion', label: 'Apelación' }
   ];
@@ -128,6 +129,14 @@ export class SolicitudDetalleComponent implements OnInit {
 
   observacionPendiente(): ObservacionSolicitud | null {
     return this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null;
+  }
+
+  ampliaciones(): AmpliacionPlazoSolicitud[] {
+    return this.solicitud()?.ampliacionesPlazo || [];
+  }
+
+  ampliacionActiva(): AmpliacionPlazoSolicitud | null {
+    return this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null;
   }
 
   subsanarObservacion(): void {
@@ -296,6 +305,16 @@ export class SolicitudDetalleComponent implements OnInit {
         date: observacion.fechaSubsanacion || observacion.fechaObservacion,
         status: observacion.estado === 'SUBSANADA' ? 'completed' : 'current',
         icon: observacion.estado === 'SUBSANADA' ? 'check' : 'search'
+      });
+    }
+
+    for (const ampliacion of this.ampliaciones()) {
+      events.push({
+        title: 'Ampliación notificada',
+        description: `La entidad notificó un cronograma de ${ampliacion.cronograma.length} entrega(s) parcial(es).`,
+        date: ampliacion.fechaNotificacionAmpliacion,
+        status: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'completed' : 'current',
+        icon: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'check' : 'search'
       });
     }
 

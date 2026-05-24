@@ -4,10 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud, ObservacionSolicitud, RegistrarEntregaParcialPayload, Solicitud } from '../../models/solicitud.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'ciudadano' | 'adjuntos' | 'historial';
+type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
 
 interface DetailTab {
   id: DetailTabId;
@@ -42,11 +42,19 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   observacionLoading = signal<boolean>(false);
   observacionError = signal<string>('');
   observacionSuccess = signal<string>('');
+  ampliacionMotivo = signal<string>('');
+  ampliacionInforme = signal<string>('');
+  ampliacionFechaNotificacion = signal<string>(this.toInputDate(new Date()));
+  ampliacionCronograma = signal<RegistrarEntregaParcialPayload[]>([this.crearEntregaForm(1)]);
+  ampliacionLoading = signal<boolean>(false);
+  ampliacionError = signal<string>('');
+  ampliacionSuccess = signal<string>('');
 
   readonly tabs = computed<DetailTab[]>(() => {
     const base: DetailTab[] = [
       { id: 'solicitud', label: 'Solicitud' },
       { id: 'observacion', label: 'Observación' },
+      { id: 'ampliacion', label: 'Ampliación' },
       { id: 'ciudadano', label: 'Ciudadano' },
       { id: 'adjuntos', label: 'Adjuntos' },
       { id: 'historial', label: 'Historial' }
@@ -112,6 +120,16 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       }
     }
 
+    for (const ampliacion of this.ampliaciones()) {
+      items.push({
+        accion: `Ampliación de plazo · ${this.getAmpliacionEstadoDisplay(ampliacion.estadoAmpliacion)}`,
+        fecha: ampliacion.fechaSolicitudAmpliacion || ampliacion.fechaNotificacionAmpliacion,
+        responsable: ampliacion.responsable || 'Entidad pública',
+        detalle: `Plazo ampliado de ${ampliacion.fechaLimiteOriginal} a ${ampliacion.fechaLimiteAmpliada}.`,
+        color: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'success' : 'warning'
+      });
+    }
+
     if (sol.apelacion?.expediente) {
       items.push({
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
@@ -127,8 +145,14 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   readonly observaciones = computed<ObservacionSolicitud[]>(() => this.solicitud()?.observaciones || []);
 
+  readonly ampliaciones = computed<AmpliacionPlazoSolicitud[]>(() => this.solicitud()?.ampliacionesPlazo || []);
+
   readonly observacionPendiente = computed<ObservacionSolicitud | null>(() =>
     this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null
+  );
+
+  readonly ampliacionActiva = computed<AmpliacionPlazoSolicitud | null>(() =>
+    this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null
   );
 
   ngOnInit(): void {
@@ -238,6 +262,13 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       && !this.observacionPendiente();
   }
 
+  puedeAmpliar(): boolean {
+    const sol = this.solicitud();
+    return !!sol
+      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION')
+      && !this.ampliacionActiva();
+  }
+
   registrarObservacion(): void {
     const sol = this.solicitud();
     const motivo = this.observacionMotivo().trim();
@@ -265,6 +296,85 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
         this.observacionLoading.set(false);
       }
     });
+  }
+
+  registrarAmpliacion(): void {
+    const sol = this.solicitud();
+    const motivo = this.ampliacionMotivo().trim();
+    const informe = this.ampliacionInforme().trim();
+    const fechaNotificacion = this.ampliacionFechaNotificacion();
+    const cronograma = this.ampliacionCronograma()
+      .map((item) => ({
+        numeroEntrega: Number(item.numeroEntrega),
+        descripcion: item.descripcion.trim(),
+        fechaProgramada: item.fechaProgramada,
+        observacion: item.observacion?.trim() || undefined
+      }))
+      .filter((item) => item.numeroEntrega && item.descripcion && item.fechaProgramada);
+
+    if (!sol || !motivo || !informe || !fechaNotificacion || cronograma.length === 0) {
+      this.ampliacionError.set('Complete motivo, informe, fecha de notificación y al menos una entrega parcial.');
+      return;
+    }
+
+    this.ampliacionLoading.set(true);
+    this.ampliacionError.set('');
+    this.ampliacionSuccess.set('');
+
+    this.solicitudService.registrarAmpliacion(sol.id, {
+      motivoAmpliacion: motivo,
+      informeAmpliacion: informe,
+      fechaNotificacionAmpliacion: fechaNotificacion,
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad',
+      cronograma
+    }).subscribe({
+      next: () => {
+        this.ampliacionMotivo.set('');
+        this.ampliacionInforme.set('');
+        this.ampliacionFechaNotificacion.set(this.toInputDate(new Date()));
+        this.ampliacionCronograma.set([this.crearEntregaForm(1)]);
+        this.ampliacionSuccess.set('Ampliación registrada y notificada con cronograma de entregas parciales.');
+        this.ampliacionLoading.set(false);
+        this.cargarSolicitud(sol.expediente, 'ampliacion');
+      },
+      error: (error) => {
+        this.ampliacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la ampliación.');
+        this.ampliacionLoading.set(false);
+      }
+    });
+  }
+
+  agregarEntregaCronograma(): void {
+    const items = this.ampliacionCronograma();
+    const next = items.reduce((max, item) => Math.max(max, Number(item.numeroEntrega) || 0), 0) + 1;
+    this.ampliacionCronograma.set([...items, this.crearEntregaForm(next)]);
+  }
+
+  removerEntregaCronograma(index: number): void {
+    const items = this.ampliacionCronograma();
+    if (items.length <= 1) {
+      return;
+    }
+    this.ampliacionCronograma.set(items.filter((_, current) => current !== index));
+  }
+
+  actualizarEntregaCronograma(index: number, field: keyof RegistrarEntregaParcialPayload, value: string | number): void {
+    this.ampliacionCronograma.set(this.ampliacionCronograma().map((item, current) => {
+      if (current !== index) {
+        return item;
+      }
+      const updated: RegistrarEntregaParcialPayload = { ...item };
+      if (field === 'numeroEntrega') {
+        updated.numeroEntrega = Number(value);
+      } else if (field === 'descripcion') {
+        updated.descripcion = String(value);
+      } else if (field === 'fechaProgramada') {
+        updated.fechaProgramada = String(value);
+      } else {
+        updated.observacion = String(value);
+      }
+      return updated;
+    }));
   }
 
   getEstadoBadgeClass(estado: string): string {
@@ -365,5 +475,35 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   getObservacionEstadoDisplay(value: string | undefined): string {
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  getAmpliacionEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  getEntregaEstadoClass(estado: string): string {
+    const map: Record<string, string> = {
+      PROGRAMADA: 'pill pill-medium',
+      ENTREGADA: 'pill pill-low',
+      OBSERVADA: 'pill pill-medium',
+      CANCELADA: 'pill',
+      VENCIDA: 'pill pill-high'
+    };
+    return map[estado] || 'pill';
+  }
+
+  private crearEntregaForm(numeroEntrega: number): RegistrarEntregaParcialPayload {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + 15 * numeroEntrega);
+    return {
+      numeroEntrega,
+      descripcion: '',
+      fechaProgramada: this.toInputDate(fecha),
+      observacion: ''
+    };
+  }
+
+  private toInputDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
   }
 }
