@@ -158,6 +158,34 @@ describe('SolicitudService', () => {
     req.flush([{ id: 40 }]);
   });
 
+  it('should POST registrar encauzamiento', () => {
+    const payload = {
+      entidadDestinoId: 2,
+      motivoEncauzamiento: 'La información corresponde a otra entidad',
+      alcance: 'TOTAL' as const,
+      responsable: 'Funcionario'
+    };
+    service.registrarEncauzamiento(1, payload).subscribe(res => expect(res.estadoEncauzamiento).toBe('DERIVADO'));
+    const req = httpMock.expectOne(`${apiUrl}/1/encauzamientos`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 50, estadoEncauzamiento: 'DERIVADO' });
+  });
+
+  it('should GET encauzamientos de solicitud', () => {
+    service.listarEncauzamientos(1).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/1/encauzamientos`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 50 }]);
+  });
+
+  it('should GET encauzamiento activo', () => {
+    service.obtenerEncauzamientoActivo(1).subscribe(res => expect(res.id).toBe(50));
+    const req = httpMock.expectOne(`${apiUrl}/1/encauzamientos/activo`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 50 });
+  });
+
   it('should PATCH entrega parcial', () => {
     const payload = { estado: 'ENTREGADA' as const, fechaEntregaReal: '2026-06-05', observacion: 'Entregada' };
     service.actualizarEntregaParcial(1, 30, 40, payload).subscribe(res => expect(res.estado).toBe('ENTREGADA'));

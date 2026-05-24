@@ -11,9 +11,11 @@ import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.AmpliacionPlazoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
 import pe.gob.saip.backend.model.dto.CronogramaEntregaParcialDTO;
+import pe.gob.saip.backend.model.dto.EncauzamientoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
@@ -278,6 +280,39 @@ public class SolicitudRestController {
             @Valid @RequestBody ActualizarEntregaParcialRequest request) {
         return ResponseEntity.ok(CronogramaEntregaParcialDTO.from(
                 solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request)));
+    }
+
+    @Operation(
+            summary = "Registrar encauzamiento SAIP",
+            description = "Registra el encauzamiento total o parcial de una SAIP a la entidad competente dentro de los 2 días hábiles."
+    )
+    @PostMapping("/{id}/encauzamientos")
+    public ResponseEntity<EncauzamientoSolicitudDTO> registrarEncauzamiento(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody RegistrarEncauzamientoSolicitudRequest request) {
+        return ResponseEntity.status(201).body(EncauzamientoSolicitudDTO.from(
+                solicitudService.registrarEncauzamiento(id, request)));
+    }
+
+    @Operation(summary = "Listar encauzamientos de una SAIP")
+    @GetMapping("/{id}/encauzamientos")
+    public ResponseEntity<List<EncauzamientoSolicitudDTO>> listarEncauzamientos(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<EncauzamientoSolicitudDTO> encauzamientos = solicitudService.listarEncauzamientos(id)
+                .stream()
+                .map(EncauzamientoSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(encauzamientos);
+    }
+
+    @Operation(summary = "Consultar encauzamiento activo de una SAIP")
+    @GetMapping("/{id}/encauzamientos/activo")
+    public ResponseEntity<EncauzamientoSolicitudDTO> obtenerEncauzamientoActivo(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        return solicitudService.obtenerEncauzamientoActivo(id)
+                .map(EncauzamientoSolicitudDTO::from)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La solicitud no tiene encauzamiento activo"));
     }
 
     private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {

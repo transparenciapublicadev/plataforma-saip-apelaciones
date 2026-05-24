@@ -17,7 +17,7 @@ Esta matriz documenta que ya esta cubierto, que esta parcial y que debe planific
 
 ## Resumen ejecutivo
 
-El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, la excepcion de inadmisibilidad notificada solo al ciudadano, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas principales pendientes estan en reglas finas del documento oficial: encauzamiento, liquidacion/cupon de pago, apelaciones externas sin SAIP creada en plataforma, elevacion por entidad, descargos con suspension de plazo, informe oral/informacion complementaria, constancias/acuse de correo y cumplimiento de resolucion fundada.
+El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la excepcion de inadmisibilidad notificada solo al ciudadano, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas principales pendientes estan en reglas finas del documento oficial: liquidacion/cupon de pago, apelaciones externas sin SAIP creada en plataforma, elevacion por entidad, descargos con suspension de plazo, informe oral/informacion complementaria, constancias/acuse de correo y cumplimiento de resolucion fundada.
 
 ## Brechas por regla
 
@@ -32,7 +32,7 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 | Estado negocio `En tramite` posterior a revision. | Enum/maquina de estados SAIP | Falta | `Solicitud.EstadoSolicitud` | Decidir si agregar `EN_TRAMITE` o mapear formalmente a `EN_REVISION`. |
 | Subsanacion SAIP con 2 dias habiles desde notificacion. | Backend SAIP, frontend ciudadano, Postman | Cubierto | `ObservacionSolicitud`, `SolicitudService.subsanarSolicitud`, frontend ciudadano, Postman | El ciudadano subsana con comentario/documento; la solicitud vuelve a `EN_REVISION`. Si vence, se marca `NO_SUBSANADA` y la SAIP queda `CONCLUIDA`. |
 | Ampliacion de plazo hasta dia 4 y cronograma de entregas parciales. | Backend SAIP, entidad, notificaciones, frontend, Postman | Cubierto | `AmpliacionPlazoSolicitud`, `CronogramaEntregaParcialSolicitud`, `SolicitudService.registrarAmpliacion`, `SolicitudRestController`, frontend funcionario/ciudadano, Postman | Mantener validacion de dia 4, maximo 30 dias por entrega parcial, una ampliacion activa por SAIP y Problem Details para errores. |
-| Encauzamiento en 2 dias habiles. | Backend SAIP, entidad, trazabilidad | Falta | `Solicitud` | Modelar transferencia a entidad competente y responsabilidad si no se encauza. |
+| Encauzamiento en 2 dias habiles. | Backend SAIP, entidad, trazabilidad, frontend, Postman | Cubierto | `EncauzamientoSolicitud`, `SolicitudService.registrarEncauzamiento`, `SolicitudRestController`, `database/script_saip_db.sql`, frontend funcionario/ciudadano, Postman | Mantener validacion de entidad destino activa y distinta, plazo de 2 dias habiles, alcance total/parcial, no duplicidad activa y Problem Details para errores. |
 | Liquidacion/cupon de pago para copias fisicas hasta dia 9. | Backend SAIP, pagos/costos, notificacion | Parcial | `Respuesta`, `CrearRespuestaRequest`, frontend | `plazoEntrega` existe, pero falta cupon/liquidacion/costo, fecha limite y archivo por no recojo. |
 | Archivo por no recoger copias en 30 dias habiles. | Backend SAIP, scheduler o accion manual | Falta | `Solicitud.EstadoSolicitud` | Agregar estado/causal de archivo y regla de vencimiento para entrega fisica. |
 | Entrega digital hasta dia 10 y notificacion tardia bajo responsabilidad. | Backend respuesta/notificacion | Parcial | `RespuestaService`, `Solicitud` | Registrar si respuesta/notificacion fue dentro o fuera de plazo. |
@@ -76,6 +76,7 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 - Estados base de SAIP: recepcionada, revision, pendiente informacion, respondida, denegada, concluida, vencida.
 - Observacion/subsanacion SAIP formal con plazo de 2 dias habiles, comentario/documento, estado y trazabilidad.
 - Ampliacion de plazo SAIP con motivo, informe, fecha de notificacion, plazo original, plazo ampliado, cronograma de entregas parciales y trazabilidad.
+- Encauzamiento SAIP con entidad origen/destino, alcance `TOTAL`/`PARCIAL`, plazo de 2 dias habiles y trazabilidad.
 - Silencio administrativo negativo como deteccion de vencimiento.
 - Tipos de respuesta SAIP principales.
 - Primera y Segunda Sala TTAIP con miembros reales en seed.
@@ -97,16 +98,15 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 1. Definir legalmente el plazo de apelacion por denegatoria expresa: calendario vs habiles.
 2. Completar constancias/acuses y validacion manual de notificacion correcta.
 3. Conectar el canal elegido de SAIP con evidencias reales de notificacion cuando se implemente el motor de constancias/acuses.
-4. Implementar encauzamiento dentro de 2 dias habiles.
-5. Implementar liquidacion/cupon de pago y archivo por no recojo.
-6. Permitir, si se aprueba, apelacion externa sin SAIP creada en plataforma.
-7. Definir si se implementa elevacion por entidad o se conserva solo flujo directo.
-8. Agregar descargos de entidad y suspension de plazo.
-9. Agregar informe oral/informacion complementaria y suspension adicional.
-10. Agregar constancia de envio, acuse automatico y fallback de correo.
-11. Agregar cumplimiento de resolucion fundada en 7 dias habiles.
-12. Agregar decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` si quedan dentro del alcance.
+4. Implementar liquidacion/cupon de pago y archivo por no recojo.
+5. Permitir, si se aprueba, apelacion externa sin SAIP creada en plataforma.
+6. Definir si se implementa elevacion por entidad o se conserva solo flujo directo.
+7. Agregar descargos de entidad y suspension de plazo.
+8. Agregar informe oral/informacion complementaria y suspension adicional.
+9. Agregar constancia de envio, acuse automatico y fallback de correo.
+10. Agregar cumplimiento de resolucion fundada en 7 dias habiles.
+11. Agregar decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` si quedan dentro del alcance.
 
 ## Cambios implementados en esta iteracion
 
-Se implementaron brechas prioritarias y seguras: consentimiento de datos personales en SAIP, canal formal de notificacion con casilla electronica, observacion/subsanacion SAIP formal con plazo y trazabilidad, ampliacion de plazo SAIP con informe y cronograma de entregas parciales, excepcion de cedula/notificacion solo al ciudadano para inadmisibilidad, reproceso de notificacion fallida con nueva cedula y nueva notificacion vinculadas, conservacion de la cedula original y Postman/Newman con cedula dinamica generada durante el flujo. Las reglas restantes marcadas como `Falta` o `Parcial` requieren implementacion planificada, pruebas backend, actualizacion de Postman y, cuando aplique, ajuste visual/funcional de frontend.
+Se implementaron brechas prioritarias y seguras: consentimiento de datos personales en SAIP, canal formal de notificacion con casilla electronica, observacion/subsanacion SAIP formal con plazo y trazabilidad, ampliacion de plazo SAIP con informe y cronograma de entregas parciales, encauzamiento SAIP con entidad origen/destino y alcance total/parcial dentro de 2 dias habiles, excepcion de cedula/notificacion solo al ciudadano para inadmisibilidad, reproceso de notificacion fallida con nueva cedula y nueva notificacion vinculadas, conservacion de la cedula original y Postman/Newman con cedula dinamica generada durante el flujo. Las reglas restantes marcadas como `Falta` o `Parcial` requieren implementacion planificada, pruebas backend, actualizacion de Postman y, cuando aplique, ajuste visual/funcional de frontend.

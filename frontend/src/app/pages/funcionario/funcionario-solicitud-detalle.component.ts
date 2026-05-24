@@ -4,10 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { AmpliacionPlazoSolicitud, ObservacionSolicitud, RegistrarEntregaParcialPayload, Solicitud } from '../../models/solicitud.model';
+import { EntidadService } from '../../services/entidad.service';
+import {
+  AlcanceEncauzamientoSolicitud,
+  AmpliacionPlazoSolicitud,
+  EncauzamientoSolicitud,
+  ObservacionSolicitud,
+  RegistrarEntregaParcialPayload,
+  Solicitud
+} from '../../models/solicitud.model';
+import { Entidad } from '../../models/entidad.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
+type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'encauzamiento' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
 
 interface DetailTab {
   id: DetailTabId;
@@ -33,6 +42,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
+  private readonly entidadService = inject(EntidadService);
 
   solicitud = signal<Solicitud | null>(null);
   loading = signal<boolean>(true);
@@ -49,11 +59,20 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   ampliacionLoading = signal<boolean>(false);
   ampliacionError = signal<string>('');
   ampliacionSuccess = signal<string>('');
+  entidadesActivas = signal<Entidad[]>([]);
+  encauzamientoEntidadDestinoId = signal<number | null>(null);
+  encauzamientoAlcance = signal<AlcanceEncauzamientoSolicitud>('TOTAL');
+  encauzamientoMotivo = signal<string>('');
+  encauzamientoSustento = signal<string>('');
+  encauzamientoLoading = signal<boolean>(false);
+  encauzamientoError = signal<string>('');
+  encauzamientoSuccess = signal<string>('');
 
   readonly tabs = computed<DetailTab[]>(() => {
     const base: DetailTab[] = [
       { id: 'solicitud', label: 'Solicitud' },
       { id: 'observacion', label: 'Observación' },
+      { id: 'encauzamiento', label: 'Encauzamiento' },
       { id: 'ampliacion', label: 'Ampliación' },
       { id: 'ciudadano', label: 'Ciudadano' },
       { id: 'adjuntos', label: 'Adjuntos' },
@@ -130,6 +149,16 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       });
     }
 
+    for (const encauzamiento of this.encauzamientos()) {
+      items.push({
+        accion: `Encauzamiento ${this.getEncauzamientoAlcanceDisplay(encauzamiento.alcance)} · ${this.getEncauzamientoEstadoDisplay(encauzamiento.estadoEncauzamiento)}`,
+        fecha: encauzamiento.fechaEncauzamiento,
+        responsable: encauzamiento.responsable || 'Entidad pública',
+        detalle: `${encauzamiento.entidadOrigenNombre} -> ${encauzamiento.entidadDestinoNombre}. ${encauzamiento.motivoEncauzamiento}`,
+        color: encauzamiento.alcance === 'TOTAL' ? 'warning' : 'brand'
+      });
+    }
+
     if (sol.apelacion?.expediente) {
       items.push({
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
@@ -147,12 +176,18 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   readonly ampliaciones = computed<AmpliacionPlazoSolicitud[]>(() => this.solicitud()?.ampliacionesPlazo || []);
 
+  readonly encauzamientos = computed<EncauzamientoSolicitud[]>(() => this.solicitud()?.encauzamientos || []);
+
   readonly observacionPendiente = computed<ObservacionSolicitud | null>(() =>
     this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null
   );
 
   readonly ampliacionActiva = computed<AmpliacionPlazoSolicitud | null>(() =>
     this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null
+  );
+
+  readonly encauzamientoActivo = computed<EncauzamientoSolicitud | null>(() =>
+    this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null
   );
 
   ngOnInit(): void {
@@ -164,6 +199,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     }
 
     this.cargarSolicitud(expediente);
+    this.cargarEntidadesActivas();
   }
 
   cargarSolicitud(expediente: string, preferredTab?: DetailTabId): void {
@@ -269,6 +305,17 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       && !this.ampliacionActiva();
   }
 
+  puedeEncauzar(): boolean {
+    const sol = this.solicitud();
+    return !!sol
+      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION')
+      && !this.encauzamientoActivo();
+  }
+
+  setEncauzamientoAlcance(value: string): void {
+    this.encauzamientoAlcance.set(value === 'PARCIAL' ? 'PARCIAL' : 'TOTAL');
+  }
+
   registrarObservacion(): void {
     const sol = this.solicitud();
     const motivo = this.observacionMotivo().trim();
@@ -340,6 +387,44 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       error: (error) => {
         this.ampliacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la ampliación.');
         this.ampliacionLoading.set(false);
+      }
+    });
+  }
+
+  registrarEncauzamiento(): void {
+    const sol = this.solicitud();
+    const entidadDestinoId = this.encauzamientoEntidadDestinoId();
+    const motivo = this.encauzamientoMotivo().trim();
+    const sustento = this.encauzamientoSustento().trim();
+
+    if (!sol || !entidadDestinoId || !motivo) {
+      this.encauzamientoError.set('Seleccione entidad destino e ingrese el motivo de encauzamiento.');
+      return;
+    }
+
+    this.encauzamientoLoading.set(true);
+    this.encauzamientoError.set('');
+    this.encauzamientoSuccess.set('');
+
+    this.solicitudService.registrarEncauzamiento(sol.id, {
+      entidadDestinoId,
+      motivoEncauzamiento: motivo,
+      alcance: this.encauzamientoAlcance(),
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad',
+      observacionSustento: sustento || undefined
+    }).subscribe({
+      next: () => {
+        this.encauzamientoEntidadDestinoId.set(null);
+        this.encauzamientoAlcance.set('TOTAL');
+        this.encauzamientoMotivo.set('');
+        this.encauzamientoSustento.set('');
+        this.encauzamientoSuccess.set('Encauzamiento registrado con trazabilidad de entidad origen y destino.');
+        this.encauzamientoLoading.set(false);
+        this.cargarSolicitud(sol.expediente, 'encauzamiento');
+      },
+      error: (error) => {
+        this.encauzamientoError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar el encauzamiento.');
+        this.encauzamientoLoading.set(false);
       }
     });
   }
@@ -481,6 +566,25 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }
 
+  getEncauzamientoEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  getEncauzamientoAlcanceDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin alcance';
+  }
+
+  getEncauzamientoEstadoClass(estado: string): string {
+    const map: Record<string, string> = {
+      REGISTRADO: 'pill pill-medium',
+      DERIVADO: 'pill pill-medium',
+      ATENDIDO: 'pill pill-low',
+      CANCELADO: 'pill',
+      VENCIDO: 'pill pill-high'
+    };
+    return map[estado] || 'pill';
+  }
+
   getEntregaEstadoClass(estado: string): string {
     const map: Record<string, string> = {
       PROGRAMADA: 'pill pill-medium',
@@ -501,6 +605,13 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       fechaProgramada: this.toInputDate(fecha),
       observacion: ''
     };
+  }
+
+  private cargarEntidadesActivas(): void {
+    this.entidadService.findActivas().subscribe({
+      next: (entidades) => this.entidadesActivas.set(entidades),
+      error: () => this.entidadesActivas.set([])
+    });
   }
 
   private toInputDate(date: Date): string {
