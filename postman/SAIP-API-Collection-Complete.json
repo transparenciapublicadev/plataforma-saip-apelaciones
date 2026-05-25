@@ -33975,6 +33975,606 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/ttaip/calificacion/{{apelacionId}}/admitir\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const expediente = json.expedienteTtaip || {};",
+                  "",
+                  "pm.test(\"appeal is admitted and TTAIP expediente exists\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estado).to.eql(\"EN_RESOLUCION\");",
+                  "    pm.expect(expediente.id, \"expedienteTtaipId\").to.exist;",
+                  "});",
+                  "",
+                  "pm.environment.set(\"descargoExpedienteTtaipId\", String(expediente.id));",
+                  "pm.environment.set(\"descargoApelacionId\", String(json.id));",
+                  "if (expediente.fechaLimiteResolucion) {",
+                  "    pm.environment.set(\"descargoFechaLimiteResolucionBase\", expediente.fechaLimiteResolucion);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Requerir Descargos de Entidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/descargos/requerir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "descargos",
+                "requerir"
+              ]
+            },
+            "description": "## Requerir Descargos de Entidad\n\nRegistra el requerimiento de descargos a la entidad pública después de una admisión válida TTAIP. Debe calcular fecha límite de 7 días hábiles y crear suspensión de plazo de resolución final dentro del expediente TTAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Se requiere a la entidad pública remitir descargos y expediente administrativo dentro del plazo legal de 7 días hábiles.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"descargo requirement is created\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"descargo id\").to.exist;",
+                  "    pm.expect(json.estadoDescargo).to.eql(\"REQUERIDO\");",
+                  "    pm.expect(json.fechaLimiteDescargo, \"fecha limite descargo\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"descargoEntidadId\", String(json.id));",
+                  "pm.environment.set(\"descargoFechaLimite\", json.fechaLimiteDescargo);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Descargos Duplicados",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/descargos/requerir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "descargos",
+                "requerir"
+              ]
+            },
+            "description": "## Error esperado: descargo activo duplicado\n\nValida que el backend no permita más de un requerimiento activo para el mismo expediente TTAIP y responda con Problem Details RFC 9457.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Intento duplicado de requerimiento activo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"duplicate active descargo returns conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.eql(\"Conflict\");",
+                  "    pm.expect(json.status).to.eql(409);",
+                  "    pm.expect(json.detail).to.include(\"descargos activo\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Descargos de Expediente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/descargos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "descargos"
+              ]
+            },
+            "description": "## Listar Descargos de Expediente\n\nConsulta todos los requerimientos y presentaciones de descargo vinculados al expediente TTAIP.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"descargos list includes current requirement\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    pm.expect(json.some((item) => String(item.id) === pm.environment.get(\"descargoEntidadId\"))).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener Descargo Activo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/descargos/activo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "descargos",
+                "activo"
+              ]
+            },
+            "description": "## Obtener Descargo Activo\n\nDevuelve el requerimiento de descargos activo del expediente si existe.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"active descargo is returned\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"descargoEntidadId\"));",
+                  "    pm.expect(json.estadoDescargo).to.eql(\"REQUERIDO\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Suspensiones de Expediente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones"
+              ]
+            },
+            "description": "## Listar Suspensiones de Expediente\n\nValida que el requerimiento de descargos haya creado una suspensión por `DESCARGOS_ENTIDAD` de 7 días hábiles.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const suspension = json.find((item) => String(item.descargoId) === pm.environment.get(\"descargoEntidadId\"));",
+                  "pm.test(\"descargos suspension is active\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(suspension, \"suspension\").to.exist;",
+                  "    pm.expect(suspension.motivoSuspension).to.eql(\"DESCARGOS_ENTIDAD\");",
+                  "    pm.expect(suspension.estadoSuspension).to.eql(\"ACTIVA\");",
+                  "    pm.expect(suspension.diasSuspendidos).to.eql(7);",
+                  "});",
+                  "pm.environment.set(\"suspensionDescargosId\", String(suspension.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Presentar Descargo de Entidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/descargos/{{descargoEntidadId}}/presentar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "descargos",
+                "{{descargoEntidadId}}",
+                "presentar"
+              ]
+            },
+            "description": "## Presentar Descargo de Entidad\n\nRegistra el descargo de la entidad pública con token de funcionario. Debe cerrar la suspensión y recalcular el plazo de resolución final.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"resumenDescargo\": \"La entidad pública remite sus descargos y el expediente administrativo solicitado por el TTAIP.\",\n    \"referenciaDocumento\": \"DESCARGO-ENTIDAD-2026-0001.pdf\",\n    \"responsableEntidad\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Presentación dentro del plazo legal de 7 días hábiles.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"entity discharge is submitted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"descargoEntidadId\"));",
+                  "    pm.expect(json.estadoDescargo).to.eql(\"PRESENTADO\");",
+                  "    pm.expect(json.fechaPresentacion, \"fecha presentacion\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Suspensiones Tras Descargo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones"
+              ]
+            },
+            "description": "## Listar Suspensiones Tras Descargo\n\nValida que la suspensión por descargos quede cerrada después de la presentación.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const suspension = json.find((item) => String(item.id) === pm.environment.get(\"suspensionDescargosId\"));",
+                  "pm.test(\"descargos suspension is closed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(suspension, \"suspension\").to.exist;",
+                  "    pm.expect(suspension.estadoSuspension).to.eql(\"CERRADA\");",
+                  "    pm.expect(suspension.diasSuspendidos).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Procesar Descargos Vencidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/descargos/vencidos/procesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "descargos",
+                "vencidos",
+                "procesar"
+              ]
+            },
+            "description": "## Procesar Descargos Vencidos\n\nCierra requerimientos de descargos vencidos sin presentación y deja trazabilidad para que el expediente continúe.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"expired descargos processor runs\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
           ]
         },
         {

@@ -623,6 +623,42 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "descargoExpedienteTtaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "descargoApelacionId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "descargoFechaLimiteResolucionBase",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "descargoEntidadId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "descargoFechaLimite",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "suspensionDescargosId",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"

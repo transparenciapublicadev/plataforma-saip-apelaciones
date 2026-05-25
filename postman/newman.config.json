@@ -83,7 +83,11 @@
     "encauzamientoEntidadOrigenIdRuntime",
     "liquidacionFechaNotificacion",
     "liquidacionFechaPago",
-    "liquidacionFechaRecojo"
+    "liquidacionFechaRecojo",
+    "descargoExpedienteTtaipId",
+    "descargoApelacionId",
+    "descargoEntidadId",
+    "suspensionDescargosId"
   ],
   "tokenVariables": [
     "ciudadanoToken",
