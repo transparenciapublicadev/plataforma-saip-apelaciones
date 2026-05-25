@@ -3575,17 +3575,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/ciudadanos/dni/71234567",
+              "raw": "{{baseUrl}}/ciudadanos/dni/{{ciudadanoDni}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "ciudadanos",
                 "dni",
-                "71234567"
+                "{{ciudadanoDni}}"
               ]
             },
-            "description": "## Obtener Ciudadano por DNI\n\n**GET** `/ciudadanos/dni/71234567`\n\n## Logica de negocio\nConsulta informacion de Ciudadanos sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Obtener Ciudadano por DNI\n\n**GET** `/ciudadanos/dni/{{ciudadanoDni}}`\n\n## Logica de negocio\nConsulta informacion de Ciudadanos sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoDni`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoDni`: DNI existente en el seed SQL.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -23689,17 +23689,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/respuestas/solicitud/{{solicitudId}}",
+              "raw": "{{baseUrl}}/respuestas/solicitud/{{solicitudConRespuestaId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "respuestas",
                 "solicitud",
-                "{{solicitudId}}"
+                "{{solicitudConRespuestaId}}"
               ]
             },
-            "description": "## Obtener Respuesta de Solicitud\n\n**GET** `/respuestas/solicitud/{{solicitudId}}`\n\n## Logica de negocio\nConsulta informacion de Respuestas de entidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `solicitudId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `solicitudId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Obtener Respuesta de Solicitud\n\n**GET** `/respuestas/solicitud/{{solicitudConRespuestaId}}`\n\n## Logica de negocio\nConsulta informacion de Respuestas de entidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `solicitudConRespuestaId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `solicitudConRespuestaId`: SAIP del seed que ya cuenta con respuesta registrada.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -34498,6 +34498,550 @@
                   "    pm.expect(suspension, \"suspension\").to.exist;",
                   "    pm.expect(suspension.estadoSuspension).to.eql(\"CERRADA\");",
                   "    pm.expect(suspension.diasSuspendidos).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Notificaciones de Expediente TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones"
+              ]
+            },
+            "description": "Lista notificaciones del expediente TTAIP y captura IDs reales para constancia, acuse, validación manual y reproceso."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"expediente TTAIP notifications are listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json, \"notificaciones\").to.be.an(\"array\").that.is.not.empty;",
+                  "});",
+                  "const first = json[0];",
+                  "const failedCandidate = json.find((item) => item.destinatario === \"ENTIDAD_PUBLICA\") || json[1] || first;",
+                  "pm.environment.set(\"notificacionConstanciaId\", String(first.id));",
+                  "pm.environment.set(\"notificacionFallidaId\", String(failedCandidate.id));",
+                  "pm.environment.set(\"notificacionFallidaNumeroCedula\", failedCandidate.numeroCedula);",
+                  "pm.environment.set(\"notificacionFallidaDestinatario\", failedCandidate.destinatario);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Constancia de Envío TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionConstanciaId}}/constancia-envio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionConstanciaId}}",
+                "constancia-envio"
+              ]
+            },
+            "description": "Registra constancia de envío sin integrar proveedor externo. Debe dejar evidencia y trazabilidad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"medioNotificacion\": \"CORREO_ELECTRONICO\",\n    \"codigoEnvio\": \"MAIL-NEWMAN-001\",\n    \"codigoConstancia\": \"CONST-NEWMAN-001\",\n    \"constanciaEnvio\": \"Constancia de envío registrada por Newman para validar evidencia TTAIP.\",\n    \"evidenciaUrl\": \"https://saip.local/evidencias/constancia-newman-001.pdf\",\n    \"responsable\": \"Mesa de Partes TTAIP\",\n    \"observacion\": \"Validación funcional de constancia de envío.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"notification shipping certificate is registered\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"notificacion id\").to.eql(Number(pm.environment.get(\"notificacionConstanciaId\")));",
+                  "    pm.expect(json.estado).to.eql(\"ENVIADA\");",
+                  "    pm.expect(json.medioNotificacion).to.eql(\"CORREO_ELECTRONICO\");",
+                  "    pm.expect(json.codigoConstancia).to.eql(\"CONST-NEWMAN-001\");",
+                  "    pm.expect(json.constanciaEnvio).to.include(\"Constancia de envío\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Acuse Entregado TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionConstanciaId}}/acuse-automatico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionConstanciaId}}",
+                "acuse-automatico"
+              ]
+            },
+            "description": "Registra acuse automático entregado y valida el resultado funcional de notificación correcta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estadoAcuse\": \"ENTREGADO\",\n    \"acuseAutomatico\": \"Acuse automático entregado correctamente durante validación Newman.\",\n    \"resultadoNotificacion\": \"ENTREGADA_POR_CORREO\",\n    \"referenciaEvidencia\": \"ACUSE-NEWMAN-ENTREGADO-001\",\n    \"responsable\": \"Sistema de notificaciones TTAIP\",\n    \"observacion\": \"Acuse positivo de prueba.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"delivered automatic acknowledgement marks notification as delivered\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estadoAcuse).to.eql(\"ENTREGADO\");",
+                  "    pm.expect(json.estado).to.eql(\"ENTREGADA\");",
+                  "    pm.expect(json.resultadoNotificacion).to.eql(\"ENTREGADA_POR_CORREO\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Acuse Fallido TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}/acuse-automatico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}",
+                "acuse-automatico"
+              ]
+            },
+            "description": "Registra acuse fallido; la notificación queda fallida/defectuosa y puede reprocesarse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estadoAcuse\": \"FALLIDO\",\n    \"acuseAutomatico\": \"Acuse automático fallido: buzón no disponible.\",\n    \"referenciaEvidencia\": \"ACUSE-NEWMAN-FALLIDO-001\",\n    \"responsable\": \"Sistema de notificaciones TTAIP\",\n    \"observacion\": \"La notificación debe quedar habilitada para reproceso.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"failed automatic acknowledgement marks notification as failed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"notificacionFallidaId\")));",
+                  "    pm.expect(json.estadoAcuse).to.eql(\"FALLIDO\");",
+                  "    pm.expect(json.estado).to.eql(\"FALLIDA\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Acuse TTAIP Inválido",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}/acuse-automatico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}",
+                "acuse-automatico"
+              ]
+            },
+            "description": "Error esperado: un estado de acuse inválido debe responder con Problem Details y no ocultarse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estadoAcuse\": \"INVALIDO\",\n    \"acuseAutomatico\": \"Acuse con estado inválido usado para validar Problem Details.\",\n    \"responsable\": \"Sistema de notificaciones TTAIP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"invalid acknowledgement state is rejected with Problem Details\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(json.type, \"type\").to.exist;",
+                  "    pm.expect(json.title, \"title\").to.exist;",
+                  "    pm.expect(json.status).to.eql(422);",
+                  "    pm.expect(json.detail).to.include(\"Estado de acuse no válido\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reprocesar Notificación Fallida por Acuse TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/notificaciones/reprocesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "notificaciones",
+                "reprocesar"
+              ]
+            },
+            "description": "Reprocesa una notificación que quedó FALLIDA por acuse automático, generando nueva cédula y nueva notificación para el mismo destinatario.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"numeroCedulaOriginal\": \"{{notificacionFallidaNumeroCedula}}\",\n    \"destinatario\": \"{{notificacionFallidaDestinatario}}\",\n    \"observacion\": \"Acuse automático fallido; corresponde reprocesar la notificación para el mismo destinatario.\",\n    \"responsable\": \"Mesa de Partes TTAIP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"notificacionFallidaNumeroCedula\", \"notificacionFallidaDestinatario\"];",
+                  "const missing = required.filter((key) => !pm.environment.get(key));",
+                  "if (missing.length > 0) {",
+                  "    throw new Error(`Missing runtime variables for failed-notification reproceso: ${missing.join(\", \")}.`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"failed acknowledgement notification can be reprocessed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"reproceso id\").to.exist;",
+                  "    pm.expect(json.numeroCedulaOriginal).to.eql(pm.environment.get(\"notificacionFallidaNumeroCedula\"));",
+                  "    pm.expect(json.destinatario).to.eql(pm.environment.get(\"notificacionFallidaDestinatario\"));",
+                  "    pm.expect(json.cedulaNuevaId, \"cedulaNuevaId\").to.exist;",
+                  "    pm.expect(json.notificacionNuevaId, \"notificacionNuevaId\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"reprocesoAcuseId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Validar Manualmente Notificación TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}/validacion-manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}",
+                "validacion-manual"
+              ]
+            },
+            "description": "Registra validación manual con sustento cuando el flujo depende de notificación correcta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableValidacion\": \"Secretaría Técnica TTAIP\",\n    \"observacionValidacion\": \"Se verificó constancia alternativa y cargo correcto para la parte destinataria.\",\n    \"referenciaEvidencia\": \"CARGO-MANUAL-NEWMAN-001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"manual notification validation is registered\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estado).to.eql(\"VALIDADA\");",
+                  "    pm.expect(json.validadaManualmente).to.eql(true);",
+                  "    pm.expect(json.responsableValidacion).to.eql(\"Secretaría Técnica TTAIP\");",
+                  "    pm.expect(json.observacionValidacion).to.include(\"constancia alternativa\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Notificación TTAIP con Evidencia",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}"
+              ]
+            },
+            "description": "Consulta una notificación con evidencia, acuse y trazabilidad de validación manual."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"notification evidence can be queried\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get(\"notificacionFallidaId\")));",
+                  "    pm.expect(json.estado).to.eql(\"VALIDADA\");",
+                  "    pm.expect(json.trazabilidad, \"trazabilidad\").to.include(\"validada manualmente\");",
                   "});"
                 ]
               }
