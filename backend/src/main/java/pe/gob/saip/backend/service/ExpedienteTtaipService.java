@@ -13,7 +13,9 @@ import pe.gob.saip.backend.repository.ReprocesoNotificacionRepository;
 import pe.gob.saip.backend.repository.ResolucionRepository;
 import pe.gob.saip.backend.repository.SalaTtaipRepository;
 import pe.gob.saip.backend.repository.SuspensionPlazoTtaipRepository;
+import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
@@ -29,6 +31,7 @@ public class ExpedienteTtaipService {
     private static final String SEGUNDA_SALA = "SEGUNDA SALA";
     private static final int RESOLUCION_BASE = 1595;
     private static final int CEDULA_BASE = 15203;
+    private static final int DIAS_SUSPENSION_ADICIONAL = 3;
 
     private final ExpedienteTtaipRepository expedienteRepository;
     private final SalaTtaipRepository salaRepository;
@@ -194,10 +197,15 @@ public class ExpedienteTtaipService {
         suspension.setExpediente(expediente);
         suspension.setDescargo(savedDescargo);
         suspension.setMotivoSuspension(SuspensionPlazoTtaip.MotivoSuspension.DESCARGOS_ENTIDAD);
+        suspension.setSolicitante(SuspensionPlazoTtaip.SolicitanteSuspension.TTAIP);
+        suspension.setMotivoDetalle("Requerimiento de descargos y expediente administrativo a la entidad pública");
+        suspension.setFechaSolicitud(fechaRequerimiento);
         suspension.setFechaInicioSuspension(fechaRequerimiento);
         suspension.setFechaFinSuspension(fechaLimite);
         suspension.setDiasSuspendidos(7);
         suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
+        suspension.setResponsable(actor);
+        suspension.setObservacion(request.observacion());
         suspension.setTrazabilidad("%s - Suspensión activa por descargos de entidad; periodo %s a %s."
                 .formatted(LocalDateTime.now(), fechaRequerimiento, fechaLimite));
         suspensionRepository.save(suspension);
@@ -342,6 +350,81 @@ public class ExpedienteTtaipService {
         return suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(expedienteId);
     }
 
+    @Transactional
+    public SuspensionPlazoTtaip registrarSuspensionPorInformeOral(Long expedienteId,
+                                                                  RegistrarSuspensionTtaipRequest request) {
+        return registrarSuspensionAdicional(
+                expedienteId,
+                SuspensionPlazoTtaip.MotivoSuspension.INFORME_ORAL,
+                request);
+    }
+
+    @Transactional
+    public SuspensionPlazoTtaip registrarSuspensionPorInformacionComplementaria(Long expedienteId,
+                                                                               RegistrarSuspensionTtaipRequest request) {
+        return registrarSuspensionAdicional(
+                expedienteId,
+                SuspensionPlazoTtaip.MotivoSuspension.INFORMACION_COMPLEMENTARIA,
+                request);
+    }
+
+    @Transactional
+    public SuspensionPlazoTtaip cancelarSuspension(Long expedienteId,
+                                                  Long suspensionId,
+                                                  CancelarSuspensionTtaipRequest request) {
+        ExpedienteTtaip expediente = buscarExpediente(expedienteId);
+        validarExpedienteAdmitido(expediente);
+        SuspensionPlazoTtaip suspension = buscarSuspension(suspensionId);
+        validarSuspensionDelExpediente(expedienteId, suspension);
+
+        if (suspension.getEstadoSuspension() != SuspensionPlazoTtaip.EstadoSuspension.ACTIVA) {
+            throw new IllegalArgumentException("Solo se puede cancelar una suspensión activa");
+        }
+        if (suspension.getMotivoSuspension() == SuspensionPlazoTtaip.MotivoSuspension.DESCARGOS_ENTIDAD) {
+            throw new IllegalArgumentException("La suspensión por descargos se cierra con la presentación o vencimiento del descargo");
+        }
+
+        LocalDate fechaCancelacion = request.fechaCancelacion() != null
+                ? request.fechaCancelacion()
+                : LocalDate.now();
+        if (fechaCancelacion.isBefore(suspension.getFechaInicioSuspension())) {
+            throw new IllegalArgumentException("La fecha de cancelación no puede ser anterior al inicio de suspensión");
+        }
+
+        String actor = normalizarActor(request.responsable(), "TTAIP");
+        suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.CANCELADA);
+        suspension.setFechaFinSuspension(fechaCancelacion);
+        suspension.setDiasSuspendidos(0);
+        suspension.setResponsable(actor);
+        suspension.setObservacion(request.observacion());
+        suspension.setTrazabilidad(agregarTraza(
+                suspension.getTrazabilidad(),
+                "%s - Suspensión %s cancelada por %s. No suma días al plazo de resolución."
+                        .formatted(LocalDateTime.now(), suspension.getMotivoSuspension(), actor)
+        ));
+        SuspensionPlazoTtaip saved = suspensionRepository.save(suspension);
+
+        recalcularFechaLimiteResolucion(expediente);
+        expediente.setTrazabilidadMinima(agregarTraza(
+                expediente.getTrazabilidadMinima(),
+                "%s - Suspensión %s cancelada. Fecha límite de resolución recalculada: %s."
+                        .formatted(LocalDateTime.now(), suspension.getMotivoSuspension(), expediente.getFechaLimiteResolucion())
+        ));
+        expedienteRepository.save(expediente);
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.SUSPENSION_PLAZO,
+                "Suspensión " + suspension.getMotivoSuspension() + " cancelada. Nueva fecha límite: "
+                        + expediente.getFechaLimiteResolucion(),
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                actor,
+                "SUSPENSION-CANCELADA-" + saved.getId()
+        );
+
+        return saved;
+    }
+
     private ExpedienteTtaip crearExpediente(Apelacion apelacion) {
         SalaTtaip sala = seleccionarSala();
         ExpedienteTtaip expediente = new ExpedienteTtaip();
@@ -378,15 +461,111 @@ public class ExpedienteTtaipService {
                         "Descargo de entidad no encontrado con ID: " + descargoId));
     }
 
+    private SuspensionPlazoTtaip buscarSuspension(Long suspensionId) {
+        return suspensionRepository.findById(suspensionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Suspensión de plazo TTAIP no encontrada con ID: " + suspensionId));
+    }
+
     private void validarDescargoDelExpediente(Long expedienteId, DescargoEntidadTtaip descargo) {
         if (descargo.getExpediente() == null || !expedienteId.equals(descargo.getExpediente().getId())) {
             throw new IllegalArgumentException("El descargo no pertenece al expediente TTAIP indicado");
         }
     }
 
+    private void validarSuspensionDelExpediente(Long expedienteId, SuspensionPlazoTtaip suspension) {
+        if (suspension.getExpediente() == null || !expedienteId.equals(suspension.getExpediente().getId())) {
+            throw new IllegalArgumentException("La suspensión no pertenece al expediente TTAIP indicado");
+        }
+    }
+
     private void validarExpedienteAdmitido(ExpedienteTtaip expediente) {
         if (expediente.getEstado() != Apelacion.EstadoApelacion.EN_RESOLUCION) {
-            throw new IllegalArgumentException("Solo se pueden requerir descargos después de una admisión válida");
+            throw new IllegalArgumentException("Solo se pueden registrar actuaciones con suspensión después de una admisión válida");
+        }
+    }
+
+    private SuspensionPlazoTtaip registrarSuspensionAdicional(Long expedienteId,
+                                                              SuspensionPlazoTtaip.MotivoSuspension motivoSuspension,
+                                                              RegistrarSuspensionTtaipRequest request) {
+        ExpedienteTtaip expediente = buscarExpediente(expedienteId);
+        validarExpedienteAdmitido(expediente);
+
+        if (suspensionRepository.existsByExpediente_IdExpedienteTtaipAndMotivoSuspensionAndEstadoSuspension(
+                expedienteId,
+                motivoSuspension,
+                SuspensionPlazoTtaip.EstadoSuspension.ACTIVA)) {
+            throw new IllegalArgumentException("Ya existe una suspensión activa de tipo " + motivoSuspension + " para este expediente TTAIP");
+        }
+
+        LocalDate fechaSolicitud = request.fechaSolicitud() != null
+                ? request.fechaSolicitud()
+                : LocalDate.now();
+        LocalDate inicioResolucion = fechaInicioPlazoResolucion(expediente);
+        if (fechaSolicitud.isBefore(inicioResolucion)) {
+            throw new IllegalArgumentException("La suspensión no puede registrarse antes del inicio del plazo de resolución");
+        }
+
+        LocalDate fechaFin = DiasHabilesUtil.sumarDiasHabiles(fechaSolicitud, DIAS_SUSPENSION_ADICIONAL);
+        String actor = normalizarActor(request.responsable(), "TTAIP");
+        SuspensionPlazoTtaip.SolicitanteSuspension solicitante = parseSolicitanteSuspension(request.solicitante());
+
+        SuspensionPlazoTtaip suspension = new SuspensionPlazoTtaip();
+        suspension.setExpediente(expediente);
+        suspension.setMotivoSuspension(motivoSuspension);
+        suspension.setSolicitante(solicitante);
+        suspension.setMotivoDetalle(request.motivo());
+        suspension.setFechaSolicitud(fechaSolicitud);
+        suspension.setFechaInicioSuspension(fechaSolicitud);
+        suspension.setFechaFinSuspension(fechaFin);
+        suspension.setDiasSuspendidos(DIAS_SUSPENSION_ADICIONAL);
+        suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
+        suspension.setResponsable(actor);
+        suspension.setObservacion(request.observacion());
+        suspension.setTrazabilidad("%s - Suspensión %s solicitada por %s; periodo %s a %s; %d días hábiles."
+                .formatted(
+                        LocalDateTime.now(),
+                        motivoSuspension,
+                        solicitante,
+                        fechaSolicitud,
+                        fechaFin,
+                        DIAS_SUSPENSION_ADICIONAL));
+        SuspensionPlazoTtaip saved = suspensionRepository.save(suspension);
+
+        recalcularFechaLimiteResolucion(expediente);
+        expediente.setTrazabilidadMinima(agregarTraza(
+                expediente.getTrazabilidadMinima(),
+                "%s - Suspensión %s registrada por %d días hábiles. Fecha límite de resolución recalculada: %s."
+                        .formatted(
+                                LocalDateTime.now(),
+                                motivoSuspension,
+                                DIAS_SUSPENSION_ADICIONAL,
+                                expediente.getFechaLimiteResolucion())
+        ));
+        expedienteRepository.save(expediente);
+
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.SUSPENSION_PLAZO,
+                "Suspensión " + motivoSuspension + " registrada por "
+                        + DIAS_SUSPENSION_ADICIONAL + " días hábiles. Nueva fecha límite: "
+                        + expediente.getFechaLimiteResolucion(),
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                actor,
+                "SUSPENSION-" + motivoSuspension + "-" + saved.getId()
+        );
+
+        return saved;
+    }
+
+    private SuspensionPlazoTtaip.SolicitanteSuspension parseSolicitanteSuspension(String solicitante) {
+        try {
+            return SuspensionPlazoTtaip.SolicitanteSuspension.valueOf(solicitante.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException(
+                    "Solicitante de suspensión no válido: " + solicitante
+                    + ". Valores permitidos: CIUDADANO, ENTIDAD_PUBLICA, TTAIP");
         }
     }
 

@@ -87,7 +87,11 @@
     "descargoExpedienteTtaipId",
     "descargoApelacionId",
     "descargoEntidadId",
-    "suspensionDescargosId"
+    "suspensionDescargosId",
+    "informeOralSuspensionId",
+    "informacionComplementariaSuspensionId",
+    "suspensionAdicionalActivaPreviaId",
+    "suspensionAdicionalActivaPreviaMotivo"
   ],
   "tokenVariables": [
     "ciudadanoToken",

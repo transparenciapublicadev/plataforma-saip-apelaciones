@@ -4,8 +4,10 @@ import { Observable } from 'rxjs';
 import { Apelacion } from '../models/apelacion.model';
 import type { CalificacionRequest, ResolucionRequest } from '../api/types';
 import type {
+  CancelarSuspensionTtaipPayload,
   DescargoEntidadTtaip,
   PresentarDescargoEntidadPayload,
+  RegistrarSuspensionTtaipPayload,
   RequerirDescargoEntidadPayload,
   SuspensionPlazoTtaip
 } from '../models/resolucion.model';
@@ -130,6 +132,34 @@ export class TtaipService {
 
   listarSuspensiones(expedienteId: number): Observable<SuspensionPlazoTtaip[]> {
     return this.http.get<SuspensionPlazoTtaip[]>(`${this.apiUrl}/expedientes/${expedienteId}/suspensiones`);
+  }
+
+  registrarInformeOral(expedienteId: number, data: RegistrarSuspensionTtaipPayload): Observable<SuspensionPlazoTtaip> {
+    return this.http.post<SuspensionPlazoTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/suspensiones/informe-oral`,
+      data
+    );
+  }
+
+  registrarInformacionComplementaria(
+    expedienteId: number,
+    data: RegistrarSuspensionTtaipPayload
+  ): Observable<SuspensionPlazoTtaip> {
+    return this.http.post<SuspensionPlazoTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/suspensiones/informacion-complementaria`,
+      data
+    );
+  }
+
+  cancelarSuspension(
+    expedienteId: number,
+    suspensionId: number,
+    data: CancelarSuspensionTtaipPayload
+  ): Observable<SuspensionPlazoTtaip> {
+    return this.http.patch<SuspensionPlazoTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/suspensiones/${suspensionId}/cancelar`,
+      data
+    );
   }
 }
 

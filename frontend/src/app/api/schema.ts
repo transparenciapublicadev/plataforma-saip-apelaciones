@@ -339,6 +339,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/informe-oral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar informe oral
+         * @description Registra una suspensión adicional de 3 días hábiles por solicitud de informe oral dentro de un expediente TTAIP en resolución.
+         */
+        post: operations["registrarInformeOral"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/informacion-complementaria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar información complementaria
+         * @description Registra una suspensión adicional de 3 días hábiles por solicitud de información complementaria dentro de un expediente TTAIP en resolución.
+         */
+        post: operations["registrarInformacionComplementaria"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
         parameters: {
             query?: never;
@@ -863,6 +903,26 @@ export interface paths {
         head?: never;
         /** Activar o desactivar usuario */
         patch: operations["cambiarEstado"];
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/{suspensionId}/cancelar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cancelar suspensión de plazo
+         * @description Cancela una suspensión adicional activa y recalcula la fecha límite de resolución final.
+         */
+        patch: operations["cancelarSuspension"];
         trace?: never;
     };
     "/api/solicitudes/{id}/liquidaciones/{liquidacionId}": {
@@ -2485,11 +2545,16 @@ export interface components {
             /** Format: int64 */
             descargoId?: number;
             motivoSuspension?: string;
+            solicitante?: string;
+            motivoDetalle?: string;
+            fechaSolicitud?: string;
             fechaInicioSuspension?: string;
             fechaFinSuspension?: string;
             /** Format: int32 */
             diasSuspendidos?: number;
             estadoSuspension?: string;
+            responsable?: string;
+            observacion?: string;
             trazabilidad?: string;
         };
         CrearUsuarioAdminRequest: {
@@ -2538,6 +2603,36 @@ export interface components {
              * @example Mesa de Partes TTAIP
              */
             responsable?: string;
+        };
+        /** @description Solicitud de suspensión adicional de plazo TTAIP por informe oral o información complementaria */
+        RegistrarSuspensionTtaipRequest: {
+            /**
+             * Format: date
+             * @description Fecha de solicitud de la suspensión. Si se omite, se usa la fecha actual.
+             * @example 2026-05-12
+             */
+            fechaSolicitud?: string;
+            /**
+             * @description Solicitante de la suspensión
+             * @example CIUDADANO
+             * @enum {string}
+             */
+            solicitante: "CIUDADANO" | "ENTIDAD_PUBLICA" | "TTAIP";
+            /**
+             * @description Motivo o sustento del informe oral o información complementaria
+             * @example Se solicita informe oral para sustentar los argumentos de la apelación.
+             */
+            motivo: string;
+            /**
+             * @description Responsable que registra la suspensión
+             * @example Secretaría Técnica TTAIP
+             */
+            responsable: string;
+            /**
+             * @description Observación operativa opcional
+             * @example Solicitud registrada durante etapa de resolución final.
+             */
+            observacion?: string;
         };
         /** @description Presentación de descargo y expediente administrativo por la entidad pública */
         PresentarDescargoEntidadRequest: {
@@ -2796,6 +2891,25 @@ export interface components {
             identificador: string;
             /** @description Contraseña */
             password: string;
+        };
+        /** @description Cancelación operativa de una suspensión adicional de plazo TTAIP */
+        CancelarSuspensionTtaipRequest: {
+            /**
+             * Format: date
+             * @description Fecha de cancelación. Si se omite, se usa la fecha actual.
+             * @example 2026-05-13
+             */
+            fechaCancelacion?: string;
+            /**
+             * @description Responsable que cancela la suspensión
+             * @example Secretaría Técnica TTAIP
+             */
+            responsable: string;
+            /**
+             * @description Motivo de cancelación
+             * @example La parte desistió de la solicitud de informe oral.
+             */
+            observacion?: string;
         };
         /** @description Actualización operativa de pago o recojo de una liquidación SAIP */
         ActualizarLiquidacionCostoRequest: {
@@ -3649,6 +3763,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReprocesoNotificacionDTO"];
+                };
+            };
+        };
+    };
+    registrarInformeOral: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarSuspensionTtaipRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"];
+                };
+            };
+        };
+    };
+    registrarInformacionComplementaria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarSuspensionTtaipRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"];
                 };
             };
         };
@@ -4550,6 +4718,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsuarioAdminDTO"];
+                };
+            };
+        };
+    };
+    cancelarSuspension: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la suspensión */
+                suspensionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelarSuspensionTtaipRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"];
                 };
             };
         };

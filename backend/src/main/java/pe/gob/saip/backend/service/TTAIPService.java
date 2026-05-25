@@ -5,8 +5,10 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
@@ -384,6 +386,27 @@ public class TTAIPService {
                 .stream()
                 .map(SuspensionPlazoTtaipDTO::from)
                 .toList();
+    }
+
+    @Transactional
+    public SuspensionPlazoTtaipDTO registrarInformeOral(Long expedienteId, RegistrarSuspensionTtaipRequest request) {
+        return SuspensionPlazoTtaipDTO.from(
+                expedienteTtaipService.registrarSuspensionPorInformeOral(expedienteId, request));
+    }
+
+    @Transactional
+    public SuspensionPlazoTtaipDTO registrarInformacionComplementaria(Long expedienteId,
+                                                                      RegistrarSuspensionTtaipRequest request) {
+        return SuspensionPlazoTtaipDTO.from(
+                expedienteTtaipService.registrarSuspensionPorInformacionComplementaria(expedienteId, request));
+    }
+
+    @Transactional
+    public SuspensionPlazoTtaipDTO cancelarSuspension(Long expedienteId,
+                                                     Long suspensionId,
+                                                     CancelarSuspensionTtaipRequest request) {
+        return SuspensionPlazoTtaipDTO.from(
+                expedienteTtaipService.cancelarSuspension(expedienteId, suspensionId, request));
     }
 
     // ============================================================

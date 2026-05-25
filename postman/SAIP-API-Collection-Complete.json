@@ -34505,6 +34505,546 @@
           ]
         },
         {
+          "name": "[CLEANUP] Preparar Suspensiones Adicionales TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const active = json.find((item) =>",
+                  "    item.estadoSuspension === \"ACTIVA\" &&",
+                  "    [\"INFORME_ORAL\", \"INFORMACION_COMPLEMENTARIA\"].includes(item.motivoSuspension)",
+                  ");",
+                  "pm.test(\"additional suspension cleanup scan succeeds\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (active) {",
+                  "    pm.environment.set(\"suspensionAdicionalActivaPreviaId\", String(active.id));",
+                  "    pm.environment.set(\"suspensionAdicionalActivaPreviaMotivo\", active.motivoSuspension);",
+                  "    postman.setNextRequest(\"[CLEANUP] Cancelar Suspensión Adicional Activa Previa\");",
+                  "} else {",
+                  "    pm.environment.unset(\"suspensionAdicionalActivaPreviaId\");",
+                  "    pm.environment.unset(\"suspensionAdicionalActivaPreviaMotivo\");",
+                  "    postman.setNextRequest(\"Registrar Informe Oral\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones"
+              ]
+            },
+            "description": "## Preparar Suspensiones Adicionales TTAIP\n\nLimpia suspensiones adicionales activas dejadas por corridas locales abortadas antes del caso positivo. Usa el endpoint real de cancelación, conserva trazabilidad y no altera la regla de duplicidad activa."
+          },
+          "response": []
+        },
+        {
+          "name": "[CLEANUP] Cancelar Suspensión Adicional Activa Previa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"previous active additional suspension is cancelled\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"suspensionAdicionalActivaPreviaId\"));",
+                  "    pm.expect(json.estadoSuspension).to.eql(\"CANCELADA\");",
+                  "    pm.expect(json.diasSuspendidos).to.eql(0);",
+                  "});",
+                  "postman.setNextRequest(\"[CLEANUP] Preparar Suspensiones Adicionales TTAIP\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Limpieza de suspensión adicional activa dejada por una corrida local previa de Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/{{suspensionAdicionalActivaPreviaId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "{{suspensionAdicionalActivaPreviaId}}",
+                "cancelar"
+              ]
+            },
+            "description": "## Cancelar Suspensión Adicional Activa Previa\n\nCancela una suspensión adicional activa previa para que el caso positivo cree una nueva suspensión real. No borra el registro original y valida Problem Details si la regla fallara."
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar Informe Oral",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"oral report suspension is created\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"suspension id\").to.exist;",
+                  "    pm.expect(json.motivoSuspension).to.eql(\"INFORME_ORAL\");",
+                  "    pm.expect(json.solicitante).to.eql(\"CIUDADANO\");",
+                  "    pm.expect(json.estadoSuspension).to.eql(\"ACTIVA\");",
+                  "    pm.expect(json.diasSuspendidos).to.eql(3);",
+                  "    pm.expect(json.fechaInicioSuspension, \"fecha inicio\").to.exist;",
+                  "    pm.expect(json.fechaFinSuspension, \"fecha fin\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"informeOralSuspensionId\", String(json.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitante\": \"CIUDADANO\",\n    \"motivo\": \"El recurrente solicita informe oral para sustentar los argumentos de su apelación.\",\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Suspensión adicional de 3 días hábiles registrada dentro de la etapa de resolución.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/informe-oral",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "informe-oral"
+              ]
+            },
+            "description": "## Registrar Informe Oral\n\nRegistra una suspensión adicional por informe oral dentro de un expediente TTAIP admitido. Debe sumar 3 días hábiles al plazo de resolución y conservar trazabilidad en el expediente."
+          },
+          "response": []
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Informe Oral Duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"duplicate oral report suspension returns conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.eql(\"Conflict\");",
+                  "    pm.expect(json.status).to.eql(409);",
+                  "    pm.expect(json.detail).to.include(\"suspensión activa\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitante\": \"CIUDADANO\",\n    \"motivo\": \"Intento duplicado de informe oral activo.\",\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Debe rechazarse por duplicidad activa.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/informe-oral",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "informe-oral"
+              ]
+            },
+            "description": "## Rechazar Informe Oral Duplicado\n\nValida que el backend no permita dos suspensiones activas del mismo tipo para el mismo expediente TTAIP. El error debe responder como Problem Details RFC 9457."
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar Información Complementaria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"additional information suspension is created\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id, \"suspension id\").to.exist;",
+                  "    pm.expect(json.motivoSuspension).to.eql(\"INFORMACION_COMPLEMENTARIA\");",
+                  "    pm.expect(json.solicitante).to.eql(\"TTAIP\");",
+                  "    pm.expect(json.estadoSuspension).to.eql(\"ACTIVA\");",
+                  "    pm.expect(json.diasSuspendidos).to.eql(3);",
+                  "});",
+                  "pm.environment.set(\"informacionComplementariaSuspensionId\", String(json.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitante\": \"TTAIP\",\n    \"motivo\": \"El Tribunal solicita información complementaria necesaria para resolver la apelación.\",\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Suspensión adicional de 3 días hábiles por información complementaria.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/informacion-complementaria",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "informacion-complementaria"
+              ]
+            },
+            "description": "## Registrar Información Complementaria\n\nRegistra una suspensión adicional por información complementaria dentro de un expediente TTAIP admitido. Debe sumar 3 días hábiles y quedar consultable desde el expediente."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancelar Suspensión de Información Complementaria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"additional information suspension is cancelled\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"informacionComplementariaSuspensionId\"));",
+                  "    pm.expect(json.motivoSuspension).to.eql(\"INFORMACION_COMPLEMENTARIA\");",
+                  "    pm.expect(json.estadoSuspension).to.eql(\"CANCELADA\");",
+                  "    pm.expect(json.diasSuspendidos).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"La solicitud de información complementaria fue dejada sin efecto antes de su ejecución.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/{{informacionComplementariaSuspensionId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "{{informacionComplementariaSuspensionId}}",
+                "cancelar"
+              ]
+            },
+            "description": "## Cancelar Suspensión de Información Complementaria\n\nCancela una suspensión adicional activa y recalcula el plazo de resolución sin sumar días por esa suspensión cancelada."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Suspensiones Tras Informe Oral e Información Complementaria",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const informe = json.find((item) => String(item.id) === pm.environment.get(\"informeOralSuspensionId\"));",
+                  "const info = json.find((item) => String(item.id) === pm.environment.get(\"informacionComplementariaSuspensionId\"));",
+                  "pm.test(\"expediente contains oral report and additional information suspensions\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(informe, \"informe oral suspension\").to.exist;",
+                  "    pm.expect(informe.motivoSuspension).to.eql(\"INFORME_ORAL\");",
+                  "    pm.expect(informe.estadoSuspension).to.eql(\"ACTIVA\");",
+                  "    pm.expect(informe.diasSuspendidos).to.eql(3);",
+                  "    pm.expect(info, \"informacion complementaria suspension\").to.exist;",
+                  "    pm.expect(info.motivoSuspension).to.eql(\"INFORMACION_COMPLEMENTARIA\");",
+                  "    pm.expect(info.estadoSuspension).to.eql(\"CANCELADA\");",
+                  "    pm.expect(info.diasSuspendidos).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones"
+              ]
+            },
+            "description": "## Listar Suspensiones Tras Solicitudes Adicionales\n\nValida que el expediente conserve las suspensiones por descargos, informe oral e información complementaria, incluyendo estado y días suspendidos."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancelar Suspensión de Informe Oral",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"oral report suspension is cancelled after validation\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"informeOralSuspensionId\"));",
+                  "    pm.expect(json.motivoSuspension).to.eql(\"INFORME_ORAL\");",
+                  "    pm.expect(json.estadoSuspension).to.eql(\"CANCELADA\");",
+                  "    pm.expect(json.diasSuspendidos).to.eql(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Cierre de prueba Newman para dejar el expediente reutilizable sin suspensión oral activa.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/suspensiones/{{informeOralSuspensionId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "suspensiones",
+                "{{informeOralSuspensionId}}",
+                "cancelar"
+              ]
+            },
+            "description": "## Cancelar Suspensión de Informe Oral\n\nCierra la suspensión de informe oral creada por la colección para evitar que futuras corridas locales fallen por duplicidad activa."
+          },
+          "response": []
+        },
+        {
           "name": "Procesar Descargos Vencidos",
           "request": {
             "method": "POST",

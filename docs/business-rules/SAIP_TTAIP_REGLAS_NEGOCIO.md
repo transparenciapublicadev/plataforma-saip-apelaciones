@@ -27,6 +27,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
+- TTAIP soporta suspensiones adicionales por informe oral e informacion complementaria, cada una por 3 dias habiles, con solicitante, motivo, responsable, estado, trazabilidad y recalculo de fecha limite de resolucion.
 
 ## Nomenclaturas
 
@@ -266,6 +267,10 @@ El sistema actual deriva la apelacion ciudadana directamente al TTAIP y no model
 - Plazo: 10 dias habiles desde el dia siguiente de la notificacion valida de admisibilidad.
 - El plazo puede suspenderse por descargos, informe oral o informacion complementaria.
 - Si se solicita informe oral o informacion complementaria, el plazo se suspende 3 dias adicionales.
+- Implementacion actual: `SuspensionPlazoTtaip` reutiliza el mismo agregado de suspensiones para `DESCARGOS_ENTIDAD`, `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`.
+- Para `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`, el sistema registra expediente, tipo de solicitud, solicitante `CIUDADANO`, `ENTIDAD_PUBLICA` o `TTAIP`, motivo, fecha de solicitud, fecha de inicio, fecha de fin planificada, `diasSuspendidos = 3`, estado, responsable, observacion y trazabilidad.
+- Solo se permite registrar estas suspensiones cuando el expediente TTAIP esta en `EN_RESOLUCION`; no se permiten duplicados activos del mismo tipo para el mismo expediente.
+- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma todos los dias suspendidos registrados. Si una suspension adicional se cancela, queda `CANCELADA`, suma `0` dias y se conserva su traza.
 
 Decisiones finales:
 
