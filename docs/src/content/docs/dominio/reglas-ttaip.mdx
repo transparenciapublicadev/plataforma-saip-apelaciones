@@ -29,6 +29,10 @@ flowchart LR
     C -->|Improcedente| X
     E --> H
     H -->|Suspension DESCARGOS_ENTIDAD| F["EN_RESOLUCION\n10 dias habiles + dias suspendidos"]
+    F -->|Informe oral| I["Suspension INFORME_ORAL\n+3 dias habiles"]
+    F -->|Informacion complementaria| J["Suspension INFORMACION_COMPLEMENTARIA\n+3 dias habiles"]
+    I --> F
+    J --> F
     F --> G["Estado final"]
 ```
 
@@ -102,7 +106,35 @@ Validaciones obligatorias:
 
 ### BR-TTAIP-008 — Resolución final
 
-Tras la notificación válida de admisibilidad o de segunda calificación, la apelación entra en `EN_RESOLUCION`. La resolución final puede cerrar el expediente con cualquiera de estos resultados:
+Tras la notificación válida de admisibilidad o de segunda calificación, la apelación entra en `EN_RESOLUCION`. Durante esta etapa también pueden registrarse suspensiones adicionales por informe oral o información complementaria.
+
+### BR-TTAIP-008 — Informe oral e información complementaria
+
+El expediente TTAIP reutiliza `SuspensionPlazoTtaip` para suspender el plazo de resolución por:
+
+- `INFORME_ORAL`
+- `INFORMACION_COMPLEMENTARIA`
+
+Cada solicitud suspende **3 días hábiles** y registra solicitante (`CIUDADANO`, `ENTIDAD_PUBLICA` o `TTAIP`), motivo, fecha de solicitud, fecha de inicio, fecha de fin, estado, responsable, observación y trazabilidad.
+
+| Endpoint | Rol principal | Uso |
+| --- | --- | --- |
+| `POST /api/ttaip/expedientes/{expedienteId}/suspensiones/informe-oral` | TTAIP/Admin | Registra informe oral y suma 3 días hábiles al plazo. |
+| `POST /api/ttaip/expedientes/{expedienteId}/suspensiones/informacion-complementaria` | TTAIP/Admin | Registra información complementaria y suma 3 días hábiles al plazo. |
+| `PATCH /api/ttaip/expedientes/{expedienteId}/suspensiones/{suspensionId}/cancelar` | TTAIP/Admin | Cancela una suspensión adicional activa y recalcula el plazo. |
+| `GET /api/ttaip/expedientes/{expedienteId}/suspensiones` | TTAIP/Funcionario/Admin | Consulta suspensiones de descargos, informe oral e información complementaria. |
+
+Validaciones obligatorias:
+
+- Solo se permite en expedientes en `EN_RESOLUCION`.
+- No se permite si el expediente ya está resuelto o cerrado.
+- No se permite duplicar una suspensión activa del mismo tipo.
+- La fecha límite de resolución final se recalcula sumando los días suspendidos.
+- La cancelación conserva el registro, marca estado `CANCELADA`, asigna `diasSuspendidos = 0` y deja trazabilidad.
+
+### BR-TTAIP-009 — Resolución final
+
+La resolución final puede cerrar el expediente con cualquiera de estos resultados:
 
 <CardGrid>
   <Card title="Fundado" icon="approve-check">

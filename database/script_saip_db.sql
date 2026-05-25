@@ -31,6 +31,26 @@ BEGIN
 END//
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS drop_check_if_exists;
+DELIMITER //
+CREATE PROCEDURE drop_check_if_exists(IN p_table VARCHAR(64), IN p_constraint VARCHAR(64))
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND TABLE_NAME = p_table
+          AND CONSTRAINT_NAME = p_constraint
+          AND CONSTRAINT_TYPE = 'CHECK'
+    ) THEN
+        SET @ddl = CONCAT('ALTER TABLE ', p_table, ' DROP CHECK ', p_constraint);
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
 CALL add_column_if_missing('miembros_ttaip', 'periodo_inicio', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'periodo_fin', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'presidente_tribunal', 'TINYINT(1) NULL DEFAULT 0');
@@ -274,10 +294,15 @@ CREATE TABLE IF NOT EXISTS suspensiones_plazo_ttaip (
     id_expediente_ttaip BIGINT NOT NULL,
     id_descargo BIGINT NULL,
     motivo_suspension VARCHAR(40) NOT NULL DEFAULT 'DESCARGOS_ENTIDAD',
+    solicitante VARCHAR(40) NULL,
+    motivo_detalle TEXT NULL,
+    fecha_solicitud DATE NULL,
     fecha_inicio_suspension DATE NOT NULL,
     fecha_fin_suspension DATE NULL,
     dias_suspendidos INT NOT NULL DEFAULT 0,
     estado_suspension VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
+    responsable VARCHAR(180) NULL,
+    observacion TEXT NULL,
     trazabilidad TEXT NULL,
     fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -288,10 +313,23 @@ CREATE TABLE IF NOT EXISTS suspensiones_plazo_ttaip (
     KEY idx_suspension_ttaip_motivo (motivo_suspension),
     CONSTRAINT fk_suspension_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
     CONSTRAINT fk_suspension_ttaip_descargo FOREIGN KEY (id_descargo) REFERENCES descargos_entidad_ttaip (id_descargo),
-    CONSTRAINT chk_suspension_ttaip_motivo CHECK (motivo_suspension IN ('DESCARGOS_ENTIDAD')),
+    CONSTRAINT chk_suspension_ttaip_motivo CHECK (motivo_suspension IN ('DESCARGOS_ENTIDAD','INFORME_ORAL','INFORMACION_COMPLEMENTARIA')),
+    CONSTRAINT chk_suspension_ttaip_solicitante CHECK (solicitante IS NULL OR solicitante IN ('CIUDADANO','ENTIDAD_PUBLICA','TTAIP')),
     CONSTRAINT chk_suspension_ttaip_estado CHECK (estado_suspension IN ('ACTIVA','CERRADA','VENCIDA','CANCELADA')),
     CONSTRAINT chk_suspension_ttaip_dias CHECK (dias_suspendidos >= 0)
 );
+
+CALL add_column_if_missing('suspensiones_plazo_ttaip', 'solicitante', 'VARCHAR(40) NULL');
+CALL add_column_if_missing('suspensiones_plazo_ttaip', 'motivo_detalle', 'TEXT NULL');
+CALL add_column_if_missing('suspensiones_plazo_ttaip', 'fecha_solicitud', 'DATE NULL');
+CALL add_column_if_missing('suspensiones_plazo_ttaip', 'responsable', 'VARCHAR(180) NULL');
+CALL add_column_if_missing('suspensiones_plazo_ttaip', 'observacion', 'TEXT NULL');
+CALL drop_check_if_exists('suspensiones_plazo_ttaip', 'chk_suspension_ttaip_motivo');
+ALTER TABLE suspensiones_plazo_ttaip
+    ADD CONSTRAINT chk_suspension_ttaip_motivo CHECK (motivo_suspension IN ('DESCARGOS_ENTIDAD','INFORME_ORAL','INFORMACION_COMPLEMENTARIA'));
+CALL drop_check_if_exists('suspensiones_plazo_ttaip', 'chk_suspension_ttaip_solicitante');
+ALTER TABLE suspensiones_plazo_ttaip
+    ADD CONSTRAINT chk_suspension_ttaip_solicitante CHECK (solicitante IS NULL OR solicitante IN ('CIUDADANO','ENTIDAD_PUBLICA','TTAIP'));
 
 CREATE TABLE IF NOT EXISTS historial_ttaip (
     id_historial BIGINT NOT NULL AUTO_INCREMENT,

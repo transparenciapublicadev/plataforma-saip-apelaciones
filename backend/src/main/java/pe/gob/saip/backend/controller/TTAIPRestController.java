@@ -9,8 +9,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
@@ -229,6 +231,40 @@ public class TTAIPRestController {
     public ResponseEntity<List<SuspensionPlazoTtaipDTO>> listarSuspensiones(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
         return ResponseEntity.ok(ttaipService.listarSuspensiones(expedienteId));
+    }
+
+    @Operation(
+            summary = "Registrar informe oral",
+            description = "Registra una suspensión adicional de 3 días hábiles por solicitud de informe oral dentro de un expediente TTAIP en resolución."
+    )
+    @PostMapping("/expedientes/{expedienteId}/suspensiones/informe-oral")
+    public ResponseEntity<SuspensionPlazoTtaipDTO> registrarInformeOral(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Valid @RequestBody RegistrarSuspensionTtaipRequest request) {
+        return ResponseEntity.ok(ttaipService.registrarInformeOral(expedienteId, request));
+    }
+
+    @Operation(
+            summary = "Registrar información complementaria",
+            description = "Registra una suspensión adicional de 3 días hábiles por solicitud de información complementaria dentro de un expediente TTAIP en resolución."
+    )
+    @PostMapping("/expedientes/{expedienteId}/suspensiones/informacion-complementaria")
+    public ResponseEntity<SuspensionPlazoTtaipDTO> registrarInformacionComplementaria(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Valid @RequestBody RegistrarSuspensionTtaipRequest request) {
+        return ResponseEntity.ok(ttaipService.registrarInformacionComplementaria(expedienteId, request));
+    }
+
+    @Operation(
+            summary = "Cancelar suspensión de plazo",
+            description = "Cancela una suspensión adicional activa y recalcula la fecha límite de resolución final."
+    )
+    @PatchMapping("/expedientes/{expedienteId}/suspensiones/{suspensionId}/cancelar")
+    public ResponseEntity<SuspensionPlazoTtaipDTO> cancelarSuspension(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la suspensión") @PathVariable Long suspensionId,
+            @Valid @RequestBody CancelarSuspensionTtaipRequest request) {
+        return ResponseEntity.ok(ttaipService.cancelarSuspension(expedienteId, suspensionId, request));
     }
 }
 
