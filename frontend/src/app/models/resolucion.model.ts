@@ -150,6 +150,29 @@ export interface SuspensionPlazoTtaip {
     trazabilidad?: string | null;
 }
 
+export interface CumplimientoResolucionTtaip {
+    id?: number;
+    expedienteTtaipId?: number | null;
+    numeroExpediente?: string | null;
+    apelacionId?: number | null;
+    resolucionId?: number | null;
+    numeroResolucion?: string | null;
+    decisionResolucion?: string | null;
+    entidadId?: number | null;
+    entidadNombre?: string | null;
+    fechaRequerimientoCumplimiento?: string | null;
+    fechaLimiteCumplimiento?: string | null;
+    fechaCumplimiento?: string | null;
+    estadoCumplimiento?: string | null;
+    tipoCumplimiento?: 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE' | string | null;
+    descripcionCumplimiento?: string | null;
+    evidenciaCumplimiento?: string | null;
+    referenciaDocumento?: string | null;
+    responsableEntidad?: string | null;
+    observacion?: string | null;
+    trazabilidad?: string | null;
+}
+
 export interface RequerirDescargoEntidadPayload {
     fechaRequerimiento?: string | null;
     responsableTtaip?: string | null;
@@ -175,6 +198,32 @@ export interface RegistrarSuspensionTtaipPayload {
 export interface CancelarSuspensionTtaipPayload {
     fechaCancelacion?: string | null;
     responsable: string;
+    observacion?: string | null;
+}
+
+export interface CrearSeguimientoCumplimientoPayload {
+    fechaRequerimientoCumplimiento?: string | null;
+    responsableTtaip?: string | null;
+    observacion?: string | null;
+}
+
+export interface RegistrarCumplimientoResolucionPayload {
+    fechaCumplimiento?: string | null;
+    tipoCumplimiento: 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE';
+    descripcionCumplimiento: string;
+    evidenciaCumplimiento?: string | null;
+    referenciaDocumento?: string | null;
+    responsableEntidad: string;
+    observacion?: string | null;
+}
+
+export interface ObservarCumplimientoResolucionPayload {
+    observacion: string;
+    responsableTtaip?: string | null;
+}
+
+export interface CerrarCumplimientoResolucionPayload {
+    responsableTtaip?: string | null;
     observacion?: string | null;
 }
 

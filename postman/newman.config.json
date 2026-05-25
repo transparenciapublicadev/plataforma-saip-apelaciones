@@ -2,7 +2,7 @@
   "collection": "SAIP-API-Collection-Complete.json",
   "environment": "SAIP-API-Environment-Complete.json",
   "reportsDir": "reports",
-  "timeoutRequest": 15000,
+  "timeoutRequest": 30000,
   "delayRequest": 75,
   "reporters": [
     "cli",
@@ -96,11 +96,20 @@
     "informeOralSuspensionId",
     "informacionComplementariaSuspensionId",
     "suspensionAdicionalActivaPreviaId",
-    "suspensionAdicionalActivaPreviaMotivo"
+    "suspensionAdicionalActivaPreviaMotivo",
+    "cumplimientoExpedienteTtaipId",
+    "cumplimientoApelacionId",
+    "cumplimientoResolucionId",
+    "cumplimientoNumeroResolucion",
+    "cumplimientoResolucionNoFundadaId",
+    "cumplimientoId",
+    "cumplimientoFechaLimite",
+    "cumplimientoActivoPrevioId"
   ],
   "tokenVariables": [
     "ciudadanoToken",
     "funcionarioToken",
+    "cumplimientoFuncionarioToken",
     "ttaipToken",
     "adminToken"
   ]

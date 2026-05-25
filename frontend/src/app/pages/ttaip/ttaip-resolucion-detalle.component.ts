@@ -4,12 +4,13 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { Apelacion } from '../../models/apelacion.model';
-import { NotificacionTtaip, SuspensionPlazoTtaip } from '../../models/resolucion.model';
+import { CumplimientoResolucionTtaip, NotificacionTtaip, SuspensionPlazoTtaip } from '../../models/resolucion.model';
 
-type DetailTab = 'apelacion' | 'descargos' | 'adjuntos';
+type DetailTab = 'apelacion' | 'descargos' | 'cumplimiento' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
 type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
 type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
+type TipoCumplimiento = 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE';
 
 interface TimelineItem {
   fecha: string;
@@ -50,9 +51,13 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly notificacionLoading = signal<boolean>(false);
   readonly notificacionMessage = signal<string>('');
   readonly notificacionError = signal<string>('');
+  readonly cumplimientoLoading = signal<boolean>(false);
+  readonly cumplimientoMessage = signal<string>('');
+  readonly cumplimientoError = signal<string>('');
   readonly tabs: { id: DetailTab; label: string }[] = [
     { id: 'apelacion', label: 'Apelacion' },
     { id: 'descargos', label: 'Descargos' },
+    { id: 'cumplimiento', label: 'Cumplimiento' },
     { id: 'adjuntos', label: 'Adjuntos' }
   ];
 
@@ -69,8 +74,20 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly reprocesosExpediente = computed(() => this.expedienteTtaip()?.reprocesos ?? []);
   readonly descargosExpediente = computed(() => this.expedienteTtaip()?.descargosEntidad ?? []);
   readonly suspensionesExpediente = computed(() => this.expedienteTtaip()?.suspensionesPlazo ?? []);
+  readonly cumplimientosExpediente = computed(() => this.expedienteTtaip()?.cumplimientosResolucion ?? []);
   readonly descargoActivo = computed(() =>
     this.descargosExpediente().find((descargo) => this.normalizeKey(descargo.estadoDescargo).includes('REQUERIDO')) ?? null
+  );
+  readonly cumplimientoActivo = computed(() =>
+    this.cumplimientosExpediente().find((cumplimiento) =>
+      ['PENDIENTE', 'OBSERVADO'].includes(this.normalizeKey(cumplimiento.estadoCumplimiento))
+    ) ?? null
+  );
+  readonly resolucionFinalFundada = computed(() =>
+    this.resolucionesExpediente().find((resolucion) =>
+      this.normalizeKey(resolucion.tipoResolucion) === 'RESOLUCION_FINAL'
+      && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(this.normalizeKey(resolucion.decision))
+    ) ?? null
   );
 
   readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || 'EN_CALIFICACION_1'));
@@ -348,6 +365,135 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     });
   }
 
+  crearSeguimientoCumplimiento(observacion: string): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    const resolucion = this.resolucionFinalFundada();
+    if (!expedienteId || !resolucion?.id) {
+      this.cumplimientoError.set('No se encontro una resolucion final fundada para iniciar seguimiento.');
+      return;
+    }
+
+    this.cumplimientoLoading.set(true);
+    this.cumplimientoMessage.set('');
+    this.cumplimientoError.set('');
+    this.ttaipService.crearSeguimientoCumplimiento(expedienteId, resolucion.id, {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion: observacion || 'Seguimiento de cumplimiento de resolución fundada.'
+    }).subscribe({
+      next: () => {
+        this.cumplimientoMessage.set('Seguimiento creado con plazo de 7 días hábiles.');
+        this.cumplimientoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.cumplimientoError.set('No se pudo crear el seguimiento de cumplimiento.');
+        this.cumplimientoLoading.set(false);
+      }
+    });
+  }
+
+  registrarCumplimiento(
+    cumplimientoId: number | undefined,
+    tipoCumplimiento: string,
+    descripcion: string,
+    evidencia: string,
+    responsable: string,
+    observacion: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !cumplimientoId) {
+      this.cumplimientoError.set('No se encontro seguimiento activo para registrar cumplimiento.');
+      return;
+    }
+    const tipo = this.parseTipoCumplimiento(tipoCumplimiento);
+    if (!tipo) {
+      this.cumplimientoError.set('Seleccione un tipo de cumplimiento valido.');
+      return;
+    }
+    if (!descripcion.trim() || !responsable.trim()) {
+      this.cumplimientoError.set('Complete descripción del cumplimiento y responsable de la entidad.');
+      return;
+    }
+
+    this.cumplimientoLoading.set(true);
+    this.cumplimientoMessage.set('');
+    this.cumplimientoError.set('');
+    this.ttaipService.registrarCumplimiento(expedienteId, cumplimientoId, {
+      tipoCumplimiento: tipo,
+      descripcionCumplimiento: descripcion,
+      evidenciaCumplimiento: this.isUrl(evidencia) ? evidencia : null,
+      referenciaDocumento: this.isUrl(evidencia) ? null : evidencia || null,
+      responsableEntidad: responsable,
+      observacion: observacion || null
+    }).subscribe({
+      next: () => {
+        this.cumplimientoMessage.set('Cumplimiento comunicado por la entidad.');
+        this.cumplimientoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.cumplimientoError.set('No se pudo registrar el cumplimiento de la entidad.');
+        this.cumplimientoLoading.set(false);
+      }
+    });
+  }
+
+  observarCumplimiento(cumplimientoId: number | undefined, observacion: string): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !cumplimientoId) {
+      this.cumplimientoError.set('No se encontro seguimiento para observar.');
+      return;
+    }
+    if (!observacion.trim()) {
+      this.cumplimientoError.set('Complete el sustento de observación.');
+      return;
+    }
+
+    this.cumplimientoLoading.set(true);
+    this.cumplimientoMessage.set('');
+    this.cumplimientoError.set('');
+    this.ttaipService.observarCumplimiento(expedienteId, cumplimientoId, {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion
+    }).subscribe({
+      next: () => {
+        this.cumplimientoMessage.set('Cumplimiento observado por el TTAIP.');
+        this.cumplimientoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.cumplimientoError.set('No se pudo observar el cumplimiento.');
+        this.cumplimientoLoading.set(false);
+      }
+    });
+  }
+
+  cerrarCumplimiento(cumplimientoId: number | undefined, observacion: string): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !cumplimientoId) {
+      this.cumplimientoError.set('No se encontro seguimiento para cerrar.');
+      return;
+    }
+
+    this.cumplimientoLoading.set(true);
+    this.cumplimientoMessage.set('');
+    this.cumplimientoError.set('');
+    this.ttaipService.cerrarCumplimiento(expedienteId, cumplimientoId, {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion: observacion || 'Seguimiento de cumplimiento cerrado.'
+    }).subscribe({
+      next: () => {
+        this.cumplimientoMessage.set('Seguimiento de cumplimiento cerrado.');
+        this.cumplimientoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.cumplimientoError.set('No se pudo cerrar el seguimiento de cumplimiento.');
+        this.cumplimientoLoading.set(false);
+      }
+    });
+  }
+
   registrarConstanciaNotificacion(
     notificacionId: number | undefined,
     medioNotificacion: string,
@@ -484,6 +630,13 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     return notificacion.evidenciaUrl || notificacion.referenciaEvidencia || notificacion.codigoConstancia || 'Sin evidencia registrada';
   }
 
+  cumplimientoStatusClass(cumplimiento: CumplimientoResolucionTtaip): string {
+    const estado = this.normalizeKey(cumplimiento.estadoCumplimiento);
+    if (estado === 'VENCIDO' || estado === 'OBSERVADO') return 'pill pill-high';
+    if (estado === 'CUMPLIDO' || estado === 'CERRADO') return 'pill pill-low';
+    return 'pill pill-medium';
+  }
+
   esSuspensionAdicionalActiva(suspension: SuspensionPlazoTtaip): boolean {
     const motivo = this.normalizeKey(suspension.motivoSuspension);
     return suspension.estadoSuspension === 'ACTIVA'
@@ -498,6 +651,14 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   private parseEstadoAcuse(value: string): 'ENTREGADO' | 'FALLIDO' | 'NO_RECIBIDO' | 'OBSERVADO' | null {
     const normalized = this.normalizeKey(value);
     if (normalized === 'ENTREGADO' || normalized === 'FALLIDO' || normalized === 'NO_RECIBIDO' || normalized === 'OBSERVADO') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private parseTipoCumplimiento(value: string): TipoCumplimiento | null {
+    const normalized = this.normalizeKey(value);
+    if (normalized === 'TOTAL' || normalized === 'PARCIAL' || normalized === 'NO_CUMPLE') {
       return normalized;
     }
     return null;
@@ -673,7 +834,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   private iconForEventoTtaip(value?: string | null): TimelineIcon {
     const normalized = this.normalizeKey(value);
     if (normalized.includes('REPROCESO')) return 'alert';
-    if (normalized.includes('DESCARGO') || normalized.includes('SUSPENSION')) return 'alert';
+    if (normalized.includes('DESCARGO') || normalized.includes('SUSPENSION') || normalized.includes('CUMPLIMIENTO')) return 'alert';
     if (normalized.includes('CAMBIO_ESTADO')) return 'check';
     return 'check';
   }

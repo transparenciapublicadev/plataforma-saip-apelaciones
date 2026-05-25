@@ -379,6 +379,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/resoluciones/{resolucionId}/cumplimientos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear seguimiento de cumplimiento de resolución fundada
+         * @description Abre seguimiento para que la entidad cumpla una resolución final FUNDADO o FUNDADO_EN_PARTE en 7 días hábiles.
+         */
+        post: operations["crearSeguimientoCumplimiento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual": {
         parameters: {
             query?: never;
@@ -479,6 +499,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/registrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar cumplimiento comunicado por entidad pública */
+        post: operations["registrarCumplimiento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/descargos/vencidos/procesar": {
         parameters: {
             query?: never;
@@ -490,6 +527,23 @@ export interface paths {
         put?: never;
         /** Procesar descargos vencidos */
         post: operations["procesarDescargosVencidos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/cumplimientos/vencidos/procesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Procesar cumplimientos vencidos */
+        post: operations["procesarCumplimientosVencidos"];
         delete?: never;
         options?: never;
         head?: never;
@@ -985,6 +1039,40 @@ export interface paths {
         patch: operations["cancelarSuspension"];
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/observar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Observar cumplimiento de resolución */
+        patch: operations["observarCumplimiento"];
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/cerrar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Cerrar seguimiento de cumplimiento de resolución */
+        patch: operations["cerrarCumplimiento"];
+        trace?: never;
+    };
     "/api/solicitudes/{id}/liquidaciones/{liquidacionId}": {
         parameters: {
             query?: never;
@@ -1249,6 +1337,40 @@ export interface paths {
         };
         /** Obtener descargo activo de un expediente TTAIP */
         get: operations["obtenerDescargoActivo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar cumplimientos de resolución de un expediente TTAIP */
+        get: operations["listarCumplimientos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/activo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar cumplimiento activo de un expediente TTAIP */
+        get: operations["obtenerCumplimientoActivo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2490,6 +2612,34 @@ export interface components {
             estado?: string;
             documentoReferencia?: string;
         };
+        /** @description Seguimiento de cumplimiento de una resolución final fundada o fundada en parte */
+        CumplimientoResolucionTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            expedienteTtaipId?: number;
+            numeroExpediente?: string;
+            /** Format: int64 */
+            apelacionId?: number;
+            /** Format: int64 */
+            resolucionId?: number;
+            numeroResolucion?: string;
+            decisionResolucion?: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            fechaRequerimientoCumplimiento?: string;
+            fechaLimiteCumplimiento?: string;
+            fechaCumplimiento?: string;
+            estadoCumplimiento?: string;
+            tipoCumplimiento?: string;
+            descripcionCumplimiento?: string;
+            evidenciaCumplimiento?: string;
+            referenciaDocumento?: string;
+            responsableEntidad?: string;
+            observacion?: string;
+            trazabilidad?: string;
+        };
         /** @description Descargo presentado o requerido a la entidad pública dentro de un expediente TTAIP */
         DescargoEntidadTtaipDTO: {
             /** Format: int64 */
@@ -2534,6 +2684,7 @@ export interface components {
             reprocesos?: components["schemas"]["ReprocesoNotificacionDTO"][];
             descargosEntidad?: components["schemas"]["DescargoEntidadTtaipDTO"][];
             suspensionesPlazo?: components["schemas"]["SuspensionPlazoTtaipDTO"][];
+            cumplimientosResolucion?: components["schemas"]["CumplimientoResolucionTtaipDTO"][];
         };
         /** @description Evento de trazabilidad del expediente TTAIP */
         HistorialTtaipDTO: {
@@ -2746,6 +2897,25 @@ export interface components {
              */
             observacion?: string;
         };
+        /** @description Solicitud para crear seguimiento de cumplimiento de resolución fundada */
+        CrearSeguimientoCumplimientoRequest: {
+            /**
+             * Format: date
+             * @description Fecha base del requerimiento. Si no se envía, se usa notificación válida o fecha de resolución.
+             * @example 2026-05-29
+             */
+            fechaRequerimientoCumplimiento?: string;
+            /**
+             * @description Responsable TTAIP que registra el seguimiento
+             * @example Secretaría Técnica TTAIP
+             */
+            responsableTtaip?: string;
+            /**
+             * @description Observación o sustento del requerimiento
+             * @example Seguimiento de cumplimiento de resolución fundada.
+             */
+            observacion?: string;
+        };
         /** @description Validación manual de una notificación TTAIP cuando el flujo depende de notificación válida */
         ValidarNotificacionManualRequest: {
             /**
@@ -2878,6 +3048,46 @@ export interface components {
             /**
              * @description Observación o sustento del requerimiento
              * @example Se requiere expediente administrativo y descargos de la entidad.
+             */
+            observacion?: string;
+        };
+        /** @description Comunicación de cumplimiento de resolución fundada por la entidad pública */
+        RegistrarCumplimientoResolucionRequest: {
+            /**
+             * Format: date
+             * @description Fecha en la que la entidad comunica el cumplimiento. Si no se envía, se usa la fecha actual.
+             * @example 2026-06-04
+             */
+            fechaCumplimiento?: string;
+            /**
+             * @description Tipo de cumplimiento comunicado
+             * @example TOTAL
+             * @enum {string}
+             */
+            tipoCumplimiento: "TOTAL" | "PARCIAL" | "NO_CUMPLE";
+            /**
+             * @description Detalle de cómo la entidad cumplió la resolución
+             * @example La entidad entregó la información ordenada mediante enlace seguro.
+             */
+            descripcionCumplimiento: string;
+            /**
+             * @description URL o referencia de evidencia de cumplimiento
+             * @example https://saip.local/evidencias/cumplimiento-0001.pdf
+             */
+            evidenciaCumplimiento?: string;
+            /**
+             * @description Referencia documental interna o cargo
+             * @example CARGO-CUMP-2026-0001.pdf
+             */
+            referenciaDocumento?: string;
+            /**
+             * @description Responsable que comunica el cumplimiento
+             * @example Funcionario de Transparencia
+             */
+            responsableEntidad: string;
+            /**
+             * @description Observación adicional
+             * @example Comunicación remitida dentro del plazo legal.
              */
             observacion?: string;
         };
@@ -3107,6 +3317,32 @@ export interface components {
             /**
              * @description Motivo de cancelación
              * @example La parte desistió de la solicitud de informe oral.
+             */
+            observacion?: string;
+        };
+        /** @description Observación TTAIP al cumplimiento comunicado por la entidad pública */
+        ObservarCumplimientoResolucionRequest: {
+            /**
+             * @description Motivo por el que el TTAIP observa el cumplimiento
+             * @example La evidencia remitida no acredita entrega completa de la información.
+             */
+            observacion: string;
+            /**
+             * @description Responsable TTAIP que observa el cumplimiento
+             * @example Secretaría Técnica TTAIP
+             */
+            responsableTtaip?: string;
+        };
+        /** @description Cierre operativo de seguimiento de cumplimiento de resolución fundada */
+        CerrarCumplimientoResolucionRequest: {
+            /**
+             * @description Responsable TTAIP que cierra el seguimiento
+             * @example Secretaría Técnica TTAIP
+             */
+            responsableTtaip?: string;
+            /**
+             * @description Observación de cierre
+             * @example Se verifica cumplimiento total y se cierra el seguimiento.
              */
             observacion?: string;
         };
@@ -4020,6 +4256,35 @@ export interface operations {
             };
         };
     };
+    crearSeguimientoCumplimiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la resolución final */
+                resolucionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearSeguimientoCumplimientoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"];
+                };
+            };
+        };
+    };
     validarNotificacionManualmente: {
         parameters: {
             query?: never;
@@ -4163,6 +4428,35 @@ export interface operations {
             };
         };
     };
+    registrarCumplimiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID del seguimiento de cumplimiento */
+                cumplimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarCumplimientoResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"];
+                };
+            };
+        };
+    };
     procesarDescargosVencidos: {
         parameters: {
             query?: never;
@@ -4179,6 +4473,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DescargoEntidadTtaipDTO"][];
+                };
+            };
+        };
+    };
+    procesarCumplimientosVencidos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"][];
                 };
             };
         };
@@ -5037,6 +5351,64 @@ export interface operations {
             };
         };
     };
+    observarCumplimiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID del seguimiento de cumplimiento */
+                cumplimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObservarCumplimientoResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"];
+                };
+            };
+        };
+    };
+    cerrarCumplimiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID del seguimiento de cumplimiento */
+                cumplimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CerrarCumplimientoResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"];
+                };
+            };
+        };
+    };
     actualizarLiquidacion: {
         parameters: {
             query?: never;
@@ -5435,6 +5807,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DescargoEntidadTtaipDTO"];
+                };
+            };
+        };
+    };
+    listarCumplimientos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"][];
+                };
+            };
+        };
+    };
+    obtenerCumplimientoActivo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CumplimientoResolucionTtaipDTO"];
                 };
             };
         };

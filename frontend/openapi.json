@@ -1211,6 +1211,60 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/resoluciones/{resolucionId}/cumplimientos": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Crear seguimiento de cumplimiento de resolución fundada",
+        "description": "Abre seguimiento para que la entidad cumpla una resolución final FUNDADO o FUNDADO_EN_PARTE en 7 días hábiles.",
+        "operationId": "crearSeguimientoCumplimiento",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "resolucionId",
+            "in": "path",
+            "description": "ID de la resolución final",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearSeguimientoCumplimientoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual": {
       "post": {
         "tags": [
@@ -1471,6 +1525,59 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/registrar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Registrar cumplimiento comunicado por entidad pública",
+        "operationId": "registrarCumplimiento",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cumplimientoId",
+            "in": "path",
+            "description": "ID del seguimiento de cumplimiento",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarCumplimientoResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/descargos/vencidos/procesar": {
       "post": {
         "tags": [
@@ -1487,6 +1594,30 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/cumplimientos/vencidos/procesar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Procesar cumplimientos vencidos",
+        "operationId": "procesarCumplimientosVencidos",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
                   }
                 }
               }
@@ -2729,6 +2860,112 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/observar": {
+      "patch": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Observar cumplimiento de resolución",
+        "operationId": "observarCumplimiento",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cumplimientoId",
+            "in": "path",
+            "description": "ID del seguimiento de cumplimiento",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservarCumplimientoResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/cerrar": {
+      "patch": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Cerrar seguimiento de cumplimiento de resolución",
+        "operationId": "cerrarCumplimiento",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cumplimientoId",
+            "in": "path",
+            "description": "ID del seguimiento de cumplimiento",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CerrarCumplimientoResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/solicitudes/{id}/liquidaciones/{liquidacionId}": {
       "patch": {
         "tags": [
@@ -3348,6 +3585,75 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar cumplimientos de resolución de un expediente TTAIP",
+        "operationId": "listarCumplimientos",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimientos/activo": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Consultar cumplimiento activo de un expediente TTAIP",
+        "operationId": "obtenerCumplimientoActivo",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
                 }
               }
             }
@@ -5654,6 +5960,77 @@
           }
         }
       },
+      "CumplimientoResolucionTtaipDTO": {
+        "type": "object",
+        "description": "Seguimiento de cumplimiento de una resolución final fundada o fundada en parte",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expedienteTtaipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroExpediente": {
+            "type": "string"
+          },
+          "apelacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resolucionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroResolucion": {
+            "type": "string"
+          },
+          "decisionResolucion": {
+            "type": "string"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "fechaRequerimientoCumplimiento": {
+            "type": "string"
+          },
+          "fechaLimiteCumplimiento": {
+            "type": "string"
+          },
+          "fechaCumplimiento": {
+            "type": "string"
+          },
+          "estadoCumplimiento": {
+            "type": "string"
+          },
+          "tipoCumplimiento": {
+            "type": "string"
+          },
+          "descripcionCumplimiento": {
+            "type": "string"
+          },
+          "evidenciaCumplimiento": {
+            "type": "string"
+          },
+          "referenciaDocumento": {
+            "type": "string"
+          },
+          "responsableEntidad": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          }
+        }
+      },
       "DescargoEntidadTtaipDTO": {
         "type": "object",
         "description": "Descargo presentado o requerido a la entidad pública dentro de un expediente TTAIP",
@@ -5793,6 +6170,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
+            }
+          },
+          "cumplimientosResolucion": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CumplimientoResolucionTtaipDTO"
             }
           }
         }
@@ -6305,6 +6688,32 @@
           "solicitante"
         ]
       },
+      "CrearSeguimientoCumplimientoRequest": {
+        "type": "object",
+        "description": "Solicitud para crear seguimiento de cumplimiento de resolución fundada",
+        "properties": {
+          "fechaRequerimientoCumplimiento": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha base del requerimiento. Si no se envía, se usa notificación válida o fecha de resolución.",
+            "example": "2026-05-29"
+          },
+          "responsableTtaip": {
+            "type": "string",
+            "description": "Responsable TTAIP que registra el seguimiento",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación o sustento del requerimiento",
+            "example": "Seguimiento de cumplimiento de resolución fundada.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
+      },
       "ValidarNotificacionManualRequest": {
         "type": "object",
         "description": "Validación manual de una notificación TTAIP cuando el flujo depende de notificación válida",
@@ -6536,6 +6945,69 @@
           }
         }
       },
+      "RegistrarCumplimientoResolucionRequest": {
+        "type": "object",
+        "description": "Comunicación de cumplimiento de resolución fundada por la entidad pública",
+        "properties": {
+          "fechaCumplimiento": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha en la que la entidad comunica el cumplimiento. Si no se envía, se usa la fecha actual.",
+            "example": "2026-06-04"
+          },
+          "tipoCumplimiento": {
+            "type": "string",
+            "description": "Tipo de cumplimiento comunicado",
+            "enum": [
+              "TOTAL",
+              "PARCIAL",
+              "NO_CUMPLE"
+            ],
+            "example": "TOTAL",
+            "minLength": 1
+          },
+          "descripcionCumplimiento": {
+            "type": "string",
+            "description": "Detalle de cómo la entidad cumplió la resolución",
+            "example": "La entidad entregó la información ordenada mediante enlace seguro.",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "evidenciaCumplimiento": {
+            "type": "string",
+            "description": "URL o referencia de evidencia de cumplimiento",
+            "example": "https://saip.local/evidencias/cumplimiento-0001.pdf",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaDocumento": {
+            "type": "string",
+            "description": "Referencia documental interna o cargo",
+            "example": "CARGO-CUMP-2026-0001.pdf",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "responsableEntidad": {
+            "type": "string",
+            "description": "Responsable que comunica el cumplimiento",
+            "example": "Funcionario de Transparencia",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación adicional",
+            "example": "Comunicación remitida dentro del plazo legal.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "descripcionCumplimiento",
+          "responsableEntidad",
+          "tipoCumplimiento"
+        ]
+      },
       "CalificacionRequest": {
         "type": "object",
         "description": "Datos para calificación de apelación por miembro TTAIP",
@@ -6634,7 +7106,7 @@
             "type": "number",
             "description": "Monto de reproducción física",
             "example": "18.50",
-            "minimum": 0
+            "minimum": 0.0
           },
           "moneda": {
             "type": "string",
@@ -6966,6 +7438,49 @@
         "required": [
           "responsable"
         ]
+      },
+      "ObservarCumplimientoResolucionRequest": {
+        "type": "object",
+        "description": "Observación TTAIP al cumplimiento comunicado por la entidad pública",
+        "properties": {
+          "observacion": {
+            "type": "string",
+            "description": "Motivo por el que el TTAIP observa el cumplimiento",
+            "example": "La evidencia remitida no acredita entrega completa de la información.",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "responsableTtaip": {
+            "type": "string",
+            "description": "Responsable TTAIP que observa el cumplimiento",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 120,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "observacion"
+        ]
+      },
+      "CerrarCumplimientoResolucionRequest": {
+        "type": "object",
+        "description": "Cierre operativo de seguimiento de cumplimiento de resolución fundada",
+        "properties": {
+          "responsableTtaip": {
+            "type": "string",
+            "description": "Responsable TTAIP que cierra el seguimiento",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación de cierre",
+            "example": "Se verifica cumplimiento total y se cierra el seguimiento.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
       },
       "ActualizarLiquidacionCostoRequest": {
         "type": "object",

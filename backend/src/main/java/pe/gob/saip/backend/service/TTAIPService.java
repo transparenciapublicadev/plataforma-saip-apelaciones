@@ -6,11 +6,16 @@ import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
+import pe.gob.saip.backend.model.dto.CerrarCumplimientoResolucionRequest;
+import pe.gob.saip.backend.model.dto.CrearSeguimientoCumplimientoRequest;
+import pe.gob.saip.backend.model.dto.CumplimientoResolucionTtaipDTO;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
+import pe.gob.saip.backend.model.dto.ObservarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.NotificacionTtaipDTO;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
@@ -448,6 +453,59 @@ public class TTAIPService {
                                                      CancelarSuspensionTtaipRequest request) {
         return SuspensionPlazoTtaipDTO.from(
                 expedienteTtaipService.cancelarSuspension(expedienteId, suspensionId, request));
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaipDTO crearSeguimientoCumplimiento(Long expedienteId,
+                                                                       Long resolucionId,
+                                                                       CrearSeguimientoCumplimientoRequest request) {
+        return CumplimientoResolucionTtaipDTO.from(
+                expedienteTtaipService.crearSeguimientoCumplimiento(expedienteId, resolucionId, request));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CumplimientoResolucionTtaipDTO> listarCumplimientos(Long expedienteId) {
+        return expedienteTtaipService.listarCumplimientos(expedienteId)
+                .stream()
+                .map(CumplimientoResolucionTtaipDTO::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CumplimientoResolucionTtaipDTO obtenerCumplimientoActivo(Long expedienteId) {
+        return CumplimientoResolucionTtaipDTO.from(expedienteTtaipService.obtenerCumplimientoActivo(expedienteId));
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaipDTO registrarCumplimiento(Long expedienteId,
+                                                                Long cumplimientoId,
+                                                                RegistrarCumplimientoResolucionRequest request) {
+        return CumplimientoResolucionTtaipDTO.from(
+                expedienteTtaipService.registrarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaipDTO observarCumplimiento(Long expedienteId,
+                                                               Long cumplimientoId,
+                                                               ObservarCumplimientoResolucionRequest request) {
+        return CumplimientoResolucionTtaipDTO.from(
+                expedienteTtaipService.observarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaipDTO cerrarCumplimiento(Long expedienteId,
+                                                             Long cumplimientoId,
+                                                             CerrarCumplimientoResolucionRequest request) {
+        return CumplimientoResolucionTtaipDTO.from(
+                expedienteTtaipService.cerrarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Transactional
+    public List<CumplimientoResolucionTtaipDTO> procesarCumplimientosVencidos() {
+        return expedienteTtaipService.procesarCumplimientosVencidos()
+                .stream()
+                .map(CumplimientoResolucionTtaipDTO::from)
+                .toList();
     }
 
     // ============================================================
