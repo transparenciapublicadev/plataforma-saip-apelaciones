@@ -43,6 +43,16 @@ public class SuspensionPlazoTtaip {
     @Column(name = "motivo_suspension", nullable = false, length = 40)
     private MotivoSuspension motivoSuspension;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 40)
+    private SolicitanteSuspension solicitante;
+
+    @Column(name = "motivo_detalle", columnDefinition = "TEXT")
+    private String motivoDetalle;
+
+    @Column(name = "fecha_solicitud")
+    private LocalDate fechaSolicitud;
+
     @Column(name = "fecha_inicio_suspension", nullable = false)
     private LocalDate fechaInicioSuspension;
 
@@ -55,6 +65,12 @@ public class SuspensionPlazoTtaip {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado_suspension", nullable = false, length = 30)
     private EstadoSuspension estadoSuspension;
+
+    @Column(length = 180)
+    private String responsable;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacion;
 
     @Column(columnDefinition = "TEXT")
     private String trazabilidad;
@@ -84,7 +100,15 @@ public class SuspensionPlazoTtaip {
     }
 
     public enum MotivoSuspension {
-        DESCARGOS_ENTIDAD
+        DESCARGOS_ENTIDAD,
+        INFORME_ORAL,
+        INFORMACION_COMPLEMENTARIA
+    }
+
+    public enum SolicitanteSuspension {
+        CIUDADANO,
+        ENTIDAD_PUBLICA,
+        TTAIP
     }
 
     public enum EstadoSuspension {
