@@ -120,10 +120,15 @@ export interface SuspensionPlazoTtaip {
     numeroExpediente?: string | null;
     descargoId?: number | null;
     motivoSuspension?: string | null;
+    solicitante?: 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP' | string | null;
+    motivoDetalle?: string | null;
+    fechaSolicitud?: string | null;
     fechaInicioSuspension?: string | null;
     fechaFinSuspension?: string | null;
     diasSuspendidos?: number | null;
     estadoSuspension?: string | null;
+    responsable?: string | null;
+    observacion?: string | null;
     trazabilidad?: string | null;
 }
 
@@ -138,6 +143,20 @@ export interface PresentarDescargoEntidadPayload {
     resumenDescargo: string;
     referenciaDocumento?: string | null;
     responsableEntidad: string;
+    observacion?: string | null;
+}
+
+export interface RegistrarSuspensionTtaipPayload {
+    fechaSolicitud?: string | null;
+    solicitante: 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
+    motivo: string;
+    responsable: string;
+    observacion?: string | null;
+}
+
+export interface CancelarSuspensionTtaipPayload {
+    fechaCancelacion?: string | null;
+    responsable: string;
     observacion?: string | null;
 }
 

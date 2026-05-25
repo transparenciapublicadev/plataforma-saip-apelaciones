@@ -315,6 +315,44 @@
                   </div>
                 }
 
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
+                    <div>
+                      <span class="eyebrow" style="color: var(--brand-700)">Informe oral</span>
+                      <p class="text-sm text-foreground/80 mt-1">Suspende el plazo de resolución por 3 días hábiles.</p>
+                    </div>
+                    <select #solicitanteInforme class="field-input">
+                      <option value="CIUDADANO">Ciudadano</option>
+                      <option value="ENTIDAD_PUBLICA">Entidad pública</option>
+                      <option value="TTAIP">TTAIP</option>
+                    </select>
+                    <textarea #motivoInforme rows="3" class="field-input min-h-[92px]" placeholder="Motivo del informe oral"></textarea>
+                    <input #responsableInforme class="field-input" value="Secretaría Técnica TTAIP" placeholder="Responsable" />
+                    <textarea #observacionInforme rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                    <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading()" (click)="registrarSuspensionAdicional('INFORME_ORAL', solicitanteInforme.value, motivoInforme.value, responsableInforme.value, observacionInforme.value)">
+                      Registrar informe oral
+                    </button>
+                  </div>
+
+                  <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
+                    <div>
+                      <span class="eyebrow" style="color: var(--brand-700)">Información complementaria</span>
+                      <p class="text-sm text-foreground/80 mt-1">Suspende el plazo de resolución por 3 días hábiles.</p>
+                    </div>
+                    <select #solicitanteInfo class="field-input">
+                      <option value="TTAIP">TTAIP</option>
+                      <option value="ENTIDAD_PUBLICA">Entidad pública</option>
+                      <option value="CIUDADANO">Ciudadano</option>
+                    </select>
+                    <textarea #motivoInfo rows="3" class="field-input min-h-[92px]" placeholder="Motivo de información complementaria"></textarea>
+                    <input #responsableInfo class="field-input" value="Secretaría Técnica TTAIP" placeholder="Responsable" />
+                    <textarea #observacionInfo rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                    <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading()" (click)="registrarSuspensionAdicional('INFORMACION_COMPLEMENTARIA', solicitanteInfo.value, motivoInfo.value, responsableInfo.value, observacionInfo.value)">
+                      Registrar información complementaria
+                    </button>
+                  </div>
+                </div>
+
                 <div class="space-y-3">
                   <span class="eyebrow">Historial de descargos</span>
                   @for (descargo of descargosExpediente(); track descargo.id) {
@@ -344,12 +382,28 @@
                   @for (suspension of suspensionesExpediente(); track suspension.id) {
                     <div class="rounded-md p-3 text-xs" style="background: var(--background); border: 1px solid var(--border)">
                       <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="font-semibold">{{ suspension.motivoSuspension || 'DESCARGOS_ENTIDAD' }}</span>
+                        <span class="font-semibold">{{ formatSuspensionLabel(suspension.motivoSuspension) }}</span>
                         <span class="pill">{{ suspension.estadoSuspension || 'ACTIVA' }}</span>
                       </div>
+                      @if (suspension.solicitante || suspension.responsable) {
+                        <div class="mt-2 text-muted-foreground">
+                          {{ suspension.solicitante || 'TTAIP' }} · {{ suspension.responsable || 'Sin responsable registrado' }}
+                        </div>
+                      }
                       <div class="font-mono text-muted-foreground mt-2">
                         {{ suspension.fechaInicioSuspension || '—' }} → {{ suspension.fechaFinSuspension || 'En curso' }} · {{ suspension.diasSuspendidos || 0 }} día(s) hábil(es)
                       </div>
+                      @if (suspension.motivoDetalle) {
+                        <p class="text-foreground/75 mt-2 leading-relaxed">{{ suspension.motivoDetalle }}</p>
+                      }
+                      @if (esSuspensionAdicionalActiva(suspension)) {
+                        <div class="mt-3 flex flex-col md:flex-row gap-2">
+                          <input #observacionCancelacion class="field-input flex-1" placeholder="Motivo de cancelación" />
+                          <button type="button" class="btn-ghost-brand justify-center" [disabled]="descargoLoading()" (click)="cancelarSuspension(suspension.id, observacionCancelacion.value)">
+                            Cancelar suspensión
+                          </button>
+                        </div>
+                      }
                     </div>
                   } @empty {
                     <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
