@@ -4,25 +4,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
+import pe.gob.saip.backend.model.entity.LiquidacionCostoSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
 import pe.gob.saip.backend.repository.EncauzamientoSolicitudRepository;
 import pe.gob.saip.backend.repository.EntidadRepository;
+import pe.gob.saip.backend.repository.LiquidacionCostoSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -41,6 +46,7 @@ public class SolicitudService {
     private final AmpliacionPlazoSolicitudRepository ampliacionRepository;
     private final CronogramaEntregaParcialSolicitudRepository cronogramaRepository;
     private final EncauzamientoSolicitudRepository encauzamientoRepository;
+    private final LiquidacionCostoSolicitudRepository liquidacionRepository;
     private final EntidadRepository entidadRepository;
 
     public SolicitudService(SolicitudRepository solicitudRepository,
@@ -48,12 +54,14 @@ public class SolicitudService {
                             AmpliacionPlazoSolicitudRepository ampliacionRepository,
                             CronogramaEntregaParcialSolicitudRepository cronogramaRepository,
                             EncauzamientoSolicitudRepository encauzamientoRepository,
+                            LiquidacionCostoSolicitudRepository liquidacionRepository,
                             EntidadRepository entidadRepository) {
         this.solicitudRepository = solicitudRepository;
         this.observacionRepository = observacionRepository;
         this.ampliacionRepository = ampliacionRepository;
         this.cronogramaRepository = cronogramaRepository;
         this.encauzamientoRepository = encauzamientoRepository;
+        this.liquidacionRepository = liquidacionRepository;
         this.entidadRepository = entidadRepository;
     }
 
@@ -149,6 +157,128 @@ public class SolicitudService {
                 solicitudId,
                 ESTADOS_ENCAUZAMIENTO_ACTIVO
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<LiquidacionCostoSolicitud> listarLiquidaciones(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return liquidacionRepository.findBySolicitud_IdSolicitudOrderByFechaEmisionDesc(solicitudId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<LiquidacionCostoSolicitud> obtenerLiquidacionActiva(Long solicitudId) {
+        validarSolicitudExiste(solicitudId);
+        return liquidacionRepository.findFirstBySolicitud_IdSolicitudAndEstadoLiquidacionInOrderByFechaEmisionDesc(
+                solicitudId,
+                ESTADOS_LIQUIDACION_ACTIVA
+        );
+    }
+
+    @Transactional
+    public LiquidacionCostoSolicitud emitirLiquidacion(Long solicitudId, RegistrarLiquidacionCostoRequest request) {
+        Solicitud solicitud = buscarSolicitud(solicitudId);
+        validarPuedeEmitirLiquidacion(solicitud);
+        validarSolicitudRequiereEntregaFisica(solicitud);
+        validarSinLiquidacionActiva(solicitudId);
+
+        LocalDate fechaNotificacion = request.fechaNotificacion();
+        LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
+                ? solicitud.getFechaPresentacion().toLocalDate()
+                : LocalDate.now();
+        LocalDate fechaLimiteNotificacion = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, 9);
+        if (fechaNotificacion.isAfter(fechaLimiteNotificacion) || LocalDate.now().isAfter(fechaLimiteNotificacion)) {
+            throw new IllegalArgumentException("La liquidación o cupón de pago debe notificarse como máximo hasta el día 9 de atención de la SAIP");
+        }
+        if (fechaNotificacion.isBefore(fechaRecepcion)) {
+            throw new IllegalArgumentException("La fecha de notificación de la liquidación no puede ser anterior a la recepción de la SAIP");
+        }
+
+        String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
+        LocalDateTime ahora = LocalDateTime.now();
+        LocalDate fechaLimiteRecojo = DiasHabilesUtil.sumarDiasHabiles(fechaNotificacion, 30);
+
+        LiquidacionCostoSolicitud liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setCodigoLiquidacion(generarCodigoLiquidacion(solicitudId, request.codigoLiquidacion()));
+        liquidacion.setMonto(normalizarMonto(request.monto()));
+        liquidacion.setMoneda(normalizarMoneda(request.moneda()));
+        liquidacion.setConcepto(request.concepto().trim());
+        liquidacion.setFechaEmision(ahora);
+        liquidacion.setFechaNotificacion(fechaNotificacion);
+        liquidacion.setFechaLimiteRecojo(fechaLimiteRecojo);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setMedioNotificacion(parseCanalNotificacion(request.medioNotificacion()));
+        liquidacion.setResponsable(responsable);
+        liquidacion.setObservacion(trimToNull(request.observacion()));
+        liquidacion.setTrazabilidad("%s - Liquidación %s emitida y notificada por %s. Límite legal de notificación: %s; límite de recojo: %s."
+                .formatted(ahora, liquidacion.getCodigoLiquidacion(), responsable, fechaLimiteNotificacion, fechaLimiteRecojo));
+
+        return liquidacionRepository.save(liquidacion);
+    }
+
+    @Transactional
+    public LiquidacionCostoSolicitud actualizarLiquidacion(Long solicitudId,
+                                                           Long liquidacionId,
+                                                           ActualizarLiquidacionCostoRequest request) {
+        LiquidacionCostoSolicitud liquidacion = buscarLiquidacionDeSolicitud(solicitudId, liquidacionId);
+        LiquidacionCostoSolicitud.EstadoLiquidacion nuevoEstado = parseEstadoLiquidacionOperativo(request.estado());
+        validarLiquidacionNoCerrada(liquidacion);
+
+        String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
+        LocalDate hoy = LocalDate.now();
+        LocalDateTime ahora = LocalDateTime.now();
+
+        switch (nuevoEstado) {
+            case PAGADA -> {
+                liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.PAGADA);
+                liquidacion.setFechaPago(request.fechaPago() != null ? request.fechaPago() : hoy);
+                liquidacion.setTrazabilidad(agregarTraza(
+                        liquidacion.getTrazabilidad(),
+                        "%s - Pago registrado por %s.".formatted(ahora, responsable)));
+            }
+            case RECOGIDA -> {
+                liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA);
+                if (liquidacion.getFechaPago() == null && liquidacion.getMonto() != null
+                        && liquidacion.getMonto().compareTo(BigDecimal.ZERO) > 0) {
+                    liquidacion.setFechaPago(request.fechaPago() != null ? request.fechaPago() : hoy);
+                }
+                liquidacion.setFechaRecojo(request.fechaRecojo() != null ? request.fechaRecojo() : hoy);
+                liquidacion.setTrazabilidad(agregarTraza(
+                        liquidacion.getTrazabilidad(),
+                        "%s - Información física recogida por el ciudadano; solicitud marcada como RESPONDIDA por %s."
+                                .formatted(ahora, responsable)));
+                if (liquidacion.getSolicitud() != null) {
+                    liquidacion.getSolicitud().setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+                    solicitudRepository.save(liquidacion.getSolicitud());
+                }
+            }
+            case CANCELADA -> {
+                liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA);
+                liquidacion.setTrazabilidad(agregarTraza(
+                        liquidacion.getTrazabilidad(),
+                        "%s - Liquidación cancelada por %s.".formatted(ahora, responsable)));
+            }
+            default -> throw new IllegalArgumentException("Solo se permite actualizar liquidaciones a PAGADA, RECOGIDA o CANCELADA");
+        }
+
+        if (!isBlank(request.observacion())) {
+            liquidacion.setObservacion(trimToNull(request.observacion()));
+            liquidacion.setTrazabilidad(agregarTraza(
+                    liquidacion.getTrazabilidad(),
+                    "%s - Observación: %s".formatted(ahora, request.observacion().trim())));
+        }
+
+        return liquidacionRepository.save(liquidacion);
+    }
+
+    @Transactional
+    public List<LiquidacionCostoSolicitud> procesarLiquidacionesVencidas() {
+        List<LiquidacionCostoSolicitud> vencidas = liquidacionRepository
+                .findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(ESTADOS_LIQUIDACION_ACTIVA, LocalDate.now());
+        for (LiquidacionCostoSolicitud liquidacion : vencidas) {
+            archivarLiquidacionPorNoRecojo(liquidacion);
+        }
+        return liquidacionRepository.saveAll(vencidas);
     }
 
     @Transactional
@@ -385,6 +515,12 @@ public class SolicitudService {
             EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO
     );
 
+    private static final List<LiquidacionCostoSolicitud.EstadoLiquidacion> ESTADOS_LIQUIDACION_ACTIVA = List.of(
+            LiquidacionCostoSolicitud.EstadoLiquidacion.EMITIDA,
+            LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA,
+            LiquidacionCostoSolicitud.EstadoLiquidacion.PAGADA
+    );
+
     /**
      * BR-SAIP-005: Detecta y marca solicitudes vencidas (silencio administrativo negativo).
      */
@@ -479,6 +615,15 @@ public class SolicitudService {
         return entrega;
     }
 
+    private LiquidacionCostoSolicitud buscarLiquidacionDeSolicitud(Long solicitudId, Long liquidacionId) {
+        LiquidacionCostoSolicitud liquidacion = liquidacionRepository.findById(liquidacionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Liquidación SAIP no encontrada con ID: " + liquidacionId));
+        if (liquidacion.getSolicitud() == null || !solicitudId.equals(liquidacion.getSolicitud().getId())) {
+            throw new RecursoNoEncontradoException("Liquidación SAIP no encontrada para la solicitud ID: " + solicitudId);
+        }
+        return liquidacion;
+    }
+
     private void validarPuedeObservar(Solicitud solicitud) {
         if (solicitud.getEstado() == null
                 || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
@@ -503,6 +648,23 @@ public class SolicitudService {
         }
     }
 
+    private void validarPuedeEmitirLiquidacion(Solicitud solicitud) {
+        if (solicitud.getEstado() == null
+                || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)) {
+            throw new IllegalArgumentException("La solicitud no está en un estado válido para emitir liquidación o cupón de pago");
+        }
+    }
+
+    private void validarSolicitudRequiereEntregaFisica(Solicitud solicitud) {
+        boolean requiereFisico = Boolean.TRUE.equals(solicitud.getFormatoFisico())
+                || Boolean.TRUE.equals(solicitud.getCopiaSimple())
+                || Boolean.TRUE.equals(solicitud.getCopiaCertificada());
+        if (!requiereFisico) {
+            throw new IllegalArgumentException("La liquidación o cupón de pago solo aplica para entrega física o reproducción física");
+        }
+    }
+
     private void validarSinAmpliacionActiva(Long solicitudId) {
         if (ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(solicitudId, ESTADOS_AMPLIACION_ACTIVA)) {
             throw new IllegalArgumentException("La solicitud ya tiene una ampliación activa");
@@ -512,6 +674,21 @@ public class SolicitudService {
     private void validarSinEncauzamientoActivo(Long solicitudId) {
         if (encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(solicitudId, ESTADOS_ENCAUZAMIENTO_ACTIVO)) {
             throw new IllegalArgumentException("La solicitud ya tiene un encauzamiento activo");
+        }
+    }
+
+    private void validarSinLiquidacionActiva(Long solicitudId) {
+        if (liquidacionRepository.existsBySolicitud_IdSolicitudAndEstadoLiquidacionIn(solicitudId, ESTADOS_LIQUIDACION_ACTIVA)) {
+            throw new IllegalArgumentException("La solicitud ya tiene una liquidación o cupón activo");
+        }
+    }
+
+    private void validarLiquidacionNoCerrada(LiquidacionCostoSolicitud liquidacion) {
+        if (liquidacion.getEstadoLiquidacion() == LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA
+                || liquidacion.getEstadoLiquidacion() == LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA
+                || liquidacion.getEstadoLiquidacion() == LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA
+                || liquidacion.getEstadoLiquidacion() == LiquidacionCostoSolicitud.EstadoLiquidacion.VENCIDA) {
+            throw new IllegalArgumentException("La liquidación ya está cerrada y no puede modificarse");
         }
     }
 
@@ -595,6 +772,69 @@ public class SolicitudService {
         } catch (RuntimeException e) {
             throw new IllegalArgumentException("Alcance de encauzamiento no válido: " + alcance
                     + ". Valores permitidos: TOTAL, PARCIAL");
+        }
+    }
+
+    private LiquidacionCostoSolicitud.EstadoLiquidacion parseEstadoLiquidacionOperativo(String estado) {
+        try {
+            LiquidacionCostoSolicitud.EstadoLiquidacion parsed =
+                    LiquidacionCostoSolicitud.EstadoLiquidacion.valueOf(estado.trim().toUpperCase());
+            if (parsed == LiquidacionCostoSolicitud.EstadoLiquidacion.PAGADA
+                    || parsed == LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA
+                    || parsed == LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA) {
+                return parsed;
+            }
+        } catch (RuntimeException ignored) {
+            // Se lanza mensaje uniforme abajo.
+        }
+        throw new IllegalArgumentException("Estado de liquidación no válido: " + estado
+                + ". Valores permitidos para actualización: PAGADA, RECOGIDA, CANCELADA");
+    }
+
+    private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {
+        if (isBlank(canal)) {
+            throw new IllegalArgumentException("El medio de notificación es obligatorio");
+        }
+        try {
+            return Solicitud.CanalNotificacion.valueOf(canal.trim().toUpperCase());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Medio de notificación no válido: " + canal
+                    + ". Valores permitidos: CORREO_ELECTRONICO, CASILLA_ELECTRONICA, PLATAFORMA, FISICA");
+        }
+    }
+
+    private String generarCodigoLiquidacion(Long solicitudId, String codigoSolicitado) {
+        if (!isBlank(codigoSolicitado)) {
+            return codigoSolicitado.trim();
+        }
+        long secuencia = liquidacionRepository.countBySolicitud_IdSolicitud(solicitudId) + 1;
+        return "CUPON-%d-%05d-%03d".formatted(LocalDate.now().getYear(), solicitudId, secuencia);
+    }
+
+    private BigDecimal normalizarMonto(BigDecimal monto) {
+        if (monto == null) {
+            throw new IllegalArgumentException("El monto de la liquidación es obligatorio");
+        }
+        if (monto.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El monto de la liquidación no puede ser negativo");
+        }
+        return monto;
+    }
+
+    private String normalizarMoneda(String moneda) {
+        return isBlank(moneda) ? "PEN" : moneda.trim().toUpperCase();
+    }
+
+    private void archivarLiquidacionPorNoRecojo(LiquidacionCostoSolicitud liquidacion) {
+        LocalDateTime ahora = LocalDateTime.now();
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
+        liquidacion.setTrazabilidad(agregarTraza(
+                liquidacion.getTrazabilidad(),
+                "%s - Archivo por no recojo dentro de 30 días hábiles desde la notificación del cupón."
+                        .formatted(ahora)));
+        if (liquidacion.getSolicitud() != null) {
+            liquidacion.getSolicitud().setEstado(Solicitud.EstadoSolicitud.CONCLUIDA);
+            solicitudRepository.save(liquidacion.getSolicitud());
         }
     }
 
