@@ -11,13 +11,17 @@ import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
+import pe.gob.saip.backend.model.dto.NotificacionTtaipDTO;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
 import pe.gob.saip.backend.model.dto.SuspensionPlazoTtaipDTO;
+import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.service.TTAIPService;
 
@@ -181,6 +185,57 @@ public class TTAIPRestController {
     public ResponseEntity<ReprocesoNotificacionDTO> reprocesarNotificacion(
             @Valid @RequestBody ReprocesarNotificacionRequest request) {
         return ResponseEntity.ok(ttaipService.reprocesarNotificacionFallida(request));
+    }
+
+    @Operation(summary = "Listar notificaciones de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/notificaciones")
+    public ResponseEntity<List<NotificacionTtaipDTO>> listarNotificaciones(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.listarNotificaciones(expedienteId));
+    }
+
+    @Operation(summary = "Consultar notificación TTAIP con evidencia")
+    @GetMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}")
+    public ResponseEntity<NotificacionTtaipDTO> obtenerNotificacion(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId) {
+        return ResponseEntity.ok(ttaipService.obtenerNotificacion(expedienteId, notificacionId));
+    }
+
+    @Operation(
+            summary = "Registrar constancia de envío",
+            description = "Registra evidencia operativa de envío de la notificación sin integrar todavía un proveedor externo."
+    )
+    @PostMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/constancia-envio")
+    public ResponseEntity<NotificacionTtaipDTO> registrarConstanciaEnvio(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId,
+            @Valid @RequestBody RegistrarConstanciaEnvioNotificacionRequest request) {
+        return ResponseEntity.ok(ttaipService.registrarConstanciaEnvio(expedienteId, notificacionId, request));
+    }
+
+    @Operation(
+            summary = "Registrar acuse automático",
+            description = "Registra acuse automático de la notificación. Si el acuse falla, la notificación queda fallida u observada y puede reprocesarse."
+    )
+    @PostMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/acuse-automatico")
+    public ResponseEntity<NotificacionTtaipDTO> registrarAcuseAutomatico(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId,
+            @Valid @RequestBody RegistrarAcuseAutomaticoNotificacionRequest request) {
+        return ResponseEntity.ok(ttaipService.registrarAcuseAutomatico(expedienteId, notificacionId, request));
+    }
+
+    @Operation(
+            summary = "Validar manualmente una notificación",
+            description = "Permite validación manual de notificación correcta cuando el flujo dependa de una notificación válida."
+    )
+    @PostMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual")
+    public ResponseEntity<NotificacionTtaipDTO> validarNotificacionManualmente(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId,
+            @Valid @RequestBody ValidarNotificacionManualRequest request) {
+        return ResponseEntity.ok(ttaipService.validarNotificacionManualmente(expedienteId, notificacionId, request));
     }
 
     @Operation(
