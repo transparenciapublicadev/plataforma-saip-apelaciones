@@ -80,7 +80,10 @@
     "ampliacionEntregaInvalidaFecha",
     "ampliacionFechaEntregaReal",
     "encauzamientoEntidadDestinoIdRuntime",
-    "encauzamientoEntidadOrigenIdRuntime"
+    "encauzamientoEntidadOrigenIdRuntime",
+    "liquidacionFechaNotificacion",
+    "liquidacionFechaPago",
+    "liquidacionFechaRecojo"
   ],
   "tokenVariables": [
     "ciudadanoToken",
