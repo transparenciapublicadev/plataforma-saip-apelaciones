@@ -5,9 +5,13 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
+import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
+import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
+import pe.gob.saip.backend.model.dto.SuspensionPlazoTtaipDTO;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.MiembroTTAIP;
@@ -339,6 +343,47 @@ public class TTAIPService {
                 request.observacion(),
                 request.responsable()
         ));
+    }
+
+    @Transactional
+    public DescargoEntidadTtaipDTO requerirDescargos(Long expedienteId, RequerirDescargoEntidadRequest request) {
+        return DescargoEntidadTtaipDTO.from(expedienteTtaipService.requerirDescargos(expedienteId, request));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DescargoEntidadTtaipDTO> listarDescargos(Long expedienteId) {
+        return expedienteTtaipService.listarDescargos(expedienteId)
+                .stream()
+                .map(DescargoEntidadTtaipDTO::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DescargoEntidadTtaipDTO obtenerDescargoActivo(Long expedienteId) {
+        return DescargoEntidadTtaipDTO.from(expedienteTtaipService.obtenerDescargoActivo(expedienteId));
+    }
+
+    @Transactional
+    public DescargoEntidadTtaipDTO presentarDescargo(Long expedienteId,
+                                                     Long descargoId,
+                                                     PresentarDescargoEntidadRequest request) {
+        return DescargoEntidadTtaipDTO.from(expedienteTtaipService.presentarDescargo(expedienteId, descargoId, request));
+    }
+
+    @Transactional
+    public List<DescargoEntidadTtaipDTO> procesarDescargosVencidos() {
+        return expedienteTtaipService.procesarDescargosVencidos()
+                .stream()
+                .map(DescargoEntidadTtaipDTO::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SuspensionPlazoTtaipDTO> listarSuspensiones(Long expedienteId) {
+        return expedienteTtaipService.listarSuspensiones(expedienteId)
+                .stream()
+                .map(SuspensionPlazoTtaipDTO::from)
+                .toList();
     }
 
     // ============================================================

@@ -96,6 +96,51 @@ export interface ReprocesoNotificacion {
     fechaActualizacion?: string | null;
 }
 
+export interface DescargoEntidadTtaip {
+    id: number;
+    expedienteTtaipId?: number | null;
+    numeroExpediente?: string | null;
+    apelacionId?: number | null;
+    entidadId?: number | null;
+    entidadNombre?: string | null;
+    fechaRequerimiento?: string | null;
+    fechaLimiteDescargo?: string | null;
+    fechaPresentacion?: string | null;
+    estadoDescargo?: string | null;
+    resumenDescargo?: string | null;
+    documentoDescargo?: string | null;
+    responsableEntidad?: string | null;
+    observacion?: string | null;
+    trazabilidad?: string | null;
+}
+
+export interface SuspensionPlazoTtaip {
+    id: number;
+    expedienteTtaipId?: number | null;
+    numeroExpediente?: string | null;
+    descargoId?: number | null;
+    motivoSuspension?: string | null;
+    fechaInicioSuspension?: string | null;
+    fechaFinSuspension?: string | null;
+    diasSuspendidos?: number | null;
+    estadoSuspension?: string | null;
+    trazabilidad?: string | null;
+}
+
+export interface RequerirDescargoEntidadPayload {
+    fechaRequerimiento?: string | null;
+    responsableTtaip?: string | null;
+    observacion?: string | null;
+}
+
+export interface PresentarDescargoEntidadPayload {
+    fechaPresentacion?: string | null;
+    resumenDescargo: string;
+    referenciaDocumento?: string | null;
+    responsableEntidad: string;
+    observacion?: string | null;
+}
+
 export type Resolucion = Required<ResolucionDTO> & {
     numeroResolucion?: string | null;
     sala?: SalaTtaipResumen | null;

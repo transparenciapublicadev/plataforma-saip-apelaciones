@@ -3,6 +3,12 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Apelacion } from '../models/apelacion.model';
 import type { CalificacionRequest, ResolucionRequest } from '../api/types';
+import type {
+  DescargoEntidadTtaip,
+  PresentarDescargoEntidadPayload,
+  RequerirDescargoEntidadPayload,
+  SuspensionPlazoTtaip
+} from '../models/resolucion.model';
 import { environment } from '../../environments/environment';
 
 export interface TtaipEstadisticas {
@@ -93,6 +99,37 @@ export class TtaipService {
 
   notificarSegundaCalificacion(apelacionId: number): Observable<Apelacion> {
     return this.http.post<Apelacion>(`${this.apiUrl}/${apelacionId}/notificar-segunda-calificacion`, {});
+  }
+
+  requerirDescargos(expedienteId: number, data: RequerirDescargoEntidadPayload): Observable<DescargoEntidadTtaip> {
+    return this.http.post<DescargoEntidadTtaip>(`${this.apiUrl}/expedientes/${expedienteId}/descargos/requerir`, data);
+  }
+
+  listarDescargos(expedienteId: number): Observable<DescargoEntidadTtaip[]> {
+    return this.http.get<DescargoEntidadTtaip[]>(`${this.apiUrl}/expedientes/${expedienteId}/descargos`);
+  }
+
+  obtenerDescargoActivo(expedienteId: number): Observable<DescargoEntidadTtaip> {
+    return this.http.get<DescargoEntidadTtaip>(`${this.apiUrl}/expedientes/${expedienteId}/descargos/activo`);
+  }
+
+  presentarDescargo(
+    expedienteId: number,
+    descargoId: number,
+    data: PresentarDescargoEntidadPayload
+  ): Observable<DescargoEntidadTtaip> {
+    return this.http.post<DescargoEntidadTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/descargos/${descargoId}/presentar`,
+      data
+    );
+  }
+
+  procesarDescargosVencidos(): Observable<DescargoEntidadTtaip[]> {
+    return this.http.post<DescargoEntidadTtaip[]>(`${this.apiUrl}/descargos/vencidos/procesar`, {});
+  }
+
+  listarSuspensiones(expedienteId: number): Observable<SuspensionPlazoTtaip[]> {
+    return this.http.get<SuspensionPlazoTtaip[]>(`${this.apiUrl}/expedientes/${expedienteId}/suspensiones`);
   }
 }
 

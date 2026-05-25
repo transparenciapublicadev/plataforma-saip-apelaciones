@@ -26,6 +26,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
+- TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
 
 ## Nomenclaturas
 
@@ -243,6 +244,15 @@ El sistema actual deriva la apelacion ciudadana directamente al TTAIP y no model
 - Cuando se admite la apelacion, el TTAIP requiere a la entidad descargos y/o expediente administrativo.
 - La entidad tiene 7 dias habiles para presentar descargos y remitir expediente.
 - El plazo de 10 dias habiles para resolver se suspende durante este periodo.
+- Implementacion actual: `DescargoEntidadTtaip` registra expediente, apelacion, entidad, fecha de requerimiento, fecha limite de descargo, fecha de presentacion, estado, resumen, documento o referencia, responsable de entidad, observacion y trazabilidad.
+- El requerimiento solo se permite cuando el expediente esta en `EN_RESOLUCION`, es decir, luego de una admision valida.
+- No se permite mas de un descargo activo `REQUERIDO` por expediente.
+- Al requerir descargos se crea `SuspensionPlazoTtaip` con motivo `DESCARGOS_ENTIDAD`, estado `ACTIVA`, inicio en la fecha de requerimiento, fin planificado en 7 dias habiles y `diasSuspendidos = 7`.
+- Si la entidad presenta descargos dentro del plazo, el descargo queda `PRESENTADO`, la suspension queda `CERRADA` y los dias suspendidos se recalculan segun los dias habiles efectivamente transcurridos.
+- Si presenta fuera de plazo, queda `PRESENTADO_EXTEMPORANEO`; la suspension se considera cerrada al limite legal de 7 dias habiles.
+- Si vence sin presentacion, el procesamiento operativo marca el descargo como `VENCIDO_SIN_PRESENTACION`, cierra la suspension como `VENCIDA` y el expediente puede continuar.
+- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma los dias suspendidos registrados.
+- Postman/Newman valida requerimiento positivo, rechazo por duplicado activo, consultas, presentacion de descargo, suspensiones y procesamiento de vencidos.
 
 ### Segunda calificacion
 
@@ -319,6 +329,8 @@ ExpedienteTtaip
   -> Resoluciones
       -> CedulasNotificacion
           -> Notificaciones
+  -> DescargosEntidad
+  -> SuspensionesPlazo
   -> ReprocesosNotificacion
   -> HistorialTtaip
 ```
@@ -328,8 +340,10 @@ Reglas:
 - Cada resolucion debe pertenecer al expediente.
 - Cada cedula debe pertenecer a una resolucion.
 - Cada notificacion debe pertenecer al expediente y referenciar su cedula.
+- Cada descargo de entidad debe pertenecer al expediente y a la apelacion, y debe identificar la entidad requerida.
+- Cada suspension de plazo debe pertenecer al expediente y, cuando corresponda, referenciar el descargo que la origina.
 - Cada reproceso debe pertenecer al expediente y conservar la cedula/notificacion original.
-- El historial registra apertura, cambios de estado, resoluciones, cedulas, notificaciones, reprocesos, subsanaciones y auditoria.
+- El historial registra apertura, cambios de estado, resoluciones, cedulas, notificaciones, descargos, suspensiones, reprocesos, subsanaciones y auditoria.
 
 ## Estados TTAIP
 
