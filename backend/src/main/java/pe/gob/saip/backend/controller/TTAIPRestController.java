@@ -10,11 +10,16 @@ import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
+import pe.gob.saip.backend.model.dto.CerrarCumplimientoResolucionRequest;
+import pe.gob.saip.backend.model.dto.CrearSeguimientoCumplimientoRequest;
+import pe.gob.saip.backend.model.dto.CumplimientoResolucionTtaipDTO;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
 import pe.gob.saip.backend.model.dto.NotificacionTtaipDTO;
+import pe.gob.saip.backend.model.dto.ObservarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
@@ -320,6 +325,65 @@ public class TTAIPRestController {
             @Parameter(description = "ID de la suspensión") @PathVariable Long suspensionId,
             @Valid @RequestBody CancelarSuspensionTtaipRequest request) {
         return ResponseEntity.ok(ttaipService.cancelarSuspension(expedienteId, suspensionId, request));
+    }
+
+    @Operation(
+            summary = "Crear seguimiento de cumplimiento de resolución fundada",
+            description = "Abre seguimiento para que la entidad cumpla una resolución final FUNDADO o FUNDADO_EN_PARTE en 7 días hábiles."
+    )
+    @PostMapping("/expedientes/{expedienteId}/resoluciones/{resolucionId}/cumplimientos")
+    public ResponseEntity<CumplimientoResolucionTtaipDTO> crearSeguimientoCumplimiento(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la resolución final") @PathVariable Long resolucionId,
+            @Valid @RequestBody CrearSeguimientoCumplimientoRequest request) {
+        return ResponseEntity.ok(ttaipService.crearSeguimientoCumplimiento(expedienteId, resolucionId, request));
+    }
+
+    @Operation(summary = "Listar cumplimientos de resolución de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/cumplimientos")
+    public ResponseEntity<List<CumplimientoResolucionTtaipDTO>> listarCumplimientos(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.listarCumplimientos(expedienteId));
+    }
+
+    @Operation(summary = "Consultar cumplimiento activo de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/cumplimientos/activo")
+    public ResponseEntity<CumplimientoResolucionTtaipDTO> obtenerCumplimientoActivo(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.obtenerCumplimientoActivo(expedienteId));
+    }
+
+    @Operation(summary = "Registrar cumplimiento comunicado por entidad pública")
+    @PostMapping("/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/registrar")
+    public ResponseEntity<CumplimientoResolucionTtaipDTO> registrarCumplimiento(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID del seguimiento de cumplimiento") @PathVariable Long cumplimientoId,
+            @Valid @RequestBody RegistrarCumplimientoResolucionRequest request) {
+        return ResponseEntity.ok(ttaipService.registrarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Operation(summary = "Observar cumplimiento de resolución")
+    @PatchMapping("/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/observar")
+    public ResponseEntity<CumplimientoResolucionTtaipDTO> observarCumplimiento(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID del seguimiento de cumplimiento") @PathVariable Long cumplimientoId,
+            @Valid @RequestBody ObservarCumplimientoResolucionRequest request) {
+        return ResponseEntity.ok(ttaipService.observarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Operation(summary = "Cerrar seguimiento de cumplimiento de resolución")
+    @PatchMapping("/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/cerrar")
+    public ResponseEntity<CumplimientoResolucionTtaipDTO> cerrarCumplimiento(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID del seguimiento de cumplimiento") @PathVariable Long cumplimientoId,
+            @Valid @RequestBody CerrarCumplimientoResolucionRequest request) {
+        return ResponseEntity.ok(ttaipService.cerrarCumplimiento(expedienteId, cumplimientoId, request));
+    }
+
+    @Operation(summary = "Procesar cumplimientos vencidos")
+    @PostMapping("/cumplimientos/vencidos/procesar")
+    public ResponseEntity<List<CumplimientoResolucionTtaipDTO>> procesarCumplimientosVencidos() {
+        return ResponseEntity.ok(ttaipService.procesarCumplimientosVencidos());
     }
 }
 
