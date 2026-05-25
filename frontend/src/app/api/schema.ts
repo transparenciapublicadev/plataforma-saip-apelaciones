@@ -101,6 +101,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar usuarios del sistema */
+        get: operations["listar"];
+        put?: never;
+        /** Crear usuario base desde administración */
+        post: operations["crear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/{apelacionId}/notificar-segunda-calificacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Notificar segunda calificación al ciudadano
+         * @description Registra la notificación de la resolución de segunda calificación. Inicia el plazo de resolución final.
+         */
+        post: operations["notificarSegundaCalificacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/resolucion/{apelacionId}/sustraccion-materia": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Conclusión por sustracción de la materia
+         * @description La entidad entrega la información durante el trámite de apelación
+         */
+        post: operations["declararConclusionSustraccion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/resolucion/{apelacionId}/infundado-en-parte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar apelación infundada en parte
+         * @description Resolución final: desestimación parcial del recurso
+         */
+        post: operations["declararInfundadoEnParte"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/resolucion/{apelacionId}/infundado": {
         parameters: {
             query?: never;
@@ -135,6 +213,46 @@ export interface paths {
          * @description Resolución final: confirma la denegación de la entidad
          */
         post: operations["declararInfundado_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/resolucion/{apelacionId}/improcedente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar improcedente en resolución final
+         * @description Resolución final: no cumple requisitos formales o de fondo
+         */
+        post: operations["declararImprocedenteFinal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/resolucion/{apelacionId}/fundado-en-parte": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar apelación fundada en parte
+         * @description Resolución final: amparo parcial del recurso
+         */
+        post: operations["declararFundadoEnParte"];
         delete?: never;
         options?: never;
         head?: never;
@@ -181,6 +299,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/resolucion/{apelacionId}/desistimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Conclusión por desistimiento
+         * @description El ciudadano desiste voluntariamente del recurso
+         */
+        post: operations["declararConclusionDesistimiento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/notificaciones/reprocesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reprocesar notificación TTAIP fallida
+         * @description Registra una falla de notificación y genera una nueva cédula para el mismo destinatario afectado, sin borrar la cédula original.
+         */
+        post: operations["reprocesarNotificacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Presentar descargo de entidad
+         * @description Registra el descargo y/o expediente administrativo de la entidad pública, cierra la suspensión y recalcula el plazo de resolución.
+         */
+        post: operations["presentarDescargo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/descargos/requerir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Requerir descargos de entidad
+         * @description Registra el requerimiento de descargos y expediente administrativo a la entidad pública. Suspende el plazo de resolución final por 7 días hábiles.
+         */
+        post: operations["requerirDescargos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/descargos/vencidos/procesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Procesar descargos vencidos */
+        post: operations["procesarDescargosVencidos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/calificacion/{apelacionId}/subsanar": {
         parameters: {
             query?: never;
@@ -195,6 +410,26 @@ export interface paths {
          * @description Primera calificación: solicita al ciudadano subsanar la apelación en 2 días hábiles
          */
         post: operations["requerirSubsanacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/calificacion/{apelacionId}/no-presentado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar tener por no presentado
+         * @description El ciudadano no subsanó en plazo de 2 días hábiles tras inadmisible
+         */
+        post: operations["declararTenerPorNoPresentado"];
         delete?: never;
         options?: never;
         head?: never;
@@ -263,13 +498,157 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todas las solicitudes SAIP */
-        get: operations["listar"];
+        get: operations["listar_1"];
         put?: never;
         /**
          * Crear solicitud SAIP
          * @description Genera automáticamente expediente y fecha límite (10 días hábiles)
          */
-        post: operations["crear"];
+        post: operations["crear_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/observaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar observaciones y subsanaciones SAIP */
+        get: operations["listarObservaciones"];
+        put?: never;
+        /**
+         * Observar solicitud SAIP
+         * @description Registra una observación formal dentro de los 2 primeros días hábiles y abre plazo de subsanación ciudadana de 2 días hábiles.
+         */
+        post: operations["observarSolicitud"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/observaciones/{observacionId}/subsanar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subsanar observación SAIP
+         * @description Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión.
+         */
+        post: operations["subsanarSolicitud"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/liquidaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar liquidaciones o cupones de una SAIP */
+        get: operations["listarLiquidaciones"];
+        put?: never;
+        /**
+         * Emitir liquidación o cupón SAIP
+         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.
+         */
+        post: operations["emitirLiquidacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/encauzamientos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar encauzamientos de una SAIP */
+        get: operations["listarEncauzamientos"];
+        put?: never;
+        /**
+         * Registrar encauzamiento SAIP
+         * @description Registra el encauzamiento total o parcial de una SAIP a la entidad competente dentro de los 2 días hábiles.
+         */
+        post: operations["registrarEncauzamiento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/ampliaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar ampliaciones de plazo de una SAIP */
+        get: operations["listarAmpliaciones"];
+        put?: never;
+        /**
+         * Registrar ampliación de plazo SAIP
+         * @description Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.
+         */
+        post: operations["registrarAmpliacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/observaciones/vencidas/procesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Procesar observaciones SAIP vencidas
+         * @description Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA.
+         */
+        post: operations["procesarObservacionesVencidas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/liquidaciones/vencidas/procesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Procesar liquidaciones vencidas por no recojo
+         * @description Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.
+         */
+        post: operations["procesarLiquidacionesVencidas"];
         delete?: never;
         options?: never;
         head?: never;
@@ -284,10 +663,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todas las respuestas */
-        get: operations["listar_1"];
+        get: operations["listar_2"];
         put?: never;
         /** Crear respuesta a solicitud SAIP */
-        post: operations["crear_1"];
+        post: operations["crear_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -342,10 +721,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todos los funcionarios */
-        get: operations["listar_2"];
+        get: operations["listar_3"];
         put?: never;
         /** Registrar funcionario */
-        post: operations["crear_2"];
+        post: operations["crear_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -360,10 +739,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todas las entidades públicas */
-        get: operations["listar_3"];
+        get: operations["listar_4"];
         put?: never;
         /** Registrar entidad pública */
-        post: operations["crear_3"];
+        post: operations["crear_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -378,10 +757,10 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todos los ciudadanos */
-        get: operations["listar_4"];
+        get: operations["listar_5"];
         put?: never;
         /** Registrar ciudadano */
-        post: operations["crear_4"];
+        post: operations["crear_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -419,7 +798,7 @@ export interface paths {
         put?: never;
         /**
          * Iniciar sesión
-         * @description Autentica al usuario y retorna un token JWT con datos del perfil según su rol
+         * @description Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.
          */
         post: operations["login"];
         delete?: never;
@@ -436,13 +815,13 @@ export interface paths {
             cookie?: never;
         };
         /** Listar todas las apelaciones */
-        get: operations["listar_5"];
+        get: operations["listar_6"];
         put?: never;
         /**
          * Crear apelación
          * @description Crea apelación ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante
          */
-        post: operations["crear_5"];
+        post: operations["crear_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -469,6 +848,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/{id}/estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Activar o desactivar usuario */
+        patch: operations["cambiarEstado"];
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/liquidaciones/{liquidacionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar pago o recojo de liquidación SAIP */
+        patch: operations["actualizarLiquidacion"];
+        trace?: never;
+    };
     "/api/solicitudes/{id}/estado": {
         parameters: {
             query?: never;
@@ -483,7 +896,24 @@ export interface paths {
         options?: never;
         head?: never;
         /** Cambiar estado de solicitud */
-        patch: operations["cambiarEstado"];
+        patch: operations["cambiarEstado_1"];
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Actualizar estado de una entrega parcial SAIP */
+        patch: operations["actualizarEntregaParcial"];
         trace?: never;
     };
     "/api/funcionarios/{id}/estado": {
@@ -500,7 +930,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Activar o desactivar funcionario */
-        patch: operations["cambiarEstado_1"];
+        patch: operations["cambiarEstado_2"];
         trace?: never;
     };
     "/api/entidades/{id}/estado": {
@@ -517,7 +947,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Cambiar estado de entidad */
-        patch: operations["cambiarEstado_2"];
+        patch: operations["cambiarEstado_3"];
         trace?: never;
     };
     "/api/ciudadanos/{id}/estado": {
@@ -534,7 +964,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Activar o desactivar ciudadano */
-        patch: operations["cambiarEstado_3"];
+        patch: operations["cambiarEstado_4"];
         trace?: never;
     };
     "/api/apelaciones/{id}/estado": {
@@ -551,7 +981,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Cambiar estado de apelación */
-        patch: operations["cambiarEstado_4"];
+        patch: operations["cambiarEstado_5"];
         trace?: never;
     };
     "/api/ttaip/subsanacion": {
@@ -622,6 +1052,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar suspensiones de plazo de un expediente TTAIP */
+        get: operations["listarSuspensiones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/descargos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar descargos de un expediente TTAIP */
+        get: operations["listarDescargos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/descargos/activo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener descargo activo de un expediente TTAIP */
+        get: operations["obtenerDescargoActivo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/estadisticas": {
         parameters: {
             query?: never;
@@ -639,6 +1120,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/en-resolucion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar apelaciones en resolución
+         * @description Apelaciones admitidas pendientes de resolución final
+         */
+        get: operations["listarEnResolucion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/en-calificacion": {
         parameters: {
             query?: never;
@@ -648,6 +1149,74 @@ export interface paths {
         };
         /** Listar apelaciones en primera calificación */
         get: operations["listarEnCalificacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/liquidaciones/activa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar liquidación o cupón activo de una SAIP */
+        get: operations["obtenerLiquidacionActiva"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/encauzamientos/activo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar encauzamiento activo de una SAIP */
+        get: operations["obtenerEncauzamientoActivo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/ampliaciones/cronograma": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar cronograma de entregas parciales de una SAIP */
+        get: operations["listarCronogramaAmpliacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/publica/expediente/{expediente}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulta pública enmascarada de solicitud por expediente */
+        get: operations["obtenerPublicaPorExpediente"];
         put?: never;
         post?: never;
         delete?: never;
@@ -685,7 +1254,7 @@ export interface paths {
         };
         /**
          * Listar solicitudes por estado
-         * @description Estados: PENDIENTE, RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, APELADA, CONCLUIDA, VENCIDA
+         * @description Estados: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA
          */
         get: operations["listarPorEstado"];
         put?: never;
@@ -950,6 +1519,46 @@ export interface paths {
          * @description Filtrable por estado y rango de fechas
          */
         get: operations["reporteApelaciones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener datos públicos de portada
+         * @description Devuelve métricas agregadas, tendencias y miembros TTAIP sin datos sensibles
+         */
+        get: operations["obtenerPortal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/ayuda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener contenido del centro de ayuda
+         * @description Devuelve categorías, preguntas frecuentes y contacto institucional
+         */
+        get: operations["obtenerAyuda"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1257,6 +1866,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/expediente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener apelación por expediente TTAIP
+         * @description Formato: NNNNN-AAAA-JUS/TTAIP
+         */
+        get: operations["obtenerPorExpedienteQuery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/expediente/{expediente}": {
         parameters: {
             query?: never;
@@ -1269,6 +1898,26 @@ export interface paths {
          * @description Formato: NNNNN-AAAA-JUS/TTAIP
          */
         get: operations["obtenerPorExpediente_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/expediente/**": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obtener apelación por expediente TTAIP
+         * @description Formato: NNNNN-AAAA-JUS/TTAIP
+         */
+        get: operations["obtenerPorExpediente_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1328,10 +1977,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar usuario */
+        delete: operations["eliminar_5"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Ampliación de plazo SAIP con informe y cronograma de entregas parciales */
+        AmpliacionPlazoSolicitudDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            solicitudId?: number;
+            expediente?: string;
+            motivoAmpliacion?: string;
+            informeAmpliacion?: string;
+            fechaSolicitudAmpliacion?: string;
+            fechaNotificacionAmpliacion?: string;
+            fechaLimiteOriginal?: string;
+            fechaLimiteAmpliada?: string;
+            estadoAmpliacion?: string;
+            responsable?: string;
+            trazabilidad?: string;
+            cronograma?: components["schemas"]["CronogramaEntregaParcialDTO"][];
+        };
         /** @description Resumen de apelación asociada a una solicitud */
         ApelacionInfoDTO: {
             /** Format: int64 */
@@ -1344,6 +2028,20 @@ export interface components {
             /** Format: int32 */
             diasSubsanacion?: number;
         };
+        /** @description Entrega parcial programada dentro de una ampliación de plazo SAIP */
+        CronogramaEntregaParcialDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            ampliacionId?: number;
+            /** Format: int32 */
+            numeroEntrega?: number;
+            descripcion?: string;
+            fechaProgramada?: string;
+            estado?: string;
+            fechaEntregaReal?: string;
+            observacion?: string;
+        };
         /** @description Documento adjunto a solicitud, respuesta, apelación o resolución */
         DocumentoDTO: {
             /** Format: int64 */
@@ -1355,6 +2053,71 @@ export interface components {
             tamanio?: number;
             tipoDocumento?: string;
             fechaSubida?: string;
+        };
+        /** @description Encauzamiento formal de una solicitud SAIP hacia una entidad competente */
+        EncauzamientoSolicitudDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            solicitudId?: number;
+            expediente?: string;
+            /** Format: int64 */
+            entidadOrigenId?: number;
+            entidadOrigenNombre?: string;
+            entidadOrigenAcronimo?: string;
+            /** Format: int64 */
+            entidadDestinoId?: number;
+            entidadDestinoNombre?: string;
+            entidadDestinoAcronimo?: string;
+            motivoEncauzamiento?: string;
+            alcance?: string;
+            fechaEncauzamiento?: string;
+            fechaLimiteEncauzamiento?: string;
+            estadoEncauzamiento?: string;
+            responsable?: string;
+            observacionSustento?: string;
+            trazabilidad?: string;
+        };
+        /** @description Liquidación o cupón de pago para entrega física de información SAIP */
+        LiquidacionCostoSolicitudDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            solicitudId?: number;
+            expediente?: string;
+            codigoLiquidacion?: string;
+            monto?: string;
+            moneda?: string;
+            concepto?: string;
+            fechaEmision?: string;
+            fechaNotificacion?: string;
+            fechaLimiteRecojo?: string;
+            estadoLiquidacion?: string;
+            medioNotificacion?: string;
+            responsable?: string;
+            observacion?: string;
+            trazabilidad?: string;
+            fechaPago?: string;
+            fechaRecojo?: string;
+        };
+        /** @description Observación y subsanación formal de una solicitud SAIP */
+        ObservacionSolicitudDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            solicitudId?: number;
+            expediente?: string;
+            motivoObservacion?: string;
+            fechaObservacion?: string;
+            fechaLimiteSubsanacion?: string;
+            fechaSubsanacion?: string;
+            comentarioSubsanacion?: string;
+            documentoSubsanacionNombre?: string;
+            documentoSubsanacionRuta?: string;
+            estado?: string;
+            trazabilidad?: string;
+            responsableObservacion?: string;
+            responsableSubsanacion?: string;
         };
         /** @description Respuesta de funcionario a solicitud SAIP */
         RespuestaDTO: {
@@ -1427,7 +2190,10 @@ export interface components {
             copiaSimple?: boolean;
             copiaCertificada?: boolean;
             tipoInformacion?: string;
-            /** @description Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP */
+            /**
+             * @description Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP
+             * @example true
+             */
             consentimientoDatosPersonales?: boolean;
             /**
              * @description Canal formal elegido para notificaciones
@@ -1439,61 +2205,9 @@ export interface components {
             apelacion?: components["schemas"]["ApelacionInfoDTO"];
             documentos?: components["schemas"]["DocumentoDTO"][];
             observaciones?: components["schemas"]["ObservacionSolicitudDTO"][];
-        };
-        /** @description Observación y subsanación formal de una solicitud SAIP */
-        ObservacionSolicitudDTO: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            solicitudId?: number;
-            expediente?: string;
-            motivoObservacion?: string;
-            fechaObservacion?: string;
-            fechaLimiteSubsanacion?: string;
-            fechaSubsanacion?: string;
-            comentarioSubsanacion?: string;
-            documentoSubsanacionNombre?: string;
-            documentoSubsanacionRuta?: string;
-            estado?: "PENDIENTE_SUBSANACION" | "SUBSANADA" | "NO_SUBSANADA" | "ARCHIVADA";
-            trazabilidad?: string;
-            responsableObservacion?: string;
-            responsableSubsanacion?: string;
-        };
-        /** @description Solicitud para observar una SAIP dentro de los 2 primeros días hábiles */
-        ObservarSolicitudRequest: {
-            /**
-             * @description Motivo formal de observación
-             * @example El pedido no identifica con claridad la información solicitada.
-             */
-            motivoObservacion: string;
-            /**
-             * @description Responsable que registra la observación
-             * @example Mesa de Partes de la entidad
-             */
-            responsable?: string;
-        };
-        /** @description Subsanación ciudadana de una observación SAIP */
-        SubsanarSolicitudRequest: {
-            /**
-             * @description Comentario o fundamento de subsanación
-             * @example Preciso que solicito el presupuesto ejecutado del programa X durante 2025.
-             */
-            comentarioSubsanacion?: string;
-            /**
-             * @description Nombre del documento de subsanación, si aplica
-             * @example subsanacion-saip.pdf
-             */
-            documentoSubsanacionNombre?: string;
-            /**
-             * @description Ruta o referencia del documento de subsanación, si aplica
-             * @example /uploads/saip/subsanacion-saip.pdf
-             */
-            documentoSubsanacionRuta?: string;
-            /**
-             * @description Responsable que registra la subsanación
-             * @example Ciudadano
-             */
-            responsable?: string;
+            ampliacionesPlazo?: components["schemas"]["AmpliacionPlazoSolicitudDTO"][];
+            encauzamientos?: components["schemas"]["EncauzamientoSolicitudDTO"][];
+            liquidacionesCosto?: components["schemas"]["LiquidacionCostoSolicitudDTO"][];
         };
         /** @description Funcionario de entidad pública */
         FuncionarioDTO: {
@@ -1577,7 +2291,7 @@ export interface components {
             fundamentos?: string;
             /**
              * @description Estado de la apelación
-             * @example PENDIENTE
+             * @example EN_CALIFICACION_1
              */
             estado?: string;
             resultado?: string;
@@ -1597,17 +2311,149 @@ export interface components {
             /** Format: int64 */
             entidadId?: number;
             entidadNombre?: string;
+            /** @description Resolución final (RESOLUCION_FINAL) */
             resolucion?: components["schemas"]["ResolucionDTO"];
             /** @description Resolución de primera calificación (PRIMERA_CALIFICACION) */
             resolucionPrimeraCalificacion?: components["schemas"]["ResolucionDTO"];
             /** @description Resolución de segunda calificación (SEGUNDA_CALIFICACION) */
             resolucionSegundaCalificacion?: components["schemas"]["ResolucionDTO"];
+            /** @description Expediente TTAIP como agregado principal de la segunda instancia */
+            expedienteTtaip?: components["schemas"]["ExpedienteTtaipDTO"];
+            /** @description Todas las resoluciones emitidas dentro del expediente */
+            resoluciones?: components["schemas"]["ResolucionDTO"][];
             documentos?: components["schemas"]["DocumentoDTO"][];
+        };
+        /** @description Cédula de notificación emitida para una resolución TTAIP */
+        CedulaNotificacionDTO: {
+            /** Format: int64 */
+            id?: number;
+            numeroCedula?: string;
+            destinatario?: string;
+            destinatarioNombre?: string;
+            destinatarioEmail?: string;
+            fechaEmision?: string;
+            canal?: string;
+            estado?: string;
+            documentoReferencia?: string;
+        };
+        /** @description Descargo presentado o requerido a la entidad pública dentro de un expediente TTAIP */
+        DescargoEntidadTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            expedienteTtaipId?: number;
+            numeroExpediente?: string;
+            /** Format: int64 */
+            apelacionId?: number;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            fechaRequerimiento?: string;
+            fechaLimiteDescargo?: string;
+            fechaPresentacion?: string;
+            estadoDescargo?: string;
+            resumenDescargo?: string;
+            documentoDescargo?: string;
+            responsableEntidad?: string;
+            observacion?: string;
+            trazabilidad?: string;
+        };
+        /** @description Expediente TTAIP como agregado principal de la segunda instancia */
+        ExpedienteTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            numeroExpediente?: string;
+            estado?: string;
+            fechaApertura?: string;
+            fechaActualizacion?: string;
+            fechaPrimeraCalificacion?: string;
+            fechaSegundaCalificacion?: string;
+            fechaResolucionFinal?: string;
+            fechaLimiteResolucion?: string;
+            trazabilidadMinima?: string;
+            sala?: components["schemas"]["SalaTtaipDTO"];
+            miembros?: components["schemas"]["MiembroTTAIPDTO"][];
+            resoluciones?: components["schemas"]["ResolucionDTO"][];
+            cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
+            notificaciones?: components["schemas"]["NotificacionTtaipDTO"][];
+            historial?: components["schemas"]["HistorialTtaipDTO"][];
+            reprocesos?: components["schemas"]["ReprocesoNotificacionDTO"][];
+            descargosEntidad?: components["schemas"]["DescargoEntidadTtaipDTO"][];
+            suspensionesPlazo?: components["schemas"]["SuspensionPlazoTtaipDTO"][];
+        };
+        /** @description Evento de trazabilidad del expediente TTAIP */
+        HistorialTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            tipoEvento?: string;
+            descripcion?: string;
+            estadoAnterior?: string;
+            estadoNuevo?: string;
+            actor?: string;
+            referencia?: string;
+            fechaEvento?: string;
+        };
+        /** @description Miembro del Tribunal de Transparencia asignado a una sala o expediente */
+        MiembroTTAIPDTO: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            cargo?: string;
+            sala?: string;
+            especialidad?: string;
+            email?: string;
+            periodoInicio?: string;
+            periodoFin?: string;
+            presidenteTribunal?: boolean;
+        };
+        /** @description Notificación TTAIP asociada a una cédula y a un destinatario */
+        NotificacionTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            numeroCedula?: string;
+            destinatario?: string;
+            destinatarioNombre?: string;
+            destinatarioEmail?: string;
+            fechaNotificacion?: string;
+            medio?: string;
+            estado?: string;
+            detalle?: string;
+        };
+        /** @description Reproceso de notificación vinculado a una cédula del expediente TTAIP */
+        ReprocesoNotificacionDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            notificacionId?: number;
+            /** Format: int64 */
+            cedulaOriginalId?: number;
+            /** Format: int64 */
+            cedulaNuevaId?: number;
+            /** Format: int64 */
+            notificacionNuevaId?: number;
+            /** Format: int64 */
+            reprocesoPadreId?: number;
+            destinatario?: string;
+            numeroCedulaOriginal?: string;
+            numeroCedulaNueva?: string;
+            fechaIngresoCargo?: string;
+            observacionReproceso?: string;
+            fechaSubsanacion?: string;
+            cedulaSubsanacion?: string;
+            fechaCedulaSubsanacion?: string;
+            /** Format: int32 */
+            numeroIntento?: number;
+            estado?: string;
+            responsableNotificacion?: string;
+            responsableSubsanacion?: string;
+            fechaCreacion?: string;
+            fechaActualizacion?: string;
         };
         /** @description Resolución del TTAIP sobre una apelación */
         ResolucionDTO: {
             /** Format: int64 */
             id?: number;
+            numeroResolucion?: string;
             tipoResolucion?: string;
             decision?: string;
             fundamentos?: string;
@@ -1617,6 +2463,50 @@ export interface components {
             miembroTTAIPId?: number;
             miembroTTAIPNombre?: string;
             iniciarProcesoDisciplinario?: boolean;
+            sala?: components["schemas"]["SalaTtaipDTO"];
+            cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
+        };
+        /** @description Sala del Tribunal de Transparencia asignada a un expediente */
+        SalaTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            periodoInicio?: string;
+            periodoFin?: string;
+            presidenteSala?: components["schemas"]["MiembroTTAIPDTO"];
+        };
+        /** @description Suspensión de plazo de resolución final dentro de un expediente TTAIP */
+        SuspensionPlazoTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            expedienteTtaipId?: number;
+            numeroExpediente?: string;
+            /** Format: int64 */
+            descargoId?: number;
+            motivoSuspension?: string;
+            fechaInicioSuspension?: string;
+            fechaFinSuspension?: string;
+            /** Format: int32 */
+            diasSuspendidos?: number;
+            estadoSuspension?: string;
+            trazabilidad?: string;
+        };
+        CrearUsuarioAdminRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+            tipoUsuario: string;
+        };
+        /** @description Usuario del sistema visible para administración */
+        UsuarioAdminDTO: {
+            /** Format: int64 */
+            id?: number;
+            email?: string;
+            tipoUsuario?: string;
+            fechaRegistro?: string;
+            activo?: boolean;
+            nombre?: string;
         };
         /** @description Datos para emitir resolución final de apelación */
         ResolucionRequest: {
@@ -1624,6 +2514,78 @@ export interface components {
             /** Format: int64 */
             miembroId?: number;
             iniciarProcesoDisciplinario?: boolean;
+        };
+        /** @description Solicitud de reproceso para una notificación TTAIP fallida o defectuosa */
+        ReprocesarNotificacionRequest: {
+            /**
+             * @description Número de la cédula original que tuvo la notificación fallida
+             * @example 15207-2025-JUS/TTAIP
+             */
+            numeroCedulaOriginal: string;
+            /**
+             * @description Destinatario afectado por la notificación fallida
+             * @example ENTIDAD_PUBLICA
+             * @enum {string}
+             */
+            destinatario: "CIUDADANO" | "ENTIDAD_PUBLICA";
+            /**
+             * @description Motivo funcional del reproceso
+             * @example Cargo de notificación observado; corresponde emitir nueva cédula al mismo destinatario.
+             */
+            observacion: string;
+            /**
+             * @description Responsable que registra el reproceso
+             * @example Mesa de Partes TTAIP
+             */
+            responsable?: string;
+        };
+        /** @description Presentación de descargo y expediente administrativo por la entidad pública */
+        PresentarDescargoEntidadRequest: {
+            /**
+             * Format: date
+             * @description Fecha de presentación. Si no se envía, se usa la fecha actual.
+             * @example 2026-05-27
+             */
+            fechaPresentacion?: string;
+            /**
+             * @description Resumen del descargo presentado
+             * @example La entidad remite expediente administrativo y sustenta la atención otorgada.
+             */
+            resumenDescargo: string;
+            /**
+             * @description Referencia del documento o cargo adjunto
+             * @example EXP-ADM-2026-00015.pdf
+             */
+            referenciaDocumento?: string;
+            /**
+             * @description Responsable que presenta el descargo
+             * @example Funcionario de Transparencia
+             */
+            responsableEntidad: string;
+            /**
+             * @description Observación adicional
+             * @example Se adjunta cargo de remisión del expediente administrativo.
+             */
+            observacion?: string;
+        };
+        /** @description Requerimiento de descargos a entidad pública dentro de un expediente TTAIP */
+        RequerirDescargoEntidadRequest: {
+            /**
+             * Format: date
+             * @description Fecha del requerimiento. Si no se envía, se usa la fecha actual.
+             * @example 2026-05-25
+             */
+            fechaRequerimiento?: string;
+            /**
+             * @description Responsable TTAIP que registra el requerimiento
+             * @example Secretaría Técnica TTAIP
+             */
+            responsableTtaip?: string;
+            /**
+             * @description Observación o sustento del requerimiento
+             * @example Se requiere expediente administrativo y descargos de la entidad.
+             */
+            observacion?: string;
         };
         /** @description Datos para calificación de apelación por miembro TTAIP */
         CalificacionRequest: {
@@ -1633,6 +2595,154 @@ export interface components {
             observaciones?: string;
             /** Format: int32 */
             diasSubsanacion?: number;
+        };
+        /** @description Solicitud para observar una SAIP dentro de los 2 primeros días hábiles */
+        ObservarSolicitudRequest: {
+            /**
+             * @description Motivo formal de observación
+             * @example El pedido no identifica con claridad la información solicitada.
+             */
+            motivoObservacion: string;
+            /**
+             * @description Responsable que registra la observación
+             * @example Mesa de Partes de la entidad
+             */
+            responsable?: string;
+        };
+        /** @description Subsanación ciudadana de una observación SAIP */
+        SubsanarSolicitudRequest: {
+            /**
+             * @description Comentario o fundamento de subsanación
+             * @example Preciso que solicito el presupuesto ejecutado del programa X durante 2025.
+             */
+            comentarioSubsanacion?: string;
+            /**
+             * @description Nombre del documento de subsanación, si aplica
+             * @example subsanacion-saip.pdf
+             */
+            documentoSubsanacionNombre?: string;
+            /**
+             * @description Ruta o referencia del documento de subsanación, si aplica
+             * @example /uploads/saip/subsanacion-saip.pdf
+             */
+            documentoSubsanacionRuta?: string;
+            /**
+             * @description Responsable que registra la subsanación
+             * @example Ciudadano
+             */
+            responsable?: string;
+        };
+        /** @description Datos para emitir y notificar una liquidación o cupón de pago SAIP */
+        RegistrarLiquidacionCostoRequest: {
+            /** @description Código externo o número de cupón. Si se omite, el sistema lo genera. */
+            codigoLiquidacion?: string;
+            /**
+             * @description Monto de reproducción física
+             * @example 18.50
+             */
+            monto: number;
+            /**
+             * @description Moneda ISO 4217
+             * @example PEN
+             */
+            moneda?: string;
+            /**
+             * @description Detalle del costo de reproducción
+             * @example Copias simples de 37 folios
+             */
+            concepto: string;
+            /**
+             * Format: date
+             * @description Fecha en la que se notifica el cupón al ciudadano
+             */
+            fechaNotificacion: string;
+            /**
+             * @description Medio usado para notificar el cupón
+             * @enum {string}
+             */
+            medioNotificacion: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
+            responsable?: string;
+            observacion?: string;
+        };
+        /** @description Registro de encauzamiento SAIP a entidad competente */
+        RegistrarEncauzamientoSolicitudRequest: {
+            /**
+             * Format: int64
+             * @description ID de la entidad pública competente que recibirá el encauzamiento
+             * @example 2
+             */
+            entidadDestinoId: number;
+            /**
+             * @description Motivo formal por el que la entidad receptora no es competente
+             * @example La información solicitada corresponde al Ministerio de Educación.
+             */
+            motivoEncauzamiento: string;
+            /**
+             * @description Alcance del encauzamiento
+             * @example TOTAL
+             * @enum {string}
+             */
+            alcance: "TOTAL" | "PARCIAL";
+            /**
+             * @description Responsable que registra el encauzamiento
+             * @example Funcionario de Transparencia
+             */
+            responsable?: string;
+            /**
+             * @description Sustento u observación complementaria
+             * @example Se deriva solo el extremo referido a planillas históricas.
+             */
+            observacionSustento?: string;
+        };
+        /** @description Registro de ampliación de plazo SAIP con informe y cronograma */
+        RegistrarAmpliacionPlazoRequest: {
+            /**
+             * @description Motivo formal de ampliación
+             * @example El pedido comprende un volumen amplio de expedientes físicos por digitalizar.
+             */
+            motivoAmpliacion: string;
+            /**
+             * @description Informe que sustenta la ampliación y el cronograma
+             * @example Informe N.° 001-2026 que sustenta búsqueda, digitalización y entregas parciales.
+             */
+            informeAmpliacion: string;
+            /**
+             * Format: date
+             * @description Fecha en que se notificó la ampliación al ciudadano
+             * @example 2026-05-27
+             */
+            fechaNotificacionAmpliacion: string;
+            /**
+             * @description Responsable que registra y notifica la ampliación
+             * @example Funcionario de Transparencia
+             */
+            responsable?: string;
+            cronograma: components["schemas"]["RegistrarEntregaParcialRequest"][];
+        };
+        /** @description Entrega parcial del cronograma de ampliación SAIP */
+        RegistrarEntregaParcialRequest: {
+            /**
+             * Format: int32
+             * @description Número secuencial de entrega
+             * @example 1
+             */
+            numeroEntrega: number;
+            /**
+             * @description Descripción de la información que se entregará parcialmente
+             * @example Primer bloque de contratos digitalizados
+             */
+            descripcion: string;
+            /**
+             * Format: date
+             * @description Fecha programada de entrega parcial
+             * @example 2026-06-10
+             */
+            fechaProgramada: string;
+            /**
+             * @description Observación opcional de la entrega parcial
+             * @example Entrega sujeta a digitalización de archivos históricos
+             */
+            observacion?: string;
         };
         /** @description Datos para crear respuesta a solicitud SAIP */
         CrearRespuestaRequest: {
@@ -1645,7 +2755,7 @@ export interface components {
              * @example ENTREGA_TOTAL
              * @enum {string}
              */
-            tipoRespuesta: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL" | "SILENCIO_ADMINISTRATIVO";
+            tipoRespuesta: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
             contenido: string;
             causalDenegatoria?: string;
             fundamentoLegal?: string;
@@ -1686,6 +2796,145 @@ export interface components {
             identificador: string;
             /** @description Contraseña */
             password: string;
+        };
+        /** @description Actualización operativa de pago o recojo de una liquidación SAIP */
+        ActualizarLiquidacionCostoRequest: {
+            /**
+             * @description Estado destino
+             * @enum {string}
+             */
+            estado: "PAGADA" | "RECOGIDA" | "CANCELADA";
+            /**
+             * Format: date
+             * @description Fecha de pago. Si se omite al marcar PAGADA, se usa la fecha actual.
+             */
+            fechaPago?: string;
+            /**
+             * Format: date
+             * @description Fecha de recojo. Si se omite al marcar RECOGIDA, se usa la fecha actual.
+             */
+            fechaRecojo?: string;
+            responsable?: string;
+            observacion?: string;
+        };
+        /** @description Actualización del estado de una entrega parcial SAIP */
+        ActualizarEntregaParcialRequest: {
+            /**
+             * @description Estado de la entrega parcial
+             * @example ENTREGADA
+             * @enum {string}
+             */
+            estado: "PROGRAMADA" | "ENTREGADA" | "OBSERVADA" | "CANCELADA" | "VENCIDA";
+            /**
+             * Format: date
+             * @description Fecha real de entrega, obligatoria cuando el estado es ENTREGADA
+             * @example 2026-06-10
+             */
+            fechaEntregaReal?: string;
+            /**
+             * @description Observación del avance o incidencia de la entrega parcial
+             * @example Entrega digital enviada por casilla electrónica.
+             */
+            observacion?: string;
+        };
+        /** @description Vista pública y enmascarada del estado de una solicitud SAIP */
+        ConsultaPublicaSolicitudDTO: {
+            expediente?: string;
+            ciudadano?: string;
+            entidad?: string;
+            fechaPresentacion?: string;
+            fechaLimite?: string;
+            /** Format: int32 */
+            diasTranscurridos?: number;
+            /** Format: int32 */
+            diasRestantes?: number;
+            estado?: string;
+            asunto?: string;
+            respuestaFecha?: string;
+            respuestaTipo?: string;
+            apelacionExpediente?: string;
+            apelacionEstado?: string;
+            apelacionFecha?: string;
+            resolucionFecha?: string;
+            resolucionResultado?: string;
+        };
+        PortalDistribucionDTO: {
+            etiqueta?: string;
+            /** Format: int64 */
+            valor?: number;
+        };
+        PortalEjemploDTO: {
+            icono?: string;
+            texto?: string;
+        };
+        PortalFaqDTO: {
+            pregunta?: string;
+            respuesta?: string;
+        };
+        PortalMetricasDTO: {
+            /** Format: int64 */
+            saipPresentadas?: number;
+            /** Format: int64 */
+            respondidas?: number;
+            /** Format: int64 */
+            apelaciones?: number;
+            /** Format: int64 */
+            entidades?: number;
+            /** Format: int64 */
+            personasApelantes?: number;
+            /** Format: double */
+            tasaResolucion?: number;
+        };
+        PortalMiembroTTAIPDTO: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            cargo?: string;
+            sala?: string;
+            especialidad?: string;
+            email?: string;
+            periodoInicio?: string;
+            periodoFin?: string;
+            presidenteTribunal?: boolean;
+        };
+        /** @description Datos públicos agregados para la portada de la plataforma */
+        PortalPublicoDTO: {
+            metricas?: components["schemas"]["PortalMetricasDTO"];
+            ejemplosSolicitud?: components["schemas"]["PortalEjemploDTO"][];
+            preguntasFrecuentes?: components["schemas"]["PortalFaqDTO"][];
+            apelacionesPorEntidad?: components["schemas"]["PortalDistribucionDTO"][];
+            tendenciaMensual?: components["schemas"]["PortalTendenciaDTO"][];
+            miembrosTTAIP?: components["schemas"]["PortalMiembroTTAIPDTO"][];
+        };
+        PortalTendenciaDTO: {
+            /** Format: int32 */
+            mes?: number;
+            etiqueta?: string;
+            /** Format: int64 */
+            solicitudes?: number;
+            /** Format: int64 */
+            apelaciones?: number;
+        };
+        /** @description Contenido público del centro de ayuda */
+        AyudaPublicaDTO: {
+            categorias?: components["schemas"]["CategoriaAyudaDTO"][];
+            contacto?: components["schemas"]["ContactoAyudaDTO"];
+        };
+        CategoriaAyudaDTO: {
+            id?: string;
+            titulo?: string;
+            icono?: string;
+            colorAcento?: string;
+            preguntas?: components["schemas"]["PreguntaAyudaDTO"][];
+        };
+        ContactoAyudaDTO: {
+            telefono?: string;
+            correo?: string;
+            direccion?: string;
+        };
+        PreguntaAyudaDTO: {
+            pregunta?: string;
+            respuesta?: string;
         };
     };
     responses: never;
@@ -1763,7 +3012,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -1834,7 +3087,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -1979,7 +3236,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2050,7 +3311,132 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioAdminDTO"][];
+                };
+            };
+        };
+    };
+    crear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearUsuarioAdminRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioAdminDTO"];
+                };
+            };
+        };
+    };
+    notificarSegundaCalificacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararConclusionSustraccion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararInfundadoEnParte: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
             };
         };
     };
@@ -2082,6 +3468,60 @@ export interface operations {
         };
     };
     declararInfundado_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararImprocedenteFinal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararFundadoEnParte: {
         parameters: {
             query?: never;
             header?: never;
@@ -2162,7 +3602,161 @@ export interface operations {
             };
         };
     };
+    declararConclusionDesistimiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    reprocesarNotificacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReprocesarNotificacionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReprocesoNotificacionDTO"];
+                };
+            };
+        };
+    };
+    presentarDescargo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID del requerimiento de descargo */
+                descargoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresentarDescargoEntidadRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescargoEntidadTtaipDTO"];
+                };
+            };
+        };
+    };
+    requerirDescargos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequerirDescargoEntidadRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescargoEntidadTtaipDTO"];
+                };
+            };
+        };
+    };
+    procesarDescargosVencidos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescargoEntidadTtaipDTO"][];
+                };
+            };
+        };
+    };
     requerirSubsanacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalificacionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararTenerPorNoPresentado: {
         parameters: {
             query?: never;
             header?: never;
@@ -2270,7 +3864,7 @@ export interface operations {
             };
         };
     };
-    listar: {
+    listar_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2290,7 +3884,7 @@ export interface operations {
             };
         };
     };
-    crear: {
+    crear_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2314,7 +3908,276 @@ export interface operations {
             };
         };
     };
-    listar_1: {
+    listarObservaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservacionSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    observarSolicitud: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObservarSolicitudRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservacionSolicitudDTO"];
+                };
+            };
+        };
+    };
+    subsanarSolicitud: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+                /** @description ID de la observación */
+                observacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubsanarSolicitudRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservacionSolicitudDTO"];
+                };
+            };
+        };
+    };
+    listarLiquidaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    emitirLiquidacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarLiquidacionCostoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    listarEncauzamientos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncauzamientoSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    registrarEncauzamiento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarEncauzamientoSolicitudRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncauzamientoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    listarAmpliaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AmpliacionPlazoSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    registrarAmpliacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarAmpliacionPlazoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AmpliacionPlazoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    procesarObservacionesVencidas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservacionSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    procesarLiquidacionesVencidas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"][];
+                };
+            };
+        };
+    };
+    listar_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2334,7 +4197,7 @@ export interface operations {
             };
         };
     };
-    crear_1: {
+    crear_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2406,7 +4269,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    listar_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2426,7 +4289,7 @@ export interface operations {
             };
         };
     };
-    crear_2: {
+    crear_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2452,7 +4315,7 @@ export interface operations {
             };
         };
     };
-    listar_3: {
+    listar_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2472,7 +4335,7 @@ export interface operations {
             };
         };
     };
-    crear_3: {
+    crear_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2496,7 +4359,7 @@ export interface operations {
             };
         };
     };
-    listar_4: {
+    listar_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2516,7 +4379,7 @@ export interface operations {
             };
         };
     };
-    crear_4: {
+    crear_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2561,9 +4424,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
         };
@@ -2587,14 +4448,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
         };
     };
-    listar_5: {
+    listar_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2614,7 +4473,7 @@ export interface operations {
             };
         };
     };
-    crear_5: {
+    crear_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2672,6 +4531,63 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsuarioAdminDTO"];
+                };
+            };
+        };
+    };
+    actualizarLiquidacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+                /** @description ID de la liquidación */
+                liquidacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActualizarLiquidacionCostoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    cambiarEstado_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 /** @description ID de la solicitud */
                 id: number;
             };
@@ -2696,7 +4612,38 @@ export interface operations {
             };
         };
     };
-    cambiarEstado_1: {
+    actualizarEntregaParcial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+                /** @description ID de la ampliación */
+                ampliacionId: number;
+                /** @description ID de la entrega parcial */
+                entregaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActualizarEntregaParcialRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CronogramaEntregaParcialDTO"];
+                };
+            };
+        };
+    };
+    cambiarEstado_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2725,7 +4672,7 @@ export interface operations {
             };
         };
     };
-    cambiarEstado_2: {
+    cambiarEstado_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2754,7 +4701,7 @@ export interface operations {
             };
         };
     };
-    cambiarEstado_3: {
+    cambiarEstado_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2783,7 +4730,7 @@ export interface operations {
             };
         };
     };
-    cambiarEstado_4: {
+    cambiarEstado_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2892,6 +4839,75 @@ export interface operations {
             };
         };
     };
+    listarSuspensiones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"][];
+                };
+            };
+        };
+    };
+    listarDescargos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescargoEntidadTtaipDTO"][];
+                };
+            };
+        };
+    };
+    obtenerDescargoActivo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescargoEntidadTtaipDTO"];
+                };
+            };
+        };
+    };
     obtenerEstadisticas: {
         parameters: {
             query?: never;
@@ -2914,6 +4930,26 @@ export interface operations {
             };
         };
     };
+    listarEnResolucion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"][];
+                };
+            };
+        };
+    };
     listarEnCalificacion: {
         parameters: {
             query?: never;
@@ -2930,6 +4966,98 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"][];
+                };
+            };
+        };
+    };
+    obtenerLiquidacionActiva: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    obtenerEncauzamientoActivo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncauzamientoSolicitudDTO"];
+                };
+            };
+        };
+    };
+    listarCronogramaAmpliacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CronogramaEntregaParcialDTO"][];
+                };
+            };
+        };
+    };
+    obtenerPublicaPorExpediente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Número de expediente SAIP */
+                expediente: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaPublicaSolicitudDTO"];
                 };
             };
         };
@@ -3307,6 +5435,46 @@ export interface operations {
             };
         };
     };
+    obtenerPortal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalPublicoDTO"];
+                };
+            };
+        };
+    };
+    obtenerAyuda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AyudaPublicaDTO"];
+                };
+            };
+        };
+    };
     listarPorEntidad_1: {
         parameters: {
             query?: never;
@@ -3677,6 +5845,28 @@ export interface operations {
             };
         };
     };
+    obtenerPorExpedienteQuery: {
+        parameters: {
+            query: {
+                numero: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
     obtenerPorExpediente_1: {
         parameters: {
             query?: never;
@@ -3685,6 +5875,26 @@ export interface operations {
                 /** @description Número de expediente TTAIP */
                 expediente: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    obtenerPorExpediente_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -3764,6 +5974,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"][];
+                };
+            };
+        };
+    };
+    eliminar_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

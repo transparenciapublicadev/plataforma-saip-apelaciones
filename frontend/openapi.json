@@ -30,6 +30,18 @@
       "description": "Gestión de apelaciones ante el Tribunal de Transparencia"
     },
     {
+      "name": "Solicitudes SAIP",
+      "description": "Gestión de solicitudes de acceso a la información pública (Ley N° 27806)"
+    },
+    {
+      "name": "Reportes",
+      "description": "Reportes consolidados del sistema SAIP"
+    },
+    {
+      "name": "TTAIP",
+      "description": "Calificación y resolución de apelaciones por el Tribunal de Transparencia"
+    },
+    {
       "name": "Entidades Públicas",
       "description": "Gestión de entidades públicas del sistema"
     },
@@ -38,16 +50,16 @@
       "description": "Gestión de funcionarios de entidades públicas"
     },
     {
-      "name": "Solicitudes SAIP",
-      "description": "Gestión de solicitudes de acceso a la información pública (Ley N° 27806)"
+      "name": "Usuarios",
+      "description": "Administración de usuarios del sistema"
     },
     {
       "name": "Autenticación",
       "description": "Registro de ciudadanos y login con JWT"
     },
     {
-      "name": "Reportes",
-      "description": "Reportes consolidados del sistema SAIP"
+      "name": "Ayuda pública",
+      "description": "Contenido público del centro de ayuda"
     },
     {
       "name": "Ciudadanos",
@@ -62,8 +74,8 @@
       "description": "Respuestas de funcionarios a solicitudes SAIP"
     },
     {
-      "name": "TTAIP",
-      "description": "Calificación y resolución de apelaciones por el Tribunal de Transparencia"
+      "name": "Portal público",
+      "description": "Datos agregados no sensibles para la experiencia pública"
     }
   ],
   "paths": {
@@ -160,7 +172,15 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       }
@@ -258,7 +278,15 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       }
@@ -461,7 +489,15 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
           }
         }
       }
@@ -559,7 +595,190 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/usuarios": {
+      "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Listar usuarios del sistema",
+        "operationId": "listar",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UsuarioAdminDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Crear usuario base desde administración",
+        "operationId": "crear",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearUsuarioAdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioAdminDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/{apelacionId}/notificar-segunda-calificacion": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Notificar segunda calificación al ciudadano",
+        "description": "Registra la notificación de la resolución de segunda calificación. Inicia el plazo de resolución final.",
+        "operationId": "notificarSegundaCalificacion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/sustraccion-materia": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Conclusión por sustracción de la materia",
+        "description": "La entidad entrega la información durante el trámite de apelación",
+        "operationId": "declararConclusionSustraccion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/infundado-en-parte": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación infundada en parte",
+        "description": "Resolución final: desestimación parcial del recurso",
+        "operationId": "declararInfundadoEnParte",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
           }
         }
       }
@@ -616,6 +835,94 @@
         "summary": "Declarar apelación infundada",
         "description": "Resolución final: confirma la denegación de la entidad",
         "operationId": "declararInfundado_1",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/improcedente": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar improcedente en resolución final",
+        "description": "Resolución final: no cumple requisitos formales o de fondo",
+        "operationId": "declararImprocedenteFinal",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/fundado-en-parte": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar apelación fundada en parte",
+        "description": "Resolución final: amparo parcial del recurso",
+        "operationId": "declararFundadoEnParte",
         "parameters": [
           {
             "name": "apelacionId",
@@ -740,6 +1047,204 @@
         }
       }
     },
+    "/api/ttaip/resolucion/{apelacionId}/desistimiento": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Conclusión por desistimiento",
+        "description": "El ciudadano desiste voluntariamente del recurso",
+        "operationId": "declararConclusionDesistimiento",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/notificaciones/reprocesar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Reprocesar notificación TTAIP fallida",
+        "description": "Registra una falla de notificación y genera una nueva cédula para el mismo destinatario afectado, sin borrar la cédula original.",
+        "operationId": "reprocesarNotificacion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReprocesarNotificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReprocesoNotificacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Presentar descargo de entidad",
+        "description": "Registra el descargo y/o expediente administrativo de la entidad pública, cierra la suspensión y recalcula el plazo de resolución.",
+        "operationId": "presentarDescargo",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "descargoId",
+            "in": "path",
+            "description": "ID del requerimiento de descargo",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentarDescargoEntidadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/descargos/requerir": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Requerir descargos de entidad",
+        "description": "Registra el requerimiento de descargos y expediente administrativo a la entidad pública. Suspende el plazo de resolución final por 7 días hábiles.",
+        "operationId": "requerirDescargos",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequerirDescargoEntidadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/descargos/vencidos/procesar": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Procesar descargos vencidos",
+        "operationId": "procesarDescargosVencidos",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/calificacion/{apelacionId}/subsanar": {
       "post": {
         "tags": [
@@ -748,6 +1253,50 @@
         "summary": "Requerir subsanación",
         "description": "Primera calificación: solicita al ciudadano subsanar la apelación en 2 días hábiles",
         "operationId": "requerirSubsanacion",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/calificacion/{apelacionId}/no-presentado": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar tener por no presentado",
+        "description": "El ciudadano no subsanó en plazo de 2 días hábiles tras inadmisible",
+        "operationId": "declararTenerPorNoPresentado",
         "parameters": [
           {
             "name": "apelacionId",
@@ -920,7 +1469,7 @@
           "Solicitudes SAIP"
         ],
         "summary": "Listar todas las solicitudes SAIP",
-        "operationId": "listar",
+        "operationId": "listar_1",
         "responses": {
           "200": {
             "description": "OK",
@@ -943,7 +1492,7 @@
         ],
         "summary": "Crear solicitud SAIP",
         "description": "Genera automáticamente expediente y fecha límite (10 días hábiles)",
-        "operationId": "crear",
+        "operationId": "crear_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -968,13 +1517,429 @@
         }
       }
     },
+    "/api/solicitudes/{id}/observaciones": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar observaciones y subsanaciones SAIP",
+        "operationId": "listarObservaciones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ObservacionSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Observar solicitud SAIP",
+        "description": "Registra una observación formal dentro de los 2 primeros días hábiles y abre plazo de subsanación ciudadana de 2 días hábiles.",
+        "operationId": "observarSolicitud",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObservarSolicitudRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservacionSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/observaciones/{observacionId}/subsanar": {
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Subsanar observación SAIP",
+        "description": "Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión.",
+        "operationId": "subsanarSolicitud",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "observacionId",
+            "in": "path",
+            "description": "ID de la observación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubsanarSolicitudRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservacionSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/liquidaciones": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar liquidaciones o cupones de una SAIP",
+        "operationId": "listarLiquidaciones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Emitir liquidación o cupón SAIP",
+        "description": "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.",
+        "operationId": "emitirLiquidacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarLiquidacionCostoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/encauzamientos": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar encauzamientos de una SAIP",
+        "operationId": "listarEncauzamientos",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EncauzamientoSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Registrar encauzamiento SAIP",
+        "description": "Registra el encauzamiento total o parcial de una SAIP a la entidad competente dentro de los 2 días hábiles.",
+        "operationId": "registrarEncauzamiento",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarEncauzamientoSolicitudRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncauzamientoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/ampliaciones": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Listar ampliaciones de plazo de una SAIP",
+        "operationId": "listarAmpliaciones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AmpliacionPlazoSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Registrar ampliación de plazo SAIP",
+        "description": "Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.",
+        "operationId": "registrarAmpliacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarAmpliacionPlazoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AmpliacionPlazoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/observaciones/vencidas/procesar": {
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Procesar observaciones SAIP vencidas",
+        "description": "Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA.",
+        "operationId": "procesarObservacionesVencidas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ObservacionSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/liquidaciones/vencidas/procesar": {
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Procesar liquidaciones vencidas por no recojo",
+        "description": "Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.",
+        "operationId": "procesarLiquidacionesVencidas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/respuestas": {
       "get": {
         "tags": [
           "Respuestas"
         ],
         "summary": "Listar todas las respuestas",
-        "operationId": "listar_1",
+        "operationId": "listar_2",
         "responses": {
           "200": {
             "description": "OK",
@@ -996,7 +1961,7 @@
           "Respuestas"
         ],
         "summary": "Crear respuesta a solicitud SAIP",
-        "operationId": "crear_1",
+        "operationId": "crear_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1091,7 +2056,7 @@
           "Funcionarios"
         ],
         "summary": "Listar todos los funcionarios",
-        "operationId": "listar_2",
+        "operationId": "listar_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -1113,7 +2078,7 @@
           "Funcionarios"
         ],
         "summary": "Registrar funcionario",
-        "operationId": "crear_2",
+        "operationId": "crear_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1147,7 +2112,7 @@
           "Entidades Públicas"
         ],
         "summary": "Listar todas las entidades públicas",
-        "operationId": "listar_3",
+        "operationId": "listar_4",
         "responses": {
           "200": {
             "description": "OK",
@@ -1169,7 +2134,7 @@
           "Entidades Públicas"
         ],
         "summary": "Registrar entidad pública",
-        "operationId": "crear_3",
+        "operationId": "crear_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1200,7 +2165,7 @@
           "Ciudadanos"
         ],
         "summary": "Listar todos los ciudadanos",
-        "operationId": "listar_4",
+        "operationId": "listar_5",
         "responses": {
           "200": {
             "description": "OK",
@@ -1222,7 +2187,7 @@
           "Ciudadanos"
         ],
         "summary": "Registrar ciudadano",
-        "operationId": "crear_4",
+        "operationId": "crear_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1274,8 +2239,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "type": "object"
                 }
               }
             }
@@ -1289,7 +2253,7 @@
           "Autenticación"
         ],
         "summary": "Iniciar sesión",
-        "description": "Autentica al usuario y retorna un token JWT con datos del perfil según su rol",
+        "description": "Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -1307,8 +2271,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "type": "object"
                 }
               }
             }
@@ -1322,7 +2285,7 @@
           "Apelaciones TTAIP"
         ],
         "summary": "Listar todas las apelaciones",
-        "operationId": "listar_5",
+        "operationId": "listar_6",
         "responses": {
           "200": {
             "description": "OK",
@@ -1345,7 +2308,7 @@
         ],
         "summary": "Crear apelación",
         "description": "Crea apelación ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante",
-        "operationId": "crear_5",
+        "operationId": "crear_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1417,13 +2380,111 @@
         }
       }
     },
+    "/api/usuarios/{id}/estado": {
+      "patch": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Activar o desactivar usuario",
+        "operationId": "cambiarEstado",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioAdminDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/liquidaciones/{liquidacionId}": {
+      "patch": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Actualizar pago o recojo de liquidación SAIP",
+        "operationId": "actualizarLiquidacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "liquidacionId",
+            "in": "path",
+            "description": "ID de la liquidación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarLiquidacionCostoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/solicitudes/{id}/estado": {
       "patch": {
         "tags": [
           "Solicitudes SAIP"
         ],
         "summary": "Cambiar estado de solicitud",
-        "operationId": "cambiarEstado",
+        "operationId": "cambiarEstado_1",
         "parameters": [
           {
             "name": "id",
@@ -1463,13 +2524,76 @@
         }
       }
     },
+    "/api/solicitudes/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}": {
+      "patch": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Actualizar estado de una entrega parcial SAIP",
+        "operationId": "actualizarEntregaParcial",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ampliacionId",
+            "in": "path",
+            "description": "ID de la ampliación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "entregaId",
+            "in": "path",
+            "description": "ID de la entrega parcial",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarEntregaParcialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/funcionarios/{id}/estado": {
       "patch": {
         "tags": [
           "Funcionarios"
         ],
         "summary": "Activar o desactivar funcionario",
-        "operationId": "cambiarEstado_1",
+        "operationId": "cambiarEstado_2",
         "parameters": [
           {
             "name": "id",
@@ -1515,7 +2639,7 @@
           "Entidades Públicas"
         ],
         "summary": "Cambiar estado de entidad",
-        "operationId": "cambiarEstado_2",
+        "operationId": "cambiarEstado_3",
         "parameters": [
           {
             "name": "id",
@@ -1561,7 +2685,7 @@
           "Ciudadanos"
         ],
         "summary": "Activar o desactivar ciudadano",
-        "operationId": "cambiarEstado_3",
+        "operationId": "cambiarEstado_4",
         "parameters": [
           {
             "name": "id",
@@ -1607,7 +2731,7 @@
           "Apelaciones TTAIP"
         ],
         "summary": "Cambiar estado de apelación",
-        "operationId": "cambiarEstado_4",
+        "operationId": "cambiarEstado_5",
         "parameters": [
           {
             "name": "id",
@@ -1743,6 +2867,111 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar suspensiones de plazo de un expediente TTAIP",
+        "operationId": "listarSuspensiones",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/descargos": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar descargos de un expediente TTAIP",
+        "operationId": "listarDescargos",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/descargos/activo": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Obtener descargo activo de un expediente TTAIP",
+        "operationId": "obtenerDescargoActivo",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/estadisticas": {
       "get": {
         "tags": [
@@ -1758,6 +2987,31 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/en-resolucion": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar apelaciones en resolución",
+        "description": "Apelaciones admitidas pendientes de resolución final",
+        "operationId": "listarEnResolucion",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApelacionDTO"
+                  }
                 }
               }
             }
@@ -1782,6 +3036,140 @@
                   "items": {
                     "$ref": "#/components/schemas/ApelacionDTO"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/liquidaciones/activa": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consultar liquidación o cupón activo de una SAIP",
+        "operationId": "obtenerLiquidacionActiva",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/encauzamientos/activo": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consultar encauzamiento activo de una SAIP",
+        "operationId": "obtenerEncauzamientoActivo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncauzamientoSolicitudDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/ampliaciones/cronograma": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consultar cronograma de entregas parciales de una SAIP",
+        "operationId": "listarCronogramaAmpliacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la solicitud",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/publica/expediente/{expediente}": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consulta pública enmascarada de solicitud por expediente",
+        "operationId": "obtenerPublicaPorExpediente",
+        "parameters": [
+          {
+            "name": "expediente",
+            "in": "path",
+            "description": "Número de expediente SAIP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaPublicaSolicitudDTO"
                 }
               }
             }
@@ -2322,6 +3710,50 @@
         }
       }
     },
+    "/api/public/portal": {
+      "get": {
+        "tags": [
+          "Portal público"
+        ],
+        "summary": "Obtener datos públicos de portada",
+        "description": "Devuelve métricas agregadas, tendencias y miembros TTAIP sin datos sensibles",
+        "operationId": "obtenerPortal",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalPublicoDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/ayuda": {
+      "get": {
+        "tags": [
+          "Ayuda pública"
+        ],
+        "summary": "Obtener contenido del centro de ayuda",
+        "description": "Devuelve categorías, preguntas frecuentes y contacto institucional",
+        "operationId": "obtenerAyuda",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AyudaPublicaDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/funcionarios/entidad/{entidadId}": {
       "get": {
         "tags": [
@@ -2824,6 +4256,38 @@
         }
       }
     },
+    "/api/apelaciones/expediente": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Obtener apelación por expediente TTAIP",
+        "description": "Formato: NNNNN-AAAA-JUS/TTAIP",
+        "operationId": "obtenerPorExpedienteQuery",
+        "parameters": [
+          {
+            "name": "numero",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/apelaciones/expediente/{expediente}": {
       "get": {
         "tags": [
@@ -2843,6 +4307,29 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/expediente/**": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Obtener apelación por expediente TTAIP",
+        "description": "Formato: NNNNN-AAAA-JUS/TTAIP",
+        "operationId": "obtenerPorExpediente_2",
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
@@ -2949,10 +4436,93 @@
           }
         }
       }
+    },
+    "/api/usuarios/{id}": {
+      "delete": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Eliminar usuario",
+        "operationId": "eliminar_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AmpliacionPlazoSolicitudDTO": {
+        "type": "object",
+        "description": "Ampliación de plazo SAIP con informe y cronograma de entregas parciales",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "motivoAmpliacion": {
+            "type": "string"
+          },
+          "informeAmpliacion": {
+            "type": "string"
+          },
+          "fechaSolicitudAmpliacion": {
+            "type": "string"
+          },
+          "fechaNotificacionAmpliacion": {
+            "type": "string"
+          },
+          "fechaLimiteOriginal": {
+            "type": "string"
+          },
+          "fechaLimiteAmpliada": {
+            "type": "string"
+          },
+          "estadoAmpliacion": {
+            "type": "string"
+          },
+          "responsable": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          },
+          "cronograma": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
+            }
+          }
+        }
+      },
       "ApelacionInfoDTO": {
         "type": "object",
         "description": "Resumen de apelación asociada a una solicitud",
@@ -2982,6 +4552,39 @@
           }
         }
       },
+      "CronogramaEntregaParcialDTO": {
+        "type": "object",
+        "description": "Entrega parcial programada dentro de una ampliación de plazo SAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ampliacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroEntrega": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "fechaProgramada": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fechaEntregaReal": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          }
+        }
+      },
       "DocumentoDTO": {
         "type": "object",
         "description": "Documento adjunto a solicitud, respuesta, apelación o resolución",
@@ -3007,6 +4610,176 @@
             "type": "string"
           },
           "fechaSubida": {
+            "type": "string"
+          }
+        }
+      },
+      "EncauzamientoSolicitudDTO": {
+        "type": "object",
+        "description": "Encauzamiento formal de una solicitud SAIP hacia una entidad competente",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "entidadOrigenId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadOrigenNombre": {
+            "type": "string"
+          },
+          "entidadOrigenAcronimo": {
+            "type": "string"
+          },
+          "entidadDestinoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadDestinoNombre": {
+            "type": "string"
+          },
+          "entidadDestinoAcronimo": {
+            "type": "string"
+          },
+          "motivoEncauzamiento": {
+            "type": "string"
+          },
+          "alcance": {
+            "type": "string"
+          },
+          "fechaEncauzamiento": {
+            "type": "string"
+          },
+          "fechaLimiteEncauzamiento": {
+            "type": "string"
+          },
+          "estadoEncauzamiento": {
+            "type": "string"
+          },
+          "responsable": {
+            "type": "string"
+          },
+          "observacionSustento": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          }
+        }
+      },
+      "LiquidacionCostoSolicitudDTO": {
+        "type": "object",
+        "description": "Liquidación o cupón de pago para entrega física de información SAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "codigoLiquidacion": {
+            "type": "string"
+          },
+          "monto": {
+            "type": "string"
+          },
+          "moneda": {
+            "type": "string"
+          },
+          "concepto": {
+            "type": "string"
+          },
+          "fechaEmision": {
+            "type": "string"
+          },
+          "fechaNotificacion": {
+            "type": "string"
+          },
+          "fechaLimiteRecojo": {
+            "type": "string"
+          },
+          "estadoLiquidacion": {
+            "type": "string"
+          },
+          "medioNotificacion": {
+            "type": "string"
+          },
+          "responsable": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          },
+          "fechaPago": {
+            "type": "string"
+          },
+          "fechaRecojo": {
+            "type": "string"
+          }
+        }
+      },
+      "ObservacionSolicitudDTO": {
+        "type": "object",
+        "description": "Observación y subsanación formal de una solicitud SAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "motivoObservacion": {
+            "type": "string"
+          },
+          "fechaObservacion": {
+            "type": "string"
+          },
+          "fechaLimiteSubsanacion": {
+            "type": "string"
+          },
+          "fechaSubsanacion": {
+            "type": "string"
+          },
+          "comentarioSubsanacion": {
+            "type": "string"
+          },
+          "documentoSubsanacionNombre": {
+            "type": "string"
+          },
+          "documentoSubsanacionRuta": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          },
+          "responsableObservacion": {
+            "type": "string"
+          },
+          "responsableSubsanacion": {
             "type": "string"
           }
         }
@@ -3100,10 +4873,11 @@
             "enum": [
               "BAJA",
               "NORMAL",
+              "MEDIA",
               "ALTA",
               "URGENTE"
             ],
-            "example": "NORMAL"
+            "example": "MEDIA"
           },
           "semaforo": {
             "type": "string",
@@ -3163,6 +4937,22 @@
           "tipoInformacion": {
             "type": "string"
           },
+          "consentimientoDatosPersonales": {
+            "type": "boolean",
+            "description": "Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP",
+            "example": true
+          },
+          "canalNotificacion": {
+            "type": "string",
+            "description": "Canal formal elegido para notificaciones",
+            "enum": [
+              "CORREO_ELECTRONICO",
+              "CASILLA_ELECTRONICA",
+              "PLATAFORMA",
+              "FISICA"
+            ],
+            "example": "CASILLA_ELECTRONICA"
+          },
           "respuesta": {
             "$ref": "#/components/schemas/RespuestaDTO"
           },
@@ -3173,6 +4963,30 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DocumentoDTO"
+            }
+          },
+          "observaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ObservacionSolicitudDTO"
+            }
+          },
+          "ampliacionesPlazo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AmpliacionPlazoSolicitudDTO"
+            }
+          },
+          "encauzamientos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EncauzamientoSolicitudDTO"
+            }
+          },
+          "liquidacionesCosto": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LiquidacionCostoSolicitudDTO"
             }
           }
         }
@@ -3347,7 +5161,7 @@
           "estado": {
             "type": "string",
             "description": "Estado de la apelación",
-            "example": "PENDIENTE"
+            "example": "EN_CALIFICACION_1"
           },
           "resultado": {
             "type": "string"
@@ -3393,13 +5207,382 @@
             "type": "string"
           },
           "resolucion": {
-            "$ref": "#/components/schemas/ResolucionDTO"
+            "$ref": "#/components/schemas/ResolucionDTO",
+            "description": "Resolución final (RESOLUCION_FINAL)"
+          },
+          "resolucionPrimeraCalificacion": {
+            "$ref": "#/components/schemas/ResolucionDTO",
+            "description": "Resolución de primera calificación (PRIMERA_CALIFICACION)"
+          },
+          "resolucionSegundaCalificacion": {
+            "$ref": "#/components/schemas/ResolucionDTO",
+            "description": "Resolución de segunda calificación (SEGUNDA_CALIFICACION)"
+          },
+          "expedienteTtaip": {
+            "$ref": "#/components/schemas/ExpedienteTtaipDTO",
+            "description": "Expediente TTAIP como agregado principal de la segunda instancia"
+          },
+          "resoluciones": {
+            "type": "array",
+            "description": "Todas las resoluciones emitidas dentro del expediente",
+            "items": {
+              "$ref": "#/components/schemas/ResolucionDTO"
+            }
           },
           "documentos": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DocumentoDTO"
             }
+          }
+        }
+      },
+      "CedulaNotificacionDTO": {
+        "type": "object",
+        "description": "Cédula de notificación emitida para una resolución TTAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroCedula": {
+            "type": "string"
+          },
+          "destinatario": {
+            "type": "string"
+          },
+          "destinatarioNombre": {
+            "type": "string"
+          },
+          "destinatarioEmail": {
+            "type": "string"
+          },
+          "fechaEmision": {
+            "type": "string"
+          },
+          "canal": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "documentoReferencia": {
+            "type": "string"
+          }
+        }
+      },
+      "DescargoEntidadTtaipDTO": {
+        "type": "object",
+        "description": "Descargo presentado o requerido a la entidad pública dentro de un expediente TTAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expedienteTtaipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroExpediente": {
+            "type": "string"
+          },
+          "apelacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "fechaRequerimiento": {
+            "type": "string"
+          },
+          "fechaLimiteDescargo": {
+            "type": "string"
+          },
+          "fechaPresentacion": {
+            "type": "string"
+          },
+          "estadoDescargo": {
+            "type": "string"
+          },
+          "resumenDescargo": {
+            "type": "string"
+          },
+          "documentoDescargo": {
+            "type": "string"
+          },
+          "responsableEntidad": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          }
+        }
+      },
+      "ExpedienteTtaipDTO": {
+        "type": "object",
+        "description": "Expediente TTAIP como agregado principal de la segunda instancia",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroExpediente": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fechaApertura": {
+            "type": "string"
+          },
+          "fechaActualizacion": {
+            "type": "string"
+          },
+          "fechaPrimeraCalificacion": {
+            "type": "string"
+          },
+          "fechaSegundaCalificacion": {
+            "type": "string"
+          },
+          "fechaResolucionFinal": {
+            "type": "string"
+          },
+          "fechaLimiteResolucion": {
+            "type": "string"
+          },
+          "trazabilidadMinima": {
+            "type": "string"
+          },
+          "sala": {
+            "$ref": "#/components/schemas/SalaTtaipDTO"
+          },
+          "miembros": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MiembroTTAIPDTO"
+            }
+          },
+          "resoluciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResolucionDTO"
+            }
+          },
+          "cedulas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CedulaNotificacionDTO"
+            }
+          },
+          "notificaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificacionTtaipDTO"
+            }
+          },
+          "historial": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistorialTtaipDTO"
+            }
+          },
+          "reprocesos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReprocesoNotificacionDTO"
+            }
+          },
+          "descargosEntidad": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DescargoEntidadTtaipDTO"
+            }
+          },
+          "suspensionesPlazo": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
+            }
+          }
+        }
+      },
+      "HistorialTtaipDTO": {
+        "type": "object",
+        "description": "Evento de trazabilidad del expediente TTAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoEvento": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": "string"
+          },
+          "estadoAnterior": {
+            "type": "string"
+          },
+          "estadoNuevo": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "referencia": {
+            "type": "string"
+          },
+          "fechaEvento": {
+            "type": "string"
+          }
+        }
+      },
+      "MiembroTTAIPDTO": {
+        "type": "object",
+        "description": "Miembro del Tribunal de Transparencia asignado a una sala o expediente",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "sala": {
+            "type": "string"
+          },
+          "especialidad": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "periodoInicio": {
+            "type": "string"
+          },
+          "periodoFin": {
+            "type": "string"
+          },
+          "presidenteTribunal": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NotificacionTtaipDTO": {
+        "type": "object",
+        "description": "Notificación TTAIP asociada a una cédula y a un destinatario",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroCedula": {
+            "type": "string"
+          },
+          "destinatario": {
+            "type": "string"
+          },
+          "destinatarioNombre": {
+            "type": "string"
+          },
+          "destinatarioEmail": {
+            "type": "string"
+          },
+          "fechaNotificacion": {
+            "type": "string"
+          },
+          "medio": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "detalle": {
+            "type": "string"
+          }
+        }
+      },
+      "ReprocesoNotificacionDTO": {
+        "type": "object",
+        "description": "Reproceso de notificación vinculado a una cédula del expediente TTAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "notificacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cedulaOriginalId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cedulaNuevaId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "notificacionNuevaId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reprocesoPadreId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "destinatario": {
+            "type": "string"
+          },
+          "numeroCedulaOriginal": {
+            "type": "string"
+          },
+          "numeroCedulaNueva": {
+            "type": "string"
+          },
+          "fechaIngresoCargo": {
+            "type": "string"
+          },
+          "observacionReproceso": {
+            "type": "string"
+          },
+          "fechaSubsanacion": {
+            "type": "string"
+          },
+          "cedulaSubsanacion": {
+            "type": "string"
+          },
+          "fechaCedulaSubsanacion": {
+            "type": "string"
+          },
+          "numeroIntento": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "responsableNotificacion": {
+            "type": "string"
+          },
+          "responsableSubsanacion": {
+            "type": "string"
+          },
+          "fechaCreacion": {
+            "type": "string"
+          },
+          "fechaActualizacion": {
+            "type": "string"
           }
         }
       },
@@ -3410,6 +5593,9 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "numeroResolucion": {
+            "type": "string"
           },
           "tipoResolucion": {
             "type": "string"
@@ -3435,6 +5621,127 @@
           },
           "iniciarProcesoDisciplinario": {
             "type": "boolean"
+          },
+          "sala": {
+            "$ref": "#/components/schemas/SalaTtaipDTO"
+          },
+          "cedulas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CedulaNotificacionDTO"
+            }
+          }
+        }
+      },
+      "SalaTtaipDTO": {
+        "type": "object",
+        "description": "Sala del Tribunal de Transparencia asignada a un expediente",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "periodoInicio": {
+            "type": "string"
+          },
+          "periodoFin": {
+            "type": "string"
+          },
+          "presidenteSala": {
+            "$ref": "#/components/schemas/MiembroTTAIPDTO"
+          }
+        }
+      },
+      "SuspensionPlazoTtaipDTO": {
+        "type": "object",
+        "description": "Suspensión de plazo de resolución final dentro de un expediente TTAIP",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expedienteTtaipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroExpediente": {
+            "type": "string"
+          },
+          "descargoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "motivoSuspension": {
+            "type": "string"
+          },
+          "fechaInicioSuspension": {
+            "type": "string"
+          },
+          "fechaFinSuspension": {
+            "type": "string"
+          },
+          "diasSuspendidos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estadoSuspension": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
+          }
+        }
+      },
+      "CrearUsuarioAdminRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8
+          },
+          "tipoUsuario": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "CIUDADANO|FUNCIONARIO|TTAIP|ADMINISTRADOR"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "tipoUsuario"
+        ]
+      },
+      "UsuarioAdminDTO": {
+        "type": "object",
+        "description": "Usuario del sistema visible para administración",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "email": {
+            "type": "string"
+          },
+          "tipoUsuario": {
+            "type": "string"
+          },
+          "fechaRegistro": {
+            "type": "string"
+          },
+          "activo": {
+            "type": "boolean"
+          },
+          "nombre": {
+            "type": "string"
           }
         }
       },
@@ -3458,6 +5765,114 @@
         "required": [
           "fundamentos"
         ]
+      },
+      "ReprocesarNotificacionRequest": {
+        "type": "object",
+        "description": "Solicitud de reproceso para una notificación TTAIP fallida o defectuosa",
+        "properties": {
+          "numeroCedulaOriginal": {
+            "type": "string",
+            "description": "Número de la cédula original que tuvo la notificación fallida",
+            "example": "15207-2025-JUS/TTAIP",
+            "minLength": 1
+          },
+          "destinatario": {
+            "type": "string",
+            "description": "Destinatario afectado por la notificación fallida",
+            "enum": [
+              "CIUDADANO",
+              "ENTIDAD_PUBLICA"
+            ],
+            "example": "ENTIDAD_PUBLICA",
+            "minLength": 1
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Motivo funcional del reproceso",
+            "example": "Cargo de notificación observado; corresponde emitir nueva cédula al mismo destinatario.",
+            "minLength": 1
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra el reproceso",
+            "example": "Mesa de Partes TTAIP"
+          }
+        },
+        "required": [
+          "destinatario",
+          "numeroCedulaOriginal",
+          "observacion"
+        ]
+      },
+      "PresentarDescargoEntidadRequest": {
+        "type": "object",
+        "description": "Presentación de descargo y expediente administrativo por la entidad pública",
+        "properties": {
+          "fechaPresentacion": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha de presentación. Si no se envía, se usa la fecha actual.",
+            "example": "2026-05-27"
+          },
+          "resumenDescargo": {
+            "type": "string",
+            "description": "Resumen del descargo presentado",
+            "example": "La entidad remite expediente administrativo y sustenta la atención otorgada.",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "referenciaDocumento": {
+            "type": "string",
+            "description": "Referencia del documento o cargo adjunto",
+            "example": "EXP-ADM-2026-00015.pdf",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "responsableEntidad": {
+            "type": "string",
+            "description": "Responsable que presenta el descargo",
+            "example": "Funcionario de Transparencia",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación adicional",
+            "example": "Se adjunta cargo de remisión del expediente administrativo.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "responsableEntidad",
+          "resumenDescargo"
+        ]
+      },
+      "RequerirDescargoEntidadRequest": {
+        "type": "object",
+        "description": "Requerimiento de descargos a entidad pública dentro de un expediente TTAIP",
+        "properties": {
+          "fechaRequerimiento": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha del requerimiento. Si no se envía, se usa la fecha actual.",
+            "example": "2026-05-25"
+          },
+          "responsableTtaip": {
+            "type": "string",
+            "description": "Responsable TTAIP que registra el requerimiento",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación o sustento del requerimiento",
+            "example": "Se requiere expediente administrativo y descargos de la entidad.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        }
       },
       "CalificacionRequest": {
         "type": "object",
@@ -3484,6 +5899,258 @@
         },
         "required": [
           "fundamentos"
+        ]
+      },
+      "ObservarSolicitudRequest": {
+        "type": "object",
+        "description": "Solicitud para observar una SAIP dentro de los 2 primeros días hábiles",
+        "properties": {
+          "motivoObservacion": {
+            "type": "string",
+            "description": "Motivo formal de observación",
+            "example": "El pedido no identifica con claridad la información solicitada.",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra la observación",
+            "example": "Mesa de Partes de la entidad",
+            "maxLength": 120,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "motivoObservacion"
+        ]
+      },
+      "SubsanarSolicitudRequest": {
+        "type": "object",
+        "description": "Subsanación ciudadana de una observación SAIP",
+        "properties": {
+          "comentarioSubsanacion": {
+            "type": "string",
+            "description": "Comentario o fundamento de subsanación",
+            "example": "Preciso que solicito el presupuesto ejecutado del programa X durante 2025.",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "documentoSubsanacionNombre": {
+            "type": "string",
+            "description": "Nombre del documento de subsanación, si aplica",
+            "example": "subsanacion-saip.pdf",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "documentoSubsanacionRuta": {
+            "type": "string",
+            "description": "Ruta o referencia del documento de subsanación, si aplica",
+            "example": "/uploads/saip/subsanacion-saip.pdf",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra la subsanación",
+            "example": "Ciudadano",
+            "maxLength": 120,
+            "minLength": 0
+          }
+        }
+      },
+      "RegistrarLiquidacionCostoRequest": {
+        "type": "object",
+        "description": "Datos para emitir y notificar una liquidación o cupón de pago SAIP",
+        "properties": {
+          "codigoLiquidacion": {
+            "type": "string",
+            "description": "Código externo o número de cupón. Si se omite, el sistema lo genera.",
+            "maxLength": 60,
+            "minLength": 0
+          },
+          "monto": {
+            "type": "number",
+            "description": "Monto de reproducción física",
+            "example": "18.50",
+            "minimum": 0.0
+          },
+          "moneda": {
+            "type": "string",
+            "description": "Moneda ISO 4217",
+            "example": "PEN",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "concepto": {
+            "type": "string",
+            "description": "Detalle del costo de reproducción",
+            "example": "Copias simples de 37 folios",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "fechaNotificacion": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha en la que se notifica el cupón al ciudadano"
+          },
+          "medioNotificacion": {
+            "type": "string",
+            "description": "Medio usado para notificar el cupón",
+            "enum": [
+              "CORREO_ELECTRONICO",
+              "CASILLA_ELECTRONICA",
+              "PLATAFORMA",
+              "FISICA"
+            ],
+            "minLength": 1
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "concepto",
+          "fechaNotificacion",
+          "medioNotificacion",
+          "monto"
+        ]
+      },
+      "RegistrarEncauzamientoSolicitudRequest": {
+        "type": "object",
+        "description": "Registro de encauzamiento SAIP a entidad competente",
+        "properties": {
+          "entidadDestinoId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID de la entidad pública competente que recibirá el encauzamiento",
+            "example": 2
+          },
+          "motivoEncauzamiento": {
+            "type": "string",
+            "description": "Motivo formal por el que la entidad receptora no es competente",
+            "example": "La información solicitada corresponde al Ministerio de Educación.",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "alcance": {
+            "type": "string",
+            "description": "Alcance del encauzamiento",
+            "enum": [
+              "TOTAL",
+              "PARCIAL"
+            ],
+            "example": "TOTAL",
+            "minLength": 1
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra el encauzamiento",
+            "example": "Funcionario de Transparencia",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacionSustento": {
+            "type": "string",
+            "description": "Sustento u observación complementaria",
+            "example": "Se deriva solo el extremo referido a planillas históricas.",
+            "maxLength": 6000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "alcance",
+          "entidadDestinoId",
+          "motivoEncauzamiento"
+        ]
+      },
+      "RegistrarAmpliacionPlazoRequest": {
+        "type": "object",
+        "description": "Registro de ampliación de plazo SAIP con informe y cronograma",
+        "properties": {
+          "motivoAmpliacion": {
+            "type": "string",
+            "description": "Motivo formal de ampliación",
+            "example": "El pedido comprende un volumen amplio de expedientes físicos por digitalizar.",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "informeAmpliacion": {
+            "type": "string",
+            "description": "Informe que sustenta la ampliación y el cronograma",
+            "example": "Informe N.° 001-2026 que sustenta búsqueda, digitalización y entregas parciales.",
+            "maxLength": 6000,
+            "minLength": 0
+          },
+          "fechaNotificacionAmpliacion": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha en que se notificó la ampliación al ciudadano",
+            "example": "2026-05-27"
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra y notifica la ampliación",
+            "example": "Funcionario de Transparencia",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "cronograma": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegistrarEntregaParcialRequest"
+            },
+            "maxItems": 12,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "cronograma",
+          "fechaNotificacionAmpliacion",
+          "informeAmpliacion",
+          "motivoAmpliacion"
+        ]
+      },
+      "RegistrarEntregaParcialRequest": {
+        "type": "object",
+        "description": "Entrega parcial del cronograma de ampliación SAIP",
+        "properties": {
+          "numeroEntrega": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Número secuencial de entrega",
+            "example": 1
+          },
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción de la información que se entregará parcialmente",
+            "example": "Primer bloque de contratos digitalizados",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "fechaProgramada": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha programada de entrega parcial",
+            "example": "2026-06-10"
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación opcional de la entrega parcial",
+            "example": "Entrega sujeta a digitalización de archivos históricos",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "descripcion",
+          "fechaProgramada",
+          "numeroEntrega"
         ]
       },
       "CrearRespuestaRequest": {
@@ -3592,10 +6259,9 @@
         "type": "object",
         "description": "Credenciales de inicio de sesión",
         "properties": {
-          "email": {
+          "identificador": {
             "type": "string",
-            "format": "email",
-            "description": "Email del usuario",
+            "description": "Identificador del usuario: email, DNI (8 dígitos) o usuario",
             "example": "ciudadano@email.com",
             "minLength": 1
           },
@@ -3606,9 +6272,357 @@
           }
         },
         "required": [
-          "email",
+          "identificador",
           "password"
         ]
+      },
+      "ActualizarLiquidacionCostoRequest": {
+        "type": "object",
+        "description": "Actualización operativa de pago o recojo de una liquidación SAIP",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "description": "Estado destino",
+            "enum": [
+              "PAGADA",
+              "RECOGIDA",
+              "CANCELADA"
+            ],
+            "minLength": 1
+          },
+          "fechaPago": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha de pago. Si se omite al marcar PAGADA, se usa la fecha actual."
+          },
+          "fechaRecojo": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha de recojo. Si se omite al marcar RECOGIDA, se usa la fecha actual."
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "estado"
+        ]
+      },
+      "ActualizarEntregaParcialRequest": {
+        "type": "object",
+        "description": "Actualización del estado de una entrega parcial SAIP",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "description": "Estado de la entrega parcial",
+            "enum": [
+              "PROGRAMADA",
+              "ENTREGADA",
+              "OBSERVADA",
+              "CANCELADA",
+              "VENCIDA"
+            ],
+            "example": "ENTREGADA",
+            "minLength": 1
+          },
+          "fechaEntregaReal": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha real de entrega, obligatoria cuando el estado es ENTREGADA",
+            "example": "2026-06-10"
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación del avance o incidencia de la entrega parcial",
+            "example": "Entrega digital enviada por casilla electrónica.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "estado"
+        ]
+      },
+      "ConsultaPublicaSolicitudDTO": {
+        "type": "object",
+        "description": "Vista pública y enmascarada del estado de una solicitud SAIP",
+        "properties": {
+          "expediente": {
+            "type": "string"
+          },
+          "ciudadano": {
+            "type": "string"
+          },
+          "entidad": {
+            "type": "string"
+          },
+          "fechaPresentacion": {
+            "type": "string"
+          },
+          "fechaLimite": {
+            "type": "string"
+          },
+          "diasTranscurridos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "diasRestantes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "asunto": {
+            "type": "string"
+          },
+          "respuestaFecha": {
+            "type": "string"
+          },
+          "respuestaTipo": {
+            "type": "string"
+          },
+          "apelacionExpediente": {
+            "type": "string"
+          },
+          "apelacionEstado": {
+            "type": "string"
+          },
+          "apelacionFecha": {
+            "type": "string"
+          },
+          "resolucionFecha": {
+            "type": "string"
+          },
+          "resolucionResultado": {
+            "type": "string"
+          }
+        }
+      },
+      "PortalDistribucionDTO": {
+        "type": "object",
+        "properties": {
+          "etiqueta": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PortalEjemploDTO": {
+        "type": "object",
+        "properties": {
+          "icono": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          }
+        }
+      },
+      "PortalFaqDTO": {
+        "type": "object",
+        "properties": {
+          "pregunta": {
+            "type": "string"
+          },
+          "respuesta": {
+            "type": "string"
+          }
+        }
+      },
+      "PortalMetricasDTO": {
+        "type": "object",
+        "properties": {
+          "saipPresentadas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "respondidas": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "apelaciones": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidades": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "personasApelantes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tasaResolucion": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PortalMiembroTTAIPDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "sala": {
+            "type": "string"
+          },
+          "especialidad": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "periodoInicio": {
+            "type": "string"
+          },
+          "periodoFin": {
+            "type": "string"
+          },
+          "presidenteTribunal": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PortalPublicoDTO": {
+        "type": "object",
+        "description": "Datos públicos agregados para la portada de la plataforma",
+        "properties": {
+          "metricas": {
+            "$ref": "#/components/schemas/PortalMetricasDTO"
+          },
+          "ejemplosSolicitud": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalEjemploDTO"
+            }
+          },
+          "preguntasFrecuentes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalFaqDTO"
+            }
+          },
+          "apelacionesPorEntidad": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalDistribucionDTO"
+            }
+          },
+          "tendenciaMensual": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalTendenciaDTO"
+            }
+          },
+          "miembrosTTAIP": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PortalMiembroTTAIPDTO"
+            }
+          }
+        }
+      },
+      "PortalTendenciaDTO": {
+        "type": "object",
+        "properties": {
+          "mes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "etiqueta": {
+            "type": "string"
+          },
+          "solicitudes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "apelaciones": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AyudaPublicaDTO": {
+        "type": "object",
+        "description": "Contenido público del centro de ayuda",
+        "properties": {
+          "categorias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoriaAyudaDTO"
+            }
+          },
+          "contacto": {
+            "$ref": "#/components/schemas/ContactoAyudaDTO"
+          }
+        }
+      },
+      "CategoriaAyudaDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "icono": {
+            "type": "string"
+          },
+          "colorAcento": {
+            "type": "string"
+          },
+          "preguntas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreguntaAyudaDTO"
+            }
+          }
+        }
+      },
+      "ContactoAyudaDTO": {
+        "type": "object",
+        "properties": {
+          "telefono": {
+            "type": "string"
+          },
+          "correo": {
+            "type": "string"
+          },
+          "direccion": {
+            "type": "string"
+          }
+        }
+      },
+      "PreguntaAyudaDTO": {
+        "type": "object",
+        "properties": {
+          "pregunta": {
+            "type": "string"
+          },
+          "respuesta": {
+            "type": "string"
+          }
+        }
       }
     },
     "securitySchemes": {
