@@ -45,7 +45,8 @@ public record SolicitudDTO(
     List<DocumentoDTO> documentos,
     List<ObservacionSolicitudDTO> observaciones,
     List<AmpliacionPlazoSolicitudDTO> ampliacionesPlazo,
-    List<EncauzamientoSolicitudDTO> encauzamientos
+    List<EncauzamientoSolicitudDTO> encauzamientos,
+    List<LiquidacionCostoSolicitudDTO> liquidacionesCosto
 ) {
     public static SolicitudDTO from(Solicitud s) {
         return new SolicitudDTO(
@@ -97,6 +98,14 @@ public record SolicitudDTO(
                                     enc -> enc.getFechaEncauzamiento() != null ? enc.getFechaEncauzamiento() : java.time.LocalDateTime.MIN,
                                     Comparator.reverseOrder()))
                             .map(EncauzamientoSolicitudDTO::from)
+                            .toList()
+                    : List.of(),
+            s.getLiquidacionesCosto() != null
+                    ? s.getLiquidacionesCosto().stream()
+                            .sorted(Comparator.comparing(
+                                    liq -> liq.getFechaEmision() != null ? liq.getFechaEmision() : java.time.LocalDateTime.MIN,
+                                    Comparator.reverseOrder()))
+                            .map(LiquidacionCostoSolicitudDTO::from)
                             .toList()
                     : List.of()
         );
