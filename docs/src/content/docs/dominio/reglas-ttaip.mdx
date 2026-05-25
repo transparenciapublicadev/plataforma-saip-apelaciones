@@ -161,6 +161,31 @@ La resolución final puede cerrar el expediente con cualquiera de estos resultad
 El documento oficial también menciona `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`. Aún no están modeladas en el backend y figuran como brecha documentada.
 :::
 
+### BR-TTAIP-011 — Cumplimiento de resolución fundada
+
+Cuando la resolución final es `FUNDADO` o `FUNDADO_EN_PARTE`, la entidad pública debe cumplir y comunicar evidencia al Tribunal en un plazo máximo de **7 días hábiles**. El seguimiento vive dentro del expediente TTAIP y queda vinculado a la apelación, la resolución final, la entidad obligada y el historial.
+
+El plazo se calcula desde la notificación válida de la resolución final a la entidad pública cuando el expediente la tiene registrada. Si el expediente aún no tiene una notificación válida segura, el backend usa la fecha de resolución/notificación disponible como base operativa y conserva la trazabilidad.
+
+| Endpoint | Rol principal | Uso |
+| --- | --- | --- |
+| `POST /api/ttaip/expedientes/{expedienteId}/resoluciones/{resolucionId}/cumplimientos` | TTAIP/Admin | Crea seguimiento solo para resolución final fundada o fundada en parte. |
+| `GET /api/ttaip/expedientes/{expedienteId}/cumplimientos` | TTAIP/Funcionario/Admin | Lista seguimientos del expediente. |
+| `GET /api/ttaip/expedientes/{expedienteId}/cumplimientos/activo` | TTAIP/Funcionario/Admin | Consulta el seguimiento activo. |
+| `POST /api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/registrar` | Funcionario/Admin | Comunica cumplimiento `TOTAL`, `PARCIAL` o `NO_CUMPLE` con evidencia o referencia documental. |
+| `PATCH /api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/observar` | TTAIP/Admin | Observa la comunicación de cumplimiento con sustento. |
+| `PATCH /api/ttaip/expedientes/{expedienteId}/cumplimientos/{cumplimientoId}/cerrar` | TTAIP/Admin | Cierra el seguimiento. |
+| `POST /api/ttaip/cumplimientos/vencidos/procesar` | TTAIP/Admin | Marca como vencidos los seguimientos pendientes fuera de plazo. |
+
+Estados operativos: `PENDIENTE`, `CUMPLIDO`, `CUMPLIDO_PARCIAL`, `VENCIDO`, `OBSERVADO` y `CERRADO`.
+
+Validaciones obligatorias:
+
+- No aplica a resoluciones `INFUNDADO`, `INFUNDADO_EN_PARTE`, `IMPROCEDENTE`, `CONCLUSION_SUSTRACCION_MATERIA` o `CONCLUSION_DESISTIMIENTO`.
+- No se permite duplicado activo `PENDIENTE` u `OBSERVADO` para la misma resolución.
+- La entidad debe enviar descripción y evidencia o referencia documental cuando comunica cumplimiento total o parcial.
+- El vencimiento no borra el expediente ni la resolución; solo marca el seguimiento como `VENCIDO` y registra evento de historial.
+
 ## Mapping de Resoluciones
 
 <Tabs>
@@ -261,4 +286,5 @@ El reproceso conserva `cedulaOriginalId` y `notificacionOriginalId`, genera `ced
 | No crear apelación si la SAIP ya tiene apelación asociada. | Evita doble expediente TTAIP. |
 | No permitir subsanación fuera de `EN_SUBSANACION`. | Protege la máquina de estados. |
 | No pasar a resolución final sin notificar segunda calificación. | Protege plazo legal y trazabilidad. |
+| No crear cumplimiento sobre resolución no fundada. | El seguimiento solo aplica a `FUNDADO` y `FUNDADO_EN_PARTE`. |
 | No usar elevación como etapa funcional nueva. | El flujo actual inicia directo en primera calificación. |
