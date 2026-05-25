@@ -20,14 +20,15 @@ El documento oficial contempla elevación por entidad en 2 días hábiles, pero 
 ```mermaid
 flowchart LR
     A["Ciudadano presenta apelacion\nplazo segun decision legal/producto"] --> B["EN_CALIFICACION_1\nPrimera calificacion"]
-    B -->|Admitir| F["EN_RESOLUCION\n10 dias habiles"]
+    B -->|Admitir| H["Requerimiento descargos\n7 dias habiles"]
     B -->|Requerir subsanacion| D["EN_SUBSANACION\n2 dias habiles"]
     B -->|Improcedente| X["RESUELTO_IMPROCEDENTE"]
     D -->|No subsana| Y["TENER_POR_NO_PRESENTADO"]
     D -->|Subsana| C
     C["EN_CALIFICACION_2\nSegunda calificacion"] -->|Admitido| E["NOTIFICACION_SEGUNDA_CALIFICACION"]
     C -->|Improcedente| X
-    E --> F
+    E --> H
+    H -->|Suspension DESCARGOS_ENTIDAD| F["EN_RESOLUCION\n10 dias habiles + dias suspendidos"]
     F --> G["Estado final"]
 ```
 
@@ -73,7 +74,33 @@ La segunda calificación debe notificarse al ciudadano antes de iniciar el plazo
 POST /api/ttaip/{apelacionId}/notificar-segunda-calificacion
 ```
 
-### BR-TTAIP-007 — Resolución final
+### BR-TTAIP-007 — Descargos de entidad y suspensión
+
+Cuando el TTAIP admite una apelación, puede requerir a la entidad pública sus descargos y/o el expediente administrativo. La entidad tiene **7 días hábiles** para presentar el descargo y ese periodo suspende el plazo de resolución final.
+
+El expediente TTAIP registra:
+
+- `DescargoEntidadTtaip`: expediente, apelación, entidad, fechas de requerimiento/límite/presentación, estado, resumen, documento o referencia, responsable, observación y trazabilidad.
+- `SuspensionPlazoTtaip`: motivo `DESCARGOS_ENTIDAD`, fecha de inicio, fecha de fin planificada o real, días suspendidos, estado y referencia al descargo.
+
+| Endpoint | Rol principal | Uso |
+| --- | --- | --- |
+| `POST /api/ttaip/expedientes/{expedienteId}/descargos/requerir` | TTAIP/Admin | Requiere descargos después de una admisión válida. |
+| `GET /api/ttaip/expedientes/{expedienteId}/descargos` | TTAIP/Funcionario/Admin | Lista descargos del expediente. |
+| `GET /api/ttaip/expedientes/{expedienteId}/descargos/activo` | TTAIP/Funcionario/Admin | Consulta el requerimiento activo. |
+| `POST /api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar` | Funcionario/Admin | Presenta el descargo de la entidad. |
+| `POST /api/ttaip/descargos/vencidos/procesar` | TTAIP/Admin | Marca descargos vencidos sin presentación. |
+| `GET /api/ttaip/expedientes/{expedienteId}/suspensiones` | TTAIP/Funcionario/Admin | Lista suspensiones del expediente. |
+
+Validaciones obligatorias:
+
+- No requerir descargos antes de una admisión válida.
+- No permitir más de un descargo activo `REQUERIDO` por expediente.
+- Presentar descargos solo sobre el requerimiento activo del expediente.
+- Si el descargo vence sin presentación, queda `VENCIDO_SIN_PRESENTACION` y el expediente puede continuar.
+- La fecha límite de resolución se recalcula desde la base de 10 días hábiles y suma las suspensiones registradas.
+
+### BR-TTAIP-008 — Resolución final
 
 Tras la notificación válida de admisibilidad o de segunda calificación, la apelación entra en `EN_RESOLUCION`. La resolución final puede cerrar el expediente con cualquiera de estos resultados:
 
