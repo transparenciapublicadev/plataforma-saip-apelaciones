@@ -159,4 +159,57 @@ describe('TtaipService', () => {
     expect(req.request.body).toEqual({});
     req.flush({});
   });
+
+  // --- Descargos y suspensiones ---
+
+  it('should POST requerir descargos', () => {
+    const data = { responsableTtaip: 'Secretaría Técnica TTAIP', observacion: 'Requerir expediente administrativo' };
+    service.requerirDescargos(10, data).subscribe(res => expect(res.id).toBe(20));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/descargos/requerir`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 20 });
+  });
+
+  it('should GET descargos by expediente', () => {
+    service.listarDescargos(10).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/descargos`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 20 }]);
+  });
+
+  it('should GET descargo activo', () => {
+    service.obtenerDescargoActivo(10).subscribe(res => expect(res.estadoDescargo).toBe('REQUERIDO'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/descargos/activo`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 20, estadoDescargo: 'REQUERIDO' });
+  });
+
+  it('should POST presentar descargo', () => {
+    const data = {
+      resumenDescargo: 'La entidad remite expediente administrativo.',
+      referenciaDocumento: 'descargo.pdf',
+      responsableEntidad: 'Funcionario'
+    };
+    service.presentarDescargo(10, 20, data).subscribe(res => expect(res.estadoDescargo).toBe('PRESENTADO'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/descargos/20/presentar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 20, estadoDescargo: 'PRESENTADO' });
+  });
+
+  it('should POST procesar descargos vencidos', () => {
+    service.procesarDescargosVencidos().subscribe(res => expect(res.length).toBe(0));
+    const req = httpMock.expectOne(`${apiUrl}/descargos/vencidos/procesar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush([]);
+  });
+
+  it('should GET suspensiones by expediente', () => {
+    service.listarSuspensiones(10).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/suspensiones`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 30, motivoSuspension: 'DESCARGOS_ENTIDAD' }]);
+  });
 });
