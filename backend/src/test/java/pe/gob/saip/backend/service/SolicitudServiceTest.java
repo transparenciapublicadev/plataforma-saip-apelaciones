@@ -6,26 +6,31 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
+import pe.gob.saip.backend.model.entity.LiquidacionCostoSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
 import pe.gob.saip.backend.repository.EncauzamientoSolicitudRepository;
 import pe.gob.saip.backend.repository.EntidadRepository;
+import pe.gob.saip.backend.repository.LiquidacionCostoSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +57,9 @@ class SolicitudServiceTest {
 
     @Mock
     EncauzamientoSolicitudRepository encauzamientoRepository;
+
+    @Mock
+    LiquidacionCostoSolicitudRepository liquidacionRepository;
 
     @Mock
     EntidadRepository entidadRepository;
@@ -562,6 +570,146 @@ class SolicitudServiceTest {
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("distinta");
+    }
+
+    @Test
+    void emitirLiquidacion_debeCalcularLimiteRecojo30DiasHabiles() {
+        LocalDate hoy = LocalDate.now();
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFormatoFisico(true);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.existsBySolicitud_IdSolicitudAndEstadoLiquidacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(liquidacionRepository.countBySolicitud_IdSolicitud(1L)).thenReturn(0L);
+        when(liquidacionRepository.save(any(LiquidacionCostoSolicitud.class))).thenAnswer(inv -> {
+            LiquidacionCostoSolicitud liquidacion = inv.getArgument(0);
+            liquidacion.setIdLiquidacion(70L);
+            return liquidacion;
+        });
+
+        LiquidacionCostoSolicitud resultado = solicitudService.emitirLiquidacion(
+                1L,
+                new RegistrarLiquidacionCostoRequest(
+                        null,
+                        new BigDecimal("18.50"),
+                        "PEN",
+                        "Copias simples de 37 folios",
+                        hoy,
+                        "CASILLA_ELECTRONICA",
+                        "Funcionario",
+                        "Se notifica cupón por casilla"
+                )
+        );
+
+        assertThat(resultado.getCodigoLiquidacion()).startsWith("CUPON-" + hoy.getYear() + "-00001-");
+        assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        assertThat(resultado.getFechaLimiteRecojo()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(hoy, 30));
+        assertThat(resultado.getMedioNotificacion()).isEqualTo(Solicitud.CanalNotificacion.CASILLA_ELECTRONICA);
+        verify(liquidacionRepository).save(any(LiquidacionCostoSolicitud.class));
+    }
+
+    @Test
+    void emitirLiquidacion_despuesDelDia9_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFormatoFisico(true);
+        solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(20));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.existsBySolicitud_IdSolicitudAndEstadoLiquidacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.emitirLiquidacion(
+                        1L,
+                        new RegistrarLiquidacionCostoRequest(
+                                null,
+                                BigDecimal.ONE,
+                                "PEN",
+                                "Copias físicas",
+                                LocalDate.now(),
+                                "CASILLA_ELECTRONICA",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("día 9");
+    }
+
+    @Test
+    void emitirLiquidacion_sinEntregaFisica_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFormatoDigital(true);
+        solicitud.setFormatoFisico(false);
+        solicitud.setCopiaSimple(false);
+        solicitud.setCopiaCertificada(false);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.emitirLiquidacion(
+                        1L,
+                        new RegistrarLiquidacionCostoRequest(
+                                null,
+                                BigDecimal.ONE,
+                                "PEN",
+                                "Copias físicas",
+                                LocalDate.now(),
+                                "CASILLA_ELECTRONICA",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("entrega física");
+    }
+
+    @Test
+    void actualizarLiquidacion_recojoDebeMarcarSolicitudRespondida() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(70L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.PAGADA);
+        liquidacion.setMonto(BigDecimal.ONE);
+        liquidacion.setTrazabilidad("Liquidación notificada");
+
+        when(liquidacionRepository.findById(70L)).thenReturn(Optional.of(liquidacion));
+        when(liquidacionRepository.save(liquidacion)).thenReturn(liquidacion);
+
+        LiquidacionCostoSolicitud resultado = solicitudService.actualizarLiquidacion(
+                1L,
+                70L,
+                new ActualizarLiquidacionCostoRequest("RECOGIDA", null, LocalDate.now(), "Funcionario", "Ciudadano recogió copias")
+        );
+
+        assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA);
+        assertThat(resultado.getFechaRecojo()).isEqualTo(LocalDate.now());
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RESPONDIDA);
+        verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
+    void procesarLiquidacionesVencidas_debeArchivarPorNoRecojo() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(70L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setFechaLimiteRecojo(LocalDate.now().minusDays(1));
+        liquidacion.setTrazabilidad("Liquidación notificada");
+
+        when(liquidacionRepository.findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(anyList(), any(LocalDate.class)))
+                .thenReturn(List.of(liquidacion));
+        when(liquidacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<LiquidacionCostoSolicitud> resultado = solicitudService.procesarLiquidacionesVencidas();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.getFirst().getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
+        verify(solicitudRepository).save(solicitud);
     }
 
     @Test
