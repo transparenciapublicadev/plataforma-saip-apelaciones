@@ -380,6 +380,40 @@ CALL drop_check_if_exists('suspensiones_plazo_ttaip', 'chk_suspension_ttaip_soli
 ALTER TABLE suspensiones_plazo_ttaip
     ADD CONSTRAINT chk_suspension_ttaip_solicitante CHECK (solicitante IS NULL OR solicitante IN ('CIUDADANO','ENTIDAD_PUBLICA','TTAIP'));
 
+CREATE TABLE IF NOT EXISTS cumplimientos_resolucion_ttaip (
+    id_cumplimiento BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_apelacion BIGINT NOT NULL,
+    id_resolucion BIGINT NOT NULL,
+    id_entidad BIGINT NOT NULL,
+    fecha_requerimiento_cumplimiento DATE NOT NULL,
+    fecha_limite_cumplimiento DATE NOT NULL,
+    fecha_cumplimiento DATE NULL,
+    estado_cumplimiento VARCHAR(40) NOT NULL DEFAULT 'PENDIENTE',
+    tipo_cumplimiento VARCHAR(30) NULL,
+    descripcion_cumplimiento TEXT NULL,
+    evidencia_cumplimiento VARCHAR(500) NULL,
+    referencia_documento VARCHAR(500) NULL,
+    responsable_entidad VARCHAR(120) NULL,
+    observacion TEXT NULL,
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_cumplimiento),
+    KEY idx_cumplimiento_ttaip_expediente (id_expediente_ttaip),
+    KEY idx_cumplimiento_ttaip_apelacion (id_apelacion),
+    KEY idx_cumplimiento_ttaip_resolucion (id_resolucion),
+    KEY idx_cumplimiento_ttaip_entidad (id_entidad),
+    KEY idx_cumplimiento_ttaip_estado (estado_cumplimiento),
+    KEY idx_cumplimiento_ttaip_limite (fecha_limite_cumplimiento),
+    CONSTRAINT fk_cumplimiento_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_cumplimiento_ttaip_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelaciones (id_apelacion),
+    CONSTRAINT fk_cumplimiento_ttaip_resolucion FOREIGN KEY (id_resolucion) REFERENCES resoluciones (id_resolucion),
+    CONSTRAINT fk_cumplimiento_ttaip_entidad FOREIGN KEY (id_entidad) REFERENCES entidades (id_entidad),
+    CONSTRAINT chk_cumplimiento_ttaip_estado CHECK (estado_cumplimiento IN ('PENDIENTE','CUMPLIDO','CUMPLIDO_PARCIAL','VENCIDO','OBSERVADO','CERRADO')),
+    CONSTRAINT chk_cumplimiento_ttaip_tipo CHECK (tipo_cumplimiento IS NULL OR tipo_cumplimiento IN ('TOTAL','PARCIAL','NO_CUMPLE'))
+);
+
 CREATE TABLE IF NOT EXISTS historial_ttaip (
     id_historial BIGINT NOT NULL AUTO_INCREMENT,
     id_expediente_ttaip BIGINT NOT NULL,
@@ -1526,6 +1560,9 @@ FROM cedulas_notificacion
 UNION ALL
 SELECT 'notificaciones_ttaip', COUNT(*)
 FROM notificaciones_ttaip
+UNION ALL
+SELECT 'cumplimientos_resolucion_ttaip', COUNT(*)
+FROM cumplimientos_resolucion_ttaip
 UNION ALL
 SELECT 'historial_ttaip', COUNT(*)
 FROM historial_ttaip
