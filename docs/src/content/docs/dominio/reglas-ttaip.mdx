@@ -104,11 +104,11 @@ Validaciones obligatorias:
 - Si el descargo vence sin presentación, queda `VENCIDO_SIN_PRESENTACION` y el expediente puede continuar.
 - La fecha límite de resolución se recalcula desde la base de 10 días hábiles y suma las suspensiones registradas.
 
-### BR-TTAIP-008 — Resolución final
+### BR-TTAIP-008 — Inicio de resolución final
 
 Tras la notificación válida de admisibilidad o de segunda calificación, la apelación entra en `EN_RESOLUCION`. Durante esta etapa también pueden registrarse suspensiones adicionales por informe oral o información complementaria.
 
-### BR-TTAIP-008 — Informe oral e información complementaria
+### BR-TTAIP-009 — Informe oral e información complementaria
 
 El expediente TTAIP reutiliza `SuspensionPlazoTtaip` para suspender el plazo de resolución por:
 
@@ -132,7 +132,7 @@ Validaciones obligatorias:
 - La fecha límite de resolución final se recalcula sumando los días suspendidos.
 - La cancelación conserva el registro, marca estado `CANCELADA`, asigna `diasSuspendidos = 0` y deja trazabilidad.
 
-### BR-TTAIP-009 — Resolución final
+### BR-TTAIP-010 — Resolución final
 
 La resolución final puede cerrar el expediente con cualquiera de estos resultados:
 
@@ -219,6 +219,36 @@ El documento oficial también menciona `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACT
 - Excepción oficial: la inadmisibilidad se notifica solo al recurrente/ciudadano.
 - Si existe reproceso, no se borra ni reemplaza la cédula original; se genera una nueva cédula y una nueva notificación para el mismo destinatario afectado.
 - La colección Postman/Newman captura dinámicamente una cédula/notificación real emitida durante el flujo TTAIP antes de ejecutar el reproceso, por lo que no depende de números fijos del seed o environment.
+
+### Constancias, acuses y validación manual
+
+`NotificacionTtaip` registra la evidencia operativa de notificación sin integrar todavía un proveedor real de correo o casilla electrónica.
+
+| Dato | Uso |
+| --- | --- |
+| `medioNotificacion` y `fechaEnvio` | Identifican el medio usado y cuándo se envió. |
+| `codigoEnvio` / `codigoConstancia` | Referencias internas o externas de constancia. |
+| `constanciaEnvio` | Sustento textual o documental del envío. |
+| `acuseAutomatico`, `fechaAcuse`, `estadoAcuse` | Resultado automático reportado por el canal. |
+| `evidenciaUrl` / `referenciaEvidencia` | Evidencia o referencia documental. |
+| `validadaManualmente` | Confirmación manual con responsable, fecha y observación. |
+
+| Endpoint | Rol principal | Uso |
+| --- | --- | --- |
+| `GET /api/ttaip/expedientes/{expedienteId}/notificaciones` | TTAIP/Funcionario/Admin | Lista notificaciones del expediente. |
+| `GET /api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}` | TTAIP/Funcionario/Admin | Consulta una notificación con evidencia. |
+| `POST /api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/constancia-envio` | TTAIP/Admin | Registra constancia de envío y marca `ENVIADA`. |
+| `POST /api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/acuse-automatico` | TTAIP/Admin | Registra acuse y marca `ENTREGADA`, `FALLIDA` u `OBSERVADA`. |
+| `POST /api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual` | TTAIP/Admin | Valida manualmente con sustento y marca `VALIDADA`. |
+
+Validaciones obligatorias:
+
+- Un acuse `ENTREGADO` deja la notificación `ENTREGADA`.
+- Un acuse `FALLIDO` o `NO_RECIBIDO` deja la notificación `FALLIDA` y habilita reproceso.
+- Un acuse `OBSERVADO` deja la notificación `OBSERVADA`.
+- La validación manual exige sustento: observación, evidencia, referencia, constancia o acuse.
+- La nueva notificación generada por reproceso tiene su propia constancia y acuse; no reutiliza ni borra la evidencia original.
+- Los plazos futuros que dependan de notificación válida deben apoyarse en notificaciones `ENTREGADA` o `VALIDADA`.
 
 :::note[Reproceso validado]
 El reproceso conserva `cedulaOriginalId` y `notificacionOriginalId`, genera `cedulaNuevaId` y `notificacionNuevaId`, mantiene el mismo destinatario (`CIUDADANO` o `ENTIDAD_PUBLICA`) y registra trazabilidad en el expediente.

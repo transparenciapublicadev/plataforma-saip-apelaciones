@@ -28,6 +28,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
 - TTAIP soporta suspensiones adicionales por informe oral e informacion complementaria, cada una por 3 dias habiles, con solicitante, motivo, responsable, estado, trazabilidad y recalculo de fecha limite de resolucion.
+- TTAIP registra constancia de envio, acuse automatico, evidencia, validacion manual y trazabilidad por cada `NotificacionTtaip`, sin integrar aun un proveedor real de correo.
 
 ## Nomenclaturas
 
@@ -300,6 +301,13 @@ Decisiones finales:
 - Si el acuse automatico indica falla o no recepcion, debe notificarse fisicamente o reprocesarse por el medio que corresponda.
 - La plataforma debe permitir validacion manual de notificacion correcta cuando el flujo dependa de esa validacion.
 - Una notificacion defectuosa no debe iniciar indebidamente plazos posteriores.
+- Implementacion actual TTAIP: `NotificacionTtaip` registra medio de notificacion, fecha de envio, codigo de envio/constancia, constancia de envio, acuse automatico, fecha y estado de acuse, resultado, evidencia o referencia documental, validacion manual, responsable, observacion y trazabilidad.
+- Estados operativos de notificacion: `PENDIENTE`, `ENVIADA`, `ENTREGADA`, `FALLIDA`, `OBSERVADA`, `VALIDADA` y `REPROCESADA` como referencia de negocio. El backend usa estos valores textuales de forma compatible con el modelo actual.
+- Un acuse `ENTREGADO` marca la notificacion como `ENTREGADA`; un acuse `FALLIDO` o `NO_RECIBIDO` la marca como `FALLIDA`; un acuse `OBSERVADO` la marca como `OBSERVADA`.
+- Una notificacion fallida u observada puede iniciar reproceso, conservando su constancia y acuse originales.
+- La validacion manual solo procede con sustento: observacion, evidencia, referencia documental, constancia o acuse. Esta validacion marca la notificacion como `VALIDADA` y registra responsable y fecha.
+- No se implementa aun envio real de correo, SMTP, casilla electronica real ni motor externo. El modelo queda preparado para capturar evidencia y acuses generados por esos proveedores cuando se integren.
+- Los plazos que dependan de una notificacion valida deben considerar notificaciones `ENTREGADA` o `VALIDADA`. Esta iteracion documenta y protege el dato minimo, sin recalcular masivamente plazos historicos.
 
 ## Reglas de cedulas
 
@@ -320,6 +328,7 @@ Decisiones finales:
 - Debe registrarse responsable, motivo, fecha, destinatario afectado, intento y resultado.
 - Debe existir trazabilidad entre cedula original, nueva cedula si corresponde, notificacion original y nueva notificacion.
 - La coleccion Postman valida esta regla capturando dinamicamente una cedula/notificacion emitida en el flujo TTAIP antes de ejecutar el reproceso.
+- Si el reproceso nace de un acuse fallido, la notificacion original queda `FALLIDA` con resultado `REPROCESO_REQUERIDO` y la nueva notificacion queda `PENDIENTE` de su propia constancia/acuse.
 
 ## Expediente TTAIP como agregado principal
 
