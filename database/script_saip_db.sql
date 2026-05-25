@@ -241,6 +241,58 @@ CREATE TABLE IF NOT EXISTS notificaciones_ttaip (
     CONSTRAINT fk_notificacion_cedula FOREIGN KEY (id_cedula) REFERENCES cedulas_notificacion (id_cedula)
 );
 
+CREATE TABLE IF NOT EXISTS descargos_entidad_ttaip (
+    id_descargo BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_apelacion BIGINT NOT NULL,
+    id_entidad BIGINT NOT NULL,
+    fecha_requerimiento DATE NOT NULL,
+    fecha_limite_descargo DATE NOT NULL,
+    fecha_presentacion DATE NULL,
+    estado_descargo VARCHAR(40) NOT NULL DEFAULT 'REQUERIDO',
+    resumen_descargo TEXT NULL,
+    documento_descargo VARCHAR(500) NULL,
+    responsable_entidad VARCHAR(120) NULL,
+    observacion TEXT NULL,
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_descargo),
+    KEY idx_descargo_ttaip_expediente (id_expediente_ttaip),
+    KEY idx_descargo_ttaip_apelacion (id_apelacion),
+    KEY idx_descargo_ttaip_entidad (id_entidad),
+    KEY idx_descargo_ttaip_estado (estado_descargo),
+    KEY idx_descargo_ttaip_limite (fecha_limite_descargo),
+    CONSTRAINT fk_descargo_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_descargo_ttaip_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelaciones (id_apelacion),
+    CONSTRAINT fk_descargo_ttaip_entidad FOREIGN KEY (id_entidad) REFERENCES entidades (id_entidad),
+    CONSTRAINT chk_descargo_ttaip_estado CHECK (estado_descargo IN ('REQUERIDO','PRESENTADO','PRESENTADO_EXTEMPORANEO','VENCIDO_SIN_PRESENTACION','CANCELADO'))
+);
+
+CREATE TABLE IF NOT EXISTS suspensiones_plazo_ttaip (
+    id_suspension BIGINT NOT NULL AUTO_INCREMENT,
+    id_expediente_ttaip BIGINT NOT NULL,
+    id_descargo BIGINT NULL,
+    motivo_suspension VARCHAR(40) NOT NULL DEFAULT 'DESCARGOS_ENTIDAD',
+    fecha_inicio_suspension DATE NOT NULL,
+    fecha_fin_suspension DATE NULL,
+    dias_suspendidos INT NOT NULL DEFAULT 0,
+    estado_suspension VARCHAR(30) NOT NULL DEFAULT 'ACTIVA',
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_suspension),
+    KEY idx_suspension_ttaip_expediente (id_expediente_ttaip),
+    KEY idx_suspension_ttaip_descargo (id_descargo),
+    KEY idx_suspension_ttaip_estado (estado_suspension),
+    KEY idx_suspension_ttaip_motivo (motivo_suspension),
+    CONSTRAINT fk_suspension_ttaip_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
+    CONSTRAINT fk_suspension_ttaip_descargo FOREIGN KEY (id_descargo) REFERENCES descargos_entidad_ttaip (id_descargo),
+    CONSTRAINT chk_suspension_ttaip_motivo CHECK (motivo_suspension IN ('DESCARGOS_ENTIDAD')),
+    CONSTRAINT chk_suspension_ttaip_estado CHECK (estado_suspension IN ('ACTIVA','CERRADA','VENCIDA','CANCELADA')),
+    CONSTRAINT chk_suspension_ttaip_dias CHECK (dias_suspendidos >= 0)
+);
+
 CREATE TABLE IF NOT EXISTS historial_ttaip (
     id_historial BIGINT NOT NULL AUTO_INCREMENT,
     id_expediente_ttaip BIGINT NOT NULL,
