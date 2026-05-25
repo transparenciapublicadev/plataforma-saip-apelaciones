@@ -75,6 +75,9 @@ public class HistorialTtaip {
         CEDULA_EMITIDA,
         NOTIFICACION_REGISTRADA,
         REPROCESO_REGISTRADO,
+        DESCARGO_REQUERIDO,
+        DESCARGO_PRESENTADO,
+        SUSPENSION_PLAZO,
         SUBSANACION,
         AUDITORIA
     }

@@ -17,7 +17,7 @@ Esta matriz documenta que ya esta cubierto, que esta parcial y que debe planific
 
 ## Resumen ejecutivo
 
-El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la excepcion de inadmisibilidad notificada solo al ciudadano, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas principales pendientes estan en reglas finas del documento oficial: apelaciones externas sin SAIP creada en plataforma, elevacion por entidad, descargos con suspension de plazo, informe oral/informacion complementaria, constancias/acuse de correo y cumplimiento de resolucion fundada.
+El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la excepcion de inadmisibilidad notificada solo al ciudadano, descargos de entidad con suspension de plazo de resolucion, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas principales pendientes estan en reglas finas del documento oficial: apelaciones externas sin SAIP creada en plataforma, elevacion por entidad, informe oral/informacion complementaria, constancias/acuse de correo y cumplimiento de resolucion fundada.
 
 ## Brechas por regla
 
@@ -50,13 +50,13 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 | Cedulas con mismo numero base para ciudadano y entidad. | Backend TTAIP/seed | Cubierto parcial | `ExpedienteTtaipService.generarNumeroCedula`, `CedulaNotificacion`, seed | Servicio genera dos cedulas por resolucion; revisar concurrencia/secuencia. |
 | Inadmisibilidad se notifica solo al ciudadano. | Backend TTAIP | Cubierto | `ExpedienteTtaipService.registrarResolucion` | La decision `INADMISIBLE` genera cedula/notificacion solo para `CIUDADANO`; las demas resoluciones mantienen la regla general. |
 | Notificacion de admisibilidad a ciudadano y entidad. | Backend TTAIP | Cubierto parcial | `ExpedienteTtaipService`, `NotificacionTtaip` | Existe notificacion para ambos; falta validacion de constancia/acuse. |
-| Descargos de entidad en 7 dias habiles. | Backend TTAIP/frontend/Postman | Falta | `TTAIPService`, `Apelacion`, `ExpedienteTtaip` | Crear entidad/endpoint de descargos y suspender plazo de resolucion. |
-| Suspension por descargos, informe oral o informacion complementaria. | Backend TTAIP | Falta | `ExpedienteTtaip.fechaLimiteResolucion` | Agregar eventos de suspension y recalculo de plazo. |
+| Descargos de entidad en 7 dias habiles. | Backend TTAIP/frontend/Postman | Cubierto | `DescargoEntidadTtaip`, `SuspensionPlazoTtaip`, `ExpedienteTtaipService`, `TTAIPRestController`, frontend TTAIP, Postman | Se requiere descargo solo tras admision valida, se calcula plazo de 7 dias habiles, se evita duplicado activo, se registra presentacion o vencimiento y se conserva trazabilidad. |
+| Suspension por descargos, informe oral o informacion complementaria. | Backend TTAIP | Parcial | `SuspensionPlazoTtaip`, `ExpedienteTtaip.fechaLimiteResolucion`, `ExpedienteTtaipService` | La suspension por `DESCARGOS_ENTIDAD` ya recalcula el plazo de resolucion. Quedan pendientes informe oral e informacion complementaria. |
 | Primera calificacion en 7 dias habiles. | Backend/frontend/docs | Cubierto parcial | `TTAIPService`, frontend TTAIP | Se modela estado y resolucion; falta control/alerta estricta de plazo. |
 | Segunda calificacion condicional tras subsanacion. | Backend/frontend | Cubierto | `ApelacionRestController.subsanar`, `TTAIPService.admitirApelacion` | Flujo pasa a `EN_CALIFICACION_2` y luego a notificacion/resolucion. |
 | No subsanar: tener por no presentado. | Backend TTAIP | Cubierto | `TTAIPService.declararTenerPorNoPresentado` | Revisar que se emita como resolucion final o equivalente segun criterio legal. |
 | Improcedencia como rechazo definitivo. | Backend TTAIP | Cubierto | `TTAIPService.inadmitirApelacion`, `declararImprocedenteFinal` | Mantener diferencia `INADMISIBLE` vs `IMPROCEDENTE`. |
-| Resolucion final en 10 dias habiles desde notificacion valida de admisibilidad. | Backend TTAIP | Parcial | `TTAIPService.notificarSegundaCalificacion`, `ExpedienteTtaip.fechaLimiteResolucion` | Falta ligar inicio de plazo a notificacion valida de admisibilidad y suspensiones. |
+| Resolucion final en 10 dias habiles desde notificacion valida de admisibilidad. | Backend TTAIP | Parcial | `TTAIPService.notificarSegundaCalificacion`, `ExpedienteTtaip.fechaLimiteResolucion`, `SuspensionPlazoTtaip` | El plazo se calcula con 10 dias habiles y suma suspensiones por descargos. Falta ligar inicio estrictamente a notificacion valida de admisibilidad y cubrir suspensiones por informe oral/informacion complementaria. |
 | Decisiones finales: Fundado, Fundado en parte, Infundado, Infundado en parte, Improcedente, Sustraccion, Desistimiento. | Backend TTAIP | Cubierto | `Resolucion.DecisionResolucion`, `TTAIPService` | Ya existen endpoints/decisiones para estos resultados. |
 | Decisiones finales: Estese a lo resuelto y Nulidad del acto. | Backend TTAIP | Falta | `Resolucion.DecisionResolucion`, `TTAIPService` | Agregar enums/endpoints/estados si entran al alcance funcional. |
 | Cumplimiento de resolucion fundada en 7 dias habiles. | Backend TTAIP/entidad | Falta | `TTAIPService`, frontend funcionario | Modelar seguimiento de cumplimiento, evidencia y comunicacion al Tribunal. |
@@ -64,8 +64,8 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 | Notificacion fisica si falla correo. | Backend notificaciones/reproceso | Parcial | `ReprocesoNotificacion` | Reproceso existe, falta regla automatica o manual de canal alterno. |
 | Validacion manual de notificacion correcta antes de avanzar. | Backend/frontend TTAIP | Parcial | `NotificacionTtaip.estado`, `TTAIPService.notificarSegundaCalificacion` | Estado existe como texto; falta endpoint/validacion funcional. |
 | Reprocesar notificacion defectuosa sin borrar original. | Backend/database/Postman | Cubierto | `ReprocesoNotificacion`, `ExpedienteTtaipService`, `TTAIPRestController`, seed, Postman | El reproceso marca la notificacion original como fallida, crea nueva cedula para el mismo destinatario, registra nueva notificacion y conserva la cedula original. |
-| Historial y auditoria del tramite TTAIP. | Backend/database | Cubierto parcial | `HistorialTtaip`, `ExpedienteTtaipService`, seed | Se registran eventos clave; faltan eventos de descargos, suspensiones y cumplimiento. |
-| Newman/Postman debe reflejar reglas oficiales implementadas. | Postman | Cubierto | `postman/SAIP-API-Collection-Complete.json`, `postman/SAIP-API-Environment-Complete.json` | La coleccion esta en verde y el reproceso captura una cedula/notificacion real generada en runtime; ya no depende de cedulas fijas del environment. Nuevos endpoints se documentaran cuando se implementen nuevas brechas. |
+| Historial y auditoria del tramite TTAIP. | Backend/database | Cubierto parcial | `HistorialTtaip`, `ExpedienteTtaipService`, seed | Se registran eventos clave, incluidos descargos, suspensiones y reprocesos; falta seguimiento de cumplimiento de resolucion fundada. |
+| Newman/Postman debe reflejar reglas oficiales implementadas. | Postman | Cubierto | `postman/SAIP-API-Collection-Complete.json`, `postman/SAIP-API-Environment-Complete.json` | La coleccion valida reproceso con cedula dinamica y descargos TTAIP con requerimiento, duplicado esperado, consultas, presentacion, suspensiones y procesamiento de vencidos. |
 | Ayuda publica debe mostrar plazos oficiales. | Backend/frontend docs | Duda | `AyudaPublicaRestController`, frontend ayuda | La ampliacion SAIP ya refleja informe y cronograma hasta el dia 4. Queda resolver la contradiccion legal de apelacion expresa: 15 calendario vs. 15 habiles. |
 
 ## Reglas ya cubiertas
@@ -86,6 +86,8 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 - Cedulas y notificaciones asociadas a resoluciones.
 - Destinatarios `CIUDADANO` y `ENTIDAD_PUBLICA`.
 - Historial TTAIP y reprocesos de notificacion.
+- Descargos de entidad TTAIP con plazo de 7 dias habiles, presentacion, vencimiento y trazabilidad.
+- Suspension de plazo de resolucion por descargos de entidad y recalculo de fecha limite.
 - Consentimiento obligatorio de tratamiento de datos personales en SAIP.
 - Canal formal de notificacion de SAIP, incluyendo `CASILLA_ELECTRONICA`.
 - Inadmisibilidad TTAIP notificada solo al ciudadano/recurrente.
@@ -101,12 +103,11 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 3. Conectar el canal elegido de SAIP con evidencias reales de notificacion cuando se implemente el motor de constancias/acuses.
 4. Permitir, si se aprueba, apelacion externa sin SAIP creada en plataforma.
 5. Definir si se implementa elevacion por entidad o se conserva solo flujo directo.
-6. Agregar descargos de entidad y suspension de plazo.
-7. Agregar informe oral/informacion complementaria y suspension adicional.
-8. Agregar constancia de envio, acuse automatico y fallback de correo.
-9. Agregar cumplimiento de resolucion fundada en 7 dias habiles.
-10. Agregar decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` si quedan dentro del alcance.
+6. Agregar informe oral/informacion complementaria y suspension adicional.
+7. Agregar constancia de envio, acuse automatico y fallback de correo.
+8. Agregar cumplimiento de resolucion fundada en 7 dias habiles.
+9. Agregar decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` si quedan dentro del alcance.
 
 ## Cambios implementados en esta iteracion
 
-Se implementaron brechas prioritarias y seguras: consentimiento de datos personales en SAIP, canal formal de notificacion con casilla electronica, observacion/subsanacion SAIP formal con plazo y trazabilidad, ampliacion de plazo SAIP con informe y cronograma de entregas parciales, encauzamiento SAIP con entidad origen/destino y alcance total/parcial dentro de 2 dias habiles, liquidacion/cupon de pago para entrega fisica con pago, recojo y archivo por no recojo, excepcion de cedula/notificacion solo al ciudadano para inadmisibilidad, reproceso de notificacion fallida con nueva cedula y nueva notificacion vinculadas, conservacion de la cedula original y Postman/Newman con cedula dinamica generada durante el flujo. Las reglas restantes marcadas como `Falta` o `Parcial` requieren implementacion planificada, pruebas backend, actualizacion de Postman y, cuando aplique, ajuste visual/funcional de frontend.
+Se implementaron brechas prioritarias y seguras: consentimiento de datos personales en SAIP, canal formal de notificacion con casilla electronica, observacion/subsanacion SAIP formal con plazo y trazabilidad, ampliacion de plazo SAIP con informe y cronograma de entregas parciales, encauzamiento SAIP con entidad origen/destino y alcance total/parcial dentro de 2 dias habiles, liquidacion/cupon de pago para entrega fisica con pago, recojo y archivo por no recojo, descargos de entidad TTAIP con suspension de plazo de resolucion, excepcion de cedula/notificacion solo al ciudadano para inadmisibilidad, reproceso de notificacion fallida con nueva cedula y nueva notificacion vinculadas, conservacion de la cedula original y Postman/Newman con cedula dinamica generada durante el flujo. Las reglas restantes marcadas como `Falta` o `Parcial` requieren implementacion planificada, pruebas backend, actualizacion de Postman y, cuando aplique, ajuste visual/funcional de frontend.

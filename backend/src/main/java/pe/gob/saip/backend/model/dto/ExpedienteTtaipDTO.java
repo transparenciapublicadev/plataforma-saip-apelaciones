@@ -23,7 +23,9 @@ public record ExpedienteTtaipDTO(
         List<CedulaNotificacionDTO> cedulas,
         List<NotificacionTtaipDTO> notificaciones,
         List<HistorialTtaipDTO> historial,
-        List<ReprocesoNotificacionDTO> reprocesos
+        List<ReprocesoNotificacionDTO> reprocesos,
+        List<DescargoEntidadTtaipDTO> descargosEntidad,
+        List<SuspensionPlazoTtaipDTO> suspensionesPlazo
 ) {
     public static ExpedienteTtaipDTO from(ExpedienteTtaip expediente) {
         List<ResolucionDTO> resoluciones = expediente.getResoluciones() != null
@@ -63,6 +65,12 @@ public record ExpedienteTtaipDTO(
                         : List.of(),
                 expediente.getReprocesos() != null
                         ? expediente.getReprocesos().stream().map(ReprocesoNotificacionDTO::from).toList()
+                        : List.of(),
+                expediente.getDescargosEntidad() != null
+                        ? expediente.getDescargosEntidad().stream().map(DescargoEntidadTtaipDTO::from).toList()
+                        : List.of(),
+                expediente.getSuspensionesPlazo() != null
+                        ? expediente.getSuspensionesPlazo().stream().map(SuspensionPlazoTtaipDTO::from).toList()
                         : List.of()
         );
     }

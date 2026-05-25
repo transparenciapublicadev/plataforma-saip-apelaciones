@@ -2,9 +2,10 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
+import { TtaipService } from '../../services/ttaip.service';
 import { Apelacion } from '../../models/apelacion.model';
 
-type DetailTab = 'apelacion' | 'adjuntos';
+type DetailTab = 'apelacion' | 'descargos' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
 
 interface TimelineItem {
@@ -34,11 +35,20 @@ interface ResultadoMeta {
 export class TtaipResolucionDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly ttaipService = inject(TtaipService);
 
   readonly apelacion = signal<Apelacion | null>(null);
   readonly loading = signal<boolean>(true);
   readonly error = signal<string>('');
   readonly activeTab = signal<DetailTab>('apelacion');
+  readonly descargoLoading = signal<boolean>(false);
+  readonly descargoMessage = signal<string>('');
+  readonly descargoError = signal<string>('');
+  readonly tabs: { id: DetailTab; label: string }[] = [
+    { id: 'apelacion', label: 'Apelacion' },
+    { id: 'descargos', label: 'Descargos' },
+    { id: 'adjuntos', label: 'Adjuntos' }
+  ];
 
   private readonly routeExpediente = signal<string>('');
 
@@ -51,6 +61,11 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly notificacionesExpediente = computed(() => this.expedienteTtaip()?.notificaciones ?? []);
   readonly historialExpediente = computed(() => this.expedienteTtaip()?.historial ?? []);
   readonly reprocesosExpediente = computed(() => this.expedienteTtaip()?.reprocesos ?? []);
+  readonly descargosExpediente = computed(() => this.expedienteTtaip()?.descargosEntidad ?? []);
+  readonly suspensionesExpediente = computed(() => this.expedienteTtaip()?.suspensionesPlazo ?? []);
+  readonly descargoActivo = computed(() =>
+    this.descargosExpediente().find((descargo) => this.normalizeKey(descargo.estadoDescargo).includes('REQUERIDO')) ?? null
+  );
 
   readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || 'EN_CALIFICACION_1'));
 
@@ -179,6 +194,74 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   cambiarTab(tab: DetailTab): void {
     this.activeTab.set(tab);
+  }
+
+  requerirDescargos(observacion: string): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId) {
+      this.descargoError.set('No se encontro expediente TTAIP para requerir descargos.');
+      return;
+    }
+
+    this.descargoLoading.set(true);
+    this.descargoMessage.set('');
+    this.descargoError.set('');
+    this.ttaipService.requerirDescargos(expedienteId, {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion: observacion || 'Requerimiento de descargos y expediente administrativo.'
+    }).subscribe({
+      next: () => {
+        this.descargoMessage.set('Descargos requeridos y plazo de resolución suspendido.');
+        this.descargoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.descargoError.set('No se pudo requerir descargos para este expediente.');
+        this.descargoLoading.set(false);
+      }
+    });
+  }
+
+  presentarDescargo(
+    descargoId: number | undefined,
+    resumenDescargo: string,
+    referenciaDocumento: string,
+    responsableEntidad: string,
+    observacion: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId) {
+      this.descargoError.set('No se encontro expediente TTAIP para presentar descargo.');
+      return;
+    }
+    if (!descargoId) {
+      this.descargoError.set('No se encontro el requerimiento de descargo activo.');
+      return;
+    }
+    if (!resumenDescargo.trim() || !responsableEntidad.trim()) {
+      this.descargoError.set('Complete resumen del descargo y responsable de la entidad.');
+      return;
+    }
+
+    this.descargoLoading.set(true);
+    this.descargoMessage.set('');
+    this.descargoError.set('');
+    this.ttaipService.presentarDescargo(expedienteId, descargoId, {
+      resumenDescargo,
+      referenciaDocumento: referenciaDocumento || null,
+      responsableEntidad,
+      observacion: observacion || null
+    }).subscribe({
+      next: () => {
+        this.descargoMessage.set('Descargo presentado y suspensión cerrada.');
+        this.descargoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.descargoError.set('No se pudo presentar el descargo de la entidad.');
+        this.descargoLoading.set(false);
+      }
+    });
   }
 
   dotColor(icon: TimelineIcon): string {
@@ -339,6 +422,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   private iconForEventoTtaip(value?: string | null): TimelineIcon {
     const normalized = this.normalizeKey(value);
     if (normalized.includes('REPROCESO')) return 'alert';
+    if (normalized.includes('DESCARGO') || normalized.includes('SUSPENSION')) return 'alert';
     if (normalized.includes('CAMBIO_ESTADO')) return 'check';
     return 'check';
   }

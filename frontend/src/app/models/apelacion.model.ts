@@ -2,12 +2,14 @@
 import type { ApelacionDTO } from '../api/types';
 import type {
     CedulaNotificacion,
+    DescargoEntidadTtaip,
     HistorialTtaip,
     MiembroTtaipResumen,
     NotificacionTtaip,
     ReprocesoNotificacion,
     Resolucion,
-    SalaTtaipResumen
+    SalaTtaipResumen,
+    SuspensionPlazoTtaip
 } from './resolucion.model';
 
 // Enums tipados del lado cliente (el spec los expone como string)
@@ -54,6 +56,8 @@ export type Apelacion = Required<ApelacionDTO> & {
         notificaciones?: NotificacionTtaip[];
         historial?: HistorialTtaip[];
         reprocesos?: ReprocesoNotificacion[];
+        descargosEntidad?: DescargoEntidadTtaip[];
+        suspensionesPlazo?: SuspensionPlazoTtaip[];
     } | null;
     resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;
