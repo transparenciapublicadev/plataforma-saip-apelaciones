@@ -251,15 +251,64 @@ CREATE TABLE IF NOT EXISTS notificaciones_ttaip (
     destinatario_email VARCHAR(150) NULL,
     fecha_notificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     medio VARCHAR(40) NULL DEFAULT 'CASILLA_ELECTRONICA',
-    estado VARCHAR(40) NULL DEFAULT 'NOTIFICADA',
+    estado VARCHAR(40) NULL DEFAULT 'PENDIENTE',
     detalle TEXT NULL,
+    medio_notificacion VARCHAR(40) NULL DEFAULT 'CASILLA_ELECTRONICA',
+    fecha_envio DATETIME NULL,
+    codigo_envio VARCHAR(80) NULL,
+    codigo_constancia VARCHAR(80) NULL,
+    constancia_envio TEXT NULL,
+    acuse_automatico TEXT NULL,
+    fecha_acuse DATETIME NULL,
+    estado_acuse VARCHAR(40) NULL DEFAULT 'PENDIENTE',
+    resultado_notificacion VARCHAR(80) NULL,
+    evidencia_url VARCHAR(500) NULL,
+    referencia_evidencia VARCHAR(500) NULL,
+    validada_manualmente TINYINT(1) NOT NULL DEFAULT 0,
+    fecha_validacion_manual DATETIME NULL,
+    responsable_validacion VARCHAR(120) NULL,
+    observacion_validacion TEXT NULL,
+    responsable_constancia VARCHAR(120) NULL,
+    observacion_constancia TEXT NULL,
+    trazabilidad TEXT NULL,
     PRIMARY KEY (id_notificacion),
     UNIQUE KEY uk_notificacion_cedula (id_cedula),
     KEY idx_notificacion_expediente (id_expediente_ttaip),
     KEY idx_notificacion_destinatario (destinatario),
+    KEY idx_notificacion_estado (estado),
     CONSTRAINT fk_notificacion_expediente FOREIGN KEY (id_expediente_ttaip) REFERENCES expedientes_ttaip (id_expediente_ttaip),
     CONSTRAINT fk_notificacion_cedula FOREIGN KEY (id_cedula) REFERENCES cedulas_notificacion (id_cedula)
 );
+
+CALL add_column_if_missing('notificaciones_ttaip', 'medio_notificacion', 'VARCHAR(40) NULL DEFAULT ''CASILLA_ELECTRONICA''');
+CALL add_column_if_missing('notificaciones_ttaip', 'fecha_envio', 'DATETIME NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'codigo_envio', 'VARCHAR(80) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'codigo_constancia', 'VARCHAR(80) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'constancia_envio', 'TEXT NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'acuse_automatico', 'TEXT NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'fecha_acuse', 'DATETIME NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'estado_acuse', 'VARCHAR(40) NULL DEFAULT ''PENDIENTE''');
+CALL add_column_if_missing('notificaciones_ttaip', 'resultado_notificacion', 'VARCHAR(80) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'evidencia_url', 'VARCHAR(500) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'referencia_evidencia', 'VARCHAR(500) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'validada_manualmente', 'TINYINT(1) NOT NULL DEFAULT 0');
+CALL add_column_if_missing('notificaciones_ttaip', 'fecha_validacion_manual', 'DATETIME NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'responsable_validacion', 'VARCHAR(120) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'observacion_validacion', 'TEXT NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'responsable_constancia', 'VARCHAR(120) NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'observacion_constancia', 'TEXT NULL');
+CALL add_column_if_missing('notificaciones_ttaip', 'trazabilidad', 'TEXT NULL');
+
+ALTER TABLE notificaciones_ttaip MODIFY COLUMN estado VARCHAR(40) NULL DEFAULT 'PENDIENTE';
+ALTER TABLE notificaciones_ttaip MODIFY COLUMN medio_notificacion VARCHAR(40) NULL DEFAULT 'CASILLA_ELECTRONICA';
+ALTER TABLE notificaciones_ttaip MODIFY COLUMN estado_acuse VARCHAR(40) NULL DEFAULT 'PENDIENTE';
+ALTER TABLE notificaciones_ttaip MODIFY COLUMN validada_manualmente TINYINT(1) NOT NULL DEFAULT 0;
+
+UPDATE notificaciones_ttaip
+SET medio_notificacion = COALESCE(medio_notificacion, medio, 'CASILLA_ELECTRONICA'),
+    estado_acuse = COALESCE(estado_acuse, 'PENDIENTE'),
+    resultado_notificacion = COALESCE(resultado_notificacion, estado, 'PENDIENTE'),
+    validada_manualmente = COALESCE(validada_manualmente, 0);
 
 CREATE TABLE IF NOT EXISTS descargos_entidad_ttaip (
     id_descargo BIGINT NOT NULL AUTO_INCREMENT,
@@ -1183,7 +1232,17 @@ INSERT INTO notificaciones_ttaip (id_expediente_ttaip,
                                   fecha_notificacion,
                                   medio,
                                   estado,
-                                  detalle)
+                                  detalle,
+                                  medio_notificacion,
+                                  fecha_envio,
+                                  codigo_envio,
+                                  codigo_constancia,
+                                  constancia_envio,
+                                  estado_acuse,
+                                  resultado_notificacion,
+                                  validada_manualmente,
+                                  responsable_constancia,
+                                  trazabilidad)
 SELECT et.id_expediente_ttaip,
        cn.id_cedula,
        cn.destinatario,
@@ -1191,8 +1250,18 @@ SELECT et.id_expediente_ttaip,
        cn.destinatario_email,
        cn.fecha_emision,
        'CASILLA_ELECTRONICA',
-       'NOTIFICADA',
-       CONCAT('Notificacion oficial de ', r.numero_resolucion, ' para ', cn.destinatario)
+       'ENVIADA',
+       CONCAT('Notificacion oficial de ', r.numero_resolucion, ' para ', cn.destinatario),
+       'CASILLA_ELECTRONICA',
+       cn.fecha_emision,
+       CONCAT('ENV-', cn.numero_cedula, '-', cn.destinatario),
+       CONCAT('CONST-', cn.numero_cedula, '-', cn.destinatario),
+       CONCAT('Constancia de envio semilla para ', cn.numero_cedula, ' - ', cn.destinatario),
+       'PENDIENTE',
+       'ENVIADA',
+       0,
+       'Seed TTAIP',
+       CONCAT(NOW(), ' - Constancia de envio semilla registrada para ', cn.numero_cedula, ' - ', cn.destinatario)
 FROM cedulas_notificacion cn
          JOIN resoluciones r ON r.id_resolucion = cn.id_resolucion
          JOIN expedientes_ttaip et ON et.id_expediente_ttaip = r.id_expediente_ttaip
@@ -1208,19 +1277,36 @@ ON DUPLICATE KEY UPDATE id_expediente_ttaip = VALUES(id_expediente_ttaip),
                         fecha_notificacion = VALUES(fecha_notificacion),
                         medio = VALUES(medio),
                         estado = VALUES(estado),
-                        detalle = VALUES(detalle);
+                        detalle = VALUES(detalle),
+                        medio_notificacion = VALUES(medio_notificacion),
+                        fecha_envio = VALUES(fecha_envio),
+                        codigo_envio = VALUES(codigo_envio),
+                        codigo_constancia = VALUES(codigo_constancia),
+                        constancia_envio = VALUES(constancia_envio),
+                        estado_acuse = VALUES(estado_acuse),
+                        resultado_notificacion = VALUES(resultado_notificacion),
+                        validada_manualmente = VALUES(validada_manualmente),
+                        responsable_constancia = VALUES(responsable_constancia),
+                        trazabilidad = VALUES(trazabilidad);
 
 UPDATE notificaciones_ttaip n
     JOIN cedulas_notificacion cn ON cn.id_cedula = n.id_cedula
 SET n.estado = 'FALLIDA',
-    n.detalle = 'Notificacion original observada; se genero reproceso para la entidad publica.'
+    n.estado_acuse = 'FALLIDO',
+    n.resultado_notificacion = 'REPROCESO_REQUERIDO',
+    n.acuse_automatico = 'Acuse semilla fallido para validar reproceso.',
+    n.detalle = 'Notificacion original observada; se genero reproceso para la entidad publica.',
+    n.trazabilidad = CONCAT(COALESCE(n.trazabilidad, ''), '\n', NOW(), ' - Acuse fallido semilla; corresponde reproceso.')
 WHERE cn.numero_cedula = '15207-2025-JUS/TTAIP'
   AND cn.destinatario = 'ENTIDAD_PUBLICA';
 
 UPDATE notificaciones_ttaip n
     JOIN cedulas_notificacion cn ON cn.id_cedula = n.id_cedula
-SET n.estado = 'PENDIENTE_REENVIO',
-    n.detalle = 'Nueva notificacion generada por reproceso de cedula observada.'
+SET n.estado = 'PENDIENTE',
+    n.estado_acuse = 'PENDIENTE',
+    n.resultado_notificacion = 'PENDIENTE_CONSTANCIA_REPROCESO',
+    n.detalle = 'Nueva notificacion generada por reproceso de cedula observada.',
+    n.trazabilidad = CONCAT(COALESCE(n.trazabilidad, ''), '\n', NOW(), ' - Notificacion semilla generada por reproceso.')
 WHERE cn.numero_cedula = '15208-2025-JUS/TTAIP'
   AND cn.destinatario = 'ENTIDAD_PUBLICA';
 
