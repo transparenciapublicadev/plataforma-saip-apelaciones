@@ -98,6 +98,20 @@
         </div>
       }
 
+      @if (liquidacionActiva(); as liquidacion) {
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(180,130,40,0.1), transparent); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 14h6M9 10h6M7 3h10a2 2 0 0 1 2 2v16l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2z" /></svg>
+          </div>
+          <div class="flex-1">
+            <span class="eyebrow" style="color: var(--gold)">Cupón de pago · entrega física</span>
+            <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+              La entidad notificó el cupón <span class="font-mono font-semibold">{{ liquidacion.codigoLiquidacion }}</span>. Puede recoger la información física hasta el <span class="font-mono font-semibold">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span>.
+            </p>
+          </div>
+        </div>
+      }
+
       <div
         class="grid grid-cols-1 lg:grid-cols-12 gap-6"
         data-motion-stagger
@@ -394,6 +408,57 @@
                   <p class="text-muted-foreground">Aún no hay respuesta para esta solicitud.</p>
                 </div>
               }
+            }
+
+            @if (activeTab() === 'liquidacion') {
+              <div class="p-6 md:p-8 space-y-5 animate-fade-in">
+                @if (liquidaciones().length > 0) {
+                  @for (liquidacion of liquidaciones(); track liquidacion.id) {
+                    <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
+                      <div class="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <span class="eyebrow" style="color: var(--gold)">Cupón de pago</span>
+                          <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">{{ getEstadoDisplay(liquidacion.estadoLiquidacion) }}</h3>
+                        </div>
+                        <span class="code-chip" style="font-size: 12px">{{ liquidacion.codigoLiquidacion }}</span>
+                      </div>
+
+                      <p class="text-sm text-foreground/85 mt-4 whitespace-pre-wrap">{{ liquidacion.concepto }}</p>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Monto</div>
+                          <p class="font-mono text-sm mt-1">{{ liquidacion.moneda }} {{ liquidacion.monto }}</p>
+                        </div>
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Recojo hasta</div>
+                          <p class="font-mono text-sm mt-1">{{ liquidacion.fechaLimiteRecojo | date:'dd MMM yyyy' }}</p>
+                        </div>
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Notificado</div>
+                          <p class="font-mono text-sm mt-1">{{ liquidacion.fechaNotificacion | date:'dd MMM yyyy' }}</p>
+                        </div>
+                        <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <div class="eyebrow">Medio</div>
+                          <p class="text-sm mt-1">{{ getEstadoDisplay(liquidacion.medioNotificacion) }}</p>
+                        </div>
+                      </div>
+
+                      @if (liquidacion.observacion) {
+                        <div class="mt-4 rounded-md p-4 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <span class="eyebrow">Indicaciones</span>
+                          <p class="mt-2 text-foreground/80 whitespace-pre-wrap">{{ liquidacion.observacion }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+                } @else {
+                  <div class="p-12 text-center">
+                    <svg class="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 14h6M9 10h6M7 3h10a2 2 0 0 1 2 2v16l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2z" /></svg>
+                    <p class="text-muted-foreground">La entidad no ha emitido cupones para entrega física.</p>
+                  </div>
+                }
+              </div>
             }
 
             @if (activeTab() === 'ampliacion') {

@@ -95,6 +95,18 @@
         </div>
       }
 
+      @if (liquidacionActiva(); as liquidacion) {
+        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(180,130,40,0.1), transparent); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 14h6M9 10h6M7 3h10a2 2 0 0 1 2 2v16l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2z" /></svg>
+          </div>
+          <div>
+            <span class="eyebrow" style="color: var(--gold)">Liquidación {{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Cupón <span class="font-mono font-semibold">{{ liquidacion.codigoLiquidacion }}</span> notificado. Recojo físico hasta el <span class="font-mono font-semibold">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span>.</p>
+          </div>
+        </div>
+      }
+
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
@@ -437,6 +449,149 @@
                 } @empty {
                   <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
                     <p class="text-sm text-muted-foreground">No se han registrado encauzamientos para esta SAIP.</p>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab() === 'liquidacion') {
+          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            @if (puedeLiquidar()) {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
+                <span class="eyebrow" style="color: var(--gold)">Liquidación · día 9 máximo</span>
+                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Emitir cupón de pago</h3>
+                <p class="text-sm text-foreground/80 mt-2">Use esta acción cuando la entrega física requiera costos de reproducción. El recojo queda disponible por 30 días hábiles desde la notificación.</p>
+
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label class="field">
+                    <span class="field-label">Código o número de cupón</span>
+                    <input class="field-input" type="text" [ngModel]="liquidacionCodigo()" (ngModelChange)="liquidacionCodigo.set($event)" placeholder="Opcional; el sistema puede generarlo" />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Monto</span>
+                    <input class="field-input" type="number" min="0" step="0.01" [ngModel]="liquidacionMonto()" (ngModelChange)="liquidacionMonto.set($event)" placeholder="0.00" />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Moneda</span>
+                    <input class="field-input" type="text" maxlength="3" [ngModel]="liquidacionMoneda()" (ngModelChange)="liquidacionMoneda.set($event)" placeholder="PEN" />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Fecha de notificación</span>
+                    <input class="field-input" type="date" [ngModel]="liquidacionFechaNotificacion()" (ngModelChange)="liquidacionFechaNotificacion.set($event)" />
+                  </label>
+
+                  <label class="field">
+                    <span class="field-label">Medio de notificación</span>
+                    <select class="field-input" [ngModel]="liquidacionMedioNotificacion()" (ngModelChange)="liquidacionMedioNotificacion.set($event)">
+                      <option value="CASILLA_ELECTRONICA">Casilla electrónica</option>
+                      <option value="CORREO_ELECTRONICO">Correo electrónico</option>
+                      <option value="PLATAFORMA">Plataforma</option>
+                      <option value="FISICA">Física</option>
+                    </select>
+                  </label>
+
+                  <label class="field md:col-span-2">
+                    <span class="field-label">Concepto</span>
+                    <textarea class="field-input" rows="4" [ngModel]="liquidacionConcepto()" (ngModelChange)="liquidacionConcepto.set($event)" placeholder="Detalle de copias, folios, certificación u otros costos de reproducción..."></textarea>
+                  </label>
+
+                  <label class="field md:col-span-2">
+                    <span class="field-label">Observación</span>
+                    <textarea class="field-input" rows="3" [ngModel]="liquidacionObservacion()" (ngModelChange)="liquidacionObservacion.set($event)" placeholder="Indicaciones de recojo o coordinación física..."></textarea>
+                  </label>
+                </div>
+
+                @if (liquidacionError()) {
+                  <p class="text-sm mt-4" style="color: var(--destructive)">{{ liquidacionError() }}</p>
+                }
+                @if (liquidacionSuccess()) {
+                  <p class="text-sm mt-4" style="color: var(--success)">{{ liquidacionSuccess() }}</p>
+                }
+
+                <button type="button" class="btn-brand !px-5 !py-3 mt-5" [disabled]="liquidacionLoading()" (click)="emitirLiquidacion()">
+                  @if (liquidacionLoading()) {
+                    Emitiendo...
+                  } @else {
+                    Emitir liquidación
+                  }
+                </button>
+              </div>
+            } @else if (liquidacionActiva()) {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow" style="color: var(--gold)">Liquidación activa</span>
+                <p class="text-sm text-foreground/85 mt-2">La solicitud ya tiene un cupón activo. Marque pago, recojo o cierre antes de emitir uno nuevo.</p>
+              </div>
+            } @else {
+              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="eyebrow">Sin liquidación disponible</span>
+                <p class="text-sm text-muted-foreground mt-2">Solo se puede emitir cupón si la SAIP está en revisión y contempla entrega física, copia simple o copia certificada.</p>
+              </div>
+            }
+
+            <div>
+              <span class="eyebrow">Historial de liquidaciones</span>
+              <div class="mt-3 space-y-3">
+                @for (liquidacion of liquidaciones(); track liquidacion.id) {
+                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span [class]="getLiquidacionEstadoClass(liquidacion.estadoLiquidacion)">{{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
+                        <span class="code-chip" style="font-size: 11px">{{ liquidacion.codigoLiquidacion }}</span>
+                      </div>
+                      <span class="font-mono text-[11px] text-muted-foreground">{{ liquidacion.fechaNotificacion | date:'dd/MM/yyyy' }}</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 text-sm">
+                      <div>
+                        <span class="eyebrow">Monto</span>
+                        <p class="font-mono mt-1">{{ liquidacion.moneda }} {{ liquidacion.monto }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Medio</span>
+                        <p class="mt-1">{{ getEstadoDisplay(liquidacion.medioNotificacion) }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Recojo hasta</span>
+                        <p class="font-mono mt-1">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</p>
+                      </div>
+                      <div>
+                        <span class="eyebrow">Responsable</span>
+                        <p class="mt-1">{{ liquidacion.responsable || 'Entidad pública' }}</p>
+                      </div>
+                    </div>
+
+                    <p class="text-sm text-foreground/85 mt-4 whitespace-pre-wrap">{{ liquidacion.concepto }}</p>
+                    @if (liquidacion.observacion || liquidacion.trazabilidad) {
+                      <div class="mt-4 rounded-md p-3 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <div class="font-medium">Trazabilidad</div>
+                        <p class="mt-1 text-foreground/80 whitespace-pre-wrap">{{ liquidacion.observacion || liquidacion.trazabilidad }}</p>
+                      </div>
+                    }
+
+                    @if (liquidacion.estadoLiquidacion === 'EMITIDA' || liquidacion.estadoLiquidacion === 'NOTIFICADA' || liquidacion.estadoLiquidacion === 'PAGADA') {
+                      <div class="mt-4 flex flex-wrap gap-3">
+                        @if (liquidacion.estadoLiquidacion === 'EMITIDA' || liquidacion.estadoLiquidacion === 'NOTIFICADA') {
+                          <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'PAGADA')">
+                            Marcar pagado
+                          </button>
+                        }
+                        <button type="button" class="btn-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'RECOGIDA')">
+                          Marcar recogido
+                        </button>
+                        <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'CANCELADA')">
+                          Cancelar
+                        </button>
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
+                    <p class="text-sm text-muted-foreground">No se han emitido liquidaciones o cupones para esta SAIP.</p>
                   </div>
                 }
               </div>

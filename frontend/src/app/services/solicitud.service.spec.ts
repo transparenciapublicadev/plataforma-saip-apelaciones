@@ -186,6 +186,52 @@ describe('SolicitudService', () => {
     req.flush({ id: 50 });
   });
 
+  it('should POST emitir liquidacion de costo', () => {
+    const payload = {
+      monto: 18.5,
+      moneda: 'PEN',
+      concepto: 'Copias simples',
+      fechaNotificacion: '2026-05-25',
+      medioNotificacion: 'CASILLA_ELECTRONICA' as const,
+      responsable: 'Funcionario'
+    };
+    service.emitirLiquidacion(1, payload).subscribe(res => expect(res.estadoLiquidacion).toBe('NOTIFICADA'));
+    const req = httpMock.expectOne(`${apiUrl}/1/liquidaciones`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 60, estadoLiquidacion: 'NOTIFICADA' });
+  });
+
+  it('should GET liquidaciones de solicitud', () => {
+    service.listarLiquidaciones(1).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/1/liquidaciones`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 60 }]);
+  });
+
+  it('should GET liquidacion activa', () => {
+    service.obtenerLiquidacionActiva(1).subscribe(res => expect(res.id).toBe(60));
+    const req = httpMock.expectOne(`${apiUrl}/1/liquidaciones/activa`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 60 });
+  });
+
+  it('should PATCH liquidacion de costo', () => {
+    const payload = { estado: 'PAGADA' as const, fechaPago: '2026-05-25', responsable: 'Funcionario' };
+    service.actualizarLiquidacion(1, 60, payload).subscribe(res => expect(res.estadoLiquidacion).toBe('PAGADA'));
+    const req = httpMock.expectOne(`${apiUrl}/1/liquidaciones/60`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(payload);
+    req.flush({ id: 60, estadoLiquidacion: 'PAGADA' });
+  });
+
+  it('should POST procesar liquidaciones vencidas', () => {
+    service.procesarLiquidacionesVencidas().subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/liquidaciones/vencidas/procesar`);
+    expect(req.request.method).toBe('POST');
+    req.flush([{ id: 60, estadoLiquidacion: 'ARCHIVADA' }]);
+  });
+
   it('should PATCH entrega parcial', () => {
     const payload = { estado: 'ENTREGADA' as const, fechaEntregaReal: '2026-06-05', observacion: 'Entregada' };
     service.actualizarEntregaParcial(1, 30, 40, payload).subscribe(res => expect(res.estado).toBe('ENTREGADA'));

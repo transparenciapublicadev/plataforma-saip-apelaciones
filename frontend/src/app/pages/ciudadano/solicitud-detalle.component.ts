@@ -4,11 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 interface RequestTab {
-  id: 'solicitud' | 'respuesta' | 'encauzamiento' | 'ampliacion' | 'adjuntos' | 'apelacion';
+  id: 'solicitud' | 'respuesta' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'adjuntos' | 'apelacion';
   label: string;
 }
 
@@ -46,6 +46,7 @@ export class SolicitudDetalleComponent implements OnInit {
     { id: 'solicitud', label: 'Solicitud' },
     { id: 'respuesta', label: 'Respuesta' },
     { id: 'encauzamiento', label: 'Encauzamiento' },
+    { id: 'liquidacion', label: 'Liquidación' },
     { id: 'ampliacion', label: 'Ampliación' },
     { id: 'adjuntos', label: 'Adjuntos' },
     { id: 'apelacion', label: 'Apelación' }
@@ -146,6 +147,15 @@ export class SolicitudDetalleComponent implements OnInit {
 
   encauzamientoActivo(): EncauzamientoSolicitud | null {
     return this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null;
+  }
+
+  liquidaciones(): LiquidacionCostoSolicitud[] {
+    return this.solicitud()?.liquidacionesCosto || [];
+  }
+
+  liquidacionActiva(): LiquidacionCostoSolicitud | null {
+    return this.liquidaciones().find((item) =>
+      item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null;
   }
 
   subsanarObservacion(): void {
@@ -334,6 +344,16 @@ export class SolicitudDetalleComponent implements OnInit {
         date: encauzamiento.fechaEncauzamiento,
         status: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'completed' : 'current',
         icon: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'check' : 'search'
+      });
+    }
+
+    for (const liquidacion of this.liquidaciones()) {
+      events.push({
+        title: `Liquidación ${this.getEstadoDisplay(liquidacion.estadoLiquidacion)}`,
+        description: `Cupón ${liquidacion.codigoLiquidacion}. Recojo físico hasta ${liquidacion.fechaLimiteRecojo}.`,
+        date: liquidacion.fechaNotificacion,
+        status: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'completed' : 'current',
+        icon: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'check' : 'search'
       });
     }
 
