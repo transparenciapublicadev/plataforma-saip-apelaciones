@@ -24,4 +24,9 @@ public interface NotificacionTtaipRepository extends JpaRepository<NotificacionT
             Long notificacionId,
             Long expedienteId
     );
+
+    List<NotificacionTtaip> findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
+            Long resolucionId,
+            CedulaNotificacion.DestinatarioNotificacion destinatario
+    );
 }

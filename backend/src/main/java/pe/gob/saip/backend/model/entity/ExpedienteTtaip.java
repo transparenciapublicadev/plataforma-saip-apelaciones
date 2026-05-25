@@ -115,6 +115,12 @@ public class ExpedienteTtaip {
     @OrderBy("fechaInicioSuspension ASC")
     private List<SuspensionPlazoTtaip> suspensionesPlazo;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "expediente", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @OrderBy("fechaRequerimientoCumplimiento DESC")
+    private List<CumplimientoResolucionTtaip> cumplimientosResolucion;
+
     @PrePersist
     protected void onCreate() {
         fechaApertura = fechaApertura != null ? fechaApertura : LocalDateTime.now();
