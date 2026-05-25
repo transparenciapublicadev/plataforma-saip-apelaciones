@@ -185,6 +185,13 @@
       "description": "JWT dinámico generado por Login - Funcionario."
     },
     {
+      "key": "cumplimientoFuncionarioToken",
+      "value": "TOKEN_FUNCIONARIO_CUMPLIMIENTO_LOGIN",
+      "type": "default",
+      "enabled": true,
+      "description": "JWT dinámico de funcionario usado explícitamente para registrar cumplimiento TTAIP."
+    },
+    {
       "key": "ttaipToken",
       "value": "TOKEN_TTAIP_LOGIN",
       "type": "default",
@@ -672,6 +679,54 @@
       "key": "suspensionDescargosId",
       "value": "",
       "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoExpedienteTtaipId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoApelacionId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoResolucionId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoNumeroResolucion",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoResolucionNoFundadaId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoFechaLimite",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "cumplimientoActivoPrevioId",
+      "value": "",
+      "type": "text",
       "enabled": true
     }
   ],
