@@ -53,6 +53,21 @@ El flujo formal queda registrado como una observación SAIP: motivo, fecha de ob
 
 Si aplica cobro por costos de reproducción, la liquidación debe emitirse **a más tardar el día 9** del plazo.
 
+El flujo implementado registra cupón o liquidación para entrega física, copia simple o copia certificada. La entidad debe notificar al ciudadano el monto y concepto antes del vencimiento operativo del día 9.
+
+| Regla | Implementación |
+| --- | --- |
+| Emisión | Solo funcionario o administrador puede emitir cupón sobre SAIP `RECEPCIONADA` o `EN_REVISION`. |
+| Aplicabilidad | Procede solo cuando la solicitud requiere entrega física o reproducción física. |
+| Plazo de notificación | La fecha de notificación no puede superar el día 9 de atención. |
+| Recojo | La fecha límite de recojo se calcula con **30 días hábiles** desde la notificación del cupón. |
+| Duplicidad | No se permite más de una liquidación activa para la misma SAIP. |
+| Cierre | Si se marca `RECOGIDA`, la SAIP queda `RESPONDIDA`; si vence sin recojo, se procesa como `ARCHIVADA` y la SAIP queda `CONCLUIDA`. |
+
+:::note[Estados de liquidación]
+El cupón conserva trazabilidad mediante los estados `EMITIDA`, `NOTIFICADA`, `PAGADA`, `RECOGIDA`, `ARCHIVADA`, `CANCELADA` y `VENCIDA`.
+:::
+
 ### BR-SAIP-005 — Ampliación de plazo
 
 Cuando el pedido es amplio o requiere un volumen alto de información, la entidad puede registrar una ampliación de plazo siempre que la notifique como máximo hasta el **día 4 de atención** de la SAIP.
