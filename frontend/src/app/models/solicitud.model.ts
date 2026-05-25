@@ -17,6 +17,7 @@ export type EstadoAmpliacionPlazo = 'REGISTRADA' | 'NOTIFICADA' | 'COMPLETADA' |
 export type EstadoEntregaParcial = 'PROGRAMADA' | 'ENTREGADA' | 'OBSERVADA' | 'CANCELADA' | 'VENCIDA';
 export type AlcanceEncauzamientoSolicitud = 'TOTAL' | 'PARCIAL';
 export type EstadoEncauzamientoSolicitud = 'REGISTRADO' | 'DERIVADO' | 'ATENDIDO' | 'CANCELADO' | 'VENCIDO';
+export type EstadoLiquidacionCosto = 'EMITIDA' | 'NOTIFICADA' | 'PAGADA' | 'RECOGIDA' | 'ARCHIVADA' | 'CANCELADA' | 'VENCIDA';
 
 export interface CronogramaEntregaParcial {
     id: number;
@@ -65,13 +66,34 @@ export interface EncauzamientoSolicitud {
     trazabilidad?: string | null;
 }
 
-export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos'>> & {
+export interface LiquidacionCostoSolicitud {
+    id: number;
+    solicitudId: number;
+    expediente: string;
+    codigoLiquidacion: string;
+    monto: string;
+    moneda: string;
+    concepto: string;
+    fechaEmision: string;
+    fechaNotificacion: string;
+    fechaLimiteRecojo: string;
+    estadoLiquidacion: EstadoLiquidacionCosto;
+    medioNotificacion: CanalNotificacion;
+    responsable?: string | null;
+    observacion?: string | null;
+    trazabilidad?: string | null;
+    fechaPago?: string | null;
+    fechaRecojo?: string | null;
+}
+
+export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos' | 'liquidacionesCosto'>> & {
     respuesta?: Required<RespuestaDTO> | null;
     apelacion?: Required<ApelacionInfoDTO> | null;
     documentos: Required<DocumentoDTO>[];
     observaciones: ObservacionSolicitud[];
     ampliacionesPlazo: AmpliacionPlazoSolicitud[];
     encauzamientos: EncauzamientoSolicitud[];
+    liquidacionesCosto: LiquidacionCostoSolicitud[];
 };
 
 // Tipo solo del lado cliente — no existe en el contrato OpenAPI
@@ -122,6 +144,25 @@ export interface RegistrarEncauzamientoPayload {
     alcance: AlcanceEncauzamientoSolicitud;
     responsable?: string;
     observacionSustento?: string;
+}
+
+export interface RegistrarLiquidacionCostoPayload {
+    codigoLiquidacion?: string;
+    monto: number;
+    moneda?: string;
+    concepto: string;
+    fechaNotificacion: string;
+    medioNotificacion: CanalNotificacion;
+    responsable?: string;
+    observacion?: string;
+}
+
+export interface ActualizarLiquidacionCostoPayload {
+    estado: 'PAGADA' | 'RECOGIDA' | 'CANCELADA';
+    fechaPago?: string;
+    fechaRecojo?: string;
+    responsable?: string;
+    observacion?: string;
 }
 
 export interface ActualizarEntregaParcialPayload {
