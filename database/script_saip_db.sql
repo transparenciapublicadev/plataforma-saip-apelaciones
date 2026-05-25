@@ -130,6 +130,37 @@ CREATE TABLE IF NOT EXISTS encauzamientos_solicitud (
     CONSTRAINT chk_enc_estado CHECK (estado_encauzamiento IN ('REGISTRADO', 'DERIVADO', 'ATENDIDO', 'CANCELADO', 'VENCIDO'))
 );
 
+CREATE TABLE IF NOT EXISTS liquidaciones_costo_solicitud (
+    id_liquidacion BIGINT NOT NULL AUTO_INCREMENT,
+    id_solicitud BIGINT NOT NULL,
+    codigo_liquidacion VARCHAR(60) NOT NULL,
+    monto DECIMAL(12, 2) NOT NULL,
+    moneda VARCHAR(3) NOT NULL DEFAULT 'PEN',
+    concepto TEXT NOT NULL,
+    fecha_emision DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_notificacion DATE NOT NULL,
+    fecha_limite_recojo DATE NOT NULL,
+    estado_liquidacion VARCHAR(30) NOT NULL DEFAULT 'NOTIFICADA',
+    medio_notificacion VARCHAR(40) NOT NULL,
+    responsable VARCHAR(120) NULL,
+    observacion TEXT NULL,
+    trazabilidad TEXT NULL,
+    fecha_pago DATE NULL,
+    fecha_recojo DATE NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_liquidacion),
+    UNIQUE KEY uk_liq_codigo (codigo_liquidacion),
+    KEY idx_liq_solicitud (id_solicitud),
+    KEY idx_liq_estado (estado_liquidacion),
+    KEY idx_liq_fecha_notificacion (fecha_notificacion),
+    KEY idx_liq_limite_recojo (fecha_limite_recojo),
+    CONSTRAINT fk_liq_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud),
+    CONSTRAINT chk_liq_estado CHECK (estado_liquidacion IN ('EMITIDA', 'NOTIFICADA', 'PAGADA', 'RECOGIDA', 'ARCHIVADA', 'CANCELADA', 'VENCIDA')),
+    CONSTRAINT chk_liq_medio CHECK (medio_notificacion IN ('CORREO_ELECTRONICO', 'CASILLA_ELECTRONICA', 'PLATAFORMA', 'FISICA')),
+    CONSTRAINT chk_liq_monto CHECK (monto >= 0)
+);
+
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
