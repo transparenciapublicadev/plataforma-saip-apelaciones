@@ -5,9 +5,14 @@ import { Apelacion } from '../models/apelacion.model';
 import type { CalificacionRequest, ResolucionRequest } from '../api/types';
 import type {
   CancelarSuspensionTtaipPayload,
+  CerrarCumplimientoResolucionPayload,
+  CrearSeguimientoCumplimientoPayload,
+  CumplimientoResolucionTtaip,
   DescargoEntidadTtaip,
   NotificacionTtaip,
+  ObservarCumplimientoResolucionPayload,
   PresentarDescargoEntidadPayload,
+  RegistrarCumplimientoResolucionPayload,
   RegistrarAcuseAutomaticoNotificacionPayload,
   RegistrarConstanciaEnvioNotificacionPayload,
   RegistrarSuspensionTtaipPayload,
@@ -164,6 +169,66 @@ export class TtaipService {
       `${this.apiUrl}/expedientes/${expedienteId}/suspensiones/${suspensionId}/cancelar`,
       data
     );
+  }
+
+  crearSeguimientoCumplimiento(
+    expedienteId: number,
+    resolucionId: number,
+    data: CrearSeguimientoCumplimientoPayload
+  ): Observable<CumplimientoResolucionTtaip> {
+    return this.http.post<CumplimientoResolucionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/resoluciones/${resolucionId}/cumplimientos`,
+      data
+    );
+  }
+
+  listarCumplimientos(expedienteId: number): Observable<CumplimientoResolucionTtaip[]> {
+    return this.http.get<CumplimientoResolucionTtaip[]>(
+      `${this.apiUrl}/expedientes/${expedienteId}/cumplimientos`
+    );
+  }
+
+  obtenerCumplimientoActivo(expedienteId: number): Observable<CumplimientoResolucionTtaip> {
+    return this.http.get<CumplimientoResolucionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/cumplimientos/activo`
+    );
+  }
+
+  registrarCumplimiento(
+    expedienteId: number,
+    cumplimientoId: number,
+    data: RegistrarCumplimientoResolucionPayload
+  ): Observable<CumplimientoResolucionTtaip> {
+    return this.http.post<CumplimientoResolucionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/cumplimientos/${cumplimientoId}/registrar`,
+      data
+    );
+  }
+
+  observarCumplimiento(
+    expedienteId: number,
+    cumplimientoId: number,
+    data: ObservarCumplimientoResolucionPayload
+  ): Observable<CumplimientoResolucionTtaip> {
+    return this.http.patch<CumplimientoResolucionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/cumplimientos/${cumplimientoId}/observar`,
+      data
+    );
+  }
+
+  cerrarCumplimiento(
+    expedienteId: number,
+    cumplimientoId: number,
+    data: CerrarCumplimientoResolucionPayload
+  ): Observable<CumplimientoResolucionTtaip> {
+    return this.http.patch<CumplimientoResolucionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/cumplimientos/${cumplimientoId}/cerrar`,
+      data
+    );
+  }
+
+  procesarCumplimientosVencidos(): Observable<CumplimientoResolucionTtaip[]> {
+    return this.http.post<CumplimientoResolucionTtaip[]>(`${this.apiUrl}/cumplimientos/vencidos/procesar`, {});
   }
 
   listarNotificaciones(expedienteId: number): Observable<NotificacionTtaip[]> {

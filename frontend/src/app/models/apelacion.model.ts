@@ -2,6 +2,7 @@
 import type { ApelacionDTO } from '../api/types';
 import type {
     CedulaNotificacion,
+    CumplimientoResolucionTtaip,
     DescargoEntidadTtaip,
     HistorialTtaip,
     MiembroTtaipResumen,
@@ -58,6 +59,7 @@ export type Apelacion = Required<ApelacionDTO> & {
         reprocesos?: ReprocesoNotificacion[];
         descargosEntidad?: DescargoEntidadTtaip[];
         suspensionesPlazo?: SuspensionPlazoTtaip[];
+        cumplimientosResolucion?: CumplimientoResolucionTtaip[];
     } | null;
     resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;
