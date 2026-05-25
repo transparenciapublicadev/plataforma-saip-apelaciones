@@ -8,14 +8,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
+import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.AmpliacionPlazoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
 import pe.gob.saip.backend.model.dto.CronogramaEntregaParcialDTO;
 import pe.gob.saip.backend.model.dto.EncauzamientoSolicitudDTO;
+import pe.gob.saip.backend.model.dto.LiquidacionCostoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
+import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
@@ -313,6 +316,62 @@ public class SolicitudRestController {
                 .map(EncauzamientoSolicitudDTO::from)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new RecursoNoEncontradoException("La solicitud no tiene encauzamiento activo"));
+    }
+
+    @Operation(
+            summary = "Emitir liquidación o cupón SAIP",
+            description = "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo."
+    )
+    @PostMapping("/{id}/liquidaciones")
+    public ResponseEntity<LiquidacionCostoSolicitudDTO> emitirLiquidacion(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody RegistrarLiquidacionCostoRequest request) {
+        return ResponseEntity.status(201).body(LiquidacionCostoSolicitudDTO.from(
+                solicitudService.emitirLiquidacion(id, request)));
+    }
+
+    @Operation(summary = "Listar liquidaciones o cupones de una SAIP")
+    @GetMapping("/{id}/liquidaciones")
+    public ResponseEntity<List<LiquidacionCostoSolicitudDTO>> listarLiquidaciones(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<LiquidacionCostoSolicitudDTO> liquidaciones = solicitudService.listarLiquidaciones(id)
+                .stream()
+                .map(LiquidacionCostoSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(liquidaciones);
+    }
+
+    @Operation(summary = "Consultar liquidación o cupón activo de una SAIP")
+    @GetMapping("/{id}/liquidaciones/activa")
+    public ResponseEntity<LiquidacionCostoSolicitudDTO> obtenerLiquidacionActiva(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        return solicitudService.obtenerLiquidacionActiva(id)
+                .map(LiquidacionCostoSolicitudDTO::from)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new RecursoNoEncontradoException("La solicitud no tiene liquidación o cupón activo"));
+    }
+
+    @Operation(summary = "Actualizar pago o recojo de liquidación SAIP")
+    @PatchMapping("/{id}/liquidaciones/{liquidacionId}")
+    public ResponseEntity<LiquidacionCostoSolicitudDTO> actualizarLiquidacion(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Parameter(description = "ID de la liquidación") @PathVariable Long liquidacionId,
+            @Valid @RequestBody ActualizarLiquidacionCostoRequest request) {
+        return ResponseEntity.ok(LiquidacionCostoSolicitudDTO.from(
+                solicitudService.actualizarLiquidacion(id, liquidacionId, request)));
+    }
+
+    @Operation(
+            summary = "Procesar liquidaciones vencidas por no recojo",
+            description = "Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció."
+    )
+    @PostMapping("/liquidaciones/vencidas/procesar")
+    public ResponseEntity<List<LiquidacionCostoSolicitudDTO>> procesarLiquidacionesVencidas() {
+        List<LiquidacionCostoSolicitudDTO> liquidaciones = solicitudService.procesarLiquidacionesVencidas()
+                .stream()
+                .map(LiquidacionCostoSolicitudDTO::from)
+                .toList();
+        return ResponseEntity.ok(liquidaciones);
     }
 
     private Solicitud.CanalNotificacion parseCanalNotificacion(String canal) {
