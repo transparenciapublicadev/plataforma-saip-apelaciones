@@ -6,10 +6,14 @@ import type { CalificacionRequest, ResolucionRequest } from '../api/types';
 import type {
   CancelarSuspensionTtaipPayload,
   DescargoEntidadTtaip,
+  NotificacionTtaip,
   PresentarDescargoEntidadPayload,
+  RegistrarAcuseAutomaticoNotificacionPayload,
+  RegistrarConstanciaEnvioNotificacionPayload,
   RegistrarSuspensionTtaipPayload,
   RequerirDescargoEntidadPayload,
-  SuspensionPlazoTtaip
+  SuspensionPlazoTtaip,
+  ValidarNotificacionManualPayload
 } from '../models/resolucion.model';
 import { environment } from '../../environments/environment';
 
@@ -158,6 +162,49 @@ export class TtaipService {
   ): Observable<SuspensionPlazoTtaip> {
     return this.http.patch<SuspensionPlazoTtaip>(
       `${this.apiUrl}/expedientes/${expedienteId}/suspensiones/${suspensionId}/cancelar`,
+      data
+    );
+  }
+
+  listarNotificaciones(expedienteId: number): Observable<NotificacionTtaip[]> {
+    return this.http.get<NotificacionTtaip[]>(`${this.apiUrl}/expedientes/${expedienteId}/notificaciones`);
+  }
+
+  obtenerNotificacion(expedienteId: number, notificacionId: number): Observable<NotificacionTtaip> {
+    return this.http.get<NotificacionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/notificaciones/${notificacionId}`
+    );
+  }
+
+  registrarConstanciaEnvio(
+    expedienteId: number,
+    notificacionId: number,
+    data: RegistrarConstanciaEnvioNotificacionPayload
+  ): Observable<NotificacionTtaip> {
+    return this.http.post<NotificacionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/notificaciones/${notificacionId}/constancia-envio`,
+      data
+    );
+  }
+
+  registrarAcuseAutomatico(
+    expedienteId: number,
+    notificacionId: number,
+    data: RegistrarAcuseAutomaticoNotificacionPayload
+  ): Observable<NotificacionTtaip> {
+    return this.http.post<NotificacionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/notificaciones/${notificacionId}/acuse-automatico`,
+      data
+    );
+  }
+
+  validarNotificacionManualmente(
+    expedienteId: number,
+    notificacionId: number,
+    data: ValidarNotificacionManualPayload
+  ): Observable<NotificacionTtaip> {
+    return this.http.post<NotificacionTtaip>(
+      `${this.apiUrl}/expedientes/${expedienteId}/notificaciones/${notificacionId}/validacion-manual`,
       data
     );
   }
