@@ -118,7 +118,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/suspensiones/informe-oral").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/suspensiones/informacion-complementaria").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/ttaip/expedientes/*/suspensiones/*/cancelar").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/cumplimientos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/cumplimientos/activo").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/resoluciones/*/cumplimientos").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(request -> HttpMethod.POST.matches(request.getMethod())
+                                && request.getRequestURI().matches(
+                                "^/api/ttaip/expedientes/[^/]+/cumplimientos/[^/]+/registrar$"))
+                        .hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/ttaip/expedientes/*/cumplimientos/*/observar").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/ttaip/expedientes/*/cumplimientos/*/cerrar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/descargos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/cumplimientos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/ttaip")).hasAnyRole("TTAIP", "ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")

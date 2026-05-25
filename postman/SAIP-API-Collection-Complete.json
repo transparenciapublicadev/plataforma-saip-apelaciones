@@ -572,6 +572,7 @@
                   "    }",
                   "  });",
                   "  pm.environment.set(\"funcionarioToken\", json.token);",
+                  "  pm.environment.set(\"cumplimientoFuncionarioToken\", json.token);",
                   "  if (json.funcionarioId) pm.environment.set(\"funcionarioId\", String(json.funcionarioId));",
                   "  if (json.entidadId) {",
                   "    const entidadId = String(json.entidadId);",
@@ -33393,7 +33394,683 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/ttaip/resueltas\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"resolved TTAIP list is available\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(Array.isArray(json)).to.eql(true);",
+                  "});",
+                  "const foundedAppeal = json.find((appeal) => {",
+                  "    const expediente = appeal.expedienteTtaip || {};",
+                  "    const finalResolution = (expediente.resoluciones || appeal.resoluciones || [])",
+                  "        .find((resolution) => resolution.tipoResolucion === \"RESOLUCION_FINAL\" && [\"FUNDADO\", \"FUNDADO_EN_PARTE\"].includes(resolution.decision));",
+                  "    const topLevelFinal = appeal.resolucion && [\"FUNDADO\", \"FUNDADO_EN_PARTE\"].includes(appeal.resolucion.decision);",
+                  "    return expediente.id && (finalResolution || topLevelFinal);",
+                  "});",
+                  "pm.test(\"founded or partially founded final resolution is available for compliance flow\", function () {",
+                  "    pm.expect(foundedAppeal, \"appeal with founded final resolution\").to.exist;",
+                  "});",
+                  "if (foundedAppeal) {",
+                  "    const expediente = foundedAppeal.expedienteTtaip || {};",
+                  "    const resoluciones = expediente.resoluciones || foundedAppeal.resoluciones || [];",
+                  "    const finalResolution = resoluciones.find((resolution) =>",
+                  "        resolution.tipoResolucion === \"RESOLUCION_FINAL\" && [\"FUNDADO\", \"FUNDADO_EN_PARTE\"].includes(resolution.decision)",
+                  "    ) || foundedAppeal.resolucion;",
+                  "    const nonFoundedResolution = resoluciones.find((resolution) =>",
+                  "        resolution.id && (resolution.tipoResolucion !== \"RESOLUCION_FINAL\" || ![\"FUNDADO\", \"FUNDADO_EN_PARTE\"].includes(resolution.decision))",
+                  "    );",
+                  "    pm.environment.set(\"cumplimientoExpedienteTtaipId\", String(expediente.id));",
+                  "    pm.environment.set(\"cumplimientoApelacionId\", String(foundedAppeal.id));",
+                  "    pm.environment.set(\"cumplimientoResolucionId\", String(finalResolution.id));",
+                  "    pm.environment.set(\"cumplimientoNumeroResolucion\", finalResolution.numeroResolucion || \"RESOLUCION_FINAL_FUNDADA\");",
+                  "    if (nonFoundedResolution) {",
+                  "        pm.environment.set(\"cumplimientoResolucionNoFundadaId\", String(nonFoundedResolution.id));",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
           ]
+        },
+        {
+          "name": "[CLEANUP] Preparar Cumplimiento TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const active = json.find((item) => [\"PENDIENTE\", \"OBSERVADO\"].includes(item.estadoCumplimiento));",
+                  "pm.test(\"compliance cleanup scan succeeds\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(Array.isArray(json)).to.eql(true);",
+                  "});",
+                  "if (active) {",
+                  "    pm.environment.set(\"cumplimientoActivoPrevioId\", String(active.id));",
+                  "    postman.setNextRequest(\"[CLEANUP] Cerrar Cumplimiento Activo Previo\");",
+                  "} else {",
+                  "    pm.environment.unset(\"cumplimientoActivoPrevioId\");",
+                  "    postman.setNextRequest(\"Crear Seguimiento de Cumplimiento Fundado\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos"
+              ]
+            },
+            "description": "Escanea cumplimientos activos previos para permitir corridas repetibles de Newman sin eliminar historial."
+          }
+        },
+        {
+          "name": "[CLEANUP] Cerrar Cumplimiento Activo Previo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"previous active compliance tracking is closed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"cumplimientoActivoPrevioId\"));",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"CERRADO\");",
+                  "});",
+                  "postman.setNextRequest(\"[CLEANUP] Preparar Cumplimiento TTAIP\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/{{cumplimientoActivoPrevioId}}/cerrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "{{cumplimientoActivoPrevioId}}",
+                "cerrar"
+              ]
+            },
+            "description": "Cierra un seguimiento activo previo sin borrar el registro histórico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Limpieza de seguimiento activo dejado por una corrida local previa de Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear Seguimiento de Cumplimiento Fundado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"compliance tracking is created for founded final resolution\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.id).to.exist;",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"PENDIENTE\");",
+                  "    pm.expect(json.fechaLimiteCumplimiento, \"7-business-day deadline\").to.exist;",
+                  "    pm.expect(String(json.resolucionId)).to.eql(pm.environment.get(\"cumplimientoResolucionId\"));",
+                  "});",
+                  "pm.environment.set(\"cumplimientoId\", String(json.id));",
+                  "pm.environment.set(\"cumplimientoFechaLimite\", json.fechaLimiteCumplimiento);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/resoluciones/{{cumplimientoResolucionId}}/cumplimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "resoluciones",
+                "{{cumplimientoResolucionId}}",
+                "cumplimientos"
+              ]
+            },
+            "description": "Crea seguimiento de cumplimiento para resolución final FUNDADO o FUNDADO_EN_PARTE.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Se abre seguimiento para que la entidad comunique cumplimiento en 7 días hábiles.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Cumplimiento Duplicado Activo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"duplicate active compliance tracking is rejected as Problem Details\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(json.status).to.eql(409);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.exist;",
+                  "    pm.expect(json.detail).to.include(\"seguimiento\");",
+                  "    pm.expect(json.detail).to.include(\"cumplimiento activo\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/resoluciones/{{cumplimientoResolucionId}}/cumplimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "resoluciones",
+                "{{cumplimientoResolucionId}}",
+                "cumplimientos"
+              ]
+            },
+            "description": "Valida que no exista más de un seguimiento activo para la misma resolución.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Intento duplicado esperado por Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar Cumplimientos de Expediente TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"compliance tracking list includes current tracking\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.some((item) => String(item.id) === pm.environment.get(\"cumplimientoId\"))).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos"
+              ]
+            },
+            "description": "Lista seguimientos de cumplimiento vinculados al expediente TTAIP."
+          }
+        },
+        {
+          "name": "Obtener Cumplimiento Activo TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"active compliance tracking is returned\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"cumplimientoId\"));",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"PENDIENTE\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/activo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "activo"
+              ]
+            },
+            "description": "Consulta el seguimiento activo del expediente."
+          }
+        },
+        {
+          "name": "Registrar Cumplimiento de Entidad TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"public entity can register compliance evidence\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"CUMPLIDO\");",
+                  "    pm.expect(json.tipoCumplimiento).to.eql(\"TOTAL\");",
+                  "    pm.expect(json.referenciaDocumento).to.eql(\"CUMPLIMIENTO-TTAIP-NEWMAN-001.pdf\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/{{cumplimientoId}}/registrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "{{cumplimientoId}}",
+                "registrar"
+              ]
+            },
+            "description": "La entidad comunica cumplimiento total/parcial/no cumple y adjunta evidencia o referencia documental.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"tipoCumplimiento\": \"TOTAL\",\n    \"descripcionCumplimiento\": \"La entidad pública comunica cumplimiento total de la resolución y entrega la información ordenada.\",\n    \"referenciaDocumento\": \"CUMPLIMIENTO-TTAIP-NEWMAN-001.pdf\",\n    \"responsableEntidad\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Cumplimiento registrado dentro del plazo legal.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{cumplimientoFuncionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Observar Cumplimiento TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"TTAIP can observe compliance tracking\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"OBSERVADO\");",
+                  "    pm.expect(json.observacion).to.include(\"Observación de control Newman\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/{{cumplimientoId}}/observar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "{{cumplimientoId}}",
+                "observar"
+              ]
+            },
+            "description": "Permite que TTAIP observe el cumplimiento comunicado y conserve trazabilidad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Observación de control Newman para validar trazabilidad del seguimiento.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cerrar Seguimiento de Cumplimiento TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"TTAIP can close compliance tracking\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.estadoCumplimiento).to.eql(\"CERRADO\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/{{cumplimientoId}}/cerrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "{{cumplimientoId}}",
+                "cerrar"
+              ]
+            },
+            "description": "Cierra operativamente el seguimiento sin borrar resolución ni expediente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Seguimiento cerrado después de validar la comunicación de cumplimiento.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Cumplimiento en Resolución no Fundada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"non-founded or non-final resolution cannot create compliance tracking\", function () {",
+                  "    pm.expect([400, 422]).to.include(pm.response.code);",
+                  "    pm.expect(json.status).to.eql(pm.response.code);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.detail).to.match(/FUNDADO|FUNDADO_EN_PARTE|final/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/resoluciones/{{cumplimientoResolucionNoFundadaId}}/cumplimientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "resoluciones",
+                "{{cumplimientoResolucionNoFundadaId}}",
+                "cumplimientos"
+              ]
+            },
+            "description": "Valida que el seguimiento no aplique a resoluciones no fundadas o no finales.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica TTAIP\",\n    \"observacion\": \"Intento esperado sobre resolución no final fundada.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Procesar Cumplimientos Vencidos TTAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"expired compliance processor runs\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(Array.isArray(json)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ttaipToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/cumplimientos/vencidos/procesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "cumplimientos",
+                "vencidos",
+                "procesar"
+              ]
+            },
+            "description": "Procesa seguimientos vencidos sin cumplimiento, dejando estado VENCIDO y trazabilidad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
           "name": "Primera Calificación - Admitir",

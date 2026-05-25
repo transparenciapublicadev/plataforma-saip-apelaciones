@@ -6,21 +6,28 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
+import pe.gob.saip.backend.model.dto.CerrarCumplimientoResolucionRequest;
+import pe.gob.saip.backend.model.dto.CrearSeguimientoCumplimientoRequest;
+import pe.gob.saip.backend.model.dto.ObservarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
+import pe.gob.saip.backend.model.entity.CumplimientoResolucionTtaip;
 import pe.gob.saip.backend.model.entity.DescargoEntidadTtaip;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
 import pe.gob.saip.backend.model.entity.NotificacionTtaip;
+import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.SuspensionPlazoTtaip;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
+import pe.gob.saip.backend.repository.CumplimientoResolucionTtaipRepository;
 import pe.gob.saip.backend.repository.DescargoEntidadTtaipRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
 import pe.gob.saip.backend.repository.HistorialTtaipRepository;
@@ -77,6 +84,9 @@ class ExpedienteTtaipServiceTest {
 
     @Mock
     SuspensionPlazoTtaipRepository suspensionRepository;
+
+    @Mock
+    CumplimientoResolucionTtaipRepository cumplimientoRepository;
 
     @InjectMocks
     ExpedienteTtaipService service;
@@ -369,6 +379,131 @@ class ExpedienteTtaipServiceTest {
     }
 
     @Test
+    void crearSeguimientoCumplimiento_debeCalcularSieteDiasHabilesDesdeNotificacionValida() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        Resolucion resolucion = crearResolucionFinal(expediente, Resolucion.DecisionResolucion.FUNDADO);
+        NotificacionTtaip notificacionEntidad = crearNotificacion(expediente);
+        notificacionEntidad.getCedula().setResolucion(resolucion);
+        notificacionEntidad.setDestinatario(CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA);
+        notificacionEntidad.setEstado("ENTREGADA");
+        notificacionEntidad.setFechaAcuse(LocalDateTime.of(2026, 5, 8, 10, 0));
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(resolucionRepository.findById(600L)).thenReturn(Optional.of(resolucion));
+        when(cumplimientoRepository.existsByResolucion_IdResolucionAndEstadoCumplimientoIn(eq(600L), anyList()))
+                .thenReturn(false);
+        when(notificacionRepository.findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
+                600L,
+                CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA)).thenReturn(List.of(notificacionEntidad));
+        when(cumplimientoRepository.save(any(CumplimientoResolucionTtaip.class))).thenAnswer(inv -> {
+            CumplimientoResolucionTtaip cumplimiento = inv.getArgument(0);
+            cumplimiento.setIdCumplimiento(700L);
+            return cumplimiento;
+        });
+
+        CumplimientoResolucionTtaip resultado = service.crearSeguimientoCumplimiento(
+                100L,
+                600L,
+                new CrearSeguimientoCumplimientoRequest(null, "Secretaría Técnica TTAIP", "Requerimiento de cumplimiento")
+        );
+
+        assertThat(resultado.getEstadoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.EstadoCumplimiento.PENDIENTE);
+        assertThat(resultado.getFechaRequerimientoCumplimiento()).isEqualTo(LocalDate.of(2026, 5, 8));
+        assertThat(resultado.getFechaLimiteCumplimiento())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.of(2026, 5, 8), 7));
+        assertThat(resultado.getResolucion().getDecision()).isEqualTo(Resolucion.DecisionResolucion.FUNDADO);
+        verify(historialRepository).save(any());
+    }
+
+    @Test
+    void crearSeguimientoCumplimiento_conResolucionInfundada_debeRechazarReglaNegocio() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        Resolucion resolucion = crearResolucionFinal(expediente, Resolucion.DecisionResolucion.INFUNDADO);
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(resolucionRepository.findById(600L)).thenReturn(Optional.of(resolucion));
+
+        assertThatThrownBy(() -> service.crearSeguimientoCumplimiento(
+                        100L,
+                        600L,
+                        new CrearSeguimientoCumplimientoRequest(null, "Secretaría Técnica TTAIP", null)
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("FUNDADO");
+    }
+
+    @Test
+    void registrarCumplimiento_totalDebeExigirEvidenciaYMarcarCumplido() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        CumplimientoResolucionTtaip cumplimiento = crearCumplimiento(expediente);
+
+        when(cumplimientoRepository.findById(700L)).thenReturn(Optional.of(cumplimiento));
+        when(cumplimientoRepository.save(cumplimiento)).thenReturn(cumplimiento);
+
+        CumplimientoResolucionTtaip resultado = service.registrarCumplimiento(
+                100L,
+                700L,
+                new RegistrarCumplimientoResolucionRequest(
+                        LocalDate.of(2026, 5, 12),
+                        "TOTAL",
+                        "La entidad entregó toda la información ordenada.",
+                        null,
+                        "CARGO-CUMPLIMIENTO-001.pdf",
+                        "Funcionario de Transparencia",
+                        "Cumplimiento en plazo")
+        );
+
+        assertThat(resultado.getEstadoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.EstadoCumplimiento.CUMPLIDO);
+        assertThat(resultado.getTipoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.TipoCumplimiento.TOTAL);
+        assertThat(resultado.getReferenciaDocumento()).isEqualTo("CARGO-CUMPLIMIENTO-001.pdf");
+        verify(historialRepository).save(any());
+    }
+
+    @Test
+    void observarYCerrarCumplimiento_debeRegistrarTrazabilidad() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        CumplimientoResolucionTtaip cumplimiento = crearCumplimiento(expediente);
+
+        when(cumplimientoRepository.findById(700L)).thenReturn(Optional.of(cumplimiento));
+        when(cumplimientoRepository.save(cumplimiento)).thenReturn(cumplimiento);
+
+        CumplimientoResolucionTtaip observado = service.observarCumplimiento(
+                100L,
+                700L,
+                new ObservarCumplimientoResolucionRequest(
+                        "La evidencia no acredita cumplimiento total.",
+                        "Secretaría Técnica TTAIP")
+        );
+        assertThat(observado.getEstadoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.EstadoCumplimiento.OBSERVADO);
+
+        CumplimientoResolucionTtaip cerrado = service.cerrarCumplimiento(
+                100L,
+                700L,
+                new CerrarCumplimientoResolucionRequest("Secretaría Técnica TTAIP", "Cierre operativo")
+        );
+        assertThat(cerrado.getEstadoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.EstadoCumplimiento.CERRADO);
+        assertThat(cerrado.getTrazabilidad()).contains("observado").contains("cerrado");
+    }
+
+    @Test
+    void procesarCumplimientosVencidos_debeMarcarVencidoSinEliminarExpediente() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        CumplimientoResolucionTtaip cumplimiento = crearCumplimiento(expediente);
+        cumplimiento.setFechaLimiteCumplimiento(LocalDate.now().minusDays(1));
+
+        when(cumplimientoRepository.findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+                anyList(),
+                any(LocalDate.class))).thenReturn(List.of(cumplimiento));
+        when(cumplimientoRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<CumplimientoResolucionTtaip> resultado = service.procesarCumplimientosVencidos();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.getFirst().getEstadoCumplimiento()).isEqualTo(CumplimientoResolucionTtaip.EstadoCumplimiento.VENCIDO);
+        assertThat(expediente.getEstado()).isEqualTo(Apelacion.EstadoApelacion.EN_RESOLUCION);
+    }
+
+    @Test
     void requerirDescargos_sinAdmisionValida_debeLanzarReglaNegocio() {
         ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
         expediente.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
@@ -472,5 +607,32 @@ class ExpedienteTtaipServiceTest {
         notificacion.setEstadoAcuse("PENDIENTE");
         notificacion.setValidadaManualmente(false);
         return notificacion;
+    }
+
+    private Resolucion crearResolucionFinal(ExpedienteTtaip expediente, Resolucion.DecisionResolucion decision) {
+        Resolucion resolucion = new Resolucion();
+        resolucion.setIdResolucion(600L);
+        resolucion.setExpedienteTtaip(expediente);
+        resolucion.setApelacion(expediente.getApelacion());
+        resolucion.setTipoResolucion(Resolucion.TipoResolucion.RESOLUCION_FINAL);
+        resolucion.setDecision(decision);
+        resolucion.setNumeroResolucion("RESOLUCION N. 001600-2026-JUS/TTAIP-PRIMERA SALA");
+        resolucion.setFechaResolucion(LocalDateTime.of(2026, 5, 7, 12, 0));
+        resolucion.setFundamentos("Fundamentos de resolución final");
+        return resolucion;
+    }
+
+    private CumplimientoResolucionTtaip crearCumplimiento(ExpedienteTtaip expediente) {
+        CumplimientoResolucionTtaip cumplimiento = new CumplimientoResolucionTtaip();
+        cumplimiento.setIdCumplimiento(700L);
+        cumplimiento.setExpediente(expediente);
+        cumplimiento.setApelacion(expediente.getApelacion());
+        cumplimiento.setResolucion(crearResolucionFinal(expediente, Resolucion.DecisionResolucion.FUNDADO));
+        cumplimiento.setEntidad(expediente.getApelacion().getSolicitud().getEntidad());
+        cumplimiento.setFechaRequerimientoCumplimiento(LocalDate.of(2026, 5, 8));
+        cumplimiento.setFechaLimiteCumplimiento(DiasHabilesUtil.sumarDiasHabiles(LocalDate.of(2026, 5, 8), 7));
+        cumplimiento.setEstadoCumplimiento(CumplimientoResolucionTtaip.EstadoCumplimiento.PENDIENTE);
+        cumplimiento.setTrazabilidad("Seguimiento creado");
+        return cumplimiento;
     }
 }

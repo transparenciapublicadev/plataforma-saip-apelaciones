@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
+import pe.gob.saip.backend.repository.CumplimientoResolucionTtaipRepository;
 import pe.gob.saip.backend.repository.DescargoEntidadTtaipRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
 import pe.gob.saip.backend.repository.HistorialTtaipRepository;
@@ -14,9 +15,13 @@ import pe.gob.saip.backend.repository.ResolucionRepository;
 import pe.gob.saip.backend.repository.SalaTtaipRepository;
 import pe.gob.saip.backend.repository.SuspensionPlazoTtaipRepository;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
+import pe.gob.saip.backend.model.dto.CerrarCumplimientoResolucionRequest;
+import pe.gob.saip.backend.model.dto.CrearSeguimientoCumplimientoRequest;
+import pe.gob.saip.backend.model.dto.ObservarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarCumplimientoResolucionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
@@ -35,6 +40,7 @@ public class ExpedienteTtaipService {
     private static final int RESOLUCION_BASE = 1595;
     private static final int CEDULA_BASE = 15203;
     private static final int DIAS_SUSPENSION_ADICIONAL = 3;
+    private static final int DIAS_CUMPLIMIENTO_RESOLUCION_FUNDADA = 7;
 
     private final ExpedienteTtaipRepository expedienteRepository;
     private final SalaTtaipRepository salaRepository;
@@ -46,6 +52,7 @@ public class ExpedienteTtaipService {
     private final HistorialTtaipRepository historialRepository;
     private final DescargoEntidadTtaipRepository descargoRepository;
     private final SuspensionPlazoTtaipRepository suspensionRepository;
+    private final CumplimientoResolucionTtaipRepository cumplimientoRepository;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
                                   SalaTtaipRepository salaRepository,
@@ -56,7 +63,8 @@ public class ExpedienteTtaipService {
                                   ReprocesoNotificacionRepository reprocesoRepository,
                                   HistorialTtaipRepository historialRepository,
                                   DescargoEntidadTtaipRepository descargoRepository,
-                                  SuspensionPlazoTtaipRepository suspensionRepository) {
+                                  SuspensionPlazoTtaipRepository suspensionRepository,
+                                  CumplimientoResolucionTtaipRepository cumplimientoRepository) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
         this.miembroService = miembroService;
@@ -67,6 +75,7 @@ public class ExpedienteTtaipService {
         this.historialRepository = historialRepository;
         this.descargoRepository = descargoRepository;
         this.suspensionRepository = suspensionRepository;
+        this.cumplimientoRepository = cumplimientoRepository;
     }
 
     @Transactional
@@ -564,6 +573,239 @@ public class ExpedienteTtaipService {
         return saved;
     }
 
+    @Transactional(readOnly = true)
+    public List<CumplimientoResolucionTtaip> listarCumplimientos(Long expedienteId) {
+        return cumplimientoRepository
+                .findByExpediente_IdExpedienteTtaipOrderByFechaRequerimientoCumplimientoDesc(expedienteId);
+    }
+
+    @Transactional(readOnly = true)
+    public CumplimientoResolucionTtaip obtenerCumplimientoActivo(Long expedienteId) {
+        return cumplimientoRepository
+                .findFirstByExpediente_IdExpedienteTtaipAndEstadoCumplimientoInOrderByFechaRequerimientoCumplimientoDesc(
+                        expedienteId,
+                        estadosCumplimientoActivos())
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe seguimiento de cumplimiento activo para el expediente TTAIP ID: " + expedienteId));
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaip crearSeguimientoCumplimiento(Long expedienteId,
+                                                                    Long resolucionId,
+                                                                    CrearSeguimientoCumplimientoRequest request) {
+        ExpedienteTtaip expediente = buscarExpediente(expedienteId);
+        Resolucion resolucion = buscarResolucion(resolucionId);
+        validarResolucionFundadaDelExpediente(expediente, resolucion);
+
+        if (cumplimientoRepository.existsByResolucion_IdResolucionAndEstadoCumplimientoIn(
+                resolucionId,
+                estadosCumplimientoActivos())) {
+            throw new IllegalArgumentException("Ya existe un seguimiento de cumplimiento activo para esta resolución TTAIP");
+        }
+
+        LocalDate fechaRequerimiento = request.fechaRequerimientoCumplimiento() != null
+                ? request.fechaRequerimientoCumplimiento()
+                : fechaBaseCumplimiento(resolucion);
+        LocalDate fechaLimite = DiasHabilesUtil.sumarDiasHabiles(
+                fechaRequerimiento,
+                DIAS_CUMPLIMIENTO_RESOLUCION_FUNDADA);
+        String actor = normalizarActor(request.responsableTtaip(), "TTAIP");
+
+        CumplimientoResolucionTtaip cumplimiento = new CumplimientoResolucionTtaip();
+        cumplimiento.setExpediente(expediente);
+        cumplimiento.setApelacion(expediente.getApelacion());
+        cumplimiento.setResolucion(resolucion);
+        cumplimiento.setEntidad(entidadRequerida(expediente));
+        cumplimiento.setFechaRequerimientoCumplimiento(fechaRequerimiento);
+        cumplimiento.setFechaLimiteCumplimiento(fechaLimite);
+        cumplimiento.setEstadoCumplimiento(CumplimientoResolucionTtaip.EstadoCumplimiento.PENDIENTE);
+        cumplimiento.setObservacion(request.observacion());
+        cumplimiento.setTrazabilidad("%s - Seguimiento de cumplimiento requerido por %s. Base: %s; límite: %s."
+                .formatted(LocalDateTime.now(), actor, fechaRequerimiento, fechaLimite));
+
+        CumplimientoResolucionTtaip saved = cumplimientoRepository.save(cumplimiento);
+        expediente.setTrazabilidadMinima(agregarTraza(
+                expediente.getTrazabilidadMinima(),
+                "%s - Seguimiento de cumplimiento creado para %s. Límite: %s."
+                        .formatted(LocalDateTime.now(), resolucion.getNumeroResolucion(), fechaLimite)
+        ));
+        expedienteRepository.save(expediente);
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.CUMPLIMIENTO_REQUERIDO,
+                "Seguimiento de cumplimiento requerido para resolución "
+                        + resolucion.getNumeroResolucion()
+                        + ". Plazo máximo: "
+                        + DIAS_CUMPLIMIENTO_RESOLUCION_FUNDADA
+                        + " días hábiles.",
+                null,
+                saved.getEstadoCumplimiento().name(),
+                actor,
+                "CUMPLIMIENTO-" + saved.getId()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaip registrarCumplimiento(Long expedienteId,
+                                                             Long cumplimientoId,
+                                                             RegistrarCumplimientoResolucionRequest request) {
+        CumplimientoResolucionTtaip cumplimiento = buscarCumplimiento(cumplimientoId);
+        validarCumplimientoDelExpediente(expedienteId, cumplimiento);
+        if (cumplimiento.getEstadoCumplimiento() == CumplimientoResolucionTtaip.EstadoCumplimiento.CERRADO) {
+            throw new IllegalArgumentException("No se puede registrar cumplimiento sobre un seguimiento cerrado");
+        }
+
+        CumplimientoResolucionTtaip.TipoCumplimiento tipo = parseTipoCumplimiento(request.tipoCumplimiento());
+        validarEvidenciaCumplimiento(tipo, request);
+
+        LocalDate fechaCumplimiento = request.fechaCumplimiento() != null
+                ? request.fechaCumplimiento()
+                : LocalDate.now();
+        String estadoAnterior = cumplimiento.getEstadoCumplimiento() != null
+                ? cumplimiento.getEstadoCumplimiento().name()
+                : null;
+        boolean extemporaneo = fechaCumplimiento.isAfter(cumplimiento.getFechaLimiteCumplimiento());
+
+        cumplimiento.setFechaCumplimiento(fechaCumplimiento);
+        cumplimiento.setTipoCumplimiento(tipo);
+        cumplimiento.setDescripcionCumplimiento(request.descripcionCumplimiento().trim());
+        cumplimiento.setEvidenciaCumplimiento(normalizarNullable(request.evidenciaCumplimiento()));
+        cumplimiento.setReferenciaDocumento(normalizarNullable(request.referenciaDocumento()));
+        cumplimiento.setResponsableEntidad(request.responsableEntidad().trim());
+        cumplimiento.setObservacion(request.observacion());
+        cumplimiento.setEstadoCumplimiento(estadoDesdeTipoCumplimiento(tipo));
+        cumplimiento.setTrazabilidad(agregarTraza(
+                cumplimiento.getTrazabilidad(),
+                "%s - Cumplimiento %s comunicado por %s%s. Fecha: %s."
+                        .formatted(
+                                LocalDateTime.now(),
+                                tipo,
+                                request.responsableEntidad().trim(),
+                                extemporaneo ? " fuera del plazo legal" : "",
+                                fechaCumplimiento)
+        ));
+
+        CumplimientoResolucionTtaip saved = cumplimientoRepository.save(cumplimiento);
+        registrarHistorial(
+                cumplimiento.getExpediente(),
+                HistorialTtaip.TipoEvento.CUMPLIMIENTO_PRESENTADO,
+                "Entidad comunicó cumplimiento "
+                        + tipo
+                        + (extemporaneo ? " fuera de plazo." : " dentro de plazo."),
+                estadoAnterior,
+                saved.getEstadoCumplimiento().name(),
+                request.responsableEntidad().trim(),
+                "CUMPLIMIENTO-" + saved.getId()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaip observarCumplimiento(Long expedienteId,
+                                                            Long cumplimientoId,
+                                                            ObservarCumplimientoResolucionRequest request) {
+        CumplimientoResolucionTtaip cumplimiento = buscarCumplimiento(cumplimientoId);
+        validarCumplimientoDelExpediente(expedienteId, cumplimiento);
+        if (cumplimiento.getEstadoCumplimiento() == CumplimientoResolucionTtaip.EstadoCumplimiento.CERRADO) {
+            throw new IllegalArgumentException("No se puede observar un seguimiento cerrado");
+        }
+
+        String estadoAnterior = cumplimiento.getEstadoCumplimiento() != null
+                ? cumplimiento.getEstadoCumplimiento().name()
+                : null;
+        String actor = normalizarActor(request.responsableTtaip(), "TTAIP");
+        cumplimiento.setEstadoCumplimiento(CumplimientoResolucionTtaip.EstadoCumplimiento.OBSERVADO);
+        cumplimiento.setObservacion(request.observacion().trim());
+        cumplimiento.setTrazabilidad(agregarTraza(
+                cumplimiento.getTrazabilidad(),
+                "%s - Cumplimiento observado por %s: %s"
+                        .formatted(LocalDateTime.now(), actor, request.observacion().trim())
+        ));
+
+        CumplimientoResolucionTtaip saved = cumplimientoRepository.save(cumplimiento);
+        registrarHistorial(
+                cumplimiento.getExpediente(),
+                HistorialTtaip.TipoEvento.CUMPLIMIENTO_OBSERVADO,
+                "TTAIP observó el cumplimiento comunicado por la entidad.",
+                estadoAnterior,
+                saved.getEstadoCumplimiento().name(),
+                actor,
+                "CUMPLIMIENTO-OBSERVADO-" + saved.getId()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public CumplimientoResolucionTtaip cerrarCumplimiento(Long expedienteId,
+                                                          Long cumplimientoId,
+                                                          CerrarCumplimientoResolucionRequest request) {
+        CumplimientoResolucionTtaip cumplimiento = buscarCumplimiento(cumplimientoId);
+        validarCumplimientoDelExpediente(expedienteId, cumplimiento);
+        if (cumplimiento.getEstadoCumplimiento() == CumplimientoResolucionTtaip.EstadoCumplimiento.CERRADO) {
+            throw new IllegalArgumentException("El seguimiento de cumplimiento ya está cerrado");
+        }
+
+        String estadoAnterior = cumplimiento.getEstadoCumplimiento() != null
+                ? cumplimiento.getEstadoCumplimiento().name()
+                : null;
+        String actor = normalizarActor(request.responsableTtaip(), "TTAIP");
+        cumplimiento.setEstadoCumplimiento(CumplimientoResolucionTtaip.EstadoCumplimiento.CERRADO);
+        cumplimiento.setObservacion(request.observacion());
+        cumplimiento.setTrazabilidad(agregarTraza(
+                cumplimiento.getTrazabilidad(),
+                "%s - Seguimiento de cumplimiento cerrado por %s."
+                        .formatted(LocalDateTime.now(), actor)
+        ));
+
+        CumplimientoResolucionTtaip saved = cumplimientoRepository.save(cumplimiento);
+        registrarHistorial(
+                cumplimiento.getExpediente(),
+                HistorialTtaip.TipoEvento.CUMPLIMIENTO_CERRADO,
+                "Seguimiento de cumplimiento cerrado.",
+                estadoAnterior,
+                saved.getEstadoCumplimiento().name(),
+                actor,
+                "CUMPLIMIENTO-CERRADO-" + saved.getId()
+        );
+
+        return saved;
+    }
+
+    @Transactional
+    public List<CumplimientoResolucionTtaip> procesarCumplimientosVencidos() {
+        List<CumplimientoResolucionTtaip> vencidos = cumplimientoRepository
+                .findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+                        estadosCumplimientoActivos(),
+                        LocalDate.now());
+
+        for (CumplimientoResolucionTtaip cumplimiento : vencidos) {
+            String estadoAnterior = cumplimiento.getEstadoCumplimiento() != null
+                    ? cumplimiento.getEstadoCumplimiento().name()
+                    : null;
+            cumplimiento.setEstadoCumplimiento(CumplimientoResolucionTtaip.EstadoCumplimiento.VENCIDO);
+            cumplimiento.setTrazabilidad(agregarTraza(
+                    cumplimiento.getTrazabilidad(),
+                    "%s - Seguimiento vencido sin comunicación de cumplimiento suficiente. Límite: %s."
+                            .formatted(LocalDateTime.now(), cumplimiento.getFechaLimiteCumplimiento())
+            ));
+            registrarHistorial(
+                    cumplimiento.getExpediente(),
+                    HistorialTtaip.TipoEvento.CUMPLIMIENTO_VENCIDO,
+                    "Seguimiento de cumplimiento vencido sin cumplimiento dentro del plazo.",
+                    estadoAnterior,
+                    CumplimientoResolucionTtaip.EstadoCumplimiento.VENCIDO.name(),
+                    "SISTEMA",
+                    "CUMPLIMIENTO-VENCIDO-" + cumplimiento.getId()
+            );
+        }
+
+        return cumplimientoRepository.saveAll(vencidos);
+    }
+
     private ExpedienteTtaip crearExpediente(Apelacion apelacion) {
         SalaTtaip sala = seleccionarSala();
         ExpedienteTtaip expediente = new ExpedienteTtaip();
@@ -615,6 +857,18 @@ public class ExpedienteTtaipService {
                         "Suspensión de plazo TTAIP no encontrada con ID: " + suspensionId));
     }
 
+    private Resolucion buscarResolucion(Long resolucionId) {
+        return resolucionRepository.findById(resolucionId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Resolución TTAIP no encontrada con ID: " + resolucionId));
+    }
+
+    private CumplimientoResolucionTtaip buscarCumplimiento(Long cumplimientoId) {
+        return cumplimientoRepository.findById(cumplimientoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Seguimiento de cumplimiento TTAIP no encontrado con ID: " + cumplimientoId));
+    }
+
     private void validarDescargoDelExpediente(Long expedienteId, DescargoEntidadTtaip descargo) {
         if (descargo.getExpediente() == null || !expedienteId.equals(descargo.getExpediente().getId())) {
             throw new IllegalArgumentException("El descargo no pertenece al expediente TTAIP indicado");
@@ -624,6 +878,12 @@ public class ExpedienteTtaipService {
     private void validarSuspensionDelExpediente(Long expedienteId, SuspensionPlazoTtaip suspension) {
         if (suspension.getExpediente() == null || !expedienteId.equals(suspension.getExpediente().getId())) {
             throw new IllegalArgumentException("La suspensión no pertenece al expediente TTAIP indicado");
+        }
+    }
+
+    private void validarCumplimientoDelExpediente(Long expedienteId, CumplimientoResolucionTtaip cumplimiento) {
+        if (cumplimiento.getExpediente() == null || !expedienteId.equals(cumplimiento.getExpediente().getId())) {
+            throw new IllegalArgumentException("El seguimiento de cumplimiento no pertenece al expediente TTAIP indicado");
         }
     }
 
@@ -730,6 +990,12 @@ public class ExpedienteTtaipService {
         return List.of(DescargoEntidadTtaip.EstadoDescargo.REQUERIDO);
     }
 
+    private List<CumplimientoResolucionTtaip.EstadoCumplimiento> estadosCumplimientoActivos() {
+        return List.of(
+                CumplimientoResolucionTtaip.EstadoCumplimiento.PENDIENTE,
+                CumplimientoResolucionTtaip.EstadoCumplimiento.OBSERVADO);
+    }
+
     private String normalizarActor(String actor, String fallback) {
         return actor != null && !actor.isBlank() ? actor.trim() : fallback;
     }
@@ -799,6 +1065,93 @@ public class ExpedienteTtaipService {
 
     private String valorTraza(String value) {
         return value == null || value.isBlank() ? "sin-codigo" : value;
+    }
+
+    private void validarResolucionFundadaDelExpediente(ExpedienteTtaip expediente, Resolucion resolucion) {
+        if (resolucion.getExpedienteTtaip() == null
+                || !expediente.getId().equals(resolucion.getExpedienteTtaip().getId())) {
+            throw new IllegalArgumentException("La resolución no pertenece al expediente TTAIP indicado");
+        }
+        if (resolucion.getTipoResolucion() != Resolucion.TipoResolucion.RESOLUCION_FINAL) {
+            throw new IllegalArgumentException("El seguimiento de cumplimiento solo aplica a resolución final");
+        }
+        if (resolucion.getDecision() != Resolucion.DecisionResolucion.FUNDADO
+                && resolucion.getDecision() != Resolucion.DecisionResolucion.FUNDADO_EN_PARTE) {
+            throw new IllegalArgumentException(
+                    "El cumplimiento solo aplica para resoluciones finales FUNDADO o FUNDADO_EN_PARTE");
+        }
+    }
+
+    private LocalDate fechaBaseCumplimiento(Resolucion resolucion) {
+        return notificacionRepository
+                .findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
+                        resolucion.getId(),
+                        CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA)
+                .stream()
+                .filter(this::esNotificacionValida)
+                .map(this::fechaOperativaNotificacion)
+                .filter(fecha -> fecha != null)
+                .findFirst()
+                .orElseGet(() -> resolucion.getFechaResolucion() != null
+                        ? resolucion.getFechaResolucion().toLocalDate()
+                        : LocalDate.now());
+    }
+
+    private boolean esNotificacionValida(NotificacionTtaip notificacion) {
+        String estado = normalizarTexto(notificacion.getEstado(), "");
+        String resultado = normalizarTexto(notificacion.getResultadoNotificacion(), "");
+        return Boolean.TRUE.equals(notificacion.getValidadaManualmente())
+                || estado.equals("ENTREGADA")
+                || estado.equals("VALIDADA")
+                || resultado.equals("ENTREGADA")
+                || resultado.equals("VALIDADA_MANUALMENTE");
+    }
+
+    private LocalDate fechaOperativaNotificacion(NotificacionTtaip notificacion) {
+        if (notificacion.getFechaValidacionManual() != null) {
+            return notificacion.getFechaValidacionManual().toLocalDate();
+        }
+        if (notificacion.getFechaAcuse() != null) {
+            return notificacion.getFechaAcuse().toLocalDate();
+        }
+        if (notificacion.getFechaEnvio() != null) {
+            return notificacion.getFechaEnvio().toLocalDate();
+        }
+        if (notificacion.getFechaNotificacion() != null) {
+            return notificacion.getFechaNotificacion().toLocalDate();
+        }
+        return null;
+    }
+
+    private CumplimientoResolucionTtaip.TipoCumplimiento parseTipoCumplimiento(String tipoCumplimiento) {
+        try {
+            return CumplimientoResolucionTtaip.TipoCumplimiento.valueOf(tipoCumplimiento.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalArgumentException(
+                    "Tipo de cumplimiento no válido: " + tipoCumplimiento
+                            + ". Valores permitidos: TOTAL, PARCIAL, NO_CUMPLE");
+        }
+    }
+
+    private void validarEvidenciaCumplimiento(CumplimientoResolucionTtaip.TipoCumplimiento tipo,
+                                              RegistrarCumplimientoResolucionRequest request) {
+        boolean requiereEvidencia = tipo == CumplimientoResolucionTtaip.TipoCumplimiento.TOTAL
+                || tipo == CumplimientoResolucionTtaip.TipoCumplimiento.PARCIAL;
+        boolean tieneEvidencia = normalizarNullable(request.evidenciaCumplimiento()) != null
+                || normalizarNullable(request.referenciaDocumento()) != null;
+        if (requiereEvidencia && !tieneEvidencia) {
+            throw new IllegalArgumentException(
+                    "El cumplimiento total o parcial debe adjuntar evidencia o referencia documental");
+        }
+    }
+
+    private CumplimientoResolucionTtaip.EstadoCumplimiento estadoDesdeTipoCumplimiento(
+            CumplimientoResolucionTtaip.TipoCumplimiento tipo) {
+        return switch (tipo) {
+            case TOTAL -> CumplimientoResolucionTtaip.EstadoCumplimiento.CUMPLIDO;
+            case PARCIAL -> CumplimientoResolucionTtaip.EstadoCumplimiento.CUMPLIDO_PARCIAL;
+            case NO_CUMPLE -> CumplimientoResolucionTtaip.EstadoCumplimiento.OBSERVADO;
+        };
     }
 
     private void cerrarSuspensionPorDescargo(ExpedienteTtaip expediente,
