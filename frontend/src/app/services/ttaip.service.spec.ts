@@ -308,4 +308,78 @@ describe('TtaipService', () => {
     expect(req.request.body).toEqual(data);
     req.flush({ id: 32, estadoSuspension: 'CANCELADA' });
   });
+
+  // --- Cumplimiento de resolucion fundada ---
+
+  it('should POST crear seguimiento de cumplimiento', () => {
+    const data = {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion: 'Seguimiento de resolución fundada'
+    };
+    service.crearSeguimientoCumplimiento(10, 50, data).subscribe(res => expect(res.estadoCumplimiento).toBe('PENDIENTE'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/resoluciones/50/cumplimientos`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 60, estadoCumplimiento: 'PENDIENTE' });
+  });
+
+  it('should GET cumplimientos by expediente', () => {
+    service.listarCumplimientos(10).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/cumplimientos`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 60 }]);
+  });
+
+  it('should GET cumplimiento activo', () => {
+    service.obtenerCumplimientoActivo(10).subscribe(res => expect(res.id).toBe(60));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/cumplimientos/activo`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 60, estadoCumplimiento: 'PENDIENTE' });
+  });
+
+  it('should POST registrar cumplimiento', () => {
+    const data = {
+      tipoCumplimiento: 'TOTAL' as const,
+      descripcionCumplimiento: 'La entidad entregó toda la información ordenada.',
+      referenciaDocumento: 'CUMPLIMIENTO-1.pdf',
+      responsableEntidad: 'Funcionario de Transparencia'
+    };
+    service.registrarCumplimiento(10, 60, data).subscribe(res => expect(res.estadoCumplimiento).toBe('CUMPLIDO'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/cumplimientos/60/registrar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 60, estadoCumplimiento: 'CUMPLIDO' });
+  });
+
+  it('should PATCH observar cumplimiento', () => {
+    const data = {
+      observacion: 'La evidencia no acredita entrega completa.',
+      responsableTtaip: 'Secretaría Técnica TTAIP'
+    };
+    service.observarCumplimiento(10, 60, data).subscribe(res => expect(res.estadoCumplimiento).toBe('OBSERVADO'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/cumplimientos/60/observar`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 60, estadoCumplimiento: 'OBSERVADO' });
+  });
+
+  it('should PATCH cerrar cumplimiento', () => {
+    const data = {
+      responsableTtaip: 'Secretaría Técnica TTAIP',
+      observacion: 'Seguimiento cerrado.'
+    };
+    service.cerrarCumplimiento(10, 60, data).subscribe(res => expect(res.estadoCumplimiento).toBe('CERRADO'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/cumplimientos/60/cerrar`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 60, estadoCumplimiento: 'CERRADO' });
+  });
+
+  it('should POST procesar cumplimientos vencidos', () => {
+    service.procesarCumplimientosVencidos().subscribe(res => expect(res.length).toBe(0));
+    const req = httpMock.expectOne(`${apiUrl}/cumplimientos/vencidos/procesar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush([]);
+  });
 });
