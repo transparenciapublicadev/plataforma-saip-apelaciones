@@ -9,9 +9,13 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
+import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
+import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
+import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
+import pe.gob.saip.backend.model.dto.SuspensionPlazoTtaipDTO;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.service.TTAIPService;
 
@@ -175,6 +179,56 @@ public class TTAIPRestController {
     public ResponseEntity<ReprocesoNotificacionDTO> reprocesarNotificacion(
             @Valid @RequestBody ReprocesarNotificacionRequest request) {
         return ResponseEntity.ok(ttaipService.reprocesarNotificacionFallida(request));
+    }
+
+    @Operation(
+            summary = "Requerir descargos de entidad",
+            description = "Registra el requerimiento de descargos y expediente administrativo a la entidad pública. Suspende el plazo de resolución final por 7 días hábiles."
+    )
+    @PostMapping("/expedientes/{expedienteId}/descargos/requerir")
+    public ResponseEntity<DescargoEntidadTtaipDTO> requerirDescargos(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Valid @RequestBody RequerirDescargoEntidadRequest request) {
+        return ResponseEntity.ok(ttaipService.requerirDescargos(expedienteId, request));
+    }
+
+    @Operation(summary = "Listar descargos de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/descargos")
+    public ResponseEntity<List<DescargoEntidadTtaipDTO>> listarDescargos(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.listarDescargos(expedienteId));
+    }
+
+    @Operation(summary = "Obtener descargo activo de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/descargos/activo")
+    public ResponseEntity<DescargoEntidadTtaipDTO> obtenerDescargoActivo(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.obtenerDescargoActivo(expedienteId));
+    }
+
+    @Operation(
+            summary = "Presentar descargo de entidad",
+            description = "Registra el descargo y/o expediente administrativo de la entidad pública, cierra la suspensión y recalcula el plazo de resolución."
+    )
+    @PostMapping("/expedientes/{expedienteId}/descargos/{descargoId}/presentar")
+    public ResponseEntity<DescargoEntidadTtaipDTO> presentarDescargo(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID del requerimiento de descargo") @PathVariable Long descargoId,
+            @Valid @RequestBody PresentarDescargoEntidadRequest request) {
+        return ResponseEntity.ok(ttaipService.presentarDescargo(expedienteId, descargoId, request));
+    }
+
+    @Operation(summary = "Procesar descargos vencidos")
+    @PostMapping("/descargos/vencidos/procesar")
+    public ResponseEntity<List<DescargoEntidadTtaipDTO>> procesarDescargosVencidos() {
+        return ResponseEntity.ok(ttaipService.procesarDescargosVencidos());
+    }
+
+    @Operation(summary = "Listar suspensiones de plazo de un expediente TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/suspensiones")
+    public ResponseEntity<List<SuspensionPlazoTtaipDTO>> listarSuspensiones(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        return ResponseEntity.ok(ttaipService.listarSuspensiones(expedienteId));
     }
 }
 

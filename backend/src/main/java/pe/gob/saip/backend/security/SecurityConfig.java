@@ -105,6 +105,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/apelaciones")).hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/apelaciones")).hasRole("ADMINISTRADOR")
 
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/descargos/*/presentar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos/activo").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/suspensiones").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/descargos/requerir").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/descargos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/ttaip")).hasAnyRole("TTAIP", "ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
