@@ -4,9 +4,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { Apelacion } from '../../models/apelacion.model';
+import { SuspensionPlazoTtaip } from '../../models/resolucion.model';
 
 type DetailTab = 'apelacion' | 'descargos' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
+type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
+type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
 
 interface TimelineItem {
   fecha: string;
@@ -264,6 +267,95 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     });
   }
 
+  registrarSuspensionAdicional(
+    tipo: SuspensionAdicional,
+    solicitante: string,
+    motivo: string,
+    responsable: string,
+    observacion: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId) {
+      this.descargoError.set('No se encontro expediente TTAIP para registrar suspension.');
+      return;
+    }
+    const solicitanteNormalizado = this.parseSuspensionSolicitante(solicitante);
+    if (!solicitanteNormalizado) {
+      this.descargoError.set('Seleccione un solicitante valido para la suspension.');
+      return;
+    }
+    if (!motivo.trim() || !responsable.trim()) {
+      this.descargoError.set('Complete motivo y responsable de la suspension.');
+      return;
+    }
+
+    this.descargoLoading.set(true);
+    this.descargoMessage.set('');
+    this.descargoError.set('');
+    const request = {
+      solicitante: solicitanteNormalizado,
+      motivo,
+      responsable,
+      observacion: observacion || null
+    };
+    const action = tipo === 'INFORME_ORAL'
+      ? this.ttaipService.registrarInformeOral(expedienteId, request)
+      : this.ttaipService.registrarInformacionComplementaria(expedienteId, request);
+
+    action.subscribe({
+      next: () => {
+        this.descargoMessage.set(
+          tipo === 'INFORME_ORAL'
+            ? 'Informe oral registrado y plazo suspendido por 3 dias habiles.'
+            : 'Informacion complementaria registrada y plazo suspendido por 3 dias habiles.'
+        );
+        this.descargoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.descargoError.set('No se pudo registrar la suspension adicional del expediente.');
+        this.descargoLoading.set(false);
+      }
+    });
+  }
+
+  cancelarSuspension(suspensionId: number | undefined, observacion: string): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !suspensionId) {
+      this.descargoError.set('No se encontro la suspension activa para cancelar.');
+      return;
+    }
+
+    this.descargoLoading.set(true);
+    this.descargoMessage.set('');
+    this.descargoError.set('');
+    this.ttaipService.cancelarSuspension(expedienteId, suspensionId, {
+      responsable: 'Secretaría Técnica TTAIP',
+      observacion: observacion || 'Suspensión adicional dejada sin efecto.'
+    }).subscribe({
+      next: () => {
+        this.descargoMessage.set('Suspensión cancelada y fecha límite de resolución recalculada.');
+        this.descargoLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.descargoError.set('No se pudo cancelar la suspension adicional.');
+        this.descargoLoading.set(false);
+      }
+    });
+  }
+
+  esSuspensionAdicionalActiva(suspension: SuspensionPlazoTtaip): boolean {
+    const motivo = this.normalizeKey(suspension.motivoSuspension);
+    return suspension.estadoSuspension === 'ACTIVA'
+      && (motivo === 'INFORME_ORAL' || motivo === 'INFORMACION_COMPLEMENTARIA');
+  }
+
+  formatSuspensionLabel(value?: string | null): string {
+    const normalized = this.normalizeKey(value);
+    return normalized ? normalized.replaceAll('_', ' ') : 'SUSPENSION';
+  }
+
   dotColor(icon: TimelineIcon): string {
     if (icon === 'x') return 'var(--brand-700)';
     if (icon === 'alert') return 'var(--warning)';
@@ -351,6 +443,14 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       .trim()
       .toUpperCase()
       .replace(/[\s-]+/g, '_');
+  }
+
+  private parseSuspensionSolicitante(value: string): SuspensionSolicitante | null {
+    const normalized = this.normalizeKey(value);
+    if (normalized === 'CIUDADANO' || normalized === 'ENTIDAD_PUBLICA' || normalized === 'TTAIP') {
+      return normalized;
+    }
+    return null;
   }
 
   private formatEstado(value: string): string {

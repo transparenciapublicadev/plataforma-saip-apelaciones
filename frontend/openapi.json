@@ -1123,6 +1123,94 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/informe-oral": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Registrar informe oral",
+        "description": "Registra una suspensión adicional de 3 días hábiles por solicitud de informe oral dentro de un expediente TTAIP en resolución.",
+        "operationId": "registrarInformeOral",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarSuspensionTtaipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/informacion-complementaria": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Registrar información complementaria",
+        "description": "Registra una suspensión adicional de 3 días hábiles por solicitud de información complementaria dentro de un expediente TTAIP en resolución.",
+        "operationId": "registrarInformacionComplementaria",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarSuspensionTtaipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
       "post": {
         "tags": [
@@ -2418,6 +2506,60 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UsuarioAdminDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/suspensiones/{suspensionId}/cancelar": {
+      "patch": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Cancelar suspensión de plazo",
+        "description": "Cancela una suspensión adicional activa y recalcula la fecha límite de resolución final.",
+        "operationId": "cancelarSuspension",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "suspensionId",
+            "in": "path",
+            "description": "ID de la suspensión",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelarSuspensionTtaipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
                 }
               }
             }
@@ -5677,6 +5819,15 @@
           "motivoSuspension": {
             "type": "string"
           },
+          "solicitante": {
+            "type": "string"
+          },
+          "motivoDetalle": {
+            "type": "string"
+          },
+          "fechaSolicitud": {
+            "type": "string"
+          },
           "fechaInicioSuspension": {
             "type": "string"
           },
@@ -5688,6 +5839,12 @@
             "format": "int32"
           },
           "estadoSuspension": {
+            "type": "string"
+          },
+          "responsable": {
+            "type": "string"
+          },
+          "observacion": {
             "type": "string"
           },
           "trazabilidad": {
@@ -5802,6 +5959,55 @@
           "destinatario",
           "numeroCedulaOriginal",
           "observacion"
+        ]
+      },
+      "RegistrarSuspensionTtaipRequest": {
+        "type": "object",
+        "description": "Solicitud de suspensión adicional de plazo TTAIP por informe oral o información complementaria",
+        "properties": {
+          "fechaSolicitud": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha de solicitud de la suspensión. Si se omite, se usa la fecha actual.",
+            "example": "2026-05-12"
+          },
+          "solicitante": {
+            "type": "string",
+            "description": "Solicitante de la suspensión",
+            "enum": [
+              "CIUDADANO",
+              "ENTIDAD_PUBLICA",
+              "TTAIP"
+            ],
+            "example": "CIUDADANO",
+            "minLength": 1
+          },
+          "motivo": {
+            "type": "string",
+            "description": "Motivo o sustento del informe oral o información complementaria",
+            "example": "Se solicita informe oral para sustentar los argumentos de la apelación.",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra la suspensión",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 180,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación operativa opcional",
+            "example": "Solicitud registrada durante etapa de resolución final.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "motivo",
+          "responsable",
+          "solicitante"
         ]
       },
       "PresentarDescargoEntidadRequest": {
@@ -6274,6 +6480,35 @@
         "required": [
           "identificador",
           "password"
+        ]
+      },
+      "CancelarSuspensionTtaipRequest": {
+        "type": "object",
+        "description": "Cancelación operativa de una suspensión adicional de plazo TTAIP",
+        "properties": {
+          "fechaCancelacion": {
+            "type": "string",
+            "format": "date",
+            "description": "Fecha de cancelación. Si se omite, se usa la fecha actual.",
+            "example": "2026-05-13"
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que cancela la suspensión",
+            "example": "Secretaría Técnica TTAIP",
+            "maxLength": 180,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Motivo de cancelación",
+            "example": "La parte desistió de la solicitud de informe oral.",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "responsable"
         ]
       },
       "ActualizarLiquidacionCostoRequest": {

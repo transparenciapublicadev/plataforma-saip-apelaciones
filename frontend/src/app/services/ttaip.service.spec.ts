@@ -212,4 +212,45 @@ describe('TtaipService', () => {
     expect(req.request.method).toBe('GET');
     req.flush([{ id: 30, motivoSuspension: 'DESCARGOS_ENTIDAD' }]);
   });
+
+  it('should POST registrar informe oral', () => {
+    const data = {
+      solicitante: 'CIUDADANO' as const,
+      motivo: 'Solicitud de informe oral',
+      responsable: 'Secretaría Técnica TTAIP',
+      observacion: 'Registro de audiencia'
+    };
+    service.registrarInformeOral(10, data).subscribe(res => expect(res.motivoSuspension).toBe('INFORME_ORAL'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/suspensiones/informe-oral`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 31, motivoSuspension: 'INFORME_ORAL' });
+  });
+
+  it('should POST registrar informacion complementaria', () => {
+    const data = {
+      solicitante: 'TTAIP' as const,
+      motivo: 'Se requiere información complementaria',
+      responsable: 'Secretaría Técnica TTAIP'
+    };
+    service.registrarInformacionComplementaria(10, data).subscribe(res => {
+      expect(res.motivoSuspension).toBe('INFORMACION_COMPLEMENTARIA');
+    });
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/suspensiones/informacion-complementaria`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 32, motivoSuspension: 'INFORMACION_COMPLEMENTARIA' });
+  });
+
+  it('should PATCH cancelar suspension', () => {
+    const data = {
+      responsable: 'Secretaría Técnica TTAIP',
+      observacion: 'Solicitud dejada sin efecto'
+    };
+    service.cancelarSuspension(10, 32, data).subscribe(res => expect(res.estadoSuspension).toBe('CANCELADA'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/suspensiones/32/cancelar`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 32, estadoSuspension: 'CANCELADA' });
+  });
 });
