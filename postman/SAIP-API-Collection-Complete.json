@@ -18962,6 +18962,592 @@
           }
         },
         {
+          "name": "Crear Solicitud SAIP (Liquidación)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const targetEntidadId = funcionarioEntidadId || entidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud SAIP para liquidacion is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"solicitud id\").to.exist;",
+                  "    pm.expect(json.expediente, \"expediente\").to.exist;",
+                  "    pm.expect(json.formatoFisico, \"formato fisico\").to.eql(true);",
+                  "});",
+                  "if (json.id) pm.environment.set(\"liquidacionSolicitudSaipId\", String(json.id));",
+                  "if (json.expediente) pm.environment.set(\"liquidacionSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una SAIP runtime dedicada a validar liquidación/cupón de pago para entrega física. Evita depender de solicitudes antiguas del seed, porque la regla del día 9 se calcula desde la recepción.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud API para liquidación de costos\",\n    \"descripcion\": \"Solicito copias físicas simples para validar emisión de cupón de pago, recojo y archivo por no recojo.\",\n    \"tipoInformacion\": \"Reproducción física\",\n    \"formatoDigital\": false,\n    \"formatoFisico\": true,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Emitir Liquidación SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId. Run Crear Solicitud SAIP (Liquidación) first.\"); }",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.variables.set(\"liquidacionFechaNotificacion\", today);",
+                  "pm.environment.set(\"liquidacionFechaNotificacion\", today);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"liquidacion SAIP is issued\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id, \"liquidacion id\").to.exist;",
+                  "    pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"liquidacionSolicitudSaipId\")));",
+                  "    pm.expect(json.codigoLiquidacion, \"codigo liquidacion\").to.exist;",
+                  "    pm.expect(json.estadoLiquidacion).to.eql(\"NOTIFICADA\");",
+                  "    pm.expect(json.fechaNotificacion).to.eql(pm.environment.get(\"liquidacionFechaNotificacion\"));",
+                  "    pm.expect(json.fechaLimiteRecojo, \"fecha limite recojo\").to.exist;",
+                  "    pm.expect(json.trazabilidad, \"trazabilidad\").to.exist;",
+                  "});",
+                  "pm.environment.set(\"liquidacionId\", String(json.id));",
+                  "pm.environment.set(\"liquidacionCodigo\", json.codigoLiquidacion);",
+                  "pm.environment.set(\"liquidacionFechaLimiteRecojo\", json.fechaLimiteRecojo);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones"
+              ]
+            },
+            "description": "## Emitir Liquidación SAIP\n\nRegistra y notifica un cupón de pago dentro del día 9 de atención. El backend calcula fecha límite de recojo con 30 días hábiles desde la notificación y conserva trazabilidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"monto\": 18.50,\n    \"moneda\": \"PEN\",\n    \"concepto\": \"Copias simples de 37 folios para recojo físico en mesa de partes.\",\n    \"fechaNotificacion\": \"{{liquidacionFechaNotificacion}}\",\n    \"medioNotificacion\": \"CASILLA_ELECTRONICA\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Cupón emitido por Newman para validar regla de día 9 y plazo de recojo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar Liquidaciones SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId.\"); }",
+                  "if (!pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacionId.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"liquidaciones SAIP are listed\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "    const current = json.find((item) => String(item.id) === pm.environment.get(\"liquidacionId\"));",
+                  "    pm.expect(current, \"liquidacion emitida\").to.exist;",
+                  "    pm.expect(current.codigoLiquidacion).to.eql(pm.environment.get(\"liquidacionCodigo\"));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones"
+              ]
+            },
+            "description": "Lista los cupones/liquidaciones asociados a la SAIP y valida que el cupón emitido durante la ejecución sea consultable desde la solicitud.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener Liquidación Activa SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId.\"); }",
+                  "if (!pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacionId.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"active liquidacion SAIP is returned\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"liquidacionId\"));",
+                  "    pm.expect([\"EMITIDA\", \"NOTIFICADA\", \"PAGADA\"]).to.include(json.estadoLiquidacion);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones/activa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones",
+                "activa"
+              ]
+            },
+            "description": "Consulta la liquidación activa de la SAIP. Antes del pago/recojo debe existir exactamente el cupón emitido en runtime.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Liquidación SAIP Duplicada",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId.\"); }",
+                  "const today = pm.environment.get(\"liquidacionFechaNotificacion\") || new Date().toISOString().slice(0, 10);",
+                  "pm.variables.set(\"liquidacionFechaNotificacion\", today);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"duplicate liquidacion is rejected with Problem Details\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "    pm.expect(json.type, \"type\").to.exist;",
+                  "    pm.expect(json.title, \"title\").to.exist;",
+                  "    pm.expect(json.status, \"status\").to.eql(409);",
+                  "    pm.expect(json.detail, \"detail\").to.include(\"liquidación\");",
+                  "    pm.expect(json.instance, \"instance\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones"
+              ]
+            },
+            "description": "Validación negativa esperada: una SAIP no puede tener más de una liquidación activa. El backend debe responder RFC 9457 / Problem Details con `409 Conflict`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"monto\": 10.00,\n    \"moneda\": \"PEN\",\n    \"concepto\": \"Intento duplicado de cupón activo para validar regla de negocio.\",\n    \"fechaNotificacion\": \"{{liquidacionFechaNotificacion}}\",\n    \"medioNotificacion\": \"CASILLA_ELECTRONICA\",\n    \"responsable\": \"Funcionario de Transparencia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Marcar Liquidación Pagada SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\") || !pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacion variables.\"); }",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.variables.set(\"liquidacionFechaPago\", today);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"liquidacion SAIP is marked as paid\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"liquidacionId\"));",
+                  "    pm.expect(json.estadoLiquidacion).to.eql(\"PAGADA\");",
+                  "    pm.expect(json.fechaPago, \"fecha pago\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones/{{liquidacionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones",
+                "{{liquidacionId}}"
+              ]
+            },
+            "description": "Registra el pago operativo del cupón sin cerrar todavía la SAIP. La liquidación se mantiene activa hasta el recojo o cancelación.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"PAGADA\",\n    \"fechaPago\": \"{{liquidacionFechaPago}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Pago registrado en validación Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Marcar Liquidación Recogida SAIP",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"liquidacionSolicitudSaipId\") || !pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacion variables.\"); }",
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.variables.set(\"liquidacionFechaRecojo\", today);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"liquidacion SAIP is marked as picked up\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"liquidacionId\"));",
+                  "    pm.expect(json.estadoLiquidacion).to.eql(\"RECOGIDA\");",
+                  "    pm.expect(json.fechaRecojo, \"fecha recojo\").to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{liquidacionSolicitudSaipId}}/liquidaciones/{{liquidacionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{liquidacionSolicitudSaipId}}",
+                "liquidaciones",
+                "{{liquidacionId}}"
+              ]
+            },
+            "description": "Registra el recojo de copias físicas. Bajo el modelo actual, este cierre operativo marca la SAIP como respondida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"RECOGIDA\",\n    \"fechaRecojo\": \"{{liquidacionFechaRecojo}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Recojo físico registrado en validación Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Procesar Liquidaciones Vencidas SAIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"expired liquidaciones processor responds\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/liquidaciones/vencidas/procesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "liquidaciones",
+                "vencidas",
+                "procesar"
+              ]
+            },
+            "description": "Ejecuta el procesamiento operativo de cupones vencidos por no recojo. Si existen liquidaciones activas con fecha límite vencida, se archivan y la SAIP queda concluida; si no existen, responde lista vacía.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Crear Solicitud SAIP (Respuesta Genérica)",
           "request": {
             "method": "POST",
