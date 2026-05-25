@@ -379,6 +379,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validar manualmente una notificación
+         * @description Permite validación manual de notificación correcta cuando el flujo dependa de una notificación válida.
+         */
+        post: operations["validarNotificacionManualmente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/constancia-envio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar constancia de envío
+         * @description Registra evidencia operativa de envío de la notificación sin integrar todavía un proveedor externo.
+         */
+        post: operations["registrarConstanciaEnvio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/acuse-automatico": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar acuse automático
+         * @description Registra acuse automático de la notificación. Si el acuse falla, la notificación queda fallida u observada y puede reprocesarse.
+         */
+        post: operations["registrarAcuseAutomatico"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
         parameters: {
             query?: never;
@@ -1121,6 +1181,40 @@ export interface paths {
         };
         /** Listar suspensiones de plazo de un expediente TTAIP */
         get: operations["listarSuspensiones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar notificaciones de un expediente TTAIP */
+        get: operations["listarNotificaciones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar notificación TTAIP con evidencia */
+        get: operations["obtenerNotificacion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2478,6 +2572,24 @@ export interface components {
             medio?: string;
             estado?: string;
             detalle?: string;
+            medioNotificacion?: string;
+            fechaEnvio?: string;
+            codigoEnvio?: string;
+            codigoConstancia?: string;
+            constanciaEnvio?: string;
+            acuseAutomatico?: string;
+            fechaAcuse?: string;
+            estadoAcuse?: string;
+            resultadoNotificacion?: string;
+            evidenciaUrl?: string;
+            referenciaEvidencia?: string;
+            validadaManualmente?: boolean;
+            fechaValidacionManual?: string;
+            responsableValidacion?: string;
+            observacionValidacion?: string;
+            responsableConstancia?: string;
+            observacionConstancia?: string;
+            trazabilidad?: string;
         };
         /** @description Reproceso de notificación vinculado a una cédula del expediente TTAIP */
         ReprocesoNotificacionDTO: {
@@ -2632,6 +2744,93 @@ export interface components {
              * @description Observación operativa opcional
              * @example Solicitud registrada durante etapa de resolución final.
              */
+            observacion?: string;
+        };
+        /** @description Validación manual de una notificación TTAIP cuando el flujo depende de notificación válida */
+        ValidarNotificacionManualRequest: {
+            /**
+             * Format: date-time
+             * @description Fecha y hora de validación manual. Si se omite, se usa la fecha actual.
+             * @example 2026-05-25T11:00:00
+             */
+            fechaValidacionManual?: string;
+            /**
+             * @description Responsable que valida la notificación
+             * @example Secretaría Técnica TTAIP
+             */
+            responsableValidacion: string;
+            /** @description Sustento funcional de la validación manual */
+            observacionValidacion: string;
+            /** @description URL interna o referencia descargable de evidencia */
+            evidenciaUrl?: string;
+            /** @description Referencia documental alternativa de evidencia */
+            referenciaEvidencia?: string;
+        };
+        /** @description Registro operativo de constancia de envío de una notificación TTAIP */
+        RegistrarConstanciaEnvioNotificacionRequest: {
+            /**
+             * @description Medio usado para la notificación
+             * @example CORREO_ELECTRONICO
+             */
+            medioNotificacion: string;
+            /**
+             * Format: date-time
+             * @description Fecha y hora de envío. Si se omite, se usa la fecha actual.
+             * @example 2026-05-25T09:30:00
+             */
+            fechaEnvio?: string;
+            /**
+             * @description Código operativo del envío
+             * @example MAIL-2026-000012
+             */
+            codigoEnvio?: string;
+            /**
+             * @description Código formal de la constancia de envío
+             * @example CONST-2026-000012
+             */
+            codigoConstancia?: string;
+            /** @description Resumen o referencia textual de la constancia emitida */
+            constanciaEnvio: string;
+            /** @description URL interna o referencia descargable de evidencia */
+            evidenciaUrl?: string;
+            /** @description Referencia documental alternativa de evidencia */
+            referenciaEvidencia?: string;
+            /**
+             * @description Responsable que registra la constancia
+             * @example Mesa de Partes TTAIP
+             */
+            responsable: string;
+            /** @description Observación operativa adicional */
+            observacion?: string;
+        };
+        /** @description Registro de acuse automático de una notificación TTAIP */
+        RegistrarAcuseAutomaticoNotificacionRequest: {
+            /**
+             * @description Estado del acuse automático
+             * @example ENTREGADO
+             * @enum {string}
+             */
+            estadoAcuse: "ENTREGADO" | "FALLIDO" | "NO_RECIBIDO" | "OBSERVADO";
+            /** @description Contenido, resumen o código del acuse automático */
+            acuseAutomatico: string;
+            /**
+             * Format: date-time
+             * @description Fecha y hora del acuse. Si se omite, se usa la fecha actual.
+             * @example 2026-05-25T10:15:00
+             */
+            fechaAcuse?: string;
+            /** @description Resultado funcional de la notificación */
+            resultadoNotificacion?: string;
+            /** @description URL interna o referencia descargable de evidencia */
+            evidenciaUrl?: string;
+            /** @description Referencia documental alternativa de evidencia */
+            referenciaEvidencia?: string;
+            /**
+             * @description Responsable que registra el acuse
+             * @example Sistema de notificaciones TTAIP
+             */
+            responsable?: string;
+            /** @description Observación operativa adicional */
             observacion?: string;
         };
         /** @description Presentación de descargo y expediente administrativo por la entidad pública */
@@ -3817,6 +4016,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"];
+                };
+            };
+        };
+    };
+    validarNotificacionManualmente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la notificación */
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidarNotificacionManualRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacionTtaipDTO"];
+                };
+            };
+        };
+    };
+    registrarConstanciaEnvio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la notificación */
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarConstanciaEnvioNotificacionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacionTtaipDTO"];
+                };
+            };
+        };
+    };
+    registrarAcuseAutomatico: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la notificación */
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarAcuseAutomaticoNotificacionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacionTtaipDTO"];
                 };
             };
         };
@@ -5055,6 +5341,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuspensionPlazoTtaipDTO"][];
+                };
+            };
+        };
+    };
+    listarNotificaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacionTtaipDTO"][];
+                };
+            };
+        };
+    };
+    obtenerNotificacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del expediente TTAIP */
+                expedienteId: number;
+                /** @description ID de la notificación */
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificacionTtaipDTO"];
                 };
             };
         };

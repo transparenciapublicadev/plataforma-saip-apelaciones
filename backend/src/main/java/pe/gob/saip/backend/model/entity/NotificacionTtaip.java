@@ -50,17 +50,75 @@ public class NotificacionTtaip {
     @Column(length = 40)
     private String medio;
 
+    @Column(name = "medio_notificacion", length = 40)
+    private String medioNotificacion;
+
     @Column(length = 40)
     private String estado;
 
     @Column(columnDefinition = "TEXT")
     private String detalle;
 
+    @Column(name = "fecha_envio")
+    private LocalDateTime fechaEnvio;
+
+    @Column(name = "codigo_envio", length = 80)
+    private String codigoEnvio;
+
+    @Column(name = "codigo_constancia", length = 80)
+    private String codigoConstancia;
+
+    @Column(name = "constancia_envio", columnDefinition = "TEXT")
+    private String constanciaEnvio;
+
+    @Column(name = "acuse_automatico", columnDefinition = "TEXT")
+    private String acuseAutomatico;
+
+    @Column(name = "fecha_acuse")
+    private LocalDateTime fechaAcuse;
+
+    @Column(name = "estado_acuse", length = 40)
+    private String estadoAcuse;
+
+    @Column(name = "resultado_notificacion", length = 80)
+    private String resultadoNotificacion;
+
+    @Column(name = "evidencia_url", length = 500)
+    private String evidenciaUrl;
+
+    @Column(name = "referencia_evidencia", length = 500)
+    private String referenciaEvidencia;
+
+    @Column(name = "validada_manualmente", nullable = false)
+    private Boolean validadaManualmente;
+
+    @Column(name = "fecha_validacion_manual")
+    private LocalDateTime fechaValidacionManual;
+
+    @Column(name = "responsable_validacion", length = 120)
+    private String responsableValidacion;
+
+    @Column(name = "observacion_validacion", columnDefinition = "TEXT")
+    private String observacionValidacion;
+
+    @Column(name = "responsable_constancia", length = 120)
+    private String responsableConstancia;
+
+    @Column(name = "observacion_constancia", columnDefinition = "TEXT")
+    private String observacionConstancia;
+
+    @Column(columnDefinition = "TEXT")
+    private String trazabilidad;
+
     @PrePersist
     protected void onCreate() {
         fechaNotificacion = fechaNotificacion != null ? fechaNotificacion : LocalDateTime.now();
         medio = medio != null ? medio : "CASILLA_ELECTRONICA";
-        estado = estado != null ? estado : "NOTIFICADA";
+        medioNotificacion = medioNotificacion != null ? medioNotificacion : medio;
+        estado = estado != null ? estado : "PENDIENTE";
+        resultadoNotificacion = resultadoNotificacion != null ? resultadoNotificacion : estado;
+        estadoAcuse = estadoAcuse != null ? estadoAcuse : "PENDIENTE";
+        validadaManualmente = validadaManualmente != null ? validadaManualmente : Boolean.FALSE;
     }
 
     public Long getId() {

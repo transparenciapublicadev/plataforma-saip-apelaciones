@@ -63,6 +63,24 @@ export interface NotificacionTtaip {
     medio?: string | null;
     estado?: string | null;
     detalle?: string | null;
+    medioNotificacion?: string | null;
+    fechaEnvio?: string | null;
+    codigoEnvio?: string | null;
+    codigoConstancia?: string | null;
+    constanciaEnvio?: string | null;
+    acuseAutomatico?: string | null;
+    fechaAcuse?: string | null;
+    estadoAcuse?: string | null;
+    resultadoNotificacion?: string | null;
+    evidenciaUrl?: string | null;
+    referenciaEvidencia?: string | null;
+    validadaManualmente?: boolean | null;
+    fechaValidacionManual?: string | null;
+    responsableValidacion?: string | null;
+    observacionValidacion?: string | null;
+    responsableConstancia?: string | null;
+    observacionConstancia?: string | null;
+    trazabilidad?: string | null;
 }
 
 export interface HistorialTtaip {
@@ -158,6 +176,37 @@ export interface CancelarSuspensionTtaipPayload {
     fechaCancelacion?: string | null;
     responsable: string;
     observacion?: string | null;
+}
+
+export interface RegistrarConstanciaEnvioNotificacionPayload {
+    medioNotificacion: string;
+    fechaEnvio?: string | null;
+    codigoEnvio?: string | null;
+    codigoConstancia?: string | null;
+    constanciaEnvio: string;
+    evidenciaUrl?: string | null;
+    referenciaEvidencia?: string | null;
+    responsable: string;
+    observacion?: string | null;
+}
+
+export interface RegistrarAcuseAutomaticoNotificacionPayload {
+    estadoAcuse: 'ENTREGADO' | 'FALLIDO' | 'NO_RECIBIDO' | 'OBSERVADO';
+    acuseAutomatico: string;
+    fechaAcuse?: string | null;
+    resultadoNotificacion?: string | null;
+    evidenciaUrl?: string | null;
+    referenciaEvidencia?: string | null;
+    responsable?: string | null;
+    observacion?: string | null;
+}
+
+export interface ValidarNotificacionManualPayload {
+    fechaValidacionManual?: string | null;
+    responsableValidacion: string;
+    observacionValidacion: string;
+    evidenciaUrl?: string | null;
+    referenciaEvidencia?: string | null;
 }
 
 export type Resolucion = Required<ResolucionDTO> & {

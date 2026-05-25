@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { Apelacion } from '../../models/apelacion.model';
-import { SuspensionPlazoTtaip } from '../../models/resolucion.model';
+import { NotificacionTtaip, SuspensionPlazoTtaip } from '../../models/resolucion.model';
 
 type DetailTab = 'apelacion' | 'descargos' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
@@ -47,6 +47,9 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly descargoLoading = signal<boolean>(false);
   readonly descargoMessage = signal<string>('');
   readonly descargoError = signal<string>('');
+  readonly notificacionLoading = signal<boolean>(false);
+  readonly notificacionMessage = signal<string>('');
+  readonly notificacionError = signal<string>('');
   readonly tabs: { id: DetailTab; label: string }[] = [
     { id: 'apelacion', label: 'Apelacion' },
     { id: 'descargos', label: 'Descargos' },
@@ -345,6 +348,142 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     });
   }
 
+  registrarConstanciaNotificacion(
+    notificacionId: number | undefined,
+    medioNotificacion: string,
+    codigoEnvio: string,
+    codigoConstancia: string,
+    constanciaEnvio: string,
+    evidencia: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !notificacionId) {
+      this.notificacionError.set('No se encontro la notificacion para registrar constancia.');
+      return;
+    }
+    if (!medioNotificacion.trim() || !constanciaEnvio.trim()) {
+      this.notificacionError.set('Complete medio y constancia de envio.');
+      return;
+    }
+
+    this.notificacionLoading.set(true);
+    this.notificacionMessage.set('');
+    this.notificacionError.set('');
+    this.ttaipService.registrarConstanciaEnvio(expedienteId, notificacionId, {
+      medioNotificacion,
+      codigoEnvio: codigoEnvio || null,
+      codigoConstancia: codigoConstancia || null,
+      constanciaEnvio,
+      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
+      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null,
+      responsable: 'Mesa de Partes TTAIP',
+      observacion: 'Constancia registrada desde el detalle TTAIP.'
+    }).subscribe({
+      next: () => {
+        this.notificacionMessage.set('Constancia de envio registrada.');
+        this.notificacionLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.notificacionError.set('No se pudo registrar la constancia de envio.');
+        this.notificacionLoading.set(false);
+      }
+    });
+  }
+
+  registrarAcuseNotificacion(
+    notificacionId: number | undefined,
+    estadoAcuse: string,
+    acuseAutomatico: string,
+    evidencia: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !notificacionId) {
+      this.notificacionError.set('No se encontro la notificacion para registrar acuse.');
+      return;
+    }
+    const estado = this.parseEstadoAcuse(estadoAcuse);
+    if (!estado) {
+      this.notificacionError.set('Seleccione un estado de acuse valido.');
+      return;
+    }
+    if (!acuseAutomatico.trim()) {
+      this.notificacionError.set('Complete el detalle del acuse automatico.');
+      return;
+    }
+
+    this.notificacionLoading.set(true);
+    this.notificacionMessage.set('');
+    this.notificacionError.set('');
+    this.ttaipService.registrarAcuseAutomatico(expedienteId, notificacionId, {
+      estadoAcuse: estado,
+      acuseAutomatico,
+      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
+      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null,
+      responsable: 'Sistema de notificaciones TTAIP',
+      observacion: 'Acuse registrado desde el detalle TTAIP.'
+    }).subscribe({
+      next: () => {
+        this.notificacionMessage.set(estado === 'ENTREGADO'
+          ? 'Acuse entregado registrado.'
+          : 'Acuse fallido u observado registrado; la notificacion queda disponible para reproceso.');
+        this.notificacionLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.notificacionError.set('No se pudo registrar el acuse automatico.');
+        this.notificacionLoading.set(false);
+      }
+    });
+  }
+
+  validarNotificacionManual(
+    notificacionId: number | undefined,
+    observacion: string,
+    evidencia: string
+  ): void {
+    const expedienteId = this.expedienteTtaip()?.id;
+    if (!expedienteId || !notificacionId) {
+      this.notificacionError.set('No se encontro la notificacion para validar.');
+      return;
+    }
+    if (!observacion.trim()) {
+      this.notificacionError.set('Complete el sustento de validacion manual.');
+      return;
+    }
+
+    this.notificacionLoading.set(true);
+    this.notificacionMessage.set('');
+    this.notificacionError.set('');
+    this.ttaipService.validarNotificacionManualmente(expedienteId, notificacionId, {
+      responsableValidacion: 'Secretaría Técnica TTAIP',
+      observacionValidacion: observacion,
+      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
+      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null
+    }).subscribe({
+      next: () => {
+        this.notificacionMessage.set('Notificacion validada manualmente.');
+        this.notificacionLoading.set(false);
+        this.cargarApelacion(this.expedienteDisplay());
+      },
+      error: () => {
+        this.notificacionError.set('No se pudo validar manualmente la notificacion.');
+        this.notificacionLoading.set(false);
+      }
+    });
+  }
+
+  notificationStatusClass(notificacion: NotificacionTtaip): string {
+    const estado = this.normalizeKey(notificacion.estado);
+    if (estado === 'FALLIDA' || estado === 'OBSERVADA') return 'pill pill-high';
+    if (estado === 'VALIDADA' || estado === 'ENTREGADA') return 'pill pill-low';
+    return 'pill pill-medium';
+  }
+
+  notificationEvidenceLabel(notificacion: NotificacionTtaip): string {
+    return notificacion.evidenciaUrl || notificacion.referenciaEvidencia || notificacion.codigoConstancia || 'Sin evidencia registrada';
+  }
+
   esSuspensionAdicionalActiva(suspension: SuspensionPlazoTtaip): boolean {
     const motivo = this.normalizeKey(suspension.motivoSuspension);
     return suspension.estadoSuspension === 'ACTIVA'
@@ -354,6 +493,18 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   formatSuspensionLabel(value?: string | null): string {
     const normalized = this.normalizeKey(value);
     return normalized ? normalized.replaceAll('_', ' ') : 'SUSPENSION';
+  }
+
+  private parseEstadoAcuse(value: string): 'ENTREGADO' | 'FALLIDO' | 'NO_RECIBIDO' | 'OBSERVADO' | null {
+    const normalized = this.normalizeKey(value);
+    if (normalized === 'ENTREGADO' || normalized === 'FALLIDO' || normalized === 'NO_RECIBIDO' || normalized === 'OBSERVADO') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private isUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value.trim());
   }
 
   dotColor(icon: TimelineIcon): string {

@@ -1211,6 +1211,168 @@
         }
       }
     },
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/validacion-manual": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Validar manualmente una notificación",
+        "description": "Permite validación manual de notificación correcta cuando el flujo dependa de una notificación válida.",
+        "operationId": "validarNotificacionManualmente",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "description": "ID de la notificación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidarNotificacionManualRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/constancia-envio": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Registrar constancia de envío",
+        "description": "Registra evidencia operativa de envío de la notificación sin integrar todavía un proveedor externo.",
+        "operationId": "registrarConstanciaEnvio",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "description": "ID de la notificación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarConstanciaEnvioNotificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}/acuse-automatico": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Registrar acuse automático",
+        "description": "Registra acuse automático de la notificación. Si el acuse falla, la notificación queda fallida u observada y puede reprocesarse.",
+        "operationId": "registrarAcuseAutomatico",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "description": "ID de la notificación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarAcuseAutomaticoNotificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/expedientes/{expedienteId}/descargos/{descargoId}/presentar": {
       "post": {
         "tags": [
@@ -3038,6 +3200,85 @@
                   "items": {
                     "$ref": "#/components/schemas/SuspensionPlazoTtaipDTO"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Listar notificaciones de un expediente TTAIP",
+        "operationId": "listarNotificaciones",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificacionTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/notificaciones/{notificacionId}": {
+      "get": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Consultar notificación TTAIP con evidencia",
+        "operationId": "obtenerNotificacion",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "description": "ID del expediente TTAIP",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "description": "ID de la notificación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificacionTtaipDTO"
                 }
               }
             }
@@ -5652,6 +5893,60 @@
           },
           "detalle": {
             "type": "string"
+          },
+          "medioNotificacion": {
+            "type": "string"
+          },
+          "fechaEnvio": {
+            "type": "string"
+          },
+          "codigoEnvio": {
+            "type": "string"
+          },
+          "codigoConstancia": {
+            "type": "string"
+          },
+          "constanciaEnvio": {
+            "type": "string"
+          },
+          "acuseAutomatico": {
+            "type": "string"
+          },
+          "fechaAcuse": {
+            "type": "string"
+          },
+          "estadoAcuse": {
+            "type": "string"
+          },
+          "resultadoNotificacion": {
+            "type": "string"
+          },
+          "evidenciaUrl": {
+            "type": "string"
+          },
+          "referenciaEvidencia": {
+            "type": "string"
+          },
+          "validadaManualmente": {
+            "type": "boolean"
+          },
+          "fechaValidacionManual": {
+            "type": "string"
+          },
+          "responsableValidacion": {
+            "type": "string"
+          },
+          "observacionValidacion": {
+            "type": "string"
+          },
+          "responsableConstancia": {
+            "type": "string"
+          },
+          "observacionConstancia": {
+            "type": "string"
+          },
+          "trazabilidad": {
+            "type": "string"
           }
         }
       },
@@ -6010,6 +6305,167 @@
           "solicitante"
         ]
       },
+      "ValidarNotificacionManualRequest": {
+        "type": "object",
+        "description": "Validación manual de una notificación TTAIP cuando el flujo depende de notificación válida",
+        "properties": {
+          "fechaValidacionManual": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de validación manual. Si se omite, se usa la fecha actual.",
+            "example": "2026-05-25T11:00:00"
+          },
+          "responsableValidacion": {
+            "type": "string",
+            "description": "Responsable que valida la notificación",
+            "example": "Secretaría Técnica TTAIP",
+            "minLength": 1
+          },
+          "observacionValidacion": {
+            "type": "string",
+            "description": "Sustento funcional de la validación manual",
+            "minLength": 1
+          },
+          "evidenciaUrl": {
+            "type": "string",
+            "description": "URL interna o referencia descargable de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaEvidencia": {
+            "type": "string",
+            "description": "Referencia documental alternativa de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "observacionValidacion",
+          "responsableValidacion"
+        ]
+      },
+      "RegistrarConstanciaEnvioNotificacionRequest": {
+        "type": "object",
+        "description": "Registro operativo de constancia de envío de una notificación TTAIP",
+        "properties": {
+          "medioNotificacion": {
+            "type": "string",
+            "description": "Medio usado para la notificación",
+            "example": "CORREO_ELECTRONICO",
+            "minLength": 1
+          },
+          "fechaEnvio": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de envío. Si se omite, se usa la fecha actual.",
+            "example": "2026-05-25T09:30:00"
+          },
+          "codigoEnvio": {
+            "type": "string",
+            "description": "Código operativo del envío",
+            "example": "MAIL-2026-000012",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "codigoConstancia": {
+            "type": "string",
+            "description": "Código formal de la constancia de envío",
+            "example": "CONST-2026-000012",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "constanciaEnvio": {
+            "type": "string",
+            "description": "Resumen o referencia textual de la constancia emitida",
+            "minLength": 1
+          },
+          "evidenciaUrl": {
+            "type": "string",
+            "description": "URL interna o referencia descargable de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaEvidencia": {
+            "type": "string",
+            "description": "Referencia documental alternativa de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra la constancia",
+            "example": "Mesa de Partes TTAIP",
+            "minLength": 1
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación operativa adicional"
+          }
+        },
+        "required": [
+          "constanciaEnvio",
+          "medioNotificacion",
+          "responsable"
+        ]
+      },
+      "RegistrarAcuseAutomaticoNotificacionRequest": {
+        "type": "object",
+        "description": "Registro de acuse automático de una notificación TTAIP",
+        "properties": {
+          "estadoAcuse": {
+            "type": "string",
+            "description": "Estado del acuse automático",
+            "enum": [
+              "ENTREGADO",
+              "FALLIDO",
+              "NO_RECIBIDO",
+              "OBSERVADO"
+            ],
+            "example": "ENTREGADO",
+            "minLength": 1
+          },
+          "acuseAutomatico": {
+            "type": "string",
+            "description": "Contenido, resumen o código del acuse automático",
+            "minLength": 1
+          },
+          "fechaAcuse": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora del acuse. Si se omite, se usa la fecha actual.",
+            "example": "2026-05-25T10:15:00"
+          },
+          "resultadoNotificacion": {
+            "type": "string",
+            "description": "Resultado funcional de la notificación"
+          },
+          "evidenciaUrl": {
+            "type": "string",
+            "description": "URL interna o referencia descargable de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaEvidencia": {
+            "type": "string",
+            "description": "Referencia documental alternativa de evidencia",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "responsable": {
+            "type": "string",
+            "description": "Responsable que registra el acuse",
+            "example": "Sistema de notificaciones TTAIP"
+          },
+          "observacion": {
+            "type": "string",
+            "description": "Observación operativa adicional"
+          }
+        },
+        "required": [
+          "acuseAutomatico",
+          "estadoAcuse"
+        ]
+      },
       "PresentarDescargoEntidadRequest": {
         "type": "object",
         "description": "Presentación de descargo y expediente administrativo por la entidad pública",
@@ -6178,7 +6634,7 @@
             "type": "number",
             "description": "Monto de reproducción física",
             "example": "18.50",
-            "minimum": 0.0
+            "minimum": 0
           },
           "moneda": {
             "type": "string",

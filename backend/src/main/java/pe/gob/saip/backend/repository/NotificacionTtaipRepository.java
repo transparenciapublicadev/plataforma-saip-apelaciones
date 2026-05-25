@@ -6,6 +6,7 @@ import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.NotificacionTtaip;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface NotificacionTtaipRepository extends JpaRepository<NotificacionTtaip, Long> {
@@ -15,5 +16,12 @@ public interface NotificacionTtaipRepository extends JpaRepository<NotificacionT
     Optional<NotificacionTtaip> findByCedula_NumeroCedulaAndDestinatario(
             String numeroCedula,
             CedulaNotificacion.DestinatarioNotificacion destinatario
+    );
+
+    List<NotificacionTtaip> findByExpediente_IdExpedienteTtaipOrderByFechaNotificacionAsc(Long expedienteId);
+
+    Optional<NotificacionTtaip> findByIdNotificacionAndExpediente_IdExpedienteTtaip(
+            Long notificacionId,
+            Long expedienteId
     );
 }
