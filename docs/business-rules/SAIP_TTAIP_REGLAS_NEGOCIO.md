@@ -29,6 +29,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
 - TTAIP soporta suspensiones adicionales por informe oral e informacion complementaria, cada una por 3 dias habiles, con solicitante, motivo, responsable, estado, trazabilidad y recalculo de fecha limite de resolucion.
 - TTAIP registra constancia de envio, acuse automatico, evidencia, validacion manual y trazabilidad por cada `NotificacionTtaip`, sin integrar aun un proveedor real de correo.
+- TTAIP soporta seguimiento de cumplimiento para resoluciones finales `FUNDADO` y `FUNDADO_EN_PARTE`, con plazo de 7 dias habiles, evidencia de la entidad, observacion/cierre por el Tribunal, vencimiento operativo y trazabilidad en el expediente.
 
 ## Nomenclaturas
 
@@ -289,8 +290,16 @@ Decisiones finales:
 
 ### Cumplimiento de resolucion fundada
 
-- Si el TTAIP declara fundado el recurso, la entidad debe cumplir en maximo 7 dias habiles.
-- En el mismo plazo, la entidad debe comunicar el cumplimiento al Tribunal.
+- Si el TTAIP declara `FUNDADO` o `FUNDADO_EN_PARTE`, la entidad debe cumplir en maximo 7 dias habiles.
+- En el mismo plazo, la entidad debe comunicar el cumplimiento al Tribunal, adjuntando evidencia o referencia documental.
+- No aplica para `INFUNDADO`, `INFUNDADO_EN_PARTE`, `IMPROCEDENTE`, `CONCLUSION_SUSTRACCION_MATERIA` ni `CONCLUSION_DESISTIMIENTO`.
+- Implementacion actual: `CumplimientoResolucionTtaip` registra expediente, apelacion, resolucion, entidad, fecha de requerimiento, fecha limite, fecha de cumplimiento, estado, tipo `TOTAL`/`PARCIAL`/`NO_CUMPLE`, descripcion, evidencia o referencia documental, responsable, observacion y trazabilidad.
+- La fecha limite se calcula sumando 7 dias habiles desde la notificacion valida de la resolucion final a la entidad publica cuando existe. Si no hay una notificacion valida segura, el backend usa la fecha de la resolucion/notificacion disponible como base operativa y conserva esa decision en la documentacion.
+- Una notificacion valida para iniciar el seguimiento puede estar `ENTREGADA` o `VALIDADA`, tener resultado equivalente o haber sido validada manualmente con sustento.
+- Solo TTAIP/administrador puede crear, observar o cerrar el seguimiento; funcionario de entidad/administrador puede registrar la comunicacion de cumplimiento.
+- No se permite mas de un seguimiento activo `PENDIENTE` u `OBSERVADO` para la misma resolucion.
+- Si vence sin cumplimiento, el procesamiento operativo marca el seguimiento como `VENCIDO`, sin borrar expediente ni resolucion.
+- Postman/Newman valida creacion dinamica del seguimiento sobre una resolucion final fundada, rechazo por duplicado activo, registro de evidencia por entidad, observacion/cierre por TTAIP, rechazo sobre resolucion no fundada y procesamiento de vencidos.
 
 ## Reglas de notificacion
 
@@ -345,6 +354,7 @@ ExpedienteTtaip
           -> Notificaciones
   -> DescargosEntidad
   -> SuspensionesPlazo
+  -> CumplimientosResolucion
   -> ReprocesosNotificacion
   -> HistorialTtaip
 ```
@@ -356,8 +366,9 @@ Reglas:
 - Cada notificacion debe pertenecer al expediente y referenciar su cedula.
 - Cada descargo de entidad debe pertenecer al expediente y a la apelacion, y debe identificar la entidad requerida.
 - Cada suspension de plazo debe pertenecer al expediente y, cuando corresponda, referenciar el descargo que la origina.
+- Cada seguimiento de cumplimiento debe pertenecer al expediente, a la apelacion, a la resolucion final fundada o fundada en parte, y a la entidad obligada.
 - Cada reproceso debe pertenecer al expediente y conservar la cedula/notificacion original.
-- El historial registra apertura, cambios de estado, resoluciones, cedulas, notificaciones, descargos, suspensiones, reprocesos, subsanaciones y auditoria.
+- El historial registra apertura, cambios de estado, resoluciones, cedulas, notificaciones, descargos, suspensiones, cumplimientos, reprocesos, subsanaciones y auditoria.
 
 ## Estados TTAIP
 
