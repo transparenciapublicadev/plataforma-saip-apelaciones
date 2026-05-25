@@ -8,7 +8,9 @@ import { EntidadService } from '../../services/entidad.service';
 import {
   AlcanceEncauzamientoSolicitud,
   AmpliacionPlazoSolicitud,
+  CanalNotificacion,
   EncauzamientoSolicitud,
+  LiquidacionCostoSolicitud,
   ObservacionSolicitud,
   RegistrarEntregaParcialPayload,
   Solicitud
@@ -16,7 +18,7 @@ import {
 import { Entidad } from '../../models/entidad.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'encauzamiento' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
+type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
 
 interface DetailTab {
   id: DetailTabId;
@@ -67,12 +69,24 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   encauzamientoLoading = signal<boolean>(false);
   encauzamientoError = signal<string>('');
   encauzamientoSuccess = signal<string>('');
+  liquidacionCodigo = signal<string>('');
+  liquidacionMonto = signal<string>('');
+  liquidacionMoneda = signal<string>('PEN');
+  liquidacionConcepto = signal<string>('');
+  liquidacionFechaNotificacion = signal<string>(this.toInputDate(new Date()));
+  liquidacionMedioNotificacion = signal<CanalNotificacion>('CASILLA_ELECTRONICA');
+  liquidacionObservacion = signal<string>('');
+  liquidacionLoading = signal<boolean>(false);
+  liquidacionError = signal<string>('');
+  liquidacionSuccess = signal<string>('');
+  liquidacionUpdateLoading = signal<boolean>(false);
 
   readonly tabs = computed<DetailTab[]>(() => {
     const base: DetailTab[] = [
       { id: 'solicitud', label: 'Solicitud' },
       { id: 'observacion', label: 'Observación' },
       { id: 'encauzamiento', label: 'Encauzamiento' },
+      { id: 'liquidacion', label: 'Liquidación' },
       { id: 'ampliacion', label: 'Ampliación' },
       { id: 'ciudadano', label: 'Ciudadano' },
       { id: 'adjuntos', label: 'Adjuntos' },
@@ -159,6 +173,16 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       });
     }
 
+    for (const liquidacion of this.liquidaciones()) {
+      items.push({
+        accion: `Liquidación · ${this.getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion)}`,
+        fecha: liquidacion.fechaEmision || liquidacion.fechaNotificacion,
+        responsable: liquidacion.responsable || 'Entidad pública',
+        detalle: `${liquidacion.codigoLiquidacion} por ${liquidacion.moneda} ${liquidacion.monto}. Límite de recojo: ${liquidacion.fechaLimiteRecojo}.`,
+        color: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'success' : (liquidacion.estadoLiquidacion === 'ARCHIVADA' ? 'warning' : 'brand')
+      });
+    }
+
     if (sol.apelacion?.expediente) {
       items.push({
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
@@ -178,6 +202,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   readonly encauzamientos = computed<EncauzamientoSolicitud[]>(() => this.solicitud()?.encauzamientos || []);
 
+  readonly liquidaciones = computed<LiquidacionCostoSolicitud[]>(() => this.solicitud()?.liquidacionesCosto || []);
+
   readonly observacionPendiente = computed<ObservacionSolicitud | null>(() =>
     this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null
   );
@@ -188,6 +214,11 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   readonly encauzamientoActivo = computed<EncauzamientoSolicitud | null>(() =>
     this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null
+  );
+
+  readonly liquidacionActiva = computed<LiquidacionCostoSolicitud | null>(() =>
+    this.liquidaciones().find((item) =>
+      item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null
   );
 
   ngOnInit(): void {
@@ -312,6 +343,14 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       && !this.encauzamientoActivo();
   }
 
+  puedeLiquidar(): boolean {
+    const sol = this.solicitud();
+    return !!sol
+      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION')
+      && !this.liquidacionActiva()
+      && (sol.formatoFisico || sol.copiaSimple || sol.copiaCertificada);
+  }
+
   setEncauzamientoAlcance(value: string): void {
     this.encauzamientoAlcance.set(value === 'PARCIAL' ? 'PARCIAL' : 'TOTAL');
   }
@@ -425,6 +464,81 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       error: (error) => {
         this.encauzamientoError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar el encauzamiento.');
         this.encauzamientoLoading.set(false);
+      }
+    });
+  }
+
+  emitirLiquidacion(): void {
+    const sol = this.solicitud();
+    const monto = Number(this.liquidacionMonto());
+    const concepto = this.liquidacionConcepto().trim();
+    const fechaNotificacion = this.liquidacionFechaNotificacion();
+
+    if (!sol || Number.isNaN(monto) || monto < 0 || !concepto || !fechaNotificacion) {
+      this.liquidacionError.set('Complete monto, concepto y fecha de notificación del cupón.');
+      return;
+    }
+
+    this.liquidacionLoading.set(true);
+    this.liquidacionError.set('');
+    this.liquidacionSuccess.set('');
+
+    this.solicitudService.emitirLiquidacion(sol.id, {
+      codigoLiquidacion: this.liquidacionCodigo().trim() || undefined,
+      monto,
+      moneda: this.liquidacionMoneda().trim() || 'PEN',
+      concepto,
+      fechaNotificacion,
+      medioNotificacion: this.liquidacionMedioNotificacion(),
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad',
+      observacion: this.liquidacionObservacion().trim() || undefined
+    }).subscribe({
+      next: () => {
+        this.liquidacionCodigo.set('');
+        this.liquidacionMonto.set('');
+        this.liquidacionMoneda.set('PEN');
+        this.liquidacionConcepto.set('');
+        this.liquidacionFechaNotificacion.set(this.toInputDate(new Date()));
+        this.liquidacionMedioNotificacion.set('CASILLA_ELECTRONICA');
+        this.liquidacionObservacion.set('');
+        this.liquidacionSuccess.set('Liquidación notificada. El ciudadano tiene 30 días hábiles para recoger la información física.');
+        this.liquidacionLoading.set(false);
+        this.cargarSolicitud(sol.expediente, 'liquidacion');
+      },
+      error: (error) => {
+        this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo emitir la liquidación.');
+        this.liquidacionLoading.set(false);
+      }
+    });
+  }
+
+  actualizarLiquidacion(liquidacion: LiquidacionCostoSolicitud, estado: 'PAGADA' | 'RECOGIDA' | 'CANCELADA'): void {
+    const sol = this.solicitud();
+    if (!sol) {
+      return;
+    }
+
+    this.liquidacionUpdateLoading.set(true);
+    this.liquidacionError.set('');
+    this.liquidacionSuccess.set('');
+
+    this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
+      estado,
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
+    }).subscribe({
+      next: () => {
+        const message = estado === 'PAGADA'
+          ? 'Pago registrado en la liquidación.'
+          : estado === 'RECOGIDA'
+            ? 'Recojo registrado; la solicitud queda respondida.'
+            : 'Liquidación cancelada.';
+        this.liquidacionSuccess.set(message);
+        this.liquidacionUpdateLoading.set(false);
+        this.cargarSolicitud(sol.expediente, 'liquidacion');
+      },
+      error: (error) => {
+        this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo actualizar la liquidación.');
+        this.liquidacionUpdateLoading.set(false);
       }
     });
   }
@@ -581,6 +695,23 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       ATENDIDO: 'pill pill-low',
       CANCELADO: 'pill',
       VENCIDO: 'pill pill-high'
+    };
+    return map[estado] || 'pill';
+  }
+
+  getLiquidacionEstadoDisplay(value: string | undefined): string {
+    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  getLiquidacionEstadoClass(estado: string): string {
+    const map: Record<string, string> = {
+      EMITIDA: 'pill pill-medium',
+      NOTIFICADA: 'pill pill-medium',
+      PAGADA: 'pill pill-low',
+      RECOGIDA: 'pill pill-low',
+      ARCHIVADA: 'pill pill-high',
+      CANCELADA: 'pill',
+      VENCIDA: 'pill pill-high'
     };
     return map[estado] || 'pill';
   }

@@ -587,6 +587,42 @@
       "type": "default",
       "enabled": true,
       "description": "Expediente runtime de SAIP dedicada a validación negativa de encauzamiento."
+    },
+    {
+      "key": "liquidacionSolicitudSaipId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "liquidacionSolicitudExpediente",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "liquidacionId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "liquidacionCodigo",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "liquidacionFechaNotificacion",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "liquidacionFechaLimiteRecojo",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"

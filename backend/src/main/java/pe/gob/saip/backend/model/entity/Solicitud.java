@@ -101,6 +101,9 @@ public class Solicitud {
     @OneToMany(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<EncauzamientoSolicitud> encauzamientos;
 
+    @OneToMany(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<LiquidacionCostoSolicitud> liquidacionesCosto;
+
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Apelacion apelacion;
 

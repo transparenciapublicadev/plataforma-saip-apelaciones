@@ -3,13 +3,16 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   ActualizarEntregaParcialPayload,
+  ActualizarLiquidacionCostoPayload,
   AmpliacionPlazoSolicitud,
   CronogramaEntregaParcial,
   EncauzamientoSolicitud,
+  LiquidacionCostoSolicitud,
   ObservacionSolicitud,
   ObservarSolicitudPayload,
   RegistrarAmpliacionPlazoPayload,
   RegistrarEncauzamientoPayload,
+  RegistrarLiquidacionCostoPayload,
   Solicitud,
   SolicitudCreate,
   SubsanarSolicitudPayload
@@ -132,6 +135,33 @@ export class SolicitudService {
 
   obtenerEncauzamientoActivo(id: number): Observable<EncauzamientoSolicitud> {
     return this.http.get<EncauzamientoSolicitud>(`${this.apiUrl}/${id}/encauzamientos/activo`);
+  }
+
+  emitirLiquidacion(id: number, payload: RegistrarLiquidacionCostoPayload): Observable<LiquidacionCostoSolicitud> {
+    return this.http.post<LiquidacionCostoSolicitud>(`${this.apiUrl}/${id}/liquidaciones`, payload);
+  }
+
+  listarLiquidaciones(id: number): Observable<LiquidacionCostoSolicitud[]> {
+    return this.http.get<LiquidacionCostoSolicitud[]>(`${this.apiUrl}/${id}/liquidaciones`);
+  }
+
+  obtenerLiquidacionActiva(id: number): Observable<LiquidacionCostoSolicitud> {
+    return this.http.get<LiquidacionCostoSolicitud>(`${this.apiUrl}/${id}/liquidaciones/activa`);
+  }
+
+  actualizarLiquidacion(
+    id: number,
+    liquidacionId: number,
+    payload: ActualizarLiquidacionCostoPayload
+  ): Observable<LiquidacionCostoSolicitud> {
+    return this.http.patch<LiquidacionCostoSolicitud>(
+      `${this.apiUrl}/${id}/liquidaciones/${liquidacionId}`,
+      payload
+    );
+  }
+
+  procesarLiquidacionesVencidas(): Observable<LiquidacionCostoSolicitud[]> {
+    return this.http.post<LiquidacionCostoSolicitud[]>(`${this.apiUrl}/liquidaciones/vencidas/procesar`, {});
   }
 
   actualizarEntregaParcial(
