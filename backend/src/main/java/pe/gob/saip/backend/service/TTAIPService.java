@@ -7,13 +7,17 @@ import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.DescargoEntidadTtaipDTO;
+import pe.gob.saip.backend.model.dto.NotificacionTtaipDTO;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.ReprocesarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.ReprocesoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
 import pe.gob.saip.backend.model.dto.SuspensionPlazoTtaipDTO;
+import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.MiembroTTAIP;
@@ -345,6 +349,43 @@ public class TTAIPService {
                 request.observacion(),
                 request.responsable()
         ));
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificacionTtaipDTO> listarNotificaciones(Long expedienteId) {
+        return expedienteTtaipService.listarNotificaciones(expedienteId)
+                .stream()
+                .map(NotificacionTtaipDTO::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public NotificacionTtaipDTO obtenerNotificacion(Long expedienteId, Long notificacionId) {
+        return NotificacionTtaipDTO.from(expedienteTtaipService.obtenerNotificacion(expedienteId, notificacionId));
+    }
+
+    @Transactional
+    public NotificacionTtaipDTO registrarConstanciaEnvio(Long expedienteId,
+                                                         Long notificacionId,
+                                                         RegistrarConstanciaEnvioNotificacionRequest request) {
+        return NotificacionTtaipDTO.from(
+                expedienteTtaipService.registrarConstanciaEnvio(expedienteId, notificacionId, request));
+    }
+
+    @Transactional
+    public NotificacionTtaipDTO registrarAcuseAutomatico(Long expedienteId,
+                                                         Long notificacionId,
+                                                         RegistrarAcuseAutomaticoNotificacionRequest request) {
+        return NotificacionTtaipDTO.from(
+                expedienteTtaipService.registrarAcuseAutomatico(expedienteId, notificacionId, request));
+    }
+
+    @Transactional
+    public NotificacionTtaipDTO validarNotificacionManualmente(Long expedienteId,
+                                                               Long notificacionId,
+                                                               ValidarNotificacionManualRequest request) {
+        return NotificacionTtaipDTO.from(
+                expedienteTtaipService.validarNotificacionManualmente(expedienteId, notificacionId, request));
     }
 
     @Transactional

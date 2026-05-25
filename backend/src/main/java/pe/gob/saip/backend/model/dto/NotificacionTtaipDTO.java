@@ -13,7 +13,25 @@ public record NotificacionTtaipDTO(
         String fechaNotificacion,
         String medio,
         String estado,
-        String detalle
+        String detalle,
+        String medioNotificacion,
+        String fechaEnvio,
+        String codigoEnvio,
+        String codigoConstancia,
+        String constanciaEnvio,
+        String acuseAutomatico,
+        String fechaAcuse,
+        String estadoAcuse,
+        String resultadoNotificacion,
+        String evidenciaUrl,
+        String referenciaEvidencia,
+        Boolean validadaManualmente,
+        String fechaValidacionManual,
+        String responsableValidacion,
+        String observacionValidacion,
+        String responsableConstancia,
+        String observacionConstancia,
+        String trazabilidad
 ) {
     public static NotificacionTtaipDTO from(NotificacionTtaip notificacion) {
         return new NotificacionTtaipDTO(
@@ -25,7 +43,25 @@ public record NotificacionTtaipDTO(
                 notificacion.getFechaNotificacion() != null ? notificacion.getFechaNotificacion().toString() : null,
                 notificacion.getMedio(),
                 notificacion.getEstado(),
-                notificacion.getDetalle()
+                notificacion.getDetalle(),
+                notificacion.getMedioNotificacion(),
+                notificacion.getFechaEnvio() != null ? notificacion.getFechaEnvio().toString() : null,
+                notificacion.getCodigoEnvio(),
+                notificacion.getCodigoConstancia(),
+                notificacion.getConstanciaEnvio(),
+                notificacion.getAcuseAutomatico(),
+                notificacion.getFechaAcuse() != null ? notificacion.getFechaAcuse().toString() : null,
+                notificacion.getEstadoAcuse(),
+                notificacion.getResultadoNotificacion(),
+                notificacion.getEvidenciaUrl(),
+                notificacion.getReferenciaEvidencia(),
+                notificacion.getValidadaManualmente(),
+                notificacion.getFechaValidacionManual() != null ? notificacion.getFechaValidacionManual().toString() : null,
+                notificacion.getResponsableValidacion(),
+                notificacion.getObservacionValidacion(),
+                notificacion.getResponsableConstancia(),
+                notificacion.getObservacionConstancia(),
+                notificacion.getTrazabilidad()
         );
     }
 }

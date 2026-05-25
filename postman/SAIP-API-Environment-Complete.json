@@ -17,6 +17,13 @@
       "description": "ID de ciudadano seed usado para crear y consultar SAIP."
     },
     {
+      "key": "ciudadanoDni",
+      "value": "70000001",
+      "type": "default",
+      "enabled": true,
+      "description": "DNI de ciudadano seed usado para consultar por documento."
+    },
+    {
       "key": "funcionarioId",
       "value": "1",
       "type": "default",
@@ -36,6 +43,13 @@
       "type": "default",
       "enabled": true,
       "description": "ID de SAIP existente para consultas y respuestas."
+    },
+    {
+      "key": "solicitudConRespuestaId",
+      "value": "3",
+      "type": "default",
+      "enabled": true,
+      "description": "ID de SAIP seed que cuenta con respuesta registrada."
     },
     {
       "key": "apelacionId",

@@ -160,6 +160,61 @@ describe('TtaipService', () => {
     req.flush({});
   });
 
+  it('should GET notificaciones by expediente', () => {
+    service.listarNotificaciones(10).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/notificaciones`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 40, estado: 'PENDIENTE' }]);
+  });
+
+  it('should GET notificacion with evidence', () => {
+    service.obtenerNotificacion(10, 40).subscribe(res => expect(res.codigoConstancia).toBe('CONST-1'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/notificaciones/40`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 40, codigoConstancia: 'CONST-1' });
+  });
+
+  it('should POST registrar constancia envio', () => {
+    const data = {
+      medioNotificacion: 'CORREO_ELECTRONICO',
+      codigoEnvio: 'MAIL-1',
+      codigoConstancia: 'CONST-1',
+      constanciaEnvio: 'Constancia de envío',
+      responsable: 'Mesa de Partes TTAIP'
+    };
+    service.registrarConstanciaEnvio(10, 40, data).subscribe(res => expect(res.estado).toBe('ENVIADA'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/notificaciones/40/constancia-envio`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 40, estado: 'ENVIADA' });
+  });
+
+  it('should POST registrar acuse automatico', () => {
+    const data = {
+      estadoAcuse: 'ENTREGADO' as const,
+      acuseAutomatico: 'Delivered',
+      responsable: 'Sistema de notificaciones TTAIP'
+    };
+    service.registrarAcuseAutomatico(10, 40, data).subscribe(res => expect(res.estado).toBe('ENTREGADA'));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/notificaciones/40/acuse-automatico`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 40, estado: 'ENTREGADA' });
+  });
+
+  it('should POST validar notificacion manualmente', () => {
+    const data = {
+      responsableValidacion: 'Secretaría Técnica TTAIP',
+      observacionValidacion: 'Se verificó cargo alterno correcto.',
+      referenciaEvidencia: 'CARGO-1'
+    };
+    service.validarNotificacionManualmente(10, 40, data).subscribe(res => expect(res.validadaManualmente).toBe(true));
+    const req = httpMock.expectOne(`${apiUrl}/expedientes/10/notificaciones/40/validacion-manual`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 40, validadaManualmente: true });
+  });
+
   // --- Descargos y suspensiones ---
 
   it('should POST requerir descargos', () => {
