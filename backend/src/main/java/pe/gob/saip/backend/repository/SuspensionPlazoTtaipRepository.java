@@ -13,4 +13,9 @@ public interface SuspensionPlazoTtaipRepository extends JpaRepository<Suspension
     List<SuspensionPlazoTtaip> findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(Long expedienteId);
 
     Optional<SuspensionPlazoTtaip> findFirstByDescargo_IdDescargoOrderByFechaCreacionDesc(Long descargoId);
+
+    boolean existsByExpediente_IdExpedienteTtaipAndMotivoSuspensionAndEstadoSuspension(
+            Long expedienteId,
+            SuspensionPlazoTtaip.MotivoSuspension motivoSuspension,
+            SuspensionPlazoTtaip.EstadoSuspension estadoSuspension);
 }
