@@ -15,8 +15,11 @@ import pe.gob.saip.backend.repository.SalaTtaipRepository;
 import pe.gob.saip.backend.repository.SuspensionPlazoTtaipRepository;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
@@ -141,6 +144,142 @@ public class ExpedienteTtaipService {
                         "Notificación no encontrada para la cédula " + numeroCedulaOriginal + " y destinatario " + destinatario));
 
         return reprocesarNotificacionFallida(notificacionOriginal, observacion, responsable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificacionTtaip> listarNotificaciones(Long expedienteId) {
+        buscarExpediente(expedienteId);
+        return notificacionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaNotificacionAsc(expedienteId);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificacionTtaip obtenerNotificacion(Long expedienteId, Long notificacionId) {
+        return buscarNotificacion(expedienteId, notificacionId);
+    }
+
+    @Transactional
+    public NotificacionTtaip registrarConstanciaEnvio(Long expedienteId,
+                                                       Long notificacionId,
+                                                       RegistrarConstanciaEnvioNotificacionRequest request) {
+        NotificacionTtaip notificacion = buscarNotificacion(expedienteId, notificacionId);
+        String medio = normalizarTexto(request.medioNotificacion(), "CASILLA_ELECTRONICA");
+        String responsable = normalizarActor(request.responsable(), "TTAIP");
+        LocalDateTime fechaEnvio = request.fechaEnvio() != null ? request.fechaEnvio() : LocalDateTime.now();
+
+        notificacion.setMedio(medio);
+        notificacion.setMedioNotificacion(medio);
+        notificacion.setFechaEnvio(fechaEnvio);
+        notificacion.setCodigoEnvio(normalizarNullable(request.codigoEnvio()));
+        notificacion.setCodigoConstancia(normalizarNullable(request.codigoConstancia()));
+        notificacion.setConstanciaEnvio(request.constanciaEnvio().trim());
+        notificacion.setEvidenciaUrl(normalizarNullable(request.evidenciaUrl()));
+        notificacion.setReferenciaEvidencia(normalizarNullable(request.referenciaEvidencia()));
+        notificacion.setResponsableConstancia(responsable);
+        notificacion.setObservacionConstancia(normalizarNullable(request.observacion()));
+        notificacion.setEstado("ENVIADA");
+        notificacion.setResultadoNotificacion("ENVIADA");
+        notificacion.setTrazabilidad(agregarTraza(
+                notificacion.getTrazabilidad(),
+                "%s - Constancia de envío registrada por %s; medio=%s; codigoEnvio=%s; codigoConstancia=%s".formatted(
+                        LocalDateTime.now(),
+                        responsable,
+                        medio,
+                        valorTraza(notificacion.getCodigoEnvio()),
+                        valorTraza(notificacion.getCodigoConstancia())
+                )
+        ));
+
+        NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        registrarHistorial(
+                saved.getExpediente(),
+                HistorialTtaip.TipoEvento.CONSTANCIA_ENVIO_REGISTRADA,
+                "Constancia de envío registrada para " + etiquetaDestinatario(saved.getDestinatario()),
+                null,
+                saved.getEstado(),
+                responsable,
+                "NOTIFICACION-" + saved.getId() + ":CONSTANCIA"
+        );
+        return saved;
+    }
+
+    @Transactional
+    public NotificacionTtaip registrarAcuseAutomatico(Long expedienteId,
+                                                       Long notificacionId,
+                                                       RegistrarAcuseAutomaticoNotificacionRequest request) {
+        NotificacionTtaip notificacion = buscarNotificacion(expedienteId, notificacionId);
+        String estadoAcuse = normalizarEstadoAcuse(request.estadoAcuse());
+        String responsable = normalizarActor(request.responsable(), "SISTEMA_NOTIFICACIONES");
+        LocalDateTime fechaAcuse = request.fechaAcuse() != null ? request.fechaAcuse() : LocalDateTime.now();
+        String estadoNotificacion = estadoDesdeAcuse(estadoAcuse);
+        String resultado = normalizarTexto(request.resultadoNotificacion(), estadoNotificacion);
+
+        notificacion.setAcuseAutomatico(request.acuseAutomatico().trim());
+        notificacion.setFechaAcuse(fechaAcuse);
+        notificacion.setEstadoAcuse(estadoAcuse);
+        notificacion.setResultadoNotificacion(resultado);
+        notificacion.setEstado(estadoNotificacion);
+        actualizarEvidencia(notificacion, request.evidenciaUrl(), request.referenciaEvidencia());
+        notificacion.setTrazabilidad(agregarTraza(
+                notificacion.getTrazabilidad(),
+                "%s - Acuse automático registrado por %s; estadoAcuse=%s; resultado=%s".formatted(
+                        LocalDateTime.now(),
+                        responsable,
+                        estadoAcuse,
+                        resultado
+                )
+        ));
+
+        NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        registrarHistorial(
+                saved.getExpediente(),
+                HistorialTtaip.TipoEvento.ACUSE_NOTIFICACION_REGISTRADO,
+                "Acuse automático " + estadoAcuse + " registrado para " + etiquetaDestinatario(saved.getDestinatario()),
+                null,
+                saved.getEstado(),
+                responsable,
+                "NOTIFICACION-" + saved.getId() + ":ACUSE:" + estadoAcuse
+        );
+        return saved;
+    }
+
+    @Transactional
+    public NotificacionTtaip validarNotificacionManualmente(Long expedienteId,
+                                                            Long notificacionId,
+                                                            ValidarNotificacionManualRequest request) {
+        NotificacionTtaip notificacion = buscarNotificacion(expedienteId, notificacionId);
+        validarSustentoManual(notificacion, request);
+        String responsable = normalizarActor(request.responsableValidacion(), "TTAIP");
+        LocalDateTime fechaValidacion = request.fechaValidacionManual() != null
+                ? request.fechaValidacionManual()
+                : LocalDateTime.now();
+
+        notificacion.setValidadaManualmente(Boolean.TRUE);
+        notificacion.setFechaValidacionManual(fechaValidacion);
+        notificacion.setResponsableValidacion(responsable);
+        notificacion.setObservacionValidacion(request.observacionValidacion().trim());
+        actualizarEvidencia(notificacion, request.evidenciaUrl(), request.referenciaEvidencia());
+        notificacion.setEstado("VALIDADA");
+        notificacion.setResultadoNotificacion("VALIDADA_MANUALMENTE");
+        notificacion.setTrazabilidad(agregarTraza(
+                notificacion.getTrazabilidad(),
+                "%s - Notificación validada manualmente por %s; observación=%s".formatted(
+                        LocalDateTime.now(),
+                        responsable,
+                        request.observacionValidacion().trim()
+                )
+        ));
+
+        NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        registrarHistorial(
+                saved.getExpediente(),
+                HistorialTtaip.TipoEvento.NOTIFICACION_VALIDADA,
+                "Notificación validada manualmente para " + etiquetaDestinatario(saved.getDestinatario()),
+                null,
+                saved.getEstado(),
+                responsable,
+                "NOTIFICACION-" + saved.getId() + ":VALIDACION_MANUAL"
+        );
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -455,6 +594,15 @@ public class ExpedienteTtaipService {
                         "Expediente TTAIP no encontrado con ID: " + expedienteId));
     }
 
+    private NotificacionTtaip buscarNotificacion(Long expedienteId, Long notificacionId) {
+        buscarExpediente(expedienteId);
+        return notificacionRepository
+                .findByIdNotificacionAndExpediente_IdExpedienteTtaip(notificacionId, expedienteId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Notificación TTAIP no encontrada con ID: " + notificacionId
+                                + " para el expediente TTAIP ID: " + expedienteId));
+    }
+
     private DescargoEntidadTtaip buscarDescargo(Long descargoId) {
         return descargoRepository.findById(descargoId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -584,6 +732,73 @@ public class ExpedienteTtaipService {
 
     private String normalizarActor(String actor, String fallback) {
         return actor != null && !actor.isBlank() ? actor.trim() : fallback;
+    }
+
+    private String normalizarTexto(String value, String fallback) {
+        return value != null && !value.isBlank() ? value.trim().toUpperCase() : fallback;
+    }
+
+    private String normalizarNullable(String value) {
+        return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    private String normalizarEstadoAcuse(String estadoAcuse) {
+        String normalized = normalizarTexto(estadoAcuse, "");
+        return switch (normalized) {
+            case "ENTREGADO", "FALLIDO", "NO_RECIBIDO", "OBSERVADO" -> normalized;
+            default -> throw new IllegalArgumentException(
+                    "Estado de acuse no válido: " + estadoAcuse
+                            + ". Valores permitidos: ENTREGADO, FALLIDO, NO_RECIBIDO, OBSERVADO");
+        };
+    }
+
+    private String estadoDesdeAcuse(String estadoAcuse) {
+        return switch (estadoAcuse) {
+            case "ENTREGADO" -> "ENTREGADA";
+            case "OBSERVADO" -> "OBSERVADA";
+            case "FALLIDO", "NO_RECIBIDO" -> "FALLIDA";
+            default -> "PENDIENTE";
+        };
+    }
+
+    private void actualizarEvidencia(NotificacionTtaip notificacion, String evidenciaUrl, String referenciaEvidencia) {
+        String evidencia = normalizarNullable(evidenciaUrl);
+        String referencia = normalizarNullable(referenciaEvidencia);
+        if (evidencia != null) {
+            notificacion.setEvidenciaUrl(evidencia);
+        }
+        if (referencia != null) {
+            notificacion.setReferenciaEvidencia(referencia);
+        }
+    }
+
+    private void validarSustentoManual(NotificacionTtaip notificacion, ValidarNotificacionManualRequest request) {
+        boolean notificacionDefectuosa = esEstadoDefectuoso(notificacion.getEstado())
+                || esEstadoAcuseDefectuoso(notificacion.getEstadoAcuse());
+        boolean tieneSustento = !request.observacionValidacion().isBlank()
+                || normalizarNullable(request.evidenciaUrl()) != null
+                || normalizarNullable(request.referenciaEvidencia()) != null
+                || normalizarNullable(notificacion.getConstanciaEnvio()) != null
+                || normalizarNullable(notificacion.getAcuseAutomatico()) != null;
+
+        if (notificacionDefectuosa && !tieneSustento) {
+            throw new IllegalArgumentException(
+                    "No se puede validar manualmente una notificación fallida u observada sin sustento");
+        }
+    }
+
+    private boolean esEstadoDefectuoso(String estado) {
+        String normalized = estado == null ? "" : estado.trim().toUpperCase();
+        return normalized.equals("FALLIDA") || normalized.equals("OBSERVADA");
+    }
+
+    private boolean esEstadoAcuseDefectuoso(String estadoAcuse) {
+        String normalized = estadoAcuse == null ? "" : estadoAcuse.trim().toUpperCase();
+        return normalized.equals("FALLIDO") || normalized.equals("NO_RECIBIDO") || normalized.equals("OBSERVADO");
+    }
+
+    private String valorTraza(String value) {
+        return value == null || value.isBlank() ? "sin-codigo" : value;
     }
 
     private void cerrarSuspensionPorDescargo(ExpedienteTtaip expediente,
@@ -798,6 +1013,10 @@ public class ExpedienteTtaipService {
             notificacion.setDestinatario(destinatario);
             notificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
             notificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
+            notificacion.setMedio(savedCedula.getCanal());
+            notificacion.setMedioNotificacion(savedCedula.getCanal());
+            notificacion.setEstado("PENDIENTE");
+            notificacion.setResultadoNotificacion("PENDIENTE_CONSTANCIA");
             notificacion.setDetalle("Notificación de " + resolucion.getNumeroResolucion());
             NotificacionTtaip savedNotificacion = notificacionRepository.save(notificacion);
             registrarHistorial(
@@ -826,9 +1045,19 @@ public class ExpedienteTtaipService {
         String responsableNormalizado = responsable != null && !responsable.isBlank() ? responsable.trim() : "TTAIP";
 
         notificacionOriginal.setEstado("FALLIDA");
+        notificacionOriginal.setEstadoAcuse("FALLIDO");
+        notificacionOriginal.setResultadoNotificacion("REPROCESO_REQUERIDO");
         notificacionOriginal.setDetalle(agregarTraza(
                 notificacionOriginal.getDetalle(),
                 "Reproceso registrado por notificación fallida: " + observacion
+        ));
+        notificacionOriginal.setTrazabilidad(agregarTraza(
+                notificacionOriginal.getTrazabilidad(),
+                "%s - Notificación marcada como FALLIDA por reproceso; responsable=%s; observación=%s".formatted(
+                        LocalDateTime.now(),
+                        responsableNormalizado,
+                        observacion
+                )
         ));
         notificacionRepository.save(notificacionOriginal);
 
@@ -850,9 +1079,15 @@ public class ExpedienteTtaipService {
         nuevaNotificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
         nuevaNotificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
         nuevaNotificacion.setMedio(notificacionOriginal.getMedio());
-        nuevaNotificacion.setEstado("PENDIENTE_REENVIO");
+        nuevaNotificacion.setMedioNotificacion(normalizarNullable(notificacionOriginal.getMedioNotificacion()) != null
+                ? notificacionOriginal.getMedioNotificacion()
+                : notificacionOriginal.getMedio());
+        nuevaNotificacion.setEstado("PENDIENTE");
+        nuevaNotificacion.setResultadoNotificacion("PENDIENTE_CONSTANCIA_REPROCESO");
         nuevaNotificacion.setDetalle("Reproceso de notificación fallida de la cédula "
                 + cedulaOriginal.getNumeroCedula() + ". " + observacion);
+        nuevaNotificacion.setTrazabilidad("%s - Nueva notificación generada por reproceso de la cédula original %s."
+                .formatted(LocalDateTime.now(), cedulaOriginal.getNumeroCedula()));
         NotificacionTtaip savedNotificacion = notificacionRepository.save(nuevaNotificacion);
 
         int numeroIntento = (int) reprocesoRepository.countByCedulaOriginal_IdCedulaAndDestinatario(
