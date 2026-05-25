@@ -7,12 +7,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarAcuseAutomaticoNotificacionRequest;
+import pe.gob.saip.backend.model.dto.RegistrarConstanciaEnvioNotificacionRequest;
 import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
+import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.DescargoEntidadTtaip;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
+import pe.gob.saip.backend.model.entity.NotificacionTtaip;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.SuspensionPlazoTtaip;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
@@ -273,6 +278,97 @@ class ExpedienteTtaipServiceTest {
     }
 
     @Test
+    void registrarConstanciaEnvio_debeMarcarNotificacionComoEnviadaYPreservarTrazabilidad() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        NotificacionTtaip notificacion = crearNotificacion(expediente);
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(500L, 100L))
+                .thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.save(notificacion)).thenReturn(notificacion);
+
+        NotificacionTtaip resultado = service.registrarConstanciaEnvio(
+                100L,
+                500L,
+                new RegistrarConstanciaEnvioNotificacionRequest(
+                        "CORREO_ELECTRONICO",
+                        LocalDateTime.of(2026, 5, 7, 9, 30),
+                        "MAIL-2026-001",
+                        "CONST-2026-001",
+                        "Constancia de envío registrada por el sistema de correo.",
+                        "https://saip.local/evidencias/constancia-001.pdf",
+                        null,
+                        "Mesa de Partes TTAIP",
+                        "Primer intento de envío")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo("ENVIADA");
+        assertThat(resultado.getMedioNotificacion()).isEqualTo("CORREO_ELECTRONICO");
+        assertThat(resultado.getCodigoConstancia()).isEqualTo("CONST-2026-001");
+        assertThat(resultado.getTrazabilidad()).contains("Constancia de envío registrada");
+        verify(historialRepository).save(any());
+    }
+
+    @Test
+    void registrarAcuseAutomaticoFallido_debeDejarNotificacionFallidaParaReproceso() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        NotificacionTtaip notificacion = crearNotificacion(expediente);
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(500L, 100L))
+                .thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.save(notificacion)).thenReturn(notificacion);
+
+        NotificacionTtaip resultado = service.registrarAcuseAutomatico(
+                100L,
+                500L,
+                new RegistrarAcuseAutomaticoNotificacionRequest(
+                        "FALLIDO",
+                        "Mailbox unavailable",
+                        LocalDateTime.of(2026, 5, 7, 10, 0),
+                        null,
+                        null,
+                        "ACUSE-EMAIL-ERROR-001",
+                        "Sistema de notificaciones TTAIP",
+                        "El servidor remoto rechazó la entrega")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo("FALLIDA");
+        assertThat(resultado.getEstadoAcuse()).isEqualTo("FALLIDO");
+        assertThat(resultado.getResultadoNotificacion()).isEqualTo("FALLIDA");
+        assertThat(resultado.getTrazabilidad()).contains("Acuse automático registrado");
+    }
+
+    @Test
+    void validarNotificacionManualmente_debeMarcarNotificacionComoValidadaConSustento() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+        NotificacionTtaip notificacion = crearNotificacion(expediente);
+        notificacion.setEstado("FALLIDA");
+        notificacion.setEstadoAcuse("FALLIDO");
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(500L, 100L))
+                .thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.save(notificacion)).thenReturn(notificacion);
+
+        NotificacionTtaip resultado = service.validarNotificacionManualmente(
+                100L,
+                500L,
+                new ValidarNotificacionManualRequest(
+                        LocalDateTime.of(2026, 5, 7, 11, 0),
+                        "Secretaría Técnica TTAIP",
+                        "Se verificó cargo alterno y constancia física correcta.",
+                        null,
+                        "CARGO-FISICO-001")
+        );
+
+        assertThat(resultado.getEstado()).isEqualTo("VALIDADA");
+        assertThat(resultado.getValidadaManualmente()).isTrue();
+        assertThat(resultado.getResultadoNotificacion()).isEqualTo("VALIDADA_MANUALMENTE");
+        assertThat(resultado.getReferenciaEvidencia()).isEqualTo("CARGO-FISICO-001");
+    }
+
+    @Test
     void requerirDescargos_sinAdmisionValida_debeLanzarReglaNegocio() {
         ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
         expediente.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
@@ -352,5 +448,29 @@ class ExpedienteTtaipServiceTest {
         suspension.setDiasSuspendidos(3);
         suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
         return suspension;
+    }
+
+    private NotificacionTtaip crearNotificacion(ExpedienteTtaip expediente) {
+        CedulaNotificacion cedula = new CedulaNotificacion();
+        cedula.setIdCedula(450L);
+        cedula.setNumeroCedula("15299-2026-JUS/TTAIP");
+        cedula.setDestinatario(CedulaNotificacion.DestinatarioNotificacion.CIUDADANO);
+        cedula.setDestinatarioNombre("Ciudadano Demo 01");
+        cedula.setDestinatarioEmail("ciudadano01@gmail.com");
+
+        NotificacionTtaip notificacion = new NotificacionTtaip();
+        notificacion.setIdNotificacion(500L);
+        notificacion.setExpediente(expediente);
+        notificacion.setCedula(cedula);
+        notificacion.setDestinatario(CedulaNotificacion.DestinatarioNotificacion.CIUDADANO);
+        notificacion.setDestinatarioNombre("Ciudadano Demo 01");
+        notificacion.setDestinatarioEmail("ciudadano01@gmail.com");
+        notificacion.setFechaNotificacion(LocalDateTime.of(2026, 5, 7, 9, 0));
+        notificacion.setMedio("CASILLA_ELECTRONICA");
+        notificacion.setMedioNotificacion("CASILLA_ELECTRONICA");
+        notificacion.setEstado("PENDIENTE");
+        notificacion.setEstadoAcuse("PENDIENTE");
+        notificacion.setValidadaManualmente(false);
+        return notificacion;
     }
 }
