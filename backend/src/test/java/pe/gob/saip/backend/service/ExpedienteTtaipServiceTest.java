@@ -5,7 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.PresentarDescargoEntidadRequest;
+import pe.gob.saip.backend.model.dto.RegistrarSuspensionTtaipRequest;
 import pe.gob.saip.backend.model.dto.RequerirDescargoEntidadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.DescargoEntidadTtaip;
@@ -179,6 +181,98 @@ class ExpedienteTtaipServiceTest {
     }
 
     @Test
+    void registrarInformeOral_debeCrearSuspensionAdicionalPor3DiasHabiles() {
+        LocalDate fechaAdmision = LocalDate.of(2026, 5, 4);
+        LocalDate fechaSolicitud = LocalDate.of(2026, 5, 6);
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(fechaAdmision);
+        AtomicReference<SuspensionPlazoTtaip> suspensionGuardada = new AtomicReference<>();
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(suspensionRepository.existsByExpediente_IdExpedienteTtaipAndMotivoSuspensionAndEstadoSuspension(
+                100L,
+                SuspensionPlazoTtaip.MotivoSuspension.INFORME_ORAL,
+                SuspensionPlazoTtaip.EstadoSuspension.ACTIVA)).thenReturn(false);
+        when(suspensionRepository.save(any(SuspensionPlazoTtaip.class))).thenAnswer(inv -> {
+            SuspensionPlazoTtaip suspension = inv.getArgument(0);
+            suspension.setIdSuspension(400L);
+            suspensionGuardada.set(suspension);
+            return suspension;
+        });
+        when(suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(100L))
+                .thenAnswer(inv -> suspensionGuardada.get() != null ? List.of(suspensionGuardada.get()) : List.of());
+
+        SuspensionPlazoTtaip resultado = service.registrarSuspensionPorInformeOral(
+                100L,
+                new RegistrarSuspensionTtaipRequest(
+                        fechaSolicitud,
+                        "CIUDADANO",
+                        "Solicitud de informe oral para sustentar la apelación.",
+                        "Secretaría Técnica TTAIP",
+                        "Registro operativo")
+        );
+
+        LocalDate limiteBaseResolucion = DiasHabilesUtil.sumarDiasHabiles(fechaAdmision, 10);
+        assertThat(resultado.getMotivoSuspension()).isEqualTo(SuspensionPlazoTtaip.MotivoSuspension.INFORME_ORAL);
+        assertThat(resultado.getSolicitante()).isEqualTo(SuspensionPlazoTtaip.SolicitanteSuspension.CIUDADANO);
+        assertThat(resultado.getDiasSuspendidos()).isEqualTo(3);
+        assertThat(resultado.getFechaFinSuspension()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(fechaSolicitud, 3));
+        assertThat(expediente.getFechaLimiteResolucion())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(limiteBaseResolucion, 3));
+    }
+
+    @Test
+    void registrarInformacionComplementaria_conDuplicadoActivo_debeLanzarConflictoDeNegocio() {
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(suspensionRepository.existsByExpediente_IdExpedienteTtaipAndMotivoSuspensionAndEstadoSuspension(
+                100L,
+                SuspensionPlazoTtaip.MotivoSuspension.INFORMACION_COMPLEMENTARIA,
+                SuspensionPlazoTtaip.EstadoSuspension.ACTIVA)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.registrarSuspensionPorInformacionComplementaria(
+                        100L,
+                        new RegistrarSuspensionTtaipRequest(
+                                LocalDate.of(2026, 5, 6),
+                                "TTAIP",
+                                "Se requiere información complementaria para resolver.",
+                                "Secretaría Técnica TTAIP",
+                                null)
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ya existe una suspensión activa");
+    }
+
+    @Test
+    void cancelarSuspensionAdicional_debeQuitarDiasYRecalcularPlazoResolucion() {
+        LocalDate fechaAdmision = LocalDate.of(2026, 5, 4);
+        ExpedienteTtaip expediente = crearExpedienteAdmitido(fechaAdmision);
+        SuspensionPlazoTtaip suspension = crearSuspensionAdicional(
+                expediente,
+                SuspensionPlazoTtaip.MotivoSuspension.INFORMACION_COMPLEMENTARIA);
+
+        when(expedienteRepository.findById(100L)).thenReturn(Optional.of(expediente));
+        when(suspensionRepository.findById(400L)).thenReturn(Optional.of(suspension));
+        when(suspensionRepository.save(suspension)).thenReturn(suspension);
+        when(suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(100L))
+                .thenReturn(List.of(suspension));
+
+        SuspensionPlazoTtaip resultado = service.cancelarSuspension(
+                100L,
+                400L,
+                new CancelarSuspensionTtaipRequest(
+                        LocalDate.of(2026, 5, 7),
+                        "Secretaría Técnica TTAIP",
+                        "Solicitud dejada sin efecto")
+        );
+
+        assertThat(resultado.getEstadoSuspension()).isEqualTo(SuspensionPlazoTtaip.EstadoSuspension.CANCELADA);
+        assertThat(resultado.getDiasSuspendidos()).isZero();
+        assertThat(expediente.getFechaLimiteResolucion())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(fechaAdmision, 10));
+    }
+
+    @Test
     void requerirDescargos_sinAdmisionValida_debeLanzarReglaNegocio() {
         ExpedienteTtaip expediente = crearExpedienteAdmitido(LocalDate.of(2026, 5, 4));
         expediente.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
@@ -240,6 +334,22 @@ class ExpedienteTtaipServiceTest {
         suspension.setFechaInicioSuspension(descargo.getFechaRequerimiento());
         suspension.setFechaFinSuspension(descargo.getFechaLimiteDescargo());
         suspension.setDiasSuspendidos(7);
+        suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
+        return suspension;
+    }
+
+    private SuspensionPlazoTtaip crearSuspensionAdicional(ExpedienteTtaip expediente,
+                                                         SuspensionPlazoTtaip.MotivoSuspension motivo) {
+        SuspensionPlazoTtaip suspension = new SuspensionPlazoTtaip();
+        suspension.setIdSuspension(400L);
+        suspension.setExpediente(expediente);
+        suspension.setMotivoSuspension(motivo);
+        suspension.setSolicitante(SuspensionPlazoTtaip.SolicitanteSuspension.TTAIP);
+        suspension.setMotivoDetalle("Solicitud de suspensión adicional");
+        suspension.setFechaSolicitud(LocalDate.of(2026, 5, 6));
+        suspension.setFechaInicioSuspension(LocalDate.of(2026, 5, 6));
+        suspension.setFechaFinSuspension(DiasHabilesUtil.sumarDiasHabiles(LocalDate.of(2026, 5, 6), 3));
+        suspension.setDiasSuspendidos(3);
         suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
         return suspension;
     }
