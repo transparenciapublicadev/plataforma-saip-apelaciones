@@ -237,6 +237,8 @@ public class ApelacionRestController {
         stats.put("resueltosFundadoEnParte", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE));
         stats.put("resueltosInfundadoEnParte", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE));
         stats.put("resueltosImprocedente", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE));
+        stats.put("resueltosEsteseALoResuelto", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO));
+        stats.put("resueltosNulidadActo", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO));
         stats.put("tenerPorNoPresentado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO));
         stats.put("conclusionSustraccion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA));
         stats.put("conclusionDesistimiento", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO));
