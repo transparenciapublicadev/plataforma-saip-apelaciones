@@ -34,6 +34,8 @@ public class Apelacion {
     private String expediente;
 
     @NotNull(message = "La solicitud no puede ser nula")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToOne
     @JoinColumn(name = "id_solicitud", nullable = false, unique = true)
     private Solicitud solicitud;
@@ -71,9 +73,13 @@ public class Apelacion {
     @Column(length = 60)
     private String resultado;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Documento> documentos;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Resolucion> resoluciones;
 
@@ -108,7 +114,9 @@ public class Apelacion {
         RESUELTO_FUNDADO_EN_PARTE,
         RESUELTO_INFUNDADO,
         RESUELTO_INFUNDADO_EN_PARTE,
-        RESUELTO_IMPROCEDENTE
+        RESUELTO_IMPROCEDENTE,
+        RESUELTO_ESTESE_A_LO_RESUELTO,
+        RESUELTO_NULIDAD_ACTO
     }
 
     public enum Calificacion {
@@ -162,6 +170,8 @@ public class Apelacion {
                estado == EstadoApelacion.RESUELTO_INFUNDADO ||
                estado == EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE ||
                estado == EstadoApelacion.RESUELTO_IMPROCEDENTE ||
+               estado == EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO ||
+               estado == EstadoApelacion.RESUELTO_NULIDAD_ACTO ||
                estado == EstadoApelacion.TENER_POR_NO_PRESENTADO ||
                estado == EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA ||
                estado == EstadoApelacion.CONCLUSION_DESISTIMIENTO;
