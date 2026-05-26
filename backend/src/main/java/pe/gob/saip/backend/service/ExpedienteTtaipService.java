@@ -29,6 +29,7 @@ import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -1349,6 +1350,7 @@ public class ExpedienteTtaipService {
         cedula.setDestinatarioEmail(resolveEmailDestinatario(expediente, destinatario));
         cedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + numeroCedula);
         CedulaNotificacion savedCedula = cedulaRepository.save(cedula);
+        sincronizarCedulaEnResolucion(resolucion, savedCedula);
         registrarHistorial(
                 expediente,
                 HistorialTtaip.TipoEvento.CEDULA_EMITIDA,
@@ -1381,6 +1383,17 @@ public class ExpedienteTtaipService {
                     "TTAIP",
                     "NOTIFICACION-" + savedCedula.getNumeroCedula() + ":" + savedNotificacion.getDestinatario().name()
             );
+        }
+    }
+
+    private void sincronizarCedulaEnResolucion(Resolucion resolucion, CedulaNotificacion cedula) {
+        if (resolucion.getCedulasNotificacion() == null) {
+            resolucion.setCedulasNotificacion(new ArrayList<>());
+        }
+        boolean yaRegistrada = resolucion.getCedulasNotificacion().stream()
+                .anyMatch(item -> item.getId() != null && item.getId().equals(cedula.getId()));
+        if (!yaRegistrada) {
+            resolucion.getCedulasNotificacion().add(cedula);
         }
     }
 
