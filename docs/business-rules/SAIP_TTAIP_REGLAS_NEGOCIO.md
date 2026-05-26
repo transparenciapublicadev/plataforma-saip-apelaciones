@@ -23,6 +23,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Una resolucion TTAIP de `INADMISIBLE` genera cedula/notificacion solo para el ciudadano recurrente.
 - Un reproceso de notificacion conserva la cedula original y genera nueva cedula y nueva notificacion para el mismo destinatario afectado.
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
+- El TTAIP puede cerrar una apelacion con `ESTESE_A_LO_RESUELTO` o `NULIDAD_DEL_ACTO`, generando resolucion final, cedulas/notificaciones para ciudadano y entidad publica e historial del expediente.
 - SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
@@ -287,6 +288,8 @@ Decisiones finales:
 | Conclusion por desistimiento | El ciudadano desiste del recurso. |
 | Estese a lo resuelto | Existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado. |
 | Nulidad del acto | Se invalida respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento. |
+
+Las decisiones `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` se registran como resolucion final del expediente TTAIP. Deben sustentarse con la referencia al pronunciamiento previo o con el fundamento de nulidad y, por regla general, generan cedulas/notificaciones para ciudadano y entidad publica.
 
 ### Cumplimiento de resolucion fundada
 
