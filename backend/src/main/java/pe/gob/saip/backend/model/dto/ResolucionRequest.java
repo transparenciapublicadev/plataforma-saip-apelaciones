@@ -10,6 +10,12 @@ public record ResolucionRequest(
     @Size(max = 5000, message = "Los fundamentos no pueden exceder 5000 caracteres")
     String fundamentos,
 
+    @Size(max = 5000, message = "El fundamento legal no puede exceder 5000 caracteres")
+    String fundamentoLegal,
+
+    @Size(max = 5000, message = "Las observaciones no pueden exceder 5000 caracteres")
+    String observaciones,
+
     Long miembroId,
 
     Boolean iniciarProcesoDisciplinario
