@@ -104,6 +104,14 @@ export class TtaipService {
     return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/desistimiento`, data);
   }
 
+  declararEsteseALoResuelto(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/estese-a-lo-resuelto`, data);
+  }
+
+  declararNulidadDelActo(apelacionId: number, data: ResolucionRequest): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/resolucion/${apelacionId}/nulidad-acto`, data);
+  }
+
   declararNoPresentado(apelacionId: number, data: CalificacionRequest): Observable<Apelacion> {
     return this.http.post<Apelacion>(`${this.apiUrl}/calificacion/${apelacionId}/no-presentado`, data);
   }

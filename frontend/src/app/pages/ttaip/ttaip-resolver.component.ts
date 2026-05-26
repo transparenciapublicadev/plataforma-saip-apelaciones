@@ -27,7 +27,9 @@ type ResolucionDecision =
   | 'infundado_en_parte'
   | 'improcedente'
   | 'sustraccion_materia'
-  | 'desistimiento';
+  | 'desistimiento'
+  | 'estese_a_lo_resuelto'
+  | 'nulidad_del_acto';
 
 interface DecisionOption {
   id: ResolucionDecision;
@@ -64,6 +66,7 @@ export class TtaipResolverComponent implements OnInit {
   showPreview = signal<boolean>(false);
 
   fundamentos = '';
+  observacionesResolucion = '';
   ordenarEntrega = false;
   plazoDias = '10';
   iniciarProcesoDisciplinario = false;
@@ -130,6 +133,18 @@ export class TtaipResolverComponent implements OnInit {
       label: 'CONCLUSION POR DESISTIMIENTO',
       description: 'El ciudadano desiste voluntariamente del recurso',
       accent: 'var(--muted-foreground)'
+    },
+    {
+      id: 'estese_a_lo_resuelto',
+      label: 'ESTESE A LO RESUELTO',
+      description: 'Existe pronunciamiento previo aplicable al mismo asunto',
+      accent: 'var(--info)'
+    },
+    {
+      id: 'nulidad_del_acto',
+      label: 'NULIDAD DEL ACTO',
+      description: 'Se invalida la respuesta o procedimiento por vicios graves',
+      accent: 'var(--warning)'
     }
   ];
 
@@ -231,7 +246,9 @@ export class TtaipResolverComponent implements OnInit {
       infundado_en_parte: 'INFUNDADO EN PARTE',
       improcedente: 'IMPROCEDENTE',
       sustraccion_materia: 'CONCLUSION POR SUSTRACCION DE LA MATERIA',
-      desistimiento: 'CONCLUSION POR DESISTIMIENTO'
+      desistimiento: 'CONCLUSION POR DESISTIMIENTO',
+      estese_a_lo_resuelto: 'ESTESE A LO RESUELTO',
+      nulidad_del_acto: 'NULIDAD DEL ACTO'
     };
 
     if (!decision) {
@@ -256,17 +273,27 @@ export class TtaipResolverComponent implements OnInit {
       sustraccion_materia:
         'Procede la conclusion por sustraccion de la materia al haberse entregado la informacion durante el tramite.',
       desistimiento:
-        'Procede la conclusion por desistimiento expreso del ciudadano recurrente.'
+        'Procede la conclusion por desistimiento expreso del ciudadano recurrente.',
+      estese_a_lo_resuelto:
+        'Existe pronunciamiento previo aplicable al mismo asunto, pedido reiterado o caso sustancialmente equivalente.',
+      nulidad_del_acto:
+        'Se invalida la respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.'
     };
 
     return summaries[decision];
   }
 
   private getResolucionRequest(includeDisciplinary: boolean): ResolucionRequest {
-    return {
+    const request: ResolucionRequest = {
       fundamentos: this.fundamentos.trim(),
       iniciarProcesoDisciplinario: includeDisciplinary ? this.iniciarProcesoDisciplinario : undefined
     };
+
+    if (this.observacionesResolucion.trim()) {
+      request.observaciones = this.observacionesResolucion.trim();
+    }
+
+    return request;
   }
 
   abrirConfirmacionResolucion(): void {
@@ -291,7 +318,7 @@ export class TtaipResolverComponent implements OnInit {
 
     const includeDisciplinary = decision === 'fundado' || decision === 'fundado_en_parte';
     const requestWithDisciplinary = this.getResolucionRequest(includeDisciplinary);
-    const requestSimple: ResolucionRequest = { fundamentos: this.fundamentos.trim() };
+    const requestSimple = this.getResolucionRequest(false);
 
     const serviceMap: Record<ResolucionDecision, () => void> = {
       fundado: () =>
@@ -327,6 +354,16 @@ export class TtaipResolverComponent implements OnInit {
       desistimiento: () =>
         this.ttaipService.declararDesistimiento(currentAppeal.id, requestSimple).subscribe({
           next: (updated) => this.handleSuccess('Conclusión por desistimiento emitida.', updated),
+          error: (err) => this.handleError(err)
+        }),
+      estese_a_lo_resuelto: () =>
+        this.ttaipService.declararEsteseALoResuelto(currentAppeal.id, requestSimple).subscribe({
+          next: (updated) => this.handleSuccess('Estese a lo resuelto emitido.', updated),
+          error: (err) => this.handleError(err)
+        }),
+      nulidad_del_acto: () =>
+        this.ttaipService.declararNulidadDelActo(currentAppeal.id, requestSimple).subscribe({
+          next: (updated) => this.handleSuccess('Nulidad del acto emitida.', updated),
           error: (err) => this.handleError(err)
         })
     };
@@ -364,6 +401,9 @@ export class TtaipResolverComponent implements OnInit {
     }
 
     summary.push({ label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` });
+    if (this.observacionesResolucion.trim()) {
+      summary.push({ label: 'Sustento específico', value: `${this.observacionesResolucion.trim().length} caracteres` });
+    }
     return summary;
   }
 
@@ -380,6 +420,9 @@ export class TtaipResolverComponent implements OnInit {
       return 'success';
     }
     if (decision === 'sustraccion_materia') {
+      return 'gold';
+    }
+    if (decision === 'nulidad_del_acto') {
       return 'gold';
     }
     return 'brand';
@@ -409,6 +452,12 @@ export class TtaipResolverComponent implements OnInit {
     if (decision === 'sustraccion_materia') {
       return 'Se concluye por sustracción de la materia: la entidad ya entregó la información durante el trámite.';
     }
+    if (decision === 'estese_a_lo_resuelto') {
+      return 'Se aplica un pronunciamiento previo al mismo asunto o pedido reiterado. El expediente queda cerrado.';
+    }
+    if (decision === 'nulidad_del_acto') {
+      return 'Se declara la nulidad por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.';
+    }
     return 'Se concluye por desistimiento expreso del ciudadano.';
   }
 
@@ -427,7 +476,8 @@ export class TtaipResolverComponent implements OnInit {
       { label: 'Fallo', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Causal', value: this.causal() === 'confirmar' ? 'Confirmada' : this.causal() === 'revocar' ? 'Revocada' : '—' },
       { label: 'Mandato', value: this.showOrden() && this.ordenarEntrega ? `Entrega en ${this.plazoDias} días` : 'Sin mandato' },
-      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
+      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
+      { label: 'Sustento específico', value: this.observacionesResolucion.trim() ? `${this.observacionesResolucion.trim().length} caracteres` : 'No registrado' }
     ];
   }
 
@@ -440,6 +490,12 @@ export class TtaipResolverComponent implements OnInit {
       steps.push({
         label: 'La entidad debe cumplir el mandato de entrega.',
         hint: `${this.plazoDias} días hábiles`
+      });
+    }
+
+    if (this.selectedDecision() === 'nulidad_del_acto') {
+      steps.push({
+        label: 'La entidad deberá atender la orden de retrotraer o emitir nuevo pronunciamiento.'
       });
     }
 
