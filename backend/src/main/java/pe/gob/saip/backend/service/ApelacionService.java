@@ -55,6 +55,8 @@ public class ApelacionService {
             Apelacion.EstadoApelacion.RESUELTO_INFUNDADO,
             Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE,
             Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE,
+            Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO,
+            Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO,
             Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO,
             Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA,
             Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO

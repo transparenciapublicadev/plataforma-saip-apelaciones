@@ -5,7 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
@@ -104,6 +106,8 @@ public class Solicitud {
     @OneToMany(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<LiquidacionCostoSolicitud> liquidacionesCosto;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Apelacion apelacion;
 

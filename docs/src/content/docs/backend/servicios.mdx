@@ -151,12 +151,13 @@ public class TTAIPService {
     }
 
     // Análogo: declararInfundado, fundadoEnParte, infundadoEnParte,
-    //          improcedente, sustraccionMateria, desistimiento, noPresentado
+    //          improcedente, sustraccionMateria, desistimiento, noPresentado,
+    //          esteseALoResuelto y nulidadDelActo
 }
 ```
 
 :::caution[Validación de Estado]
-Cada operación del TTAIPService **verifica el estado actual** de la apelación antes de ejecutarse. Por ejemplo, `declararFundado()` solo procede si el estado es `EN_RESOLUCION`. Intentar ejecutar operaciones fuera de secuencia lanza `IllegalStateException`.
+Las decisiones finales especiales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` verifican que la apelación esté en `EN_RESOLUCION` y rechazan expedientes ya resueltos con Problem Details. Mantener esta protección al extender nuevas decisiones finales.
 :::
 
 ### DiasHabilesUtil — Cálculo de Plazos

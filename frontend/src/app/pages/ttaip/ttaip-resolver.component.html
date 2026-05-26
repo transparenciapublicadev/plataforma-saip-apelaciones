@@ -283,6 +283,27 @@
                 <textarea [(ngModel)]="fundamentos" [disabled]="!puedeEmitirResolucion() || loading()" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos legales y facticos de la resolucion final..."></textarea>
                 <span class="field-hint font-mono">{{ fundamentos.length }} caracteres</span>
               </div>
+
+              @if (selectedDecision() === 'estese_a_lo_resuelto' || selectedDecision() === 'nulidad_del_acto') {
+                <div class="field mt-5">
+                  <label class="field-label">
+                    @if (selectedDecision() === 'estese_a_lo_resuelto') {
+                      Referencia del pronunciamiento previo
+                    } @else {
+                      Orden de nulidad o retroacción
+                    }
+                  </label>
+                  <textarea
+                    [(ngModel)]="observacionesResolucion"
+                    [disabled]="!puedeEmitirResolucion() || loading()"
+                    class="field-input"
+                    rows="4"
+                    style="resize: vertical; min-height: 108px"
+                    [placeholder]="selectedDecision() === 'estese_a_lo_resuelto' ? 'Indique la resolución previa, expediente o criterio aplicable...' : 'Indique si corresponde retrotraer el procedimiento o emitir nuevo pronunciamiento...'">
+                  </textarea>
+                  <span class="field-hint font-mono">{{ observacionesResolucion.length }} caracteres</span>
+                </div>
+              }
             </div>
           </section>
 
@@ -311,6 +332,9 @@
                   <section><span class="eyebrow">Expediente</span><p class="font-mono mt-1">{{ ap.expediente }}</p></section>
                   <section><span class="eyebrow">Vistos</span><p class="mt-1">El recurso de apelacion interpuesto por {{ ap.ciudadanoNombre }}, previamente calificado como admisible.</p></section>
                   <section><span class="eyebrow">Considerandos</span><p class="mt-1 whitespace-pre-line">{{ fundamentos || '[Fundamentos de la resolucion final...]' }}</p></section>
+                  @if (observacionesResolucion) {
+                    <section><span class="eyebrow">Sustento específico</span><p class="mt-1 whitespace-pre-line">{{ observacionesResolucion }}</p></section>
+                  }
                   <section>
                     <span class="eyebrow">Se resuelve</span>
                     <p class="mt-1">Declarar <span class="font-semibold">{{ getDecisionLabel(selectedDecision()) }}</span> el recurso de apelacion.</p>

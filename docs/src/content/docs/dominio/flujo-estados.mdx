@@ -130,7 +130,9 @@ stateDiagram-v2
         RESUELTO_FUNDADO_EN_PARTE,
         RESUELTO_INFUNDADO,
         RESUELTO_INFUNDADO_EN_PARTE,
-        RESUELTO_IMPROCEDENTE
+        RESUELTO_IMPROCEDENTE,
+        RESUELTO_ESTESE_A_LO_RESUELTO,
+        RESUELTO_NULIDAD_ACTO
     }
     ```
   </TabItem>
@@ -153,7 +155,9 @@ stateDiagram-v2
         INFUNDADO,
         INFUNDADO_EN_PARTE,
         CONCLUSION_SUSTRACCION_MATERIA,
-        CONCLUSION_DESISTIMIENTO
+        CONCLUSION_DESISTIMIENTO,
+        ESTESE_A_LO_RESUELTO,
+        NULIDAD_DEL_ACTO
     }
     ```
   </TabItem>
@@ -164,5 +168,5 @@ stateDiagram-v2
 :::
 
 :::note[Brechas oficiales]
-El documento oficial también menciona decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, además de integración real con proveedores de correo/casilla electrónica. Las constancias, acuses, validación manual de notificación TTAIP y seguimiento de cumplimiento de resolución fundada ya están modelados operativamente.
+Las decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` ya están modeladas operativamente. La integración real con proveedores de correo/casilla electrónica sigue fuera del alcance actual; las constancias, acuses, validación manual de notificación TTAIP y seguimiento de cumplimiento de resolución fundada ya existen como soporte operativo.
 :::

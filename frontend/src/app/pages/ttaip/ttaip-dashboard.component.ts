@@ -302,6 +302,8 @@ export class TtaipDashboardComponent implements OnInit {
     if (decision.startsWith('FUNDADO')) return 'badge-success';
     if (decision.startsWith('INFUNDADO')) return 'badge-muted';
     if (decision.includes('IMPROCEDENTE')) return 'badge-danger';
+    if (decision === 'ESTESE_A_LO_RESUELTO' || decision === 'RESUELTO_ESTESE_A_LO_RESUELTO') return 'badge-muted';
+    if (decision === 'NULIDAD_DEL_ACTO' || decision === 'RESUELTO_NULIDAD_ACTO') return 'badge-danger';
     return 'badge-in-process';
   }
 
@@ -324,6 +326,12 @@ export class TtaipDashboardComponent implements OnInit {
         return 'Sustracción';
       case 'CONCLUSION_DESISTIMIENTO':
         return 'Desistimiento';
+      case 'ESTESE_A_LO_RESUELTO':
+      case 'RESUELTO_ESTESE_A_LO_RESUELTO':
+        return 'Estese a lo resuelto';
+      case 'NULIDAD_DEL_ACTO':
+      case 'RESUELTO_NULIDAD_ACTO':
+        return 'Nulidad del acto';
       case 'TENER_POR_NO_PRESENTADO':
         return 'No presentado';
       default:
