@@ -439,6 +439,8 @@ export class CiudadanoDashboardComponent implements OnInit {
       'RESUELTO_INFUNDADO': 'badge-muted',
       'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
       'RESUELTO_IMPROCEDENTE': 'badge-danger',
+      'RESUELTO_ESTESE_A_LO_RESUELTO': 'badge-muted',
+      'RESUELTO_NULIDAD_ACTO': 'badge-danger',
       'TENER_POR_NO_PRESENTADO': 'badge-danger',
       'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
       'CONCLUSION_DESISTIMIENTO': 'badge-muted'

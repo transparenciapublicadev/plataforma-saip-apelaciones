@@ -117,6 +117,12 @@ export class TtaipResolucionDetalleComponent implements OnInit {
         return { label: 'SUSTRACCION DE MATERIA', accent: 'var(--info)' };
       case 'CONCLUSION_DESISTIMIENTO':
         return { label: 'DESISTIMIENTO', accent: 'var(--gold-dark)' };
+      case 'ESTESE_A_LO_RESUELTO':
+      case 'RESUELTO_ESTESE_A_LO_RESUELTO':
+        return { label: 'ESTESE A LO RESUELTO', accent: 'var(--info)' };
+      case 'NULIDAD_DEL_ACTO':
+      case 'RESUELTO_NULIDAD_ACTO':
+        return { label: 'NULIDAD DEL ACTO', accent: 'var(--warning)' };
       case 'ADMISIBLE':
         return { label: 'ADMISIBLE', accent: 'var(--info)' };
       case 'INADMISIBLE':
@@ -742,7 +748,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       items.push({
         fecha: this.formatDateLabel(final.fechaResolucion, true),
         titulo: `Resolución final · ${this.formatDecision(final.decision)}`,
-        descripcion: final.fundamentos || 'Resolución final registrada por el backend.',
+        descripcion: final.observaciones || final.fundamentos || 'Resolución final registrada por el backend.',
         icon: this.iconForDecision(final.decision)
       });
     }
@@ -791,6 +797,10 @@ export class TtaipResolucionDetalleComponent implements OnInit {
         return 'Resuelto infundado en parte';
       case 'RESUELTO_IMPROCEDENTE':
         return 'Resuelto improcedente';
+      case 'RESUELTO_ESTESE_A_LO_RESUELTO':
+        return 'Estese a lo resuelto';
+      case 'RESUELTO_NULIDAD_ACTO':
+        return 'Nulidad del acto';
       case 'TENER_POR_NO_PRESENTADO':
         return 'No presentado';
       case 'CONCLUSION_SUSTRACCION_MATERIA':

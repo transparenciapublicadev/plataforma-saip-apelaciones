@@ -603,6 +603,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       RESUELTO_INFUNDADO: 'pill',
       RESUELTO_INFUNDADO_EN_PARTE: 'pill',
       RESUELTO_IMPROCEDENTE: 'pill pill-high',
+      RESUELTO_ESTESE_A_LO_RESUELTO: 'pill',
+      RESUELTO_NULIDAD_ACTO: 'pill pill-high',
       TENER_POR_NO_PRESENTADO: 'pill pill-high',
       CONCLUSION_SUSTRACCION_MATERIA: 'pill pill-low',
       CONCLUSION_DESISTIMIENTO: 'pill'

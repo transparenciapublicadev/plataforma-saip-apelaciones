@@ -19,7 +19,9 @@ export type DecisionResolucion =
     | 'INFUNDADO_EN_PARTE'
     | 'TENER_POR_NO_PRESENTADO'
     | 'CONCLUSION_SUSTRACCION_MATERIA'
-    | 'CONCLUSION_DESISTIMIENTO';
+    | 'CONCLUSION_DESISTIMIENTO'
+    | 'ESTESE_A_LO_RESUELTO'
+    | 'NULIDAD_DEL_ACTO';
 
 export interface MiembroTtaipResumen {
     id: number;
