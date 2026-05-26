@@ -98,7 +98,7 @@ El frontend cuenta con **18+ componentes standalone** organizados por rol de usu
     4. Segunda calificación
     5. Resueltas
 
-    **TtaipResolverComponent — 7 decisiones:**
+    **TtaipResolverComponent — 9 decisiones:**
     ```typescript
     // Patrón serviceMap para despachar decisiones
     private readonly serviceMap: Record<string,
@@ -110,6 +110,8 @@ El frontend cuenta con **18+ componentes standalone** organizados por rol de usu
       improcedente: (id, b) => this.ttaipService.declararImprocedente(id, b),
       'sustraccion-materia': (id, b) => this.ttaipService.declararSustraccionMateria(id, b),
       desistimiento: (id, b) => this.ttaipService.declararDesistimiento(id, b),
+      'estese-a-lo-resuelto': (id, b) => this.ttaipService.declararEsteseALoResuelto(id, b),
+      'nulidad-del-acto': (id, b) => this.ttaipService.declararNulidadDelActo(id, b),
     };
     ```
   </TabItem>

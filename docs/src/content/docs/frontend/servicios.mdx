@@ -119,7 +119,7 @@ export class SolicitudService {
     | `requerirSubsanacion(id, body)` | POST | `/ttaip/calificacion/{id}/subsanar` |
     | `inadmitirApelacion(id, body)` | POST | `/ttaip/calificacion/{id}/inadmitir` |
 
-    **Resolución Final (7 decisiones):**
+    **Resolución Final (9 decisiones):**
     | Método | HTTP | Ruta |
     |--------|------|------|
     | `declararFundado(id, body)` | POST | `/ttaip/resolucion/{id}/fundado` |
@@ -129,6 +129,8 @@ export class SolicitudService {
     | `declararImprocedente(id, body)` | POST | `/ttaip/resolucion/{id}/improcedente` |
     | `declararSustraccionMateria(id, body)` | POST | `/ttaip/resolucion/{id}/sustraccion-materia` |
     | `declararDesistimiento(id, body)` | POST | `/ttaip/resolucion/{id}/desistimiento` |
+    | `declararEsteseALoResuelto(id, body)` | POST | `/ttaip/resolucion/{id}/estese-a-lo-resuelto` |
+    | `declararNulidadDelActo(id, body)` | POST | `/ttaip/resolucion/{id}/nulidad-acto` |
     | `declararNoPresentado(id, body)` | POST | `/ttaip/resolucion/{id}/no-presentado` |
     | `notificarSegundaCalificacion(id)` | POST | `/ttaip/notificar-segunda-calificacion/{id}` |
   </TabItem>

@@ -178,7 +178,7 @@ Resolución emitida por un miembro del TTAIP sobre una apelación.
 | `apelacion` | `Apelacion` | ManyToOne |
 | `miembroTTAIP` | `MiembroTTAIP` | ManyToOne |
 | `tipoResolucion` | `TipoResolucion` | Enum (3 valores) |
-| `decision` | `DecisionResolucion` | Enum (11 valores) |
+| `decision` | `DecisionResolucion` | Enum (13 valores) |
 | `fundamentos` | `String(TEXT)` | Fundamento de la resolución |
 | `fundamentoLegal` | `String` | Base legal |
 | `observaciones` | `String(TEXT)` | Observaciones (subsanación) |
@@ -245,6 +245,8 @@ Resolución emitida por un miembro del TTAIP sobre una apelación.
         RESUELTO_INFUNDADO,
         RESUELTO_INFUNDADO_EN_PARTE,
         RESUELTO_IMPROCEDENTE,
+        RESUELTO_ESTESE_A_LO_RESUELTO,
+        RESUELTO_NULIDAD_ACTO,
         TENER_POR_NO_PRESENTADO,
         CONCLUSION_SUSTRACCION_MATERIA,
         CONCLUSION_DESISTIMIENTO
@@ -274,7 +276,9 @@ Resolución emitida por un miembro del TTAIP sobre una apelación.
         INFUNDADO,                      // Se desestima recurso
         INFUNDADO_EN_PARTE,             // Desestimación parcial
         CONCLUSION_SUSTRACCION_MATERIA, // Entidad entregó info
-        CONCLUSION_DESISTIMIENTO        // Ciudadano desistió
+        CONCLUSION_DESISTIMIENTO,       // Ciudadano desistió
+        ESTESE_A_LO_RESUELTO,           // Pronunciamiento previo aplicable
+        NULIDAD_DEL_ACTO                // Vicio grave y retroacción o nuevo pronunciamiento
     }
     ```
   </TabItem>
