@@ -143,6 +143,20 @@ describe('TtaipService', () => {
     req.flush({});
   });
 
+  it('should POST declarar estese a lo resuelto', () => {
+    service.declararEsteseALoResuelto(3, {} as any).subscribe();
+    const req = httpMock.expectOne(`${apiUrl}/resolucion/3/estese-a-lo-resuelto`);
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
+  it('should POST declarar nulidad del acto', () => {
+    service.declararNulidadDelActo(3, {} as any).subscribe();
+    const req = httpMock.expectOne(`${apiUrl}/resolucion/3/nulidad-acto`);
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
   it('should POST declarar no presentado', () => {
     service.declararNoPresentado(3, {} as any).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/calificacion/3/no-presentado`);

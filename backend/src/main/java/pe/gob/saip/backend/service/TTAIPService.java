@@ -76,6 +76,8 @@ public class TTAIPService {
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO)
+                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA)
@@ -320,6 +322,26 @@ public class TTAIPService {
     }
 
     @Transactional
+    public ApelacionDTO declararEsteseALoResuelto(Long apelacionId, ResolucionRequest request) {
+        return declararDecisionFinalEspecial(
+                apelacionId,
+                request,
+                Resolucion.DecisionResolucion.ESTESE_A_LO_RESUELTO,
+                Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO
+        );
+    }
+
+    @Transactional
+    public ApelacionDTO declararNulidadDelActo(Long apelacionId, ResolucionRequest request) {
+        return declararDecisionFinalEspecial(
+                apelacionId,
+                request,
+                Resolucion.DecisionResolucion.NULIDAD_DEL_ACTO,
+                Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO
+        );
+    }
+
+    @Transactional
     public ApelacionDTO declararTenerPorNoPresentado(Long apelacionId, CalificacionRequest request) {
         Apelacion apelacion = buscarApelacion(apelacionId);
         Resolucion resolucion = crearResolucion(
@@ -517,6 +539,45 @@ public class TTAIPService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + apelacionId));
     }
 
+    private ApelacionDTO declararDecisionFinalEspecial(Long apelacionId,
+                                                       ResolucionRequest request,
+                                                       Resolucion.DecisionResolucion decision,
+                                                       Apelacion.EstadoApelacion estadoFinal) {
+        Apelacion apelacion = buscarApelacion(apelacionId);
+        validarPuedeResolverFinal(apelacion);
+        Resolucion resolucion = crearResolucion(
+                apelacion,
+                Resolucion.TipoResolucion.RESOLUCION_FINAL,
+                decision,
+                request.fundamentos(),
+                request.miembroId()
+        );
+        resolucion.setResultado(decision.name());
+        resolucion.setFundamentoLegal(normalizarNullable(request.fundamentoLegal()));
+        resolucion.setObservaciones(normalizarNullable(request.observaciones()));
+        guardarResolucionConDocumentos(resolucion);
+        apelacion.setEstado(estadoFinal);
+        apelacion.setResultado(decision.name());
+        guardarApelacionConExpediente(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    private void validarPuedeResolverFinal(Apelacion apelacion) {
+        if (apelacion.isResuelta()) {
+            throw new IllegalArgumentException(
+                    "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
+        }
+        if (apelacion.getEstado() != Apelacion.EstadoApelacion.EN_RESOLUCION) {
+            throw new IllegalArgumentException(
+                    "La apelación debe estar en estado EN_RESOLUCION para emitir resolución final. Estado actual: "
+                            + apelacion.getEstado());
+        }
+    }
+
+    private String normalizarNullable(String value) {
+        return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
     private CedulaNotificacion.DestinatarioNotificacion parseDestinatario(String destinatario) {
         try {
             return CedulaNotificacion.DestinatarioNotificacion.valueOf(destinatario.trim().toUpperCase());
@@ -544,12 +605,28 @@ public class TTAIPService {
 
     private void guardarResolucionConDocumentos(Resolucion resolucion) {
         resolucionService.save(resolucion);
+        sincronizarResolucionEnApelacion(resolucion);
         expedienteTtaipService.registrarResolucion(resolucion);
     }
 
     private void guardarApelacionConExpediente(Apelacion apelacion) {
         Apelacion saved = apelacionService.save(apelacion);
         expedienteTtaipService.obtenerOCrearParaApelacion(saved);
+    }
+
+    private void sincronizarResolucionEnApelacion(Resolucion resolucion) {
+        Apelacion apelacion = resolucion.getApelacion();
+        if (apelacion == null) {
+            return;
+        }
+        if (apelacion.getResoluciones() == null) {
+            apelacion.setResoluciones(new ArrayList<>());
+        }
+        boolean yaRegistrada = apelacion.getResoluciones().stream()
+                .anyMatch(item -> item.getId() != null && item.getId().equals(resolucion.getId()));
+        if (!yaRegistrada) {
+            apelacion.getResoluciones().add(resolucion);
+        }
     }
 
     private void asignarMiembro(Resolucion resolucion, Long miembroId) {

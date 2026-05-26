@@ -107,7 +107,9 @@ public class Resolucion {
         INFUNDADO,
         INFUNDADO_EN_PARTE,
         CONCLUSION_SUSTRACCION_MATERIA,
-        CONCLUSION_DESISTIMIENTO
+        CONCLUSION_DESISTIMIENTO,
+        ESTESE_A_LO_RESUELTO,
+        NULIDAD_DEL_ACTO
     }
 
     public Long getId() {

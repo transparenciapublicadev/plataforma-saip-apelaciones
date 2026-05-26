@@ -29,6 +29,7 @@ class ApelacionTest {
     @EnumSource(value = Apelacion.EstadoApelacion.class,
             names = {"RESUELTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO",
                      "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE",
+                     "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO",
                      "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO"})
     void isResuelta_estadosResueltos_debeRetornarTrue(Apelacion.EstadoApelacion estado) {
         Apelacion a = crearApelacion(estado);

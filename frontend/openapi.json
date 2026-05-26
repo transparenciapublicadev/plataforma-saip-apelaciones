@@ -739,6 +739,50 @@
         }
       }
     },
+    "/api/ttaip/resolucion/{apelacionId}/nulidad-acto": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar nulidad del acto",
+        "description": "Resolución final: invalida la respuesta o procedimiento por vicios graves",
+        "operationId": "declararNulidadDelActo",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ttaip/resolucion/{apelacionId}/infundado-en-parte": {
       "post": {
         "tags": [
@@ -1011,6 +1055,50 @@
         "summary": "Declarar apelación fundada",
         "description": "Resolución final a favor del ciudadano",
         "operationId": "declararFundado_1",
+        "parameters": [
+          {
+            "name": "apelacionId",
+            "in": "path",
+            "description": "ID de la apelación",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/resolucion/{apelacionId}/estese-a-lo-resuelto": {
+      "post": {
+        "tags": [
+          "TTAIP"
+        ],
+        "summary": "Declarar estese a lo resuelto",
+        "description": "Resolución final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado",
+        "operationId": "declararEsteseALoResuelto",
         "parameters": [
           {
             "name": "apelacionId",
@@ -6426,6 +6514,9 @@
           "fundamentos": {
             "type": "string"
           },
+          "fundamentoLegal": {
+            "type": "string"
+          },
           "observaciones": {
             "type": "string"
           },
@@ -6585,6 +6676,16 @@
         "description": "Datos para emitir resolución final de apelación",
         "properties": {
           "fundamentos": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "fundamentoLegal": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "observaciones": {
             "type": "string",
             "maxLength": 5000,
             "minLength": 0

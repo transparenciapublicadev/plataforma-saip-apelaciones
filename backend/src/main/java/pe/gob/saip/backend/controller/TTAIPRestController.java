@@ -167,6 +167,28 @@ public class TTAIPRestController {
         return ResponseEntity.ok(ttaipService.declararConclusionDesistimiento(apelacionId, request));
     }
 
+    @Operation(
+            summary = "Declarar estese a lo resuelto",
+            description = "Resolución final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado"
+    )
+    @PostMapping("/resolucion/{apelacionId}/estese-a-lo-resuelto")
+    public ResponseEntity<ApelacionDTO> declararEsteseALoResuelto(
+            @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
+            @Valid @RequestBody ResolucionRequest request) {
+        return ResponseEntity.ok(ttaipService.declararEsteseALoResuelto(apelacionId, request));
+    }
+
+    @Operation(
+            summary = "Declarar nulidad del acto",
+            description = "Resolución final: invalida la respuesta o procedimiento por vicios graves"
+    )
+    @PostMapping("/resolucion/{apelacionId}/nulidad-acto")
+    public ResponseEntity<ApelacionDTO> declararNulidadDelActo(
+            @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
+            @Valid @RequestBody ResolucionRequest request) {
+        return ResponseEntity.ok(ttaipService.declararNulidadDelActo(apelacionId, request));
+    }
+
     @Operation(summary = "Declarar tener por no presentado", description = "El ciudadano no subsanó en plazo de 2 días hábiles tras inadmisible")
     @PostMapping("/calificacion/{apelacionId}/no-presentado")
     public ResponseEntity<ApelacionDTO> declararTenerPorNoPresentado(

@@ -149,6 +149,12 @@ La resolución final puede cerrar el expediente con cualquiera de estos resultad
   <Card title="Infundado en parte" icon="close">
     Se desestima parcialmente.
   </Card>
+  <Card title="Estese a lo resuelto" icon="document">
+    Se aplica un pronunciamiento previo sobre el mismo asunto o pedido reiterado.
+  </Card>
+  <Card title="Nulidad del acto" icon="warning">
+    Se invalida la respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.
+  </Card>
 </CardGrid>
 
 | Decisión adicional | Estado final |
@@ -156,10 +162,15 @@ La resolución final puede cerrar el expediente con cualquiera de estos resultad
 | `IMPROCEDENTE` | `RESUELTO_IMPROCEDENTE` |
 | `CONCLUSION_SUSTRACCION_MATERIA` | `CONCLUSION_SUSTRACCION_MATERIA` |
 | `CONCLUSION_DESISTIMIENTO` | `CONCLUSION_DESISTIMIENTO` |
+| `ESTESE_A_LO_RESUELTO` | `RESUELTO_ESTESE_A_LO_RESUELTO` |
+| `NULIDAD_DEL_ACTO` | `RESUELTO_NULIDAD_ACTO` |
 
-:::note[Decisiones pendientes del documento oficial]
-El documento oficial también menciona `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`. Aún no están modeladas en el backend y figuran como brecha documentada.
-:::
+| Endpoint | Uso |
+| --- | --- |
+| `POST /api/ttaip/resolucion/{apelacionId}/estese-a-lo-resuelto` | Cierra con pronunciamiento previo aplicable. |
+| `POST /api/ttaip/resolucion/{apelacionId}/nulidad-acto` | Cierra por nulidad y sustento de retroacción o nuevo pronunciamiento. |
+
+Ambas decisiones solo se permiten en `EN_RESOLUCION`, no se pueden emitir sobre expedientes ya resueltos y usan la regla general de cédulas/notificaciones para ciudadano y entidad pública. El campo `fundamentoLegal` guarda el sustento jurídico y `observaciones` permite registrar la referencia previa o la orden de nulidad/retroacción.
 
 ### BR-TTAIP-011 — Cumplimiento de resolución fundada
 
@@ -223,6 +234,8 @@ Validaciones obligatorias:
     | `IMPROCEDENTE` | `RESUELTO_IMPROCEDENTE` |
     | `CONCLUSION_SUSTRACCION_MATERIA` | `CONCLUSION_SUSTRACCION_MATERIA` |
     | `CONCLUSION_DESISTIMIENTO` | `CONCLUSION_DESISTIMIENTO` |
+    | `ESTESE_A_LO_RESUELTO` | `RESUELTO_ESTESE_A_LO_RESUELTO` |
+    | `NULIDAD_DEL_ACTO` | `RESUELTO_NULIDAD_ACTO` |
   </TabItem>
 </Tabs>
 
@@ -287,4 +300,5 @@ El reproceso conserva `cedulaOriginalId` y `notificacionOriginalId`, genera `ced
 | No permitir subsanación fuera de `EN_SUBSANACION`. | Protege la máquina de estados. |
 | No pasar a resolución final sin notificar segunda calificación. | Protege plazo legal y trazabilidad. |
 | No crear cumplimiento sobre resolución no fundada. | El seguimiento solo aplica a `FUNDADO` y `FUNDADO_EN_PARTE`. |
+| No resolver nuevamente un expediente cerrado. | Protege la resolución final, cédulas, notificaciones e historial del expediente. |
 | No usar elevación como etapa funcional nueva. | El flujo actual inicia directo en primera calificación. |

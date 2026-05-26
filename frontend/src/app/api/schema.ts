@@ -159,6 +159,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/resolucion/{apelacionId}/nulidad-acto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar nulidad del acto
+         * @description Resolución final: invalida la respuesta o procedimiento por vicios graves
+         */
+        post: operations["declararNulidadDelActo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ttaip/resolucion/{apelacionId}/infundado-en-parte": {
         parameters: {
             query?: never;
@@ -293,6 +313,26 @@ export interface paths {
          * @description Resolución final a favor del ciudadano
          */
         post: operations["declararFundado_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/resolucion/{apelacionId}/estese-a-lo-resuelto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declarar estese a lo resuelto
+         * @description Resolución final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado
+         */
+        post: operations["declararEsteseALoResuelto"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2780,6 +2820,7 @@ export interface components {
             tipoResolucion?: string;
             decision?: string;
             fundamentos?: string;
+            fundamentoLegal?: string;
             observaciones?: string;
             fechaResolucion?: string;
             /** Format: int64 */
@@ -2839,6 +2880,8 @@ export interface components {
         /** @description Datos para emitir resolución final de apelación */
         ResolucionRequest: {
             fundamentos: string;
+            fundamentoLegal?: string;
+            observaciones?: string;
             /** Format: int64 */
             miembroId?: number;
             iniciarProcesoDisciplinario?: boolean;
@@ -3962,6 +4005,33 @@ export interface operations {
             };
         };
     };
+    declararNulidadDelActo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
     declararInfundadoEnParte: {
         parameters: {
             query?: never;
@@ -4125,6 +4195,33 @@ export interface operations {
         };
     };
     declararFundado_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la apelación */
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    declararEsteseALoResuelto: {
         parameters: {
             query?: never;
             header?: never;
