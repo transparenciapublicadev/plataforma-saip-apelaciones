@@ -2,7 +2,11 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
+import pe.gob.saip.backend.model.entity.Ciudadano;
+import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.repository.ApelacionRepository;
 
 import java.time.LocalDate;
@@ -13,9 +17,15 @@ import java.util.Optional;
 public class ApelacionService {
 
     private final ApelacionRepository apelacionRepository;
+    private final CiudadanoService ciudadanoService;
+    private final EntidadService entidadService;
 
-    public ApelacionService(ApelacionRepository apelacionRepository) {
+    public ApelacionService(ApelacionRepository apelacionRepository,
+                            CiudadanoService ciudadanoService,
+                            EntidadService entidadService) {
         this.apelacionRepository = apelacionRepository;
+        this.ciudadanoService = ciudadanoService;
+        this.entidadService = entidadService;
     }
 
     @Transactional(readOnly = true)
@@ -107,6 +117,54 @@ public class ApelacionService {
     }
 
     @Transactional
+    public Apelacion crearExterna(CrearApelacionExternaRequest request) {
+        validarApelacionExterna(request);
+
+        Ciudadano ciudadano = ciudadanoService.findById(request.ciudadanoId())
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Ciudadano no encontrado con ID: " + request.ciudadanoId()));
+        Entidad entidadApelada = request.entidadId() != null
+                ? entidadService.findById(request.entidadId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException(
+                            "Entidad no encontrada con ID: " + request.entidadId()))
+                : null;
+
+        if (entidadApelada == null && esBlanco(request.entidadExternaNombre())) {
+            throw new IllegalArgumentException(
+                    "Debe registrar una entidad pública del catálogo o el nombre de la entidad externa");
+        }
+        if (apelacionRepository.existsByTipoOrigenAndNumeroSolicitudExternaIgnoreCaseAndCiudadano_IdUsuario(
+                Apelacion.TipoOrigenApelacion.EXTERNA,
+                request.numeroSolicitudExterna().trim(),
+                request.ciudadanoId())) {
+            throw new IllegalArgumentException(
+                    "Ya existe una apelación externa para el ciudadano y número de solicitud informado");
+        }
+
+        Apelacion apelacion = new Apelacion();
+        apelacion.setTipoOrigen(Apelacion.TipoOrigenApelacion.EXTERNA);
+        apelacion.setCiudadano(ciudadano);
+        apelacion.setEntidadApelada(entidadApelada);
+        apelacion.setEntidadExternaNombre(normalizarNullable(request.entidadExternaNombre()));
+        apelacion.setEntidadExternaRuc(normalizarNullable(request.entidadExternaRuc()));
+        apelacion.setEntidadExternaEmail(normalizarNullable(request.entidadExternaEmail()));
+        apelacion.setNumeroSolicitudExterna(request.numeroSolicitudExterna().trim());
+        apelacion.setFechaPresentacionSolicitudExterna(request.fechaPresentacionSolicitudExterna());
+        apelacion.setFechaRespuestaEntidad(request.fechaRespuestaEntidad());
+        apelacion.setTipoDenegatoria(request.tipoDenegatoria());
+        apelacion.setResumenSolicitudOriginal(request.resumenSolicitudOriginal().trim());
+        apelacion.setResumenRespuestaEntidad(normalizarNullable(request.resumenRespuestaEntidad()));
+        apelacion.setReferenciaDocumentoSolicitud(request.referenciaDocumentoSolicitud().trim());
+        apelacion.setReferenciaCargoRecepcion(normalizarNullable(request.referenciaCargoRecepcion()));
+        apelacion.setReferenciaRespuestaEntidad(normalizarNullable(request.referenciaRespuestaEntidad()));
+        apelacion.setEvidenciaSilencioAdministrativo(normalizarNullable(request.evidenciaSilencioAdministrativo()));
+        apelacion.setFundamentos(request.fundamentos().trim());
+        apelacion.setObservacion(normalizarNullable(request.observacion()));
+        apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
+        return save(apelacion);
+    }
+
+    @Transactional
     public Apelacion guardar(Apelacion apelacion) {
         return save(apelacion);
     }
@@ -129,6 +187,36 @@ public class ApelacionService {
     @Transactional(readOnly = true)
     public long countByCiudadanoId(Long ciudadanoId) {
         return apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(ciudadanoId).size();
+    }
+
+    private void validarApelacionExterna(CrearApelacionExternaRequest request) {
+        if (request.tipoDenegatoria() == Apelacion.TipoDenegatoria.EXPRESA) {
+            if (request.fechaRespuestaEntidad() == null) {
+                throw new IllegalArgumentException(
+                        "La fecha de respuesta de la entidad es obligatoria para una denegatoria expresa");
+            }
+            if (esBlanco(request.resumenRespuestaEntidad()) && esBlanco(request.referenciaRespuestaEntidad())) {
+                throw new IllegalArgumentException(
+                        "Para una denegatoria expresa debe registrar el resumen o referencia de respuesta de la entidad");
+            }
+        } else if (esBlanco(request.evidenciaSilencioAdministrativo())) {
+            throw new IllegalArgumentException(
+                    "Para una denegatoria tácita debe registrar sustento del silencio administrativo negativo");
+        }
+
+        if (request.fechaRespuestaEntidad() != null
+                && request.fechaRespuestaEntidad().isBefore(request.fechaPresentacionSolicitudExterna())) {
+            throw new IllegalArgumentException(
+                    "La fecha de respuesta de la entidad no puede ser anterior a la solicitud externa");
+        }
+    }
+
+    private boolean esBlanco(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private String normalizarNullable(String value) {
+        return esBlanco(value) ? null : value.trim();
     }
 }
 

@@ -809,19 +809,25 @@ public class ExpedienteTtaipService {
 
     private ExpedienteTtaip crearExpediente(Apelacion apelacion) {
         SalaTtaip sala = seleccionarSala();
+        String detalleOrigen = apelacion.getTipoOrigenEfectivo() == Apelacion.TipoOrigenApelacion.EXTERNA
+                ? "apelación externa sin SAIP local"
+                : "apelación vinculada a SAIP interna";
         ExpedienteTtaip expediente = new ExpedienteTtaip();
         expediente.setNumeroExpediente(apelacion.getExpediente());
         expediente.setApelacion(apelacion);
         expediente.setSala(sala);
         expediente.setEstado(apelacion.getEstado());
         expediente.setFechaApertura(LocalDateTime.now());
-        expediente.setTrazabilidadMinima(agregarTraza(null, LocalDateTime.now() + " - Expediente TTAIP abierto sin etapa de elevación"));
+        expediente.setTrazabilidadMinima(agregarTraza(
+                null,
+                LocalDateTime.now() + " - Expediente TTAIP abierto sin etapa de elevación; origen: " + detalleOrigen));
         expediente.setMiembrosAsignados(new LinkedHashSet<>(miembroService.obtenerMiembrosTTAIPActivosPorSala(sala.getNombre())));
         ExpedienteTtaip saved = expedienteRepository.save(expediente);
         registrarHistorial(
                 saved,
                 HistorialTtaip.TipoEvento.APERTURA_EXPEDIENTE,
-                "Expediente TTAIP abierto sin etapa de elevación; sala asignada: " + sala.getNombre(),
+                "Expediente TTAIP abierto sin etapa de elevación; origen: " + detalleOrigen
+                        + "; sala asignada: " + sala.getNombre(),
                 null,
                 saved.getEstado() != null ? saved.getEstado().name() : null,
                 "SISTEMA",
@@ -980,11 +986,11 @@ public class ExpedienteTtaipService {
 
     private Entidad entidadRequerida(ExpedienteTtaip expediente) {
         if (expediente.getApelacion() == null
-                || expediente.getApelacion().getSolicitud() == null
-                || expediente.getApelacion().getSolicitud().getEntidad() == null) {
-            throw new IllegalStateException("El expediente TTAIP debe estar vinculado a una entidad pública");
+                || expediente.getApelacion().getEntidadApeladaEfectiva() == null) {
+            throw new IllegalArgumentException(
+                    "La entidad apelada debe estar vinculada al catálogo para ejecutar esta operación TTAIP");
         }
-        return expediente.getApelacion().getSolicitud().getEntidad();
+        return expediente.getApelacion().getEntidadApeladaEfectiva();
     }
 
     private List<DescargoEntidadTtaip.EstadoDescargo> estadosDescargoActivos() {
@@ -1531,14 +1537,14 @@ public class ExpedienteTtaipService {
         if (destinatario == CedulaNotificacion.DestinatarioNotificacion.CIUDADANO) {
             return expediente.getApelacion().getCiudadano().getNombreCompleto();
         }
-        return expediente.getApelacion().getSolicitud().getEntidad().getNombre();
+        return expediente.getApelacion().getEntidadNombreEfectivo();
     }
 
     private String resolveEmailDestinatario(ExpedienteTtaip expediente, CedulaNotificacion.DestinatarioNotificacion destinatario) {
         if (destinatario == CedulaNotificacion.DestinatarioNotificacion.CIUDADANO) {
             return expediente.getApelacion().getCiudadano().getEmail();
         }
-        return expediente.getApelacion().getSolicitud().getEntidad().getEmail();
+        return expediente.getApelacion().getEntidadEmailEfectivo();
     }
 
     private String etiquetaDestinatario(CedulaNotificacion.DestinatarioNotificacion destinatario) {

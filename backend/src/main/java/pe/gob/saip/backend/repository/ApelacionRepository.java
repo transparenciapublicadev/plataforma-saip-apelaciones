@@ -15,7 +15,7 @@ public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
 
     Optional<Apelacion> findByExpediente(String expediente);
 
-    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad LEFT JOIN FETCH a.ciudadano WHERE a.expediente = :expediente")
+    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad LEFT JOIN FETCH a.entidadApelada LEFT JOIN FETCH a.ciudadano WHERE a.expediente = :expediente")
     Optional<Apelacion> findByExpedienteWithDetails(@Param("expediente") String expediente);
 
     List<Apelacion> findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(Long ciudadanoId);
@@ -35,22 +35,29 @@ public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
     List<Object[]> countByMonth(@Param("year") int year);
 
     @Query("""
-            SELECT COALESCE(s.entidad.acronimo, s.entidad.nombre), COUNT(a)
+            SELECT COALESCE(COALESCE(se.acronimo, ea.acronimo), COALESCE(se.nombre, COALESCE(ea.nombre, a.entidadExternaNombre))), COUNT(a)
             FROM Apelacion a
-            JOIN a.solicitud s
-            WHERE s.entidad IS NOT NULL
-            GROUP BY s.entidad.idEntidad, s.entidad.acronimo, s.entidad.nombre
+            LEFT JOIN a.solicitud s
+            LEFT JOIN s.entidad se
+            LEFT JOIN a.entidadApelada ea
+            WHERE se IS NOT NULL OR ea IS NOT NULL OR a.entidadExternaNombre IS NOT NULL
+            GROUP BY se.idEntidad, se.acronimo, se.nombre, ea.idEntidad, ea.acronimo, ea.nombre, a.entidadExternaNombre
             ORDER BY COUNT(a) DESC
             """)
     List<Object[]> countByEntidad();
 
-    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud LEFT JOIN FETCH a.ciudadano WHERE a.id = :id")
+    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud LEFT JOIN FETCH a.entidadApelada LEFT JOIN FETCH a.ciudadano WHERE a.id = :id")
     Optional<Apelacion> findByIdWithDetails(@Param("id") Long id);
 
-    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad WHERE a.ciudadano.idUsuario = :ciudadanoId ORDER BY a.fechaApelacion DESC")
+    @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad LEFT JOIN FETCH a.entidadApelada WHERE a.ciudadano.idUsuario = :ciudadanoId ORDER BY a.fechaApelacion DESC")
     List<Apelacion> findByCiudadanoWithSolicitud(@Param("ciudadanoId") Long ciudadanoId);
 
     @Query("SELECT a FROM Apelacion a WHERE a.estado NOT IN :estadosFinales ORDER BY a.fechaApelacion DESC")
     List<Apelacion> findPendientes(@Param("estadosFinales") List<Apelacion.EstadoApelacion> estadosFinales);
+
+    boolean existsByTipoOrigenAndNumeroSolicitudExternaIgnoreCaseAndCiudadano_IdUsuario(
+            Apelacion.TipoOrigenApelacion tipoOrigen,
+            String numeroSolicitudExterna,
+            Long ciudadanoId);
 }
 
