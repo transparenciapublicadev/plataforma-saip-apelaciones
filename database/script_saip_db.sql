@@ -51,6 +51,56 @@ BEGIN
 END//
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS add_index_if_missing;
+DELIMITER //
+CREATE PROCEDURE add_index_if_missing(IN p_table VARCHAR(64), IN p_index VARCHAR(64), IN p_columns TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = p_table
+          AND INDEX_NAME = p_index
+    ) THEN
+        SET @ddl = CONCAT('ALTER TABLE ', p_table, ' ADD INDEX ', p_index, ' (', p_columns, ')');
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS add_foreign_key_if_missing;
+DELIMITER //
+CREATE PROCEDURE add_foreign_key_if_missing(
+    IN p_table VARCHAR(64),
+    IN p_constraint VARCHAR(64),
+    IN p_column VARCHAR(64),
+    IN p_reference_table VARCHAR(64),
+    IN p_reference_column VARCHAR(64)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND TABLE_NAME = p_table
+          AND CONSTRAINT_NAME = p_constraint
+          AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+    ) THEN
+        SET @ddl = CONCAT(
+            'ALTER TABLE ', p_table,
+            ' ADD CONSTRAINT ', p_constraint,
+            ' FOREIGN KEY (', p_column, ') REFERENCES ',
+            p_reference_table, ' (', p_reference_column, ')'
+        );
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
 CALL add_column_if_missing('miembros_ttaip', 'periodo_inicio', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'periodo_fin', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'presidente_tribunal', 'TINYINT(1) NULL DEFAULT 0');
@@ -58,6 +108,30 @@ CALL add_column_if_missing('resoluciones', 'id_expediente_ttaip', 'BIGINT NULL')
 CALL add_column_if_missing('resoluciones', 'id_sala_ttaip', 'BIGINT NULL');
 CALL add_column_if_missing('solicitudes', 'consentimiento_datos_personales', 'TINYINT(1) NOT NULL DEFAULT 1');
 CALL add_column_if_missing('solicitudes', 'canal_notificacion', 'VARCHAR(40) NOT NULL DEFAULT ''CASILLA_ELECTRONICA''');
+CALL add_column_if_missing('apelaciones', 'tipo_origen', 'VARCHAR(20) NOT NULL DEFAULT ''SAIP_INTERNA''');
+CALL add_column_if_missing('apelaciones', 'id_entidad_apelada', 'BIGINT NULL');
+CALL add_column_if_missing('apelaciones', 'entidad_externa_nombre', 'VARCHAR(200) NULL');
+CALL add_column_if_missing('apelaciones', 'entidad_externa_ruc', 'VARCHAR(20) NULL');
+CALL add_column_if_missing('apelaciones', 'entidad_externa_email', 'VARCHAR(120) NULL');
+CALL add_column_if_missing('apelaciones', 'numero_solicitud_externa', 'VARCHAR(100) NULL');
+CALL add_column_if_missing('apelaciones', 'fecha_presentacion_solicitud_externa', 'DATE NULL');
+CALL add_column_if_missing('apelaciones', 'fecha_respuesta_entidad', 'DATE NULL');
+CALL add_column_if_missing('apelaciones', 'tipo_denegatoria', 'VARCHAR(20) NULL');
+CALL add_column_if_missing('apelaciones', 'resumen_solicitud_original', 'TEXT NULL');
+CALL add_column_if_missing('apelaciones', 'resumen_respuesta_entidad', 'TEXT NULL');
+CALL add_column_if_missing('apelaciones', 'referencia_documento_solicitud', 'VARCHAR(500) NULL');
+CALL add_column_if_missing('apelaciones', 'referencia_cargo_recepcion', 'VARCHAR(500) NULL');
+CALL add_column_if_missing('apelaciones', 'referencia_respuesta_entidad', 'VARCHAR(500) NULL');
+CALL add_column_if_missing('apelaciones', 'evidencia_silencio_administrativo', 'TEXT NULL');
+CALL add_column_if_missing('apelaciones', 'observacion', 'TEXT NULL');
+
+ALTER TABLE apelaciones MODIFY COLUMN id_solicitud BIGINT NULL;
+
+UPDATE apelaciones
+SET tipo_origen = 'SAIP_INTERNA'
+WHERE id_solicitud IS NOT NULL;
+CALL add_index_if_missing('apelaciones', 'idx_apelacion_entidad_apelada', 'id_entidad_apelada');
+CALL add_foreign_key_if_missing('apelaciones', 'fk_apelacion_entidad_apelada', 'id_entidad_apelada', 'entidades', 'id_entidad');
 
 CREATE TABLE IF NOT EXISTS observaciones_solicitud (
     id_observacion BIGINT NOT NULL AUTO_INCREMENT,
@@ -474,6 +548,8 @@ CALL add_column_if_missing('reprocesos_notificacion', 'id_cedula_nueva', 'BIGINT
 CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', 'BIGINT NULL');
 
 DROP PROCEDURE IF EXISTS add_column_if_missing;
+DROP PROCEDURE IF EXISTS add_index_if_missing;
+DROP PROCEDURE IF EXISTS add_foreign_key_if_missing;
 
 START TRANSACTION;
 
