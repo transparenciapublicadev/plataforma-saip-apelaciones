@@ -41,6 +41,8 @@ public record ApelacionDTO(
     String referenciaRespuestaEntidad,
     String evidenciaSilencioAdministrativo,
     String observacion,
+    @Schema(description = "Elevación formal cuando la apelación fue presentada inicialmente ante la entidad pública")
+    ElevacionApelacionTtaipDTO elevacion,
     @Schema(description = "Resolución final (RESOLUCION_FINAL)")
     ResolucionDTO resolucion,
     @Schema(description = "Resolución de primera calificación (PRIMERA_CALIFICACION)")
@@ -87,6 +89,7 @@ public record ApelacionDTO(
             a.getReferenciaRespuestaEntidad(),
             a.getEvidenciaSilencioAdministrativo(),
             a.getObservacion(),
+            a.getElevacion() != null ? ElevacionApelacionTtaipDTO.from(a.getElevacion()) : null,
             a.getResolucion() != null ? ResolucionDTO.from(a.getResolucion()) : null,
             a.getResolucionPrimeraCalificacion() != null ? ResolucionDTO.from(a.getResolucionPrimeraCalificacion()) : null,
             a.getResolucionSegundaCalificacion() != null ? ResolucionDTO.from(a.getResolucionSegundaCalificacion()) : null,

@@ -141,6 +141,11 @@ public class Apelacion {
     @OneToOne(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private ExpedienteTtaip expedienteTtaip;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToOne(mappedBy = "apelacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private ElevacionApelacionTtaip elevacion;
+
     @PrePersist
     protected void onCreate() {
         fechaApelacion = LocalDateTime.now();
