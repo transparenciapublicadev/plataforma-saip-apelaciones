@@ -258,6 +258,57 @@
             </div>
           </div>
         </section>
+      } @else {
+        <section data-motion-item class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">00 · Canal de presentación</span>
+              <h2 class="form-section-title">¿Dónde presenta su recurso?</h2>
+            </div>
+            <span class="font-display" style="font-size: 48px; line-height: 1; color: color-mix(in srgb, var(--brand-700) 35%, transparent)">00</span>
+          </div>
+          <div class="p-6 md:p-8 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                type="button"
+                class="reference-option-card rounded-lg p-4 text-left transition-all"
+                [style.background]="canalPresentacion() === 'DIRECTA_TTAIP' ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="canalPresentacion() === 'DIRECTA_TTAIP' ? '1.5px solid var(--brand-700)' : '1px solid var(--border)'"
+                (click)="canalPresentacion.set('DIRECTA_TTAIP')">
+                <span class="eyebrow">Ingreso directo</span>
+                <span class="block text-sm font-semibold text-foreground mt-1">Presentar al TTAIP</span>
+                <span class="block text-xs text-muted-foreground mt-1">El expediente ingresa inmediatamente a primera calificación.</span>
+              </button>
+              <button
+                type="button"
+                class="reference-option-card rounded-lg p-4 text-left transition-all"
+                [style.background]="canalPresentacion() === 'ANTE_ENTIDAD' ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="canalPresentacion() === 'ANTE_ENTIDAD' ? '1.5px solid var(--brand-700)' : '1px solid var(--border)'"
+                (click)="canalPresentacion.set('ANTE_ENTIDAD')">
+                <span class="eyebrow">Elevación formal</span>
+                <span class="block text-sm font-semibold text-foreground mt-1">Presentar ante la entidad</span>
+                <span class="block text-xs text-muted-foreground mt-1">La entidad dispone de 2 días hábiles para elevar el recurso al TTAIP.</span>
+              </button>
+            </div>
+
+            @if (esPresentacionAnteEntidad()) {
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                <div class="field">
+                  <label class="field-label">Fecha de presentación ante la entidad <span class="req">*</span></label>
+                  <input class="field-input" type="date" [(ngModel)]="fechaPresentacionAnteEntidad" name="fechaPresentacionAnteEntidad" />
+                </div>
+                <div class="field">
+                  <label class="field-label">Referencia del cargo <span class="req">*</span></label>
+                  <input class="field-input" [(ngModel)]="referenciaCargoPresentacionEntidad" name="referenciaCargoPresentacionEntidad" placeholder="Código, URL o referencia documental" />
+                </div>
+                <div class="field md:col-span-2">
+                  <label class="field-label">Observación</label>
+                  <textarea class="field-input" rows="3" [(ngModel)]="observacionPresentacionEntidad" name="observacionPresentacionEntidad" placeholder="Detalle adicional para la trazabilidad de la presentación"></textarea>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
       }
 
       <section data-motion-item class="form-shell">
@@ -404,10 +455,10 @@
     titleLead="Confirme"
     titleEmphasis="su apelación"
     eyebrow="Revisión final · Apelación"
-    description="Revise el expediente, los documentos y los fundamentos antes de presentar el recurso al Tribunal."
+    [description]="confirmDescription()"
     [summary]="apelacionConfirmSummary()"
     [warning]="apelacionWarning()"
-    confirmLabel="Presentar al Tribunal"
+    [confirmLabel]="confirmLabel()"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="crearApelacion()">
   </app-reference-confirm-modal>
@@ -416,14 +467,14 @@
     [open]="successModalAbierto()"
     variant="apelacion-presentada"
     tone="success"
-    eyebrow="Apelación presentada"
-    title="Recurso recibido por el Tribunal"
-    description="Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento."
+    [eyebrow]="successEyebrow()"
+    [title]="successTitle()"
+    [description]="successDescription()"
     [expediente]="expedienteTtaip()"
     [expedienteHint]="successExpedienteHint()"
-    [plazoDias]="7"
+    [plazoDias]="successPlazoDias()"
     plazoTipo="hábiles"
-    plazoDescripcion="El TTAIP realizará la 1ra calificación de admisibilidad dentro de este plazo."
+    [plazoDescripcion]="successPlazoDescripcion()"
     plazoNorma="Reglamento del TTAIP — Ley N° 27806"
     [metadata]="apelacionSuccessMetadata()"
     [nextSteps]="apelacionNextSteps()"

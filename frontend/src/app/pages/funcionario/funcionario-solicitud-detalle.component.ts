@@ -317,7 +317,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   getEstadoDisplay(value: string | undefined): string {
     if ((value || '').toUpperCase() === 'PENDIENTE_ELEVACION') {
-      return 'EN CALIFICACION 1';
+      return 'PENDIENTE DE ELEVACION AL TTAIP';
     }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }

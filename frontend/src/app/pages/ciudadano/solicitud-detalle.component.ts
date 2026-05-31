@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
+import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
+import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
 import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
@@ -30,6 +32,7 @@ interface TimelineEvent {
 export class SolicitudDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
+  private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
 
   solicitud = signal<Solicitud | null>(null);
@@ -41,6 +44,11 @@ export class SolicitudDetalleComponent implements OnInit {
   subsanacionLoading = signal<boolean>(false);
   subsanacionError = signal<string>('');
   subsanacionSuccess = signal<string>('');
+  omisionElevacionPrueba = signal<string>('');
+  omisionElevacionObservacion = signal<string>('');
+  omisionElevacionLoading = signal<boolean>(false);
+  omisionElevacionError = signal<string>('');
+  omisionElevacionSuccess = signal<string>('');
 
   readonly tabs: RequestTab[] = [
     { id: 'solicitud', label: 'Solicitud' },
@@ -122,9 +130,58 @@ export class SolicitudDetalleComponent implements OnInit {
 
   getEstadoDisplay(value: string | undefined): string {
     if ((value || '').toUpperCase() === 'PENDIENTE_ELEVACION') {
-      return 'EN CALIFICACION 1';
+      return 'PENDIENTE DE ELEVACION AL TTAIP';
     }
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  }
+
+  elevacionApelacion(): ElevacionApelacionTtaip | null {
+    return (this.solicitud()?.apelacion?.elevacion as ElevacionApelacionTtaip | undefined) || null;
+  }
+
+  puedeComunicarOmisionElevacion(): boolean {
+    const elevacion = this.elevacionApelacion();
+    if (!elevacion || elevacion.estadoElevacion === 'COMUNICADA_POR_CIUDADANO') {
+      return false;
+    }
+    if (elevacion.estadoElevacion === 'VENCIDA_NO_ELEVADA') {
+      return true;
+    }
+    return elevacion.estadoElevacion === 'PENDIENTE'
+      && new Date(`${elevacion.fechaLimiteElevacion}T23:59:59`).getTime() < Date.now();
+  }
+
+  comunicarOmisionElevacion(): void {
+    const apelacionId = this.solicitud()?.apelacion?.id;
+    const referencia = this.omisionElevacionPrueba().trim();
+    if (!apelacionId || !this.puedeComunicarOmisionElevacion()) {
+      return;
+    }
+    if (!referencia) {
+      this.omisionElevacionError.set('Adjunte o registre la referencia de su prueba de presentación.');
+      return;
+    }
+
+    this.omisionElevacionLoading.set(true);
+    this.omisionElevacionError.set('');
+    this.omisionElevacionSuccess.set('');
+    this.apelacionService.comunicarOmision(apelacionId, {
+      referenciaPruebaOmision: referencia,
+      observacion: this.omisionElevacionObservacion().trim() || undefined
+    }).subscribe({
+      next: () => {
+        this.omisionElevacionLoading.set(false);
+        this.omisionElevacionPrueba.set('');
+        this.omisionElevacionObservacion.set('');
+        this.omisionElevacionSuccess.set('Comunicación enviada al TTAIP con su prueba de presentación.');
+        const expediente = this.solicitud()?.expediente;
+        if (expediente) this.cargarSolicitud(expediente);
+      },
+      error: (error) => {
+        this.omisionElevacionLoading.set(false);
+        this.omisionElevacionError.set(error?.error?.detail || 'No se pudo comunicar la omisión al TTAIP.');
+      }
+    });
   }
 
   observaciones(): ObservacionSolicitud[] {
@@ -356,6 +413,21 @@ export class SolicitudDetalleComponent implements OnInit {
         date: liquidacion.fechaNotificacion,
         status: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'completed' : 'current',
         icon: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'check' : 'search'
+      });
+    }
+
+    const elevacion = this.elevacionApelacion();
+    if (elevacion) {
+      const finalizada = elevacion.estadoElevacion === 'ELEVADA'
+        || elevacion.estadoElevacion === 'ADMITIDA_EXCEPCIONALMENTE';
+      events.push({
+        title: finalizada ? 'Apelación elevada al TTAIP' : 'Elevación de apelación pendiente',
+        description: finalizada
+          ? 'La apelación ingresó al Tribunal para primera calificación.'
+          : `La entidad debe elevar su apelación hasta ${elevacion.fechaLimiteElevacion}.`,
+        date: elevacion.fechaElevacionTtaip || elevacion.fechaPresentacionAnteEntidad,
+        status: finalizada ? 'completed' : 'current',
+        icon: finalizada ? 'check' : 'search'
       });
     }
 

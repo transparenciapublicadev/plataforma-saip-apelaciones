@@ -56,6 +56,55 @@
         </div>
       }
 
+      @if (elevacionApelacion(); as elevacion) {
+        <div data-reveal class="rounded-lg p-5" style="background: linear-gradient(90deg, rgba(176,136,66,0.10), transparent); border: 1px solid var(--border); border-left: 3px solid var(--gold-dark)">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 12h16m-6-6 6 6-6 6"/><path stroke-width="2" d="M4 6v12"/></svg>
+            </div>
+            <div class="flex-1">
+              <span class="eyebrow" style="color: var(--gold-dark)">Elevación al TTAIP · 2 días hábiles</span>
+              <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+                Estado: <span class="font-semibold">{{ getEstadoDisplay(elevacion.estadoElevacion) }}</span>.
+                La entidad recibió su recurso el <span class="font-mono font-semibold">{{ elevacion.fechaPresentacionAnteEntidad | date:'dd/MM/yyyy' }}</span>
+                y debe remitirlo al Tribunal hasta el <span class="font-mono font-semibold">{{ elevacion.fechaLimiteElevacion | date:'dd/MM/yyyy' }}</span>.
+              </p>
+              <p class="text-xs text-muted-foreground mt-2">Cargo registrado: <span class="font-mono">{{ elevacion.referenciaCargoPresentacion }}</span></p>
+            </div>
+          </div>
+
+          @if (puedeComunicarOmisionElevacion()) {
+            <div class="rule-ornament"></div>
+            <div class="space-y-3">
+              <span class="eyebrow" style="color: var(--brand-700)">Comunicar omisión al Tribunal</span>
+              <p class="text-sm text-foreground/80">El plazo venció sin remisión. Registre la prueba de presentación para solicitar admisión excepcional.</p>
+              <input
+                class="field-input"
+                type="text"
+                [ngModel]="omisionElevacionPrueba()"
+                (ngModelChange)="omisionElevacionPrueba.set($event)"
+                placeholder="Ej. cargo-apelacion-entidad.pdf" />
+              <textarea
+                class="field-input"
+                rows="3"
+                [ngModel]="omisionElevacionObservacion()"
+                (ngModelChange)="omisionElevacionObservacion.set($event)"
+                placeholder="Observación adicional opcional"></textarea>
+              @if (omisionElevacionError()) {
+                <p class="text-sm" style="color: var(--destructive)">{{ omisionElevacionError() }}</p>
+              }
+              <button type="button" class="btn-brand !px-5 !py-3" [disabled]="omisionElevacionLoading()" (click)="comunicarOmisionElevacion()">
+                {{ omisionElevacionLoading() ? 'Enviando...' : 'Comunicar omisión al TTAIP' }}
+              </button>
+            </div>
+          }
+
+          @if (omisionElevacionSuccess()) {
+            <p class="text-sm mt-3" style="color: var(--success)">{{ omisionElevacionSuccess() }}</p>
+          }
+        </div>
+      }
+
       @if (observacionPendiente(); as observacion) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">

@@ -537,6 +537,25 @@ export class CiudadanoDashboardComponent implements OnInit {
       };
     }
 
+    if (estadoApelacion === 'PENDIENTE_ELEVACION') {
+      const elevacion = solicitud.apelacion?.elevacion;
+      return {
+        eyebrow: 'Apelacion presentada ante la entidad',
+        titulo: 'La entidad debe elevar su recurso al Tribunal',
+        detalle: `La entidad tiene 2 dias habiles para remitir el recurso. Fecha limite: ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}.`,
+        metricValue: '2',
+        metricUnit: 'dias habiles',
+        ctaLabel: 'Ver elevacion',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'scale',
+        toneColor: 'var(--gold-dark)',
+        toneBg: 'linear-gradient(135deg, rgba(176,136,66,0.12), var(--card) 70%)',
+        toneSoft: 'rgba(176,136,66,0.30)',
+        expediente,
+        entidad,
+      };
+    }
+
     if (this.tieneApelacionActiva(solicitud)) {
       return {
         eyebrow: 'El Tribunal esta revisando su caso',
@@ -658,10 +677,16 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
 
     if (this.tieneApelacionActiva(solicitud)) {
+      const elevacion = solicitud.apelacion?.elevacion;
+      const pendienteElevacion = estadoApelacion === 'PENDIENTE_ELEVACION';
       steps.push({
         key: 'tribunal',
-        label: `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
-        meta: solicitud.apelacion?.expediente || undefined,
+        label: pendienteElevacion
+          ? 'Pendiente de elevacion por la entidad'
+          : `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
+        meta: pendienteElevacion
+          ? `Vence ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}`
+          : solicitud.apelacion?.expediente || undefined,
         status: 'active'
       });
       steps.push({ key: 'resolucion', label: 'Resolucion final', status: 'pending' });

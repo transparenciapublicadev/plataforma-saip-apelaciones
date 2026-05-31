@@ -146,7 +146,11 @@ export class TtaipDashboardComponent implements OnInit {
     })
   );
 
-  readonly queueItems = computed(() => this.apelaciones().map((apelacion) => this.toQueueItem(apelacion)));
+  readonly queueItems = computed(() =>
+    this.apelaciones()
+      .filter((apelacion) => !this.esPendienteElevacion(apelacion))
+      .map((apelacion) => this.toQueueItem(apelacion))
+  );
 
   readonly counts = computed<Record<StageKey, number>>(() => {
     const base: Record<StageKey, number> = {
@@ -422,7 +426,13 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   private countByStage(apelaciones: Apelacion[], key: StageKey): number {
-    return apelaciones.filter((apelacion) => this.mapEstadoToStage(apelacion.estado) === key).length;
+    return apelaciones.filter((apelacion) =>
+      !this.esPendienteElevacion(apelacion) && this.mapEstadoToStage(apelacion.estado) === key
+    ).length;
+  }
+
+  private esPendienteElevacion(apelacion: Apelacion): boolean {
+    return this.normalizeDecision(apelacion.estado) === 'PENDIENTE_ELEVACION';
   }
 
   private toQueueItem(apelacion: Apelacion): QueueItem {

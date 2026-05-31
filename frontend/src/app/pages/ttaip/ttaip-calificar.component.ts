@@ -39,7 +39,7 @@ export class TtaipCalificarComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
-  private readonly primeraCalificacionEstados = new Set<string>(['PENDIENTE_ELEVACION', 'EN_CALIFICACION_1']);
+  private readonly primeraCalificacionEstados = new Set<string>(['EN_CALIFICACION_1']);
 
   apelacion = signal<Apelacion | null>(null);
   loading = signal<boolean>(false);
