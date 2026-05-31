@@ -3,8 +3,10 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
+import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
+import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 
 type BucketKey = 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
@@ -43,6 +45,7 @@ interface DistribucionDia {
 })
 export class FuncionarioDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
+  private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
 
   private readonly plazoLegal = 10;
@@ -93,6 +96,9 @@ export class FuncionarioDashboardComponent implements OnInit {
   solicitudes = signal<Solicitud[]>([]);
   loading = signal<boolean>(true);
   error = signal<string>('');
+  elevacionesPendientes = signal<ElevacionApelacionTtaip[]>([]);
+  elevacionEnProceso = signal<number | null>(null);
+  referenciasElevacion: Record<number, string> = {};
 
   selectedBucket = signal<BucketKey>('san');
   busqueda = signal<string>('');
@@ -237,6 +243,7 @@ export class FuncionarioDashboardComponent implements OnInit {
       this.nombreEntidad.set(sesion.entidadNombre || 'Entidad');
       this.entidadId.set(sesion.entidadId || 0);
       this.cargarSolicitudes();
+      this.cargarElevacionesPendientes();
     }
   }
 
@@ -298,6 +305,44 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   getDiasColor(bucket: BucketKey): string {
     return this.buckets.find((item) => item.key === bucket)?.color ?? 'var(--brand-600)';
+  }
+
+  cargarElevacionesPendientes(): void {
+    const entidadId = this.entidadId();
+    if (entidadId === 0) return;
+
+    this.apelacionService.findPendientesElevacionByEntidadId(entidadId).subscribe({
+      next: (elevaciones) => this.elevacionesPendientes.set(elevaciones),
+      error: (err) => {
+        const mensaje = err.error?.detail || err.error?.mensaje || 'No se pudo consultar la bandeja de elevaciones';
+        this.error.set(mensaje);
+      }
+    });
+  }
+
+  elevarApelacion(elevacion: ElevacionApelacionTtaip): void {
+    const referencia = (this.referenciasElevacion[elevacion.apelacionId] || '').trim();
+    if (!referencia) {
+      this.error.set('Ingrese la referencia documental del expediente elevado al TTAIP');
+      return;
+    }
+
+    this.elevacionEnProceso.set(elevacion.apelacionId);
+    this.error.set('');
+    this.apelacionService.elevar(elevacion.apelacionId, {
+      responsableEntidad: this.nombreFuncionario(),
+      referenciaExpedienteElevado: referencia
+    }).subscribe({
+      next: () => {
+        delete this.referenciasElevacion[elevacion.apelacionId];
+        this.elevacionEnProceso.set(null);
+        this.cargarElevacionesPendientes();
+      },
+      error: (err) => {
+        this.elevacionEnProceso.set(null);
+        this.error.set(err.error?.detail || err.error?.mensaje || 'No se pudo elevar la apelación al TTAIP');
+      }
+    });
   }
 
   getDiasValor(item: QueueItem): string {
