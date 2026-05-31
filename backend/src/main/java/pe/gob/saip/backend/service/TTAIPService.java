@@ -63,8 +63,9 @@ public class TTAIPService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
         stats.put("pendientesAdmision",
-                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
+        stats.put("pendientesElevacion",
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
         stats.put("enProceso",
                 apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_2)
                 + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION)
@@ -92,11 +93,7 @@ public class TTAIPService {
 
     @Transactional(readOnly = true)
     public List<ApelacionDTO> listarPrimeraCalificacion() {
-        List<Apelacion> apelaciones = new ArrayList<>();
-        apelaciones.addAll(apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
-        apelaciones.addAll(apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
-
-        return apelaciones.stream()
+        return apelacionService.obtenerApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1).stream()
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
     }
