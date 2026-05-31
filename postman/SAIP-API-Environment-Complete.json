@@ -360,13 +360,6 @@
       "description": "Fallback alineado con database/script_saip_db.sql para login de funcionario."
     },
     {
-      "key": "usuarioId",
-      "value": "1",
-      "type": "default",
-      "enabled": true,
-      "description": "ID de usuario base para activar/desactivar."
-    },
-    {
       "key": "createdUsuarioId",
       "value": "",
       "type": "default",
@@ -727,6 +720,26 @@
       "key": "cumplimientoActivoPrevioId",
       "value": "",
       "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "apelacionExternaExpresaId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "expedienteTtaipExternoExpresaId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "apelacionExternaTacitaId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "expedienteTtaipExternoTacitaId",
+      "value": "",
       "enabled": true
     }
   ],
