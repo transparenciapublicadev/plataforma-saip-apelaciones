@@ -92,6 +92,7 @@ export class SolicitudService {
     | `findByCiudadanoId(id)` | GET | `/apelaciones/ciudadano/{id}` | Por ciudadano |
     | `getEstadisticas()` | GET | `/apelaciones/estadisticas` | Estadísticas |
     | `crear(apelacion)` | POST | `/apelaciones` | Crear apelación |
+    | `crearExterna(apelacion)` | POST | `/apelaciones/externa` | Crear apelación sin SAIP local |
     | `actualizar(id, data)` | PUT | `/apelaciones/{id}` | Actualizar |
     | `cambiarEstado(id, estado)` | PATCH | `/apelaciones/{id}/estado` | Cambiar estado |
     | `subsanar(id, data)` | POST | `/apelaciones/{id}/subsanacion` | Presentar subsanación |

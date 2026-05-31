@@ -171,6 +171,7 @@ graph LR
     | `GET` | `/apelaciones/estado/{estado}` | Filtro por estado. | TTAIP |
     | `GET` | `/apelaciones/ciudadano/{ciudadanoId}` | Bandeja del ciudadano. | JWT |
     | `POST` | `/apelaciones` | Crea apelación vinculada a una SAIP. | CIUDADANO |
+    | `POST` | `/apelaciones/externa` | Crea apelación por SAIP tramitada fuera de la plataforma. | CIUDADANO |
     | `PUT` | `/apelaciones/{id}` | Actualización administrativa. | JWT |
     | `PATCH` | `/apelaciones/{id}/estado` | Cambio controlado de estado. | JWT |
     | `POST` | `/apelaciones/{id}/subsanacion` | Presenta subsanación ciudadana. | CIUDADANO |
@@ -198,6 +199,23 @@ graph LR
       "expediente": "00007-2026-JUS/TTAIP",
       "estado": "EN_CALIFICACION_1",
       "fundamentos": "La entidad no entregó la información solicitada dentro del plazo legal."
+    }
+    ```
+
+    ```json
+    // POST /api/apelaciones/externa
+    {
+      "ciudadanoId": 1,
+      "entidadId": 2,
+      "numeroSolicitudExterna": "MPV-2026-00421",
+      "fechaPresentacionSolicitudExterna": "2026-05-12",
+      "fechaRespuestaEntidad": "2026-05-21",
+      "tipoDenegatoria": "EXPRESA",
+      "resumenSolicitudOriginal": "Solicitud de contratos y órdenes de servicio.",
+      "resumenRespuestaEntidad": "La entidad denegó el acceso solicitado.",
+      "referenciaDocumentoSolicitud": "solicitud-original.pdf",
+      "referenciaRespuestaEntidad": "respuesta-entidad.pdf",
+      "fundamentos": "La denegatoria no acredita una excepción legal aplicable."
     }
     ```
   </TabItem>
