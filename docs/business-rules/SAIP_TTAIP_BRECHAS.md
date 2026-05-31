@@ -17,7 +17,7 @@ Esta matriz documenta que ya esta cubierto, que esta parcial y que debe planific
 
 ## Resumen ejecutivo
 
-El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la apelacion externa sin SAIP local, la elevacion por entidad dentro de 2 dias habiles con omision acreditable y admision excepcional, la excepcion de inadmisibilidad notificada solo al ciudadano, descargos de entidad con suspension de plazo de resolucion, suspensiones adicionales por informe oral e informacion complementaria, constancias/acuses/validacion manual operativa para notificaciones TTAIP, cumplimiento de resolucion fundada o fundada en parte en 7 dias habiles, decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. La brecha principal pendiente es la integracion real con proveedor de correo/casilla electronica.
+El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la apelacion externa sin SAIP local, la elevacion por entidad dentro de 2 dias habiles con omision acreditable y admision excepcional, la excepcion de inadmisibilidad notificada solo al ciudadano, descargos de entidad con suspension de plazo de resolucion, suspensiones adicionales por informe oral e informacion complementaria, constancias/acuses/validacion manual operativa para notificaciones TTAIP, cumplimiento de resolucion fundada o fundada en parte en 7 dias habiles, decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas del motor común de notificaciones y la integración SMTP configurable por variables de entorno están cubiertas; la integración real con casilla electrónica sigue pendiente de contrato API oficial.
 
 ## Brechas por regla
 
@@ -105,8 +105,8 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 ## Reglas faltantes o parciales prioritarias
 
 1. Definir legalmente el plazo de apelacion por denegatoria expresa: calendario vs habiles.
-2. Conectar el canal elegido de SAIP con evidencias reales de notificacion cuando se implemente el motor comun de notificaciones.
-3. Integrar proveedor real de correo/casilla electronica y fallback automatico de canal.
+2. Conectar el canal elegido de SAIP con evidencias reales de notificacion cuando se implemente el motor comun de notificaciones (Cubierto en esta iteración con intentos_notificacion).
+3. Integrar proveedor real de correo/casilla electronica y fallback de canal.
 
 ## Cambios implementados en esta iteracion
 
