@@ -326,3 +326,8 @@ VALUES (3, 'recurso_apelacion_00001_2025.pdf', '/uploads/apelaciones/1/recurso_a
 
 INSERT IGNORE INTO documentos (id_documento, nombre_archivo, ruta_archivo, tipo_archivo, tamanio, tipo_documento, fecha_subida, id_resolucion)
 VALUES (4, 'resolucion_000001_2025_primera_sala.pdf', '/uploads/resoluciones/4/resolucion_000001_2025_primera_sala.pdf', 'application/pdf', 1048576, 'RESOLUCION_TTAIP', DATE_SUB(NOW(), INTERVAL 5 DAY), 4);
+
+-- Preserve the origin of legacy appeals created from a local SAIP.
+UPDATE apelaciones
+SET tipo_origen = 'SAIP_INTERNA'
+WHERE id_solicitud IS NOT NULL;
