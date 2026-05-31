@@ -428,7 +428,7 @@ export class TtaipDashboardComponent implements OnInit {
   private toQueueItem(apelacion: Apelacion): QueueItem {
     const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
     const entidad = (apelacion.entidadNombre || 'Entidad pública').trim();
-    const descripcion = (apelacion.solicitudAsunto || apelacion.fundamentos || 'Recurso en trámite').trim();
+    const descripcion = (apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Recurso en trámite').trim();
     const stageKey = this.mapEstadoToStage(apelacion.estado);
     const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
     const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);

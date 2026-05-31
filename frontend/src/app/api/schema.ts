@@ -1042,6 +1042,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/externa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear apelación externa
+         * @description Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local
+         */
+        post: operations["crearExterna"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuarios/{id}/estado": {
         parameters: {
             query?: never;
@@ -2627,6 +2647,21 @@ export interface components {
             /** Format: int64 */
             entidadId?: number;
             entidadNombre?: string;
+            tipoOrigen?: string;
+            entidadExternaNombre?: string;
+            entidadExternaRuc?: string;
+            entidadExternaEmail?: string;
+            numeroSolicitudExterna?: string;
+            fechaPresentacionSolicitudExterna?: string;
+            fechaRespuestaEntidad?: string;
+            tipoDenegatoria?: string;
+            resumenSolicitudOriginal?: string;
+            resumenRespuestaEntidad?: string;
+            referenciaDocumentoSolicitud?: string;
+            referenciaCargoRecepcion?: string;
+            referenciaRespuestaEntidad?: string;
+            evidenciaSilencioAdministrativo?: string;
+            observacion?: string;
             /** @description Resolución final (RESOLUCION_FINAL) */
             resolucion?: components["schemas"]["ResolucionDTO"];
             /** @description Resolución de primera calificación (PRIMERA_CALIFICACION) */
@@ -3343,6 +3378,32 @@ export interface components {
             identificador: string;
             /** @description Contraseña */
             password: string;
+        };
+        /** @description Registro de una apelación TTAIP originada por una SAIP tramitada fuera de la plataforma */
+        CrearApelacionExternaRequest: {
+            /** Format: int64 */
+            ciudadanoId: number;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadExternaNombre?: string;
+            entidadExternaRuc?: string;
+            /** Format: email */
+            entidadExternaEmail?: string;
+            numeroSolicitudExterna: string;
+            /** Format: date */
+            fechaPresentacionSolicitudExterna: string;
+            /** Format: date */
+            fechaRespuestaEntidad?: string;
+            /** @enum {string} */
+            tipoDenegatoria: "EXPRESA" | "TACITA";
+            resumenSolicitudOriginal: string;
+            resumenRespuestaEntidad?: string;
+            referenciaDocumentoSolicitud: string;
+            referenciaCargoRecepcion?: string;
+            referenciaRespuestaEntidad?: string;
+            evidenciaSilencioAdministrativo?: string;
+            fundamentos: string;
+            observacion?: string;
         };
         /** @description Cancelación operativa de una suspensión adicional de plazo TTAIP */
         CancelarSuspensionTtaipRequest: {
@@ -5377,6 +5438,30 @@ export interface operations {
                 "application/json": {
                     [key: string]: string;
                 };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    crearExterna: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearApelacionExternaRequest"];
             };
         };
         responses: {

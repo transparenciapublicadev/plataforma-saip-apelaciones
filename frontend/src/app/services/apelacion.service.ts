@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Apelacion, ApelacionCreate } from '../models/apelacion.model';
+import { Apelacion, ApelacionCreate, ApelacionCreateExterna } from '../models/apelacion.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -37,6 +37,10 @@ export class ApelacionService {
 
   crear(apelacion: ApelacionCreate): Observable<Apelacion> {
     return this.http.post<Apelacion>(this.apiUrl, apelacion);
+  }
+
+  crearExterna(apelacion: ApelacionCreateExterna): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/externa`, apelacion);
   }
 
   actualizar(id: number, apelacion: Partial<Apelacion>): Observable<Apelacion> {

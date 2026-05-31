@@ -23,6 +23,7 @@ export type RegistroRequestDTO = components['schemas']['RegistroRequestDTO'];
 export type CalificacionRequest = components['schemas']['CalificacionRequest'];
 export type ResolucionRequest = components['schemas']['ResolucionRequest'];
 export type CrearRespuestaRequest = components['schemas']['CrearRespuestaRequest'];
+export type CrearApelacionExternaRequest = components['schemas']['CrearApelacionExternaRequest'];
 export type ObservarSolicitudRequest = components['schemas']['ObservarSolicitudRequest'];
 export type SubsanarSolicitudRequest = components['schemas']['SubsanarSolicitudRequest'];
 

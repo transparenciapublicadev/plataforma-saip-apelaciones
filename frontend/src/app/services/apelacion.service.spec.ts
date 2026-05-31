@@ -68,6 +68,25 @@ describe('ApelacionService', () => {
     req.flush({ id: 10 });
   });
 
+  it('should POST crear apelacion externa', () => {
+    const data = {
+      ciudadanoId: 5,
+      entidadExternaNombre: 'Entidad fuera de plataforma',
+      numeroSolicitudExterna: 'EXT-2026-001',
+      fechaPresentacionSolicitudExterna: '2026-05-01',
+      tipoDenegatoria: 'TACITA',
+      resumenSolicitudOriginal: 'Solicitud original',
+      referenciaDocumentoSolicitud: 'solicitud.pdf',
+      evidenciaSilencioAdministrativo: 'Declaración de ausencia de respuesta',
+      fundamentos: 'Fundamentos suficientes'
+    } as any;
+    service.crearExterna(data).subscribe(res => expect(res.id).toBe(11));
+    const req = httpMock.expectOne(`${apiUrl}/externa`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 11 });
+  });
+
   it('should PUT actualizar apelacion', () => {
     service.actualizar(2, { estado: 'EN_CALIFICACION_1' } as any).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/2`);
