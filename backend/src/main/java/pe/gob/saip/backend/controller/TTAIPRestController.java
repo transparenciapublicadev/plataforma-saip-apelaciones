@@ -29,6 +29,11 @@ import pe.gob.saip.backend.model.dto.SuspensionPlazoTtaipDTO;
 import pe.gob.saip.backend.model.dto.ValidarNotificacionManualRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.service.TTAIPService;
+import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
+import pe.gob.saip.backend.model.entity.IntentoNotificacion;
+import pe.gob.saip.backend.service.MotorNotificacionesService;
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.Map;
@@ -40,9 +45,12 @@ import java.util.Map;
 public class TTAIPRestController {
 
     private final TTAIPService ttaipService;
+    private final MotorNotificacionesService motorNotificacionesService;
 
-    public TTAIPRestController(TTAIPService ttaipService) {
+    public TTAIPRestController(TTAIPService ttaipService,
+                               MotorNotificacionesService motorNotificacionesService) {
         this.ttaipService = ttaipService;
+        this.motorNotificacionesService = motorNotificacionesService;
     }
 
     @Operation(summary = "Estadísticas del tribunal")
@@ -406,6 +414,28 @@ public class TTAIPRestController {
     @PostMapping("/cumplimientos/vencidos/procesar")
     public ResponseEntity<List<CumplimientoResolucionTtaipDTO>> procesarCumplimientosVencidos() {
         return ResponseEntity.ok(ttaipService.procesarCumplimientosVencidos());
+    }
+
+    @Operation(summary = "Enviar notificación para expediente TTAIP")
+    @PostMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/enviar")
+    public ResponseEntity<IntentoNotificacionDTO> enviarNotificacion(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId,
+            @Valid @RequestBody EnviarNotificacionRequest request) {
+        IntentoNotificacion intento = motorNotificacionesService.enviarNotificacionTtaip(expedienteId, notificacionId, request);
+        return ResponseEntity.status(201).body(IntentoNotificacionDTO.from(intento));
+    }
+
+    @Operation(summary = "Listar intentos de notificación de una notificación TTAIP")
+    @GetMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/intentos")
+    public ResponseEntity<List<IntentoNotificacionDTO>> listarIntentos(
+            @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
+            @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId) {
+        List<IntentoNotificacionDTO> intentos = motorNotificacionesService.listarIntentosTtaip(expedienteId, notificacionId)
+                .stream()
+                .map(IntentoNotificacionDTO::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(intentos);
     }
 }
 
