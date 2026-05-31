@@ -741,6 +741,71 @@
       "key": "expedienteTtaipExternoTacitaId",
       "value": "",
       "enabled": true
+    },
+    {
+      "key": "elevacionSolicitudSaipId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionSolicitudExpediente",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionApelacionId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionExpedienteReservado",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionFechaLimite",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionExpedienteTtaipId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "omisionElevacionSolicitudSaipId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "omisionElevacionApelacionId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "omisionElevacionId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "omisionElevacionExpedienteTtaipId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "elevacionFechaPresentacion",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "omisionFechaPresentacion",
+      "value": "",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"
