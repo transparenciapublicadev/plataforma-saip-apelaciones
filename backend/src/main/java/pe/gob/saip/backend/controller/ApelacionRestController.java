@@ -4,11 +4,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
+import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
@@ -144,12 +146,23 @@ public class ApelacionRestController {
         Apelacion apelacion = new Apelacion();
         apelacion.setFundamentos(apelacionDTO.fundamentos());
         apelacion.setSolicitud(solicitud);
+        apelacion.setTipoOrigen(Apelacion.TipoOrigenApelacion.SAIP_INTERNA);
         apelacion.setCiudadano(ciudadano);
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
 
         apelacion = apelacionService.save(apelacion);
         expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
 
+        return ResponseEntity.status(201).body(ApelacionDTO.from(apelacion));
+    }
+
+    @Operation(
+            summary = "Crear apelación externa",
+            description = "Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local")
+    @PostMapping("/externa")
+    public ResponseEntity<ApelacionDTO> crearExterna(@Valid @RequestBody CrearApelacionExternaRequest request) {
+        Apelacion apelacion = apelacionService.crearExterna(request);
+        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
         return ResponseEntity.status(201).body(ApelacionDTO.from(apelacion));
     }
 

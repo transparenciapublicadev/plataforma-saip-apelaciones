@@ -147,6 +147,9 @@ public class ReportesRestController {
                     item.put("estado", a.getEstado() != null ? a.getEstado().name() : null);
                     item.put("fechaApelacion", a.getFechaApelacion() != null ? a.getFechaApelacion().toString() : null);
                     item.put("solicitudExpediente", a.getSolicitud() != null ? a.getSolicitud().getExpediente() : null);
+                    item.put("tipoOrigen", a.getTipoOrigenEfectivo().name());
+                    item.put("numeroSolicitudExterna", a.getNumeroSolicitudExterna());
+                    item.put("entidad", a.getEntidadNombreEfectivo());
                     item.put("ciudadano", a.getCiudadano() != null ? a.getCiudadano().getNombreCompleto() : null);
                     item.put("tieneResolucion", a.getResolucion() != null);
                     return item;
