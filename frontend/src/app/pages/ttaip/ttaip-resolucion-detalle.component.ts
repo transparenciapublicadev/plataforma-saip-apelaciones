@@ -774,7 +774,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   private formatEstado(value: string): string {
     switch (this.normalizeKey(value)) {
       case 'PENDIENTE_ELEVACION':
-        return 'En primera calificacion';
+        return 'Pendiente de elevacion al TTAIP';
       case 'EN_CALIFICACION_1':
         return 'En primera calificacion';
       case 'EN_SUBSANACION':

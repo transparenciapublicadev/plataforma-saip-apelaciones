@@ -6,7 +6,11 @@ import { ApelacionService } from '../../services/apelacion.service';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import { TipoDenegatoriaApelacion, TipoOrigenApelacion } from '../../models/apelacion.model';
+import {
+  CanalPresentacionApelacion,
+  TipoDenegatoriaApelacion,
+  TipoOrigenApelacion
+} from '../../models/apelacion.model';
 import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
 import {
@@ -58,6 +62,7 @@ export class NuevaApelacionComponent implements OnInit {
   file2 = signal<File | null>(null);
   file3 = signal<File | null>(null);
   tipoOrigen = signal<TipoOrigenApelacion>('SAIP_INTERNA');
+  canalPresentacion = signal<CanalPresentacionApelacion>('DIRECTA_TTAIP');
   entidades = signal<Entidad[]>([]);
 
   fundamentos = '';
@@ -73,6 +78,9 @@ export class NuevaApelacionComponent implements OnInit {
   resumenRespuestaEntidad = '';
   referenciaCargoRecepcion = '';
   observacionExterna = '';
+  fechaPresentacionAnteEntidad = this.fechaHoyIso();
+  referenciaCargoPresentacionEntidad = '';
+  observacionPresentacionEntidad = '';
 
   readonly uploadedCount = computed(() => [this.file1(), this.file2(), this.file3()].filter((file) => file !== null).length);
   readonly allFilesUploaded = computed(() => this.uploadedCount() === 3);
@@ -195,6 +203,7 @@ export class NuevaApelacionComponent implements OnInit {
 
   seleccionarSolicitud(solicitud: Solicitud): void {
     this.tipoOrigen.set('SAIP_INTERNA');
+    this.canalPresentacion.set('DIRECTA_TTAIP');
     this.solicitud.set(solicitud);
     this.modoSeleccion.set(false);
     this.error.set('');
@@ -206,6 +215,7 @@ export class NuevaApelacionComponent implements OnInit {
 
   iniciarApelacionExterna(): void {
     this.tipoOrigen.set('EXTERNA');
+    this.canalPresentacion.set('DIRECTA_TTAIP');
     this.solicitud.set(null);
     this.modoSeleccion.set(false);
     this.loadingSolicitud.set(false);
@@ -218,6 +228,7 @@ export class NuevaApelacionComponent implements OnInit {
   volverASeleccion(): void {
     this.solicitud.set(null);
     this.tipoOrigen.set('SAIP_INTERNA');
+    this.canalPresentacion.set('DIRECTA_TTAIP');
     this.modoSeleccion.set(true);
     this.fundamentos = '';
     this.file1.set(null);
@@ -282,6 +293,8 @@ export class NuevaApelacionComponent implements OnInit {
 
   puedeEnviar(): boolean {
     return (this.esApelacionExterna() ? this.datosExternosValidos() : !!this.solicitud())
+      && (!this.esPresentacionAnteEntidad()
+        || (!!this.fechaPresentacionAnteEntidad && this.referenciaCargoPresentacionEntidad.trim().length > 0))
       && this.allFilesUploaded()
       && this.fundamentos.trim().length >= 50;
   }
@@ -335,6 +348,15 @@ export class NuevaApelacionComponent implements OnInit {
           fundamentos: this.fundamentos.trim(),
           observacion: this.observacionExterna.trim() || undefined
         })
+      : this.esPresentacionAnteEntidad()
+      ? this.apelacionService.crearAnteEntidad({
+          solicitudId: this.solicitud()!.id,
+          ciudadanoId: sesion.ciudadanoId,
+          fundamentos: this.fundamentos.trim(),
+          fechaPresentacionAnteEntidad: this.fechaPresentacionAnteEntidad,
+          referenciaCargoPresentacion: this.referenciaCargoPresentacionEntidad.trim(),
+          observacion: this.observacionPresentacionEntidad.trim() || undefined
+        })
       : this.apelacionService.crear({
           solicitudId: this.solicitud()!.id,
           ciudadanoId: sesion.ciudadanoId,
@@ -361,7 +383,8 @@ export class NuevaApelacionComponent implements OnInit {
       { label: 'Entidad', value: this.entidadOrigenDisplay() },
       { label: 'Asunto original', value: this.asuntoOrigenDisplay() },
       { label: 'Documentos', value: `${this.uploadedCount()} de 3 adjuntos` },
-      { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }
+      { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` },
+      { label: 'Ingreso', value: this.canalPresentacionDisplay() }
     ];
   }
 
@@ -382,6 +405,16 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   apelacionNextSteps(): ReferenceSuccessNextStep[] {
+    if (this.esPresentacionAnteEntidad()) {
+      return [
+        {
+          label: 'La entidad debe elevar el recurso al TTAIP en 2 días hábiles.',
+          hint: 'El cargo presentado queda registrado para trazabilidad.'
+        },
+        { label: 'Si la entidad omite elevarlo, podrá comunicar la omisión al Tribunal con su prueba.' },
+        { label: 'Al ingresar al TTAIP, el recurso pasará a primera calificación.' }
+      ];
+    }
     return [
       {
         label: '1ra calificación: el TTAIP determinará admisibilidad.',
@@ -405,6 +438,48 @@ export class NuevaApelacionComponent implements OnInit {
 
   esApelacionExterna(): boolean {
     return this.tipoOrigen() === 'EXTERNA';
+  }
+
+  esPresentacionAnteEntidad(): boolean {
+    return !this.esApelacionExterna() && this.canalPresentacion() === 'ANTE_ENTIDAD';
+  }
+
+  canalPresentacionDisplay(): string {
+    return this.esPresentacionAnteEntidad() ? 'Ante la entidad pública' : 'Directo al TTAIP';
+  }
+
+  confirmDescription(): string {
+    return this.esPresentacionAnteEntidad()
+      ? 'Revise el expediente, cargo y fundamentos antes de registrar el recurso ante la entidad para su elevación.'
+      : 'Revise el expediente, los documentos y los fundamentos antes de presentar el recurso al Tribunal.';
+  }
+
+  confirmLabel(): string {
+    return this.esPresentacionAnteEntidad() ? 'Registrar ante entidad' : 'Presentar al Tribunal';
+  }
+
+  successEyebrow(): string {
+    return this.esPresentacionAnteEntidad() ? 'Apelación registrada ante entidad' : 'Apelación presentada';
+  }
+
+  successTitle(): string {
+    return this.esPresentacionAnteEntidad() ? 'Recurso pendiente de elevación' : 'Recurso recibido por el Tribunal';
+  }
+
+  successDescription(): string {
+    return this.esPresentacionAnteEntidad()
+      ? 'Su recurso quedó registrado ante la entidad pública. La entidad dispone de 2 días hábiles para elevarlo al TTAIP.'
+      : 'Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento.';
+  }
+
+  successPlazoDias(): number {
+    return this.esPresentacionAnteEntidad() ? 2 : 7;
+  }
+
+  successPlazoDescripcion(): string {
+    return this.esPresentacionAnteEntidad()
+      ? 'La entidad pública debe elevar el recurso al TTAIP dentro de este plazo.'
+      : 'El TTAIP realizará la 1ra calificación de admisibilidad dentro de este plazo.';
   }
 
   solicitudOrigenDisplay(): string {
@@ -445,6 +520,12 @@ export class NuevaApelacionComponent implements OnInit {
 
     if (this.esApelacionExterna() && !this.datosExternosValidos()) {
       this.error.set('Complete los datos obligatorios de la solicitud externa y su tipo de denegatoria');
+      return false;
+    }
+
+    if (this.esPresentacionAnteEntidad()
+        && (!this.fechaPresentacionAnteEntidad || !this.referenciaCargoPresentacionEntidad.trim())) {
+      this.error.set('Registre la fecha de presentación y la referencia del cargo entregado por la entidad');
       return false;
     }
 
@@ -493,6 +574,13 @@ export class NuevaApelacionComponent implements OnInit {
     this.resumenRespuestaEntidad = '';
     this.referenciaCargoRecepcion = '';
     this.observacionExterna = '';
+    this.fechaPresentacionAnteEntidad = this.fechaHoyIso();
+    this.referenciaCargoPresentacionEntidad = '';
+    this.observacionPresentacionEntidad = '';
+  }
+
+  private fechaHoyIso(): string {
+    return new Date().toISOString().slice(0, 10);
   }
 }
 

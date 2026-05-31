@@ -92,6 +92,25 @@
                 <span class="eyebrow">Fecha de presentacion</span>
                 <div class="mt-1 font-mono">{{ ap.fechaApelacion | date:'dd/MM/yyyy' }}</div>
               </div>
+
+              @if (ap.elevacion; as elevacion) {
+                <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold-dark)">
+                  <span class="eyebrow" style="color: var(--gold-dark)">Origen · elevación por entidad</span>
+                  <p class="text-sm text-foreground/85 mt-2">
+                    El recurso ingresó por remisión de <span class="font-semibold">{{ elevacion.entidadOrigenNombre }}</span>.
+                  </p>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-xs">
+                    <div>
+                      <span class="eyebrow">Cargo ciudadano</span>
+                      <p class="font-mono mt-1">{{ elevacion.referenciaCargoPresentacion }}</p>
+                    </div>
+                    <div>
+                      <span class="eyebrow">Referencia elevada</span>
+                      <p class="font-mono mt-1">{{ elevacion.referenciaExpedienteElevado || 'Admisión excepcional' }}</p>
+                    </div>
+                  </div>
+                </div>
+              }
             </div>
           }
 

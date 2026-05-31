@@ -53,6 +53,46 @@
         <button (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
+      @if (elevacionesPendientes().length > 0) {
+        <section class="form-shell mb-6" data-reveal>
+          <div class="form-section-header flex items-center justify-between gap-4">
+            <div>
+              <span class="eyebrow">Elevación de apelaciones · 2 días hábiles</span>
+              <h2 class="form-section-title mt-1">Recursos pendientes de remisión al TTAIP</h2>
+            </div>
+            <span class="code-chip">{{ elevacionesPendientes().length }}</span>
+          </div>
+          <div class="p-4 space-y-3">
+            @for (elevacion of elevacionesPendientes(); track elevacion.id) {
+              <article class="rounded-lg p-4 grid grid-cols-1 lg:grid-cols-[1fr_260px_auto] gap-3 items-center" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="code-chip">{{ elevacion.expedienteReservado }}</span>
+                    <span class="badge badge-warning">{{ elevacion.estadoElevacion.replaceAll('_', ' ') }}</span>
+                  </div>
+                  <p class="text-xs text-muted-foreground mt-1.5">
+                    Cargo: <span class="font-mono">{{ elevacion.referenciaCargoPresentacion }}</span> · límite:
+                    <span class="font-mono font-semibold">{{ elevacion.fechaLimiteElevacion | date:'dd/MM/yyyy' }}</span>
+                  </p>
+                </div>
+                <input
+                  class="field-input !py-2 !text-sm"
+                  [(ngModel)]="referenciasElevacion[elevacion.apelacionId]"
+                  [name]="'referenciaElevacion-' + elevacion.apelacionId"
+                  placeholder="Referencia del expediente elevado" />
+                <button
+                  type="button"
+                  class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap"
+                  [disabled]="elevacionEnProceso() === elevacion.apelacionId"
+                  (click)="elevarApelacion(elevacion)">
+                  {{ elevacionEnProceso() === elevacion.apelacionId ? 'Elevando...' : 'Elevar al TTAIP' }}
+                </button>
+              </article>
+            }
+          </div>
+        </section>
+      }
+
       @if (counts().san > 0) {
         <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
