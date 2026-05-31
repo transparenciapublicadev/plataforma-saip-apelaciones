@@ -87,6 +87,7 @@ public class HistorialTtaip {
         CUMPLIMIENTO_CERRADO,
         CUMPLIMIENTO_VENCIDO,
         SUBSANACION,
+        ENVIO_PROVEEDOR_REGISTRADO,
         AUDITORIA
     }
 }
