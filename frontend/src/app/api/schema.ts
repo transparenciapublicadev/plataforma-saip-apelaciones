@@ -1042,6 +1042,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/{id}/elevacion/elevar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Elevar apelación desde entidad pública al TTAIP */
+        post: operations["elevar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/{id}/elevacion/comunicacion-ciudadana": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Comunicar omisión de elevación por parte de la entidad */
+        post: operations["comunicarOmision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/{id}/elevacion/admitir-excepcionalmente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admitir excepcionalmente apelación por omisión acreditada de elevación */
+        post: operations["admitirExcepcionalmente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/externa": {
         parameters: {
             query?: never;
@@ -1056,6 +1107,43 @@ export interface paths {
          * @description Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local
          */
         post: operations["crearExterna"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/elevaciones/vencidas/procesar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Procesar elevaciones vencidas no remitidas por la entidad */
+        post: operations["procesarElevacionesVencidas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/ante-entidad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crear apelación presentada ante entidad
+         * @description Registra una apelación SAIP interna pendiente de elevación al TTAIP dentro de 2 días hábiles
+         */
+        post: operations["crearAnteEntidad"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2202,6 +2290,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/{id}/elevacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar elevación formal de una apelación */
+        get: operations["obtenerElevacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/expediente": {
         parameters: {
             query?: never;
@@ -2296,6 +2401,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/entidad/{entidadId}/pendientes-elevacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar apelaciones pendientes de elevación por entidad */
+        get: operations["listarPendientesElevacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/ciudadano/{ciudadanoId}": {
         parameters: {
             query?: never;
@@ -2363,6 +2485,7 @@ export interface components {
             fechaSubsanacion?: string;
             /** Format: int32 */
             diasSubsanacion?: number;
+            elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
         };
         /** @description Entrega parcial programada dentro de una ampliación de plazo SAIP */
         CronogramaEntregaParcialDTO: {
@@ -2389,6 +2512,29 @@ export interface components {
             tamanio?: number;
             tipoDocumento?: string;
             fechaSubida?: string;
+        };
+        /** @description Elevación formal de una apelación presentada ante una entidad pública */
+        ElevacionApelacionTtaipDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            apelacionId?: number;
+            expedienteReservado?: string;
+            /** Format: int64 */
+            entidadOrigenId?: number;
+            entidadOrigenNombre?: string;
+            fechaPresentacionAnteEntidad?: string;
+            fechaLimiteElevacion?: string;
+            fechaElevacionTtaip?: string;
+            fechaComunicacionCiudadano?: string;
+            estadoElevacion?: string;
+            referenciaCargoPresentacion?: string;
+            referenciaExpedienteElevado?: string;
+            referenciaPruebaOmision?: string;
+            responsableEntidad?: string;
+            responsableTtaip?: string;
+            observacion?: string;
+            trazabilidad?: string;
         };
         /** @description Encauzamiento formal de una solicitud SAIP hacia una entidad competente */
         EncauzamientoSolicitudDTO: {
@@ -2662,6 +2808,8 @@ export interface components {
             referenciaRespuestaEntidad?: string;
             evidenciaSilencioAdministrativo?: string;
             observacion?: string;
+            /** @description Elevación formal cuando la apelación fue presentada inicialmente ante la entidad pública */
+            elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
             /** @description Resolución final (RESOLUCION_FINAL) */
             resolucion?: components["schemas"]["ResolucionDTO"];
             /** @description Resolución de primera calificación (PRIMERA_CALIFICACION) */
@@ -3379,6 +3527,22 @@ export interface components {
             /** @description Contraseña */
             password: string;
         };
+        /** @description Elevación de la apelación desde la entidad pública al TTAIP */
+        ElevarApelacionTtaipRequest: {
+            responsableEntidad: string;
+            referenciaExpedienteElevado: string;
+            observacion?: string;
+        };
+        /** @description Comunicación ciudadana de omisión de elevación por parte de la entidad */
+        ComunicarOmisionElevacionRequest: {
+            referenciaPruebaOmision: string;
+            observacion?: string;
+        };
+        /** @description Admisión excepcional TTAIP de una apelación cuya elevación fue omitida por la entidad */
+        AdmitirElevacionExcepcionalRequest: {
+            responsableTtaip: string;
+            observacion: string;
+        };
         /** @description Registro de una apelación TTAIP originada por una SAIP tramitada fuera de la plataforma */
         CrearApelacionExternaRequest: {
             /** Format: int64 */
@@ -3403,6 +3567,18 @@ export interface components {
             referenciaRespuestaEntidad?: string;
             evidenciaSilencioAdministrativo?: string;
             fundamentos: string;
+            observacion?: string;
+        };
+        /** @description Registro de una apelación SAIP interna presentada ante la entidad para su elevación al TTAIP */
+        CrearApelacionAnteEntidadRequest: {
+            /** Format: int64 */
+            solicitudId: number;
+            /** Format: int64 */
+            ciudadanoId: number;
+            fundamentos: string;
+            /** Format: date */
+            fechaPresentacionAnteEntidad: string;
+            referenciaCargoPresentacion: string;
             observacion?: string;
         };
         /** @description Cancelación operativa de una suspensión adicional de plazo TTAIP */
@@ -5452,6 +5628,84 @@ export interface operations {
             };
         };
     };
+    elevar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ElevarApelacionTtaipRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    comunicarOmision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComunicarOmisionElevacionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevacionApelacionTtaipDTO"];
+                };
+            };
+        };
+    };
+    admitirExcepcionalmente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdmitirElevacionExcepcionalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
     crearExterna: {
         parameters: {
             query?: never;
@@ -5462,6 +5716,50 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CrearApelacionExternaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+        };
+    };
+    procesarElevacionesVencidas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevacionApelacionTtaipDTO"][];
+                };
+            };
+        };
+    };
+    crearAnteEntidad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrearApelacionAnteEntidadRequest"];
             };
         };
         responses: {
@@ -6976,6 +7274,28 @@ export interface operations {
             };
         };
     };
+    obtenerElevacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevacionApelacionTtaipDTO"];
+                };
+            };
+        };
+    };
     obtenerPorExpedienteQuery: {
         parameters: {
             query: {
@@ -7082,6 +7402,28 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    listarPendientesElevacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entidadId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElevacionApelacionTtaipDTO"][];
                 };
             };
         };

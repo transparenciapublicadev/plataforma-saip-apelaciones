@@ -2849,6 +2849,132 @@
         }
       }
     },
+    "/api/apelaciones/{id}/elevacion/elevar": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Elevar apelación desde entidad pública al TTAIP",
+        "operationId": "elevar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ElevarApelacionTtaipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/{id}/elevacion/comunicacion-ciudadana": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Comunicar omisión de elevación por parte de la entidad",
+        "operationId": "comunicarOmision",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComunicarOmisionElevacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/{id}/elevacion/admitir-excepcionalmente": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Admitir excepcionalmente apelación por omisión acreditada de elevación",
+        "operationId": "admitirExcepcionalmente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmitirElevacionExcepcionalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/apelaciones/externa": {
       "post": {
         "tags": [
@@ -2862,6 +2988,62 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CrearApelacionExternaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/elevaciones/vencidas/procesar": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Procesar elevaciones vencidas no remitidas por la entidad",
+        "operationId": "procesarElevacionesVencidas",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/ante-entidad": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Crear apelación presentada ante entidad",
+        "description": "Registra una apelación SAIP interna pendiente de elevación al TTAIP dentro de 2 días hábiles",
+        "operationId": "crearAnteEntidad",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearApelacionAnteEntidadRequest"
               }
             }
           },
@@ -5065,6 +5247,38 @@
         }
       }
     },
+    "/api/apelaciones/{id}/elevacion": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Consultar elevación formal de una apelación",
+        "operationId": "obtenerElevacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/apelaciones/expediente": {
       "get": {
         "tags": [
@@ -5203,6 +5417,41 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/entidad/{entidadId}/pendientes-elevacion": {
+      "get": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Listar apelaciones pendientes de elevación por entidad",
+        "operationId": "listarPendientesElevacion",
+        "parameters": [
+          {
+            "name": "entidadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO"
+                  }
                 }
               }
             }
@@ -5358,6 +5607,9 @@
           "diasSubsanacion": {
             "type": "integer",
             "format": "int32"
+          },
+          "elevacion": {
+            "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO"
           }
         }
       },
@@ -5419,6 +5671,66 @@
             "type": "string"
           },
           "fechaSubida": {
+            "type": "string"
+          }
+        }
+      },
+      "ElevacionApelacionTtaipDTO": {
+        "type": "object",
+        "description": "Elevación formal de una apelación presentada ante una entidad pública",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "apelacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expedienteReservado": {
+            "type": "string"
+          },
+          "entidadOrigenId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadOrigenNombre": {
+            "type": "string"
+          },
+          "fechaPresentacionAnteEntidad": {
+            "type": "string"
+          },
+          "fechaLimiteElevacion": {
+            "type": "string"
+          },
+          "fechaElevacionTtaip": {
+            "type": "string"
+          },
+          "fechaComunicacionCiudadano": {
+            "type": "string"
+          },
+          "estadoElevacion": {
+            "type": "string"
+          },
+          "referenciaCargoPresentacion": {
+            "type": "string"
+          },
+          "referenciaExpedienteElevado": {
+            "type": "string"
+          },
+          "referenciaPruebaOmision": {
+            "type": "string"
+          },
+          "responsableEntidad": {
+            "type": "string"
+          },
+          "responsableTtaip": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          },
+          "trazabilidad": {
             "type": "string"
           }
         }
@@ -6059,6 +6371,10 @@
           },
           "observacion": {
             "type": "string"
+          },
+          "elevacion": {
+            "$ref": "#/components/schemas/ElevacionApelacionTtaipDTO",
+            "description": "Elevación formal cuando la apelación fue presentada inicialmente ante la entidad pública"
           },
           "resolucion": {
             "$ref": "#/components/schemas/ResolucionDTO",
@@ -7284,7 +7600,7 @@
             "type": "number",
             "description": "Monto de reproducción física",
             "example": "18.50",
-            "minimum": 0
+            "minimum": 0.0
           },
           "moneda": {
             "type": "string",
@@ -7588,6 +7904,70 @@
           "password"
         ]
       },
+      "ElevarApelacionTtaipRequest": {
+        "type": "object",
+        "description": "Elevación de la apelación desde la entidad pública al TTAIP",
+        "properties": {
+          "responsableEntidad": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "referenciaExpedienteElevado": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "referenciaExpedienteElevado",
+          "responsableEntidad"
+        ]
+      },
+      "ComunicarOmisionElevacionRequest": {
+        "type": "object",
+        "description": "Comunicación ciudadana de omisión de elevación por parte de la entidad",
+        "properties": {
+          "referenciaPruebaOmision": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "referenciaPruebaOmision"
+        ]
+      },
+      "AdmitirElevacionExcepcionalRequest": {
+        "type": "object",
+        "description": "Admisión excepcional TTAIP de una apelación cuya elevación fue omitida por la entidad",
+        "properties": {
+          "responsableTtaip": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "observacion",
+          "responsableTtaip"
+        ]
+      },
       "CrearApelacionExternaRequest": {
         "type": "object",
         "description": "Registro de una apelación TTAIP originada por una SAIP tramitada fuera de la plataforma",
@@ -7685,6 +8065,46 @@
           "referenciaDocumentoSolicitud",
           "resumenSolicitudOriginal",
           "tipoDenegatoria"
+        ]
+      },
+      "CrearApelacionAnteEntidadRequest": {
+        "type": "object",
+        "description": "Registro de una apelación SAIP interna presentada ante la entidad para su elevación al TTAIP",
+        "properties": {
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ciudadanoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fundamentos": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "fechaPresentacionAnteEntidad": {
+            "type": "string",
+            "format": "date"
+          },
+          "referenciaCargoPresentacion": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "ciudadanoId",
+          "fechaPresentacionAnteEntidad",
+          "fundamentos",
+          "referenciaCargoPresentacion",
+          "solicitudId"
         ]
       },
       "CancelarSuspensionTtaipRequest": {
