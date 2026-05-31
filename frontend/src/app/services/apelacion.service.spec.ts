@@ -87,6 +87,71 @@ describe('ApelacionService', () => {
     req.flush({ id: 11 });
   });
 
+  it('should POST crear apelacion ante entidad', () => {
+    const data = {
+      solicitudId: 1,
+      ciudadanoId: 5,
+      fundamentos: 'Fundamentos suficientes',
+      fechaPresentacionAnteEntidad: '2026-05-29',
+      referenciaCargoPresentacion: 'cargo-entidad.pdf'
+    };
+    service.crearAnteEntidad(data).subscribe(res => expect(res.id).toBe(12));
+    const req = httpMock.expectOne(`${apiUrl}/ante-entidad`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 12 });
+  });
+
+  it('should GET pendientes elevacion by entidadId', () => {
+    service.findPendientesElevacionByEntidadId(4).subscribe(res => expect(res.length).toBe(1));
+    const req = httpMock.expectOne(`${apiUrl}/entidad/4/pendientes-elevacion`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 10 }]);
+  });
+
+  it('should POST elevar apelacion', () => {
+    const data = {
+      responsableEntidad: 'Funcionario',
+      referenciaExpedienteElevado: 'expediente-elevado.pdf'
+    };
+    service.elevar(12, data).subscribe(res => expect(res.estado).toBe('EN_CALIFICACION_1'));
+    const req = httpMock.expectOne(`${apiUrl}/12/elevacion/elevar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 12, estado: 'EN_CALIFICACION_1' });
+  });
+
+  it('should GET elevacion by apelacion id', () => {
+    service.getElevacion(12).subscribe(res => expect(res.apelacionId).toBe(12));
+    const req = httpMock.expectOne(`${apiUrl}/12/elevacion`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ id: 20, apelacionId: 12 });
+  });
+
+  it('should POST comunicacion ciudadana por omision', () => {
+    const data = {
+      referenciaPruebaOmision: 'cargo-presentacion.pdf',
+      observacion: 'La entidad no elevó el recurso dentro del plazo.'
+    };
+    service.comunicarOmision(12, data).subscribe(res => expect(res.estadoElevacion).toBe('COMUNICADA_POR_CIUDADANO'));
+    const req = httpMock.expectOne(`${apiUrl}/12/elevacion/comunicacion-ciudadana`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 20, apelacionId: 12, estadoElevacion: 'COMUNICADA_POR_CIUDADANO' });
+  });
+
+  it('should POST admision excepcional de elevacion', () => {
+    const data = {
+      responsableTtaip: 'Secretaría Técnica',
+      observacion: 'Omisión acreditada por el ciudadano.'
+    };
+    service.admitirElevacionExcepcional(12, data).subscribe(res => expect(res.estado).toBe('EN_CALIFICACION_1'));
+    const req = httpMock.expectOne(`${apiUrl}/12/elevacion/admitir-excepcionalmente`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(data);
+    req.flush({ id: 12, estado: 'EN_CALIFICACION_1' });
+  });
+
   it('should PUT actualizar apelacion', () => {
     service.actualizar(2, { estado: 'EN_CALIFICACION_1' } as any).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/2`);

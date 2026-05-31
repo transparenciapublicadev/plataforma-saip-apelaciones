@@ -1,7 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Apelacion, ApelacionCreate, ApelacionCreateExterna } from '../models/apelacion.model';
+import {
+  Apelacion,
+  ApelacionCreate,
+  ApelacionCreateAnteEntidad,
+  ApelacionCreateExterna,
+  AdmitirElevacionExcepcionalPayload,
+  ComunicarOmisionElevacionPayload,
+  ElevarApelacionPayload,
+  ElevacionApelacionTtaip
+} from '../models/apelacion.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -41,6 +50,30 @@ export class ApelacionService {
 
   crearExterna(apelacion: ApelacionCreateExterna): Observable<Apelacion> {
     return this.http.post<Apelacion>(`${this.apiUrl}/externa`, apelacion);
+  }
+
+  crearAnteEntidad(apelacion: ApelacionCreateAnteEntidad): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/ante-entidad`, apelacion);
+  }
+
+  findPendientesElevacionByEntidadId(entidadId: number): Observable<ElevacionApelacionTtaip[]> {
+    return this.http.get<ElevacionApelacionTtaip[]>(`${this.apiUrl}/entidad/${entidadId}/pendientes-elevacion`);
+  }
+
+  getElevacion(id: number): Observable<ElevacionApelacionTtaip> {
+    return this.http.get<ElevacionApelacionTtaip>(`${this.apiUrl}/${id}/elevacion`);
+  }
+
+  elevar(id: number, payload: ElevarApelacionPayload): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/${id}/elevacion/elevar`, payload);
+  }
+
+  comunicarOmision(id: number, payload: ComunicarOmisionElevacionPayload): Observable<ElevacionApelacionTtaip> {
+    return this.http.post<ElevacionApelacionTtaip>(`${this.apiUrl}/${id}/elevacion/comunicacion-ciudadana`, payload);
+  }
+
+  admitirElevacionExcepcional(id: number, payload: AdmitirElevacionExcepcionalPayload): Observable<Apelacion> {
+    return this.http.post<Apelacion>(`${this.apiUrl}/${id}/elevacion/admitir-excepcionalmente`, payload);
   }
 
   actualizar(id: number, apelacion: Partial<Apelacion>): Observable<Apelacion> {
