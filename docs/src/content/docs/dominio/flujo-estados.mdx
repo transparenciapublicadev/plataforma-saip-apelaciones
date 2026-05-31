@@ -45,21 +45,22 @@ stateDiagram-v2
 
 ## Apelación TTAIP
 
-El flujo funcional vigente inicia directamente en `EN_CALIFICACION_1`.
+El flujo directo vigente inicia en `EN_CALIFICACION_1`. Cuando el ciudadano presenta la apelación ante la entidad, se usa `PENDIENTE_ELEVACION` durante un máximo de 2 días hábiles y el expediente TTAIP se abre solo al recibir la elevación o admitir excepcionalmente la omisión acreditada.
 
-:::note[Compatibilidad técnica]
-El documento oficial contempla elevación por entidad en 2 días hábiles. El enum backend aún declara `PENDIENTE_ELEVACION` por compatibilidad histórica, pero el flujo funcional ciudadano actual no debe crear ni depender de esa etapa hasta que se apruebe su implementación.
+:::note[Compatibilidad funcional]
+La vía directa al TTAIP se mantiene intacta. La etapa `PENDIENTE_ELEVACION` solo se crea cuando el ciudadano elige presentar el recurso ante la entidad pública.
 :::
 
 <Tabs>
   <TabItem label="Flujo principal">
     <Steps>
-    1. **EN_CALIFICACION_1**: primera calificación del TTAIP.
-    2. **EN_SUBSANACION**: ciudadano debe corregir observaciones en 2 días hábiles.
-    3. **EN_CALIFICACION_2**: revisión posterior a la subsanación.
-    4. **NOTIFICACION_SEGUNDA_CALIFICACION**: notificación de la segunda calificación.
-    5. **EN_RESOLUCION**: tribunal prepara resolución final luego de admisibilidad o segunda calificación notificada.
-    6. **RESUELTO / estados finales**: resultado final o cierre del procedimiento.
+    1. **PENDIENTE_ELEVACION**: opcional; la entidad dispone de 2 días hábiles para remitir el recurso.
+    2. **EN_CALIFICACION_1**: primera calificación del TTAIP.
+    3. **EN_SUBSANACION**: ciudadano debe corregir observaciones en 2 días hábiles.
+    4. **EN_CALIFICACION_2**: revisión posterior a la subsanación.
+    5. **NOTIFICACION_SEGUNDA_CALIFICACION**: notificación de la segunda calificación.
+    6. **EN_RESOLUCION**: tribunal prepara resolución final luego de admisibilidad o segunda calificación notificada.
+    7. **RESUELTO / estados finales**: resultado final o cierre del procedimiento.
     </Steps>
   </TabItem>
 
@@ -79,7 +80,9 @@ El documento oficial contempla elevación por entidad en 2 días hábiles. El en
 
 ```mermaid
 stateDiagram-v2
-    [*] --> EN_CALIFICACION_1
+    [*] --> PENDIENTE_ELEVACION: presentación ante entidad
+    [*] --> EN_CALIFICACION_1: ingreso directo
+    PENDIENTE_ELEVACION --> EN_CALIFICACION_1: elevación o admisión excepcional
     EN_CALIFICACION_1 --> EN_RESOLUCION: admitir
     EN_CALIFICACION_1 --> EN_SUBSANACION: requerir subsanacion
     EN_CALIFICACION_1 --> RESUELTO_IMPROCEDENTE: inadmitir/improcedente
@@ -116,7 +119,7 @@ stateDiagram-v2
   <TabItem label="EstadoApelacion">
     ```java
     public enum EstadoApelacion {
-        PENDIENTE_ELEVACION, // legacy: no usar en el flujo funcional nuevo
+        PENDIENTE_ELEVACION, // via opcional: presentacion ciudadana ante entidad
         EN_CALIFICACION_1,
         EN_SUBSANACION,
         EN_CALIFICACION_2,

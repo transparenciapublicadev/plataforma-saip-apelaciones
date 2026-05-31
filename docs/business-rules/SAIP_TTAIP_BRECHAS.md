@@ -17,7 +17,7 @@ Esta matriz documenta que ya esta cubierto, que esta parcial y que debe planific
 
 ## Resumen ejecutivo
 
-El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la apelacion externa sin SAIP local, la excepcion de inadmisibilidad notificada solo al ciudadano, descargos de entidad con suspension de plazo de resolucion, suspensiones adicionales por informe oral e informacion complementaria, constancias/acuses/validacion manual operativa para notificaciones TTAIP, cumplimiento de resolucion fundada o fundada en parte en 7 dias habiles, decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. Las brechas principales pendientes estan en reglas finas del documento oficial: elevacion por entidad e integracion real con proveedor de correo/casilla electronica.
+El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda Sala, expedientes TTAIP, resoluciones, cedulas, notificaciones, historial y reprocesos. Tambien quedaron cubiertos el consentimiento de datos personales en SAIP, el canal formal de notificacion con casilla electronica, la observacion/subsanacion SAIP formal, la ampliacion de plazo SAIP con informe y cronograma de entregas parciales, el encauzamiento SAIP dentro de 2 dias habiles, la liquidacion/cupon de pago para entrega fisica con archivo por no recojo, la apelacion externa sin SAIP local, la elevacion por entidad dentro de 2 dias habiles con omision acreditable y admision excepcional, la excepcion de inadmisibilidad notificada solo al ciudadano, descargos de entidad con suspension de plazo de resolucion, suspensiones adicionales por informe oral e informacion complementaria, constancias/acuses/validacion manual operativa para notificaciones TTAIP, cumplimiento de resolucion fundada o fundada en parte en 7 dias habiles, decisiones finales `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`, el reproceso con nueva cedula/nueva notificacion sin borrar la original y la validacion Newman/Postman con cedula dinamica. La brecha principal pendiente es la integracion real con proveedor de correo/casilla electronica.
 
 ## Brechas por regla
 
@@ -40,7 +40,7 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 | Silencio administrativo negativo automatico. | Backend SAIP job/service | Cubierto parcial | `SolicitudService.detectarSilencioAdministrativo`, `Solicitud.isSilencioAdministrativo` | Falta verificar scheduler o job de ejecucion periodica. |
 | Apelacion por denegatoria expresa: 15 dias. | Backend rules, frontend, docs | Duda | docs actuales, frontend dashboard, `AyudaPublicaRestController` | Resolver contradiccion: tabla dice calendario, Art. 34.2 dice habiles. No cambiar codigo sin decision legal/producto. |
 | Apelacion por denegatoria tacita sin plazo perentorio. | Backend/frontend | Parcial | `Solicitud`, frontend utils | Documentado; verificar que frontend no bloquee por plazo en SAIP vencida. |
-| Apelacion presentada ante entidad con elevacion en 2 dias. | Backend TTAIP/entidad | Falta por decision | `Apelacion.EstadoApelacion.PENDIENTE_ELEVACION`, `TTAIPService` | El proyecto decidio inicio directo; si se implementa, agregar endpoint/estado de elevacion sin romper flujo actual. |
+| Apelacion presentada ante entidad con elevacion en 2 dias. | Backend TTAIP/entidad/frontend/Postman | Cubierto | `ElevacionApelacionTtaip`, `ElevacionApelacionTtaipService`, `ApelacionRestController`, frontend ciudadano/funcionario, Postman | Mantener flujo directo compatible. La via ante entidad reserva numero, usa `PENDIENTE_ELEVACION`, calcula 2 dias habiles, registra cargo y trazabilidad, abre expediente solo al elevar o admitir excepcionalmente una omision acreditada. |
 | Apelacion directa al TTAIP. | Backend/frontend | Cubierto | `ApelacionRestController.crear` | Flujo actual crea apelacion y expediente directo en `EN_CALIFICACION_1`. |
 | Apelacion de SAIP fuera de plataforma. | Backend/frontend/Postman | Cubierto | `ApelacionRestController.crearExterna`, `Apelacion`, frontend ciudadano/TTAIP, Postman | `POST /api/apelaciones/externa` registra origen `EXTERNA`, ciudadano, entidad catalogada o datos externos, solicitud original, cargo cuando corresponde, respuesta expresa o evidencia de silencio y fundamentos. Crea expediente en `EN_CALIFICACION_1` sin SAIP ficticia. |
 | Expediente TTAIP como agregado principal. | Backend/domain/database | Cubierto parcial | `ExpedienteTtaip`, `ExpedienteTtaipService`, seed | Ya relaciona apelacion, sala, miembros, resoluciones, notificaciones, historial y reprocesos. |
@@ -93,6 +93,7 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 - Cumplimiento de resolucion final `FUNDADO` o `FUNDADO_EN_PARTE` en 7 dias habiles, con evidencia de entidad, observacion/cierre TTAIP, vencimiento operativo y trazabilidad.
 - Decisiones finales TTAIP `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` con estados finales dedicados, sustento especifico, cedulas/notificaciones generales y trazabilidad.
 - Apelacion externa sin SAIP local con origen `EXTERNA`, documentos/referencias de la solicitud original, denegatoria expresa o tacita y expediente TTAIP directo en primera calificacion.
+- Elevacion formal por entidad en 2 dias habiles, con cargo, estado previo al expediente TTAIP, vencimiento, comunicacion ciudadana de omision y admision excepcional.
 - Consentimiento obligatorio de tratamiento de datos personales en SAIP.
 - Canal formal de notificacion de SAIP, incluyendo `CASILLA_ELECTRONICA`.
 - Inadmisibilidad TTAIP notificada solo al ciudadano/recurrente.
@@ -105,8 +106,7 @@ El proyecto ya cubre la base de SAIP, apelaciones TTAIP, Primera Sala, Segunda S
 
 1. Definir legalmente el plazo de apelacion por denegatoria expresa: calendario vs habiles.
 2. Conectar el canal elegido de SAIP con evidencias reales de notificacion cuando se implemente el motor comun de notificaciones.
-3. Definir si se implementa elevacion por entidad o se conserva solo flujo directo.
-4. Integrar proveedor real de correo/casilla electronica y fallback automatico de canal.
+3. Integrar proveedor real de correo/casilla electronica y fallback automatico de canal.
 
 ## Cambios implementados en esta iteracion
 

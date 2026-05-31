@@ -205,7 +205,10 @@ El recurso de apelacion puede presentarse:
 - Ante la entidad que emitio la respuesta o que guardo silencio, para que lo eleve al TTAIP.
 - Directamente ante el TTAIP, por plataforma o mesa de partes del MINJUS.
 
-El sistema actual deriva la apelacion ciudadana directamente al TTAIP y no modela una etapa funcional de elevacion. Esta decision se mantiene hasta que se implemente expresamente el canal de elevacion por entidad.
+El sistema permite dos canales compatibles para una apelacion vinculada a una SAIP interna:
+
+- Ingreso directo al TTAIP: abre expediente TTAIP inmediatamente en `EN_CALIFICACION_1`.
+- Presentacion ante la entidad: registra la apelacion con numero reservado y estado `PENDIENTE_ELEVACION`; el expediente TTAIP se abre cuando la entidad eleva dentro del plazo o cuando el TTAIP admite excepcionalmente la omision acreditada.
 
 ### Apelacion externa sin SAIP local
 
@@ -223,6 +226,10 @@ El sistema actual deriva la apelacion ciudadana directamente al TTAIP y no model
 - Si el ciudadano presenta la apelacion ante la entidad, esta tiene 2 dias habiles para elevarla al TTAIP.
 - Si la entidad omite elevar el recurso, el ciudadano puede comunicarlo al TTAIP adjuntando prueba de presentacion.
 - El TTAIP puede admitir excepcionalmente el recurso, sin perjuicio de la responsabilidad de la entidad.
+- Implementacion actual: `ElevacionApelacionTtaip` registra apelacion, entidad de origen, fecha de presentacion, fecha limite calculada en 2 dias habiles, cargo, referencia de remision, responsables, prueba de omision, estado y trazabilidad.
+- Estados operativos: `PENDIENTE`, `ELEVADA`, `VENCIDA_NO_ELEVADA`, `COMUNICADA_POR_CIUDADANO` y `ADMITIDA_EXCEPCIONALMENTE`.
+- Una apelacion en `PENDIENTE_ELEVACION` no puede aparecer en primera calificacion ni abrir `ExpedienteTtaip`.
+- La elevacion o admision excepcional cambia la apelacion a `EN_CALIFICACION_1`, abre el expediente TTAIP, asigna sala y miembros y conserva la modalidad de ingreso en la trazabilidad.
 
 ### Registro de expediente TTAIP
 
@@ -361,6 +368,7 @@ Modelo conceptual obligatorio:
 ```text
 ExpedienteTtaip
   -> Apelacion
+      -> ElevacionApelacionTtaip si se presento ante entidad
   -> Solicitud SAIP si existe
   -> SalaTtaip
   -> MiembrosTtaip
@@ -389,7 +397,8 @@ Reglas:
 
 | Estado oficial o negocio | Estado backend actual | Observacion |
 | --- | --- | --- |
-| En revision | `EN_CALIFICACION_1` o `PENDIENTE_ELEVACION` | El proyecto inicia directo en calificacion; elevacion queda como referencia/gap. |
+| Pendiente de elevacion | `PENDIENTE_ELEVACION` | Aplica solo cuando el ciudadano presento el recurso ante la entidad. Aun no existe expediente TTAIP abierto. |
+| En revision | `EN_CALIFICACION_1` | Ingreso directo, elevacion o admision excepcional ya recibida por el TTAIP. |
 | Observacion/Subsanacion | `EN_SUBSANACION` | Cubierto para apelacion inadmisible. |
 | EnCalificacionPrimera | `EN_CALIFICACION_1` | Cubierto. |
 | Admitido | `EN_RESOLUCION` o `NOTIFICACION_SEGUNDA_CALIFICACION` | El flujo actual pasa a resolucion tras admision de primera calificacion. |
@@ -401,4 +410,3 @@ Reglas:
 ## Contradicciones o decisiones pendientes
 
 - Plazo de apelacion por denegatoria expresa: la tabla inicial del documento indica 15 dias calendario, pero el Art. 34.2 citado en el mismo documento indica 15 dias habiles. Debe resolverse con criterio legal/producto antes de cambiar codigo.
-- Elevacion: el documento oficial incluye elevacion por entidad, pero el flujo actual del proyecto deriva directo al TTAIP. Debe decidirse si se implementa como modulo funcional o se mantiene solo como referencia.
