@@ -92,6 +92,17 @@ class ExpedienteTtaipServiceTest {
     ExpedienteTtaipService service;
 
     @Test
+    void obtenerOCrearParaApelacion_pendienteElevacion_debeRechazarAperturaPrematura() {
+        Apelacion apelacion = new Apelacion();
+        apelacion.setIdApelacion(40L);
+        apelacion.setEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+
+        assertThatThrownBy(() -> service.obtenerOCrearParaApelacion(apelacion))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("pendiente de elevación");
+    }
+
+    @Test
     void requerirDescargos_debeCrearDescargoYSuspenderPlazoResolucionPor7DiasHabiles() {
         LocalDate fechaAdmision = LocalDate.of(2026, 5, 4);
         LocalDate fechaRequerimiento = LocalDate.of(2026, 5, 5);
