@@ -5,7 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
+import pe.gob.saip.backend.model.entity.Ciudadano;
+import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.repository.ApelacionRepository;
 
 import java.time.LocalDate;
@@ -22,6 +25,12 @@ class ApelacionServiceTest {
 
     @Mock
     ApelacionRepository apelacionRepository;
+
+    @Mock
+    CiudadanoService ciudadanoService;
+
+    @Mock
+    EntidadService entidadService;
 
     @InjectMocks
     ApelacionService apelacionService;
@@ -187,5 +196,77 @@ class ApelacionServiceTest {
         long resultado = apelacionService.countByCiudadanoId(10L);
 
         assertThat(resultado).isEqualTo(2L);
+    }
+
+    @Test
+    void crearExterna_denegatoriaExpresa_debeGuardarSinSolicitudLocal() {
+        Ciudadano ciudadano = new Ciudadano();
+        ciudadano.setIdUsuario(10L);
+        Entidad entidad = new Entidad();
+        entidad.setIdEntidad(5L);
+        entidad.setNombre("Ministerio de Prueba");
+        CrearApelacionExternaRequest request = new CrearApelacionExternaRequest(
+                10L,
+                5L,
+                null,
+                null,
+                null,
+                "EXT-2026-001",
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 12),
+                Apelacion.TipoDenegatoria.EXPRESA,
+                "Solicitud original de información pública.",
+                "La entidad denegó expresamente el pedido.",
+                "documentos/solicitud-externa.pdf",
+                "documentos/cargo-externo.pdf",
+                "documentos/respuesta-externa.pdf",
+                null,
+                "Fundamentos suficientes para interponer la apelación externa ante el TTAIP.",
+                null);
+        when(ciudadanoService.findById(10L)).thenReturn(Optional.of(ciudadano));
+        when(entidadService.findById(5L)).thenReturn(Optional.of(entidad));
+        when(apelacionRepository.existsByTipoOrigenAndNumeroSolicitudExternaIgnoreCaseAndCiudadano_IdUsuario(
+                Apelacion.TipoOrigenApelacion.EXTERNA,
+                "EXT-2026-001",
+                10L)).thenReturn(false);
+        when(apelacionRepository.count()).thenReturn(0L);
+        when(apelacionRepository.save(any(Apelacion.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Apelacion resultado = apelacionService.crearExterna(request);
+
+        assertThat(resultado.getTipoOrigen()).isEqualTo(Apelacion.TipoOrigenApelacion.EXTERNA);
+        assertThat(resultado.getSolicitud()).isNull();
+        assertThat(resultado.getEntidadApelada()).isEqualTo(entidad);
+        assertThat(resultado.getEstado()).isEqualTo(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
+        assertThat(resultado.getExpediente()).endsWith("-JUS/TTAIP");
+    }
+
+    @Test
+    void crearExterna_denegatoriaTacitaSinSustento_debeRechazar() {
+        CrearApelacionExternaRequest request = new CrearApelacionExternaRequest(
+                10L,
+                null,
+                "Entidad externa",
+                null,
+                null,
+                "EXT-2026-002",
+                LocalDate.of(2026, 5, 1),
+                null,
+                Apelacion.TipoDenegatoria.TACITA,
+                "Solicitud original de información pública.",
+                null,
+                "documentos/solicitud-externa.pdf",
+                null,
+                null,
+                null,
+                "Fundamentos suficientes para interponer la apelación externa ante el TTAIP.",
+                null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> apelacionService.crearExterna(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("silencio administrativo");
+
+        verifyNoInteractions(ciudadanoService, entidadService);
+        verify(apelacionRepository, never()).save(any());
     }
 }
