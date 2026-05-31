@@ -20,6 +20,7 @@ import java.util.List;
 @Table(name = "apelaciones", indexes = {
     @Index(name = "idx_apelacion_expediente", columnList = "expediente", unique = true),
     @Index(name = "idx_apelacion_solicitud", columnList = "id_solicitud"),
+    @Index(name = "idx_apelacion_entidad_apelada", columnList = "id_entidad_apelada"),
     @Index(name = "idx_apelacion_ciudadano", columnList = "id_ciudadano"),
     @Index(name = "idx_apelacion_estado", columnList = "estado")
 })
@@ -33,12 +34,64 @@ public class Apelacion {
     @Column(nullable = false, unique = true, length = 50)
     private String expediente;
 
-    @NotNull(message = "La solicitud no puede ser nula")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToOne
-    @JoinColumn(name = "id_solicitud", nullable = false, unique = true)
+    @JoinColumn(name = "id_solicitud", unique = true)
     private Solicitud solicitud;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_origen", nullable = false, length = 20)
+    private TipoOrigenApelacion tipoOrigen;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne
+    @JoinColumn(name = "id_entidad_apelada")
+    private Entidad entidadApelada;
+
+    @Column(name = "entidad_externa_nombre", length = 200)
+    private String entidadExternaNombre;
+
+    @Column(name = "entidad_externa_ruc", length = 20)
+    private String entidadExternaRuc;
+
+    @Column(name = "entidad_externa_email", length = 120)
+    private String entidadExternaEmail;
+
+    @Column(name = "numero_solicitud_externa", length = 100)
+    private String numeroSolicitudExterna;
+
+    @Column(name = "fecha_presentacion_solicitud_externa")
+    private LocalDate fechaPresentacionSolicitudExterna;
+
+    @Column(name = "fecha_respuesta_entidad")
+    private LocalDate fechaRespuestaEntidad;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_denegatoria", length = 20)
+    private TipoDenegatoria tipoDenegatoria;
+
+    @Column(name = "resumen_solicitud_original", columnDefinition = "TEXT")
+    private String resumenSolicitudOriginal;
+
+    @Column(name = "resumen_respuesta_entidad", columnDefinition = "TEXT")
+    private String resumenRespuestaEntidad;
+
+    @Column(name = "referencia_documento_solicitud", length = 500)
+    private String referenciaDocumentoSolicitud;
+
+    @Column(name = "referencia_cargo_recepcion", length = 500)
+    private String referenciaCargoRecepcion;
+
+    @Column(name = "referencia_respuesta_entidad", length = 500)
+    private String referenciaRespuestaEntidad;
+
+    @Column(name = "evidencia_silencio_administrativo", columnDefinition = "TEXT")
+    private String evidenciaSilencioAdministrativo;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacion;
 
     @NotNull(message = "El ciudadano no puede ser nulo")
     @ManyToOne
@@ -94,6 +147,9 @@ public class Apelacion {
         if (estado == null) {
             estado = EstadoApelacion.EN_CALIFICACION_1;
         }
+        if (tipoOrigen == null) {
+            tipoOrigen = TipoOrigenApelacion.SAIP_INTERNA;
+        }
     }
 
     /**
@@ -124,6 +180,16 @@ public class Apelacion {
         INADMISIBLE,
         IMPROCEDENTE,
         ADMITIDO
+    }
+
+    public enum TipoOrigenApelacion {
+        SAIP_INTERNA,
+        EXTERNA
+    }
+
+    public enum TipoDenegatoria {
+        EXPRESA,
+        TACITA
     }
 
     public Long getId() {
@@ -158,6 +224,27 @@ public class Apelacion {
                     .orElse(null);
         }
         return null;
+    }
+
+    public TipoOrigenApelacion getTipoOrigenEfectivo() {
+        return tipoOrigen != null ? tipoOrigen : TipoOrigenApelacion.SAIP_INTERNA;
+    }
+
+    public Entidad getEntidadApeladaEfectiva() {
+        if (solicitud != null && solicitud.getEntidad() != null) {
+            return solicitud.getEntidad();
+        }
+        return entidadApelada;
+    }
+
+    public String getEntidadNombreEfectivo() {
+        Entidad entidad = getEntidadApeladaEfectiva();
+        return entidad != null ? entidad.getNombre() : entidadExternaNombre;
+    }
+
+    public String getEntidadEmailEfectivo() {
+        Entidad entidad = getEntidadApeladaEfectiva();
+        return entidad != null ? entidad.getEmail() : entidadExternaEmail;
     }
 
     /**
