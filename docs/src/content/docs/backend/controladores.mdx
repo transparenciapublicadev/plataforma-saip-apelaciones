@@ -21,7 +21,7 @@ El catálogo exhaustivo de rutas, ejemplos y flujo end-to-end vive en [API Endpo
 | `FuncionarioRestController` | `/api/funcionarios` | 7 | Gestión de funcionarios de entidades públicas. |
 | `SolicitudRestController` | `/api/solicitudes` | 14 | Ciclo de vida SAIP, consultas y estadísticas. |
 | `RespuestaRestController` | `/api/respuestas` | 7 | Respuestas de entidad, entrega, denegación y causales. |
-| `ApelacionRestController` | `/api/apelaciones` | 12 | Creación, consulta, subsanación y estados de apelaciones. |
+| `ApelacionRestController` | `/api/apelaciones` | 13 | Creación interna/externa, consulta, subsanación y estados de apelaciones. |
 | `TTAIPRestController` | `/api/ttaip` | 22 | Calificación, notificación y resolución final TTAIP. |
 | `EstadisticasRestController` | `/api/estadisticas` | 7 | Indicadores globales, ranking y tendencias. |
 | `ReportesRestController` | `/api/reportes` | 6 | Reportes operativos y resumen ejecutivo. |
@@ -87,7 +87,7 @@ flowchart TB
   <TabItem label="TTAIP">
     ### Apelaciones y tribunal
 
-    `ApelacionRestController` crea apelaciones ciudadanas vinculadas a una SAIP. El estado inicial funcional es `EN_CALIFICACION_1`.
+    `ApelacionRestController` crea apelaciones ciudadanas vinculadas a una SAIP local o a una solicitud tramitada fuera de la plataforma mediante `POST /api/apelaciones/externa`. El estado inicial funcional es `EN_CALIFICACION_1`.
 
     :::caution[Sin elevación funcional]
     No existe endpoint operativo de elevación. Las nuevas apelaciones no pasan por `PENDIENTE_ELEVACION`.

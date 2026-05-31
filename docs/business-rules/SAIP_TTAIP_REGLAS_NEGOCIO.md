@@ -23,6 +23,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Una resolucion TTAIP de `INADMISIBLE` genera cedula/notificacion solo para el ciudadano recurrente.
 - Un reproceso de notificacion conserva la cedula original y genera nueva cedula y nueva notificacion para el mismo destinatario afectado.
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
+- El ciudadano puede registrar una apelacion externa sin SAIP local cuando la solicitud original fue tramitada fuera de la plataforma.
 - El TTAIP puede cerrar una apelacion con `ESTESE_A_LO_RESUELTO` o `NULIDAD_DEL_ACTO`, generando resolucion final, cedulas/notificaciones para ciudadano y entidad publica e historial del expediente.
 - SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
@@ -205,6 +206,17 @@ El recurso de apelacion puede presentarse:
 - Directamente ante el TTAIP, por plataforma o mesa de partes del MINJUS.
 
 El sistema actual deriva la apelacion ciudadana directamente al TTAIP y no modela una etapa funcional de elevacion. Esta decision se mantiene hasta que se implemente expresamente el canal de elevacion por entidad.
+
+### Apelacion externa sin SAIP local
+
+- La apelacion puede originarse en una SAIP creada en la plataforma (`SAIP_INTERNA`) o en una solicitud tramitada fuera de ella (`EXTERNA`).
+- Una apelacion externa no exige `solicitudId` local ni crea una SAIP ficticia.
+- Debe registrar ciudadano recurrente, entidad publica del catalogo o datos minimos de entidad externa, numero y fecha de la solicitud original, resumen, copia o referencia documental de la solicitud y fundamentos.
+- Si existe denegatoria expresa, debe registrar fecha y resumen o referencia documental de la respuesta de la entidad.
+- Si existe denegatoria tacita, debe registrar evidencia o declaracion de silencio administrativo negativo.
+- El cargo de recepcion se registra cuando corresponde.
+- La apelacion externa crea normalmente expediente TTAIP `NNNNN-AAAA-JUS/TTAIP` en `EN_CALIFICACION_1`, con sala, miembros e historial de apertura.
+- Cuando una entidad externa no este vinculada al catalogo local, el recurso puede registrarse y calificarse. Antes de operaciones institucionales que exigen funcionario de entidad, como descargos o cumplimiento, debe vincularse la entidad apelada al catalogo.
 
 ### Elevacion por entidad
 
@@ -390,4 +402,3 @@ Reglas:
 
 - Plazo de apelacion por denegatoria expresa: la tabla inicial del documento indica 15 dias calendario, pero el Art. 34.2 citado en el mismo documento indica 15 dias habiles. Debe resolverse con criterio legal/producto antes de cambiar codigo.
 - Elevacion: el documento oficial incluye elevacion por entidad, pero el flujo actual del proyecto deriva directo al TTAIP. Debe decidirse si se implementa como modulo funcional o se mantiene solo como referencia.
-- Apelacion sin SAIP creada en plataforma: el documento propone permitir apelaciones de solicitudes tramitadas fuera de la plataforma. El backend actual exige `solicitudId`.
