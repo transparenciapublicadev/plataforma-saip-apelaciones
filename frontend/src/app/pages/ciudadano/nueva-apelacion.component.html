@@ -48,6 +48,22 @@
         </div>
       </div>
 
+      <div data-motion-item class="form-shell mb-6">
+        <div class="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span class="eyebrow">Solicitud tramitada fuera de la plataforma</span>
+            <h2 class="form-section-title mt-1">¿Su SAIP no aparece en esta bandeja?</h2>
+            <p class="text-sm text-muted-foreground mt-1.5 max-w-2xl">
+              Registre una apelación externa con la copia de su solicitud, el cargo cuando corresponda y la respuesta de la entidad o sustento del silencio administrativo.
+            </p>
+          </div>
+          <button type="button" class="btn-ghost-brand whitespace-nowrap" (click)="iniciarApelacionExterna()">
+            Apelar SAIP externa
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h14m-6-6 6 6-6 6" /></svg>
+          </button>
+        </div>
+      </div>
+
       @if (error()) {
         <div data-motion-item class="rounded-lg p-4 mb-6" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
           <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
@@ -119,7 +135,7 @@
         </div>
       </div>
     </div>
-  } @else if (solicitud(); as sol) {
+  } @else if (solicitud() || esApelacionExterna()) {
     <div class="relative bg-brand-gradient text-white overflow-hidden">
       <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
       <div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12" data-hero>
@@ -133,7 +149,7 @@
           Interponer apelación ante TTAIP
         </h1>
         <p class="text-white/75 mt-3 max-w-2xl">
-          Expediente vinculado · <span class="font-mono font-semibold">{{ sol.expediente }}</span>
+          {{ origenVinculoDisplay() }}
         </p>
       </div>
       <div class="brand-divider"></div>
@@ -169,6 +185,81 @@
         </div>
       }
 
+      @if (esApelacionExterna()) {
+        <section data-motion-item class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">00 · Origen externo</span>
+              <h2 class="form-section-title">Datos de la SAIP tramitada fuera de la plataforma</h2>
+            </div>
+            <span class="font-display" style="font-size: 48px; line-height: 1; color: color-mix(in srgb, var(--brand-700) 35%, transparent)">00</span>
+          </div>
+          <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="field">
+              <label class="field-label">Entidad del catálogo</label>
+              <select class="field-input" [(ngModel)]="entidadExternaId" name="entidadExternaId">
+                <option [ngValue]="null">No figura en el catálogo</option>
+                @for (entidad of entidades(); track entidad.id) {
+                  <option [ngValue]="entidad.id">{{ entidad.nombre }}</option>
+                }
+              </select>
+              <span class="field-hint">Seleccione una entidad cuando esté disponible.</span>
+            </div>
+            <div class="field">
+              <label class="field-label">Nombre de entidad externa</label>
+              <input class="field-input" [(ngModel)]="entidadExternaNombre" name="entidadExternaNombre" placeholder="Complete si no seleccionó una entidad" />
+            </div>
+            <div class="field">
+              <label class="field-label">RUC de entidad</label>
+              <input class="field-input" [(ngModel)]="entidadExternaRuc" name="entidadExternaRuc" maxlength="20" />
+            </div>
+            <div class="field">
+              <label class="field-label">Correo de entidad</label>
+              <input class="field-input" type="email" [(ngModel)]="entidadExternaEmail" name="entidadExternaEmail" />
+            </div>
+            <div class="field">
+              <label class="field-label">Número de solicitud externa <span class="req">*</span></label>
+              <input class="field-input" [(ngModel)]="numeroSolicitudExterna" name="numeroSolicitudExterna" placeholder="Ej. MP-2026-00421" />
+            </div>
+            <div class="field">
+              <label class="field-label">Fecha de presentación <span class="req">*</span></label>
+              <input class="field-input" type="date" [(ngModel)]="fechaPresentacionSolicitudExterna" name="fechaPresentacionSolicitudExterna" />
+            </div>
+            <div class="field">
+              <label class="field-label">Tipo de denegatoria <span class="req">*</span></label>
+              <select class="field-input" [ngModel]="tipoDenegatoriaExterna()" (ngModelChange)="tipoDenegatoriaExterna.set($event)" name="tipoDenegatoriaExterna">
+                <option value="EXPRESA">Expresa · la entidad respondió</option>
+                <option value="TACITA">Tácita · silencio administrativo negativo</option>
+              </select>
+            </div>
+            @if (tipoDenegatoriaExterna() === 'EXPRESA') {
+              <div class="field">
+                <label class="field-label">Fecha de respuesta <span class="req">*</span></label>
+                <input class="field-input" type="date" [(ngModel)]="fechaRespuestaEntidad" name="fechaRespuestaEntidad" />
+              </div>
+            }
+            <div class="field md:col-span-2">
+              <label class="field-label">Resumen de la solicitud original <span class="req">*</span></label>
+              <textarea class="field-input" rows="4" [(ngModel)]="resumenSolicitudOriginal" name="resumenSolicitudOriginal"></textarea>
+            </div>
+            @if (tipoDenegatoriaExterna() === 'EXPRESA') {
+              <div class="field md:col-span-2">
+                <label class="field-label">Resumen de la respuesta de la entidad</label>
+                <textarea class="field-input" rows="3" [(ngModel)]="resumenRespuestaEntidad" name="resumenRespuestaEntidad"></textarea>
+              </div>
+            }
+            <div class="field">
+              <label class="field-label">Referencia del cargo de recepción</label>
+              <input class="field-input" [(ngModel)]="referenciaCargoRecepcion" name="referenciaCargoRecepcion" placeholder="Código, URL o referencia documental" />
+            </div>
+            <div class="field">
+              <label class="field-label">Observación</label>
+              <input class="field-input" [(ngModel)]="observacionExterna" name="observacionExterna" placeholder="Información adicional útil para la calificación" />
+            </div>
+          </div>
+        </section>
+      }
+
       <section data-motion-item class="form-shell">
         <div class="form-section-header flex items-start justify-between gap-4">
           <div>
@@ -179,7 +270,7 @@
         </div>
 
         <div class="p-6 md:p-8 space-y-5">
-          @for (documento of requiredDocuments; track documento.n) {
+          @for (documento of requiredDocuments(); track documento.n) {
             <div class="relative">
               @if (fileFor(documento.fileNum)) {
                 <div class="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--success); box-shadow: var(--shadow-sm)">
@@ -329,7 +420,7 @@
     title="Recurso recibido por el Tribunal"
     description="Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento."
     [expediente]="expedienteTtaip()"
-    [expedienteHint]="'Vinculado a ' + (solicitud()?.expediente || '—')"
+    [expedienteHint]="successExpedienteHint()"
     [plazoDias]="7"
     plazoTipo="hábiles"
     plazoDescripcion="El TTAIP realizará la 1ra calificación de admisibilidad dentro de este plazo."

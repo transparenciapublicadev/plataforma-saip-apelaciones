@@ -2849,6 +2849,38 @@
         }
       }
     },
+    "/api/apelaciones/externa": {
+      "post": {
+        "tags": [
+          "Apelaciones TTAIP"
+        ],
+        "summary": "Crear apelación externa",
+        "description": "Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local",
+        "operationId": "crearExterna",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearApelacionExternaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApelacionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/usuarios/{id}/estado": {
       "patch": {
         "tags": [
@@ -5983,6 +6015,51 @@
           "entidadNombre": {
             "type": "string"
           },
+          "tipoOrigen": {
+            "type": "string"
+          },
+          "entidadExternaNombre": {
+            "type": "string"
+          },
+          "entidadExternaRuc": {
+            "type": "string"
+          },
+          "entidadExternaEmail": {
+            "type": "string"
+          },
+          "numeroSolicitudExterna": {
+            "type": "string"
+          },
+          "fechaPresentacionSolicitudExterna": {
+            "type": "string"
+          },
+          "fechaRespuestaEntidad": {
+            "type": "string"
+          },
+          "tipoDenegatoria": {
+            "type": "string"
+          },
+          "resumenSolicitudOriginal": {
+            "type": "string"
+          },
+          "resumenRespuestaEntidad": {
+            "type": "string"
+          },
+          "referenciaDocumentoSolicitud": {
+            "type": "string"
+          },
+          "referenciaCargoRecepcion": {
+            "type": "string"
+          },
+          "referenciaRespuestaEntidad": {
+            "type": "string"
+          },
+          "evidenciaSilencioAdministrativo": {
+            "type": "string"
+          },
+          "observacion": {
+            "type": "string"
+          },
           "resolucion": {
             "$ref": "#/components/schemas/ResolucionDTO",
             "description": "Resolución final (RESOLUCION_FINAL)"
@@ -7207,7 +7284,7 @@
             "type": "number",
             "description": "Monto de reproducción física",
             "example": "18.50",
-            "minimum": 0.0
+            "minimum": 0
           },
           "moneda": {
             "type": "string",
@@ -7509,6 +7586,105 @@
         "required": [
           "identificador",
           "password"
+        ]
+      },
+      "CrearApelacionExternaRequest": {
+        "type": "object",
+        "description": "Registro de una apelación TTAIP originada por una SAIP tramitada fuera de la plataforma",
+        "properties": {
+          "ciudadanoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadExternaNombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "entidadExternaRuc": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "entidadExternaEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "numeroSolicitudExterna": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "fechaPresentacionSolicitudExterna": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaRespuestaEntidad": {
+            "type": "string",
+            "format": "date"
+          },
+          "tipoDenegatoria": {
+            "type": "string",
+            "enum": [
+              "EXPRESA",
+              "TACITA"
+            ]
+          },
+          "resumenSolicitudOriginal": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "resumenRespuestaEntidad": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "referenciaDocumentoSolicitud": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaCargoRecepcion": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaRespuestaEntidad": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "evidenciaSilencioAdministrativo": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "fundamentos": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "ciudadanoId",
+          "fechaPresentacionSolicitudExterna",
+          "fundamentos",
+          "numeroSolicitudExterna",
+          "referenciaDocumentoSolicitud",
+          "resumenSolicitudOriginal",
+          "tipoDenegatoria"
         ]
       },
       "CancelarSuspensionTtaipRequest": {

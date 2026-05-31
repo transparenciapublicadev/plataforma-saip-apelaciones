@@ -1,5 +1,5 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
-import type { ApelacionDTO } from '../api/types';
+import type { ApelacionDTO, CrearApelacionExternaRequest } from '../api/types';
 import type {
     CedulaNotificacion,
     CumplimientoResolucionTtaip,
@@ -40,7 +40,25 @@ export type CalificacionApelacion =
     | 'IMPROCEDENTE'
     | 'ADMITIDO';
 
+export type TipoOrigenApelacion = 'SAIP_INTERNA' | 'EXTERNA';
+export type TipoDenegatoriaApelacion = 'EXPRESA' | 'TACITA';
+
 export type Apelacion = Required<ApelacionDTO> & {
+    tipoOrigen?: TipoOrigenApelacion | string | null;
+    entidadExternaNombre?: string | null;
+    entidadExternaRuc?: string | null;
+    entidadExternaEmail?: string | null;
+    numeroSolicitudExterna?: string | null;
+    fechaPresentacionSolicitudExterna?: string | null;
+    fechaRespuestaEntidad?: string | null;
+    tipoDenegatoria?: TipoDenegatoriaApelacion | string | null;
+    resumenSolicitudOriginal?: string | null;
+    resumenRespuestaEntidad?: string | null;
+    referenciaDocumentoSolicitud?: string | null;
+    referenciaCargoRecepcion?: string | null;
+    referenciaRespuestaEntidad?: string | null;
+    evidenciaSilencioAdministrativo?: string | null;
+    observacion?: string | null;
     expedienteTtaip?: {
         id: number;
         numeroExpediente: string;
@@ -74,3 +92,5 @@ export interface ApelacionCreate {
     ciudadanoId: number;
     fundamentos: string;
 }
+
+export type ApelacionCreateExterna = CrearApelacionExternaRequest;
