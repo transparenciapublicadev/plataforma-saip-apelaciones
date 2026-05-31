@@ -148,6 +148,9 @@ function validateEnvironment({ collection, collectionVariables, config, env }) {
   ]);
 
   for (const variable of usedVariables) {
+    if (isPostmanDynamicVariable(variable)) {
+      continue;
+    }
     if (!env.has(variable) && !collectionVariables.has(variable) && !runtimeVariables.has(variable)) {
       problems.push({
         key: variable,
@@ -182,6 +185,10 @@ function validateEnvironment({ collection, collectionVariables, config, env }) {
   }
 
   return problems;
+}
+
+function isPostmanDynamicVariable(variable) {
+  return String(variable).startsWith('$');
 }
 
 function collectVariablesFromRequests(collection) {

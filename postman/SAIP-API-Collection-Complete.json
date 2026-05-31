@@ -28449,6 +28449,209 @@
           ]
         },
         {
+          "name": "Crear Apelación Externa - Denegatoria Expresa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"entidadId\": \"{{entidadId}}\",\n    \"numeroSolicitudExterna\": \"EXT-EXPRESA-{{$guid}}\",\n    \"fechaPresentacionSolicitudExterna\": \"2026-05-01\",\n    \"fechaRespuestaEntidad\": \"2026-05-12\",\n    \"tipoDenegatoria\": \"EXPRESA\",\n    \"resumenSolicitudOriginal\": \"Solicitud externa de información pública sobre contrataciones institucionales.\",\n    \"resumenRespuestaEntidad\": \"La entidad denegó expresamente la entrega de la información solicitada.\",\n    \"referenciaDocumentoSolicitud\": \"documentos/saip-externa-expresa.pdf\",\n    \"referenciaCargoRecepcion\": \"documentos/cargo-externo-expresa.pdf\",\n    \"referenciaRespuestaEntidad\": \"documentos/respuesta-externa-expresa.pdf\",\n    \"fundamentos\": \"La información solicitada tiene naturaleza pública y la denegatoria expresa debe ser revisada por el Tribunal.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/externa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "externa"
+              ]
+            },
+            "description": "## Crear Apelación Externa\n\n**POST** `/apelaciones/externa`\n\nRegistra una apelación TTAIP para una SAIP tramitada fuera de la plataforma. No exige `solicitudId`, conserva evidencia documental y crea expediente TTAIP directamente en primera calificación.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"external express appeal is created without local SAIP\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.tipoOrigen).to.eql(\"EXTERNA\");",
+                  "  pm.expect(json.solicitudId).to.eql(null);",
+                  "  pm.expect(json.estado).to.eql(\"EN_CALIFICACION_1\");",
+                  "  pm.expect(json.expedienteTtaip).to.be.an(\"object\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"apelacionExternaExpresaId\", String(json.id));",
+                  "pm.environment.set(\"expedienteTtaipExternoExpresaId\", String(json.expedienteTtaip.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Apelación Externa - Silencio Administrativo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"entidadExternaNombre\": \"Municipalidad Distrital Externa de Prueba\",\n    \"entidadExternaRuc\": \"20123456789\",\n    \"entidadExternaEmail\": \"mesa.partes@municipalidad-externa.test\",\n    \"numeroSolicitudExterna\": \"EXT-TACITA-{{$guid}}\",\n    \"fechaPresentacionSolicitudExterna\": \"2026-04-01\",\n    \"tipoDenegatoria\": \"TACITA\",\n    \"resumenSolicitudOriginal\": \"Solicitud externa de acceso a información sobre ejecución presupuestal.\",\n    \"referenciaDocumentoSolicitud\": \"documentos/saip-externa-tacita.pdf\",\n    \"referenciaCargoRecepcion\": \"documentos/cargo-externo-tacita.pdf\",\n    \"evidenciaSilencioAdministrativo\": \"Declaración y cargo que acreditan ausencia de respuesta dentro del plazo legal.\",\n    \"fundamentos\": \"La ausencia de respuesta configura silencio administrativo negativo y habilita la revisión directa por el TTAIP.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/externa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "externa"
+              ]
+            },
+            "description": "## Crear Apelación Externa\n\n**POST** `/apelaciones/externa`\n\nRegistra una apelación TTAIP para una SAIP tramitada fuera de la plataforma. No exige `solicitudId`, conserva evidencia documental y crea expediente TTAIP directamente en primera calificación.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"external tacit appeal is created with silence evidence\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.tipoOrigen).to.eql(\"EXTERNA\");",
+                  "  pm.expect(json.tipoDenegatoria).to.eql(\"TACITA\");",
+                  "  pm.expect(json.solicitudId).to.eql(null);",
+                  "  pm.expect(json.expedienteTtaip).to.be.an(\"object\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"apelacionExternaTacitaId\", String(json.id));",
+                  "pm.environment.set(\"expedienteTtaipExternoTacitaId\", String(json.expedienteTtaip.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Apelación Externa sin Respuesta - [EXPECTED_ERROR]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"entidadId\": \"{{entidadId}}\",\n    \"numeroSolicitudExterna\": \"EXT-INVALIDA-{{$guid}}\",\n    \"fechaPresentacionSolicitudExterna\": \"2026-05-01\",\n    \"tipoDenegatoria\": \"EXPRESA\",\n    \"resumenSolicitudOriginal\": \"Solicitud externa incompleta para validar reglas de denegatoria expresa.\",\n    \"referenciaDocumentoSolicitud\": \"documentos/saip-externa-invalida.pdf\",\n    \"fundamentos\": \"Este request negativo comprueba que el backend no acepte una denegatoria expresa sin respuesta de entidad.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/externa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "externa"
+              ]
+            },
+            "description": "## Crear Apelación Externa\n\n**POST** `/apelaciones/externa`\n\nRegistra una apelación TTAIP para una SAIP tramitada fuera de la plataforma. No exige `solicitudId`, conserva evidencia documental y crea expediente TTAIP directamente en primera calificación.\n\nValidación negativa esperada: la denegatoria expresa exige fecha y sustento de respuesta de la entidad.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"external express appeal without entity response is rejected\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  const problem = pm.response.json();",
+                  "  pm.expect(problem).to.have.property(\"type\");",
+                  "  pm.expect(problem).to.have.property(\"title\");",
+                  "  pm.expect(problem.status).to.eql(400);",
+                  "  pm.expect(problem.detail).to.include(\"fecha de respuesta\");",
+                  "  pm.expect(problem).to.have.property(\"instance\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Obtener Apelación por Expediente",
           "request": {
             "method": "GET",
@@ -33446,18 +33649,22 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const json = pm.response.json();",
-                  "const active = json.find((item) => [\"PENDIENTE\", \"OBSERVADO\"].includes(item.estadoCumplimiento));",
                   "pm.test(\"compliance cleanup scan succeeds\", function () {",
                   "    pm.response.to.have.status(200);",
-                  "    pm.expect(Array.isArray(json)).to.eql(true);",
                   "});",
-                  "if (active) {",
-                  "    pm.environment.set(\"cumplimientoActivoPrevioId\", String(active.id));",
-                  "    postman.setNextRequest(\"[CLEANUP] Cerrar Cumplimiento Activo Previo\");",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.execution.setNextRequest(null);",
                   "} else {",
-                  "    pm.environment.unset(\"cumplimientoActivoPrevioId\");",
-                  "    postman.setNextRequest(\"Crear Seguimiento de Cumplimiento Fundado\");",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(Array.isArray(json)).to.eql(true);",
+                  "    const active = json.find((item) => [\"PENDIENTE\", \"OBSERVADO\"].includes(item.estadoCumplimiento));",
+                  "    if (active) {",
+                  "        pm.environment.set(\"cumplimientoActivoPrevioId\", String(active.id));",
+                  "        pm.execution.setNextRequest(\"[CLEANUP] Cerrar Cumplimiento Activo Previo\");",
+                  "    } else {",
+                  "        pm.environment.unset(\"cumplimientoActivoPrevioId\");",
+                  "        pm.execution.setNextRequest(\"Crear Seguimiento de Cumplimiento Fundado\");",
+                  "    }",
                   "}"
                 ]
               }
@@ -33498,13 +33705,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const json = pm.response.json();",
                   "pm.test(\"previous active compliance tracking is closed\", function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "    const json = pm.response.json();",
                   "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"cumplimientoActivoPrevioId\"));",
                   "    pm.expect(json.estadoCumplimiento).to.eql(\"CERRADO\");",
-                  "});",
-                  "postman.setNextRequest(\"[CLEANUP] Preparar Cumplimiento TTAIP\");"
+                  "    pm.execution.setNextRequest(\"[CLEANUP] Preparar Cumplimiento TTAIP\");",
+                  "}"
                 ]
               }
             }
@@ -36896,22 +37107,26 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "const json = pm.response.json();",
-                  "const active = json.find((item) =>",
-                  "    item.estadoSuspension === \"ACTIVA\" &&",
-                  "    [\"INFORME_ORAL\", \"INFORMACION_COMPLEMENTARIA\"].includes(item.motivoSuspension)",
-                  ");",
                   "pm.test(\"additional suspension cleanup scan succeeds\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
-                  "if (active) {",
-                  "    pm.environment.set(\"suspensionAdicionalActivaPreviaId\", String(active.id));",
-                  "    pm.environment.set(\"suspensionAdicionalActivaPreviaMotivo\", active.motivoSuspension);",
-                  "    postman.setNextRequest(\"[CLEANUP] Cancelar Suspensión Adicional Activa Previa\");",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.execution.setNextRequest(null);",
                   "} else {",
-                  "    pm.environment.unset(\"suspensionAdicionalActivaPreviaId\");",
-                  "    pm.environment.unset(\"suspensionAdicionalActivaPreviaMotivo\");",
-                  "    postman.setNextRequest(\"Registrar Informe Oral\");",
+                  "    const json = pm.response.json();",
+                  "    const active = json.find((item) =>",
+                  "        item.estadoSuspension === \"ACTIVA\" &&",
+                  "        [\"INFORME_ORAL\", \"INFORMACION_COMPLEMENTARIA\"].includes(item.motivoSuspension)",
+                  "    );",
+                  "    if (active) {",
+                  "        pm.environment.set(\"suspensionAdicionalActivaPreviaId\", String(active.id));",
+                  "        pm.environment.set(\"suspensionAdicionalActivaPreviaMotivo\", active.motivoSuspension);",
+                  "        pm.execution.setNextRequest(\"[CLEANUP] Cancelar Suspensión Adicional Activa Previa\");",
+                  "    } else {",
+                  "        pm.environment.unset(\"suspensionAdicionalActivaPreviaId\");",
+                  "        pm.environment.unset(\"suspensionAdicionalActivaPreviaMotivo\");",
+                  "        pm.execution.setNextRequest(\"Registrar Informe Oral\");",
+                  "    }",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -36959,14 +37174,18 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "const json = pm.response.json();",
                   "pm.test(\"previous active additional suspension is cancelled\", function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code !== 200) {",
+                  "    pm.execution.setNextRequest(null);",
+                  "} else {",
+                  "    const json = pm.response.json();",
                   "    pm.expect(String(json.id)).to.eql(pm.environment.get(\"suspensionAdicionalActivaPreviaId\"));",
                   "    pm.expect(json.estadoSuspension).to.eql(\"CANCELADA\");",
                   "    pm.expect(json.diasSuspendidos).to.eql(0);",
-                  "});",
-                  "postman.setNextRequest(\"[CLEANUP] Preparar Suspensiones Adicionales TTAIP\");"
+                  "    pm.execution.setNextRequest(\"[CLEANUP] Preparar Suspensiones Adicionales TTAIP\");",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -79088,17 +79307,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+              "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "usuarios",
-                "{{usuarioId}}",
+                "{{createdUsuarioId}}",
                 "estado"
               ]
             },
-            "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"activo\": false\n}",
@@ -79145,17 +79364,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79202,17 +79421,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79242,7 +79461,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"La solicitud contiene parametros invalidos o una transicion de negocio no permitida.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"La solicitud contiene parametros invalidos o una transicion de negocio no permitida.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "401 Unauthorized - Missing or invalid JWT",
@@ -79259,17 +79478,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79299,7 +79518,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Token JWT ausente, expirado o invalido.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Token JWT ausente, expirado o invalido.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "403 Forbidden - Insufficient role",
@@ -79316,17 +79535,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79356,7 +79575,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"El rol autenticado no tiene permisos para ejecutar esta operacion.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"El rol autenticado no tiene permisos para ejecutar esta operacion.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "404 Not Found - Resource not found",
@@ -79373,17 +79592,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79413,7 +79632,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"No se encontro el recurso solicitado.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"No se encontro el recurso solicitado.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "409 Conflict - Duplicate or invalid state",
@@ -79430,17 +79649,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79470,7 +79689,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"El recurso ya existe o el estado actual impide completar la operacion.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"El recurso ya existe o el estado actual impide completar la operacion.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "415 Unsupported Media Type - Expected JSON",
@@ -79487,17 +79706,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79527,7 +79746,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 415,\n  \"error\": \"Unsupported Media Type\",\n  \"message\": \"Content-Type no soportado. Use application/json.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 415,\n  \"error\": \"Unsupported Media Type\",\n  \"message\": \"Content-Type no soportado. Use application/json.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
             },
             {
               "name": "422 Validation Error - Field constraints",
@@ -79544,17 +79763,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79584,7 +79803,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 422,\n  \"error\": \"Validation Error\",\n  \"message\": \"Validacion de campos fallida.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"fieldErrors\": [\n    {\n      \"field\": \"fundamentos\",\n      \"message\": \"Los fundamentos son obligatorios\"\n    },\n    {\n      \"field\": \"email\",\n      \"message\": \"Debe ser un correo valido\"\n    }\n  ]\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 422,\n  \"error\": \"Validation Error\",\n  \"message\": \"Validacion de campos fallida.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"fieldErrors\": [\n    {\n      \"field\": \"fundamentos\",\n      \"message\": \"Los fundamentos son obligatorios\"\n    },\n    {\n      \"field\": \"email\",\n      \"message\": \"Debe ser un correo valido\"\n    }\n  ]\n}"
             },
             {
               "name": "500 Internal Server Error - Unexpected failure",
@@ -79601,17 +79820,17 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/estado",
+                  "raw": "{{baseUrl}}/usuarios/{{createdUsuarioId}}/estado",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "usuarios",
-                    "{{usuarioId}}",
+                    "{{createdUsuarioId}}",
                     "estado"
                   ]
                 },
-                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{usuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `usuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `usuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Cambiar Estado de Usuario\n\n**PATCH** `/usuarios/{{createdUsuarioId}}/estado`\n\n## Logica de negocio\nPermite al administrador auditar, crear, activar/desactivar o eliminar usuarios base del sistema.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- `createdUsuarioId`\n\n## Headers\n- `Accept: application/json`\n- `Content-Type: application/json`\n\n## Parametros\n- Path/env `createdUsuarioId`: valor inyectado desde el environment.\n\n## Body de ejemplo\n\n```json\n{\n  \"activo\": false\n}\n```\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"activo\": false\n}",
@@ -79641,7 +79860,19 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/usuarios/{{usuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+              "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/usuarios/{{createdUsuarioId}}/estado\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const createdUsuarioId = (pm.environment.get(\"createdUsuarioId\") || \"\").trim();",
+                  "if (!createdUsuarioId) throw new Error(\"Falta createdUsuarioId para cambiar el estado del usuario creado por este run\");"
+                ]
+              }
             }
           ]
         },
