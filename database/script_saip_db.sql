@@ -255,6 +255,34 @@ CREATE TABLE IF NOT EXISTS liquidaciones_costo_solicitud (
     CONSTRAINT chk_liq_monto CHECK (monto >= 0)
 );
 
+CREATE TABLE IF NOT EXISTS elevaciones_apelacion_ttaip (
+    id_elevacion BIGINT NOT NULL AUTO_INCREMENT,
+    id_apelacion BIGINT NOT NULL,
+    id_entidad_origen BIGINT NOT NULL,
+    fecha_presentacion_ante_entidad DATE NOT NULL,
+    fecha_limite_elevacion DATE NOT NULL,
+    fecha_elevacion_ttaip DATETIME NULL,
+    fecha_comunicacion_ciudadano DATETIME NULL,
+    estado_elevacion VARCHAR(40) NOT NULL DEFAULT 'PENDIENTE',
+    referencia_cargo_presentacion VARCHAR(500) NOT NULL,
+    referencia_expediente_elevado VARCHAR(500) NULL,
+    referencia_prueba_omision VARCHAR(500) NULL,
+    responsable_entidad VARCHAR(120) NULL,
+    responsable_ttaip VARCHAR(120) NULL,
+    observacion TEXT NULL,
+    trazabilidad TEXT NULL,
+    fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_elevacion),
+    UNIQUE KEY uk_elevacion_apelacion (id_apelacion),
+    KEY idx_elevacion_entidad (id_entidad_origen),
+    KEY idx_elevacion_estado (estado_elevacion),
+    KEY idx_elevacion_limite (fecha_limite_elevacion),
+    CONSTRAINT fk_elevacion_apelacion FOREIGN KEY (id_apelacion) REFERENCES apelaciones (id_apelacion),
+    CONSTRAINT fk_elevacion_entidad FOREIGN KEY (id_entidad_origen) REFERENCES entidades (id_entidad),
+    CONSTRAINT chk_elevacion_estado CHECK (estado_elevacion IN ('PENDIENTE', 'ELEVADA', 'VENCIDA_NO_ELEVADA', 'COMUNICADA_POR_CIUDADANO', 'ADMITIDA_EXCEPCIONALMENTE'))
+);
+
 CREATE TABLE IF NOT EXISTS salas_ttaip (
     id_sala_ttaip BIGINT NOT NULL AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
