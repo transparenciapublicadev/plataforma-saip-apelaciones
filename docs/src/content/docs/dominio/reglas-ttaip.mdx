@@ -13,13 +13,16 @@ Cuando un ciudadano no está conforme con la respuesta de una entidad pública, 
 El documento `Flujo SAIP Y TTAIP_081942.docx` es la referencia oficial de reglas de negocio. La versión consolidada vive en `docs/business-rules/SAIP_TTAIP_REGLAS_NEGOCIO.md` y las brechas contra el sistema actual en `docs/business-rules/SAIP_TTAIP_BRECHAS.md`.
 :::
 
-:::danger[Regla funcional actual]
-El documento oficial contempla elevación por entidad en 2 días hábiles, pero el proyecto **no usa etapa funcional de elevación TTAIP** en el flujo ciudadano actual. Al crear una apelación desde el ciudadano, el expediente entra directamente en `EN_CALIFICACION_1`.
+:::note[Canales compatibles]
+Una apelación interna puede ingresar directamente al TTAIP en `EN_CALIFICACION_1` o presentarse ante la entidad en `PENDIENTE_ELEVACION`. En este segundo canal, el expediente TTAIP se abre recién cuando la entidad eleva o cuando el Tribunal admite excepcionalmente la omisión acreditada.
 :::
 
 ```mermaid
 flowchart LR
-    A["Ciudadano presenta apelacion\nplazo segun decision legal/producto"] --> B["EN_CALIFICACION_1\nPrimera calificacion"]
+    A["Ciudadano presenta apelacion\nplazo segun decision legal/producto"] -->|Directo al TTAIP| B["EN_CALIFICACION_1\nPrimera calificacion"]
+    A -->|Ante entidad| K["PENDIENTE_ELEVACION\n2 dias habiles"]
+    K -->|Entidad eleva| B
+    K -->|Omision acreditada + admision excepcional| B
     B -->|Admitir| H["Requerimiento descargos\n7 dias habiles"]
     B -->|Requerir subsanacion| D["EN_SUBSANACION\n2 dias habiles"]
     B -->|Improcedente| X["RESUELTO_IMPROCEDENTE"]
@@ -42,9 +45,24 @@ flowchart LR
 
 El documento oficial contiene una diferencia interna: una tabla menciona **15 días calendario**, pero el Art. 34.2 citado en el mismo documento establece **15 días hábiles** para denegatoria expresa. Ante denegatoria tácita o silencio administrativo negativo no existe plazo perentorio.
 
-### BR-TTAIP-002 — Inicio directo en primera calificación
+### BR-TTAIP-002 — Canales de ingreso compatibles
 
-Toda apelación nueva se registra con expediente `NNNNN-AAAA-JUS/TTAIP` y estado `EN_CALIFICACION_1`. Ningún cliente debe esperar, crear ni mostrar una etapa funcional de elevación.
+El flujo directo se conserva: una apelación presentada al Tribunal abre expediente `NNNNN-AAAA-JUS/TTAIP` en `EN_CALIFICACION_1`. La vía ante entidad es adicional y no rompe esa compatibilidad.
+
+### BR-TTAIP-002-B — Elevación por entidad
+
+Si el ciudadano presenta el recurso ante la entidad pública, la apelación queda en `PENDIENTE_ELEVACION` y reserva su numeración, pero todavía no abre el agregado `ExpedienteTtaip`. La entidad dispone de **2 días hábiles** para remitirla al Tribunal.
+
+`ElevacionApelacionTtaip` registra entidad de origen, fecha de presentación, límite, cargo, referencia de remisión, responsables, estado y trazabilidad.
+
+| Endpoint | Rol principal | Uso |
+| --- | --- | --- |
+| `POST /api/apelaciones/ante-entidad` | Ciudadano/Admin | Registra recurso interno presentado ante entidad. |
+| `GET /api/apelaciones/entidad/{entidadId}/pendientes-elevacion` | Funcionario/Admin | Lista remisiones pendientes de una entidad. |
+| `POST /api/apelaciones/{id}/elevacion/elevar` | Funcionario/Admin | Eleva dentro del plazo y abre expediente TTAIP. |
+| `POST /api/apelaciones/elevaciones/vencidas/procesar` | Funcionario/TTAIP/Admin | Marca omisiones vencidas. |
+| `POST /api/apelaciones/{id}/elevacion/comunicacion-ciudadana` | Ciudadano/Admin | Registra prueba de omisión. |
+| `POST /api/apelaciones/{id}/elevacion/admitir-excepcionalmente` | TTAIP/Admin | Admite omisión acreditada y abre expediente. |
 
 ### BR-TTAIP-002-A — Apelación externa sin SAIP local
 
@@ -318,4 +336,4 @@ El reproceso conserva `cedulaOriginalId` y `notificacionOriginalId`, genera `ced
 | No pasar a resolución final sin notificar segunda calificación. | Protege plazo legal y trazabilidad. |
 | No crear cumplimiento sobre resolución no fundada. | El seguimiento solo aplica a `FUNDADO` y `FUNDADO_EN_PARTE`. |
 | No resolver nuevamente un expediente cerrado. | Protege la resolución final, cédulas, notificaciones e historial del expediente. |
-| No usar elevación como etapa funcional nueva. | El flujo actual inicia directo en primera calificación. |
+| No calificar una apelación en `PENDIENTE_ELEVACION`. | Aún no ingresó al agregado principal del TTAIP. |
