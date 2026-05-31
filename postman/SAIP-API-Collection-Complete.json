@@ -31506,6 +31506,928 @@
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/apelaciones/{{createdApelacionId}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
           ]
+        },
+        {
+          "name": "Crear Solicitud SAIP para Elevación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"entidadId\": \"{{funcionarioEntidadId}}\",\n    \"asunto\": \"Solicitud API para elevación dentro de plazo\",\n    \"descripcion\": \"Solicito información pública para validar el flujo formal de elevación de apelación ante la entidad.\",\n    \"tipoInformacion\": \"Transparencia institucional\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"base SAIP for elevation is created\", function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"elevacionSolicitudSaipId\", String(json.id));",
+                  "pm.environment.set(\"elevacionSolicitudExpediente\", json.expediente);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Apelación Presentada Ante Entidad",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/ante-entidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "ante-entidad"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": \"{{elevacionSolicitudSaipId}}\",\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"fundamentos\": \"La respuesta o ausencia de respuesta debe ser revisada por el TTAIP.\",\n    \"fechaPresentacionAnteEntidad\": \"{{elevacionFechaPresentacion}}\",\n    \"referenciaCargoPresentacion\": \"documentos/cargo-apelacion-entidad.pdf\",\n    \"observacion\": \"Presentación ante la entidad receptora.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set(\"elevacionFechaPresentacion\", new Date().toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"appeal stays pending until entity elevation\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.estado).to.eql(\"PENDIENTE_ELEVACION\");",
+                  "  pm.expect(json.expedienteTtaip).to.eql(null);",
+                  "  pm.expect(json.elevacion.estadoElevacion).to.eql(\"PENDIENTE\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"elevacionApelacionId\", String(json.id));",
+                  "pm.environment.set(\"elevacionExpedienteReservado\", json.expediente);",
+                  "pm.environment.set(\"elevacionId\", String(json.elevacion.id));",
+                  "pm.environment.set(\"elevacionFechaLimite\", json.elevacion.fechaLimiteElevacion);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Elevación Pendiente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{elevacionApelacionId}}/elevacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{elevacionApelacionId}}",
+                "elevacion"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"pending elevation exposes legal deadline\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.estadoElevacion).to.eql(\"PENDIENTE\");",
+                  "  pm.expect(json.fechaLimiteElevacion).to.eql(pm.environment.get(\"elevacionFechaLimite\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Elevaciones Pendientes por Entidad",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/entidad/{{funcionarioEntidadId}}/pendientes-elevacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "entidad",
+                "{{funcionarioEntidadId}}",
+                "pendientes-elevacion"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"entity queue includes pending elevation\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.some(item => String(item.apelacionId) === pm.environment.get(\"elevacionApelacionId\"))).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Elevar Apelación al TTAIP Dentro del Plazo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{elevacionApelacionId}}/elevacion/elevar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{elevacionApelacionId}}",
+                "elevacion",
+                "elevar"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableEntidad\": \"Funcionario Newman\",\n    \"referenciaExpedienteElevado\": \"documentos/expediente-administrativo-elevado.pdf\",\n    \"observacion\": \"Remisión dentro del plazo legal.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"timely entity elevation opens TTAIP aggregate\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.estado).to.eql(\"EN_CALIFICACION_1\");",
+                  "  pm.expect(json.elevacion.estadoElevacion).to.eql(\"ELEVADA\");",
+                  "  pm.expect(json.expedienteTtaip).to.be.an(\"object\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"elevacionExpedienteTtaipId\", String(json.expedienteTtaip.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Elevación Remitida",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{elevacionApelacionId}}/elevacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{elevacionApelacionId}}",
+                "elevacion"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"elevation remains traceable after remittance\", function () { pm.response.to.have.status(200); pm.expect(pm.response.json().estadoElevacion).to.eql(\"ELEVADA\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Elevación Duplicada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Expected-Error",
+                "value": "true"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{elevacionApelacionId}}/elevacion/elevar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{elevacionApelacionId}}",
+                "elevacion",
+                "elevar"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableEntidad\": \"Funcionario Newman\",\n    \"referenciaExpedienteElevado\": \"documentos/expediente-duplicado.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Problem Details RFC 9457 is returned\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  const problem = pm.response.json();",
+                  "  pm.expect(problem).to.have.property(\"type\");",
+                  "  pm.expect(problem).to.have.property(\"title\");",
+                  "  pm.expect(problem.status).to.eql(400);",
+                  "  pm.expect(problem.detail).to.include(\"ya no está pendiente\");",
+                  "  pm.expect(problem).to.have.property(\"instance\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear Solicitud SAIP para Omisión de Elevación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"entidadId\": \"{{funcionarioEntidadId}}\",\n    \"asunto\": \"Solicitud API para elevación omitida\",\n    \"descripcion\": \"Solicito información pública para validar el flujo formal de elevación de apelación ante la entidad.\",\n    \"tipoInformacion\": \"Transparencia institucional\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"base SAIP for omission path is created\", function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"omisionElevacionSolicitudSaipId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Apelación Ante Entidad con Plazo Vencido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/ante-entidad",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "ante-entidad"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"solicitudId\": \"{{omisionElevacionSolicitudSaipId}}\",\n    \"ciudadanoId\": \"{{ciudadanoId}}\",\n    \"fundamentos\": \"La entidad omitió elevar el recurso y el ciudadano acreditará la presentación.\",\n    \"fechaPresentacionAnteEntidad\": \"{{omisionFechaPresentacion}}\",\n    \"referenciaCargoPresentacion\": \"documentos/cargo-apelacion-omitida.pdf\",\n    \"observacion\": \"Escenario de omisión validado por Newman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const past = new Date(); past.setDate(past.getDate() - 10); pm.variables.set(\"omisionFechaPresentacion\", past.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"overdue elevation starts pending before batch processing\", function () { pm.response.to.have.status(201); pm.expect(pm.response.json().estado).to.eql(\"PENDIENTE_ELEVACION\"); });",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"omisionElevacionApelacionId\", String(json.id));",
+                  "pm.environment.set(\"omisionElevacionId\", String(json.elevacion.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Procesar Elevaciones Vencidas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/elevaciones/vencidas/procesar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "elevaciones",
+                "vencidas",
+                "procesar"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{funcionarioToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"expired elevation batch is processed\", function () { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an(\"array\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Elevación Vencida",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{omisionElevacionApelacionId}}/elevacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{omisionElevacionApelacionId}}",
+                "elevacion"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"omitted elevation is retained as expired\", function () { pm.response.to.have.status(200); pm.expect(pm.response.json().estadoElevacion).to.eql(\"VENCIDA_NO_ELEVADA\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comunicar Omisión de Elevación por Ciudadano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{omisionElevacionApelacionId}}/elevacion/comunicacion-ciudadana",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{omisionElevacionApelacionId}}",
+                "elevacion",
+                "comunicacion-ciudadana"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"referenciaPruebaOmision\": \"documentos/prueba-presentacion-apelacion-omitida.pdf\",\n    \"observacion\": \"La entidad no remitió el recurso dentro del plazo de dos días hábiles.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"citizen reports omitted elevation with evidence\", function () { pm.response.to.have.status(200); pm.expect(pm.response.json().estadoElevacion).to.eql(\"COMUNICADA_POR_CIUDADANO\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admitir Excepcionalmente Elevación Omitida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/apelaciones/{{omisionElevacionApelacionId}}/elevacion/admitir-excepcionalmente",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "apelaciones",
+                "{{omisionElevacionApelacionId}}",
+                "elevacion",
+                "admitir-excepcionalmente"
+              ]
+            },
+            "description": "## Elevación por entidad\n\nValida la presentación de una apelación ante la entidad pública, el plazo legal de 2 días hábiles, la remisión al TTAIP y la apertura del expediente agregado solo después de una elevación válida.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"responsableTtaip\": \"Secretaría Técnica Newman\",\n    \"observacion\": \"Admisión excepcional por omisión acreditada.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ttaipToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"TTAIP exceptional admission opens aggregate\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.estado).to.eql(\"EN_CALIFICACION_1\");",
+                  "  pm.expect(json.elevacion.estadoElevacion).to.eql(\"ADMITIDA_EXCEPCIONALMENTE\");",
+                  "  pm.expect(json.expedienteTtaip).to.be.an(\"object\");",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set(\"omisionElevacionExpedienteTtaipId\", String(json.expedienteTtaip.id));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
