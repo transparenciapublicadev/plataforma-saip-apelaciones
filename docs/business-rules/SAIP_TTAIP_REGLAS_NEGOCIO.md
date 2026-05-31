@@ -337,7 +337,7 @@ Las decisiones `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` se registran como res
 - Un acuse `ENTREGADO` marca la notificacion como `ENTREGADA`; un acuse `FALLIDO` o `NO_RECIBIDO` la marca como `FALLIDA`; un acuse `OBSERVADO` la marca como `OBSERVADA`.
 - Una notificacion fallida u observada puede iniciar reproceso, conservando su constancia y acuse originales.
 - La validacion manual solo procede con sustento: observacion, evidencia, referencia documental, constancia o acuse. Esta validacion marca la notificacion como `VALIDADA` y registra responsable y fecha.
-- No se implementa aun envio real de correo, SMTP, casilla electronica real ni motor externo. El modelo queda preparado para capturar evidencia y acuses generados por esos proveedores cuando se integren.
+- Motor común de notificaciones: Se cuenta con un motor de notificaciones unificado para los flujos de SAIP y TTAIP que gestiona los canales (CORREO, FISICO, PLATAFORMA, CASILLA_ELECTRONICA) y los proveedores. Soporta un proveedor determinista MOCK para desarrollo y pruebas locales, y un proveedor SMTP real configurable mediante variables de entorno. La integración con casilla electrónica cuenta con un adaptador preparado (CASILLA_ELECTRONICA) que retorna NO_DISPONIBLE hasta contar con el contrato API oficial. Los intentos se persisten en la tabla `intentos_notificacion` con canal, proveedor, resultado, destinatario, correlación, constancia, acuse, evidencia, error sanitizado y trazabilidad.
 - Los plazos que dependan de una notificacion valida deben considerar notificaciones `ENTREGADA` o `VALIDADA`. Esta iteracion documenta y protege el dato minimo, sin recalcular masivamente plazos historicos.
 
 ## Reglas de cedulas
