@@ -140,8 +140,8 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       email: '—',
       telefono: '—',
       entidad: apelacion?.entidadNombre || 'Entidad publica',
-      expedienteSAIP: apelacion?.solicitudExpediente || '—',
-      asuntoSAIP: apelacion?.solicitudAsunto || 'Sin asunto registrado',
+      expedienteSAIP: apelacion?.solicitudExpediente || apelacion?.numeroSolicitudExterna || '—',
+      asuntoSAIP: apelacion?.solicitudAsunto || apelacion?.resumenSolicitudOriginal || 'Sin asunto registrado',
       causalDenegatoria: apelacion?.resolucionPrimeraCalificacion?.decision || 'No registrada por el backend',
       fundamentoEntidad: apelacion?.resolucionPrimeraCalificacion?.observaciones
         || apelacion?.resolucionPrimeraCalificacion?.fundamentos

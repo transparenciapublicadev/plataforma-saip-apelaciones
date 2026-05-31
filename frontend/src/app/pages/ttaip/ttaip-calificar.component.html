@@ -68,15 +68,15 @@
                   <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(ap.ciudadanoNombre) }}</div>
                   <div>
                     <div class="font-medium text-foreground">{{ ap.ciudadanoNombre }}</div>
-                    <div class="font-mono text-[11px] text-muted-foreground">Expediente SAIP · {{ ap.solicitudExpediente }}</div>
+                    <div class="font-mono text-[11px] text-muted-foreground">SAIP origen · {{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</div>
                   </div>
                 </div>
               </div>
 
               <div>
                 <span class="eyebrow">Solicitud origen</span>
-                <div class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente }}</span></div>
-                <p class="text-xs text-muted-foreground mt-2 leading-relaxed">Asunto: {{ ap.solicitudAsunto }}</p>
+                <div class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</span></div>
+                <p class="text-xs text-muted-foreground mt-2 leading-relaxed">Asunto: {{ ap.solicitudAsunto || ap.resumenSolicitudOriginal || '—' }}</p>
               </div>
 
               <div class="rule-ornament"></div>

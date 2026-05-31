@@ -312,7 +312,7 @@ export class TtaipCalificarComponent implements OnInit {
     return [
       { label: 'Calificación', value: this.selectedDecision()?.toUpperCase() || '—' },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
-      { label: 'SAIP origen', value: this.apelacion()?.solicitudExpediente || '—', mono: true },
+      { label: 'SAIP origen', value: this.apelacion()?.solicitudExpediente || this.apelacion()?.numeroSolicitudExterna || '—', mono: true },
       { label: 'Secretaría', value: 'TTAIP' }
     ];
   }

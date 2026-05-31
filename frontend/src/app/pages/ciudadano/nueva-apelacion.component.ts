@@ -3,8 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
+import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
+import { TipoDenegatoriaApelacion, TipoOrigenApelacion } from '../../models/apelacion.model';
+import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
 import {
   ReferenceConfirmModalComponent,
@@ -35,6 +38,7 @@ export class NuevaApelacionComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly entidadService = inject(EntidadService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
 
@@ -53,31 +57,49 @@ export class NuevaApelacionComponent implements OnInit {
   file1 = signal<File | null>(null);
   file2 = signal<File | null>(null);
   file3 = signal<File | null>(null);
+  tipoOrigen = signal<TipoOrigenApelacion>('SAIP_INTERNA');
+  entidades = signal<Entidad[]>([]);
 
   fundamentos = '';
+  entidadExternaId: number | null = null;
+  entidadExternaNombre = '';
+  entidadExternaRuc = '';
+  entidadExternaEmail = '';
+  numeroSolicitudExterna = '';
+  fechaPresentacionSolicitudExterna = '';
+  fechaRespuestaEntidad = '';
+  tipoDenegatoriaExterna = signal<TipoDenegatoriaApelacion>('EXPRESA');
+  resumenSolicitudOriginal = '';
+  resumenRespuestaEntidad = '';
+  referenciaCargoRecepcion = '';
+  observacionExterna = '';
 
   readonly uploadedCount = computed(() => [this.file1(), this.file2(), this.file3()].filter((file) => file !== null).length);
   readonly allFilesUploaded = computed(() => this.uploadedCount() === 3);
-  readonly requiredDocuments: RequiredAppealDocument[] = [
-    {
-      n: '01',
-      fileNum: 1,
-      label: 'SAIP original',
-      desc: 'Documento de su solicitud original presentada a la entidad.'
-    },
-    {
-      n: '02',
-      fileNum: 2,
-      label: 'Respuesta de la entidad',
-      desc: 'Documento oficial de respuesta emitido por la entidad.'
-    },
-    {
-      n: '03',
-      fileNum: 3,
-      label: 'Recurso fundamentado',
-      desc: 'Documento donde fundamenta las razones de su apelación.'
-    }
-  ];
+  readonly requiredDocuments = computed<RequiredAppealDocument[]>(() => [
+      {
+        n: '01',
+        fileNum: 1,
+        label: 'SAIP original',
+        desc: 'Documento de su solicitud original presentada a la entidad.'
+      },
+      {
+        n: '02',
+        fileNum: 2,
+        label: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
+          ? 'Sustento de silencio administrativo'
+          : 'Respuesta de la entidad',
+        desc: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
+          ? 'Constancia o declaración que sustenta la ausencia de respuesta dentro del plazo.'
+          : 'Documento oficial de respuesta emitido por la entidad.'
+      },
+      {
+        n: '03',
+        fileNum: 3,
+        label: 'Recurso fundamentado',
+        desc: 'Documento donde fundamenta las razones de su apelación.'
+      }
+    ]);
 
   readonly filteredSolicitudes = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
@@ -95,6 +117,7 @@ export class NuevaApelacionComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.cargarEntidades();
     const expediente = this.route.snapshot.paramMap.get('expediente');
     if (expediente) {
       this.cargarSolicitud(expediente);
@@ -171,6 +194,7 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   seleccionarSolicitud(solicitud: Solicitud): void {
+    this.tipoOrigen.set('SAIP_INTERNA');
     this.solicitud.set(solicitud);
     this.modoSeleccion.set(false);
     this.error.set('');
@@ -180,8 +204,20 @@ export class NuevaApelacionComponent implements OnInit {
     }
   }
 
+  iniciarApelacionExterna(): void {
+    this.tipoOrigen.set('EXTERNA');
+    this.solicitud.set(null);
+    this.modoSeleccion.set(false);
+    this.loadingSolicitud.set(false);
+    this.error.set('');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
   volverASeleccion(): void {
     this.solicitud.set(null);
+    this.tipoOrigen.set('SAIP_INTERNA');
     this.modoSeleccion.set(true);
     this.fundamentos = '';
     this.file1.set(null);
@@ -190,6 +226,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.searchTerm.set('');
     this.error.set('');
     this.mensaje.set('');
+    this.resetDatosExternos();
   }
 
   actualizarBusqueda(value: string): void {
@@ -244,7 +281,9 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   puedeEnviar(): boolean {
-    return !!this.solicitud() && this.allFilesUploaded() && this.fundamentos.trim().length >= 50;
+    return (this.esApelacionExterna() ? this.datosExternosValidos() : !!this.solicitud())
+      && this.allFilesUploaded()
+      && this.fundamentos.trim().length >= 50;
   }
 
   abrirConfirmacionApelacion(): void {
@@ -260,7 +299,6 @@ export class NuevaApelacionComponent implements OnInit {
       return;
     }
 
-    const sol = this.solicitud()!;
     const sesion = this.authService.obtenerSesion();
     if (!sesion?.ciudadanoId) {
       this.error.set('Error de sesión');
@@ -271,11 +309,39 @@ export class NuevaApelacionComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
 
-    this.apelacionService.crear({
-      solicitudId: sol.id,
-      ciudadanoId: sesion.ciudadanoId,
-      fundamentos: this.fundamentos.trim()
-    }).subscribe({
+    const creacion$ = this.esApelacionExterna()
+      ? this.apelacionService.crearExterna({
+          ciudadanoId: sesion.ciudadanoId,
+          entidadId: this.entidadExternaId ?? undefined,
+          entidadExternaNombre: this.entidadExternaNombre.trim() || undefined,
+          entidadExternaRuc: this.entidadExternaRuc.trim() || undefined,
+          entidadExternaEmail: this.entidadExternaEmail.trim() || undefined,
+          numeroSolicitudExterna: this.numeroSolicitudExterna.trim(),
+          fechaPresentacionSolicitudExterna: this.fechaPresentacionSolicitudExterna,
+          fechaRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA' ? this.fechaRespuestaEntidad : undefined,
+          tipoDenegatoria: this.tipoDenegatoriaExterna(),
+          resumenSolicitudOriginal: this.resumenSolicitudOriginal.trim(),
+          resumenRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
+            ? this.resumenRespuestaEntidad.trim() || undefined
+            : undefined,
+          referenciaDocumentoSolicitud: this.file1()?.name || '',
+          referenciaCargoRecepcion: this.referenciaCargoRecepcion.trim() || undefined,
+          referenciaRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
+            ? this.file2()?.name || undefined
+            : undefined,
+          evidenciaSilencioAdministrativo: this.tipoDenegatoriaExterna() === 'TACITA'
+            ? this.file2()?.name || undefined
+            : undefined,
+          fundamentos: this.fundamentos.trim(),
+          observacion: this.observacionExterna.trim() || undefined
+        })
+      : this.apelacionService.crear({
+          solicitudId: this.solicitud()!.id,
+          ciudadanoId: sesion.ciudadanoId,
+          fundamentos: this.fundamentos.trim()
+        });
+
+    creacion$.subscribe({
       next: (resp) => {
         this.loading.set(false);
         this.expedienteTtaip.set(resp.expediente || '');
@@ -284,17 +350,16 @@ export class NuevaApelacionComponent implements OnInit {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err.error?.mensaje || 'Error al crear la apelación');
+        this.error.set(err.error?.detail || err.error?.mensaje || 'Error al crear la apelación');
       }
     });
   }
 
   apelacionConfirmSummary(): ReferenceConfirmSummary[] {
-    const sol = this.solicitud();
     return [
-      { label: 'Expediente', value: sol?.expediente || '—', mono: true },
-      { label: 'Entidad', value: sol?.entidadNombre || '—' },
-      { label: 'Asunto original', value: sol?.asunto || '—' },
+      { label: this.esApelacionExterna() ? 'Solicitud externa' : 'Expediente', value: this.solicitudOrigenDisplay(), mono: true },
+      { label: 'Entidad', value: this.entidadOrigenDisplay() },
+      { label: 'Asunto original', value: this.asuntoOrigenDisplay() },
       { label: 'Documentos', value: `${this.uploadedCount()} de 3 adjuntos` },
       { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }
     ];
@@ -308,10 +373,9 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   apelacionSuccessMetadata(): ReferenceSuccessMeta[] {
-    const sol = this.solicitud();
     return [
-      { label: 'Expediente original', value: sol?.expediente || '—', mono: true },
-      { label: 'Entidad apelada', value: sol?.entidadNombre || '—' },
+      { label: this.esApelacionExterna() ? 'Solicitud externa' : 'Expediente original', value: this.solicitudOrigenDisplay(), mono: true },
+      { label: 'Entidad apelada', value: this.entidadOrigenDisplay() },
       { label: 'Documentos adjuntos', value: `${this.uploadedCount()} de 3` },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
     ];
@@ -339,9 +403,48 @@ export class NuevaApelacionComponent implements OnInit {
     this.router.navigate(expediente ? ['/ciudadano/solicitud', expediente] : ['/ciudadano']);
   }
 
+  esApelacionExterna(): boolean {
+    return this.tipoOrigen() === 'EXTERNA';
+  }
+
+  solicitudOrigenDisplay(): string {
+    return this.esApelacionExterna()
+      ? this.numeroSolicitudExterna.trim() || 'Solicitud externa'
+      : this.solicitud()?.expediente || '—';
+  }
+
+  entidadOrigenDisplay(): string {
+    if (!this.esApelacionExterna()) {
+      return this.solicitud()?.entidadNombre || '—';
+    }
+    const entidadCatalogo = this.entidades().find((entidad) => entidad.id === this.entidadExternaId);
+    return entidadCatalogo?.nombre || this.entidadExternaNombre.trim() || '—';
+  }
+
+  asuntoOrigenDisplay(): string {
+    return this.esApelacionExterna()
+      ? this.resumenSolicitudOriginal.trim() || '—'
+      : this.solicitud()?.asunto || '—';
+  }
+
+  origenVinculoDisplay(): string {
+    return this.esApelacionExterna()
+      ? `Solicitud externa · ${this.solicitudOrigenDisplay()}`
+      : `Expediente vinculado · ${this.solicitudOrigenDisplay()}`;
+  }
+
+  successExpedienteHint(): string {
+    return `Vinculado a ${this.solicitudOrigenDisplay()}`;
+  }
+
   private validarApelacion(): boolean {
-    if (!this.solicitud()) {
+    if (!this.esApelacionExterna() && !this.solicitud()) {
       this.error.set('Debe seleccionar una solicitud para continuar');
+      return false;
+    }
+
+    if (this.esApelacionExterna() && !this.datosExternosValidos()) {
+      this.error.set('Complete los datos obligatorios de la solicitud externa y su tipo de denegatoria');
       return false;
     }
 
@@ -357,6 +460,39 @@ export class NuevaApelacionComponent implements OnInit {
 
     this.error.set('');
     return true;
+  }
+
+  private cargarEntidades(): void {
+    this.entidadService.findActivas().subscribe({
+      next: (entidades) => this.entidades.set(entidades),
+      error: () => this.entidades.set([])
+    });
+  }
+
+  private datosExternosValidos(): boolean {
+    const entidadRegistrada = !!this.entidadExternaId || this.entidadExternaNombre.trim().length > 0;
+    const respuestaValida = this.tipoDenegatoriaExterna() === 'TACITA'
+      || this.fechaRespuestaEntidad.length > 0;
+    return entidadRegistrada
+      && this.numeroSolicitudExterna.trim().length > 0
+      && this.fechaPresentacionSolicitudExterna.length > 0
+      && this.resumenSolicitudOriginal.trim().length > 0
+      && respuestaValida;
+  }
+
+  private resetDatosExternos(): void {
+    this.entidadExternaId = null;
+    this.entidadExternaNombre = '';
+    this.entidadExternaRuc = '';
+    this.entidadExternaEmail = '';
+    this.numeroSolicitudExterna = '';
+    this.fechaPresentacionSolicitudExterna = '';
+    this.fechaRespuestaEntidad = '';
+    this.tipoDenegatoriaExterna.set('EXPRESA');
+    this.resumenSolicitudOriginal = '';
+    this.resumenRespuestaEntidad = '';
+    this.referenciaCargoRecepcion = '';
+    this.observacionExterna = '';
   }
 }
 
