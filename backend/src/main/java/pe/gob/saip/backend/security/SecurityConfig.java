@@ -100,6 +100,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/respuestas")).hasRole("ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/apelaciones")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/apelaciones/entidad/*/pendientes-elevacion").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/apelaciones/*/elevacion/elevar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/apelaciones/elevaciones/vencidas/procesar").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/apelaciones/*/elevacion/admitir-excepcionalmente").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/apelaciones")).hasAnyRole("CIUDADANO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/apelaciones")).hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/apelaciones")).hasAnyRole("TTAIP", "ADMINISTRADOR")

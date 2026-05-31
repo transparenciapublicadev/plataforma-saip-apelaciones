@@ -9,8 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.AdmitirElevacionExcepcionalRequest;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
+import pe.gob.saip.backend.model.dto.ComunicarOmisionElevacionRequest;
+import pe.gob.saip.backend.model.dto.CrearApelacionAnteEntidadRequest;
 import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
+import pe.gob.saip.backend.model.dto.ElevacionApelacionTtaipDTO;
+import pe.gob.saip.backend.model.dto.ElevarApelacionTtaipRequest;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
@@ -27,15 +32,18 @@ public class ApelacionRestController {
     private final SolicitudService solicitudService;
     private final CiudadanoService ciudadanoService;
     private final ExpedienteTtaipService expedienteTtaipService;
+    private final ElevacionApelacionTtaipService elevacionService;
 
     public ApelacionRestController(ApelacionService apelacionService,
                                     SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
-                                    ExpedienteTtaipService expedienteTtaipService) {
+                                    ExpedienteTtaipService expedienteTtaipService,
+                                    ElevacionApelacionTtaipService elevacionService) {
         this.apelacionService = apelacionService;
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.expedienteTtaipService = expedienteTtaipService;
+        this.elevacionService = elevacionService;
     }
 
     @Operation(summary = "Listar todas las apelaciones")
@@ -166,6 +174,64 @@ public class ApelacionRestController {
         return ResponseEntity.status(201).body(ApelacionDTO.from(apelacion));
     }
 
+    @Operation(
+            summary = "Crear apelación presentada ante entidad",
+            description = "Registra una apelación SAIP interna pendiente de elevación al TTAIP dentro de 2 días hábiles")
+    @PostMapping("/ante-entidad")
+    public ResponseEntity<ApelacionDTO> crearAnteEntidad(
+            @Valid @RequestBody CrearApelacionAnteEntidadRequest request) {
+        return ResponseEntity.status(201).body(
+                ApelacionDTO.from(elevacionService.registrarPresentacionAnteEntidad(request)));
+    }
+
+    @Operation(summary = "Consultar elevación formal de una apelación")
+    @GetMapping("/{id}/elevacion")
+    public ResponseEntity<ElevacionApelacionTtaipDTO> obtenerElevacion(@PathVariable Long id) {
+        return ResponseEntity.ok(ElevacionApelacionTtaipDTO.from(elevacionService.obtenerPorApelacion(id)));
+    }
+
+    @Operation(summary = "Listar apelaciones pendientes de elevación por entidad")
+    @GetMapping("/entidad/{entidadId}/pendientes-elevacion")
+    public ResponseEntity<List<ElevacionApelacionTtaipDTO>> listarPendientesElevacion(@PathVariable Long entidadId) {
+        return ResponseEntity.ok(elevacionService.listarPendientesPorEntidad(entidadId)
+                .stream()
+                .map(ElevacionApelacionTtaipDTO::from)
+                .toList());
+    }
+
+    @Operation(summary = "Elevar apelación desde entidad pública al TTAIP")
+    @PostMapping("/{id}/elevacion/elevar")
+    public ResponseEntity<ApelacionDTO> elevar(
+            @PathVariable Long id,
+            @Valid @RequestBody ElevarApelacionTtaipRequest request) {
+        return ResponseEntity.ok(ApelacionDTO.from(elevacionService.elevar(id, request)));
+    }
+
+    @Operation(summary = "Procesar elevaciones vencidas no remitidas por la entidad")
+    @PostMapping("/elevaciones/vencidas/procesar")
+    public ResponseEntity<List<ElevacionApelacionTtaipDTO>> procesarElevacionesVencidas() {
+        return ResponseEntity.ok(elevacionService.procesarVencidas()
+                .stream()
+                .map(ElevacionApelacionTtaipDTO::from)
+                .toList());
+    }
+
+    @Operation(summary = "Comunicar omisión de elevación por parte de la entidad")
+    @PostMapping("/{id}/elevacion/comunicacion-ciudadana")
+    public ResponseEntity<ElevacionApelacionTtaipDTO> comunicarOmision(
+            @PathVariable Long id,
+            @Valid @RequestBody ComunicarOmisionElevacionRequest request) {
+        return ResponseEntity.ok(ElevacionApelacionTtaipDTO.from(elevacionService.comunicarOmision(id, request)));
+    }
+
+    @Operation(summary = "Admitir excepcionalmente apelación por omisión acreditada de elevación")
+    @PostMapping("/{id}/elevacion/admitir-excepcionalmente")
+    public ResponseEntity<ApelacionDTO> admitirExcepcionalmente(
+            @PathVariable Long id,
+            @Valid @RequestBody AdmitirElevacionExcepcionalRequest request) {
+        return ResponseEntity.ok(ApelacionDTO.from(elevacionService.admitirExcepcionalmente(id, request)));
+    }
+
     @Operation(summary = "Actualizar apelación")
     @PutMapping("/{id}")
     public ResponseEntity<ApelacionDTO> actualizar(@Parameter(description = "ID de la apelación") @PathVariable Long id, @RequestBody ApelacionDTO apelacionDTO) {
@@ -177,15 +243,20 @@ public class ApelacionRestController {
         }
 
         if (apelacionDTO.estado() != null) {
+            Apelacion.EstadoApelacion nuevoEstado;
             try {
-                apelacion.setEstado(Apelacion.EstadoApelacion.valueOf(apelacionDTO.estado().toUpperCase()));
+                nuevoEstado = Apelacion.EstadoApelacion.valueOf(apelacionDTO.estado().toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Estado no válido: " + apelacionDTO.estado());
             }
+            validarCambioEstadoFueraDeElevacion(apelacion, nuevoEstado);
+            apelacion.setEstado(nuevoEstado);
         }
 
         apelacion = apelacionService.save(apelacion);
-        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
+        if (apelacion.getEstado() != Apelacion.EstadoApelacion.PENDIENTE_ELEVACION) {
+            expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
+        }
 
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
     }
@@ -197,16 +268,31 @@ public class ApelacionRestController {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
 
         String nuevoEstado = body.get("estado");
+        Apelacion.EstadoApelacion estado;
         try {
-            apelacion.setEstado(Apelacion.EstadoApelacion.valueOf(nuevoEstado.toUpperCase()));
+            estado = Apelacion.EstadoApelacion.valueOf(nuevoEstado.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Estado no válido: " + nuevoEstado);
         }
+        validarCambioEstadoFueraDeElevacion(apelacion, estado);
+        apelacion.setEstado(estado);
 
         apelacion = apelacionService.save(apelacion);
-        expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
+        if (apelacion.getEstado() != Apelacion.EstadoApelacion.PENDIENTE_ELEVACION) {
+            expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
+        }
 
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
+    }
+
+    private void validarCambioEstadoFueraDeElevacion(
+            Apelacion apelacion,
+            Apelacion.EstadoApelacion nuevoEstado) {
+        if (apelacion.getEstado() == Apelacion.EstadoApelacion.PENDIENTE_ELEVACION
+                && nuevoEstado != Apelacion.EstadoApelacion.PENDIENTE_ELEVACION) {
+            throw new IllegalArgumentException(
+                    "La apelación pendiente de elevación solo puede avanzar mediante el flujo formal de elevación");
+        }
     }
 
     @Operation(summary = "Presentar subsanación", description = "Presenta fundamentos adicionales dentro del plazo de 2 días hábiles")
@@ -240,10 +326,12 @@ public class ApelacionRestController {
     public ResponseEntity<Map<String, Object>> obtenerEstadisticas() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", apelacionService.count());
-        stats.put("pendientes", 0L);
+        stats.put("pendientes",
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
+        stats.put("pendientesElevacion",
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
         stats.put("enCalificacion",
-                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1)
-                + apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.PENDIENTE_ELEVACION));
+                apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1));
         stats.put("enSubsanacion", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.EN_SUBSANACION));
         stats.put("resueltosFundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO));
         stats.put("resueltosInfundado", apelacionService.contarApelacionesPorEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO));

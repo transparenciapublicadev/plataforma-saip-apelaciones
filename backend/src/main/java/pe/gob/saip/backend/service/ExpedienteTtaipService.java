@@ -84,6 +84,10 @@ public class ExpedienteTtaipService {
         if (apelacion.getId() == null) {
             throw new IllegalArgumentException("La apelación debe estar guardada antes de crear el expediente TTAIP");
         }
+        if (apelacion.getEstado() == Apelacion.EstadoApelacion.PENDIENTE_ELEVACION) {
+            throw new IllegalArgumentException(
+                    "La apelación sigue pendiente de elevación por la entidad y aún no puede abrir expediente TTAIP");
+        }
 
         return expedienteRepository.findByApelacion_IdApelacion(apelacion.getId())
                 .map(expediente -> sincronizarEstado(expediente, apelacion))
@@ -812,6 +816,13 @@ public class ExpedienteTtaipService {
         String detalleOrigen = apelacion.getTipoOrigenEfectivo() == Apelacion.TipoOrigenApelacion.EXTERNA
                 ? "apelación externa sin SAIP local"
                 : "apelación vinculada a SAIP interna";
+        String detalleIngreso = apelacion.getElevacion() != null
+                ? switch (apelacion.getElevacion().getEstadoElevacion()) {
+                    case ELEVADA -> "elevada por entidad dentro del plazo legal";
+                    case ADMITIDA_EXCEPCIONALMENTE -> "admitida excepcionalmente por omisión acreditada de elevación";
+                    default -> "ingreso directo al TTAIP";
+                }
+                : "ingreso directo al TTAIP";
         ExpedienteTtaip expediente = new ExpedienteTtaip();
         expediente.setNumeroExpediente(apelacion.getExpediente());
         expediente.setApelacion(apelacion);
@@ -820,13 +831,14 @@ public class ExpedienteTtaipService {
         expediente.setFechaApertura(LocalDateTime.now());
         expediente.setTrazabilidadMinima(agregarTraza(
                 null,
-                LocalDateTime.now() + " - Expediente TTAIP abierto sin etapa de elevación; origen: " + detalleOrigen));
+                LocalDateTime.now() + " - Expediente TTAIP abierto; modalidad: " + detalleIngreso
+                        + "; origen: " + detalleOrigen));
         expediente.setMiembrosAsignados(new LinkedHashSet<>(miembroService.obtenerMiembrosTTAIPActivosPorSala(sala.getNombre())));
         ExpedienteTtaip saved = expedienteRepository.save(expediente);
         registrarHistorial(
                 saved,
                 HistorialTtaip.TipoEvento.APERTURA_EXPEDIENTE,
-                "Expediente TTAIP abierto sin etapa de elevación; origen: " + detalleOrigen
+                "Expediente TTAIP abierto; modalidad: " + detalleIngreso + "; origen: " + detalleOrigen
                         + "; sala asignada: " + sala.getNombre(),
                 null,
                 saved.getEstado() != null ? saved.getEstado().name() : null,
