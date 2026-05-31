@@ -46,6 +46,21 @@ El documento oficial contiene una diferencia interna: una tabla menciona **15 d�
 
 Toda apelación nueva se registra con expediente `NNNNN-AAAA-JUS/TTAIP` y estado `EN_CALIFICACION_1`. Ningún cliente debe esperar, crear ni mostrar una etapa funcional de elevación.
 
+### BR-TTAIP-002-A — Apelación externa sin SAIP local
+
+Una apelación puede nacer de una SAIP registrada en plataforma (`SAIP_INTERNA`) o de una solicitud tramitada fuera de ella (`EXTERNA`). La variante externa no crea una SAIP ficticia y no exige `solicitudId`.
+
+```http
+POST /api/apelaciones/externa
+```
+
+El request registra ciudadano recurrente, entidad pública catalogada o datos mínimos externos, número y fecha de la solicitud original, resumen, referencia documental de la solicitud, cargo cuando corresponde, fundamentos y:
+
+- Para `EXPRESA`: fecha y resumen o referencia de respuesta de la entidad.
+- Para `TACITA`: evidencia o declaración de silencio administrativo negativo.
+
+La respuesta crea expediente TTAIP normalmente en `EN_CALIFICACION_1`, asigna sala y miembros y deja historial de apertura con origen externo. Si la entidad externa aún no está vinculada al catálogo local, el TTAIP puede calificar el recurso; antes de descargos o cumplimiento debe completar esa vinculación institucional.
+
 ### BR-TTAIP-003 — Primera calificación
 
 El TTAIP revisa admisibilidad formal dentro del plazo operativo definido para la etapa.
@@ -297,6 +312,8 @@ El reproceso conserva `cedulaOriginalId` y `notificacionOriginalId`, genera `ced
 | Validación | Motivo |
 | --- | --- |
 | No crear apelación si la SAIP ya tiene apelación asociada. | Evita doble expediente TTAIP. |
+| No exigir `solicitudId` a una apelación `EXTERNA`. | Evita fabricar una SAIP local para un trámite originado fuera de plataforma. |
+| Exigir respuesta para `EXPRESA` o sustento de silencio para `TACITA`. | Protege la calificación formal de apelaciones externas. |
 | No permitir subsanación fuera de `EN_SUBSANACION`. | Protege la máquina de estados. |
 | No pasar a resolución final sin notificar segunda calificación. | Protege plazo legal y trazabilidad. |
 | No crear cumplimiento sobre resolución no fundada. | El seguimiento solo aplica a `FUNDADO` y `FUNDADO_EN_PARTE`. |

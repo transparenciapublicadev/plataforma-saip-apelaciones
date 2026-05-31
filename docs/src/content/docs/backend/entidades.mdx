@@ -140,8 +140,12 @@ Expediente de apelación ante el TTAIP (segunda instancia).
 |-------|------|-------------|
 | `id` | `Long` | PK |
 | `expediente` | `String` | Formato `NNNNN-AAAA-JUS/TTAIP`, unique |
-| `solicitud` | `Solicitud` | OneToOne |
+| `tipoOrigen` | `TipoOrigenApelacion` | `SAIP_INTERNA` o `EXTERNA` |
+| `solicitud` | `Solicitud` | OneToOne opcional para origen externo |
 | `ciudadano` | `Ciudadano` | ManyToOne |
+| `entidadApelada` | `Entidad` | ManyToOne opcional; facilita flujos institucionales posteriores |
+| `numeroSolicitudExterna` | `String` | Referencia de la SAIP tramitada fuera de plataforma |
+| `tipoDenegatoria` | `TipoDenegatoria` | `EXPRESA` o `TACITA` para origen externo |
 | `fundamentos` | `String(TEXT)` | Fundamentos del recurso |
 | `estado` | `EstadoApelacion` | Enum (15+ valores) |
 | `calificacionPrimera` | `Calificacion` | Resultado 1ª calificación |
