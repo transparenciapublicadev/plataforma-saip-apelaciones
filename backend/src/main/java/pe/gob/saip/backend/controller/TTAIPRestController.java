@@ -239,7 +239,7 @@ public class TTAIPRestController {
 
     @Operation(
             summary = "Registrar constancia de envío",
-            description = "Registra evidencia operativa de envío de la notificación sin integrar todavía un proveedor externo."
+            description = "Registra evidencia operativa de envío de la notificación. El motor común soporta MOCK local y SMTP configurable; la casilla electrónica real depende del contrato API oficial."
     )
     @PostMapping("/expedientes/{expedienteId}/notificaciones/{notificacionId}/constancia-envio")
     public ResponseEntity<NotificacionTtaipDTO> registrarConstanciaEnvio(
