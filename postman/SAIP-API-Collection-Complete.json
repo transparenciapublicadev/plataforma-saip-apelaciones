@@ -19713,7 +19713,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{funcionarioToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -32369,7 +32369,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{funcionarioToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -35084,7 +35084,7 @@
           }
         },
         {
-          "name": "Registrar Cumplimiento de Entidad TTAIP",
+          "name": "[EXPECTED_ERROR] Rechazar Cumplimiento TTAIP para Funcionario de Otra Entidad",
           "event": [
             {
               "listen": "test",
@@ -35092,7 +35092,76 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "pm.test(\"public entity can register compliance evidence\", function () {",
+                  "pm.test(\"cross-entity functionary cannot register compliance evidence\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.eql(\"Forbidden\");",
+                  "    pm.expect(json.status).to.eql(403);",
+                  "    pm.expect(json.detail).to.exist;",
+                  "    pm.expect(json.instance).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{cumplimientoExpedienteTtaipId}}/cumplimientos/{{cumplimientoId}}/registrar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{cumplimientoExpedienteTtaipId}}",
+                "cumplimientos",
+                "{{cumplimientoId}}",
+                "registrar"
+              ]
+            },
+            "description": "Valida que un funcionario de otra entidad no pueda registrar evidencia de cumplimiento sobre un expediente ajeno.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"tipoCumplimiento\": \"TOTAL\",\n    \"descripcionCumplimiento\": \"La entidad pública comunica cumplimiento total de la resolución y entrega la información ordenada.\",\n    \"referenciaDocumento\": \"CUMPLIMIENTO-TTAIP-NEWMAN-001.pdf\",\n    \"responsableEntidad\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Cumplimiento registrado dentro del plazo legal.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{cumplimientoFuncionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar Cumplimiento de Entidad TTAIP con Administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"administrator can register compliance evidence across entities\", function () {",
                   "    pm.response.to.have.status(200);",
                   "    pm.expect(json.estadoCumplimiento).to.eql(\"CUMPLIDO\");",
                   "    pm.expect(json.tipoCumplimiento).to.eql(\"TOTAL\");",
@@ -35128,7 +35197,7 @@
                 "registrar"
               ]
             },
-            "description": "La entidad comunica cumplimiento total/parcial/no cumple y adjunta evidencia o referencia documental.",
+            "description": "El administrador registra evidencia de cumplimiento de alcance transversal sin relajar el ownership institucional.",
             "body": {
               "mode": "raw",
               "raw": "{\n    \"tipoCumplimiento\": \"TOTAL\",\n    \"descripcionCumplimiento\": \"La entidad pública comunica cumplimiento total de la resolución y entrega la información ordenada.\",\n    \"referenciaDocumento\": \"CUMPLIMIENTO-TTAIP-NEWMAN-001.pdf\",\n    \"responsableEntidad\": \"Funcionario de Transparencia\",\n    \"observacion\": \"Cumplimiento registrado dentro del plazo legal.\"\n}",
@@ -35143,7 +35212,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{cumplimientoFuncionarioToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]

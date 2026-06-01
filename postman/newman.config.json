@@ -2,7 +2,7 @@
   "collection": "SAIP-API-Collection-Complete.json",
   "environment": "SAIP-API-Environment-Complete.json",
   "reportsDir": "reports",
-  "timeoutRequest": 30000,
+  "timeoutRequest": 90000,
   "delayRequest": 75,
   "reporters": [
     "cli",

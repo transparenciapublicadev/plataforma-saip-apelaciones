@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.UsuarioRepository;
 
@@ -22,6 +23,9 @@ class UsuarioServiceTest {
     @Mock
     UsuarioRepository usuarioRepository;
 
+    @Mock
+    PasswordEncoder passwordEncoder;
+
     @InjectMocks
     UsuarioService usuarioService;
 
@@ -29,7 +33,7 @@ class UsuarioServiceTest {
         Usuario u = new Usuario();
         u.setIdUsuario(id);
         u.setEmail(email);
-        u.setPassword("test123");
+        u.setPassword("$2a$12$encodedTestPassword");
         u.setTipoUsuario(Usuario.TipoUsuario.CIUDADANO);
         u.setActivo(activo);
         u.setFechaRegistro(LocalDateTime.now());
@@ -101,6 +105,7 @@ class UsuarioServiceTest {
     void validarCredenciales_correctas_debeRetornarUsuario() {
         var usuario = crearUsuario(1L, "user@test.com", true);
         when(usuarioRepository.findByEmail("user@test.com")).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("test123", usuario.getPassword())).thenReturn(true);
 
         Optional<Usuario> resultado = usuarioService.validarCredenciales("user@test.com", "test123");
 
@@ -126,6 +131,18 @@ class UsuarioServiceTest {
         Optional<Usuario> resultado = usuarioService.validarCredenciales("user@test.com", "test123");
 
         assertThat(resultado).isEmpty();
+    }
+
+    @Test
+    void validarCredenciales_passwordLegacyPlano_debeRetornarVacio() {
+        var usuario = crearUsuario(1L, "user@test.com", true);
+        usuario.setPassword("test123");
+        when(usuarioRepository.findByEmail("user@test.com")).thenReturn(Optional.of(usuario));
+
+        Optional<Usuario> resultado = usuarioService.validarCredenciales("user@test.com", "test123");
+
+        assertThat(resultado).isEmpty();
+        verifyNoInteractions(passwordEncoder);
     }
 
     @Test

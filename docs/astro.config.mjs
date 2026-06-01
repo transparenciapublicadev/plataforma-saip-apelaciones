@@ -2,7 +2,10 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
 
+const site = process.env.DOCS_SITE_URL ?? 'http://localhost:4321';
+
 export default defineConfig({
+  site,
   integrations: [
     mermaid({
       theme: 'forest',

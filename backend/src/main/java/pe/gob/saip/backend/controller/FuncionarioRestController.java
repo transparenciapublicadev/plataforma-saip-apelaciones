@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.FuncionarioDTO;
@@ -20,11 +21,14 @@ public class FuncionarioRestController {
 
     private final FuncionarioService funcionarioService;
     private final EntidadService entidadService;
+    private final PasswordEncoder passwordEncoder;
 
     public FuncionarioRestController(FuncionarioService funcionarioService,
-                                      EntidadService entidadService) {
+                                      EntidadService entidadService,
+                                      PasswordEncoder passwordEncoder) {
         this.funcionarioService = funcionarioService;
         this.entidadService = entidadService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Operation(summary = "Listar todos los funcionarios")
@@ -80,7 +84,7 @@ public class FuncionarioRestController {
         if (passwordValue == null || passwordValue.isBlank()) {
             passwordValue = "temp" + System.currentTimeMillis();
         }
-        funcionario.setPassword(passwordValue);
+        funcionario.setPassword(passwordEncoder.encode(passwordValue));
 
         funcionario = funcionarioService.guardarFuncionario(funcionario);
 
