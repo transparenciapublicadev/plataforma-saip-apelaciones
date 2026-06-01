@@ -417,7 +417,8 @@ export class TtaipDashboardComponent implements OnInit {
       resueltos: 5
     };
 
-    return ranks[this.mapEstadoToStage(estado)];
+    const stage = this.mapEstadoToStage(estado);
+    return stage ? ranks[stage] : 0;
   }
 
   private apelacionKey(apelacion: Apelacion): string {
@@ -439,7 +440,7 @@ export class TtaipDashboardComponent implements OnInit {
     const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
     const entidad = (apelacion.entidadNombre || 'Entidad pública').trim();
     const descripcion = (apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Recurso en trámite').trim();
-    const stageKey = this.mapEstadoToStage(apelacion.estado);
+    const stageKey = this.mapEstadoToStage(apelacion.estado) ?? 'calificacion1';
     const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
     const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);
 
@@ -457,10 +458,10 @@ export class TtaipDashboardComponent implements OnInit {
     };
   }
 
-  private mapEstadoToStage(estadoRaw: string): StageKey {
+  private mapEstadoToStage(estadoRaw: string): StageKey | null {
     const estado = this.normalizeDecision(estadoRaw);
 
-    if (estado === 'PENDIENTE_ELEVACION') return 'calificacion1';
+    if (estado === 'PENDIENTE_ELEVACION') return null;
     if (estado === 'EN_CALIFICACION_1') return 'calificacion1';
     if (estado === 'EN_SUBSANACION') return 'subsanacion';
     if (estado === 'EN_CALIFICACION_2' || estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') return 'calificacion2';
