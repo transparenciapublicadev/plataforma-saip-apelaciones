@@ -293,7 +293,7 @@ Validaciones obligatorias:
 
 ### Constancias, acuses y validación manual
 
-`NotificacionTtaip` registra la evidencia operativa de notificación sin integrar todavía un proveedor real de correo o casilla electrónica.
+`NotificacionTtaip` registra la evidencia operativa de notificación y se integra con el motor común: `MOCK` para local/Newman y SMTP real configurable para correo. La casilla electrónica real sigue pendiente del contrato API oficial y no existe fallback automático entre canales.
 
 | Dato | Uso |
 | --- | --- |

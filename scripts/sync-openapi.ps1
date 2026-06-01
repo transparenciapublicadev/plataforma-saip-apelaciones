@@ -22,25 +22,30 @@ if (-not (Test-Path "$RootDir\frontend")) {
 
 Write-Host "Descargando OpenAPI spec desde: $Url"
 
+$tempSpec = $null
 try {
-    $response = Invoke-RestMethod -Uri $Url -Method Get -ErrorAction Stop
+    $tempSpec = Join-Path ([System.IO.Path]::GetTempPath()) "saip-openapi-$([System.Guid]::NewGuid()).json"
+    Invoke-WebRequest -Uri $Url -Method Get -OutFile $tempSpec -ErrorAction Stop
+    Get-Content -Raw -Encoding utf8 $tempSpec | ConvertFrom-Json | Out-Null
 } catch {
-    Write-Host "ERROR: No se pudo conectar al backend en $Url" -ForegroundColor Red
+    if ($tempSpec -and (Test-Path $tempSpec)) {
+        Remove-Item -LiteralPath $tempSpec -Force
+    }
+    Write-Host "ERROR: No se pudo descargar o validar el contrato OpenAPI desde $Url" -ForegroundColor Red
     Write-Host "Asegurate de que el backend esta corriendo: cd backend; .\mvnw.cmd spring-boot:run"
     exit 1
 }
 
-$json = $response | ConvertTo-Json -Depth 100
-
 # Guardar en frontend
 $frontendSpec = Join-Path $RootDir "frontend\openapi.json"
-$json | Out-File -FilePath $frontendSpec -Encoding utf8
+Copy-Item -Path $tempSpec -Destination $frontendSpec -Force
 Write-Host "Frontend: $frontendSpec actualizado" -ForegroundColor Green
 
 # Guardar copia de referencia en mobile
 $mobileSpec = Join-Path $RootDir "mobile\openapi.json"
-$json | Out-File -FilePath $mobileSpec -Encoding utf8
+Copy-Item -Path $tempSpec -Destination $mobileSpec -Force
 Write-Host "Mobile:   $mobileSpec actualizado (referencia)" -ForegroundColor Green
+Remove-Item -LiteralPath $tempSpec -Force
 
 # Regenerar tipos TypeScript
 $frontendDir = Join-Path $RootDir "frontend"

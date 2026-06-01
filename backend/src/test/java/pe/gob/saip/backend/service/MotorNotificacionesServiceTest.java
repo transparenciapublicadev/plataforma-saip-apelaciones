@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,8 +48,6 @@ class MotorNotificacionesServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(intentoRepository.save(any(IntentoNotificacion.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
         service = new MotorNotificacionesService(
                 intentoRepository,
                 notificacionRepository,
@@ -63,6 +62,7 @@ class MotorNotificacionesServiceTest {
 
     @Test
     void enviarNotificacionTtaipRegistraEntregaMockYActualizaEvidencia() {
+        configurarPersistenciaIntento();
         NotificacionTtaip notificacion = crearNotificacionTtaip();
         when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(7L, 5L))
                 .thenReturn(Optional.of(notificacion));
@@ -84,6 +84,7 @@ class MotorNotificacionesServiceTest {
 
     @Test
     void enviarNotificacionTtaipConFalloMockPersisteFallaSinOcultarla() {
+        configurarPersistenciaIntento();
         NotificacionTtaip notificacion = crearNotificacionTtaip();
         when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(7L, 5L))
                 .thenReturn(Optional.of(notificacion));
@@ -101,6 +102,7 @@ class MotorNotificacionesServiceTest {
 
     @Test
     void enviarNotificacionSaipRespetaCanalFormalElegido() {
+        configurarPersistenciaIntento();
         Ciudadano ciudadano = new Ciudadano();
         ciudadano.setNombreCompleto("Ciudadano Demo");
         ciudadano.setEmail("ciudadano@example.test");
@@ -119,6 +121,26 @@ class MotorNotificacionesServiceTest {
         assertThat(intento.getCanal()).isEqualTo(IntentoNotificacion.CanalEnvio.CASILLA_ELECTRONICA);
         assertThat(intento.getEstado()).isEqualTo(IntentoNotificacion.EstadoIntento.ENTREGADO);
         assertThat(intento.getSolicitud()).isSameAs(solicitud);
+    }
+
+    @Test
+    void enviarNotificacionTtaipRechazaCanalDesconocidoSinConvertirloEnCasillaElectronica() {
+        NotificacionTtaip notificacion = crearNotificacionTtaip();
+        notificacion.setMedioNotificacion("CANAL_DESCONOCIDO");
+        when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(7L, 5L))
+                .thenReturn(Optional.of(notificacion));
+
+        assertThatThrownBy(() -> service.enviarNotificacionTtaip(
+                5L,
+                7L,
+                new EnviarNotificacionRequest("Resolución TTAIP", "Contenido trazable", "TTAIP", false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Canal de notificación no válido");
+    }
+
+    private void configurarPersistenciaIntento() {
+        when(intentoRepository.save(any(IntentoNotificacion.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private NotificacionTtaip crearNotificacionTtaip() {

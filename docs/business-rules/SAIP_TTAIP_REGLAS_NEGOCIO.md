@@ -30,7 +30,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
 - TTAIP soporta suspensiones adicionales por informe oral e informacion complementaria, cada una por 3 dias habiles, con solicitante, motivo, responsable, estado, trazabilidad y recalculo de fecha limite de resolucion.
-- TTAIP registra constancia de envio, acuse automatico, evidencia, validacion manual y trazabilidad por cada `NotificacionTtaip`, sin integrar aun un proveedor real de correo.
+- El motor comun registra intentos SAIP/TTAIP, constancia, acuse, evidencia, error sanitizado y trazabilidad. Incluye proveedor `MOCK` para local/Newman y proveedor SMTP real configurable; `CASILLA_ELECTRONICA` conserva un adapter preparado, pendiente del contrato API oficial.
 - TTAIP soporta seguimiento de cumplimiento para resoluciones finales `FUNDADO` y `FUNDADO_EN_PARTE`, con plazo de 7 dias habiles, evidencia de la entidad, observacion/cierre por el Tribunal, vencimiento operativo y trazabilidad en el expediente.
 
 ## Nomenclaturas

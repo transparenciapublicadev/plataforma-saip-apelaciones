@@ -286,5 +286,5 @@ public class JwtService {
 ```
 
 :::caution[Seguridad]
-El secreto JWT se obtiene de la variable de entorno `${JWT_SECRET}`. **NUNCA** hardcodear el secreto en el código fuente ni en `application.properties`.
+En despliegues, el secreto JWT debe obtenerse de la variable de entorno `${JWT_SECRET}` o de un gestor de secretos. El fallback incluido para desarrollo local no es apto para producción.
 :::
