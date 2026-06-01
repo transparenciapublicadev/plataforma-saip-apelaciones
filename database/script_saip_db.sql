@@ -101,6 +101,30 @@ BEGIN
 END//
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS add_check_if_missing;
+DELIMITER //
+CREATE PROCEDURE add_check_if_missing(IN p_table VARCHAR(64), IN p_constraint VARCHAR(64), IN p_expression TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND TABLE_NAME = p_table
+          AND CONSTRAINT_NAME = p_constraint
+          AND CONSTRAINT_TYPE = 'CHECK'
+    ) THEN
+        SET @ddl = CONCAT(
+            'ALTER TABLE ', p_table,
+            ' ADD CONSTRAINT ', p_constraint,
+            ' CHECK (', p_expression, ')'
+        );
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END//
+DELIMITER ;
+
 CALL add_column_if_missing('miembros_ttaip', 'periodo_inicio', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'periodo_fin', 'DATE NULL');
 CALL add_column_if_missing('miembros_ttaip', 'presidente_tribunal', 'TINYINT(1) NULL DEFAULT 0');
@@ -600,8 +624,20 @@ CREATE TABLE IF NOT EXISTS intentos_notificacion (
     KEY idx_intento_notificacion_estado (estado),
     KEY idx_intento_notificacion_correlacion (codigo_correlacion),
     CONSTRAINT fk_intento_notificacion_ttaip FOREIGN KEY (id_notificacion_ttaip) REFERENCES notificaciones_ttaip (id_notificacion),
-    CONSTRAINT fk_intento_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud)
+    CONSTRAINT fk_intento_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud),
+    CONSTRAINT chk_intento_notificacion_origen CHECK (origen IN ('TTAIP', 'SAIP')),
+    CONSTRAINT chk_intento_notificacion_canal CHECK (canal IN ('CORREO_ELECTRONICO', 'CASILLA_ELECTRONICA', 'PLATAFORMA', 'FISICA')),
+    CONSTRAINT chk_intento_notificacion_estado CHECK (estado IN ('PENDIENTE', 'ENVIADO', 'ENTREGADO', 'FALLIDO', 'NO_DISPONIBLE')),
+    CONSTRAINT chk_intento_notificacion_propietario CHECK (
+        (id_notificacion_ttaip IS NOT NULL AND id_solicitud IS NULL)
+        OR (id_notificacion_ttaip IS NULL AND id_solicitud IS NOT NULL)
+    )
 );
+
+CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_origen', 'origen IN (''TTAIP'', ''SAIP'')');
+CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_canal', 'canal IN (''CORREO_ELECTRONICO'', ''CASILLA_ELECTRONICA'', ''PLATAFORMA'', ''FISICA'')');
+CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_estado', 'estado IN (''PENDIENTE'', ''ENVIADO'', ''ENTREGADO'', ''FALLIDO'', ''NO_DISPONIBLE'')');
+CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_propietario', '(id_notificacion_ttaip IS NOT NULL AND id_solicitud IS NULL) OR (id_notificacion_ttaip IS NULL AND id_solicitud IS NOT NULL)');
 
 CALL add_column_if_missing('reprocesos_notificacion', 'id_cedula_nueva', 'BIGINT NULL');
 CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', 'BIGINT NULL');
@@ -609,6 +645,7 @@ CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', '
 DROP PROCEDURE IF EXISTS add_column_if_missing;
 DROP PROCEDURE IF EXISTS add_index_if_missing;
 DROP PROCEDURE IF EXISTS add_foreign_key_if_missing;
+DROP PROCEDURE IF EXISTS add_check_if_missing;
 
 START TRANSACTION;
 
