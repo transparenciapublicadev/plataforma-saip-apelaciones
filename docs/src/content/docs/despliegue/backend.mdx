@@ -40,6 +40,10 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 NUNCA hardcodear credenciales. En producción, usar variables de entorno del hosting platform o un gestor de secretos para passwords de BD, JWT y SMTP.
 :::
 
+:::caution[Motor de notificaciones]
+`MOCK` es exclusivo para desarrollo local y Newman. `SMTP` habilita correo real configurable mediante variables de entorno. `CASILLA_ELECTRONICA` dispone de un adapter preparado que responde `NO_DISPONIBLE` hasta contar con contrato API oficial; no existe fallback automático entre canales.
+:::
+
 ## Build de Producción
 
 <Steps>
@@ -71,7 +75,7 @@ spring.jpa.show-sql=false
 server.port=8080
 
 # CORS — restringir a dominios de producción
-cors.allowed-origins=https://misaip.gob.pe
+app.cors.allowed-origin-patterns=https://misaip.gob.pe
 ```
 
 :::caution[ddl-auto]
@@ -91,9 +95,10 @@ FLUSH PRIVILEGES;
 ## Verificación
 
 ```bash
-# Health check
-curl http://localhost:8080/actuator/health
-
 # Verificar OpenAPI spec
 curl http://localhost:8080/v3/api-docs
+
+# Consultar estado seguro del motor con un JWT válido
+curl -H "Authorization: Bearer $JWT" \
+  http://localhost:8080/api/notificaciones/motor/estado
 ```

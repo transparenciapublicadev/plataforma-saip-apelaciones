@@ -270,7 +270,7 @@ public class MotorNotificacionesService {
         try {
             return IntentoNotificacion.CanalEnvio.valueOf(valor);
         } catch (IllegalArgumentException ex) {
-            return IntentoNotificacion.CanalEnvio.CASILLA_ELECTRONICA;
+            throw new IllegalArgumentException("Canal de notificación no válido: " + valor, ex);
         }
     }
 

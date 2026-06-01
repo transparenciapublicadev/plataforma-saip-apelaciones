@@ -108,7 +108,7 @@ public class PortalPublicoRestController {
                 ),
                 new PortalPublicoDTO.PortalFaqDTO(
                         "¿Pueden negarme la información?",
-                        "Solo en casos puntuales que indica la ley (información clasificada, datos personales protegidos). Si le niegan información que considera pública, puede apelar al Tribunal en 15 días calendario."
+                        "Solo en casos puntuales que indica la ley (información clasificada, datos personales protegidos). Si le niegan información que considera pública, puede apelar al Tribunal dentro del plazo legal aplicable."
                 ),
                 new PortalPublicoDTO.PortalFaqDTO(
                         "¿Qué pasa si la entidad no me responde?",

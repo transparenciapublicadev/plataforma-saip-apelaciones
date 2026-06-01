@@ -55,7 +55,7 @@ public class AyudaPublicaRestController {
                         "var(--gold-dark)",
                         List.of(
                                 pregunta("¿Cuándo puedo presentar una apelación?",
-                                        "Cuando la entidad deniega total o parcialmente su solicitud, o cuando no responde dentro del plazo (silencio administrativo negativo). Plazo: 15 días calendario desde la notificación o vencimiento."),
+                                        "Cuando la entidad deniega total o parcialmente su solicitud, o cuando no responde dentro del plazo (silencio administrativo negativo). Para una denegatoria expresa aplica el plazo legal que corresponda; ante silencio administrativo negativo no existe plazo perentorio."),
                                 pregunta("¿Qué documentos necesito para apelar?",
                                         "Tres documentos: (1) copia de la SAIP presentada, (2) copia de la respuesta denegatoria (o declaración jurada en silencio administrativo) y (3) escrito fundamentado del recurso."),
                                 pregunta("¿Quién resuelve las apelaciones?",

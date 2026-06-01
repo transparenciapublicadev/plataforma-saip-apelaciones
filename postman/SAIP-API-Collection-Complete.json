@@ -18080,6 +18080,183 @@
           }
         },
         {
+          "name": "Enviar Notificación SAIP con Canal Formal",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/notificaciones/enviar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "notificaciones",
+                "enviar"
+              ]
+            },
+            "description": "Valida que el motor común respete el canal formal elegido por una SAIP runtime y persista el intento con proveedor MOCK local/Newman.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"asunto\": \"Notificación SAIP runtime\",\n    \"contenido\": \"Validación Newman del motor común SAIP con canal formal persistido.\",\n    \"responsable\": \"Funcionario Newman\",\n    \"forzarFalloMock\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"SAIP notification engine persists a delivered MOCK attempt\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.origen).to.eql(\"SAIP\");",
+                  "    pm.expect(json.canal).to.eql(\"CASILLA_ELECTRONICA\");",
+                  "    pm.expect(json.proveedor).to.eql(\"MOCK\");",
+                  "    pm.expect(json.estado).to.eql(\"ENTREGADO\");",
+                  "    pm.expect(json.id, \"motor intento SAIP id\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"motorIntentoSaipId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Intentos de Notificación SAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/notificaciones/intentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "notificaciones",
+                "intentos"
+              ]
+            },
+            "description": "Consulta los intentos persistidos de la SAIP runtime con rol funcionario."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const expectedId = Number(pm.environment.get(\"motorIntentoSaipId\"));",
+                  "pm.test(\"SAIP notification attempts include the runtime MOCK delivery\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\").that.is.not.empty;",
+                  "    pm.expect(json.some((item) => item.id === expectedId && item.estado === \"ENTREGADO\")).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Consulta de Intentos SAIP para Ciudadano",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes/{{ampliacionSolicitudSaipId}}/notificaciones/intentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes",
+                "{{ampliacionSolicitudSaipId}}",
+                "notificaciones",
+                "intentos"
+              ]
+            },
+            "description": "Valida que un ciudadano no pueda consultar intentos técnicos SAIP por ID sin un endpoint con ownership explícito."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"restricted notification attempt history returns RFC 9457 forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.eql(\"Forbidden\");",
+                  "    pm.expect(json.status).to.eql(403);",
+                  "    pm.expect(json.detail).to.exist;",
+                  "    pm.expect(json.instance).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Registrar Ampliación de Plazo SAIP",
           "event": [
             {
@@ -18090,7 +18267,7 @@
                   "function isoPlusDays(days) {",
                   "    const date = new Date();",
                   "    date.setDate(date.getDate() + days);",
-                  "    return date.toISOString().slice(0, 10);",
+                  "    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);",
                   "}",
                   "if (!pm.environment.get(\"ampliacionSolicitudSaipId\")) {",
                   "    throw new Error(\"Missing ampliacionSolicitudSaipId. Run Crear Solicitud SAIP (Ampliación) first.\");",
@@ -18313,7 +18490,7 @@
                   "if (!pm.environment.get(\"ampliacionSolicitudSaipId\") || !pm.environment.get(\"ampliacionId\") || !pm.environment.get(\"ampliacionEntregaId\")) {",
                   "    throw new Error(\"Missing SAIP extension delivery runtime variables.\");",
                   "}",
-                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }",
+                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }",
                   "pm.variables.set(\"ampliacionFechaEntregaReal\", isoPlusDays(15));"
                 ]
               }
@@ -18463,7 +18640,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return date.toISOString().slice(0, 10); }",
+                  "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }",
                   "if (!pm.environment.get(\"ampliacionInvalidaSolicitudSaipId\")) { throw new Error(\"Missing ampliacionInvalidaSolicitudSaipId.\"); }",
                   "pm.variables.set(\"ampliacionFechaNotificacion\", isoPlusDays(0));",
                   "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(31));"
@@ -19047,7 +19224,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId. Run Crear Solicitud SAIP (Liquidación) first.\"); }",
-                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const now = new Date();",
+                  "const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);",
                   "pm.variables.set(\"liquidacionFechaNotificacion\", today);",
                   "pm.environment.set(\"liquidacionFechaNotificacion\", today);"
                 ]
@@ -19261,7 +19439,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "if (!pm.environment.get(\"liquidacionSolicitudSaipId\")) { throw new Error(\"Missing liquidacionSolicitudSaipId.\"); }",
-                  "const today = pm.environment.get(\"liquidacionFechaNotificacion\") || new Date().toISOString().slice(0, 10);",
+                  "const now = new Date();",
+                  "const today = pm.environment.get(\"liquidacionFechaNotificacion\") || new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);",
                   "pm.variables.set(\"liquidacionFechaNotificacion\", today);"
                 ]
               }
@@ -19342,7 +19521,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "if (!pm.environment.get(\"liquidacionSolicitudSaipId\") || !pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacion variables.\"); }",
-                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const now = new Date();",
+                  "const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);",
                   "pm.variables.set(\"liquidacionFechaPago\", today);"
                 ]
               }
@@ -19418,7 +19598,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "if (!pm.environment.get(\"liquidacionSolicitudSaipId\") || !pm.environment.get(\"liquidacionId\")) { throw new Error(\"Missing liquidacion variables.\"); }",
-                  "const today = new Date().toISOString().slice(0, 10);",
+                  "const now = new Date();",
+                  "const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);",
                   "pm.variables.set(\"liquidacionFechaRecojo\", today);"
                 ]
               }
@@ -31637,7 +31818,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"elevacionFechaPresentacion\", new Date().toISOString().slice(0, 10));"
+                  "const now = new Date();",
+                  "pm.variables.set(\"elevacionFechaPresentacion\", new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10));"
                 ]
               }
             },
@@ -32137,7 +32319,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const past = new Date(); past.setDate(past.getDate() - 10); pm.variables.set(\"omisionFechaPresentacion\", past.toISOString().slice(0, 10));"
+                  "const past = new Date(); past.setDate(past.getDate() - 10); pm.variables.set(\"omisionFechaPresentacion\", new Date(past.getTime() - past.getTimezoneOffset() * 60000).toISOString().slice(0, 10));"
                 ]
               }
             },
@@ -37534,6 +37716,369 @@
                   "pm.environment.set(\"notificacionFallidaId\", String(failedCandidate.id));",
                   "pm.environment.set(\"notificacionFallidaNumeroCedula\", failedCandidate.numeroCedula);",
                   "pm.environment.set(\"notificacionFallidaDestinatario\", failedCandidate.destinatario);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Estado Seguro del Motor de Notificaciones",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/motor/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "motor",
+                "estado"
+              ]
+            },
+            "description": "Comprueba el estado operativo seguro del motor sin exponer credenciales SMTP ni secretos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"notification engine exposes safe MOCK status without secrets\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.modo).to.eql(\"MOCK\");",
+                  "    pm.expect(json.mockDisponible).to.eql(true);",
+                  "    pm.expect(json.smtpConfigurable).to.eql(true);",
+                  "    pm.expect(json.casillaElectronicaEstado).to.eql(\"PENDIENTE_CONTRATO_API_OFICIAL\");",
+                  "    pm.expect(JSON.stringify(json).toLowerCase()).to.not.include(\"password\");",
+                  "    pm.expect(JSON.stringify(json).toLowerCase()).to.not.include(\"secret\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar Notificación TTAIP con Proveedor Mock",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionConstanciaId}}/enviar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionConstanciaId}}",
+                "enviar"
+              ]
+            },
+            "description": "Envía una notificación TTAIP real del flujo runtime mediante MOCK y persiste constancia, acuse y trazabilidad.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"asunto\": \"Resolución TTAIP runtime\",\n    \"contenido\": \"Validación Newman del proveedor MOCK para una notificación TTAIP real.\",\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"forzarFalloMock\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"TTAIP MOCK notification attempt is delivered and persisted\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.origen).to.eql(\"TTAIP\");",
+                  "    pm.expect(json.proveedor).to.eql(\"MOCK\");",
+                  "    pm.expect(json.estado).to.eql(\"ENTREGADO\");",
+                  "    pm.expect(json.codigoConstancia).to.match(/^CONST-MOCK-NOTIF-/);",
+                  "    pm.expect(json.id, \"motor intento TTAIP id\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"motorIntentoTtaipId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Intentos de Notificación TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionConstanciaId}}/intentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionConstanciaId}}",
+                "intentos"
+              ]
+            },
+            "description": "Consulta el historial persistido del envío TTAIP runtime con rol TTAIP."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const expectedId = Number(pm.environment.get(\"motorIntentoTtaipId\"));",
+                  "pm.test(\"TTAIP notification attempts include the runtime MOCK delivery\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\").that.is.not.empty;",
+                  "    pm.expect(json.some((item) => item.id === expectedId && item.estado === \"ENTREGADO\")).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Consulta de Intentos TTAIP para Funcionario",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{funcionarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionConstanciaId}}/intentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionConstanciaId}}",
+                "intentos"
+              ]
+            },
+            "description": "Valida que un funcionario no pueda consultar intentos técnicos TTAIP por ID sin scoping institucional explícito."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"restricted notification attempt history returns RFC 9457 forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "    pm.expect(json.type).to.exist;",
+                  "    pm.expect(json.title).to.eql(\"Forbidden\");",
+                  "    pm.expect(json.status).to.eql(403);",
+                  "    pm.expect(json.detail).to.exist;",
+                  "    pm.expect(json.instance).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar Notificación TTAIP con Fallo Mock Controlado",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}/enviar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}",
+                "enviar"
+              ]
+            },
+            "description": "Fuerza un fallo únicamente en MOCK para comprobar persistencia del error sanitizado y compatibilidad con reproceso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"asunto\": \"Resolución TTAIP runtime con fallo controlado\",\n    \"contenido\": \"Validación Newman de fallo MOCK trazable sin ocultar el resultado real.\",\n    \"responsable\": \"Secretaría Técnica TTAIP\",\n    \"forzarFalloMock\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"controlled MOCK failure is persisted without hiding the failure\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.proveedor).to.eql(\"MOCK\");",
+                  "    pm.expect(json.estado).to.eql(\"FALLIDO\");",
+                  "    pm.expect(json.mensajeTecnicoSanitizado).to.eql(\"MOCK_PROVIDER_CONTROLLED_FAILURE\");",
+                  "    pm.expect(json.id, \"motor intento TTAIP fallido id\").to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"motorIntentoFallidoTtaipId\", String(json.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Intentos Fallidos de Notificación TTAIP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ttaipToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttaip/expedientes/{{descargoExpedienteTtaipId}}/notificaciones/{{notificacionFallidaId}}/intentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttaip",
+                "expedientes",
+                "{{descargoExpedienteTtaipId}}",
+                "notificaciones",
+                "{{notificacionFallidaId}}",
+                "intentos"
+              ]
+            },
+            "description": "Comprueba que el fallo MOCK permanezca visible y trazable antes del reproceso."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const expectedId = Number(pm.environment.get(\"motorIntentoFallidoTtaipId\"));",
+                  "pm.test(\"TTAIP failed MOCK attempt remains visible for reproceso diagnosis\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json).to.be.an(\"array\").that.is.not.empty;",
+                  "    pm.expect(json.some((item) => item.id === expectedId && item.estado === \"FALLIDO\")).to.eql(true);",
+                  "});"
                 ]
               }
             }

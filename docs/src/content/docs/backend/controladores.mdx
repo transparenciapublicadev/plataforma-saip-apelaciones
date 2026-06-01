@@ -87,10 +87,10 @@ flowchart TB
   <TabItem label="TTAIP">
     ### Apelaciones y tribunal
 
-    `ApelacionRestController` crea apelaciones ciudadanas vinculadas a una SAIP local o a una solicitud tramitada fuera de la plataforma mediante `POST /api/apelaciones/externa`. El estado inicial funcional es `EN_CALIFICACION_1`.
+    `ApelacionRestController` crea apelaciones ciudadanas vinculadas a una SAIP local o a una solicitud tramitada fuera de la plataforma mediante `POST /api/apelaciones/externa`. La vía directa inicia en `EN_CALIFICACION_1`.
 
-    :::caution[Sin elevación funcional]
-    No existe endpoint operativo de elevación. Las nuevas apelaciones no pasan por `PENDIENTE_ELEVACION`.
+    :::note[Elevación opcional por entidad]
+    Cuando el ciudadano presenta el recurso ante la entidad mediante `POST /api/apelaciones/ante-entidad`, la apelación queda en `PENDIENTE_ELEVACION`. El expediente TTAIP se abre al elevar dentro del plazo o al admitir excepcionalmente una omisión acreditada.
     :::
 
     `TTAIPRestController` cubre:

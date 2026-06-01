@@ -41,7 +41,7 @@
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3 2 7l10 4 10-4-10-4zm0 8v10m-7-6h14" /></svg>
           </div>
           <div class="flex-1">
-            <span class="eyebrow" style="color: var(--brand-700)">Acción disponible · 15 días hábiles</span>
+            <span class="eyebrow" style="color: var(--brand-700)">Acción disponible · plazo legal aplicable</span>
             <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
               @if (esSilencioAdministrativo()) {
                 Su solicitud venció sin respuesta. Puede interponer recurso de apelación ante el TTAIP.
@@ -695,7 +695,7 @@
                   <span class="eyebrow">Sin recursos presentados</span>
                   <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Aún no ha apelado</h3>
                   <p class="text-sm text-muted-foreground mt-2 mb-5 max-w-md mx-auto">
-                    Puede apelar esta decisión ante el Tribunal de Transparencia y Acceso a la Información Pública dentro de 15 días hábiles.
+                    Puede apelar esta decisión ante el Tribunal de Transparencia y Acceso a la Información Pública dentro del plazo legal aplicable.
                   </p>
                   @if (puedeApelar()) {
                     <a [routerLink]="['/ciudadano/apelacion/nueva', sol.expediente]" class="btn-brand !px-6 !py-3 inline-flex">

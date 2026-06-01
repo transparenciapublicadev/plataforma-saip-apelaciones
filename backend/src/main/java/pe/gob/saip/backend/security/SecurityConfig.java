@@ -79,6 +79,8 @@ public class SecurityConfig {
                         .requestMatchers(resourceMatchers("/api/ciudadanos")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/usuarios")).hasRole("ADMINISTRADOR")
 
+                        .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/notificaciones/enviar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/*/notificaciones/intentos").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones/*/subsanar").hasAnyRole("CIUDADANO", "ADMINISTRADOR")
@@ -113,6 +115,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos/activo").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/notificaciones").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/notificaciones/*/enviar").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/notificaciones/*/intentos").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/notificaciones/*").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/notificaciones/*/constancia-envio").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/notificaciones/*/acuse-automatico").hasAnyRole("TTAIP", "ADMINISTRADOR")
@@ -134,10 +138,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/descargos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/cumplimientos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/notificaciones/motor/estado").hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/notificaciones/enviar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/*/notificaciones/intentos").hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/notificaciones/*/enviar").hasAnyRole("TTAIP", "ADMINISTRADOR")
-                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/notificaciones/*/intentos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/ttaip")).hasAnyRole("TTAIP", "ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
