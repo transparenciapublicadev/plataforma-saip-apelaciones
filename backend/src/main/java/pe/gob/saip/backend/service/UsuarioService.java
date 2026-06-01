@@ -2,6 +2,7 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.UsuarioRepository;
 
@@ -12,9 +13,11 @@ import java.util.Optional;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -45,7 +48,9 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public Optional<Usuario> validarCredenciales(String email, String password) {
         return usuarioRepository.findByEmail(email)
-                .filter(u -> u.getPassword().equals(password) && u.getActivo());
+                .filter(u -> Boolean.TRUE.equals(u.getActivo()))
+                .filter(u -> u.getPassword() != null && u.getPassword().startsWith("$2"))
+                .filter(u -> passwordEncoder.matches(password, u.getPassword()));
     }
 
     @Transactional

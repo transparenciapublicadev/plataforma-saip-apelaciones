@@ -58,3 +58,18 @@ The full diagnostic run validates the shared SAIP/TTAIP notification engine in l
 - Controlled TTAIP `MOCK` failure with sanitized diagnostics preserved for reproceso.
 
 `MOCK` is intended for local/Newman validation. `SMTP` is configured through backend environment variables for real email delivery. `CASILLA_ELECTRONICA` remains an explicit `NO_DISPONIBLE` adapter until an official API contract exists; automatic channel fallback is not implemented.
+
+Start the local backend explicitly in controlled mode before running Newman:
+
+```powershell
+$env:APP_NOTIFICATIONS_MODE='MOCK'
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+The collection asserts that the safe engine status reports `modo = MOCK`. Versioned token variables remain placeholders populated by login requests at runtime.
+
+`newman.config.json` uses a 90-second request timeout so diagnostics can complete
+against local databases with accumulated fixtures. This margin does not replace
+performance validation: paginate global listings and isolate or reset Newman
+fixtures before production load testing.

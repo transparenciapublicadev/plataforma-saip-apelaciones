@@ -57,7 +57,11 @@ class MotorNotificacionesServiceTest {
                 smtpProveedor,
                 new CasillaElectronicaProveedorNotificacion(),
                 "MOCK",
-                "localhost");
+                "localhost",
+                "no-reply@example.test",
+                false,
+                "",
+                "");
     }
 
     @Test
@@ -136,6 +140,41 @@ class MotorNotificacionesServiceTest {
                 new EnviarNotificacionRequest("Resolución TTAIP", "Contenido trazable", "TTAIP", false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Canal de notificación no válido");
+    }
+
+    @Test
+    void enviarNotificacionSaipConSmtpIncompletoReportaProveedorNoConfigurado() {
+        service = new MotorNotificacionesService(
+                intentoRepository,
+                notificacionRepository,
+                solicitudRepository,
+                historialRepository,
+                new MockProveedorNotificacion(true),
+                smtpProveedor,
+                new CasillaElectronicaProveedorNotificacion(),
+                "SMTP",
+                "",
+                "",
+                true,
+                "",
+                "");
+        configurarPersistenciaIntento();
+        Ciudadano ciudadano = new Ciudadano();
+        ciudadano.setNombreCompleto("Ciudadano Demo");
+        ciudadano.setEmail("ciudadano@example.test");
+        Solicitud solicitud = new Solicitud();
+        solicitud.setIdSolicitud(9L);
+        solicitud.setCiudadano(ciudadano);
+        solicitud.setCanalNotificacion(Solicitud.CanalNotificacion.CORREO_ELECTRONICO);
+        when(solicitudRepository.findById(9L)).thenReturn(Optional.of(solicitud));
+
+        IntentoNotificacion intento = service.enviarNotificacionSaip(
+                9L,
+                new EnviarNotificacionRequest("Estado SAIP", "Contenido trazable", "FUNCIONARIO", false));
+
+        assertThat(intento.getProveedor()).isEqualTo("NO_CONFIGURADO");
+        assertThat(intento.getEstado()).isEqualTo(IntentoNotificacion.EstadoIntento.NO_DISPONIBLE);
+        assertThat(service.obtenerEstadoSeguro().smtpHostConfigurado()).isFalse();
     }
 
     private void configurarPersistenciaIntento() {

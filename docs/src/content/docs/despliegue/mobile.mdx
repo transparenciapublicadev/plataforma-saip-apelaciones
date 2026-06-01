@@ -80,6 +80,8 @@ No versionar keystores, passwords, tokens, `google-services.json` de producción
 
 El archivo `google-services.json` se usa únicamente para FCM. La app no debe usar Firebase Auth ni Firestore.
 
+La API key Android preexistente debe restringirse desde Firebase Console al package name y certificado SHA correspondiente a cada distribución. Esta medida se configura en Firebase/Google Cloud Console; no requiere editar ni mover `google-services.json` dentro de este hardening.
+
 Responsabilidades de FCM:
 
 - Obtener token push del dispositivo.

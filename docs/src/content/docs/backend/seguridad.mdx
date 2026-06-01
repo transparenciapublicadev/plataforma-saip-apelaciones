@@ -251,6 +251,8 @@ jwt.secret=${JWT_SECRET}
 El archivo base conserva valores de desarrollo para facilitar el arranque local y Newman. No son credenciales aptas para producción. Todo despliegue debe definir `DB_PASSWORD` y `JWT_SECRET` externamente.
 :::
 
+El perfil `application-prod.properties` exige configuración externa de base de datos, JWT y CORS, usa `ddl-auto=validate`, desactiva seed automático y rechaza `APP_NOTIFICATIONS_MODE=MOCK`. Si SMTP está activo y faltan host, remitente o credenciales requeridas, el backend falla al iniciar con un diagnóstico sin exponer secretos.
+
 :::danger[NUNCA hacer esto]
 ```properties
 # ❌ INCORRECTO — Secreto hardcodeado

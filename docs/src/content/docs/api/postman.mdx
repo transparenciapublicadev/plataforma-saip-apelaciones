@@ -138,6 +138,16 @@ Cada request de la colección debe mantener:
 Si se agrega, elimina o cambia un endpoint en backend, la colección Postman y esta documentación deben actualizarse en el mismo cambio documental.
 :::
 
+Antes de ejecutar Newman, iniciar el backend local con el proveedor controlado:
+
+```powershell
+$env:APP_NOTIFICATIONS_MODE='MOCK'
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+La colección valida que `/api/notificaciones/motor/estado` responda `modo = MOCK`. Newman no usa SMTP real, no requiere secretos SMTP y no debe persistir JWT reales en el environment versionado.
+
 Checklist de mantenimiento:
 
 - Comparar controladores con `rg -n "@(Get|Post|Put|Patch|Delete|Request)Mapping" backend/src/main/java`.
