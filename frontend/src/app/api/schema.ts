@@ -51,7 +51,7 @@ export interface paths {
         };
         /** Obtener entidad por ID */
         get: operations["obtenerPorId_2"];
-        /** Actualizar entidad pÃºblica */
+        /** Actualizar entidad pública */
         put: operations["actualizar_2"];
         post?: never;
         /**
@@ -89,12 +89,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Obtener apelaciÃ³n por ID */
+        /** Obtener apelación por ID */
         get: operations["obtenerPorId_4"];
-        /** Actualizar apelaciÃ³n */
+        /** Actualizar apelación */
         put: operations["actualizar_4"];
         post?: never;
-        /** Eliminar apelaciÃ³n */
+        /** Eliminar apelación */
         delete: operations["eliminar_4"];
         options?: never;
         head?: never;
@@ -111,7 +111,7 @@ export interface paths {
         /** Listar usuarios del sistema */
         get: operations["listar"];
         put?: never;
-        /** Crear usuario base desde administraciÃ³n */
+        /** Crear usuario base desde administración */
         post: operations["crear"];
         delete?: never;
         options?: never;
@@ -129,8 +129,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Notificar segunda calificaciÃ³n al ciudadano
-         * @description Registra la notificaciÃ³n de la resoluciÃ³n de segunda calificaciÃ³n. Inicia el plazo de resoluciÃ³n final.
+         * Notificar segunda calificación al ciudadano
+         * @description Registra la notificación de la resolución de segunda calificación. Inicia el plazo de resolución final.
          */
         post: operations["notificarSegundaCalificacion"];
         delete?: never;
@@ -149,8 +149,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ConclusiÃ³n por sustracciÃ³n de la materia
-         * @description La entidad entrega la informaciÃ³n durante el trÃ¡mite de apelaciÃ³n
+         * Conclusión por sustracción de la materia
+         * @description La entidad entrega la información durante el trámite de apelación
          */
         post: operations["declararConclusionSustraccion"];
         delete?: never;
@@ -170,7 +170,7 @@ export interface paths {
         put?: never;
         /**
          * Declarar nulidad del acto
-         * @description ResoluciÃ³n final: invalida la respuesta o procedimiento por vicios graves
+         * @description Resolución final: invalida la respuesta o procedimiento por vicios graves
          */
         post: operations["declararNulidadDelActo"];
         delete?: never;
@@ -189,8 +189,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n infundada en parte
-         * @description ResoluciÃ³n final: desestimaciÃ³n parcial del recurso
+         * Declarar apelación infundada en parte
+         * @description Resolución final: desestimación parcial del recurso
          */
         post: operations["declararInfundadoEnParte"];
         delete?: never;
@@ -209,8 +209,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n infundada
-         * @description ResoluciÃ³n final: confirma la denegaciÃ³n de la entidad
+         * Declarar apelación infundada
+         * @description Resolución final: confirma la denegación de la entidad
          */
         post: operations["declararInfundado"];
         delete?: never;
@@ -229,8 +229,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n infundada
-         * @description ResoluciÃ³n final: confirma la denegaciÃ³n de la entidad
+         * Declarar apelación infundada
+         * @description Resolución final: confirma la denegación de la entidad
          */
         post: operations["declararInfundado_1"];
         delete?: never;
@@ -249,8 +249,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar improcedente en resoluciÃ³n final
-         * @description ResoluciÃ³n final: no cumple requisitos formales o de fondo
+         * Declarar improcedente en resolución final
+         * @description Resolución final: no cumple requisitos formales o de fondo
          */
         post: operations["declararImprocedenteFinal"];
         delete?: never;
@@ -269,8 +269,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n fundada en parte
-         * @description ResoluciÃ³n final: amparo parcial del recurso
+         * Declarar apelación fundada en parte
+         * @description Resolución final: amparo parcial del recurso
          */
         post: operations["declararFundadoEnParte"];
         delete?: never;
@@ -289,8 +289,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n fundada
-         * @description ResoluciÃ³n final a favor del ciudadano
+         * Declarar apelación fundada
+         * @description Resolución final a favor del ciudadano
          */
         post: operations["declararFundado"];
         delete?: never;
@@ -309,8 +309,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Declarar apelaciÃ³n fundada
-         * @description ResoluciÃ³n final a favor del ciudadano
+         * Declarar apelación fundada
+         * @description Resolución final a favor del ciudadano
          */
         post: operations["declararFundado_1"];
         delete?: never;
@@ -330,7 +330,7 @@ export interface paths {
         put?: never;
         /**
          * Declarar estese a lo resuelto
-         * @description ResoluciÃ³n final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado
+         * @description Resolución final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado
          */
         post: operations["declararEsteseALoResuelto"];
         delete?: never;
@@ -349,7 +349,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ConclusiÃ³n por desistimiento
+         * Conclusión por desistimiento
          * @description El ciudadano desiste voluntariamente del recurso
          */
         post: operations["declararConclusionDesistimiento"];
@@ -369,8 +369,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reprocesar notificaciÃ³n TTAIP fallida
-         * @description Registra una falla de notificaciÃ³n y genera una nueva cÃ©dula para el mismo destinatario afectado, sin borrar la cÃ©dula original.
+         * Reprocesar notificación TTAIP fallida
+         * @description Registra una falla de notificación y genera una nueva cédula para el mismo destinatario afectado, sin borrar la cédula original.
          */
         post: operations["reprocesarNotificacion"];
         delete?: never;
@@ -390,7 +390,7 @@ export interface paths {
         put?: never;
         /**
          * Registrar informe oral
-         * @description Registra una suspensiÃ³n adicional de 3 dÃ­as hÃ¡biles por solicitud de informe oral dentro de un expediente TTAIP en resoluciÃ³n.
+         * @description Registra una suspensión adicional de 3 días hábiles por solicitud de informe oral dentro de un expediente TTAIP en resolución.
          */
         post: operations["registrarInformeOral"];
         delete?: never;
@@ -409,8 +409,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar informaciÃ³n complementaria
-         * @description Registra una suspensiÃ³n adicional de 3 dÃ­as hÃ¡biles por solicitud de informaciÃ³n complementaria dentro de un expediente TTAIP en resoluciÃ³n.
+         * Registrar información complementaria
+         * @description Registra una suspensión adicional de 3 días hábiles por solicitud de información complementaria dentro de un expediente TTAIP en resolución.
          */
         post: operations["registrarInformacionComplementaria"];
         delete?: never;
@@ -429,8 +429,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Crear seguimiento de cumplimiento de resoluciÃ³n fundada
-         * @description Abre seguimiento para que la entidad cumpla una resoluciÃ³n final FUNDADO o FUNDADO_EN_PARTE en 7 dÃ­as hÃ¡biles.
+         * Crear seguimiento de cumplimiento de resolución fundada
+         * @description Abre seguimiento para que la entidad cumpla una resolución final FUNDADO o FUNDADO_EN_PARTE en 7 días hábiles.
          */
         post: operations["crearSeguimientoCumplimiento"];
         delete?: never;
@@ -449,8 +449,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Validar manualmente una notificaciÃ³n
-         * @description Permite validaciÃ³n manual de notificaciÃ³n correcta cuando el flujo dependa de una notificaciÃ³n vÃ¡lida.
+         * Validar manualmente una notificación
+         * @description Permite validación manual de notificación correcta cuando el flujo dependa de una notificación válida.
          */
         post: operations["validarNotificacionManualmente"];
         delete?: never;
@@ -468,7 +468,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enviar notificaciÃ³n para expediente TTAIP */
+        /** Enviar notificación para expediente TTAIP */
         post: operations["enviarNotificacion"];
         delete?: never;
         options?: never;
@@ -486,8 +486,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar constancia de envÃ­o
-         * @description Registra evidencia operativa de envÃ­o de la notificaciÃ³n sin integrar todavÃ­a un proveedor externo.
+         * Registrar constancia de envío
+         * @description Registra evidencia operativa de envío de la notificación. El motor común soporta MOCK local y SMTP configurable; la casilla electrónica real depende del contrato API oficial.
          */
         post: operations["registrarConstanciaEnvio"];
         delete?: never;
@@ -506,8 +506,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar acuse automÃ¡tico
-         * @description Registra acuse automÃ¡tico de la notificaciÃ³n. Si el acuse falla, la notificaciÃ³n queda fallida u observada y puede reprocesarse.
+         * Registrar acuse automático
+         * @description Registra acuse automático de la notificación. Si el acuse falla, la notificación queda fallida u observada y puede reprocesarse.
          */
         post: operations["registrarAcuseAutomatico"];
         delete?: never;
@@ -527,7 +527,7 @@ export interface paths {
         put?: never;
         /**
          * Presentar descargo de entidad
-         * @description Registra el descargo y/o expediente administrativo de la entidad pÃºblica, cierra la suspensiÃ³n y recalcula el plazo de resoluciÃ³n.
+         * @description Registra el descargo y/o expediente administrativo de la entidad pública, cierra la suspensión y recalcula el plazo de resolución.
          */
         post: operations["presentarDescargo"];
         delete?: never;
@@ -547,7 +547,7 @@ export interface paths {
         put?: never;
         /**
          * Requerir descargos de entidad
-         * @description Registra el requerimiento de descargos y expediente administrativo a la entidad pÃºblica. Suspende el plazo de resoluciÃ³n final por 7 dÃ­as hÃ¡biles.
+         * @description Registra el requerimiento de descargos y expediente administrativo a la entidad pública. Suspende el plazo de resolución final por 7 días hábiles.
          */
         post: operations["requerirDescargos"];
         delete?: never;
@@ -565,7 +565,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Registrar cumplimiento comunicado por entidad pÃºblica */
+        /** Registrar cumplimiento comunicado por entidad pública */
         post: operations["registrarCumplimiento"];
         delete?: never;
         options?: never;
@@ -617,8 +617,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Requerir subsanaciÃ³n
-         * @description Primera calificaciÃ³n: solicita al ciudadano subsanar la apelaciÃ³n en 2 dÃ­as hÃ¡biles
+         * Requerir subsanación
+         * @description Primera calificación: solicita al ciudadano subsanar la apelación en 2 días hábiles
          */
         post: operations["requerirSubsanacion"];
         delete?: never;
@@ -638,7 +638,7 @@ export interface paths {
         put?: never;
         /**
          * Declarar tener por no presentado
-         * @description El ciudadano no subsanÃ³ en plazo de 2 dÃ­as hÃ¡biles tras inadmisible
+         * @description El ciudadano no subsanó en plazo de 2 días hábiles tras inadmisible
          */
         post: operations["declararTenerPorNoPresentado"];
         delete?: never;
@@ -656,7 +656,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Inadmitir o rechazar apelaciÃ³n */
+        /** Inadmitir o rechazar apelación */
         post: operations["inadmitirApelacion"];
         delete?: never;
         options?: never;
@@ -673,7 +673,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Inadmitir o rechazar apelaciÃ³n */
+        /** Inadmitir o rechazar apelación */
         post: operations["inadmitirApelacion_1"];
         delete?: never;
         options?: never;
@@ -691,8 +691,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Admitir apelaciÃ³n
-         * @description Primera calificaciÃ³n: admite la apelaciÃ³n y solicita descargos a la entidad
+         * Admitir apelación
+         * @description Primera calificación: admite la apelación y solicita descargos a la entidad
          */
         post: operations["admitirApelacion"];
         delete?: never;
@@ -713,7 +713,7 @@ export interface paths {
         put?: never;
         /**
          * Crear solicitud SAIP
-         * @description Genera automÃ¡ticamente expediente y fecha lÃ­mite (10 dÃ­as hÃ¡biles)
+         * @description Genera automáticamente expediente y fecha límite (10 días hábiles)
          */
         post: operations["crear_1"];
         delete?: never;
@@ -734,7 +734,7 @@ export interface paths {
         put?: never;
         /**
          * Observar solicitud SAIP
-         * @description Registra una observaciÃ³n formal dentro de los 2 primeros dÃ­as hÃ¡biles y abre plazo de subsanaciÃ³n ciudadana de 2 dÃ­as hÃ¡biles.
+         * @description Registra una observación formal dentro de los 2 primeros días hábiles y abre plazo de subsanación ciudadana de 2 días hábiles.
          */
         post: operations["observarSolicitud"];
         delete?: never;
@@ -753,8 +753,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Subsanar observaciÃ³n SAIP
-         * @description Registra la subsanaciÃ³n ciudadana dentro del plazo de 2 dÃ­as hÃ¡biles y devuelve la solicitud a revisiÃ³n.
+         * Subsanar observación SAIP
+         * @description Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión.
          */
         post: operations["subsanarSolicitud"];
         delete?: never;
@@ -772,7 +772,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enviar notificaciÃ³n para solicitud SAIP */
+        /** Enviar notificación para solicitud SAIP */
         post: operations["enviarNotificacion_1"];
         delete?: never;
         options?: never;
@@ -791,8 +791,8 @@ export interface paths {
         get: operations["listarLiquidaciones"];
         put?: never;
         /**
-         * Emitir liquidaciÃ³n o cupÃ³n SAIP
-         * @description Registra y notifica el cupÃ³n de pago para entrega fÃ­sica hasta el dÃ­a 9 de atenciÃ³n y calcula 30 dÃ­as hÃ¡biles para recojo.
+         * Emitir liquidación o cupón SAIP
+         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.
          */
         post: operations["emitirLiquidacion"];
         delete?: never;
@@ -813,7 +813,7 @@ export interface paths {
         put?: never;
         /**
          * Registrar encauzamiento SAIP
-         * @description Registra el encauzamiento total o parcial de una SAIP a la entidad competente dentro de los 2 dÃ­as hÃ¡biles.
+         * @description Registra el encauzamiento total o parcial de una SAIP a la entidad competente dentro de los 2 días hábiles.
          */
         post: operations["registrarEncauzamiento"];
         delete?: never;
@@ -833,8 +833,8 @@ export interface paths {
         get: operations["listarAmpliaciones"];
         put?: never;
         /**
-         * Registrar ampliaciÃ³n de plazo SAIP
-         * @description Registra y notifica una ampliaciÃ³n dentro del dÃ­a 4 de atenciÃ³n, con informe y cronograma de entregas parciales.
+         * Registrar ampliación de plazo SAIP
+         * @description Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.
          */
         post: operations["registrarAmpliacion"];
         delete?: never;
@@ -874,7 +874,7 @@ export interface paths {
         put?: never;
         /**
          * Procesar liquidaciones vencidas por no recojo
-         * @description Archiva/cierra solicitudes con liquidaciÃ³n notificada cuyo plazo de recojo de 30 dÃ­as hÃ¡biles venciÃ³.
+         * @description Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.
          */
         post: operations["procesarLiquidacionesVencidas"];
         delete?: never;
@@ -912,7 +912,7 @@ export interface paths {
         put?: never;
         /**
          * Denegar solicitud
-         * @description Crea respuesta con denegaciÃ³n total y causal
+         * @description Crea respuesta con denegación total y causal
          */
         post: operations["denegarSolicitud"];
         delete?: never;
@@ -932,7 +932,7 @@ export interface paths {
         put?: never;
         /**
          * Aceptar solicitud
-         * @description Crea respuesta con entrega total de informaciÃ³n
+         * @description Crea respuesta con entrega total de información
          */
         post: operations["aceptarSolicitud"];
         delete?: never;
@@ -966,10 +966,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar todas las entidades pÃºblicas */
+        /** Listar todas las entidades públicas */
         get: operations["listar_4"];
         put?: never;
-        /** Registrar entidad pÃºblica */
+        /** Registrar entidad pública */
         post: operations["crear_4"];
         delete?: never;
         options?: never;
@@ -1025,8 +1025,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Iniciar sesiÃ³n
-         * @description Autentica al usuario y retorna un token JWT con datos del perfil segÃºn su rol. Acepta email, DNI (8 dÃ­gitos) o nombre de usuario como identificador.
+         * Iniciar sesión
+         * @description Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.
          */
         post: operations["login"];
         delete?: never;
@@ -1046,8 +1046,8 @@ export interface paths {
         get: operations["listar_6"];
         put?: never;
         /**
-         * Crear apelaciÃ³n
-         * @description Crea apelaciÃ³n ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante
+         * Crear apelación
+         * @description Crea apelación ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante
          */
         post: operations["crear_6"];
         delete?: never;
@@ -1066,8 +1066,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Presentar subsanaciÃ³n
-         * @description Presenta fundamentos adicionales dentro del plazo de 2 dÃ­as hÃ¡biles
+         * Presentar subsanación
+         * @description Presenta fundamentos adicionales dentro del plazo de 2 días hábiles
          */
         post: operations["subsanar"];
         delete?: never;
@@ -1085,7 +1085,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Elevar apelaciÃ³n desde entidad pÃºblica al TTAIP */
+        /** Elevar apelación desde entidad pública al TTAIP */
         post: operations["elevar"];
         delete?: never;
         options?: never;
@@ -1102,7 +1102,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Comunicar omisiÃ³n de elevaciÃ³n por parte de la entidad */
+        /** Comunicar omisión de elevación por parte de la entidad */
         post: operations["comunicarOmision"];
         delete?: never;
         options?: never;
@@ -1119,7 +1119,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Admitir excepcionalmente apelaciÃ³n por omisiÃ³n acreditada de elevaciÃ³n */
+        /** Admitir excepcionalmente apelación por omisión acreditada de elevación */
         post: operations["admitirExcepcionalmente"];
         delete?: never;
         options?: never;
@@ -1137,8 +1137,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Crear apelaciÃ³n externa
-         * @description Crea una apelaciÃ³n TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local
+         * Crear apelación externa
+         * @description Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local
          */
         post: operations["crearExterna"];
         delete?: never;
@@ -1174,8 +1174,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Crear apelaciÃ³n presentada ante entidad
-         * @description Registra una apelaciÃ³n SAIP interna pendiente de elevaciÃ³n al TTAIP dentro de 2 dÃ­as hÃ¡biles
+         * Crear apelación presentada ante entidad
+         * @description Registra una apelación SAIP interna pendiente de elevación al TTAIP dentro de 2 días hábiles
          */
         post: operations["crearAnteEntidad"];
         delete?: never;
@@ -1215,8 +1215,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Cancelar suspensiÃ³n de plazo
-         * @description Cancela una suspensiÃ³n adicional activa y recalcula la fecha lÃ­mite de resoluciÃ³n final.
+         * Cancelar suspensión de plazo
+         * @description Cancela una suspensión adicional activa y recalcula la fecha límite de resolución final.
          */
         patch: operations["cancelarSuspension"];
         trace?: never;
@@ -1234,7 +1234,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Observar cumplimiento de resoluciÃ³n */
+        /** Observar cumplimiento de resolución */
         patch: operations["observarCumplimiento"];
         trace?: never;
     };
@@ -1251,7 +1251,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Cerrar seguimiento de cumplimiento de resoluciÃ³n */
+        /** Cerrar seguimiento de cumplimiento de resolución */
         patch: operations["cerrarCumplimiento"];
         trace?: never;
     };
@@ -1268,7 +1268,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Actualizar pago o recojo de liquidaciÃ³n SAIP */
+        /** Actualizar pago o recojo de liquidación SAIP */
         patch: operations["actualizarLiquidacion"];
         trace?: never;
     };
@@ -1370,7 +1370,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Cambiar estado de apelaciÃ³n */
+        /** Cambiar estado de apelación */
         patch: operations["cambiarEstado_5"];
         trace?: never;
     };
@@ -1381,7 +1381,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones en subsanaciÃ³n */
+        /** Listar apelaciones en subsanación */
         get: operations["listarSubsanacion"];
         put?: never;
         post?: never;
@@ -1398,7 +1398,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones en segunda calificaciÃ³n */
+        /** Listar apelaciones en segunda calificación */
         get: operations["listarSegundaCalificacion"];
         put?: never;
         post?: never;
@@ -1432,7 +1432,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones en primera calificaciÃ³n */
+        /** Listar apelaciones en primera calificación */
         get: operations["listarPendientes"];
         put?: never;
         post?: never;
@@ -1483,7 +1483,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consultar notificaciÃ³n TTAIP con evidencia */
+        /** Consultar notificación TTAIP con evidencia */
         get: operations["obtenerNotificacion"];
         put?: never;
         post?: never;
@@ -1500,7 +1500,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar intentos de notificaciÃ³n de una notificaciÃ³n TTAIP */
+        /** Listar intentos de notificación de una notificación TTAIP */
         get: operations["listarIntentos"];
         put?: never;
         post?: never;
@@ -1551,7 +1551,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar cumplimientos de resoluciÃ³n de un expediente TTAIP */
+        /** Listar cumplimientos de resolución de un expediente TTAIP */
         get: operations["listarCumplimientos"];
         put?: never;
         post?: never;
@@ -1585,7 +1585,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** EstadÃ­sticas del tribunal */
+        /** Estadísticas del tribunal */
         get: operations["obtenerEstadisticas"];
         put?: never;
         post?: never;
@@ -1603,8 +1603,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Listar apelaciones en resoluciÃ³n
-         * @description Apelaciones admitidas pendientes de resoluciÃ³n final
+         * Listar apelaciones en resolución
+         * @description Apelaciones admitidas pendientes de resolución final
          */
         get: operations["listarEnResolucion"];
         put?: never;
@@ -1622,7 +1622,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones en primera calificaciÃ³n */
+        /** Listar apelaciones en primera calificación */
         get: operations["listarEnCalificacion"];
         put?: never;
         post?: never;
@@ -1639,7 +1639,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar intentos de notificaciÃ³n de una solicitud SAIP */
+        /** Listar intentos de notificación de una solicitud SAIP */
         get: operations["listarIntentos_1"];
         put?: never;
         post?: never;
@@ -1656,7 +1656,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consultar liquidaciÃ³n o cupÃ³n activo de una SAIP */
+        /** Consultar liquidación o cupón activo de una SAIP */
         get: operations["obtenerLiquidacionActiva"];
         put?: never;
         post?: never;
@@ -1707,7 +1707,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consulta pÃºblica enmascarada de solicitud por expediente */
+        /** Consulta pública enmascarada de solicitud por expediente */
         get: operations["obtenerPublicaPorExpediente"];
         put?: never;
         post?: never;
@@ -1764,7 +1764,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** EstadÃ­sticas generales de solicitudes */
+        /** Estadísticas generales de solicitudes */
         get: operations["obtenerEstadisticas_1"];
         put?: never;
         post?: never;
@@ -1799,7 +1799,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * EstadÃ­sticas de solicitudes por entidad
+         * Estadísticas de solicitudes por entidad
          * @description Incluye conteo de solicitudes urgentes
          */
         get: operations["obtenerEstadisticasPorEntidad"];
@@ -1835,7 +1835,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** EstadÃ­sticas de solicitudes por ciudadano */
+        /** Estadísticas de solicitudes por ciudadano */
         get: operations["obtenerEstadisticasPorCiudadano"];
         put?: never;
         post?: never;
@@ -1887,7 +1887,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener causales de denegaciÃ³n
+         * Obtener causales de denegación
          * @description Lista las 9 causales bajo Art. 15 Ley 27806
          */
         get: operations["obtenerCausalesDenegacion"];
@@ -1928,7 +1928,7 @@ export interface paths {
         };
         /**
          * Resumen ejecutivo
-         * @description Vista consolidada del sistema con entidades mÃ¡s activas
+         * @description Vista consolidada del sistema con entidades más activas
          */
         get: operations["resumenEjecutivo"];
         put?: never;
@@ -2027,8 +2027,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener datos pÃºblicos de portada
-         * @description Devuelve mÃ©tricas agregadas, tendencias y miembros TTAIP sin datos sensibles
+         * Obtener datos públicos de portada
+         * @description Devuelve métricas agregadas, tendencias y miembros TTAIP sin datos sensibles
          */
         get: operations["obtenerPortal"];
         put?: never;
@@ -2048,7 +2048,7 @@ export interface paths {
         };
         /**
          * Obtener contenido del centro de ayuda
-         * @description Devuelve categorÃ­as, preguntas frecuentes y contacto institucional
+         * @description Devuelve categorías, preguntas frecuentes y contacto institucional
          */
         get: operations["obtenerAyuda"];
         put?: never;
@@ -2102,7 +2102,7 @@ export interface paths {
         };
         /**
          * Tendencias mensuales
-         * @description Ãltimos 12 meses de solicitudes creadas
+         * @description Últimos 12 meses de solicitudes creadas
          */
         get: operations["obtenerTendenciasMensuales"];
         put?: never;
@@ -2122,7 +2122,7 @@ export interface paths {
         };
         /**
          * Tendencias mensuales
-         * @description Ãltimos 12 meses de solicitudes creadas
+         * @description Últimos 12 meses de solicitudes creadas
          */
         get: operations["obtenerTendenciasMensuales_1"];
         put?: never;
@@ -2142,7 +2142,7 @@ export interface paths {
         };
         /**
          * Ranking de entidades
-         * @description Ordenadas por total de solicitudes, limitadas por parÃ¡metro
+         * @description Ordenadas por total de solicitudes, limitadas por parámetro
          */
         get: operations["obtenerRankingEntidades"];
         put?: never;
@@ -2161,8 +2161,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * EstadÃ­sticas por perÃ­odo
-         * @description Filtrar por semana, mes o aÃ±o
+         * Estadísticas por período
+         * @description Filtrar por semana, mes o año
          */
         get: operations["obtenerEstadisticasPorPeriodo"];
         put?: never;
@@ -2181,7 +2181,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * EstadÃ­sticas generales del sistema
+         * Estadísticas generales del sistema
          * @description Totales de solicitudes, apelaciones, entidades, ciudadanos y funcionarios
          */
         get: operations["obtenerEstadisticasGenerales"];
@@ -2201,7 +2201,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * EstadÃ­sticas por entidad
+         * Estadísticas por entidad
          * @description Detalle con tiempo promedio de respuesta
          */
         get: operations["obtenerEstadisticasPorEntidad_1"];
@@ -2220,7 +2220,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** DistribuciÃ³n de solicitudes por estado */
+        /** Distribución de solicitudes por estado */
         get: operations["obtenerDistribucionEstados"];
         put?: never;
         post?: never;
@@ -2238,7 +2238,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener entidad con estadÃ­sticas
+         * Obtener entidad con estadísticas
          * @description Incluye tasa de cumplimiento, solicitudes asignadas/pendientes/respondidas/vencidas
          */
         get: operations["obtenerConEstadisticas"];
@@ -2292,7 +2292,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener ciudadano con estadÃ­sticas
+         * Obtener ciudadano con estadísticas
          * @description Incluye conteo de solicitudes, apelaciones y estados
          */
         get: operations["obtenerConEstadisticas_1"];
@@ -2364,7 +2364,7 @@ export interface paths {
         };
         /**
          * Obtener usuario actual
-         * @description Retorna los datos bÃ¡sicos del usuario autenticado
+         * @description Retorna los datos básicos del usuario autenticado
          */
         get: operations["obtenerUsuarioActual"];
         put?: never;
@@ -2382,7 +2382,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Consultar elevaciÃ³n formal de una apelaciÃ³n */
+        /** Consultar elevación formal de una apelación */
         get: operations["obtenerElevacion"];
         put?: never;
         post?: never;
@@ -2400,7 +2400,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener apelaciÃ³n por expediente TTAIP
+         * Obtener apelación por expediente TTAIP
          * @description Formato: NNNNN-AAAA-JUS/TTAIP
          */
         get: operations["obtenerPorExpedienteQuery"];
@@ -2420,7 +2420,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener apelaciÃ³n por expediente TTAIP
+         * Obtener apelación por expediente TTAIP
          * @description Formato: NNNNN-AAAA-JUS/TTAIP
          */
         get: operations["obtenerPorExpediente_1"];
@@ -2440,7 +2440,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Obtener apelaciÃ³n por expediente TTAIP
+         * Obtener apelación por expediente TTAIP
          * @description Formato: NNNNN-AAAA-JUS/TTAIP
          */
         get: operations["obtenerPorExpediente_2"];
@@ -2476,7 +2476,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** EstadÃ­sticas de apelaciones */
+        /** Estadísticas de apelaciones */
         get: operations["obtenerEstadisticas_2"];
         put?: never;
         post?: never;
@@ -2493,7 +2493,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar apelaciones pendientes de elevaciÃ³n por entidad */
+        /** Listar apelaciones pendientes de elevación por entidad */
         get: operations["listarPendientesElevacion"];
         put?: never;
         post?: never;
@@ -2541,7 +2541,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description AmpliaciÃ³n de plazo SAIP con informe y cronograma de entregas parciales */
+        /** @description Ampliación de plazo SAIP con informe y cronograma de entregas parciales */
         AmpliacionPlazoSolicitudDTO: {
             /** Format: int64 */
             id?: number;
@@ -2559,7 +2559,7 @@ export interface components {
             trazabilidad?: string;
             cronograma?: components["schemas"]["CronogramaEntregaParcialDTO"][];
         };
-        /** @description Resumen de apelaciÃ³n asociada a una solicitud */
+        /** @description Resumen de apelación asociada a una solicitud */
         ApelacionInfoDTO: {
             /** Format: int64 */
             id?: number;
@@ -2572,7 +2572,7 @@ export interface components {
             diasSubsanacion?: number;
             elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
         };
-        /** @description Entrega parcial programada dentro de una ampliaciÃ³n de plazo SAIP */
+        /** @description Entrega parcial programada dentro de una ampliación de plazo SAIP */
         CronogramaEntregaParcialDTO: {
             /** Format: int64 */
             id?: number;
@@ -2586,7 +2586,7 @@ export interface components {
             fechaEntregaReal?: string;
             observacion?: string;
         };
-        /** @description Documento adjunto a solicitud, respuesta, apelaciÃ³n o resoluciÃ³n */
+        /** @description Documento adjunto a solicitud, respuesta, apelación o resolución */
         DocumentoDTO: {
             /** Format: int64 */
             id?: number;
@@ -2598,7 +2598,7 @@ export interface components {
             tipoDocumento?: string;
             fechaSubida?: string;
         };
-        /** @description ElevaciÃ³n formal de una apelaciÃ³n presentada ante una entidad pÃºblica */
+        /** @description Elevación formal de una apelación presentada ante una entidad pública */
         ElevacionApelacionTtaipDTO: {
             /** Format: int64 */
             id?: number;
@@ -2645,7 +2645,7 @@ export interface components {
             observacionSustento?: string;
             trazabilidad?: string;
         };
-        /** @description LiquidaciÃ³n o cupÃ³n de pago para entrega fÃ­sica de informaciÃ³n SAIP */
+        /** @description Liquidación o cupón de pago para entrega física de información SAIP */
         LiquidacionCostoSolicitudDTO: {
             /** Format: int64 */
             id?: number;
@@ -2667,7 +2667,7 @@ export interface components {
             fechaPago?: string;
             fechaRecojo?: string;
         };
-        /** @description ObservaciÃ³n y subsanaciÃ³n formal de una solicitud SAIP */
+        /** @description Observación y subsanación formal de una solicitud SAIP */
         ObservacionSolicitudDTO: {
             /** Format: int64 */
             id?: number;
@@ -2706,12 +2706,12 @@ export interface components {
             funcionarioNombre?: string;
             documentos?: components["schemas"]["DocumentoDTO"][];
         };
-        /** @description Solicitud de Acceso a la InformaciÃ³n PÃºblica (SAIP) */
+        /** @description Solicitud de Acceso a la Información Pública (SAIP) */
         SolicitudDTO: {
             /** Format: int64 */
             id?: number;
             /**
-             * @description NÃºmero de solicitud
+             * @description Número de solicitud
              * @example SAIP-2025-00512
              */
             expediente?: string;
@@ -2731,17 +2731,17 @@ export interface components {
              */
             prioridad?: "BAJA" | "NORMAL" | "MEDIA" | "ALTA" | "URGENTE";
             /**
-             * @description SemÃ¡foro de plazo
+             * @description Semáforo de plazo
              * @example VERDE
              * @enum {string}
              */
             semaforo?: "VERDE" | "AMBAR" | "ROJO" | "NEGRO";
             fechaPresentacion?: string;
-            /** @description Fecha lÃ­mite (10 dÃ­as hÃ¡biles) */
+            /** @description Fecha límite (10 días hábiles) */
             fechaLimite?: string;
             /**
              * Format: int32
-             * @description DÃ­as hÃ¡biles restantes
+             * @description Días hábiles restantes
              */
             diasRestantes?: number;
             /** Format: int64 */
@@ -2758,7 +2758,7 @@ export interface components {
             copiaCertificada?: boolean;
             tipoInformacion?: string;
             /**
-             * @description AceptaciÃ³n expresa del tratamiento de datos personales para el procedimiento SAIP
+             * @description Aceptación expresa del tratamiento de datos personales para el procedimiento SAIP
              * @example true
              */
             consentimientoDatosPersonales?: boolean;
@@ -2776,7 +2776,7 @@ export interface components {
             encauzamientos?: components["schemas"]["EncauzamientoSolicitudDTO"][];
             liquidacionesCosto?: components["schemas"]["LiquidacionCostoSolicitudDTO"][];
         };
-        /** @description Funcionario de entidad pÃºblica */
+        /** @description Funcionario de entidad pública */
         FuncionarioDTO: {
             /** Format: int64 */
             id?: number;
@@ -2793,14 +2793,14 @@ export interface components {
             /** Format: int64 */
             solicitudesAtendidas?: number;
         };
-        /** @description Entidad pÃºblica registrada en el sistema */
+        /** @description Entidad pública registrada en el sistema */
         EntidadDTO: {
             /** Format: int64 */
             id?: number;
             /** @description Nombre oficial de la entidad */
             nombre?: string;
             /**
-             * @description AcrÃ³nimo Ãºnico
+             * @description Acrónimo único
              * @example MINJUS
              */
             acronimo?: string;
@@ -2822,12 +2822,12 @@ export interface components {
             /** Format: int32 */
             tasaCumplimiento?: number;
         };
-        /** @description Ciudadano solicitante de informaciÃ³n pÃºblica */
+        /** @description Ciudadano solicitante de información pública */
         CiudadanoDTO: {
             /** Format: int64 */
             id?: number;
             /**
-             * @description DNI de 8 dÃ­gitos
+             * @description DNI de 8 dígitos
              * @example 12345678
              */
             dni?: string;
@@ -2846,18 +2846,18 @@ export interface components {
             /** Format: int64 */
             apelacionesRealizadas?: number;
         };
-        /** @description ApelaciÃ³n ante el Tribunal de Transparencia (TTAIP) */
+        /** @description Apelación ante el Tribunal de Transparencia (TTAIP) */
         ApelacionDTO: {
             /** Format: int64 */
             id?: number;
             /**
-             * @description NÃºmero de expediente TTAIP
+             * @description Número de expediente TTAIP
              * @example 01560-2025-JUS/TTAIP
              */
             expediente?: string;
             fundamentos?: string;
             /**
-             * @description Estado de la apelaciÃ³n
+             * @description Estado de la apelación
              * @example EN_CALIFICACION_1
              */
             estado?: string;
@@ -2893,13 +2893,13 @@ export interface components {
             referenciaRespuestaEntidad?: string;
             evidenciaSilencioAdministrativo?: string;
             observacion?: string;
-            /** @description ElevaciÃ³n formal cuando la apelaciÃ³n fue presentada inicialmente ante la entidad pÃºblica */
+            /** @description Elevación formal cuando la apelación fue presentada inicialmente ante la entidad pública */
             elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
-            /** @description ResoluciÃ³n final (RESOLUCION_FINAL) */
+            /** @description Resolución final (RESOLUCION_FINAL) */
             resolucion?: components["schemas"]["ResolucionDTO"];
-            /** @description ResoluciÃ³n de primera calificaciÃ³n (PRIMERA_CALIFICACION) */
+            /** @description Resolución de primera calificación (PRIMERA_CALIFICACION) */
             resolucionPrimeraCalificacion?: components["schemas"]["ResolucionDTO"];
-            /** @description ResoluciÃ³n de segunda calificaciÃ³n (SEGUNDA_CALIFICACION) */
+            /** @description Resolución de segunda calificación (SEGUNDA_CALIFICACION) */
             resolucionSegundaCalificacion?: components["schemas"]["ResolucionDTO"];
             /** @description Expediente TTAIP como agregado principal de la segunda instancia */
             expedienteTtaip?: components["schemas"]["ExpedienteTtaipDTO"];
@@ -2907,7 +2907,7 @@ export interface components {
             resoluciones?: components["schemas"]["ResolucionDTO"][];
             documentos?: components["schemas"]["DocumentoDTO"][];
         };
-        /** @description CÃ©dula de notificaciÃ³n emitida para una resoluciÃ³n TTAIP */
+        /** @description Cédula de notificación emitida para una resolución TTAIP */
         CedulaNotificacionDTO: {
             /** Format: int64 */
             id?: number;
@@ -2920,7 +2920,7 @@ export interface components {
             estado?: string;
             documentoReferencia?: string;
         };
-        /** @description Seguimiento de cumplimiento de una resoluciÃ³n final fundada o fundada en parte */
+        /** @description Seguimiento de cumplimiento de una resolución final fundada o fundada en parte */
         CumplimientoResolucionTtaipDTO: {
             /** Format: int64 */
             id?: number;
@@ -2948,7 +2948,7 @@ export interface components {
             observacion?: string;
             trazabilidad?: string;
         };
-        /** @description Descargo presentado o requerido a la entidad pÃºblica dentro de un expediente TTAIP */
+        /** @description Descargo presentado o requerido a la entidad pública dentro de un expediente TTAIP */
         DescargoEntidadTtaipDTO: {
             /** Format: int64 */
             id?: number;
@@ -3019,7 +3019,7 @@ export interface components {
             periodoFin?: string;
             presidenteTribunal?: boolean;
         };
-        /** @description NotificaciÃ³n TTAIP asociada a una cÃ©dula y a un destinatario */
+        /** @description Notificación TTAIP asociada a una cédula y a un destinatario */
         NotificacionTtaipDTO: {
             /** Format: int64 */
             id?: number;
@@ -3050,7 +3050,7 @@ export interface components {
             observacionConstancia?: string;
             trazabilidad?: string;
         };
-        /** @description Reproceso de notificaciÃ³n vinculado a una cÃ©dula del expediente TTAIP */
+        /** @description Reproceso de notificación vinculado a una cédula del expediente TTAIP */
         ReprocesoNotificacionDTO: {
             /** Format: int64 */
             id?: number;
@@ -3080,7 +3080,7 @@ export interface components {
             fechaCreacion?: string;
             fechaActualizacion?: string;
         };
-        /** @description ResoluciÃ³n del TTAIP sobre una apelaciÃ³n */
+        /** @description Resolución del TTAIP sobre una apelación */
         ResolucionDTO: {
             /** Format: int64 */
             id?: number;
@@ -3107,7 +3107,7 @@ export interface components {
             periodoFin?: string;
             presidenteSala?: components["schemas"]["MiembroTTAIPDTO"];
         };
-        /** @description SuspensiÃ³n de plazo de resoluciÃ³n final dentro de un expediente TTAIP */
+        /** @description Suspensión de plazo de resolución final dentro de un expediente TTAIP */
         SuspensionPlazoTtaipDTO: {
             /** Format: int64 */
             id?: number;
@@ -3135,7 +3135,7 @@ export interface components {
             password: string;
             tipoUsuario: string;
         };
-        /** @description Usuario del sistema visible para administraciÃ³n */
+        /** @description Usuario del sistema visible para administración */
         UsuarioAdminDTO: {
             /** Format: int64 */
             id?: number;
@@ -3145,7 +3145,7 @@ export interface components {
             activo?: boolean;
             nombre?: string;
         };
-        /** @description Datos para emitir resoluciÃ³n final de apelaciÃ³n */
+        /** @description Datos para emitir resolución final de apelación */
         ResolucionRequest: {
             fundamentos: string;
             fundamentoLegal?: string;
@@ -3154,22 +3154,22 @@ export interface components {
             miembroId?: number;
             iniciarProcesoDisciplinario?: boolean;
         };
-        /** @description Solicitud de reproceso para una notificaciÃ³n TTAIP fallida o defectuosa */
+        /** @description Solicitud de reproceso para una notificación TTAIP fallida o defectuosa */
         ReprocesarNotificacionRequest: {
             /**
-             * @description NÃºmero de la cÃ©dula original que tuvo la notificaciÃ³n fallida
+             * @description Número de la cédula original que tuvo la notificación fallida
              * @example 15207-2025-JUS/TTAIP
              */
             numeroCedulaOriginal: string;
             /**
-             * @description Destinatario afectado por la notificaciÃ³n fallida
+             * @description Destinatario afectado por la notificación fallida
              * @example ENTIDAD_PUBLICA
              * @enum {string}
              */
             destinatario: "CIUDADANO" | "ENTIDAD_PUBLICA";
             /**
              * @description Motivo funcional del reproceso
-             * @example Cargo de notificaciÃ³n observado; corresponde emitir nueva cÃ©dula al mismo destinatario.
+             * @example Cargo de notificación observado; corresponde emitir nueva cédula al mismo destinatario.
              */
             observacion: string;
             /**
@@ -3178,76 +3178,76 @@ export interface components {
              */
             responsable?: string;
         };
-        /** @description Solicitud de suspensiÃ³n adicional de plazo TTAIP por informe oral o informaciÃ³n complementaria */
+        /** @description Solicitud de suspensión adicional de plazo TTAIP por informe oral o información complementaria */
         RegistrarSuspensionTtaipRequest: {
             /**
              * Format: date
-             * @description Fecha de solicitud de la suspensiÃ³n. Si se omite, se usa la fecha actual.
+             * @description Fecha de solicitud de la suspensión. Si se omite, se usa la fecha actual.
              * @example 2026-05-12
              */
             fechaSolicitud?: string;
             /**
-             * @description Solicitante de la suspensiÃ³n
+             * @description Solicitante de la suspensión
              * @example CIUDADANO
              * @enum {string}
              */
             solicitante: "CIUDADANO" | "ENTIDAD_PUBLICA" | "TTAIP";
             /**
-             * @description Motivo o sustento del informe oral o informaciÃ³n complementaria
-             * @example Se solicita informe oral para sustentar los argumentos de la apelaciÃ³n.
+             * @description Motivo o sustento del informe oral o información complementaria
+             * @example Se solicita informe oral para sustentar los argumentos de la apelación.
              */
             motivo: string;
             /**
-             * @description Responsable que registra la suspensiÃ³n
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @description Responsable que registra la suspensión
+             * @example Secretaría Técnica TTAIP
              */
             responsable: string;
             /**
-             * @description ObservaciÃ³n operativa opcional
-             * @example Solicitud registrada durante etapa de resoluciÃ³n final.
+             * @description Observación operativa opcional
+             * @example Solicitud registrada durante etapa de resolución final.
              */
             observacion?: string;
         };
-        /** @description Solicitud para crear seguimiento de cumplimiento de resoluciÃ³n fundada */
+        /** @description Solicitud para crear seguimiento de cumplimiento de resolución fundada */
         CrearSeguimientoCumplimientoRequest: {
             /**
              * Format: date
-             * @description Fecha base del requerimiento. Si no se envÃ­a, se usa notificaciÃ³n vÃ¡lida o fecha de resoluciÃ³n.
+             * @description Fecha base del requerimiento. Si no se envía, se usa notificación válida o fecha de resolución.
              * @example 2026-05-29
              */
             fechaRequerimientoCumplimiento?: string;
             /**
              * @description Responsable TTAIP que registra el seguimiento
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @example Secretaría Técnica TTAIP
              */
             responsableTtaip?: string;
             /**
-             * @description ObservaciÃ³n o sustento del requerimiento
-             * @example Seguimiento de cumplimiento de resoluciÃ³n fundada.
+             * @description Observación o sustento del requerimiento
+             * @example Seguimiento de cumplimiento de resolución fundada.
              */
             observacion?: string;
         };
-        /** @description ValidaciÃ³n manual de una notificaciÃ³n TTAIP cuando el flujo depende de notificaciÃ³n vÃ¡lida */
+        /** @description Validación manual de una notificación TTAIP cuando el flujo depende de notificación válida */
         ValidarNotificacionManualRequest: {
             /**
              * Format: date-time
-             * @description Fecha y hora de validaciÃ³n manual. Si se omite, se usa la fecha actual.
+             * @description Fecha y hora de validación manual. Si se omite, se usa la fecha actual.
              * @example 2026-05-25T11:00:00
              */
             fechaValidacionManual?: string;
             /**
-             * @description Responsable que valida la notificaciÃ³n
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @description Responsable que valida la notificación
+             * @example Secretaría Técnica TTAIP
              */
             responsableValidacion: string;
-            /** @description Sustento funcional de la validaciÃ³n manual */
+            /** @description Sustento funcional de la validación manual */
             observacionValidacion: string;
             /** @description URL interna o referencia descargable de evidencia */
             evidenciaUrl?: string;
             /** @description Referencia documental alternativa de evidencia */
             referenciaEvidencia?: string;
         };
-        /** @description Solicitud de envÃ­o mediante el motor comÃºn de notificaciones */
+        /** @description Solicitud de envío mediante el motor común de notificaciones */
         EnviarNotificacionRequest: {
             asunto: string;
             contenido: string;
@@ -3255,7 +3255,7 @@ export interface components {
             /** @description Solo se admite en modo MOCK para validar fallos controlados en desarrollo y Newman */
             forzarFalloMock?: boolean;
         };
-        /** @description Intento persistido de envÃ­o mediante el motor comÃºn de notificaciones */
+        /** @description Intento persistido de envío mediante el motor común de notificaciones */
         IntentoNotificacionDTO: {
             /** Format: int64 */
             id?: number;
@@ -3282,26 +3282,26 @@ export interface components {
             fechaRespuesta?: string;
             trazabilidad?: string;
         };
-        /** @description Registro operativo de constancia de envÃ­o de una notificaciÃ³n TTAIP */
+        /** @description Registro operativo de constancia de envío de una notificación TTAIP */
         RegistrarConstanciaEnvioNotificacionRequest: {
             /**
-             * @description Medio usado para la notificaciÃ³n
+             * @description Medio usado para la notificación
              * @example CORREO_ELECTRONICO
              */
             medioNotificacion: string;
             /**
              * Format: date-time
-             * @description Fecha y hora de envÃ­o. Si se omite, se usa la fecha actual.
+             * @description Fecha y hora de envío. Si se omite, se usa la fecha actual.
              * @example 2026-05-25T09:30:00
              */
             fechaEnvio?: string;
             /**
-             * @description CÃ³digo operativo del envÃ­o
+             * @description Código operativo del envío
              * @example MAIL-2026-000012
              */
             codigoEnvio?: string;
             /**
-             * @description CÃ³digo formal de la constancia de envÃ­o
+             * @description Código formal de la constancia de envío
              * @example CONST-2026-000012
              */
             codigoConstancia?: string;
@@ -3316,18 +3316,18 @@ export interface components {
              * @example Mesa de Partes TTAIP
              */
             responsable: string;
-            /** @description ObservaciÃ³n operativa adicional */
+            /** @description Observación operativa adicional */
             observacion?: string;
         };
-        /** @description Registro de acuse automÃ¡tico de una notificaciÃ³n TTAIP */
+        /** @description Registro de acuse automático de una notificación TTAIP */
         RegistrarAcuseAutomaticoNotificacionRequest: {
             /**
-             * @description Estado del acuse automÃ¡tico
+             * @description Estado del acuse automático
              * @example ENTREGADO
              * @enum {string}
              */
             estadoAcuse: "ENTREGADO" | "FALLIDO" | "NO_RECIBIDO" | "OBSERVADO";
-            /** @description Contenido, resumen o cÃ³digo del acuse automÃ¡tico */
+            /** @description Contenido, resumen o código del acuse automático */
             acuseAutomatico: string;
             /**
              * Format: date-time
@@ -3335,7 +3335,7 @@ export interface components {
              * @example 2026-05-25T10:15:00
              */
             fechaAcuse?: string;
-            /** @description Resultado funcional de la notificaciÃ³n */
+            /** @description Resultado funcional de la notificación */
             resultadoNotificacion?: string;
             /** @description URL interna o referencia descargable de evidencia */
             evidenciaUrl?: string;
@@ -3346,20 +3346,20 @@ export interface components {
              * @example Sistema de notificaciones TTAIP
              */
             responsable?: string;
-            /** @description ObservaciÃ³n operativa adicional */
+            /** @description Observación operativa adicional */
             observacion?: string;
         };
-        /** @description PresentaciÃ³n de descargo y expediente administrativo por la entidad pÃºblica */
+        /** @description Presentación de descargo y expediente administrativo por la entidad pública */
         PresentarDescargoEntidadRequest: {
             /**
              * Format: date
-             * @description Fecha de presentaciÃ³n. Si no se envÃ­a, se usa la fecha actual.
+             * @description Fecha de presentación. Si no se envía, se usa la fecha actual.
              * @example 2026-05-27
              */
             fechaPresentacion?: string;
             /**
              * @description Resumen del descargo presentado
-             * @example La entidad remite expediente administrativo y sustenta la atenciÃ³n otorgada.
+             * @example La entidad remite expediente administrativo y sustenta la atención otorgada.
              */
             resumenDescargo: string;
             /**
@@ -3373,35 +3373,35 @@ export interface components {
              */
             responsableEntidad: string;
             /**
-             * @description ObservaciÃ³n adicional
-             * @example Se adjunta cargo de remisiÃ³n del expediente administrativo.
+             * @description Observación adicional
+             * @example Se adjunta cargo de remisión del expediente administrativo.
              */
             observacion?: string;
         };
-        /** @description Requerimiento de descargos a entidad pÃºblica dentro de un expediente TTAIP */
+        /** @description Requerimiento de descargos a entidad pública dentro de un expediente TTAIP */
         RequerirDescargoEntidadRequest: {
             /**
              * Format: date
-             * @description Fecha del requerimiento. Si no se envÃ­a, se usa la fecha actual.
+             * @description Fecha del requerimiento. Si no se envía, se usa la fecha actual.
              * @example 2026-05-25
              */
             fechaRequerimiento?: string;
             /**
              * @description Responsable TTAIP que registra el requerimiento
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @example Secretaría Técnica TTAIP
              */
             responsableTtaip?: string;
             /**
-             * @description ObservaciÃ³n o sustento del requerimiento
+             * @description Observación o sustento del requerimiento
              * @example Se requiere expediente administrativo y descargos de la entidad.
              */
             observacion?: string;
         };
-        /** @description ComunicaciÃ³n de cumplimiento de resoluciÃ³n fundada por la entidad pÃºblica */
+        /** @description Comunicación de cumplimiento de resolución fundada por la entidad pública */
         RegistrarCumplimientoResolucionRequest: {
             /**
              * Format: date
-             * @description Fecha en la que la entidad comunica el cumplimiento. Si no se envÃ­a, se usa la fecha actual.
+             * @description Fecha en la que la entidad comunica el cumplimiento. Si no se envía, se usa la fecha actual.
              * @example 2026-06-04
              */
             fechaCumplimiento?: string;
@@ -3412,8 +3412,8 @@ export interface components {
              */
             tipoCumplimiento: "TOTAL" | "PARCIAL" | "NO_CUMPLE";
             /**
-             * @description Detalle de cÃ³mo la entidad cumpliÃ³ la resoluciÃ³n
-             * @example La entidad entregÃ³ la informaciÃ³n ordenada mediante enlace seguro.
+             * @description Detalle de cómo la entidad cumplió la resolución
+             * @example La entidad entregó la información ordenada mediante enlace seguro.
              */
             descripcionCumplimiento: string;
             /**
@@ -3432,12 +3432,12 @@ export interface components {
              */
             responsableEntidad: string;
             /**
-             * @description ObservaciÃ³n adicional
-             * @example ComunicaciÃ³n remitida dentro del plazo legal.
+             * @description Observación adicional
+             * @example Comunicación remitida dentro del plazo legal.
              */
             observacion?: string;
         };
-        /** @description Datos para calificaciÃ³n de apelaciÃ³n por miembro TTAIP */
+        /** @description Datos para calificación de apelación por miembro TTAIP */
         CalificacionRequest: {
             fundamentos: string;
             /** Format: int64 */
@@ -3446,48 +3446,48 @@ export interface components {
             /** Format: int32 */
             diasSubsanacion?: number;
         };
-        /** @description Solicitud para observar una SAIP dentro de los 2 primeros dÃ­as hÃ¡biles */
+        /** @description Solicitud para observar una SAIP dentro de los 2 primeros días hábiles */
         ObservarSolicitudRequest: {
             /**
-             * @description Motivo formal de observaciÃ³n
-             * @example El pedido no identifica con claridad la informaciÃ³n solicitada.
+             * @description Motivo formal de observación
+             * @example El pedido no identifica con claridad la información solicitada.
              */
             motivoObservacion: string;
             /**
-             * @description Responsable que registra la observaciÃ³n
+             * @description Responsable que registra la observación
              * @example Mesa de Partes de la entidad
              */
             responsable?: string;
         };
-        /** @description SubsanaciÃ³n ciudadana de una observaciÃ³n SAIP */
+        /** @description Subsanación ciudadana de una observación SAIP */
         SubsanarSolicitudRequest: {
             /**
-             * @description Comentario o fundamento de subsanaciÃ³n
+             * @description Comentario o fundamento de subsanación
              * @example Preciso que solicito el presupuesto ejecutado del programa X durante 2025.
              */
             comentarioSubsanacion?: string;
             /**
-             * @description Nombre del documento de subsanaciÃ³n, si aplica
+             * @description Nombre del documento de subsanación, si aplica
              * @example subsanacion-saip.pdf
              */
             documentoSubsanacionNombre?: string;
             /**
-             * @description Ruta o referencia del documento de subsanaciÃ³n, si aplica
+             * @description Ruta o referencia del documento de subsanación, si aplica
              * @example /uploads/saip/subsanacion-saip.pdf
              */
             documentoSubsanacionRuta?: string;
             /**
-             * @description Responsable que registra la subsanaciÃ³n
+             * @description Responsable que registra la subsanación
              * @example Ciudadano
              */
             responsable?: string;
         };
-        /** @description Datos para emitir y notificar una liquidaciÃ³n o cupÃ³n de pago SAIP */
+        /** @description Datos para emitir y notificar una liquidación o cupón de pago SAIP */
         RegistrarLiquidacionCostoRequest: {
-            /** @description CÃ³digo externo o nÃºmero de cupÃ³n. Si se omite, el sistema lo genera. */
+            /** @description Código externo o número de cupón. Si se omite, el sistema lo genera. */
             codigoLiquidacion?: string;
             /**
-             * @description Monto de reproducciÃ³n fÃ­sica
+             * @description Monto de reproducción física
              * @example 18.50
              */
             monto: number;
@@ -3497,17 +3497,17 @@ export interface components {
              */
             moneda?: string;
             /**
-             * @description Detalle del costo de reproducciÃ³n
+             * @description Detalle del costo de reproducción
              * @example Copias simples de 37 folios
              */
             concepto: string;
             /**
              * Format: date
-             * @description Fecha en la que se notifica el cupÃ³n al ciudadano
+             * @description Fecha en la que se notifica el cupón al ciudadano
              */
             fechaNotificacion: string;
             /**
-             * @description Medio usado para notificar el cupÃ³n
+             * @description Medio usado para notificar el cupón
              * @enum {string}
              */
             medioNotificacion: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
@@ -3518,13 +3518,13 @@ export interface components {
         RegistrarEncauzamientoSolicitudRequest: {
             /**
              * Format: int64
-             * @description ID de la entidad pÃºblica competente que recibirÃ¡ el encauzamiento
+             * @description ID de la entidad pública competente que recibirá el encauzamiento
              * @example 2
              */
             entidadDestinoId: number;
             /**
              * @description Motivo formal por el que la entidad receptora no es competente
-             * @example La informaciÃ³n solicitada corresponde al Ministerio de EducaciÃ³n.
+             * @example La información solicitada corresponde al Ministerio de Educación.
              */
             motivoEncauzamiento: string;
             /**
@@ -3539,46 +3539,46 @@ export interface components {
              */
             responsable?: string;
             /**
-             * @description Sustento u observaciÃ³n complementaria
-             * @example Se deriva solo el extremo referido a planillas histÃ³ricas.
+             * @description Sustento u observación complementaria
+             * @example Se deriva solo el extremo referido a planillas históricas.
              */
             observacionSustento?: string;
         };
-        /** @description Registro de ampliaciÃ³n de plazo SAIP con informe y cronograma */
+        /** @description Registro de ampliación de plazo SAIP con informe y cronograma */
         RegistrarAmpliacionPlazoRequest: {
             /**
-             * @description Motivo formal de ampliaciÃ³n
-             * @example El pedido comprende un volumen amplio de expedientes fÃ­sicos por digitalizar.
+             * @description Motivo formal de ampliación
+             * @example El pedido comprende un volumen amplio de expedientes físicos por digitalizar.
              */
             motivoAmpliacion: string;
             /**
-             * @description Informe que sustenta la ampliaciÃ³n y el cronograma
-             * @example Informe N.Â° 001-2026 que sustenta bÃºsqueda, digitalizaciÃ³n y entregas parciales.
+             * @description Informe que sustenta la ampliación y el cronograma
+             * @example Informe N.° 001-2026 que sustenta búsqueda, digitalización y entregas parciales.
              */
             informeAmpliacion: string;
             /**
              * Format: date
-             * @description Fecha en que se notificÃ³ la ampliaciÃ³n al ciudadano
+             * @description Fecha en que se notificó la ampliación al ciudadano
              * @example 2026-05-27
              */
             fechaNotificacionAmpliacion: string;
             /**
-             * @description Responsable que registra y notifica la ampliaciÃ³n
+             * @description Responsable que registra y notifica la ampliación
              * @example Funcionario de Transparencia
              */
             responsable?: string;
             cronograma: components["schemas"]["RegistrarEntregaParcialRequest"][];
         };
-        /** @description Entrega parcial del cronograma de ampliaciÃ³n SAIP */
+        /** @description Entrega parcial del cronograma de ampliación SAIP */
         RegistrarEntregaParcialRequest: {
             /**
              * Format: int32
-             * @description NÃºmero secuencial de entrega
+             * @description Número secuencial de entrega
              * @example 1
              */
             numeroEntrega: number;
             /**
-             * @description DescripciÃ³n de la informaciÃ³n que se entregarÃ¡ parcialmente
+             * @description Descripción de la información que se entregará parcialmente
              * @example Primer bloque de contratos digitalizados
              */
             descripcion: string;
@@ -3589,8 +3589,8 @@ export interface components {
              */
             fechaProgramada: string;
             /**
-             * @description ObservaciÃ³n opcional de la entrega parcial
-             * @example Entrega sujeta a digitalizaciÃ³n de archivos histÃ³ricos
+             * @description Observación opcional de la entrega parcial
+             * @example Entrega sujeta a digitalización de archivos históricos
              */
             observacion?: string;
         };
@@ -3621,49 +3621,49 @@ export interface components {
              * @example ciudadano@email.com
              */
             email: string;
-            /** @description ContraseÃ±a (mÃ­n 6 caracteres) */
+            /** @description Contraseña (mín 6 caracteres) */
             password: string;
             /**
-             * @description DNI de 8 dÃ­gitos
+             * @description DNI de 8 dígitos
              * @example 12345678
              */
             dni: string;
             /** @description Nombre completo del ciudadano */
             nombreCompleto: string;
             /**
-             * @description NÃºmero de telÃ©fono
+             * @description Número de teléfono
              * @example 987654321
              */
             telefono?: string;
             direccion?: string;
         };
-        /** @description Credenciales de inicio de sesiÃ³n */
+        /** @description Credenciales de inicio de sesión */
         LoginRequestDTO: {
             /**
-             * @description Identificador del usuario: email, DNI (8 dÃ­gitos) o usuario
+             * @description Identificador del usuario: email, DNI (8 dígitos) o usuario
              * @example ciudadano@email.com
              */
             identificador: string;
-            /** @description ContraseÃ±a */
+            /** @description Contraseña */
             password: string;
         };
-        /** @description ElevaciÃ³n de la apelaciÃ³n desde la entidad pÃºblica al TTAIP */
+        /** @description Elevación de la apelación desde la entidad pública al TTAIP */
         ElevarApelacionTtaipRequest: {
             responsableEntidad: string;
             referenciaExpedienteElevado: string;
             observacion?: string;
         };
-        /** @description ComunicaciÃ³n ciudadana de omisiÃ³n de elevaciÃ³n por parte de la entidad */
+        /** @description Comunicación ciudadana de omisión de elevación por parte de la entidad */
         ComunicarOmisionElevacionRequest: {
             referenciaPruebaOmision: string;
             observacion?: string;
         };
-        /** @description AdmisiÃ³n excepcional TTAIP de una apelaciÃ³n cuya elevaciÃ³n fue omitida por la entidad */
+        /** @description Admisión excepcional TTAIP de una apelación cuya elevación fue omitida por la entidad */
         AdmitirElevacionExcepcionalRequest: {
             responsableTtaip: string;
             observacion: string;
         };
-        /** @description Registro de una apelaciÃ³n TTAIP originada por una SAIP tramitada fuera de la plataforma */
+        /** @description Registro de una apelación TTAIP originada por una SAIP tramitada fuera de la plataforma */
         CrearApelacionExternaRequest: {
             /** Format: int64 */
             ciudadanoId: number;
@@ -3689,7 +3689,7 @@ export interface components {
             fundamentos: string;
             observacion?: string;
         };
-        /** @description Registro de una apelaciÃ³n SAIP interna presentada ante la entidad para su elevaciÃ³n al TTAIP */
+        /** @description Registro de una apelación SAIP interna presentada ante la entidad para su elevación al TTAIP */
         CrearApelacionAnteEntidadRequest: {
             /** Format: int64 */
             solicitudId: number;
@@ -3701,52 +3701,52 @@ export interface components {
             referenciaCargoPresentacion: string;
             observacion?: string;
         };
-        /** @description CancelaciÃ³n operativa de una suspensiÃ³n adicional de plazo TTAIP */
+        /** @description Cancelación operativa de una suspensión adicional de plazo TTAIP */
         CancelarSuspensionTtaipRequest: {
             /**
              * Format: date
-             * @description Fecha de cancelaciÃ³n. Si se omite, se usa la fecha actual.
+             * @description Fecha de cancelación. Si se omite, se usa la fecha actual.
              * @example 2026-05-13
              */
             fechaCancelacion?: string;
             /**
-             * @description Responsable que cancela la suspensiÃ³n
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @description Responsable que cancela la suspensión
+             * @example Secretaría Técnica TTAIP
              */
             responsable: string;
             /**
-             * @description Motivo de cancelaciÃ³n
-             * @example La parte desistiÃ³ de la solicitud de informe oral.
+             * @description Motivo de cancelación
+             * @example La parte desistió de la solicitud de informe oral.
              */
             observacion?: string;
         };
-        /** @description ObservaciÃ³n TTAIP al cumplimiento comunicado por la entidad pÃºblica */
+        /** @description Observación TTAIP al cumplimiento comunicado por la entidad pública */
         ObservarCumplimientoResolucionRequest: {
             /**
              * @description Motivo por el que el TTAIP observa el cumplimiento
-             * @example La evidencia remitida no acredita entrega completa de la informaciÃ³n.
+             * @example La evidencia remitida no acredita entrega completa de la información.
              */
             observacion: string;
             /**
              * @description Responsable TTAIP que observa el cumplimiento
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @example Secretaría Técnica TTAIP
              */
             responsableTtaip?: string;
         };
-        /** @description Cierre operativo de seguimiento de cumplimiento de resoluciÃ³n fundada */
+        /** @description Cierre operativo de seguimiento de cumplimiento de resolución fundada */
         CerrarCumplimientoResolucionRequest: {
             /**
              * @description Responsable TTAIP que cierra el seguimiento
-             * @example SecretarÃ­a TÃ©cnica TTAIP
+             * @example Secretaría Técnica TTAIP
              */
             responsableTtaip?: string;
             /**
-             * @description ObservaciÃ³n de cierre
+             * @description Observación de cierre
              * @example Se verifica cumplimiento total y se cierra el seguimiento.
              */
             observacion?: string;
         };
-        /** @description ActualizaciÃ³n operativa de pago o recojo de una liquidaciÃ³n SAIP */
+        /** @description Actualización operativa de pago o recojo de una liquidación SAIP */
         ActualizarLiquidacionCostoRequest: {
             /**
              * @description Estado destino
@@ -3766,7 +3766,7 @@ export interface components {
             responsable?: string;
             observacion?: string;
         };
-        /** @description ActualizaciÃ³n del estado de una entrega parcial SAIP */
+        /** @description Actualización del estado de una entrega parcial SAIP */
         ActualizarEntregaParcialRequest: {
             /**
              * @description Estado de la entrega parcial
@@ -3781,12 +3781,12 @@ export interface components {
              */
             fechaEntregaReal?: string;
             /**
-             * @description ObservaciÃ³n del avance o incidencia de la entrega parcial
-             * @example Entrega digital enviada por casilla electrÃ³nica.
+             * @description Observación del avance o incidencia de la entrega parcial
+             * @example Entrega digital enviada por casilla electrónica.
              */
             observacion?: string;
         };
-        /** @description Vista pÃºblica y enmascarada del estado de una solicitud SAIP */
+        /** @description Vista pública y enmascarada del estado de una solicitud SAIP */
         ConsultaPublicaSolicitudDTO: {
             expediente?: string;
             ciudadano?: string;
@@ -3846,7 +3846,7 @@ export interface components {
             periodoFin?: string;
             presidenteTribunal?: boolean;
         };
-        /** @description Datos pÃºblicos agregados para la portada de la plataforma */
+        /** @description Datos públicos agregados para la portada de la plataforma */
         PortalPublicoDTO: {
             metricas?: components["schemas"]["PortalMetricasDTO"];
             ejemplosSolicitud?: components["schemas"]["PortalEjemploDTO"][];
@@ -3864,7 +3864,7 @@ export interface components {
             /** Format: int64 */
             apelaciones?: number;
         };
-        /** @description Contenido pÃºblico del centro de ayuda */
+        /** @description Contenido público del centro de ayuda */
         AyudaPublicaDTO: {
             categorias?: components["schemas"]["CategoriaAyudaDTO"][];
             contacto?: components["schemas"]["ContactoAyudaDTO"];
@@ -4207,7 +4207,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 id: number;
             };
             cookie?: never;
@@ -4230,7 +4230,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 id: number;
             };
             cookie?: never;
@@ -4257,7 +4257,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 id: number;
             };
             cookie?: never;
@@ -4326,7 +4326,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4349,7 +4349,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4376,7 +4376,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4403,7 +4403,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4430,7 +4430,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4457,7 +4457,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4484,7 +4484,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4511,7 +4511,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4538,7 +4538,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4565,7 +4565,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4592,7 +4592,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4619,7 +4619,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -4726,7 +4726,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la resoluciÃ³n final */
+                /** @description ID de la resolución final */
                 resolucionId: number;
             };
             cookie?: never;
@@ -4755,7 +4755,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -4784,7 +4784,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -4813,7 +4813,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -4842,7 +4842,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -4994,7 +4994,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -5021,7 +5021,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -5048,7 +5048,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -5075,7 +5075,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -5102,7 +5102,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 apelacionId: number;
             };
             cookie?: never;
@@ -5225,7 +5225,7 @@ export interface operations {
             path: {
                 /** @description ID de la solicitud */
                 id: number;
-                /** @description ID de la observaciÃ³n */
+                /** @description ID de la observación */
                 observacionId: number;
             };
             cookie?: never;
@@ -5789,7 +5789,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 id: number;
             };
             cookie?: never;
@@ -5994,7 +5994,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la suspensiÃ³n */
+                /** @description ID de la suspensión */
                 suspensionId: number;
             };
             cookie?: never;
@@ -6081,7 +6081,7 @@ export interface operations {
             path: {
                 /** @description ID de la solicitud */
                 id: number;
-                /** @description ID de la liquidaciÃ³n */
+                /** @description ID de la liquidación */
                 liquidacionId: number;
             };
             cookie?: never;
@@ -6139,7 +6139,7 @@ export interface operations {
             path: {
                 /** @description ID de la solicitud */
                 id: number;
-                /** @description ID de la ampliaciÃ³n */
+                /** @description ID de la ampliación */
                 ampliacionId: number;
                 /** @description ID de la entrega parcial */
                 entregaId: number;
@@ -6255,7 +6255,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description ID de la apelaciÃ³n */
+                /** @description ID de la apelación */
                 id: number;
             };
             cookie?: never;
@@ -6412,7 +6412,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -6437,7 +6437,7 @@ export interface operations {
             path: {
                 /** @description ID del expediente TTAIP */
                 expedienteId: number;
-                /** @description ID de la notificaciÃ³n */
+                /** @description ID de la notificación */
                 notificacionId: number;
             };
             cookie?: never;
@@ -6706,7 +6706,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description NÃºmero de expediente SAIP */
+                /** @description Número de expediente SAIP */
                 expediente: string;
             };
             cookie?: never;
@@ -6729,7 +6729,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description NÃºmero de expediente SAIP */
+                /** @description Número de expediente SAIP */
                 expediente: string;
             };
             cookie?: never;
@@ -7227,7 +7227,7 @@ export interface operations {
     obtenerRankingEntidades: {
         parameters: {
             query?: {
-                /** @description NÃºmero mÃ¡ximo de resultados */
+                /** @description Número máximo de resultados */
                 limite?: number;
             };
             header?: never;
@@ -7252,7 +7252,7 @@ export interface operations {
     obtenerEstadisticasPorPeriodo: {
         parameters: {
             query?: {
-                /** @description PerÃ­odo: semana, mes, aÃ±o */
+                /** @description Período: semana, mes, año */
                 periodo?: string;
             };
             header?: never;
@@ -7369,7 +7369,7 @@ export interface operations {
     buscarPorNombre: {
         parameters: {
             query: {
-                /** @description Texto de bÃºsqueda */
+                /** @description Texto de búsqueda */
                 nombre: string;
             };
             header?: never;
@@ -7437,7 +7437,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description DNI de 8 dÃ­gitos */
+                /** @description DNI de 8 dígitos */
                 dni: string;
             };
             cookie?: never;
@@ -7576,7 +7576,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description NÃºmero de expediente TTAIP */
+                /** @description Número de expediente TTAIP */
                 expediente: string;
             };
             cookie?: never;
@@ -7619,7 +7619,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Estado de la apelaciÃ³n */
+                /** @description Estado de la apelación */
                 estado: string;
             };
             cookie?: never;
