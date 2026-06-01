@@ -27,9 +27,17 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 | `DB_PASSWORD` | Contraseña de MySQL | Sí |
 | `JWT_SECRET` | Clave secreta para firmar tokens JWT (mín. 256 bits) | Sí |
 | `SPRING_PROFILES_ACTIVE` | Perfil activo (`prod`, `dev`) | Recomendada |
+| `APP_NOTIFICATIONS_MODE` | Modo del motor de notificaciones (`MOCK` o `SMTP`, por defecto `MOCK`) | No (Default: MOCK) |
+| `APP_NOTIFICATIONS_MAIL_FROM` | Dirección de remitente para notificaciones por correo | No (Default: no-reply@plataforma-saip.local) |
+| `SPRING_MAIL_HOST` | Host del servidor SMTP para notificaciones por correo | No (requerido si mode es SMTP) |
+| `SPRING_MAIL_PORT` | Puerto del servidor SMTP para notificaciones por correo | No (Default: 25) |
+| `SPRING_MAIL_USERNAME` | Usuario para autenticación SMTP | No |
+| `SPRING_MAIL_PASSWORD` | Contraseña para autenticación SMTP | No |
+| `SPRING_MAIL_SMTP_AUTH` | Habilitar autenticación SMTP (`true`, `false`) | No |
+| `SPRING_MAIL_SMTP_STARTTLS` | Habilitar TLS para conexión SMTP (`true`, `false`) | No |
 
 :::danger[Secrets]
-NUNCA hardcodear credenciales. En producción, usar variables de entorno del hosting platform o un gestor de secretos.
+NUNCA hardcodear credenciales. En producción, usar variables de entorno del hosting platform o un gestor de secretos para passwords de BD, JWT y SMTP.
 :::
 
 ## Build de Producción

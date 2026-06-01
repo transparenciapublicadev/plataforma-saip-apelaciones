@@ -572,6 +572,37 @@ CREATE TABLE IF NOT EXISTS reprocesos_notificacion (
     CONSTRAINT fk_reproceso_padre FOREIGN KEY (id_reproceso_padre) REFERENCES reprocesos_notificacion (id_reproceso)
 );
 
+CREATE TABLE IF NOT EXISTS intentos_notificacion (
+    id_intento BIGINT NOT NULL AUTO_INCREMENT,
+    id_notificacion_ttaip BIGINT NULL,
+    id_solicitud BIGINT NULL,
+    origen VARCHAR(20) NOT NULL,
+    canal VARCHAR(40) NOT NULL,
+    proveedor VARCHAR(40) NOT NULL,
+    estado VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+    destinatario_nombre VARCHAR(200) NULL,
+    destinatario_contacto VARCHAR(200) NULL,
+    asunto VARCHAR(300) NULL,
+    codigo_correlacion VARCHAR(80) NOT NULL,
+    codigo_envio VARCHAR(120) NULL,
+    codigo_constancia VARCHAR(120) NULL,
+    constancia_envio TEXT NULL,
+    acuse_automatico TEXT NULL,
+    estado_acuse VARCHAR(40) NULL,
+    mensaje_tecnico_sanitizado VARCHAR(500) NULL,
+    responsable VARCHAR(120) NULL,
+    fecha_intento DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_respuesta DATETIME NULL,
+    trazabilidad TEXT NULL,
+    PRIMARY KEY (id_intento),
+    KEY idx_intento_notificacion_ttaip (id_notificacion_ttaip),
+    KEY idx_intento_notificacion_saip (id_solicitud),
+    KEY idx_intento_notificacion_estado (estado),
+    KEY idx_intento_notificacion_correlacion (codigo_correlacion),
+    CONSTRAINT fk_intento_notificacion_ttaip FOREIGN KEY (id_notificacion_ttaip) REFERENCES notificaciones_ttaip (id_notificacion),
+    CONSTRAINT fk_intento_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud)
+);
+
 CALL add_column_if_missing('reprocesos_notificacion', 'id_cedula_nueva', 'BIGINT NULL');
 CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', 'BIGINT NULL');
 
@@ -1672,7 +1703,10 @@ SELECT 'historial_ttaip', COUNT(*)
 FROM historial_ttaip
 UNION ALL
 SELECT 'reprocesos_notificacion', COUNT(*)
-FROM reprocesos_notificacion;
+FROM reprocesos_notificacion
+UNION ALL
+SELECT 'intentos_notificacion', COUNT(*)
+FROM intentos_notificacion;
 
 
 

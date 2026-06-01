@@ -23,6 +23,8 @@ import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
+import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,13 +37,16 @@ public class SolicitudRestController {
     private final SolicitudService solicitudService;
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
+    private final MotorNotificacionesService motorNotificacionesService;
 
     public SolicitudRestController(SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
-                                    EntidadService entidadService) {
+                                    EntidadService entidadService,
+                                    MotorNotificacionesService motorNotificacionesService) {
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
+        this.motorNotificacionesService = motorNotificacionesService;
     }
 
     @Operation(summary = "Listar todas las solicitudes SAIP")
@@ -464,6 +469,26 @@ public class SolicitudRestController {
         response.put("id", id);
 
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Enviar notificación para solicitud SAIP")
+    @PostMapping("/{id}/notificaciones/enviar")
+    public ResponseEntity<IntentoNotificacionDTO> enviarNotificacion(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody EnviarNotificacionRequest request) {
+        IntentoNotificacion intento = motorNotificacionesService.enviarNotificacionSaip(id, request);
+        return ResponseEntity.status(201).body(IntentoNotificacionDTO.from(intento));
+    }
+
+    @Operation(summary = "Listar intentos de notificación de una solicitud SAIP")
+    @GetMapping("/{id}/notificaciones/intentos")
+    public ResponseEntity<List<IntentoNotificacionDTO>> listarIntentos(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        List<IntentoNotificacionDTO> intentos = motorNotificacionesService.listarIntentosSaip(id)
+                .stream()
+                .map(IntentoNotificacionDTO::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(intentos);
     }
 }
 
