@@ -96,7 +96,7 @@ export class CiudadanoDashboardComponent implements OnInit {
     {
       num: '03',
       titulo: 'Si no esta conforme, apela',
-      desc: 'Puede recurrir al Tribunal dentro de los 15 dias calendario siguientes a la respuesta.',
+      desc: 'Puede recurrir al Tribunal dentro del plazo legal aplicable.',
       icon: 'scale',
       color: 'var(--gold-dark)'
     },
@@ -582,7 +582,7 @@ export class CiudadanoDashboardComponent implements OnInit {
         titulo: 'Puede apelar ante el Tribunal',
         detalle: estado === 'VENCIDA'
           ? 'La entidad no respondio dentro del plazo legal. Puede presentar apelacion por silencio administrativo negativo.'
-          : 'La entidad denego su solicitud. Puede presentar apelacion dentro del plazo legal de 15 dias calendario.',
+          : 'La entidad denego su solicitud. Puede presentar apelacion dentro del plazo legal aplicable.',
         metricValue: `${Math.max(dias, 0)}`,
         metricUnit: 'dias para apelar',
         ctaLabel: 'Apelar al Tribunal',
