@@ -335,7 +335,7 @@ export class FuncionarioResponderComponent implements OnInit {
     return {
       label: 'Notificación oficial',
       detail: denegacion
-        ? 'El ciudadano podrá apelar al TTAIP dentro de 15 días calendario.'
+        ? 'El ciudadano podrá apelar al TTAIP dentro del plazo legal aplicable.'
         : 'El ciudadano será notificado por correo electrónico al confirmar el envío.'
     };
   }
@@ -383,14 +383,14 @@ export class FuncionarioResponderComponent implements OnInit {
     if (this.decision() === 'denegacion_total') {
       return [
         { label: 'El ciudadano recibirá la notificación con la causal y el fundamento legal invocado.' },
-        { label: 'Podrá apelar ante el TTAIP dentro del plazo legal.', hint: '15 días calendario' },
+        { label: 'Podrá apelar ante el TTAIP dentro del plazo legal aplicable.' },
         { label: 'De interponerse apelación, su entidad será emplazada por el Tribunal.' }
       ];
     }
 
     return [
       { label: 'El ciudadano recibirá los documentos por el formato seleccionado.' },
-      { label: 'La solicitud quedará cerrada salvo apelación del ciudadano.', hint: '15 días calendario para apelar' },
+      { label: 'La solicitud quedará cerrada salvo apelación del ciudadano.', hint: 'Plazo legal aplicable' },
       { label: 'El expediente permanece archivado en su panel para consulta.' }
     ];
   }
