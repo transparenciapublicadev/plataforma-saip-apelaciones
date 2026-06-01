@@ -806,6 +806,24 @@
       "key": "omisionFechaPresentacion",
       "value": "",
       "enabled": true
+    },
+    {
+      "key": "motorIntentoSaipId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "motorIntentoTtaipId",
+      "value": "",
+      "type": "text",
+      "enabled": true
+    },
+    {
+      "key": "motorIntentoFallidoTtaipId",
+      "value": "",
+      "type": "text",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"
