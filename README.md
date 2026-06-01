@@ -439,6 +439,8 @@ Principios de seguridad:
 
 El backend persiste intentos de notificación para SAIP y TTAIP. El modo `MOCK` se usa en desarrollo local y Newman; el modo `SMTP` habilita correo real mediante variables de entorno. `CASILLA_ELECTRONICA` cuenta con un adaptador preparado que responde explícitamente como no disponible hasta contar con el contrato API oficial. No existe fallback automático entre canales.
 
+Para despliegues productivos, activar `SPRING_PROFILES_ACTIVE=prod`. Ese perfil usa `SMTP` por defecto, rechaza `MOCK`, exige configuración externa de base de datos, JWT, CORS y SMTP, desactiva inicialización automática del seed y mantiene OpenAPI/Swagger deshabilitados salvo habilitación operativa explícita.
+
 ## Ejecución local
 
 ### Requisitos
@@ -513,6 +515,7 @@ cd mobile
 ```
 
 > Para Firebase Cloud Messaging, colocar el archivo `google-services.json` requerido por el módulo Android correspondiente.
+> Restringir la API key Android preexistente desde Firebase Console por package name y certificado SHA. No editar ni mover `google-services.json` como parte de esta configuración.
 
 ### Docs
 
@@ -520,6 +523,14 @@ cd mobile
 cd docs
 npm ci
 npm start
+npm run build
+```
+
+Para publicar la documentación con sitemap canónico:
+
+```powershell
+$env:DOCS_SITE_URL='https://docs.misaip.gob.pe'
+cd docs
 npm run build
 ```
 
@@ -578,7 +589,7 @@ flowchart LR
 
 | Área | Próxima mejora |
 | --- | --- |
-| Backend | Endurecer perfiles por entorno, migraciones versionadas y pruebas de integración por flujo legal. |
+| Backend | Incorporar migraciones versionadas y ampliar pruebas de integración de ownership por flujo legal. |
 | Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
 | Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
 | Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |

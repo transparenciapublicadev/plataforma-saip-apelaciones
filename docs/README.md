@@ -1,5 +1,12 @@
 # Documentación — Plataforma SAIP
 
+Para generar sitemap canónico al publicar Starlight, definir `DOCS_SITE_URL` antes del build. El fallback local es `http://localhost:4321`.
+
+```powershell
+$env:DOCS_SITE_URL='https://docs.misaip.gob.pe'
+npm run build
+```
+
 Esta carpeta contendrá la documentación técnica y funcional del proyecto.
 
 ## Estructura planificada
