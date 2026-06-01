@@ -7,25 +7,31 @@ import { Tabs, TabItem, Badge } from '@astrojs/starlight/components';
 
 ## Formato Estándar de Error
 
-Todas las respuestas de error siguen el formato `ApiError`:
+Todas las respuestas de error siguen RFC 9457 / Problem Details con `Content-Type: application/problem+json`:
 
 ```json
 {
+  "type": "urn:saip:problem:validation-failed",
+  "title": "Validation failed",
   "status": 400,
-  "error": "Bad Request",
-  "message": "asunto: no debe estar vacío, entidadId: no debe ser nulo",
+  "detail": "asunto: no debe estar vacío, entidadId: no debe ser nulo",
+  "instance": "/api/solicitudes",
   "timestamp": "2025-01-15T10:30:00",
-  "path": "/api/solicitudes"
+  "success": false,
+  "mensaje": "asunto: no debe estar vacío, entidadId: no debe ser nulo"
 }
 ```
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
+| `type` | `URI` | Identificador estable del tipo de problema |
+| `title` | `String` | Descripción corta y estable del problema |
 | `status` | `int` | Código HTTP |
-| `error` | `String` | Descripción corta del error HTTP |
-| `message` | `String` | Detalle legible del error |
+| `detail` | `String` | Detalle legible del error concreto |
+| `instance` | `URI` | Ruta del endpoint que generó el error |
 | `timestamp` | `String` | Fecha y hora del error |
-| `path` | `String` | Ruta del endpoint que generó el error |
+| `success` | `boolean` | Extensión de compatibilidad; siempre `false` |
+| `mensaje` | `String` | Extensión de compatibilidad equivalente a `detail` |
 
 ## Códigos HTTP
 
@@ -60,53 +66,48 @@ Todas las respuestas de error siguen el formato `ApiError`:
 El manejo centralizado de excepciones se realiza en `GlobalExceptionHandler`:
 
 ```java
-@ControllerAdvice
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     // Validación de campos (Jakarta Bean Validation)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(
-            MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-            .map(e -> e.getField() + ": " + e.getDefaultMessage())
-            .collect(Collectors.joining(", "));
-        return ResponseEntity.badRequest()
-            .body(ApiError.validation(message));
+    public ResponseEntity<ProblemDetail> manejarValidacion(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+        ProblemDetail problem = ApiProblemDetails.create(
+            HttpStatus.BAD_REQUEST,
+            "Validation failed",
+            "...detalle de campos inválidos...",
+            request.getRequestURI());
+        return ResponseEntity.badRequest().body(problem);
     }
 
     // Recurso no encontrado
     @ExceptionHandler(RecursoNoEncontradoException.class)
-    public ResponseEntity<ApiError> handleNotFound(
-            RecursoNoEncontradoException ex) {
+    public ResponseEntity<ProblemDetail> manejarNoEncontrado(
+            RecursoNoEncontradoException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(ApiError.notFound(ex.getMessage()));
-    }
-
-    // Regla de negocio violada
-    @ExceptionHandler(ReglaNegocioException.class)
-    public ResponseEntity<ApiError> handleBusinessRule(
-            ReglaNegocioException ex) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-            .body(ApiError.businessRule(ex.getMessage()));
-    }
-
-    // Error genérico
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGeneric(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ApiError.internal("Error interno del servidor"));
+            .body(ApiProblemDetails.create(
+                HttpStatus.NOT_FOUND,
+                "Resource not found",
+                ex.getMessage(),
+                request.getRequestURI()));
     }
 }
 ```
 
-## Excepciones Custom
+## Clasificación Centralizada
 
-| Excepción | Código HTTP | Uso |
-|-----------|-------------|-----|
+| Excepción o condición | Código HTTP | Uso |
+|-----------------------|-------------|-----|
 | `RecursoNoEncontradoException` | `404` | Solicitud, apelación o usuario no encontrado |
-| `ReglaNegocioException` | `422` | Violación de regla de negocio (plazo vencido, estado inválido) |
-| `AccesoNoAutorizadoException` | `403` | Intento de acceder a recurso de otro usuario |
-| `EstadoInvalidoException` | `409` | Transición de estado no permitida |
+| `IllegalArgumentException` por duplicidad | `409` | Recurso existente o duplicado activo |
+| `IllegalArgumentException` por plazo, estado o transición | `422` | Regla de negocio incumplida |
+| `IllegalArgumentException` restante | `400` | Input inválido |
+| `AuthenticationException` | `401` | Token ausente, inválido o expirado |
+| `AccessDeniedException` | `403` | Rol insuficiente |
+| `Exception` no controlada | `500` | Error real de backend registrado en logs |
 
 ## Ejemplos de Errores
 
@@ -116,11 +117,14 @@ public class GlobalExceptionHandler {
     // POST /api/solicitudes con campos vacíos
     // Response 400
     {
+      "type": "urn:saip:problem:validation-failed",
+      "title": "Validation failed",
       "status": 400,
-      "error": "Bad Request",
-      "message": "asunto: no debe estar vacío, descripcion: no debe estar vacío, entidadId: no debe ser nulo",
+      "detail": "asunto: no debe estar vacío, descripcion: no debe estar vacío, entidadId: no debe ser nulo",
+      "instance": "/api/solicitudes",
       "timestamp": "2025-01-15T10:30:00",
-      "path": "/api/solicitudes"
+      "success": false,
+      "mensaje": "asunto: no debe estar vacío, descripcion: no debe estar vacío, entidadId: no debe ser nulo"
     }
     ```
   </TabItem>
@@ -129,11 +133,14 @@ public class GlobalExceptionHandler {
     // GET /api/solicitudes/99999
     // Response 404
     {
+      "type": "urn:saip:problem:resource-not-found",
+      "title": "Resource not found",
       "status": 404,
-      "error": "Not Found",
-      "message": "Solicitud con ID 99999 no encontrada",
+      "detail": "Solicitud con ID 99999 no encontrada",
+      "instance": "/api/solicitudes/99999",
       "timestamp": "2025-01-15T10:30:00",
-      "path": "/api/solicitudes/99999"
+      "success": false,
+      "mensaje": "Solicitud con ID 99999 no encontrada"
     }
     ```
   </TabItem>
@@ -142,11 +149,14 @@ public class GlobalExceptionHandler {
     // POST /api/apelaciones — plazo vencido
     // Response 422
     {
+      "type": "urn:saip:problem:business-rule-violation",
+      "title": "Business rule violation",
       "status": 422,
-      "error": "Unprocessable Entity",
-      "message": "El plazo de 15 días calendario para apelar ha vencido",
+      "detail": "El plazo legal aplicable para apelar ha vencido",
+      "instance": "/api/apelaciones",
       "timestamp": "2025-01-15T10:30:00",
-      "path": "/api/apelaciones"
+      "success": false,
+      "mensaje": "El plazo legal aplicable para apelar ha vencido"
     }
     ```
   </TabItem>
@@ -155,11 +165,14 @@ public class GlobalExceptionHandler {
     // GET /api/solicitudes sin token
     // Response 401
     {
+      "type": "urn:saip:problem:unauthorized",
+      "title": "Unauthorized",
       "status": 401,
-      "error": "Unauthorized",
-      "message": "Token de autenticación requerido",
+      "detail": "Token faltante, inválido o expirado.",
+      "instance": "/api/solicitudes",
       "timestamp": "2025-01-15T10:30:00",
-      "path": "/api/solicitudes"
+      "success": false,
+      "mensaje": "Token faltante, inválido o expirado."
     }
     ```
   </TabItem>

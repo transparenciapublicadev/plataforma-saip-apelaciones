@@ -67,13 +67,13 @@ flowchart TB
     end
 
     subgraph Platform["Nucleo de plataforma"]
-        API["backend/\nSpring Boot 4 + Java 21\nREST + Security + OpenAPI"]
+        API["backend/\nSpring Boot 4 + Java 25\nREST + Security + OpenAPI"]
         DB[("MySQL\nsaip_db")]
         OpenAPI["/v3/api-docs\nContrato OpenAPI"]
     end
 
     subgraph External["Servicios externos"]
-        Firebase["Firebase\nAuth / FCM / Analytics"]
+        Firebase["Firebase Cloud Messaging\nPush notifications"]
     end
 
     Citizen --> Web
@@ -86,7 +86,7 @@ flowchart TB
     Android -->|Retrofit + JWT| API
     API --> DB
     API --> OpenAPI
-    Android -. push / analytics .-> Firebase
+    Android -. push .-> Firebase
     Docs -. documenta .-> Platform
 ```
 
@@ -106,7 +106,7 @@ flowchart TB
 
 | Área | Tecnología |
 | --- | --- |
-| Runtime | Java 21 |
+| Runtime | Java 25 |
 | Framework | Spring Boot 4.0.0 |
 | API | Spring Web MVC, REST JSON |
 | Persistencia | Spring Data JPA, Hibernate, MySQL 8.x |
@@ -140,7 +140,7 @@ flowchart TB
 | Datos locales | SQLDelight 2.2 |
 | Red | Retrofit 3, OkHttp 5 |
 | Sincronización / jobs | Coroutines, Flow, WorkManager |
-| Firebase | Auth, Firestore, FCM, Analytics |
+| Firebase | FCM exclusivamente para push notifications |
 | Build | Gradle 9.x, Android Gradle Plugin 9.x |
 
 ### Documentación y automatización
@@ -157,7 +157,7 @@ flowchart TB
 
 ```text
 plataforma-saip-apelaciones/
-├── backend/              # API REST Spring Boot 4 + Java 21
+├── backend/              # API REST Spring Boot 4 + Java 25
 ├── frontend/             # Aplicación web Angular 21 + SSR
 ├── mobile/               # App Android Kotlin + Jetpack Compose
 ├── docs/                 # Documentación Astro + Starlight
@@ -249,7 +249,7 @@ flowchart TB
     UI["app/\nScreens + ViewModels + Navigation"]
     Domain["core/domain\nModels + UseCases + Repository contracts"]
     Data["core/data\nRepository implementations + Mappers"]
-    Network["core/network\nRetrofit + Firebase"]
+    Network["core/network\nRetrofit + JWT REST"]
     Database["core/database\nSQLDelight"]
     Common["core/common\nUtilities"]
 
@@ -266,7 +266,7 @@ flowchart TB
 | `app/` | Presentación, tema, navegación, ViewModels y pantallas. |
 | `core/domain/` | Modelos de dominio, casos de uso e interfaces. |
 | `core/data/` | Repositorios concretos y mapeadores. |
-| `core/network/` | Cliente Retrofit, DTOs, Firebase y comunicación remota. |
+| `core/network/` | Cliente Retrofit, DTOs, JWT y comunicación REST con backend. |
 | `core/database/` | SQLDelight y persistencia local. |
 | `core/common/` | Utilidades compartidas. |
 
@@ -323,7 +323,7 @@ stateDiagram-v2
     Subsanacion --> EnRevision: ciudadano subsana
     EnRevision --> Respondida: entrega total/parcial o denegatoria
     EnRevision --> Vencida: silencio administrativo negativo
-    Respondida --> Apelable: 15 días calendario
+    Respondida --> Apelable: plazo legal aplicable
     Vencida --> Apelable
     Apelable --> [*]
 ```
@@ -336,7 +336,7 @@ Reglas principales:
 | Subsanación | Solo dentro de los 2 primeros días hábiles. |
 | Liquidación de costos | Debe notificarse antes del vencimiento del plazo legal. |
 | Silencio administrativo | Aplica si la entidad no responde dentro del plazo. |
-| Apelación | 15 días calendario desde la recepción de la respuesta o desde el vencimiento. |
+| Apelación | Ante denegatoria expresa aplica el plazo legal que se defina con criterio legal/producto; ante silencio administrativo negativo no existe plazo perentorio. |
 
 ### Flujo TTAIP
 
@@ -417,7 +417,7 @@ Regla operativa: si cambian endpoints, DTOs o modelos de API en `backend/`, sinc
 
 ## Seguridad y roles
 
-La autenticación principal se resuelve con JWT emitido por el backend. El frontend usa guards e interceptor de autenticación. Mobile consume el backend con Retrofit y puede integrarse con Firebase para capacidades complementarias como push notifications y analítica.
+La autenticación principal se resuelve con JWT emitido por el backend. El frontend usa guards e interceptor de autenticación. Mobile consume el backend con Retrofit y conserva Firebase Cloud Messaging exclusivamente para push notifications.
 
 | Rol | Enum | Superficie principal | Capacidades |
 | --- | --- | --- | --- |
@@ -435,13 +435,18 @@ Principios de seguridad:
 - Validar tamaño, extensión y tipo de archivos cargados.
 - Evitar logs con tokens, credenciales o información sensible.
 
+### Motor común de notificaciones
+
+El backend persiste intentos de notificación para SAIP y TTAIP. El modo `MOCK` se usa en desarrollo local y Newman; el modo `SMTP` habilita correo real mediante variables de entorno. `CASILLA_ELECTRONICA` cuenta con un adaptador preparado que responde explícitamente como no disponible hasta contar con el contrato API oficial. No existe fallback automático entre canales.
+
 ## Ejecución local
 
 ### Requisitos
 
 | Herramienta | Uso |
 | --- | --- |
-| Java 21 | Backend Spring Boot y build Android. |
+| Java 25 | Backend Spring Boot. |
+| JDK 17 | Build Android. |
 | MySQL 8.x | Base de datos `saip_db`. |
 | Node.js 22 | Frontend Angular y docs Astro. |
 | npm 11.x | Gestión de paquetes web. |
@@ -507,7 +512,7 @@ cd mobile
 .\gradlew.bat clean compileDebugKotlin test
 ```
 
-> Para integraciones Firebase, colocar el archivo `google-services.json` requerido por el módulo Android correspondiente.
+> Para Firebase Cloud Messaging, colocar el archivo `google-services.json` requerido por el módulo Android correspondiente.
 
 ### Docs
 

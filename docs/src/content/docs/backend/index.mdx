@@ -87,7 +87,7 @@ cd backend
 ```
 
 :::note
-Las credenciales de base de datos se externalizan via variables de entorno: `${DB_USERNAME:root}` y `${DB_PASSWORD:}`. El secret JWT se configura con `${JWT_SECRET}`.
+`application.properties` conserva fallbacks exclusivamente locales para `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET`. En cualquier despliegue, sobrescribir obligatoriamente `DB_PASSWORD` y `JWT_SECRET` mediante variables de entorno o un gestor de secretos.
 :::
 
 ## Secciones de esta Guía

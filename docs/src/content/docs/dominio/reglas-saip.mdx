@@ -123,7 +123,7 @@ La creación de una SAIP exige consentimiento expreso para el tratamiento de dat
 | `canalNotificacion` | Cubierto | Permite `CORREO_ELECTRONICO`, `CASILLA_ELECTRONICA`, `PLATAFORMA` y `FISICA`. |
 
 :::note[Casilla electrónica]
-`CASILLA_ELECTRONICA` ya está soportada como canal elegido. En TTAIP ya existe modelo operativo para constancias, acuses, evidencia y validación manual; para SAIP queda pendiente conectarlo a un motor común de notificaciones o proveedor real cuando se implemente.
+`CASILLA_ELECTRONICA` ya está soportada como canal elegido. El motor común registra intentos SAIP/TTAIP y ofrece `MOCK` para local/Newman y SMTP configurable para correo. La casilla electrónica real sigue pendiente del contrato API oficial y el sistema no promete fallback automático entre canales.
 :::
 
 ## Semáforo de Estado

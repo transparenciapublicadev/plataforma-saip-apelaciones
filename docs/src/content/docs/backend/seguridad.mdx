@@ -237,15 +237,19 @@ boolean matches = passwordEncoder.matches(
 | Variable | Uso | Default (solo dev) |
 |----------|-----|-------------------|
 | `DB_USERNAME` | Usuario MySQL | `root` |
-| `DB_PASSWORD` | Contraseña MySQL | *(vacío)* |
-| `JWT_SECRET` | Clave HMAC-SHA para JWT | **Requerido** |
+| `DB_PASSWORD` | Contraseña MySQL | Fallback local; sobrescribir en despliegues |
+| `JWT_SECRET` | Clave HMAC-SHA para JWT | Fallback local no productivo; sobrescribir en despliegues |
 
 ```properties
-# application.properties — Solo placeholders, NUNCA valores reales
-spring.datasource.username=${DB_USERNAME:root}
-spring.datasource.password=${DB_PASSWORD:}
+# Configuración recomendada para despliegues
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
 jwt.secret=${JWT_SECRET}
 ```
+
+:::caution[Fallbacks locales]
+El archivo base conserva valores de desarrollo para facilitar el arranque local y Newman. No son credenciales aptas para producción. Todo despliegue debe definir `DB_PASSWORD` y `JWT_SECRET` externamente.
+:::
 
 :::danger[NUNCA hacer esto]
 ```properties
