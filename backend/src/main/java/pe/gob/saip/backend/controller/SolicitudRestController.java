@@ -38,15 +38,18 @@ public class SolicitudRestController {
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
     private final MotorNotificacionesService motorNotificacionesService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public SolicitudRestController(SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
                                     EntidadService entidadService,
-                                    MotorNotificacionesService motorNotificacionesService) {
+                                    MotorNotificacionesService motorNotificacionesService,
+                                    AutorizacionRecursosService autorizacionRecursosService) {
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
         this.motorNotificacionesService = motorNotificacionesService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todas las solicitudes SAIP")
@@ -476,6 +479,7 @@ public class SolicitudRestController {
     public ResponseEntity<IntentoNotificacionDTO> enviarNotificacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Valid @RequestBody EnviarNotificacionRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         IntentoNotificacion intento = motorNotificacionesService.enviarNotificacionSaip(id, request);
         return ResponseEntity.status(201).body(IntentoNotificacionDTO.from(intento));
     }
@@ -484,6 +488,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/notificaciones/intentos")
     public ResponseEntity<List<IntentoNotificacionDTO>> listarIntentos(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         List<IntentoNotificacionDTO> intentos = motorNotificacionesService.listarIntentosSaip(id)
                 .stream()
                 .map(IntentoNotificacionDTO::from)

@@ -40,6 +40,10 @@ public class MotorNotificacionesService {
     private final CasillaElectronicaProveedorNotificacion casillaProveedor;
     private final String modo;
     private final String smtpHost;
+    private final String smtpRemitente;
+    private final boolean smtpAuth;
+    private final String smtpUsername;
+    private final String smtpPassword;
 
     public MotorNotificacionesService(
             IntentoNotificacionRepository intentoRepository,
@@ -50,7 +54,11 @@ public class MotorNotificacionesService {
             SmtpCorreoProveedorNotificacion smtpProveedor,
             CasillaElectronicaProveedorNotificacion casillaProveedor,
             @Value("${app.notifications.mode:MOCK}") String modo,
-            @Value("${spring.mail.host:}") String smtpHost) {
+            @Value("${spring.mail.host:}") String smtpHost,
+            @Value("${app.notifications.mail.from:}") String smtpRemitente,
+            @Value("${spring.mail.properties.mail.smtp.auth:false}") boolean smtpAuth,
+            @Value("${spring.mail.username:}") String smtpUsername,
+            @Value("${spring.mail.password:}") String smtpPassword) {
         this.intentoRepository = intentoRepository;
         this.notificacionRepository = notificacionRepository;
         this.solicitudRepository = solicitudRepository;
@@ -60,6 +68,10 @@ public class MotorNotificacionesService {
         this.casillaProveedor = casillaProveedor;
         this.modo = normalizar(modo, MODO_MOCK);
         this.smtpHost = smtpHost;
+        this.smtpRemitente = smtpRemitente;
+        this.smtpAuth = smtpAuth;
+        this.smtpUsername = smtpUsername;
+        this.smtpPassword = smtpPassword;
     }
 
     @Transactional
@@ -139,7 +151,7 @@ public class MotorNotificacionesService {
                 modo,
                 true,
                 true,
-                smtpHost != null && !smtpHost.isBlank(),
+                smtpConfigurado(),
                 "PENDIENTE_CONTRATO_API_OFICIAL",
                 "La respuesta no expone credenciales ni valores sensibles de configuración.");
     }
@@ -177,7 +189,9 @@ public class MotorNotificacionesService {
         if (MODO_MOCK.equals(modo)) {
             return mockProveedor;
         }
-        if (MODO_SMTP.equals(modo) && canal == IntentoNotificacion.CanalEnvio.CORREO_ELECTRONICO) {
+        if (MODO_SMTP.equals(modo)
+                && canal == IntentoNotificacion.CanalEnvio.CORREO_ELECTRONICO
+                && smtpConfigurado()) {
             return smtpProveedor;
         }
         if (canal == IntentoNotificacion.CanalEnvio.CASILLA_ELECTRONICA) {
@@ -272,6 +286,16 @@ public class MotorNotificacionesService {
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("Canal de notificación no válido: " + valor, ex);
         }
+    }
+
+    private boolean smtpConfigurado() {
+        return tieneValor(smtpHost)
+                && tieneValor(smtpRemitente)
+                && (!smtpAuth || (tieneValor(smtpUsername) && tieneValor(smtpPassword)));
+    }
+
+    private boolean tieneValor(String valor) {
+        return valor != null && !valor.isBlank();
     }
 
     private String nuevaCorrelacion() {

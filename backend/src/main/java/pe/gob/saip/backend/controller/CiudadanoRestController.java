@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.CiudadanoDTO;
@@ -26,13 +27,16 @@ public class CiudadanoRestController {
     private final CiudadanoService ciudadanoService;
     private final SolicitudService solicitudService;
     private final ApelacionService apelacionService;
+    private final PasswordEncoder passwordEncoder;
 
     public CiudadanoRestController(CiudadanoService ciudadanoService,
                                     SolicitudService solicitudService,
-                                    ApelacionService apelacionService) {
+                                    ApelacionService apelacionService,
+                                    PasswordEncoder passwordEncoder) {
         this.ciudadanoService = ciudadanoService;
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Operation(summary = "Listar todos los ciudadanos")
@@ -109,7 +113,7 @@ public class CiudadanoRestController {
         if (passwordValue == null || passwordValue.isBlank()) {
             passwordValue = "temp" + System.currentTimeMillis();
         }
-        ciudadano.setPassword(passwordValue);
+        ciudadano.setPassword(passwordEncoder.encode(passwordValue));
 
         ciudadano = ciudadanoService.guardarCiudadano(ciudadano);
 

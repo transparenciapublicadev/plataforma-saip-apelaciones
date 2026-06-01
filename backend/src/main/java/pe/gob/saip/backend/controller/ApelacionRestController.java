@@ -33,17 +33,20 @@ public class ApelacionRestController {
     private final CiudadanoService ciudadanoService;
     private final ExpedienteTtaipService expedienteTtaipService;
     private final ElevacionApelacionTtaipService elevacionService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public ApelacionRestController(ApelacionService apelacionService,
                                     SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
                                     ExpedienteTtaipService expedienteTtaipService,
-                                    ElevacionApelacionTtaipService elevacionService) {
+                                    ElevacionApelacionTtaipService elevacionService,
+                                    AutorizacionRecursosService autorizacionRecursosService) {
         this.apelacionService = apelacionService;
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.expedienteTtaipService = expedienteTtaipService;
         this.elevacionService = elevacionService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todas las apelaciones")
@@ -193,6 +196,7 @@ public class ApelacionRestController {
     @Operation(summary = "Listar apelaciones pendientes de elevación por entidad")
     @GetMapping("/entidad/{entidadId}/pendientes-elevacion")
     public ResponseEntity<List<ElevacionApelacionTtaipDTO>> listarPendientesElevacion(@PathVariable Long entidadId) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
         return ResponseEntity.ok(elevacionService.listarPendientesPorEntidad(entidadId)
                 .stream()
                 .map(ElevacionApelacionTtaipDTO::from)
@@ -204,6 +208,7 @@ public class ApelacionRestController {
     public ResponseEntity<ApelacionDTO> elevar(
             @PathVariable Long id,
             @Valid @RequestBody ElevarApelacionTtaipRequest request) {
+        autorizacionRecursosService.verificarElevacionInstitucional(id);
         return ResponseEntity.ok(ApelacionDTO.from(elevacionService.elevar(id, request)));
     }
 
