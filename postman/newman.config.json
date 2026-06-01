@@ -110,7 +110,10 @@
     "apelacionExternaExpresaId",
     "expedienteTtaipExternoExpresaId",
     "apelacionExternaTacitaId",
-    "expedienteTtaipExternoTacitaId"
+    "expedienteTtaipExternoTacitaId",
+    "motorIntentoSaipId",
+    "motorIntentoTtaipId",
+    "motorIntentoFallidoTtaipId"
   ],
   "tokenVariables": [
     "ciudadanoToken",

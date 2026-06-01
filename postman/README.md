@@ -47,3 +47,14 @@ Every run writes artifacts to `postman/reports/`:
 - `bug backend`: 5xx errors or backend route/error-contract defects.
 
 Backend errors must return RFC 9457 Problem Details fields: `type`, `title`, `status`, `detail` and `instance`.
+
+## Notification Engine Coverage
+
+The full diagnostic run validates the shared SAIP/TTAIP notification engine in local `MOCK` mode:
+
+- Safe engine status without credentials or secrets.
+- SAIP delivery using the formal notification channel selected at runtime.
+- TTAIP delivery and persisted attempt history using notification IDs captured during the run.
+- Controlled TTAIP `MOCK` failure with sanitized diagnostics preserved for reproceso.
+
+`MOCK` is intended for local/Newman validation. `SMTP` is configured through backend environment variables for real email delivery. `CASILLA_ELECTRONICA` remains an explicit `NO_DISPONIBLE` adapter until an official API contract exists; automatic channel fallback is not implemented.
