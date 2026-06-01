@@ -33,6 +33,7 @@ import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 import pe.gob.saip.backend.model.entity.IntentoNotificacion;
 import pe.gob.saip.backend.service.MotorNotificacionesService;
+import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import java.util.stream.Collectors;
 
 import java.util.List;
@@ -46,11 +47,14 @@ public class TTAIPRestController {
 
     private final TTAIPService ttaipService;
     private final MotorNotificacionesService motorNotificacionesService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public TTAIPRestController(TTAIPService ttaipService,
-                               MotorNotificacionesService motorNotificacionesService) {
+                               MotorNotificacionesService motorNotificacionesService,
+                               AutorizacionRecursosService autorizacionRecursosService) {
         this.ttaipService = ttaipService;
         this.motorNotificacionesService = motorNotificacionesService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Estadísticas del tribunal")
@@ -226,6 +230,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/notificaciones")
     public ResponseEntity<List<NotificacionTtaipDTO>> listarNotificaciones(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.listarNotificaciones(expedienteId));
     }
 
@@ -234,6 +239,7 @@ public class TTAIPRestController {
     public ResponseEntity<NotificacionTtaipDTO> obtenerNotificacion(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
             @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.obtenerNotificacion(expedienteId, notificacionId));
     }
 
@@ -288,6 +294,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/descargos")
     public ResponseEntity<List<DescargoEntidadTtaipDTO>> listarDescargos(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.listarDescargos(expedienteId));
     }
 
@@ -295,6 +302,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/descargos/activo")
     public ResponseEntity<DescargoEntidadTtaipDTO> obtenerDescargoActivo(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.obtenerDescargoActivo(expedienteId));
     }
 
@@ -307,6 +315,7 @@ public class TTAIPRestController {
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
             @Parameter(description = "ID del requerimiento de descargo") @PathVariable Long descargoId,
             @Valid @RequestBody PresentarDescargoEntidadRequest request) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.presentarDescargo(expedienteId, descargoId, request));
     }
 
@@ -320,6 +329,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/suspensiones")
     public ResponseEntity<List<SuspensionPlazoTtaipDTO>> listarSuspensiones(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.listarSuspensiones(expedienteId));
     }
 
@@ -373,6 +383,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/cumplimientos")
     public ResponseEntity<List<CumplimientoResolucionTtaipDTO>> listarCumplimientos(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.listarCumplimientos(expedienteId));
     }
 
@@ -380,6 +391,7 @@ public class TTAIPRestController {
     @GetMapping("/expedientes/{expedienteId}/cumplimientos/activo")
     public ResponseEntity<CumplimientoResolucionTtaipDTO> obtenerCumplimientoActivo(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.obtenerCumplimientoActivo(expedienteId));
     }
 
@@ -389,6 +401,7 @@ public class TTAIPRestController {
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
             @Parameter(description = "ID del seguimiento de cumplimiento") @PathVariable Long cumplimientoId,
             @Valid @RequestBody RegistrarCumplimientoResolucionRequest request) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         return ResponseEntity.ok(ttaipService.registrarCumplimiento(expedienteId, cumplimientoId, request));
     }
 
