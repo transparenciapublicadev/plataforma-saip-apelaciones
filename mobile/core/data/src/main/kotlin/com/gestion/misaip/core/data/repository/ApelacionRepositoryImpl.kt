@@ -140,26 +140,7 @@ class ApelacionRepositoryImpl(
             )
         )
 
-        val entity = ApelacionMapper.toEntity(apelacionCompleta)
-        queries.insertApelacion(
-            id = entity.id, expediente = entity.expediente,
-            expedienteSAIP = entity.expedienteSAIP, usuarioId = entity.usuarioId,
-            apelanteNombre = entity.apelanteNombre, apelanteDni = entity.apelanteDni,
-            apelanteEmail = entity.apelanteEmail, entidad = entity.entidad,
-            entidadId = entity.entidadId, asunto = entity.asunto,
-            fundamentoLegal = entity.fundamentoLegal, exposicionHechos = entity.exposicionHechos,
-            pretension = entity.pretension, fechaPresentacion = entity.fechaPresentacion,
-            estado = entity.estado, funcionarioTTAIP = entity.funcionarioTTAIP,
-            primeraCalificacion = entity.primeraCalificacion,
-            segundaCalificacion = entity.segundaCalificacion,
-            subsanacion = entity.subsanacion, timeline = entity.timeline,
-            diasHabiles = entity.diasHabiles, diasRestantes = entity.diasRestantes,
-            informeOralSolicitado = entity.informeOralSolicitado,
-            timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,
-            elevacionExtemporanea = entity.elevacionExtemporanea,
-            sincronizado = false, pendienteSubida = true,
-            ultimaModificacion = System.currentTimeMillis()
-        )
+        guardarApelacionLocal(apelacionCompleta, sincronizado = false, pendienteSubida = true)
 
         queries.insertSyncLog("Apelacion", id, "INSERT", System.currentTimeMillis())
 
@@ -175,27 +156,47 @@ class ApelacionRepositoryImpl(
     }
 
     override suspend fun actualizarApelacion(apelacion: Apelacion) = withContext(Dispatchers.IO) {
-        val entity = ApelacionMapper.toEntity(apelacion)
-        queries.insertApelacion(
-            id = entity.id, expediente = entity.expediente,
-            expedienteSAIP = entity.expedienteSAIP, usuarioId = entity.usuarioId,
-            apelanteNombre = entity.apelanteNombre, apelanteDni = entity.apelanteDni,
-            apelanteEmail = entity.apelanteEmail, entidad = entity.entidad,
-            entidadId = entity.entidadId, asunto = entity.asunto,
-            fundamentoLegal = entity.fundamentoLegal, exposicionHechos = entity.exposicionHechos,
-            pretension = entity.pretension, fechaPresentacion = entity.fechaPresentacion,
-            estado = entity.estado, funcionarioTTAIP = entity.funcionarioTTAIP,
-            primeraCalificacion = entity.primeraCalificacion,
-            segundaCalificacion = entity.segundaCalificacion,
-            subsanacion = entity.subsanacion, timeline = entity.timeline,
-            diasHabiles = entity.diasHabiles, diasRestantes = entity.diasRestantes,
-            informeOralSolicitado = entity.informeOralSolicitado,
-            timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,
-            elevacionExtemporanea = entity.elevacionExtemporanea,
-            sincronizado = false, pendienteSubida = true,
-            ultimaModificacion = System.currentTimeMillis()
-        )
+        guardarApelacionLocal(apelacion, sincronizado = false, pendienteSubida = true)
         Unit
+    }
+
+    override suspend fun crearApelacionExterna(
+        request: RegistrarApelacionExterna
+    ): Apelacion = guardarOperacionOnline {
+        remoteDataSource.crearApelacionExterna(request)
+    }
+
+    override suspend fun crearApelacionAnteEntidad(
+        request: RegistrarApelacionAnteEntidad
+    ): Apelacion = guardarOperacionOnline {
+        remoteDataSource.crearApelacionAnteEntidad(request)
+    }
+
+    override suspend fun getElevacion(apelacionId: String): ElevacionApelacion =
+        withContext(Dispatchers.IO) {
+            remoteDataSource.getElevacion(apelacionId)
+        }
+
+    override suspend fun getPendientesElevacionEntidad(
+        entidadId: String
+    ): List<ElevacionApelacion> = withContext(Dispatchers.IO) {
+        remoteDataSource.getPendientesElevacionEntidad(entidadId)
+    }
+
+    override suspend fun elevarApelacion(
+        apelacionId: String,
+        request: RegistrarElevacionApelacion
+    ): Apelacion = guardarOperacionOnline {
+        remoteDataSource.elevarApelacion(apelacionId, request)
+    }
+
+    override suspend fun comunicarOmisionElevacion(
+        apelacionId: String,
+        request: ComunicarOmisionElevacion
+    ): ElevacionApelacion = withContext(Dispatchers.IO) {
+        val elevacion = remoteDataSource.comunicarOmisionElevacion(apelacionId, request)
+        actualizarElevacionCache(apelacionId, elevacion)
+        elevacion
     }
 
     override suspend fun calificarApelacion(
@@ -342,26 +343,7 @@ class ApelacionRepositoryImpl(
             if (remotas != null) {
                 android.util.Log.d("MiSAIP", "Apelaciones remotas obtenidas: ${remotas.size}")
                 for (apelacion in remotas) {
-                    val entity = ApelacionMapper.toEntity(apelacion, pendienteSubida = false)
-                    queries.insertApelacion(
-                        id = entity.id, expediente = entity.expediente,
-                        expedienteSAIP = entity.expedienteSAIP, usuarioId = entity.usuarioId,
-                        apelanteNombre = entity.apelanteNombre, apelanteDni = entity.apelanteDni,
-                        apelanteEmail = entity.apelanteEmail, entidad = entity.entidad,
-                        entidadId = entity.entidadId, asunto = entity.asunto,
-                        fundamentoLegal = entity.fundamentoLegal, exposicionHechos = entity.exposicionHechos,
-                        pretension = entity.pretension, fechaPresentacion = entity.fechaPresentacion,
-                        estado = entity.estado, funcionarioTTAIP = entity.funcionarioTTAIP,
-                        primeraCalificacion = entity.primeraCalificacion,
-                        segundaCalificacion = entity.segundaCalificacion,
-                        subsanacion = entity.subsanacion, timeline = entity.timeline,
-                        diasHabiles = entity.diasHabiles, diasRestantes = entity.diasRestantes,
-                        informeOralSolicitado = entity.informeOralSolicitado,
-                        timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,
-                        elevacionExtemporanea = entity.elevacionExtemporanea,
-                        sincronizado = true, pendienteSubida = false,
-                        ultimaModificacion = System.currentTimeMillis()
-                    )
+                    guardarApelacionLocal(apelacion, sincronizado = true, pendienteSubida = false)
                 }
             } else {
                 android.util.Log.w("MiSAIP", "Timeout sincronizando apelaciones (pull) — sin conexión o servidor lento")
@@ -398,9 +380,7 @@ class ApelacionRepositoryImpl(
                         .executeAsOneOrNull()
                         ?.let(ApelacionMapper::toDomain)
                     val merged = resumen.completarResumenDesde(cached)
-                    if (puedeCachearLocalmente(merged, cached)) {
-                        guardarApelacionLocal(merged, sincronizado = true, pendienteSubida = false)
-                    }
+                    guardarApelacionLocal(merged, sincronizado = true, pendienteSubida = false)
                     merged
                 }
                 remota.copy(contenido = actualizadas)
@@ -420,7 +400,8 @@ class ApelacionRepositoryImpl(
         val entity = ApelacionMapper.toEntity(apelacion, pendienteSubida)
         queries.insertApelacion(
             id = entity.id, expediente = entity.expediente,
-            expedienteSAIP = entity.expedienteSAIP, usuarioId = entity.usuarioId,
+            expedienteSAIP = entity.expedienteSAIP, solicitudId = entity.solicitudId,
+            usuarioId = entity.usuarioId,
             apelanteNombre = entity.apelanteNombre, apelanteDni = entity.apelanteDni,
             apelanteEmail = entity.apelanteEmail, entidad = entity.entidad,
             entidadId = entity.entidadId, asunto = entity.asunto,
@@ -434,6 +415,23 @@ class ApelacionRepositoryImpl(
             informeOralSolicitado = entity.informeOralSolicitado,
             timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,
             elevacionExtemporanea = entity.elevacionExtemporanea,
+            tipoOrigen = entity.tipoOrigen,
+            numeroSolicitudExterna = entity.numeroSolicitudExterna,
+            tipoDenegatoria = entity.tipoDenegatoria,
+            fechaPresentacionSolicitudExterna = entity.fechaPresentacionSolicitudExterna,
+            fechaRespuestaEntidad = entity.fechaRespuestaEntidad,
+            resumenSolicitudOriginal = entity.resumenSolicitudOriginal,
+            resumenRespuestaEntidad = entity.resumenRespuestaEntidad,
+            referenciaDocumentoSolicitud = entity.referenciaDocumentoSolicitud,
+            referenciaCargoRecepcion = entity.referenciaCargoRecepcion,
+            referenciaRespuestaEntidad = entity.referenciaRespuestaEntidad,
+            evidenciaSilencioAdministrativo = entity.evidenciaSilencioAdministrativo,
+            observacion = entity.observacion,
+            estadoElevacion = entity.estadoElevacion,
+            fechaLimiteElevacion = entity.fechaLimiteElevacion,
+            referenciaCargoPresentacionElevacion = entity.referenciaCargoPresentacionElevacion,
+            referenciaExpedienteElevado = entity.referenciaExpedienteElevado,
+            referenciaPruebaOmision = entity.referenciaPruebaOmision,
             sincronizado = sincronizado, pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()
         )
@@ -445,6 +443,7 @@ class ApelacionRepositoryImpl(
             id = id.ifBlank { local.id },
             expediente = expediente.ifBlank { local.expediente },
             expedienteSAIP = expedienteSAIP.ifBlank { local.expedienteSAIP },
+            solicitudId = solicitudId ?: local.solicitudId,
             usuarioId = usuarioId.ifBlank { local.usuarioId },
             apelante = local.apelante.copy(
                 nombre = apelante.nombre.ifBlank { local.apelante.nombre }
@@ -452,19 +451,31 @@ class ApelacionRepositoryImpl(
             entidad = entidad.ifBlank { local.entidad },
             entidadId = entidadId.ifBlank { local.entidadId },
             fechaPresentacion = fechaPresentacion.takeIf { it > 0 } ?: local.fechaPresentacion,
-            estado = estado
+            estado = estado,
+            tipoOrigen = if (tipoOrigen == TipoOrigenApelacion.SAIP_INTERNA) local.tipoOrigen else tipoOrigen,
+            datosExternos = datosExternos ?: local.datosExternos,
+            elevacion = elevacion ?: local.elevacion
         )
     }
 
-    /**
-     * La tabla local aún enlaza Apelacion.expedienteSAIP con Solicitud.expediente.
-     * Las apelaciones externas se muestran desde red, pero su cache offline completo
-     * se habilitará junto con la migración local específica del flujo externo.
-     */
-    private fun puedeCachearLocalmente(apelacion: Apelacion, cached: Apelacion?): Boolean {
-        if (cached != null) return true
-        return database.solicitudQueries.getSolicitudByExpediente(apelacion.expedienteSAIP)
-            .executeAsOneOrNull() != null
+    private suspend fun guardarOperacionOnline(
+        operacion: suspend () -> Apelacion
+    ): Apelacion = withContext(Dispatchers.IO) {
+        val apelacion = operacion()
+        guardarApelacionLocal(apelacion, sincronizado = true, pendienteSubida = false)
+        apelacion
+    }
+
+    private fun actualizarElevacionCache(apelacionId: String, elevacion: ElevacionApelacion) {
+        val local = queries.getAllApelaciones().executeAsList()
+            .firstOrNull { it.id == apelacionId }
+            ?.let(ApelacionMapper::toDomain)
+            ?: return
+        guardarApelacionLocal(
+            local.copy(elevacion = elevacion),
+            sincronizado = true,
+            pendienteSubida = false
+        )
     }
 
     private fun paginaLocal(

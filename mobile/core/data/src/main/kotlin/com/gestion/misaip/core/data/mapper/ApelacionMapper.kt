@@ -20,7 +20,8 @@ object ApelacionMapper {
         return Apelacion(
             id = entity.id,
             expediente = entity.expediente,
-            expedienteSAIP = entity.expedienteSAIP,
+            expedienteSAIP = entity.expedienteSAIP.orEmpty(),
+            solicitudId = entity.solicitudId,
             usuarioId = entity.usuarioId,
             apelante = Apelante(
                 nombre = entity.apelanteNombre,
@@ -45,7 +46,38 @@ object ApelacionMapper {
             informeOralSolicitado = entity.informeOralSolicitado,
             timerPausado = entity.timerPausado,
             fechaElevacion = entity.fechaElevacion,
-            elevacionExtemporanea = entity.elevacionExtemporanea
+            elevacionExtemporanea = entity.elevacionExtemporanea,
+            tipoOrigen = TipoOrigenApelacion.fromString(entity.tipoOrigen),
+            datosExternos = entity.numeroSolicitudExterna?.let {
+                DatosApelacionExterna(
+                    numeroSolicitudExterna = it,
+                    fechaPresentacionSolicitudExterna = entity.fechaPresentacionSolicitudExterna.orEmpty(),
+                    tipoDenegatoria = TipoDenegatoria.fromString(entity.tipoDenegatoria) ?: TipoDenegatoria.TACITA,
+                    fechaRespuestaEntidad = entity.fechaRespuestaEntidad,
+                    resumenSolicitudOriginal = entity.resumenSolicitudOriginal.orEmpty(),
+                    resumenRespuestaEntidad = entity.resumenRespuestaEntidad,
+                    referenciaDocumentoSolicitud = entity.referenciaDocumentoSolicitud.orEmpty(),
+                    referenciaCargoRecepcion = entity.referenciaCargoRecepcion,
+                    referenciaRespuestaEntidad = entity.referenciaRespuestaEntidad,
+                    evidenciaSilencioAdministrativo = entity.evidenciaSilencioAdministrativo,
+                    observacion = entity.observacion
+                )
+            },
+            elevacion = entity.estadoElevacion?.let {
+                ElevacionApelacion(
+                    id = "",
+                    apelacionId = entity.id,
+                    expedienteReservado = entity.expediente,
+                    entidadOrigenId = entity.entidadId,
+                    entidadOrigenNombre = entity.entidad,
+                    fechaPresentacionAnteEntidad = "",
+                    fechaLimiteElevacion = entity.fechaLimiteElevacion.orEmpty(),
+                    estado = EstadoElevacionApelacion.fromString(it) ?: EstadoElevacionApelacion.PENDIENTE,
+                    referenciaCargoPresentacion = entity.referenciaCargoPresentacionElevacion.orEmpty(),
+                    referenciaExpedienteElevado = entity.referenciaExpedienteElevado,
+                    referenciaPruebaOmision = entity.referenciaPruebaOmision
+                )
+            }
         )
     }
 
@@ -53,7 +85,8 @@ object ApelacionMapper {
         return ApelacionEntity(
             id = domain.id,
             expediente = domain.expediente,
-            expedienteSAIP = domain.expedienteSAIP,
+            expedienteSAIP = domain.expedienteSAIP.ifBlank { null },
+            solicitudId = domain.solicitudId,
             usuarioId = domain.usuarioId,
             apelanteNombre = domain.apelante.nombre,
             apelanteDni = domain.apelante.dni,
@@ -77,6 +110,23 @@ object ApelacionMapper {
             timerPausado = domain.timerPausado,
             fechaElevacion = domain.fechaElevacion,
             elevacionExtemporanea = domain.elevacionExtemporanea,
+            tipoOrigen = domain.tipoOrigen.name,
+            numeroSolicitudExterna = domain.datosExternos?.numeroSolicitudExterna,
+            tipoDenegatoria = domain.datosExternos?.tipoDenegatoria?.name,
+            fechaPresentacionSolicitudExterna = domain.datosExternos?.fechaPresentacionSolicitudExterna,
+            fechaRespuestaEntidad = domain.datosExternos?.fechaRespuestaEntidad,
+            resumenSolicitudOriginal = domain.datosExternos?.resumenSolicitudOriginal,
+            resumenRespuestaEntidad = domain.datosExternos?.resumenRespuestaEntidad,
+            referenciaDocumentoSolicitud = domain.datosExternos?.referenciaDocumentoSolicitud,
+            referenciaCargoRecepcion = domain.datosExternos?.referenciaCargoRecepcion,
+            referenciaRespuestaEntidad = domain.datosExternos?.referenciaRespuestaEntidad,
+            evidenciaSilencioAdministrativo = domain.datosExternos?.evidenciaSilencioAdministrativo,
+            observacion = domain.datosExternos?.observacion,
+            estadoElevacion = domain.elevacion?.estado?.name,
+            fechaLimiteElevacion = domain.elevacion?.fechaLimiteElevacion,
+            referenciaCargoPresentacionElevacion = domain.elevacion?.referenciaCargoPresentacion,
+            referenciaExpedienteElevado = domain.elevacion?.referenciaExpedienteElevado,
+            referenciaPruebaOmision = domain.elevacion?.referenciaPruebaOmision,
             sincronizado = false,
             pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()
