@@ -29,6 +29,38 @@ class ApelacionRepositoryImpl(
     private val queries = database.apelacionQueries
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
+    override suspend fun cargarPaginaApelaciones(
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Apelacion> = cargarPagina(
+        pagina = pagina,
+        tamano = tamano,
+        remote = { remoteDataSource.getPaginaApelaciones(pagina, tamano) },
+        local = {
+            queries.getAllApelacionesPaginadas(tamano.toLong(), offset(pagina, tamano))
+                .executeAsList()
+                .map(ApelacionMapper::toDomain) to queries.countAllApelaciones().executeAsOne()
+        }
+    )
+
+    override suspend fun cargarPaginaApelacionesUsuario(
+        usuarioId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Apelacion> = cargarPagina(
+        pagina = pagina,
+        tamano = tamano,
+        remote = { remoteDataSource.getPaginaApelacionesUsuario(usuarioId, pagina, tamano) },
+        local = {
+            queries.getApelacionesByUsuarioPaginadas(
+                usuarioId,
+                tamano.toLong(),
+                offset(pagina, tamano)
+            ).executeAsList().map(ApelacionMapper::toDomain) to
+                queries.countApelacionesByUsuario(usuarioId).executeAsOne()
+        }
+    )
+
     override fun getApelacionesUsuario(usuarioId: String): Flow<List<Apelacion>> {
         return queries.getApelacionesByUsuario(usuarioId)
             .asFlow()
@@ -350,5 +382,113 @@ class ApelacionRepositoryImpl(
             android.util.Log.e("MiSAIP", "Error actualizando contador TTAIP: ${e.message}", e)
         }
         Unit
+    }
+
+    private suspend fun cargarPagina(
+        pagina: Int,
+        tamano: Int,
+        remote: suspend () -> Pagina<Apelacion>,
+        local: suspend () -> Pair<List<Apelacion>, Long>
+    ): Pagina<Apelacion> = withContext(Dispatchers.IO) {
+        withOfflinePageFallback(
+            remote = {
+                val remota = remote()
+                val actualizadas = remota.contenido.map { resumen ->
+                    val cached = queries.getApelacionByExpediente(resumen.expediente)
+                        .executeAsOneOrNull()
+                        ?.let(ApelacionMapper::toDomain)
+                    val merged = resumen.completarResumenDesde(cached)
+                    if (puedeCachearLocalmente(merged, cached)) {
+                        guardarApelacionLocal(merged, sincronizado = true, pendienteSubida = false)
+                    }
+                    merged
+                }
+                remota.copy(contenido = actualizadas)
+            },
+            local = {
+                val (items, total) = local()
+                paginaLocal(items, pagina, tamano, total)
+            }
+        )
+    }
+
+    private fun guardarApelacionLocal(
+        apelacion: Apelacion,
+        sincronizado: Boolean,
+        pendienteSubida: Boolean
+    ) {
+        val entity = ApelacionMapper.toEntity(apelacion, pendienteSubida)
+        queries.insertApelacion(
+            id = entity.id, expediente = entity.expediente,
+            expedienteSAIP = entity.expedienteSAIP, usuarioId = entity.usuarioId,
+            apelanteNombre = entity.apelanteNombre, apelanteDni = entity.apelanteDni,
+            apelanteEmail = entity.apelanteEmail, entidad = entity.entidad,
+            entidadId = entity.entidadId, asunto = entity.asunto,
+            fundamentoLegal = entity.fundamentoLegal, exposicionHechos = entity.exposicionHechos,
+            pretension = entity.pretension, fechaPresentacion = entity.fechaPresentacion,
+            estado = entity.estado, funcionarioTTAIP = entity.funcionarioTTAIP,
+            primeraCalificacion = entity.primeraCalificacion,
+            segundaCalificacion = entity.segundaCalificacion,
+            subsanacion = entity.subsanacion, timeline = entity.timeline,
+            diasHabiles = entity.diasHabiles, diasRestantes = entity.diasRestantes,
+            informeOralSolicitado = entity.informeOralSolicitado,
+            timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,
+            elevacionExtemporanea = entity.elevacionExtemporanea,
+            sincronizado = sincronizado, pendienteSubida = pendienteSubida,
+            ultimaModificacion = System.currentTimeMillis()
+        )
+    }
+
+    private fun Apelacion.completarResumenDesde(local: Apelacion?): Apelacion {
+        if (local == null) return this
+        return local.copy(
+            id = id.ifBlank { local.id },
+            expediente = expediente.ifBlank { local.expediente },
+            expedienteSAIP = expedienteSAIP.ifBlank { local.expedienteSAIP },
+            usuarioId = usuarioId.ifBlank { local.usuarioId },
+            apelante = local.apelante.copy(
+                nombre = apelante.nombre.ifBlank { local.apelante.nombre }
+            ),
+            entidad = entidad.ifBlank { local.entidad },
+            entidadId = entidadId.ifBlank { local.entidadId },
+            fechaPresentacion = fechaPresentacion.takeIf { it > 0 } ?: local.fechaPresentacion,
+            estado = estado
+        )
+    }
+
+    /**
+     * La tabla local aún enlaza Apelacion.expedienteSAIP con Solicitud.expediente.
+     * Las apelaciones externas se muestran desde red, pero su cache offline completo
+     * se habilitará junto con la migración local específica del flujo externo.
+     */
+    private fun puedeCachearLocalmente(apelacion: Apelacion, cached: Apelacion?): Boolean {
+        if (cached != null) return true
+        return database.solicitudQueries.getSolicitudByExpediente(apelacion.expedienteSAIP)
+            .executeAsOneOrNull() != null
+    }
+
+    private fun paginaLocal(
+        contenido: List<Apelacion>,
+        pagina: Int,
+        tamano: Int,
+        total: Long
+    ): Pagina<Apelacion> {
+        val totalPaginas = calcularTotalPaginas(total, tamano)
+        return Pagina(
+            contenido = contenido,
+            pagina = pagina,
+            tamano = tamano,
+            totalElementos = total,
+            totalPaginas = totalPaginas,
+            ultima = pagina + 1 >= totalPaginas,
+            desdeCache = true
+        )
+    }
+
+    private fun offset(pagina: Int, tamano: Int): Long = pagina.toLong() * tamano
+
+    private fun calcularTotalPaginas(total: Long, tamano: Int): Int {
+        if (total == 0L) return 0
+        return ((total + tamano - 1) / tamano).toInt()
     }
 }
