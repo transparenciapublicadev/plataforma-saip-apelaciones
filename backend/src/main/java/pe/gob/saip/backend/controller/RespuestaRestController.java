@@ -13,6 +13,7 @@ import pe.gob.saip.backend.model.dto.CrearRespuestaRequest;
 import pe.gob.saip.backend.model.dto.RespuestaDTO;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import pe.gob.saip.backend.service.RespuestaService;
 import pe.gob.saip.backend.service.SolicitudService;
 
@@ -27,17 +28,21 @@ public class RespuestaRestController {
 
     private final RespuestaService respuestaService;
     private final SolicitudService solicitudService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public RespuestaRestController(RespuestaService respuestaService,
-                                    SolicitudService solicitudService) {
+                                    SolicitudService solicitudService,
+                                    AutorizacionRecursosService autorizacionRecursosService) {
         this.respuestaService = respuestaService;
         this.solicitudService = solicitudService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todas las respuestas")
     @GetMapping
     public ResponseEntity<List<RespuestaDTO>> listar() {
-        List<RespuestaDTO> respuestas = respuestaService.obtenerTodasLasRespuestas()
+        List<RespuestaDTO> respuestas = autorizacionRecursosService
+                .filtrarRespuestasAccesibles(respuestaService.obtenerTodasLasRespuestas())
                 .stream()
                 .map(RespuestaDTO::from)
                 .collect(Collectors.toList());
@@ -49,12 +54,14 @@ public class RespuestaRestController {
     public ResponseEntity<RespuestaDTO> obtenerPorId(@Parameter(description = "ID de la respuesta") @PathVariable Long id) {
         Respuesta respuesta = respuestaService.obtenerRespuestaPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Respuesta no encontrada con ID: " + id));
+        autorizacionRecursosService.verificarRespuestaAccesible(id);
         return ResponseEntity.ok(RespuestaDTO.from(respuesta));
     }
 
     @Operation(summary = "Obtener respuesta por solicitud")
     @GetMapping("/solicitud/{solicitudId}")
     public ResponseEntity<RespuestaDTO> obtenerPorSolicitud(@Parameter(description = "ID de la solicitud") @PathVariable Long solicitudId) {
+        autorizacionRecursosService.verificarSolicitudAccesible(solicitudId);
         Solicitud solicitud = solicitudService.findById(solicitudId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + solicitudId));
 
@@ -68,18 +75,21 @@ public class RespuestaRestController {
     @Operation(summary = "Crear respuesta a solicitud SAIP")
     @PostMapping
     public ResponseEntity<RespuestaDTO> crear(@Valid @RequestBody CrearRespuestaRequest request) {
+        verificarAutorizacionRespuesta(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuestaService.crearRespuesta(request));
     }
 
     @Operation(summary = "Aceptar solicitud", description = "Crea respuesta con entrega total de información")
     @PostMapping("/aceptar")
     public ResponseEntity<RespuestaDTO> aceptarSolicitud(@Valid @RequestBody CrearRespuestaRequest request) {
+        verificarAutorizacionRespuesta(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuestaService.aceptarSolicitud(request));
     }
 
     @Operation(summary = "Denegar solicitud", description = "Crea respuesta con denegación total y causal")
     @PostMapping("/denegar")
     public ResponseEntity<RespuestaDTO> denegarSolicitud(@Valid @RequestBody CrearRespuestaRequest request) {
+        verificarAutorizacionRespuesta(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuestaService.denegarSolicitud(request));
     }
 
@@ -98,5 +108,10 @@ public class RespuestaRestController {
                 "La solicitud requiere una elaboración de la información"
         );
         return ResponseEntity.ok(causales);
+    }
+
+    private void verificarAutorizacionRespuesta(CrearRespuestaRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(request.solicitudId());
+        autorizacionRecursosService.verificarFuncionarioPuedeActuar(request.funcionarioId());
     }
 }

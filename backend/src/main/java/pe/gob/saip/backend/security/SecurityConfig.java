@@ -69,18 +69,30 @@ public class SecurityConfig {
                                         request.getRequestURI()))))
                 .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/registro",
+                                "/api/auth/verificar-email",
+                                "/api/auth/verificar-dni").permitAll()
+                        .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/public")).permitAll()
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes/publica/expediente")).permitAll()
 
-                        .requestMatchers(resourceMatchers("/api/ciudadanos")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, resourceMatchers("/api/ciudadanos")).hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/ciudadanos")).hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/ciudadanos")).hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, resourceMatchers("/api/ciudadanos")).hasAnyRole("CIUDADANO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/ciudadanos")).hasAnyRole("CIUDADANO", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/usuarios")).hasRole("ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/notificaciones/enviar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/solicitudes/*/notificaciones/intentos").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/estadisticas").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/paginadas").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/estado/*/paginadas").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/solicitudes/entidad/*/estadisticas").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/solicitudes")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/solicitudes/*/observaciones/*/subsanar").hasAnyRole("CIUDADANO", "ADMINISTRADOR")
@@ -101,6 +113,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/respuestas")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/respuestas")).hasRole("ADMINISTRADOR")
 
+                        .requestMatchers(HttpMethod.GET, "/api/apelaciones/estadisticas").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/apelaciones/paginadas").hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/apelaciones/estado/*/paginadas").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/apelaciones")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/apelaciones/entidad/*/pendientes-elevacion").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/apelaciones/*/elevacion/elevar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
@@ -143,15 +158,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/funcionarios")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/funcionarios")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/funcionarios")).hasRole("ADMINISTRADOR")
 
+                        .requestMatchers(HttpMethod.GET, "/api/entidades/*/estadisticas").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/entidades")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
 
-                        .requestMatchers(resourceMatchers("/api/estadisticas")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
-                        .requestMatchers(resourceMatchers("/api/reportes")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/estadisticas/entidad/*").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(resourceMatchers("/api/estadisticas")).hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(resourceMatchers("/api/reportes")).hasAnyRole("TTAIP", "ADMINISTRADOR")
 
                         .anyRequest().authenticated()
                 )

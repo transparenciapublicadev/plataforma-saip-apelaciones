@@ -23,17 +23,20 @@ public class EstadisticasRestController {
     private final EntidadService entidadService;
     private final CiudadanoService ciudadanoService;
     private final FuncionarioService funcionarioService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public EstadisticasRestController(SolicitudService solicitudService,
                                        ApelacionService apelacionService,
                                        EntidadService entidadService,
                                        CiudadanoService ciudadanoService,
-                                       FuncionarioService funcionarioService) {
+                                       FuncionarioService funcionarioService,
+                                       AutorizacionRecursosService autorizacionRecursosService) {
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.entidadService = entidadService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Estadísticas generales del sistema", description = "Totales de solicitudes, apelaciones, entidades, ciudadanos y funcionarios")
@@ -116,6 +119,7 @@ public class EstadisticasRestController {
     @Operation(summary = "Estadísticas por entidad", description = "Detalle con tiempo promedio de respuesta")
     @GetMapping("/entidad/{entidadId}")
     public ResponseEntity<Map<String, Object>> obtenerEstadisticasPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
         Map<String, Object> stats = new HashMap<>();
 
         List<Solicitud> solicitudes = solicitudService.findByEntidadId(entidadId);
