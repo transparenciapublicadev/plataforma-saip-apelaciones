@@ -6,17 +6,43 @@
 getAllSolicitudes:
 SELECT * FROM Solicitud ORDER BY fechaCreacion DESC;
 
+getAllSolicitudesPaginadas:
+SELECT * FROM Solicitud
+ORDER BY fechaCreacion DESC
+LIMIT ? OFFSET ?;
+
+countAllSolicitudes:
+SELECT COUNT(*) FROM Solicitud;
+
 -- Obtener solicitudes del usuario
 getSolicitudesByUsuario:
 SELECT * FROM Solicitud
 WHERE usuarioId = ?
 ORDER BY fechaCreacion DESC;
 
+getSolicitudesByUsuarioPaginadas:
+SELECT * FROM Solicitud
+WHERE usuarioId = ?
+ORDER BY fechaCreacion DESC
+LIMIT ? OFFSET ?;
+
+countSolicitudesByUsuario:
+SELECT COUNT(*) FROM Solicitud WHERE usuarioId = ?;
+
 -- Obtener solicitudes de una entidad
 getSolicitudesByEntidad:
 SELECT * FROM Solicitud
 WHERE entidadId = ?
 ORDER BY fechaCreacion DESC;
+
+getSolicitudesByEntidadPaginadas:
+SELECT * FROM Solicitud
+WHERE entidadId = ?
+ORDER BY fechaCreacion DESC
+LIMIT ? OFFSET ?;
+
+countSolicitudesByEntidad:
+SELECT COUNT(*) FROM Solicitud WHERE entidadId = ?;
 
 -- Obtener solicitud por expediente
 getSolicitudByExpediente:
