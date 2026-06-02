@@ -18,12 +18,20 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import pe.gob.saip.backend.model.entity.Entidad;
+import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Funcionario;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.model.entity.Ciudadano;
+import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.ElevacionApelacionTtaipRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
+import pe.gob.saip.backend.repository.EncauzamientoSolicitudRepository;
 import pe.gob.saip.backend.repository.FuncionarioRepository;
+import pe.gob.saip.backend.repository.ApelacionRepository;
+import pe.gob.saip.backend.repository.CiudadanoRepository;
+import pe.gob.saip.backend.repository.RespuestaRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
+import pe.gob.saip.backend.repository.UsuarioRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AutorizacionRecursosServiceTest {
@@ -32,7 +40,19 @@ class AutorizacionRecursosServiceTest {
     private FuncionarioRepository funcionarioRepository;
 
     @Mock
+    private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private CiudadanoRepository ciudadanoRepository;
+
+    @Mock
     private SolicitudRepository solicitudRepository;
+
+    @Mock
+    private RespuestaRepository respuestaRepository;
+
+    @Mock
+    private ApelacionRepository apelacionRepository;
 
     @Mock
     private ExpedienteTtaipRepository expedienteRepository;
@@ -40,15 +60,23 @@ class AutorizacionRecursosServiceTest {
     @Mock
     private ElevacionApelacionTtaipRepository elevacionRepository;
 
+    @Mock
+    private EncauzamientoSolicitudRepository encauzamientoRepository;
+
     private AutorizacionRecursosService service;
 
     @BeforeEach
     void setUp() {
         service = new AutorizacionRecursosService(
+                usuarioRepository,
+                ciudadanoRepository,
                 funcionarioRepository,
                 solicitudRepository,
+                respuestaRepository,
+                apelacionRepository,
                 expedienteRepository,
-                elevacionRepository);
+                elevacionRepository,
+                encauzamientoRepository);
     }
 
     @AfterEach
@@ -88,6 +116,59 @@ class AutorizacionRecursosServiceTest {
         verifyNoInteractions(funcionarioRepository, solicitudRepository);
     }
 
+    @Test
+    void verificarUsuarioActualOAdministradorRejectsDifferentCitizenProfile() {
+        authenticate("citizen@example.test", "ROLE_CIUDADANO");
+        when(usuarioRepository.findByEmail("citizen@example.test"))
+                .thenReturn(Optional.of(usuario(1L)));
+
+        assertThatThrownBy(() -> service.verificarUsuarioActualOAdministrador(2L))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void verificarSolicitudAccesibleAllowsCitizenOwner() {
+        authenticate("citizen@example.test", "ROLE_CIUDADANO");
+        when(ciudadanoRepository.findByEmail("citizen@example.test"))
+                .thenReturn(Optional.of(ciudadano(1L)));
+        when(solicitudRepository.findById(5L))
+                .thenReturn(Optional.of(solicitud(entidad(10L), ciudadano(1L))));
+
+        assertThatCode(() -> service.verificarSolicitudAccesible(5L))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void verificarSolicitudAccesibleRejectsCitizenFromOtherOwner() {
+        authenticate("citizen@example.test", "ROLE_CIUDADANO");
+        when(ciudadanoRepository.findByEmail("citizen@example.test"))
+                .thenReturn(Optional.of(ciudadano(1L)));
+        when(solicitudRepository.findById(5L))
+                .thenReturn(Optional.of(solicitud(entidad(10L), ciudadano(2L))));
+
+        assertThatThrownBy(() -> service.verificarSolicitudAccesible(5L))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void verificarTrazabilidadEncauzamientoAccesibleAllowsOriginEntityAfterTotalRedirect() {
+        authenticate("funcionario@example.test", "ROLE_FUNCIONARIO");
+        Entidad origen = entidad(10L);
+        Entidad destino = entidad(20L);
+        EncauzamientoSolicitud encauzamiento = new EncauzamientoSolicitud();
+        encauzamiento.setEntidadOrigen(origen);
+        encauzamiento.setEntidadDestino(destino);
+        when(funcionarioRepository.findByEmail("funcionario@example.test"))
+                .thenReturn(Optional.of(funcionario(origen)));
+        when(solicitudRepository.findById(5L))
+                .thenReturn(Optional.of(solicitud(destino)));
+        when(encauzamientoRepository.findBySolicitud_IdSolicitudOrderByFechaEncauzamientoDesc(5L))
+                .thenReturn(List.of(encauzamiento));
+
+        assertThatCode(() -> service.verificarTrazabilidadEncauzamientoAccesible(5L))
+                .doesNotThrowAnyException();
+    }
+
     private void authenticate(String email, String role) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
@@ -106,6 +187,24 @@ class AutorizacionRecursosServiceTest {
         Solicitud solicitud = new Solicitud();
         solicitud.setEntidad(entidad);
         return solicitud;
+    }
+
+    private Solicitud solicitud(Entidad entidad, Ciudadano ciudadano) {
+        Solicitud solicitud = solicitud(entidad);
+        solicitud.setCiudadano(ciudadano);
+        return solicitud;
+    }
+
+    private Ciudadano ciudadano(Long id) {
+        Ciudadano ciudadano = new Ciudadano();
+        ciudadano.setIdUsuario(id);
+        return ciudadano;
+    }
+
+    private Usuario usuario(Long id) {
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(id);
+        return usuario;
     }
 
     private Entidad entidad(Long id) {
