@@ -90,6 +90,8 @@ CREATE TABLE Solicitud (
     sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
     ultimaModificacion INTEGER NOT NULL,
+    consentimientoDatosPersonales INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    canalNotificacion TEXT,
     -- Foreign keys
     FOREIGN KEY (usuarioId) REFERENCES Usuario(id),
     FOREIGN KEY (entidadId) REFERENCES EntidadPublica(id)
@@ -219,4 +221,3 @@ CREATE TABLE Notificacion (
 CREATE INDEX idx_notificacion_usuarioId ON Notificacion(usuarioId);
 CREATE INDEX idx_notificacion_leida ON Notificacion(leida);
 CREATE INDEX idx_notificacion_fecha ON Notificacion(fecha);
-
