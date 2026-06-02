@@ -12,7 +12,7 @@ La app mobile implementa una **arquitectura offline-first**: los datos se leen p
 ```
 User Action → ViewModel → UseCase → Repository Implementation
                                         ├─ 1. Leer SQLDelight (local first)
-                                        ├─ 2. Si miss/stale → Retrofit REST API (10s timeout)
+                                        ├─ 2. Si miss/stale → Retrofit REST API (15s timeout)
                                         └─ 3. Guardar en local + emitir datos actualizados
 ```
 
@@ -20,125 +20,46 @@ User Action → ViewModel → UseCase → Repository Implementation
 1. **Acción del usuario** — El ViewModel invoca el UseCase correspondiente
 2. **UseCase** delega al Repository
 3. **Repository** lee primero datos locales (SQLDelight) y los emite inmediatamente
-4. **Sincronización** — En paralelo, intenta obtener datos frescos del servidor (Retrofit, 10s timeout)
+4. **Sincronización** — En paralelo, intenta obtener datos frescos del servidor (Retrofit, 15s timeout)
 5. **Actualización local** — Si la red responde, guarda en SQLDelight y emite datos actualizados
 6. **Sin conexión** — Si falla la red, los datos locales se mantienen sin cambio
 </Steps>
 
-## SQLDelight — 5 Tablas
+## SQLDelight
 
-<Tabs>
-  <TabItem label="Esquema">
-    ```sql
-    -- Usuario.sq
-    CREATE TABLE Usuario (
-        id TEXT NOT NULL PRIMARY KEY,
-        email TEXT NOT NULL,
-        nombreCompleto TEXT NOT NULL,
-        tipoUsuario TEXT NOT NULL,
-        token TEXT,
-        ultimoAcceso INTEGER
-    );
+La fuente exacta del esquema vive en `core/database/src/main/sqldelight/`. El cache actual incluye:
 
-    -- Solicitud.sq
-    CREATE TABLE Solicitud (
-        id TEXT NOT NULL PRIMARY KEY,
-        expediente TEXT NOT NULL UNIQUE,
-        asunto TEXT NOT NULL,
-        descripcion TEXT NOT NULL,
-        estado TEXT NOT NULL,
-        ciudadanoId TEXT NOT NULL,
-        entidadId TEXT NOT NULL,
-        fechaPresentacion INTEGER NOT NULL,
-        fechaLimite INTEGER,
-        pendienteSubida INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (ciudadanoId) REFERENCES Usuario(id)
-    );
+| Tabla | Uso |
+| --- | --- |
+| `Usuario` | Perfil local y hash para fallback offline controlado. |
+| `EntidadPublica` | Catálogo local para formularios. |
+| `Solicitud` | Bandeja SAIP, respuesta, timeline y flags de sincronización. |
+| `Apelacion` | Seguimiento TTAIP local ligado actualmente a SAIP interna. |
+| `Sesion` | Sesión local de trabajo; el JWT no se guarda aquí. |
+| `SyncLog` | Reintentos de sincronización. |
+| `Contadores` | Numeración offline transitoria. |
+| `Notificacion` | Avisos locales y lectura. |
 
-    -- Apelacion.sq
-    CREATE TABLE Apelacion (
-        id TEXT NOT NULL PRIMARY KEY,
-        expedienteTTAIP TEXT NOT NULL UNIQUE,
-        solicitudId TEXT NOT NULL,
-        estado TEXT NOT NULL,
-        fundamentos TEXT NOT NULL,
-        fechaPresentacion INTEGER NOT NULL,
-        pendienteSubida INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY (solicitudId) REFERENCES Solicitud(id)
-    );
-
-    -- EntidadPublica.sq
-    CREATE TABLE EntidadPublica (
-        id TEXT NOT NULL PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        acronimo TEXT NOT NULL UNIQUE,
-        direccion TEXT
-    );
-
-    -- Notificacion.sq
-    CREATE TABLE Notificacion (
-        id TEXT NOT NULL PRIMARY KEY,
-        titulo TEXT NOT NULL,
-        mensaje TEXT NOT NULL,
-        tipo TEXT NOT NULL,
-        leida INTEGER NOT NULL DEFAULT 0,
-        fecha INTEGER NOT NULL,
-        referenciaId TEXT,
-        referenciaTipo TEXT
-    );
-    ```
-  </TabItem>
-  <TabItem label="Queries">
-    ```sql
-    -- Solicitud.sq (queries)
-    getByUsuarioId:
-    SELECT * FROM Solicitud
-    WHERE ciudadanoId = ?
-    ORDER BY fechaPresentacion DESC;
-
-    getByExpediente:
-    SELECT * FROM Solicitud
-    WHERE expediente = ?;
-
-    getPendientesSubida:
-    SELECT * FROM Solicitud
-    WHERE pendienteSubida = 1;
-
-    insertOrReplace:
-    INSERT OR REPLACE INTO Solicitud
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-    deleteById:
-    DELETE FROM Solicitud WHERE id = ?;
-
-    -- Notificacion.sq (queries)
-    getNoLeidas:
-    SELECT * FROM Notificacion
-    WHERE leida = 0
-    ORDER BY fecha DESC;
-
-    marcarLeida:
-    UPDATE Notificacion SET leida = 1 WHERE id = ?;
-    ```
-  </TabItem>
-</Tabs>
+:::caution[Fuente de verdad]
+SQLDelight mejora la experiencia offline, pero no reemplaza MySQL ni decide reglas legales. Antes de soportar apelación externa se requiere migración local porque `Apelacion.expedienteSAIP` todavía es obligatorio.
+:::
 
 ## Retrofit — REST API Client
 
 ```kotlin
-// OkHttp con timeout de 10 segundos
+// OkHttp con timeout de 15 segundos
 val okHttpClient = OkHttpClient.Builder()
-    .connectTimeout(10, TimeUnit.SECONDS)
-    .readTimeout(10, TimeUnit.SECONDS)
-    .writeTimeout(10, TimeUnit.SECONDS)
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(15, TimeUnit.SECONDS)
+    .writeTimeout(15, TimeUnit.SECONDS)
     .addInterceptor(AuthInterceptor(credentialStorage))
     .build()
 
 // Retrofit
 val retrofit = Retrofit.Builder()
-    .baseUrl("http://10.0.2.2:8080/api/") // localhost desde emulador
+    .baseUrl("http://10.0.2.2:8080/") // localhost desde emulador
     .client(okHttpClient)
-    .addConverterFactory(GsonConverterFactory.create())
+    .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
     .build()
 ```
 
@@ -226,8 +147,9 @@ suspend fun sincronizarPendientes() {
 
 | Concepto | Implementación |
 |----------|----------------|
-| Credenciales | `EncryptedSharedPreferences` de AndroidX Security |
+| Credenciales | `EncryptedSharedPreferences` de AndroidX Security; sin fallback plano |
 | Password hash | SHA-256 para login offline |
 | Token JWT | Almacenado cifrado, no en SQLDelight |
 | Logs | NUNCA loguear datos sensibles |
-| Timeout | 10 segundos en todas las llamadas de red |
+| Backup | Preferencias y base local excluidas de backup y transferencia |
+| Timeout | 15 segundos en todas las llamadas de red |
