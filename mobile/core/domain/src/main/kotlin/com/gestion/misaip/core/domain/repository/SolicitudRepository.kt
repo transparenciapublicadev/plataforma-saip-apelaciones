@@ -3,6 +3,15 @@ package com.gestion.misaip.core.domain.repository
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.RespuestaEntidad
 import com.gestion.misaip.core.domain.model.Pagina
+import com.gestion.misaip.core.domain.model.AmpliacionPlazoSolicitud
+import com.gestion.misaip.core.domain.model.EncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.LiquidacionCostoSolicitud
+import com.gestion.misaip.core.domain.model.ObservacionSolicitud
+import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
+import com.gestion.misaip.core.domain.model.RegistrarAmpliacionPlazoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarEncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarLiquidacionCostoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarObservacionSolicitud
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -82,6 +91,32 @@ interface SolicitudRepository {
      * @param solicitud Solicitud con datos actualizados
      */
     suspend fun actualizarSolicitud(solicitud: Solicitud)
+
+    /**
+     * Consulta trazabilidad SAIP reciente para el detalle funcionario.
+     * Requiere conexión: no se fabrica estado administrativo local.
+     */
+    suspend fun getOperacionesFuncionario(solicitudId: String): OperacionesSolicitudFuncionario
+
+    suspend fun registrarObservacion(
+        solicitudId: String,
+        request: RegistrarObservacionSolicitud
+    ): ObservacionSolicitud
+
+    suspend fun registrarAmpliacion(
+        solicitudId: String,
+        request: RegistrarAmpliacionPlazoSolicitud
+    ): AmpliacionPlazoSolicitud
+
+    suspend fun registrarEncauzamiento(
+        solicitudId: String,
+        request: RegistrarEncauzamientoSolicitud
+    ): EncauzamientoSolicitud
+
+    suspend fun emitirLiquidacion(
+        solicitudId: String,
+        request: RegistrarLiquidacionCostoSolicitud
+    ): LiquidacionCostoSolicitud
 
     /**
      * Registra la respuesta de una entidad a una solicitud.
