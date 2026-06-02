@@ -44,15 +44,22 @@ SELECT * FROM Apelacion WHERE pendienteSubida = 1;
 -- Insertar apelación
 insertApelacion:
 INSERT OR REPLACE INTO Apelacion (
-    id, expediente, expedienteSAIP, usuarioId,
+    id, expediente, expedienteSAIP, solicitudId, usuarioId,
     apelanteNombre, apelanteDni, apelanteEmail,
     entidad, entidadId, asunto, fundamentoLegal,
     exposicionHechos, pretension, fechaPresentacion, estado,
     funcionarioTTAIP, primeraCalificacion, segundaCalificacion,
     subsanacion, timeline, diasHabiles, diasRestantes,
     informeOralSolicitado, timerPausado, fechaElevacion,
-    elevacionExtemporanea, sincronizado, pendienteSubida, ultimaModificacion
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    elevacionExtemporanea, tipoOrigen, numeroSolicitudExterna, tipoDenegatoria,
+    fechaPresentacionSolicitudExterna, fechaRespuestaEntidad,
+    resumenSolicitudOriginal, resumenRespuestaEntidad,
+    referenciaDocumentoSolicitud, referenciaCargoRecepcion,
+    referenciaRespuestaEntidad, evidenciaSilencioAdministrativo, observacion,
+    estadoElevacion, fechaLimiteElevacion, referenciaCargoPresentacionElevacion,
+    referenciaExpedienteElevado, referenciaPruebaOmision,
+    sincronizado, pendienteSubida, ultimaModificacion
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Actualizar estado de apelación
 updateEstadoApelacion:

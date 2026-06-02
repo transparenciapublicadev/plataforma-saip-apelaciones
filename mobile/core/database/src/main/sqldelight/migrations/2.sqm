@@ -1,0 +1,88 @@
+CREATE TABLE Apelacion_nueva (
+    id TEXT NOT NULL PRIMARY KEY,
+    expediente TEXT NOT NULL UNIQUE,
+    expedienteSAIP TEXT,
+    solicitudId TEXT,
+    usuarioId TEXT NOT NULL,
+    apelanteNombre TEXT NOT NULL,
+    apelanteDni TEXT NOT NULL,
+    apelanteEmail TEXT NOT NULL,
+    entidad TEXT NOT NULL,
+    entidadId TEXT NOT NULL,
+    asunto TEXT NOT NULL,
+    fundamentoLegal TEXT NOT NULL,
+    exposicionHechos TEXT NOT NULL,
+    pretension TEXT NOT NULL,
+    fechaPresentacion INTEGER NOT NULL,
+    estado TEXT NOT NULL,
+    funcionarioTTAIP TEXT,
+    primeraCalificacion TEXT,
+    segundaCalificacion TEXT,
+    subsanacion TEXT,
+    timeline TEXT NOT NULL DEFAULT '[]',
+    diasHabiles INTEGER,
+    diasRestantes INTEGER,
+    informeOralSolicitado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    timerPausado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    fechaElevacion INTEGER,
+    elevacionExtemporanea INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    tipoOrigen TEXT NOT NULL DEFAULT 'SAIP_INTERNA',
+    numeroSolicitudExterna TEXT,
+    tipoDenegatoria TEXT,
+    fechaPresentacionSolicitudExterna TEXT,
+    fechaRespuestaEntidad TEXT,
+    resumenSolicitudOriginal TEXT,
+    resumenRespuestaEntidad TEXT,
+    referenciaDocumentoSolicitud TEXT,
+    referenciaCargoRecepcion TEXT,
+    referenciaRespuestaEntidad TEXT,
+    evidenciaSilencioAdministrativo TEXT,
+    observacion TEXT,
+    estadoElevacion TEXT,
+    fechaLimiteElevacion TEXT,
+    referenciaCargoPresentacionElevacion TEXT,
+    referenciaExpedienteElevado TEXT,
+    referenciaPruebaOmision TEXT,
+    sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
+    ultimaModificacion INTEGER NOT NULL,
+    FOREIGN KEY (usuarioId) REFERENCES Usuario(id)
+);
+
+INSERT INTO Apelacion_nueva (
+    id, expediente, expedienteSAIP, usuarioId,
+    apelanteNombre, apelanteDni, apelanteEmail,
+    entidad, entidadId, asunto, fundamentoLegal,
+    exposicionHechos, pretension, fechaPresentacion, estado,
+    funcionarioTTAIP, primeraCalificacion, segundaCalificacion,
+    subsanacion, timeline, diasHabiles, diasRestantes,
+    informeOralSolicitado, timerPausado, fechaElevacion,
+    elevacionExtemporanea, sincronizado, pendienteSubida, ultimaModificacion
+)
+SELECT
+    id, expediente, expedienteSAIP, usuarioId,
+    apelanteNombre, apelanteDni, apelanteEmail,
+    entidad, entidadId, asunto, fundamentoLegal,
+    exposicionHechos, pretension, fechaPresentacion, estado,
+    funcionarioTTAIP, primeraCalificacion, segundaCalificacion,
+    subsanacion, timeline, diasHabiles, diasRestantes,
+    informeOralSolicitado, timerPausado, fechaElevacion,
+    elevacionExtemporanea, sincronizado, pendienteSubida, ultimaModificacion
+FROM Apelacion;
+
+DROP INDEX idx_apelacion_expediente;
+DROP INDEX idx_apelacion_expedienteSAIP;
+DROP INDEX idx_apelacion_usuarioId;
+DROP INDEX idx_apelacion_estado;
+DROP INDEX idx_apelacion_pendienteSubida;
+DROP TABLE Apelacion;
+ALTER TABLE Apelacion_nueva RENAME TO Apelacion;
+
+CREATE INDEX idx_apelacion_expediente ON Apelacion(expediente);
+CREATE INDEX idx_apelacion_expedienteSAIP ON Apelacion(expedienteSAIP);
+CREATE INDEX idx_apelacion_solicitudId ON Apelacion(solicitudId);
+CREATE INDEX idx_apelacion_usuarioId ON Apelacion(usuarioId);
+CREATE INDEX idx_apelacion_estado ON Apelacion(estado);
+CREATE INDEX idx_apelacion_tipoOrigen ON Apelacion(tipoOrigen);
+CREATE INDEX idx_apelacion_estadoElevacion ON Apelacion(estadoElevacion);
+CREATE INDEX idx_apelacion_pendienteSubida ON Apelacion(pendienteSubida);
