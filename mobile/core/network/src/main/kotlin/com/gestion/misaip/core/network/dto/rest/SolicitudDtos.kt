@@ -17,7 +17,9 @@ data class CrearSolicitudRestRequest(
     val formatoDigital: Boolean? = true,
     val formatoFisico: Boolean? = false,
     val copiaSimple: Boolean? = true,
-    val copiaCertificada: Boolean? = false
+    val copiaCertificada: Boolean? = false,
+    val consentimientoDatosPersonales: Boolean,
+    val canalNotificacion: String
 )
 
 // =============================================
@@ -83,6 +85,8 @@ data class SolicitudRestDto(
     val copiaSimple: Boolean? = null,
     val copiaCertificada: Boolean? = null,
     val tipoInformacion: String? = null,
+    val consentimientoDatosPersonales: Boolean? = null,
+    val canalNotificacion: String? = null,
     val respuesta: RespuestaRestDto? = null,
     val apelacion: ApelacionInfoRestDto? = null,
     val documentos: List<DocumentoRestDto>? = null
@@ -104,6 +108,8 @@ data class SolicitudRestDto(
             ),
             asunto = asunto ?: "",
             descripcion = descripcion ?: "",
+            consentimientoDatosPersonales = consentimientoDatosPersonales ?: false,
+            canalNotificacion = CanalNotificacion.fromStringOrNull(canalNotificacion),
             fechaCreacion = parseDate(fechaPresentacion),
             fechaLimite = parseDate(fechaLimite),
             estado = EstadoSolicitud.fromString(estado ?: "RECEPCIONADA"),

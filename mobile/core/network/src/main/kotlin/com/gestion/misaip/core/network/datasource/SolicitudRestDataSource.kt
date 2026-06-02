@@ -3,6 +3,9 @@ package com.gestion.misaip.core.network.datasource
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
+import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
 
 /**
  * Implementación REST del datasource de solicitudes.
@@ -10,21 +13,31 @@ import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
  */
 class SolicitudRestDataSource(
     private val solicitudApi: SolicitudApiService,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val json: Json
 ) : SolicitudRemoteDataSource {
 
-    override suspend fun crearSolicitud(solicitud: Solicitud) {
+    override suspend fun crearSolicitud(solicitud: Solicitud): Solicitud {
         val userId = tokenStorage.getUserId() ?: throw NetworkException("Usuario no autenticado")
-        solicitudApi.crear(
-            CrearSolicitudRestRequest(
-                asunto = solicitud.asunto,
-                descripcion = solicitud.descripcion,
-                entidadId = solicitud.entidadId.toLongOrNull()
-                    ?: throw NetworkException("ID de entidad inválido"),
-                ciudadanoId = userId,
-                tipoInformacion = solicitud.tipo.toDisplayString()
-            )
-        )
+        return try {
+            solicitudApi.crear(
+                CrearSolicitudRestRequest(
+                    asunto = solicitud.asunto,
+                    descripcion = solicitud.descripcion,
+                    entidadId = solicitud.entidadId.toLongOrNull()
+                        ?: throw NetworkException("ID de entidad inválido"),
+                    ciudadanoId = userId,
+                    tipoInformacion = solicitud.tipo.toDisplayString(),
+                    consentimientoDatosPersonales = solicitud.consentimientoDatosPersonales,
+                    canalNotificacion = solicitud.canalNotificacion?.name
+                        ?: throw NetworkException("Canal formal de notificación no disponible")
+                )
+            ).toDomain()
+        } catch (e: HttpException) {
+            val mensaje = json.extraerMensajeProblemDetails(e.response()?.errorBody()?.string())
+                ?: "No se pudo registrar la SAIP (${e.code()})"
+            throw ApiProblemException(mensaje, e.code(), e)
+        }
     }
 
     override suspend fun actualizarSolicitud(solicitud: Solicitud) {
