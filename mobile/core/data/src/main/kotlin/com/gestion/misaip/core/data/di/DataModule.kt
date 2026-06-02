@@ -2,11 +2,13 @@ package com.gestion.misaip.core.data.di
 
 import com.gestion.misaip.core.data.repository.ApelacionRepositoryImpl
 import com.gestion.misaip.core.data.repository.EntidadPublicaRepositoryImpl
+import com.gestion.misaip.core.data.repository.ExpedienteTtaipRepositoryImpl
 import com.gestion.misaip.core.data.repository.NotificacionRepositoryImpl
 import com.gestion.misaip.core.data.repository.SolicitudRepositoryImpl
 import com.gestion.misaip.core.data.repository.UsuarioRepositoryImpl
 import com.gestion.misaip.core.domain.repository.ApelacionRepository
 import com.gestion.misaip.core.domain.repository.EntidadPublicaRepository
+import com.gestion.misaip.core.domain.repository.ExpedienteTtaipRepository
 import com.gestion.misaip.core.domain.repository.NotificacionRepository
 import com.gestion.misaip.core.domain.repository.SolicitudRepository
 import com.gestion.misaip.core.domain.repository.UsuarioRepository
@@ -42,5 +44,8 @@ val dataModule = module {
     single<NotificacionRepository> {
         NotificacionRepositoryImpl(database = get())
     }
-}
 
+    single<ExpedienteTtaipRepository> {
+        ExpedienteTtaipRepositoryImpl(remoteDataSource = get())
+    }
+}
