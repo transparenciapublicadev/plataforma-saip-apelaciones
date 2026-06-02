@@ -4,6 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
@@ -16,10 +19,12 @@ import pe.gob.saip.backend.model.dto.EncauzamientoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.LiquidacionCostoSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.PaginaDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
+import pe.gob.saip.backend.model.dto.SolicitudResumenDTO;
 import pe.gob.saip.backend.model.dto.SubsanarSolicitudRequest;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
@@ -55,11 +60,22 @@ public class SolicitudRestController {
     @Operation(summary = "Listar todas las solicitudes SAIP")
     @GetMapping
     public ResponseEntity<List<SolicitudDTO>> listar() {
-        List<SolicitudDTO> solicitudes = solicitudService.obtenerTodasLasSolicitudes()
+        List<SolicitudDTO> solicitudes = autorizacionRecursosService
+                .filtrarSolicitudesAccesibles(solicitudService.obtenerTodasLasSolicitudes())
                 .stream()
                 .map(SolicitudDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(solicitudes);
+    }
+
+    @Operation(summary = "Listar solicitudes SAIP con paginación y DTO liviano")
+    @GetMapping("/paginadas")
+    public ResponseEntity<PaginaDTO<SolicitudResumenDTO>> listarPaginadas(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        return ResponseEntity.ok(PaginaDTO.from(
+                solicitudService.obtenerPagina(crearPaginacion(pagina, tamano, "fechaPresentacion")),
+                SolicitudResumenDTO::from));
     }
 
     @Operation(summary = "Obtener solicitud por ID")
@@ -67,6 +83,7 @@ public class SolicitudRestController {
     public ResponseEntity<SolicitudDTO> obtenerPorId(@Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         Solicitud solicitud = solicitudService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
+        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }
 
@@ -75,6 +92,7 @@ public class SolicitudRestController {
     public ResponseEntity<SolicitudDTO> obtenerPorExpediente(@Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
         Solicitud solicitud = solicitudService.findByExpediente(expediente)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
+        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }
 
@@ -90,6 +108,7 @@ public class SolicitudRestController {
     @Operation(summary = "Listar solicitudes por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
+        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
         List<SolicitudDTO> solicitudes = solicitudService.findByCiudadanoId(ciudadanoId)
                 .stream()
                 .map(SolicitudDTO::from)
@@ -97,14 +116,43 @@ public class SolicitudRestController {
         return ResponseEntity.ok(solicitudes);
     }
 
+    @Operation(summary = "Listar solicitudes SAIP de un ciudadano con paginación y DTO liviano")
+    @GetMapping("/ciudadano/{ciudadanoId}/paginadas")
+    public ResponseEntity<PaginaDTO<SolicitudResumenDTO>> listarPaginadasPorCiudadano(
+            @Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
+        return ResponseEntity.ok(PaginaDTO.from(
+                solicitudService.obtenerPaginaPorCiudadano(
+                        ciudadanoId,
+                        crearPaginacion(pagina, tamano, "fechaPresentacion")),
+                SolicitudResumenDTO::from));
+    }
+
     @Operation(summary = "Listar solicitudes por entidad")
     @GetMapping("/entidad/{entidadId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
         List<SolicitudDTO> solicitudes = solicitudService.findByEntidadId(entidadId)
                 .stream()
                 .map(SolicitudDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(solicitudes);
+    }
+
+    @Operation(summary = "Listar solicitudes SAIP de una entidad con paginación y DTO liviano")
+    @GetMapping("/entidad/{entidadId}/paginadas")
+    public ResponseEntity<PaginaDTO<SolicitudResumenDTO>> listarPaginadasPorEntidad(
+            @Parameter(description = "ID de la entidad") @PathVariable Long entidadId,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
+        return ResponseEntity.ok(PaginaDTO.from(
+                solicitudService.obtenerPaginaPorEntidad(
+                        entidadId,
+                        crearPaginacion(pagina, tamano, "fechaPresentacion")),
+                SolicitudResumenDTO::from));
     }
 
     @Operation(summary = "Listar solicitudes por estado", description = "Estados: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA")
@@ -117,11 +165,29 @@ public class SolicitudRestController {
             throw new IllegalArgumentException("Estado no válido: " + estado);
         }
 
-        List<SolicitudDTO> solicitudes = solicitudService.obtenerSolicitudesPorEstado(estadoEnum)
+        List<SolicitudDTO> solicitudes = autorizacionRecursosService
+                .filtrarSolicitudesAccesibles(solicitudService.obtenerSolicitudesPorEstado(estadoEnum))
                 .stream()
                 .map(SolicitudDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(solicitudes);
+    }
+
+    @Operation(summary = "Listar solicitudes por estado con paginación y DTO liviano")
+    @GetMapping("/estado/{estado}/paginadas")
+    public ResponseEntity<PaginaDTO<SolicitudResumenDTO>> listarPaginadasPorEstado(
+            @Parameter(description = "Estado de la solicitud") @PathVariable String estado,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        Solicitud.EstadoSolicitud estadoEnum;
+        try {
+            estadoEnum = Solicitud.EstadoSolicitud.valueOf(estado.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Estado no válido: " + estado);
+        }
+        return ResponseEntity.ok(PaginaDTO.from(
+                solicitudService.obtenerPaginaPorEstado(estadoEnum, crearPaginacion(pagina, tamano, "fechaPresentacion")),
+                SolicitudResumenDTO::from));
     }
 
     @Operation(summary = "Crear solicitud SAIP", description = "Genera automáticamente expediente y fecha límite (10 días hábiles)")
@@ -136,6 +202,7 @@ public class SolicitudRestController {
         if (!Boolean.TRUE.equals(solicitudDTO.consentimientoDatosPersonales())) {
             throw new IllegalArgumentException("Debe aceptar el tratamiento de datos personales para presentar la SAIP");
         }
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(solicitudDTO.ciudadanoId());
 
         Ciudadano ciudadano = ciudadanoService.findById(solicitudDTO.ciudadanoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + solicitudDTO.ciudadanoId()));
@@ -166,6 +233,7 @@ public class SolicitudRestController {
     @Operation(summary = "Actualizar solicitud SAIP")
     @PutMapping("/{id}")
     public ResponseEntity<SolicitudDTO> actualizar(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody SolicitudDTO solicitudDTO) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         Solicitud solicitud = solicitudService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
 
@@ -210,6 +278,7 @@ public class SolicitudRestController {
     public ResponseEntity<ObservacionSolicitudDTO> observarSolicitud(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Valid @RequestBody ObservarSolicitudRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.status(201).body(ObservacionSolicitudDTO.from(solicitudService.observarSolicitud(id, request)));
     }
 
@@ -217,6 +286,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/observaciones")
     public ResponseEntity<List<ObservacionSolicitudDTO>> listarObservaciones(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         List<ObservacionSolicitudDTO> observaciones = solicitudService.listarObservaciones(id)
                 .stream()
                 .map(ObservacionSolicitudDTO::from)
@@ -233,6 +303,7 @@ public class SolicitudRestController {
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Parameter(description = "ID de la observación") @PathVariable Long observacionId,
             @Valid @RequestBody SubsanarSolicitudRequest request) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         return ResponseEntity.ok(ObservacionSolicitudDTO.from(solicitudService.subsanarSolicitud(id, observacionId, request)));
     }
 
@@ -257,6 +328,7 @@ public class SolicitudRestController {
     public ResponseEntity<AmpliacionPlazoSolicitudDTO> registrarAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Valid @RequestBody RegistrarAmpliacionPlazoRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.status(201).body(AmpliacionPlazoSolicitudDTO.from(solicitudService.registrarAmpliacion(id, request)));
     }
 
@@ -264,6 +336,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/ampliaciones")
     public ResponseEntity<List<AmpliacionPlazoSolicitudDTO>> listarAmpliaciones(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         List<AmpliacionPlazoSolicitudDTO> ampliaciones = solicitudService.listarAmpliaciones(id)
                 .stream()
                 .map(AmpliacionPlazoSolicitudDTO::from)
@@ -275,6 +348,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/ampliaciones/cronograma")
     public ResponseEntity<List<CronogramaEntregaParcialDTO>> listarCronogramaAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         List<CronogramaEntregaParcialDTO> entregas = solicitudService.listarCronogramaAmpliacion(id)
                 .stream()
                 .map(CronogramaEntregaParcialDTO::from)
@@ -289,6 +363,7 @@ public class SolicitudRestController {
             @Parameter(description = "ID de la ampliación") @PathVariable Long ampliacionId,
             @Parameter(description = "ID de la entrega parcial") @PathVariable Long entregaId,
             @Valid @RequestBody ActualizarEntregaParcialRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.ok(CronogramaEntregaParcialDTO.from(
                 solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request)));
     }
@@ -301,6 +376,7 @@ public class SolicitudRestController {
     public ResponseEntity<EncauzamientoSolicitudDTO> registrarEncauzamiento(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Valid @RequestBody RegistrarEncauzamientoSolicitudRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.status(201).body(EncauzamientoSolicitudDTO.from(
                 solicitudService.registrarEncauzamiento(id, request)));
     }
@@ -309,6 +385,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/encauzamientos")
     public ResponseEntity<List<EncauzamientoSolicitudDTO>> listarEncauzamientos(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarTrazabilidadEncauzamientoAccesible(id);
         List<EncauzamientoSolicitudDTO> encauzamientos = solicitudService.listarEncauzamientos(id)
                 .stream()
                 .map(EncauzamientoSolicitudDTO::from)
@@ -320,6 +397,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/encauzamientos/activo")
     public ResponseEntity<EncauzamientoSolicitudDTO> obtenerEncauzamientoActivo(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarTrazabilidadEncauzamientoAccesible(id);
         return solicitudService.obtenerEncauzamientoActivo(id)
                 .map(EncauzamientoSolicitudDTO::from)
                 .map(ResponseEntity::ok)
@@ -334,6 +412,7 @@ public class SolicitudRestController {
     public ResponseEntity<LiquidacionCostoSolicitudDTO> emitirLiquidacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Valid @RequestBody RegistrarLiquidacionCostoRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.status(201).body(LiquidacionCostoSolicitudDTO.from(
                 solicitudService.emitirLiquidacion(id, request)));
     }
@@ -342,6 +421,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/liquidaciones")
     public ResponseEntity<List<LiquidacionCostoSolicitudDTO>> listarLiquidaciones(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         List<LiquidacionCostoSolicitudDTO> liquidaciones = solicitudService.listarLiquidaciones(id)
                 .stream()
                 .map(LiquidacionCostoSolicitudDTO::from)
@@ -353,6 +433,7 @@ public class SolicitudRestController {
     @GetMapping("/{id}/liquidaciones/activa")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> obtenerLiquidacionActiva(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudAccesible(id);
         return solicitudService.obtenerLiquidacionActiva(id)
                 .map(LiquidacionCostoSolicitudDTO::from)
                 .map(ResponseEntity::ok)
@@ -365,6 +446,7 @@ public class SolicitudRestController {
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
             @Parameter(description = "ID de la liquidación") @PathVariable Long liquidacionId,
             @Valid @RequestBody ActualizarLiquidacionCostoRequest request) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         return ResponseEntity.ok(LiquidacionCostoSolicitudDTO.from(
                 solicitudService.actualizarLiquidacion(id, liquidacionId, request)));
     }
@@ -399,6 +481,7 @@ public class SolicitudRestController {
     @Operation(summary = "Cambiar estado de solicitud")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<SolicitudDTO> cambiarEstado(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody Map<String, String> body) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
         Solicitud solicitud = solicitudService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
 
@@ -432,6 +515,7 @@ public class SolicitudRestController {
     @Operation(summary = "Estadísticas de solicitudes por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}/estadisticas")
     public ResponseEntity<Map<String, Object>> obtenerEstadisticasPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
+        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
         List<Solicitud> solicitudes = solicitudService.findByCiudadanoId(ciudadanoId);
 
         Map<String, Object> stats = new HashMap<>();
@@ -447,6 +531,7 @@ public class SolicitudRestController {
     @Operation(summary = "Estadísticas de solicitudes por entidad", description = "Incluye conteo de solicitudes urgentes")
     @GetMapping("/entidad/{entidadId}/estadisticas")
     public ResponseEntity<Map<String, Object>> obtenerEstadisticasPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
         List<Solicitud> solicitudes = solicitudService.findByEntidadId(entidadId);
 
         Map<String, Object> stats = new HashMap<>();
@@ -494,6 +579,16 @@ public class SolicitudRestController {
                 .map(IntentoNotificacionDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(intentos);
+    }
+
+    private Pageable crearPaginacion(int pagina, int tamano, String orden) {
+        if (pagina < 0) {
+            throw new IllegalArgumentException("El número de página no puede ser negativo");
+        }
+        if (tamano < 1 || tamano > 100) {
+            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 100");
+        }
+        return PageRequest.of(pagina, tamano, Sort.by(Sort.Direction.DESC, orden));
     }
 }
 

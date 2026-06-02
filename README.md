@@ -481,6 +481,33 @@ Variables relevantes:
 | `JWT_EXPIRATION_MS` | `86400000` |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
 
+### Newman reproducible
+
+La colección Newman crea datos runtime para validar flujos reales. Si el entorno
+local acumuló fixtures, recrear explícitamente la base local y volver a cargar el
+seed oficial:
+
+```powershell
+.\scripts\reset-local-db.ps1 -ConfirmReset
+cd backend
+.\mvnw.cmd spring-boot:run
+# Detener backend después de crear el schema.
+Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
+$env:APP_NOTIFICATIONS_MODE='MOCK'
+.\mvnw.cmd spring-boot:run
+```
+
+En otra terminal:
+
+```powershell
+cd postman
+npm run test:api:diagnostic
+```
+
+El script bloquea hosts remotos, exige confirmación explícita y no se ejecuta de
+forma automática. Newman usa variables dinámicas y tokens JWT vacíos en el
+environment versionado.
+
 ### Frontend
 
 ```powershell

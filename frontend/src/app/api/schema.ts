@@ -1717,6 +1717,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar solicitudes SAIP con paginación y DTO liviano */
+        get: operations["listarPaginadas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/expediente/{expediente}": {
         parameters: {
             query?: never;
@@ -1749,6 +1766,23 @@ export interface paths {
          * @description Estados: RECEPCIONADA, EN_REVISION, PENDIENTE_INFORMACION, RESPONDIDA, DENEGADA, CONCLUIDA, VENCIDA
          */
         get: operations["listarPorEstado"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/estado/{estado}/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar solicitudes por estado con paginación y DTO liviano */
+        get: operations["listarPaginadasPorEstado"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1791,6 +1825,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/entidad/{entidadId}/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar solicitudes SAIP de una entidad con paginación y DTO liviano */
+        get: operations["listarPaginadasPorEntidad"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/entidad/{entidadId}/estadisticas": {
         parameters: {
             query?: never;
@@ -1820,6 +1871,23 @@ export interface paths {
         };
         /** Listar solicitudes por ciudadano */
         get: operations["listarPorCiudadano"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/ciudadano/{ciudadanoId}/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar solicitudes SAIP de un ciudadano con paginación y DTO liviano */
+        get: operations["listarPaginadasPorCiudadano"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2392,6 +2460,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar apelaciones TTAIP con paginación y DTO liviano */
+        get: operations["listarPaginadas_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/expediente": {
         parameters: {
             query?: never;
@@ -2469,6 +2554,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/estado/{estado}/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar apelaciones por estado con paginación y DTO liviano */
+        get: operations["listarPaginadasPorEstado_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/estadisticas": {
         parameters: {
             query?: never;
@@ -2512,6 +2614,23 @@ export interface paths {
         };
         /** Listar apelaciones por ciudadano */
         get: operations["listarPorCiudadano_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/ciudadano/{ciudadanoId}/paginadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar apelaciones TTAIP de un ciudadano con paginación y DTO liviano */
+        get: operations["listarPaginadasPorCiudadano_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3807,6 +3926,41 @@ export interface components {
             resolucionFecha?: string;
             resolucionResultado?: string;
         };
+        /** @description Página liviana de resultados */
+        PaginaDTOSolicitudResumenDTO: {
+            contenido?: components["schemas"]["SolicitudResumenDTO"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+            ultima?: boolean;
+        };
+        /** @description Resumen liviano de una solicitud SAIP para listados paginados */
+        SolicitudResumenDTO: {
+            /** Format: int64 */
+            id?: number;
+            expediente?: string;
+            asunto?: string;
+            estado?: string;
+            prioridad?: string;
+            semaforo?: string;
+            fechaPresentacion?: string;
+            fechaLimite?: string;
+            /** Format: int32 */
+            diasRestantes?: number;
+            /** Format: int64 */
+            ciudadanoId?: number;
+            ciudadanoNombre?: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            entidadAcronimo?: string;
+            canalNotificacion?: string;
+        };
         PortalDistribucionDTO: {
             etiqueta?: string;
             /** Format: int64 */
@@ -3893,6 +4047,39 @@ export interface components {
             smtpHostConfigurado?: boolean;
             casillaElectronicaEstado?: string;
             nota?: string;
+        };
+        /** @description Resumen liviano de una apelación TTAIP para listados paginados */
+        ApelacionResumenDTO: {
+            /** Format: int64 */
+            id?: number;
+            expediente?: string;
+            estado?: string;
+            resultado?: string;
+            fechaApelacion?: string;
+            /** Format: int64 */
+            solicitudId?: number;
+            solicitudExpediente?: string;
+            /** Format: int64 */
+            ciudadanoId?: number;
+            ciudadanoNombre?: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            tipoOrigen?: string;
+            numeroSolicitudExterna?: string;
+        };
+        /** @description Página liviana de resultados */
+        PaginaDTOApelacionResumenDTO: {
+            contenido?: components["schemas"]["ApelacionResumenDTO"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+            ultima?: boolean;
         };
     };
     responses: never;
@@ -6724,6 +6911,29 @@ export interface operations {
             };
         };
     };
+    listarPaginadas: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOSolicitudResumenDTO"];
+                };
+            };
+        };
+    };
     obtenerPorExpediente: {
         parameters: {
             query?: never;
@@ -6766,6 +6976,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SolicitudDTO"][];
+                };
+            };
+        };
+    };
+    listarPaginadasPorEstado: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Estado de la solicitud */
+                estado: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOSolicitudResumenDTO"];
                 };
             };
         };
@@ -6815,6 +7051,32 @@ export interface operations {
             };
         };
     };
+    listarPaginadasPorEntidad: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path: {
+                /** @description ID de la entidad */
+                entidadId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOSolicitudResumenDTO"];
+                };
+            };
+        };
+    };
     obtenerEstadisticasPorEntidad: {
         parameters: {
             query?: never;
@@ -6859,6 +7121,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SolicitudDTO"][];
+                };
+            };
+        };
+    };
+    listarPaginadasPorCiudadano: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path: {
+                /** @description ID del ciudadano */
+                ciudadanoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOSolicitudResumenDTO"];
                 };
             };
         };
@@ -7549,6 +7837,29 @@ export interface operations {
             };
         };
     };
+    listarPaginadas_1: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOApelacionResumenDTO"];
+                };
+            };
+        };
+    };
     obtenerPorExpedienteQuery: {
         parameters: {
             query: {
@@ -7637,6 +7948,32 @@ export interface operations {
             };
         };
     };
+    listarPaginadasPorEstado_1: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Estado de la apelación */
+                estado: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOApelacionResumenDTO"];
+                };
+            };
+        };
+    };
     obtenerEstadisticas_2: {
         parameters: {
             query?: never;
@@ -7700,6 +8037,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"][];
+                };
+            };
+        };
+    };
+    listarPaginadasPorCiudadano_1: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+            };
+            header?: never;
+            path: {
+                /** @description ID del ciudadano */
+                ciudadanoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginaDTOApelacionResumenDTO"];
                 };
             };
         };

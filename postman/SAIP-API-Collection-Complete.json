@@ -2669,13 +2669,27 @@
                 "{{ciudadanoId}}"
               ]
             },
-            "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "auth": {
-            "type": "noauth"
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
           },
           "response": [
             {
@@ -2699,7 +2713,7 @@
                     "{{ciudadanoId}}"
                   ]
                 },
-                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2736,7 +2750,7 @@
                     "{{ciudadanoId}}"
                   ]
                 },
-                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2773,7 +2787,7 @@
                     "{{ciudadanoId}}"
                   ]
                 },
-                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2810,7 +2824,7 @@
                     "{{ciudadanoId}}"
                   ]
                 },
-                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2847,7 +2861,7 @@
                     "{{ciudadanoId}}"
                   ]
                 },
-                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nEndpoint publico o de autenticacion; no requiere token JWT.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Obtener Usuario Actual\n\n**GET** `/auth/me/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Autenticacion e identidad sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}` y solo permite consultar el perfil autenticado.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -7426,7 +7440,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{funcionarioToken}}",
                   "type": "string"
                 }
               ]
@@ -7437,7 +7451,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{funcionarioToken}}",
                 "type": "string"
               }
             ]
@@ -13459,21 +13473,32 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/solicitudes",
+              "raw": "{{baseUrl}}/solicitudes/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "solicitudes"
+                "solicitudes",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
-            "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -13484,7 +13509,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{adminToken}}",
                 "type": "string"
               }
             ]
@@ -13509,7 +13534,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13551,7 +13576,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13593,7 +13618,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13635,7 +13660,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13677,7 +13702,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13719,7 +13744,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13761,7 +13786,7 @@
                     "solicitudes"
                   ]
                 },
-                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Solicitudes\n\n**GET** `/solicitudes/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -13783,6 +13808,28 @@
                 }
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/solicitudes\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
             }
           ]
         },
@@ -13812,7 +13859,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -14159,7 +14206,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -14497,14 +14544,25 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/solicitudes/ciudadano/{{ciudadanoId}}",
+              "raw": "{{baseUrl}}/solicitudes/ciudadano/{{ciudadanoId}}/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "solicitudes",
                 "ciudadano",
-                "{{ciudadanoId}}"
+                "{{ciudadanoId}}",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
             "description": "## Listar Solicitudes por Ciudadano\n\n**GET** `/solicitudes/ciudadano/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
@@ -14838,6 +14896,28 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/solicitudes/ciudadano/{{ciudadanoId}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
           ]
         },
         {
@@ -14851,23 +14931,34 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/solicitudes/entidad/{{entidadId}}",
+              "raw": "{{baseUrl}}/solicitudes/entidad/{{entidadId}}/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "solicitudes",
                 "entidad",
-                "{{entidadId}}"
+                "{{entidadId}}",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
-            "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{funcionarioToken}}",
                   "type": "string"
                 }
               ]
@@ -14878,7 +14969,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{funcionarioToken}}",
                 "type": "string"
               }
             ]
@@ -14905,7 +14996,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -14949,7 +15040,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -14993,7 +15084,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15037,7 +15128,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15081,7 +15172,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15125,7 +15216,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15169,7 +15260,7 @@
                     "{{entidadId}}"
                   ]
                 },
-                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Solicitudes por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15192,6 +15283,28 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/solicitudes/entidad/{{entidadId}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
           ]
         },
         {
@@ -15205,14 +15318,25 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/solicitudes/estado/{{solicitudEstado}}",
+              "raw": "{{baseUrl}}/solicitudes/estado/{{solicitudEstado}}/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "solicitudes",
                 "estado",
-                "{{solicitudEstado}}"
+                "{{solicitudEstado}}",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
             "description": "## Listar Solicitudes por Estado\n\n**GET** `/solicitudes/estado/{{solicitudEstado}}`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `solicitudEstado`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `solicitudEstado`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
@@ -15221,7 +15345,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -15546,6 +15670,28 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/solicitudes/estado/{{solicitudEstado}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
           ]
         },
         {
@@ -15568,13 +15714,13 @@
                 "estadisticas"
               ]
             },
-            "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -15585,7 +15731,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{adminToken}}",
                 "type": "string"
               }
             ]
@@ -15611,7 +15757,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15654,7 +15800,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15697,7 +15843,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15740,7 +15886,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15783,7 +15929,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15826,7 +15972,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -15869,7 +16015,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Solicitudes\n\n**GET** `/solicitudes/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{adminToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16278,13 +16424,13 @@
                 "estadisticas"
               ]
             },
-            "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{funcionarioToken}}",
                   "type": "string"
                 }
               ]
@@ -16295,7 +16441,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{funcionarioToken}}",
                 "type": "string"
               }
             ]
@@ -16323,7 +16469,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16368,7 +16514,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16413,7 +16559,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16458,7 +16604,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16503,7 +16649,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16548,7 +16694,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -16593,7 +16739,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas por Entidad\n\n**GET** `/solicitudes/entidad/{{entidadId}}/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Solicitudes SAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{funcionarioToken}}`.\n\n## Variables de entorno usadas\n- `entidadId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `entidadId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -23540,7 +23686,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -23887,7 +24033,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
@@ -26320,21 +26466,32 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/apelaciones",
+              "raw": "{{baseUrl}}/apelaciones/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "apelaciones"
+                "apelaciones",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
-            "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{ttaipToken}}",
                   "type": "string"
                 }
               ]
@@ -26345,7 +26502,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{ttaipToken}}",
                 "type": "string"
               }
             ]
@@ -26370,7 +26527,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26412,7 +26569,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26454,7 +26611,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26496,7 +26653,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26538,7 +26695,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26580,7 +26737,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26622,7 +26779,7 @@
                     "apelaciones"
                   ]
                 },
-                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Listar Todas las Apelaciones\n\n**GET** `/apelaciones/paginadas?pagina=0&tamano=20`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Query `pagina`: indice base cero.\n- Query `tamano`: cantidad solicitada, entre 1 y 100.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -26644,6 +26801,28 @@
                 }
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/apelaciones\",\n  \"traceId\": \"req-demo-123456\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
             }
           ]
         },
@@ -26673,7 +26852,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{ttaipToken}}",
                   "type": "string"
                 }
               ]
@@ -27004,14 +27183,25 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/apelaciones/estado/{{apelacionEstado}}",
+              "raw": "{{baseUrl}}/apelaciones/estado/{{apelacionEstado}}/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "apelaciones",
                 "estado",
-                "{{apelacionEstado}}"
+                "{{apelacionEstado}}",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
             "description": "## Listar Apelaciones por Estado\n\n**GET** `/apelaciones/estado/{{apelacionEstado}}`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `apelacionEstado`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `apelacionEstado`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
@@ -27020,7 +27210,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{ttaipToken}}",
                   "type": "string"
                 }
               ]
@@ -27345,6 +27535,28 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/apelaciones/estado/{{apelacionEstado}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
           ]
         },
         {
@@ -27358,14 +27570,25 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/apelaciones/ciudadano/{{ciudadanoId}}",
+              "raw": "{{baseUrl}}/apelaciones/ciudadano/{{ciudadanoId}}/paginadas?pagina=0&tamano=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "apelaciones",
                 "ciudadano",
-                "{{ciudadanoId}}"
+                "{{ciudadanoId}}",
+                "paginadas"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "0"
+                },
+                {
+                  "key": "tamano",
+                  "value": "20"
+                }
               ]
             },
             "description": "## Listar Apelaciones por Ciudadano\n\n**GET** `/apelaciones/ciudadano/{{ciudadanoId}}`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- `ciudadanoId`\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- Path/env `ciudadanoId`: valor inyectado desde el environment.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
@@ -27699,6 +27922,28 @@
               ],
               "body": "{\n  \"timestamp\": \"2026-05-19T09:00:00\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Error inesperado procesando la operacion. Revisar logs del backend.\",\n  \"path\": \"/api/apelaciones/ciudadano/{{ciudadanoId}}\",\n  \"traceId\": \"req-demo-123456\"\n}"
             }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// OWNERSHIP_PAGINATION_ASSERTIONS",
+                  "pm.test(\"Respuesta paginada liviana\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const pagina = pm.response.json();",
+                  "  pm.expect(pagina.contenido).to.be.an(\"array\");",
+                  "  pm.expect(pagina.pagina).to.eql(0);",
+                  "  pm.expect(pagina.tamano).to.eql(20);",
+                  "  pm.expect(pagina.totalElementos).to.be.a(\"number\");",
+                  "  pm.expect(pagina.totalPaginas).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
           ]
         },
         {
@@ -27721,13 +27966,13 @@
                 "estadisticas"
               ]
             },
-            "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+            "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
             "auth": {
               "type": "bearer",
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{ttaipToken}}",
                   "type": "string"
                 }
               ]
@@ -27738,7 +27983,7 @@
             "bearer": [
               {
                 "key": "token",
-                "value": "{{ciudadanoToken}}",
+                "value": "{{ttaipToken}}",
                 "type": "string"
               }
             ]
@@ -27764,7 +28009,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -27807,7 +28052,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -27850,7 +28095,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -27893,7 +28138,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -27936,7 +28181,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -27979,7 +28224,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -28022,7 +28267,7 @@
                     "estadisticas"
                   ]
                 },
-                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ciudadanoToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
+                "description": "## Estadísticas de Apelaciones\n\n**GET** `/apelaciones/estadisticas`\n\n## Logica de negocio\nConsulta informacion de Apelaciones TTAIP sin modificar estado.\n\n## Seguridad\nRequiere `Authorization: Bearer {{ttaipToken}}`.\n\n## Variables de entorno usadas\n- Ninguna variable adicional aparte de `baseUrl`.\n\n## Headers\n- `Accept: application/json`\n\n## Parametros\n- No requiere parametros.\n\n## Responses documentados\nLa pestana **Examples** incluye exito y errores representativos: validacion, autenticacion/autorizacion, recurso inexistente, conflicto de negocio, media type invalido y error interno cuando aplica.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

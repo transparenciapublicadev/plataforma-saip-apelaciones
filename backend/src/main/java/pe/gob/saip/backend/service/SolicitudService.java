@@ -1,5 +1,7 @@
 package pe.gob.saip.backend.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
@@ -71,6 +73,11 @@ public class SolicitudService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Solicitud> obtenerPagina(Pageable pageable) {
+        return solicitudRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Solicitud> obtenerSolicitudPorId(Long id) {
         return solicitudRepository.findById(id);
     }
@@ -86,13 +93,28 @@ public class SolicitudService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Solicitud> obtenerPaginaPorCiudadano(Long ciudadanoId, Pageable pageable) {
+        return solicitudRepository.findByCiudadano_IdUsuario(ciudadanoId, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Solicitud> findByEntidadId(Long entidadId) {
         return solicitudRepository.findByEntidad_IdEntidadOrderByFechaPresentacionDesc(entidadId);
     }
 
     @Transactional(readOnly = true)
+    public Page<Solicitud> obtenerPaginaPorEntidad(Long entidadId, Pageable pageable) {
+        return solicitudRepository.findByEntidad_IdEntidad(entidadId, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Solicitud> obtenerSolicitudesPorEstado(Solicitud.EstadoSolicitud estado) {
         return solicitudRepository.findByEstado(estado);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Solicitud> obtenerPaginaPorEstado(Solicitud.EstadoSolicitud estado, Pageable pageable) {
+        return solicitudRepository.findByEstado(estado, pageable);
     }
 
     @Transactional(readOnly = true)

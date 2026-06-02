@@ -124,6 +124,7 @@ El endpoint de estado expone únicamente modo, capacidades y si SMTP está confi
 - Confirmar que `APP_NOTIFICATIONS_MODE=SMTP`; `MOCK` no inicia en `prod`.
 - Restringir `CORS_ALLOWED_ORIGIN_PATTERNS` a dominios productivos.
 - Mantener OpenAPI y Swagger UI deshabilitados salvo necesidad operativa aprobada.
+- Mantener la consola H2 deshabilitada y sin exposición pública.
 - Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
 - Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
 - Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.

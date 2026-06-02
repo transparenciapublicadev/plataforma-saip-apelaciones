@@ -59,7 +59,12 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Endpoints públicos
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/registro",
+                    "/api/auth/verificar-email",
+                    "/api/auth/verificar-dni").permitAll()
+                .requestMatchers("/api/auth/**").authenticated()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
                 // Endpoints por rol
@@ -117,8 +122,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Skipear rutas de auth
-        if (request.getServletPath().startsWith("/api/auth/")) {
+        // Omitir filtro únicamente en rutas públicas exactas
+        if ("/api/auth/login".equals(request.getServletPath())
+                || "/api/auth/registro".equals(request.getServletPath())
+                || "/api/auth/verificar-email".equals(request.getServletPath())
+                || "/api/auth/verificar-dni".equals(request.getServletPath())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -156,14 +164,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   <TabItem label="Por Rol">
     | Endpoint | CIUDADANO | FUNCIONARIO | TTAIP | ADMIN |
     |----------|:---------:|:-----------:|:-----:|:-----:|
-    | `POST /api/auth/*` | ✅ | ✅ | ✅ | ✅ |
-    | `POST /api/solicitudes` | ✅ | ❌ | ❌ | ❌ |
-    | `GET /api/solicitudes/*` | ✅ | ✅ | ❌ | ✅ |
-    | `POST /api/apelaciones` | ✅ | ❌ | ❌ | ❌ |
-    | `POST /api/apelaciones/externa` | ✅ | ❌ | ❌ | ❌ |
-    | `POST /api/respuestas/*` | ❌ | ✅ | ❌ | ❌ |
-    | `GET /api/ttaip/*` | ❌ | ❌ | ✅ | ❌ |
-    | `POST /api/ttaip/*` | ❌ | ❌ | ✅ | ❌ |
+    | `POST /api/auth/login` | ✅ | ✅ | ✅ | ✅ |
+    | `POST /api/solicitudes` | ✅ | ❌ | ❌ | ✅ |
+    | `GET /api/solicitudes/*` | ✅ | ✅ | ✅ | ✅ |
+    | `POST /api/apelaciones` | ✅ | ❌ | ❌ | ✅ |
+    | `POST /api/apelaciones/externa` | ✅ | ❌ | ❌ | ✅ |
+    | `POST /api/respuestas/*` | ❌ | ✅ | ❌ | ✅ |
+    | `GET /api/ttaip/*` | ❌ | ❌ | ✅ | ✅ |
+    | `POST /api/ttaip/*` | ❌ | ❌ | ✅ | ✅ |
     | `GET /api/estadisticas/*` | ❌ | ❌ | ✅ | ✅ |
     | `GET /api/reportes/*` | ❌ | ❌ | ❌ | ✅ |
     | `GET /api/entidades/*` | ✅ | ✅ | ✅ | ✅ |
@@ -181,6 +189,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     | `GET /swagger-ui/**` | Interfaz Swagger UI |
   </TabItem>
 </Tabs>
+
+OpenAPI y Swagger UI se mantienen disponibles para desarrollo y sincronización
+del contrato, pero el perfil `prod` los desactiva por defecto. La consola H2 no
+se expone desde `SecurityConfig` ni se habilita en producción.
+
+## Ownership de Recursos
+
+La autorización por rol se complementa con validación de ownership en
+`AutorizacionRecursosService`. No basta con tener un JWT válido:
+
+| Superficie | CIUDADANO | FUNCIONARIO | TTAIP / ADMIN |
+| --- | --- | --- | --- |
+| Perfil `/auth/me/{usuarioId}` | Solo perfil propio | Solo perfil propio | Administración puede consultar perfiles |
+| Solicitudes y respuestas | Solo recursos propios | Solo recursos de su entidad | Visibilidad amplia operativa |
+| Apelaciones | Solo recursos propios | Recursos institucionales cuando corresponda | Visibilidad amplia operativa |
+| Ciudadanos | Perfil propio | Sin listado transversal | Administración gestiona catálogo |
+| Funcionarios | Sin acceso | Solo funcionarios de su entidad y edición propia permitida | Visibilidad amplia; administración gestiona altas y estados |
+| Métricas de entidad | Sin acceso | Solo su entidad | Visibilidad amplia |
+| Métricas globales y reportes | Sin acceso | Sin acceso | TTAIP / administración |
+
+Los errores de ownership responden `403 Forbidden` con RFC 9457 / Problem
+Details y no retornan el recurso solicitado.
 
 ## CORS
 

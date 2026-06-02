@@ -94,12 +94,16 @@ graph LR
     | Método | Ruta | Uso principal | Auth |
     | --- | --- | --- | --- |
     | `GET` | `/solicitudes` | Lista global de solicitudes. | JWT |
+    | `GET` | `/solicitudes/paginadas?pagina=&tamano=` | Lista global liviana paginada. | TTAIP / ADMIN |
     | `GET` | `/solicitudes/publica/expediente/{expediente}` | Consulta pública por expediente SAIP. | Público |
     | `GET` | `/solicitudes/{id}` | Detalle por ID. | JWT |
     | `GET` | `/solicitudes/expediente/{expediente}` | Detalle por número SAIP. | JWT |
     | `GET` | `/solicitudes/ciudadano/{ciudadanoId}` | Bandeja del ciudadano. | JWT |
+    | `GET` | `/solicitudes/ciudadano/{ciudadanoId}/paginadas?pagina=&tamano=` | Bandeja ciudadana liviana paginada. | JWT |
     | `GET` | `/solicitudes/entidad/{entidadId}` | Bandeja de la entidad pública. | JWT |
+    | `GET` | `/solicitudes/entidad/{entidadId}/paginadas?pagina=&tamano=` | Bandeja institucional liviana paginada. | JWT |
     | `GET` | `/solicitudes/estado/{estado}` | Filtro por estado. | JWT |
+    | `GET` | `/solicitudes/estado/{estado}/paginadas?pagina=&tamano=` | Filtro por estado liviano paginado. | TTAIP / ADMIN |
     | `POST` | `/solicitudes` | Crea una SAIP. | CIUDADANO |
     | `PUT` | `/solicitudes/{id}` | Actualiza datos permitidos. | JWT |
     | `PATCH` | `/solicitudes/{id}/estado` | Cambio controlado de estado. | JWT |
@@ -165,11 +169,14 @@ graph LR
     | Método | Ruta | Uso principal | Auth |
     | --- | --- | --- | --- |
     | `GET` | `/apelaciones` | Lista global de apelaciones. | JWT |
+    | `GET` | `/apelaciones/paginadas?pagina=&tamano=` | Lista global liviana paginada. | TTAIP / ADMIN |
     | `GET` | `/apelaciones/{id}` | Detalle por ID. | JWT |
     | `GET` | `/apelaciones/expediente?numero=` | Búsqueda por expediente TTAIP. | JWT |
     | `GET` | `/apelaciones/expediente/{expediente}` | Búsqueda por expediente TTAIP en ruta. | JWT |
     | `GET` | `/apelaciones/estado/{estado}` | Filtro por estado. | TTAIP |
+    | `GET` | `/apelaciones/estado/{estado}/paginadas?pagina=&tamano=` | Filtro por estado liviano paginado. | TTAIP / ADMIN |
     | `GET` | `/apelaciones/ciudadano/{ciudadanoId}` | Bandeja del ciudadano. | JWT |
+    | `GET` | `/apelaciones/ciudadano/{ciudadanoId}/paginadas?pagina=&tamano=` | Bandeja ciudadana liviana paginada. | JWT |
     | `POST` | `/apelaciones` | Crea apelación vinculada a una SAIP. | CIUDADANO |
     | `POST` | `/apelaciones/externa` | Crea apelación por SAIP tramitada fuera de la plataforma. | CIUDADANO |
     | `PUT` | `/apelaciones/{id}` | Actualización administrativa. | JWT |
@@ -178,9 +185,10 @@ graph LR
     | `GET` | `/apelaciones/estadisticas` | Métricas de apelaciones. | JWT |
     | `DELETE` | `/apelaciones/{id}` | Eliminación administrativa. | ADMIN |
 
-    :::caution[Flujo vigente]
-    Al crear una apelación, el backend la registra directamente en `EN_CALIFICACION_1`.
-    No existe endpoint funcional de elevación en el flujo actual.
+    :::caution[Flujos vigentes]
+    La apelación directa entra en `EN_CALIFICACION_1`. El flujo alternativo
+    presentado ante entidad usa `/apelaciones/ante-entidad` y conserva
+    trazabilidad de elevación en dos días hábiles antes de ingresar al TTAIP.
     :::
 
     ```json
@@ -340,6 +348,16 @@ sequenceDiagram
 ```
 
 ## Convenciones
+
+### Ownership y listados
+
+- El ciudadano solo consulta recursos propios.
+- El funcionario solo consulta solicitudes, respuestas, elevaciones y métricas
+  de su entidad cuando corresponda.
+- TTAIP y administración conservan visibilidad amplia en sus superficies
+  operativas.
+- Los listados globales pesados mantienen compatibilidad, pero clientes nuevos y
+  Newman deben preferir las rutas `/paginadas`, con `tamano` entre `1` y `100`.
 
 <CardGrid>
   <Card title="Autenticación" icon="lock">

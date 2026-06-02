@@ -1,5 +1,7 @@
 package pe.gob.saip.backend.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
@@ -34,6 +36,11 @@ public class ApelacionService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Apelacion> obtenerPagina(Pageable pageable) {
+        return apelacionRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Apelacion> obtenerApelacionPorId(Long id) {
         return apelacionRepository.findById(id);
     }
@@ -49,6 +56,11 @@ public class ApelacionService {
     }
 
     @Transactional(readOnly = true)
+    public Page<Apelacion> obtenerPaginaPorEstado(Apelacion.EstadoApelacion estado, Pageable pageable) {
+        return apelacionRepository.findByEstado(estado, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public long contarApelacionesPorEstado(Apelacion.EstadoApelacion estado) {
         return apelacionRepository.countByEstado(estado);
     }
@@ -56,6 +68,11 @@ public class ApelacionService {
     @Transactional(readOnly = true)
     public List<Apelacion> findByCiudadanoId(Long ciudadanoId) {
         return apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(ciudadanoId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Apelacion> obtenerPaginaPorCiudadano(Long ciudadanoId, Pageable pageable) {
+        return apelacionRepository.findByCiudadano_IdUsuario(ciudadanoId, pageable);
     }
 
     private static final List<Apelacion.EstadoApelacion> ESTADOS_FINALES = List.of(
