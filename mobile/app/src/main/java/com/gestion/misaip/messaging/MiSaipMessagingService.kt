@@ -26,13 +26,13 @@ class MiSaipMessagingService : FirebaseMessagingService() {
 
         // Verificar si hay datos
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "Datos del mensaje: ${remoteMessage.data}")
+            Log.d(TAG, "Mensaje con datos recibido. Claves: ${remoteMessage.data.keys}")
             handleDataMessage(remoteMessage.data)
         }
 
         // Verificar si hay notificación
         remoteMessage.notification?.let { notification ->
-            Log.d(TAG, "Cuerpo de notificación: ${notification.body}")
+            Log.d(TAG, "Notificacion visual recibida")
             showNotification(
                 title = notification.title ?: getString(R.string.app_name),
                 body = notification.body ?: "",
@@ -42,7 +42,7 @@ class MiSaipMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        Log.d(TAG, "Token FCM renovado: $token")
+        Log.d(TAG, "Token FCM renovado")
         // Aquí puedes enviar el token a tu servidor para asociarlo con el usuario
         sendTokenToServer(token)
     }
@@ -129,7 +129,7 @@ class MiSaipMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendTokenToServer(token: String) {
-        Log.d(TAG, "Registrando token renovado en backend Spring Boot: $token")
+        Log.d(TAG, "Registrando token renovado en backend Spring Boot")
         FCMHelper.registerTokenWithBackend(token)
     }
 }
