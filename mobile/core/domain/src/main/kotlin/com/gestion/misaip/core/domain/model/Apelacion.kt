@@ -12,6 +12,7 @@ data class Apelacion(
     val id: String,
     val expediente: String,
     val expedienteSAIP: String,
+    val solicitudId: String? = null,
     val usuarioId: String,
     val apelante: Apelante,
     val entidad: String,
@@ -32,7 +33,10 @@ data class Apelacion(
     val informeOralSolicitado: Boolean = false,
     val timerPausado: Boolean = false,
     val fechaElevacion: Long? = null,
-    val elevacionExtemporanea: Boolean = false
+    val elevacionExtemporanea: Boolean = false,
+    val tipoOrigen: TipoOrigenApelacion = TipoOrigenApelacion.SAIP_INTERNA,
+    val datosExternos: DatosApelacionExterna? = null,
+    val elevacion: ElevacionApelacion? = null
 ) {
 
     /**
@@ -60,6 +64,11 @@ data class Apelacion(
      */
     val estaResuelta: Boolean
         get() = estado.isTerminal()
+
+    val referenciaSolicitudOrigen: String
+        get() = expedienteSAIP.ifBlank {
+            datosExternos?.numeroSolicitudExterna ?: "Sin SAIP local"
+        }
 }
 
 /**
@@ -109,7 +118,7 @@ enum class EstadoApelacion {
     fun isTerminal(): Boolean = this in TERMINALES
 
     fun toDisplayString(): String = when (this) {
-        PENDIENTE_ELEVACION -> "En Primera Calificación"
+        PENDIENTE_ELEVACION -> "Pendiente de Elevación"
         EN_CALIFICACION_1 -> "En Primera Calificación"
         EN_SUBSANACION -> "En Subsanación"
         EN_CALIFICACION_2 -> "En Segunda Calificación"
@@ -126,6 +135,76 @@ enum class EstadoApelacion {
         RESUELTO_IMPROCEDENTE -> "Resuelto - Improcedente"
     }
 }
+
+enum class TipoOrigenApelacion {
+    SAIP_INTERNA,
+    EXTERNA;
+
+    companion object {
+        fun fromString(value: String?): TipoOrigenApelacion {
+            return entries.find { it.name == value?.uppercase() } ?: SAIP_INTERNA
+        }
+    }
+}
+
+enum class TipoDenegatoria {
+    EXPRESA,
+    TACITA;
+
+    companion object {
+        fun fromString(value: String?): TipoDenegatoria? {
+            return entries.find { it.name == value?.uppercase() }
+        }
+    }
+}
+
+data class DatosApelacionExterna(
+    val numeroSolicitudExterna: String,
+    val fechaPresentacionSolicitudExterna: String,
+    val tipoDenegatoria: TipoDenegatoria,
+    val fechaRespuestaEntidad: String? = null,
+    val resumenSolicitudOriginal: String,
+    val resumenRespuestaEntidad: String? = null,
+    val referenciaDocumentoSolicitud: String,
+    val referenciaCargoRecepcion: String? = null,
+    val referenciaRespuestaEntidad: String? = null,
+    val evidenciaSilencioAdministrativo: String? = null,
+    val observacion: String? = null
+)
+
+enum class EstadoElevacionApelacion {
+    PENDIENTE,
+    ELEVADA,
+    VENCIDA_NO_ELEVADA,
+    COMUNICADA_POR_CIUDADANO,
+    ADMITIDA_EXCEPCIONALMENTE;
+
+    companion object {
+        fun fromString(value: String?): EstadoElevacionApelacion? {
+            return entries.find { it.name == value?.uppercase() }
+        }
+    }
+}
+
+data class ElevacionApelacion(
+    val id: String,
+    val apelacionId: String,
+    val expedienteReservado: String,
+    val entidadOrigenId: String,
+    val entidadOrigenNombre: String,
+    val fechaPresentacionAnteEntidad: String,
+    val fechaLimiteElevacion: String,
+    val fechaElevacionTtaip: String? = null,
+    val fechaComunicacionCiudadano: String? = null,
+    val estado: EstadoElevacionApelacion,
+    val referenciaCargoPresentacion: String,
+    val referenciaExpedienteElevado: String? = null,
+    val referenciaPruebaOmision: String? = null,
+    val responsableEntidad: String? = null,
+    val responsableTtaip: String? = null,
+    val observacion: String? = null,
+    val trazabilidad: String? = null
+)
 
 /**
  * Calificación de una apelación (primera o segunda instancia).

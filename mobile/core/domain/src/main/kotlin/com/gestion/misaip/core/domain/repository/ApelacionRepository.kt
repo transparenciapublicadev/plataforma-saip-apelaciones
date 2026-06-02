@@ -4,6 +4,11 @@ import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.domain.model.Calificacion
 import com.gestion.misaip.core.domain.model.Subsanacion
 import com.gestion.misaip.core.domain.model.Pagina
+import com.gestion.misaip.core.domain.model.ComunicarOmisionElevacion
+import com.gestion.misaip.core.domain.model.ElevacionApelacion
+import com.gestion.misaip.core.domain.model.RegistrarApelacionAnteEntidad
+import com.gestion.misaip.core.domain.model.RegistrarApelacionExterna
+import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -66,6 +71,25 @@ interface ApelacionRepository {
      * @return La apelación creada con su expediente asignado
      */
     suspend fun crearApelacion(apelacion: Apelacion): Apelacion
+
+    /** Operaciones legales online-only: el backend asigna expediente y valida plazos. */
+    suspend fun crearApelacionExterna(request: RegistrarApelacionExterna): Apelacion
+
+    suspend fun crearApelacionAnteEntidad(request: RegistrarApelacionAnteEntidad): Apelacion
+
+    suspend fun getElevacion(apelacionId: String): ElevacionApelacion
+
+    suspend fun getPendientesElevacionEntidad(entidadId: String): List<ElevacionApelacion>
+
+    suspend fun elevarApelacion(
+        apelacionId: String,
+        request: RegistrarElevacionApelacion
+    ): Apelacion
+
+    suspend fun comunicarOmisionElevacion(
+        apelacionId: String,
+        request: ComunicarOmisionElevacion
+    ): ElevacionApelacion
 
     /**
      * Actualiza una apelación existente.
