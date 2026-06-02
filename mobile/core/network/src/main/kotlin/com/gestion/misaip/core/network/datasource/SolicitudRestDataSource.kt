@@ -2,9 +2,19 @@ package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.Pagina
+import com.gestion.misaip.core.domain.model.AmpliacionPlazoSolicitud
+import com.gestion.misaip.core.domain.model.EncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.LiquidacionCostoSolicitud
+import com.gestion.misaip.core.domain.model.ObservacionSolicitud
+import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
+import com.gestion.misaip.core.domain.model.RegistrarAmpliacionPlazoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarEncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarLiquidacionCostoSolicitud
+import com.gestion.misaip.core.domain.model.RegistrarObservacionSolicitud
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
+import com.gestion.misaip.core.network.dto.rest.toRest
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 
@@ -44,6 +54,48 @@ class SolicitudRestDataSource(
         return traducirProblemDetails {
             solicitudApi.getByEntidadPaginadas(id, pagina, tamano).map { it.toDomain() }
         }
+    }
+
+    override suspend fun getOperacionesFuncionario(
+        solicitudId: String
+    ): OperacionesSolicitudFuncionario {
+        val id = solicitudId.requireRemoteId()
+        return traducirProblemDetails {
+            OperacionesSolicitudFuncionario(
+                observaciones = solicitudApi.listarObservaciones(id).map { it.toDomain() },
+                ampliaciones = solicitudApi.listarAmpliaciones(id).map { it.toDomain() },
+                encauzamientos = solicitudApi.listarEncauzamientos(id).map { it.toDomain() },
+                liquidaciones = solicitudApi.listarLiquidaciones(id).map { it.toDomain() }
+            )
+        }
+    }
+
+    override suspend fun registrarObservacion(
+        solicitudId: String,
+        request: RegistrarObservacionSolicitud
+    ): ObservacionSolicitud = traducirProblemDetails {
+        solicitudApi.observar(solicitudId.requireRemoteId(), request.toRest()).toDomain()
+    }
+
+    override suspend fun registrarAmpliacion(
+        solicitudId: String,
+        request: RegistrarAmpliacionPlazoSolicitud
+    ): AmpliacionPlazoSolicitud = traducirProblemDetails {
+        solicitudApi.registrarAmpliacion(solicitudId.requireRemoteId(), request.toRest()).toDomain()
+    }
+
+    override suspend fun registrarEncauzamiento(
+        solicitudId: String,
+        request: RegistrarEncauzamientoSolicitud
+    ): EncauzamientoSolicitud = traducirProblemDetails {
+        solicitudApi.registrarEncauzamiento(solicitudId.requireRemoteId(), request.toRest()).toDomain()
+    }
+
+    override suspend fun emitirLiquidacion(
+        solicitudId: String,
+        request: RegistrarLiquidacionCostoSolicitud
+    ): LiquidacionCostoSolicitud = traducirProblemDetails {
+        solicitudApi.emitirLiquidacion(solicitudId.requireRemoteId(), request.toRest()).toDomain()
     }
 
     override suspend fun crearSolicitud(solicitud: Solicitud): Solicitud {
@@ -154,5 +206,9 @@ class SolicitudRestDataSource(
 
     private companion object {
         const val TAMANO_SYNC = 100
+    }
+
+    private fun String.requireRemoteId(): Long {
+        return toLongOrNull() ?: throw NetworkException("La SAIP aún no tiene un ID remoto válido")
     }
 }

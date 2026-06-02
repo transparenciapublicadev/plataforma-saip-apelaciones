@@ -4,6 +4,14 @@ import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.SolicitudRestDto
 import com.gestion.misaip.core.network.dto.rest.PaginaRestDto
 import com.gestion.misaip.core.network.dto.rest.SolicitudResumenRestDto
+import com.gestion.misaip.core.network.dto.rest.AmpliacionPlazoSolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.EncauzamientoSolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.LiquidacionCostoSolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.ObservacionSolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.ObservarSolicitudRestRequest
+import com.gestion.misaip.core.network.dto.rest.RegistrarAmpliacionPlazoRestRequest
+import com.gestion.misaip.core.network.dto.rest.RegistrarEncauzamientoSolicitudRestRequest
+import com.gestion.misaip.core.network.dto.rest.RegistrarLiquidacionCostoRestRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -66,4 +74,40 @@ interface SolicitudApiService {
         @Path("id") id: Long,
         @Body body: Map<String, String>
     ): SolicitudRestDto
+
+    @GET("api/solicitudes/{id}/observaciones")
+    suspend fun listarObservaciones(@Path("id") id: Long): List<ObservacionSolicitudRestDto>
+
+    @POST("api/solicitudes/{id}/observaciones")
+    suspend fun observar(
+        @Path("id") id: Long,
+        @Body request: ObservarSolicitudRestRequest
+    ): ObservacionSolicitudRestDto
+
+    @GET("api/solicitudes/{id}/ampliaciones")
+    suspend fun listarAmpliaciones(@Path("id") id: Long): List<AmpliacionPlazoSolicitudRestDto>
+
+    @POST("api/solicitudes/{id}/ampliaciones")
+    suspend fun registrarAmpliacion(
+        @Path("id") id: Long,
+        @Body request: RegistrarAmpliacionPlazoRestRequest
+    ): AmpliacionPlazoSolicitudRestDto
+
+    @GET("api/solicitudes/{id}/encauzamientos")
+    suspend fun listarEncauzamientos(@Path("id") id: Long): List<EncauzamientoSolicitudRestDto>
+
+    @POST("api/solicitudes/{id}/encauzamientos")
+    suspend fun registrarEncauzamiento(
+        @Path("id") id: Long,
+        @Body request: RegistrarEncauzamientoSolicitudRestRequest
+    ): EncauzamientoSolicitudRestDto
+
+    @GET("api/solicitudes/{id}/liquidaciones")
+    suspend fun listarLiquidaciones(@Path("id") id: Long): List<LiquidacionCostoSolicitudRestDto>
+
+    @POST("api/solicitudes/{id}/liquidaciones")
+    suspend fun emitirLiquidacion(
+        @Path("id") id: Long,
+        @Body request: RegistrarLiquidacionCostoRestRequest
+    ): LiquidacionCostoSolicitudRestDto
 }
