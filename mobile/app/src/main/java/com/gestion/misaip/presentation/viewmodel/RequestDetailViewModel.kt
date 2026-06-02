@@ -10,11 +10,21 @@ import com.gestion.misaip.core.domain.model.TipoUsuario
 import com.gestion.misaip.core.domain.model.EstadoApelacion
 import com.gestion.misaip.core.domain.model.ResultadoCalificacion
 import com.gestion.misaip.core.domain.model.TipoRespuesta
+import com.gestion.misaip.core.domain.model.AlcanceEncauzamiento
+import com.gestion.misaip.core.domain.model.CanalNotificacion
+import com.gestion.misaip.core.domain.model.EntidadPublica
+import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
+import com.gestion.misaip.core.domain.usecase.entidad.GetEntidadesActivasUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.GetSolicitudPorExpedienteUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.CrearSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.ResponderSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.IniciarRevisionUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.EmitirLiquidacionCostoSolicitudUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.GetOperacionesSolicitudFuncionarioUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarAmpliacionPlazoSolicitudUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarEncauzamientoSolicitudUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarObservacionSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionPorExpedienteUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionPorSAIPUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.CalificarApelacionUseCase
@@ -29,6 +39,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 @Immutable
 data class RequestDetailUiState(
@@ -50,13 +61,26 @@ data class RequestDetailUiState(
     val puedeApelar: Boolean = false,
     val puedeIniciarRevision: Boolean = false,
     val puedeResponder: Boolean = false,
+    val puedeGestionarSaip: Boolean = false,
     val puedeCalificar: Boolean = false,
     val puedeSubsanar: Boolean = false,
     val isLoading: Boolean = false,
+    val isSubmittingOperation: Boolean = false,
+    val operacionesDisponiblesOnline: Boolean = true,
+    val operacionesFuncionario: OperacionesSolicitudFuncionario = OperacionesSolicitudFuncionario(),
+    val entidadesDestino: List<EntidadPublica> = emptyList(),
+    val formularioOperacion: FormularioOperacionFuncionario? = null,
     val showResponseForm: Boolean = false,
     val showCalificacionForm: Boolean = false,
     val showSubsanacionForm: Boolean = false
 )
+
+enum class FormularioOperacionFuncionario {
+    OBSERVACION,
+    AMPLIACION,
+    ENCAUZAMIENTO,
+    LIQUIDACION
+}
 
 sealed class RequestDetailEvent {
     data class ShowMessage(val message: String) : RequestDetailEvent()
@@ -71,6 +95,12 @@ class RequestDetailViewModel(
     private val getApelacionPorSAIPUseCase: GetApelacionPorSAIPUseCase,
     private val responderSolicitudUseCase: ResponderSolicitudUseCase,
     private val iniciarRevisionUseCase: IniciarRevisionUseCase,
+    private val getEntidadesActivasUseCase: GetEntidadesActivasUseCase,
+    private val getOperacionesSolicitudFuncionarioUseCase: GetOperacionesSolicitudFuncionarioUseCase,
+    private val registrarObservacionSolicitudUseCase: RegistrarObservacionSolicitudUseCase,
+    private val registrarAmpliacionPlazoSolicitudUseCase: RegistrarAmpliacionPlazoSolicitudUseCase,
+    private val registrarEncauzamientoSolicitudUseCase: RegistrarEncauzamientoSolicitudUseCase,
+    private val emitirLiquidacionCostoSolicitudUseCase: EmitirLiquidacionCostoSolicitudUseCase,
     private val calificarApelacionUseCase: CalificarApelacionUseCase,
     private val iniciarCalificacionUseCase: IniciarCalificacionUseCase,
     private val presentarSubsanacionUseCase: PresentarSubsanacionUseCase,
@@ -171,6 +201,22 @@ class RequestDetailViewModel(
                     solicitud.estaPendiente &&
                     !silencioAdministrativoAutomatico
 
+                val puedeGestionarSaip = esFuncionarioEntidad &&
+                    solicitud.estaPendiente &&
+                    !silencioAdministrativoAutomatico
+
+                val operacionesPrevias = _uiState.value
+                    .takeIf { it.expediente == solicitud.expediente }
+                    ?.operacionesFuncionario
+                    ?: OperacionesSolicitudFuncionario()
+                val operacionesResultado = if (esFuncionarioEntidad) {
+                    runCatching { getOperacionesSolicitudFuncionarioUseCase(solicitud.id) }
+                } else null
+                val entidadesDestino = if (esFuncionarioEntidad) {
+                    getEntidadesActivasUseCase().first()
+                        .filter { it.id != solicitud.entidadId }
+                } else emptyList()
+
                 // Ciudadano: permitir subsanar desde la vista SAIP si la apelación lo requiere
                 val puedeSubsanar = tipoUsuario == TipoUsuario.CIUDADANO &&
                     apelacionRelacionada?.requiereSubsanacion == true &&
@@ -214,7 +260,11 @@ class RequestDetailViewModel(
                     puedeApelar = puedeApelar,
                     puedeIniciarRevision = puedeIniciarRevision,
                     puedeResponder = puedeResponder,
+                    puedeGestionarSaip = puedeGestionarSaip,
                     puedeSubsanar = puedeSubsanar,
+                    operacionesDisponiblesOnline = operacionesResultado?.isSuccess ?: true,
+                    operacionesFuncionario = operacionesResultado?.getOrNull() ?: operacionesPrevias,
+                    entidadesDestino = entidadesDestino,
                     isLoading = false
                 )
             } else if (apelacion != null) {
@@ -331,6 +381,118 @@ class RequestDetailViewModel(
                 cargarDetalle(solicitud.expediente)
             } catch (e: Exception) {
                 _events.emit(RequestDetailEvent.ShowMessage("Error: ${e.message}"))
+            }
+        }
+    }
+
+    fun recargarOperacionesFuncionario() {
+        expedienteActual?.let(::cargarDetalle)
+    }
+
+    fun mostrarFormularioOperacion(tipo: FormularioOperacionFuncionario) {
+        val state = _uiState.value
+        if (!state.puedeGestionarSaip) return
+        if (!state.operacionesDisponiblesOnline) {
+            viewModelScope.launch {
+                _events.emit(RequestDetailEvent.ShowMessage("Esta operación requiere conexión. Actualice el detalle e inténtelo nuevamente."))
+            }
+            return
+        }
+        _uiState.value = state.copy(formularioOperacion = tipo)
+    }
+
+    fun ocultarFormularioOperacion() {
+        _uiState.value = _uiState.value.copy(formularioOperacion = null)
+    }
+
+    fun registrarObservacion(motivo: String) {
+        ejecutarOperacion("Observación registrada. La SAIP queda pendiente de subsanación.") { solicitud, responsable ->
+            registrarObservacionSolicitudUseCase(solicitud.id, motivo, responsable)
+        }
+    }
+
+    fun registrarAmpliacion(
+        motivo: String,
+        informe: String,
+        fechaNotificacion: String,
+        entregaDescripcion: String,
+        entregaFechaProgramada: String
+    ) {
+        ejecutarOperacion("Ampliación registrada con cronograma de entrega parcial.") { solicitud, responsable ->
+            registrarAmpliacionPlazoSolicitudUseCase(
+                solicitudId = solicitud.id,
+                motivo = motivo,
+                informe = informe,
+                fechaNotificacion = fechaNotificacion,
+                responsable = responsable,
+                entregaDescripcion = entregaDescripcion,
+                entregaFechaProgramada = entregaFechaProgramada,
+                entregaObservacion = null
+            )
+        }
+    }
+
+    fun registrarEncauzamiento(
+        entidadDestinoId: String,
+        motivo: String,
+        alcance: AlcanceEncauzamiento,
+        sustento: String
+    ) {
+        ejecutarOperacion("Encauzamiento $alcance registrado correctamente.") { solicitud, responsable ->
+            registrarEncauzamientoSolicitudUseCase(
+                solicitudId = solicitud.id,
+                entidadDestinoId = entidadDestinoId,
+                motivo = motivo,
+                alcance = alcance,
+                responsable = responsable,
+                sustento = sustento
+            )
+        }
+    }
+
+    fun emitirLiquidacion(
+        codigo: String,
+        monto: String,
+        concepto: String,
+        fechaNotificacion: String,
+        medioNotificacion: CanalNotificacion
+    ) {
+        ejecutarOperacion("Liquidación o cupón emitido correctamente.") { solicitud, responsable ->
+            emitirLiquidacionCostoSolicitudUseCase(
+                solicitudId = solicitud.id,
+                codigo = codigo,
+                monto = monto,
+                concepto = concepto,
+                fechaNotificacion = fechaNotificacion,
+                medioNotificacion = medioNotificacion,
+                responsable = responsable,
+                observacion = null
+            )
+        }
+    }
+
+    private fun ejecutarOperacion(
+        mensajeExito: String,
+        operacion: suspend (Solicitud, String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            val solicitud = _uiState.value.solicitud ?: return@launch
+            val responsable = getUsuarioActualUseCase().first()?.nombre
+            _uiState.value = _uiState.value.copy(isSubmittingOperation = true)
+            try {
+                operacion(solicitud, responsable)
+                _uiState.value = _uiState.value.copy(
+                    formularioOperacion = null,
+                    isSubmittingOperation = false
+                )
+                _events.emit(RequestDetailEvent.ShowMessage(mensajeExito))
+                cargarDetalle(solicitud.expediente)
+            } catch (_: IOException) {
+                _uiState.value = _uiState.value.copy(isSubmittingOperation = false)
+                _events.emit(RequestDetailEvent.ShowMessage("Esta operación administrativa requiere conexión con el servidor."))
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSubmittingOperation = false)
+                _events.emit(RequestDetailEvent.ShowMessage(e.message ?: "No se pudo registrar la operación"))
             }
         }
     }

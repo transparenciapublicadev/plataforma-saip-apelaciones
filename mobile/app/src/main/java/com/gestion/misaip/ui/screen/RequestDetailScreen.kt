@@ -67,6 +67,7 @@ import com.gestion.misaip.core.domain.model.TimelineItem
 import com.gestion.misaip.presentation.viewmodel.RequestDetailEvent
 import com.gestion.misaip.presentation.viewmodel.RequestDetailUiState
 import com.gestion.misaip.presentation.viewmodel.RequestDetailViewModel
+import com.gestion.misaip.presentation.viewmodel.FormularioOperacionFuncionario
 import com.gestion.misaip.ui.components.LoadingContent
 import com.gestion.misaip.ui.components.PulsingDot
 import com.gestion.misaip.ui.components.SemaphoreIndicator
@@ -106,6 +107,13 @@ fun RequestDetailScreen(
         onMostrarFormRespuesta = viewModel::mostrarFormularioRespuesta,
         onOcultarFormRespuesta = viewModel::ocultarFormularioRespuesta,
         onResponder = viewModel::responderSolicitud,
+        onRecargarOperaciones = viewModel::recargarOperacionesFuncionario,
+        onMostrarOperacion = viewModel::mostrarFormularioOperacion,
+        onOcultarOperacion = viewModel::ocultarFormularioOperacion,
+        onRegistrarObservacion = viewModel::registrarObservacion,
+        onRegistrarAmpliacion = viewModel::registrarAmpliacion,
+        onRegistrarEncauzamiento = viewModel::registrarEncauzamiento,
+        onEmitirLiquidacion = viewModel::emitirLiquidacion,
         onMostrarFormCalificacion = viewModel::mostrarFormularioCalificacion,
         onOcultarFormCalificacion = viewModel::ocultarFormularioCalificacion,
         onCalificar = viewModel::calificarApelacion,
@@ -127,6 +135,13 @@ private fun RequestDetailContent(
     onMostrarFormRespuesta: () -> Unit,
     onOcultarFormRespuesta: () -> Unit,
     onResponder: (String, String) -> Unit,
+    onRecargarOperaciones: () -> Unit,
+    onMostrarOperacion: (FormularioOperacionFuncionario) -> Unit,
+    onOcultarOperacion: () -> Unit,
+    onRegistrarObservacion: (String) -> Unit,
+    onRegistrarAmpliacion: (String, String, String, String, String) -> Unit,
+    onRegistrarEncauzamiento: (String, String, com.gestion.misaip.core.domain.model.AlcanceEncauzamiento, String) -> Unit,
+    onEmitirLiquidacion: (String, String, String, String, com.gestion.misaip.core.domain.model.CanalNotificacion) -> Unit,
     onMostrarFormCalificacion: () -> Unit,
     onOcultarFormCalificacion: () -> Unit,
     onCalificar: (String, String, String) -> Unit,
@@ -325,6 +340,21 @@ private fun RequestDetailContent(
                     }
                 }
 
+                if (
+                    uiState.esSolicitud &&
+                    uiState.tipoUsuario == com.gestion.misaip.core.domain.model.TipoUsuario.FUNCIONARIO
+                ) {
+                    item(key = "funcionario_saip_operations") {
+                        FuncionarioSaipOperationsCard(
+                            operaciones = uiState.operacionesFuncionario,
+                            disponibleOnline = uiState.operacionesDisponiblesOnline,
+                            puedeGestionar = uiState.puedeGestionarSaip,
+                            onRecargar = onRecargarOperaciones,
+                            onAbrirFormulario = onMostrarOperacion
+                        )
+                    }
+                }
+
                 // Timeline
                 if (uiState.timeline.isNotEmpty()) {
                     item(key = "timeline") {
@@ -477,6 +507,16 @@ private fun RequestDetailContent(
                 onSubmit = onSubsanar
             )
         }
+        FuncionarioSaipOperationSheet(
+            tipo = uiState.formularioOperacion,
+            entidadesDestino = uiState.entidadesDestino,
+            enviando = uiState.isSubmittingOperation,
+            onDismiss = onOcultarOperacion,
+            onObservacion = onRegistrarObservacion,
+            onAmpliacion = onRegistrarAmpliacion,
+            onEncauzamiento = onRegistrarEncauzamiento,
+            onLiquidacion = onEmitirLiquidacion
+        )
     }
 }
 
