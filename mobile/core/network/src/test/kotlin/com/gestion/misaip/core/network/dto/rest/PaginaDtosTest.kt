@@ -5,10 +5,13 @@ import com.gestion.misaip.core.domain.model.Apelante
 import com.gestion.misaip.core.domain.model.CanalNotificacion
 import com.gestion.misaip.core.domain.model.EstadoApelacion
 import com.gestion.misaip.core.domain.model.EstadoSolicitud
+import com.gestion.misaip.core.domain.model.EstadoElevacionApelacion
+import com.gestion.misaip.core.domain.model.TipoOrigenApelacion
 import com.gestion.misaip.core.domain.model.Solicitante
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.TipoSolicitud
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -84,8 +87,108 @@ class PaginaDtosTest {
             tipoOrigen = "EXTERNA"
         ).toDomain()
 
-        assertEquals("MP-EXT-2026-001", apelacion.expedienteSAIP)
+        assertEquals("", apelacion.expedienteSAIP)
+        assertEquals("MP-EXT-2026-001", apelacion.referenciaSolicitudOrigen)
         assertEquals("MP-EXT-2026-001", apelacion.asunto)
+    }
+
+    @Test
+    fun `detalle apelacion externa conserva elevacion y referencia sin SAIP local`() {
+        val apelacion = ApelacionRestDto(
+            id = 8,
+            expediente = "00008-2026-JUS/TTAIP",
+            estado = "PENDIENTE_ELEVACION",
+            tipoOrigen = "EXTERNA",
+            numeroSolicitudExterna = "MP-EXT-2026-001",
+            fechaPresentacionSolicitudExterna = "2026-05-01",
+            tipoDenegatoria = "TACITA",
+            resumenSolicitudOriginal = "Solicitud externa",
+            referenciaDocumentoSolicitud = "DOC-001",
+            evidenciaSilencioAdministrativo = "Sin respuesta",
+            elevacion = ElevacionApelacionRestDto(
+                id = 90,
+                apelacionId = 8,
+                expedienteReservado = "00008-2026-JUS/TTAIP",
+                entidadOrigenId = 10,
+                entidadOrigenNombre = "Ministerio de Justicia",
+                fechaPresentacionAnteEntidad = "2026-05-10",
+                fechaLimiteElevacion = "2026-05-12",
+                estadoElevacion = "PENDIENTE",
+                referenciaCargoPresentacion = "CARGO-001"
+            )
+        ).toDomain()
+
+        assertEquals(TipoOrigenApelacion.EXTERNA, apelacion.tipoOrigen)
+        assertEquals("MP-EXT-2026-001", apelacion.referenciaSolicitudOrigen)
+        assertEquals(EstadoElevacionApelacion.PENDIENTE, apelacion.elevacion?.estado)
+        assertEquals("CARGO-001", apelacion.elevacion?.referenciaCargoPresentacion)
+    }
+
+    @Test
+    fun `request apelacion externa expresa serializa respuesta de entidad`() {
+        val payload = json.encodeToString(
+            CrearApelacionExternaRestRequest(
+                ciudadanoId = 20,
+                entidadId = 10,
+                numeroSolicitudExterna = "MP-EXT-2026-001",
+                fechaPresentacionSolicitudExterna = "2026-05-01",
+                tipoDenegatoria = "EXPRESA",
+                fechaRespuestaEntidad = "2026-05-12",
+                resumenSolicitudOriginal = "Solicitud externa",
+                resumenRespuestaEntidad = "Respuesta denegatoria",
+                referenciaDocumentoSolicitud = "DOC-001",
+                referenciaCargoRecepcion = "CARGO-001",
+                referenciaRespuestaEntidad = "RESP-001",
+                evidenciaSilencioAdministrativo = null,
+                fundamentos = "Fundamentos",
+                observacion = null
+            )
+        )
+
+        assertTrue(payload.contains("\"tipoDenegatoria\":\"EXPRESA\""))
+        assertTrue(payload.contains("\"referenciaRespuestaEntidad\":\"RESP-001\""))
+    }
+
+    @Test
+    fun `request apelacion externa tacita serializa evidencia de silencio`() {
+        val payload = json.encodeToString(
+            CrearApelacionExternaRestRequest(
+                ciudadanoId = 20,
+                entidadId = 10,
+                numeroSolicitudExterna = "MP-EXT-2026-002",
+                fechaPresentacionSolicitudExterna = "2026-05-01",
+                tipoDenegatoria = "TACITA",
+                fechaRespuestaEntidad = null,
+                resumenSolicitudOriginal = "Solicitud externa",
+                resumenRespuestaEntidad = null,
+                referenciaDocumentoSolicitud = "DOC-002",
+                referenciaCargoRecepcion = "CARGO-002",
+                referenciaRespuestaEntidad = null,
+                evidenciaSilencioAdministrativo = "Sin respuesta dentro del plazo",
+                fundamentos = "Fundamentos",
+                observacion = null
+            )
+        )
+
+        assertTrue(payload.contains("\"tipoDenegatoria\":\"TACITA\""))
+        assertTrue(payload.contains("\"evidenciaSilencioAdministrativo\":\"Sin respuesta dentro del plazo\""))
+    }
+
+    @Test
+    fun `request apelacion ante entidad serializa cargo y solicitud local`() {
+        val payload = json.encodeToString(
+            CrearApelacionAnteEntidadRestRequest(
+                solicitudId = 42,
+                ciudadanoId = 20,
+                fundamentos = "Fundamentos",
+                fechaPresentacionAnteEntidad = "2026-06-02",
+                referenciaCargoPresentacion = "CARGO-ENT-001",
+                observacion = null
+            )
+        )
+
+        assertTrue(payload.contains("\"solicitudId\":42"))
+        assertTrue(payload.contains("\"referenciaCargoPresentacion\":\"CARGO-ENT-001\""))
     }
 
     private fun solicitudCache() = Solicitud(

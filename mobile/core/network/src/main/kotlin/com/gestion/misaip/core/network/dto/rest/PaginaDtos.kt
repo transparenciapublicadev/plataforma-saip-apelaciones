@@ -2,6 +2,7 @@ package com.gestion.misaip.core.network.dto.rest
 
 import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.domain.model.Apelante
+import com.gestion.misaip.core.domain.model.DatosApelacionExterna
 import com.gestion.misaip.core.domain.model.CanalNotificacion
 import com.gestion.misaip.core.domain.model.EstadoApelacion
 import com.gestion.misaip.core.domain.model.EstadoSolicitud
@@ -10,6 +11,8 @@ import com.gestion.misaip.core.domain.model.Prioridad
 import com.gestion.misaip.core.domain.model.Solicitante
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.TipoSolicitud
+import com.gestion.misaip.core.domain.model.TipoDenegatoria
+import com.gestion.misaip.core.domain.model.TipoOrigenApelacion
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -122,7 +125,8 @@ data class ApelacionResumenRestDto(
         val base = cached ?: Apelacion(
             id = id?.toString().orEmpty(),
             expediente = expediente.orEmpty(),
-            expedienteSAIP = solicitudExpediente ?: numeroSolicitudExterna.orEmpty(),
+            expedienteSAIP = solicitudExpediente.orEmpty(),
+            solicitudId = solicitudId?.toString(),
             usuarioId = ciudadanoId?.toString().orEmpty(),
             apelante = Apelante(
                 nombre = ciudadanoNombre.orEmpty(),
@@ -136,13 +140,24 @@ data class ApelacionResumenRestDto(
             exposicionHechos = "",
             pretension = "",
             fechaPresentacion = parseSummaryDate(fechaApelacion),
-            estado = EstadoApelacion.fromString(estado ?: "EN_CALIFICACION_1")
+            estado = EstadoApelacion.fromString(estado ?: "EN_CALIFICACION_1"),
+            tipoOrigen = TipoOrigenApelacion.fromString(tipoOrigen),
+            datosExternos = numeroSolicitudExterna?.let {
+                DatosApelacionExterna(
+                    numeroSolicitudExterna = it,
+                    fechaPresentacionSolicitudExterna = "",
+                    tipoDenegatoria = TipoDenegatoria.TACITA,
+                    resumenSolicitudOriginal = "",
+                    referenciaDocumentoSolicitud = ""
+                )
+            }
         )
 
         return base.copy(
             id = id?.toString() ?: base.id,
             expediente = expediente ?: base.expediente,
-            expedienteSAIP = solicitudExpediente ?: numeroSolicitudExterna ?: base.expedienteSAIP,
+            expedienteSAIP = solicitudExpediente ?: base.expedienteSAIP,
+            solicitudId = solicitudId?.toString() ?: base.solicitudId,
             usuarioId = ciudadanoId?.toString() ?: base.usuarioId,
             apelante = base.apelante.copy(
                 nombre = ciudadanoNombre ?: base.apelante.nombre
@@ -150,7 +165,17 @@ data class ApelacionResumenRestDto(
             entidad = entidadNombre ?: base.entidad,
             entidadId = entidadId?.toString() ?: base.entidadId,
             fechaPresentacion = fechaApelacion?.let(::parseSummaryDate) ?: base.fechaPresentacion,
-            estado = EstadoApelacion.fromString(estado ?: base.estado.name)
+            estado = EstadoApelacion.fromString(estado ?: base.estado.name),
+            tipoOrigen = TipoOrigenApelacion.fromString(tipoOrigen ?: base.tipoOrigen.name),
+            datosExternos = numeroSolicitudExterna?.let {
+                (base.datosExternos ?: DatosApelacionExterna(
+                    numeroSolicitudExterna = it,
+                    fechaPresentacionSolicitudExterna = "",
+                    tipoDenegatoria = TipoDenegatoria.TACITA,
+                    resumenSolicitudOriginal = "",
+                    referenciaDocumentoSolicitud = ""
+                )).copy(numeroSolicitudExterna = it)
+            } ?: base.datosExternos
         )
     }
 }
