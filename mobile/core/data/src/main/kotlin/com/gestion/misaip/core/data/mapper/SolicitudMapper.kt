@@ -39,6 +39,8 @@ object SolicitudMapper {
             ),
             asunto = entity.asunto,
             descripcion = entity.descripcion,
+            consentimientoDatosPersonales = entity.consentimientoDatosPersonales,
+            canalNotificacion = CanalNotificacion.fromStringOrNull(entity.canalNotificacion),
             fechaCreacion = entity.fechaCreacion,
             fechaLimite = entity.fechaLimite,
             estado = EstadoSolicitud.fromString(entity.estado),
@@ -76,6 +78,8 @@ object SolicitudMapper {
             solicitanteDireccion = domain.solicitante.direccion,
             asunto = domain.asunto,
             descripcion = domain.descripcion,
+            consentimientoDatosPersonales = domain.consentimientoDatosPersonales,
+            canalNotificacion = domain.canalNotificacion?.name,
             fechaCreacion = domain.fechaCreacion,
             fechaLimite = domain.fechaLimite,
             estado = domain.estado.toDisplayString(),
@@ -141,4 +145,3 @@ data class TimelineDto(
         detalle = detalle
     )
 }
-

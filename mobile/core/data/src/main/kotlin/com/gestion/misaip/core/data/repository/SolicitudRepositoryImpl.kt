@@ -11,6 +11,7 @@ import com.gestion.misaip.core.domain.model.*
 import com.gestion.misaip.core.domain.repository.SolicitudEstadisticas
 import com.gestion.misaip.core.domain.repository.SolicitudRepository
 import com.gestion.misaip.core.network.datasource.SolicitudRemoteDataSource
+import com.gestion.misaip.core.network.datasource.ApiProblemException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +22,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.Date
 import java.util.UUID
+import java.io.IOException
 
 /**
  * Implementación del Repositorio de Solicitudes SAIP.
@@ -150,37 +152,7 @@ class SolicitudRepositoryImpl(
         )
 
         // Guardar en BD local
-        val entity = SolicitudMapper.toEntity(solicitudCompleta, pendienteSubida = true)
-        queries.insertSolicitud(
-            id = entity.id,
-            expediente = entity.expediente,
-            tipo = entity.tipo,
-            entidad = entity.entidad,
-            entidadId = entity.entidadId,
-            usuarioId = entity.usuarioId,
-            solicitanteNombre = entity.solicitanteNombre,
-            solicitanteDni = entity.solicitanteDni,
-            solicitanteEmail = entity.solicitanteEmail,
-            solicitanteTelefono = entity.solicitanteTelefono,
-            solicitanteDireccion = entity.solicitanteDireccion,
-            asunto = entity.asunto,
-            descripcion = entity.descripcion,
-            fechaCreacion = entity.fechaCreacion,
-            fechaLimite = entity.fechaLimite,
-            estado = entity.estado,
-            diasRestantes = entity.diasRestantes,
-            prioridad = entity.prioridad,
-            silencioAdministrativo = entity.silencioAdministrativo,
-            respuestaFecha = entity.respuestaFecha,
-            respuestaFuncionario = entity.respuestaFuncionario,
-            respuestaTipo = entity.respuestaTipo,
-            respuestaFundamentacion = entity.respuestaFundamentacion,
-            respuestaArchivos = entity.respuestaArchivos,
-            timeline = entity.timeline,
-            sincronizado = false,
-            pendienteSubida = true,
-            ultimaModificacion = System.currentTimeMillis()
-        )
+        guardarSolicitudLocal(solicitudCompleta, sincronizado = false, pendienteSubida = true)
 
         // Registrar en log de sincronización
         contadorQueries.insertSyncLog(
@@ -190,14 +162,25 @@ class SolicitudRepositoryImpl(
             timestamp = System.currentTimeMillis()
         )
 
-        // Intentar sincronizar inmediatamente (fire and forget)
+        // Intentar sincronizar inmediatamente. Los rechazos HTTP no son fallos offline:
+        // se propagan para que la UI muestre Problem Details y no confirme una SAIP inválida.
         try {
-            remoteDataSource.crearSolicitud(solicitudCompleta)
-            queries.marcarSolicitudSincronizada(id)
-            android.util.Log.d("MiSAIP", "Solicitud $expediente sincronizada con backend REST")
+            val solicitudRemota = remoteDataSource.crearSolicitud(solicitudCompleta)
+                .completarDatosLocalesDesde(solicitudCompleta)
+            queries.transaction {
+                queries.deleteSolicitudById(id)
+                guardarSolicitudLocal(solicitudRemota, sincronizado = true, pendienteSubida = false)
+            }
+            android.util.Log.d("MiSAIP", "Solicitud sincronizada con backend REST")
+            return@withContext solicitudRemota
+        } catch (e: IOException) {
+            android.util.Log.w("MiSAIP", "Backend no disponible; SAIP pendiente de sincronización")
+        } catch (e: ApiProblemException) {
+            queries.deleteSolicitudById(id)
+            throw e
         } catch (e: Exception) {
-            android.util.Log.e("MiSAIP", "Error sincronizando solicitud $expediente con backend REST: ${e.message}", e)
-            // Se sincronizará después con WorkManager
+            queries.deleteSolicitudById(id)
+            throw e
         }
 
         solicitudCompleta
@@ -207,37 +190,7 @@ class SolicitudRepositoryImpl(
      * Actualiza una solicitud existente.
      */
     override suspend fun actualizarSolicitud(solicitud: Solicitud) = withContext(Dispatchers.IO) {
-        val entity = SolicitudMapper.toEntity(solicitud, pendienteSubida = true)
-        queries.insertSolicitud(
-            id = entity.id,
-            expediente = entity.expediente,
-            tipo = entity.tipo,
-            entidad = entity.entidad,
-            entidadId = entity.entidadId,
-            usuarioId = entity.usuarioId,
-            solicitanteNombre = entity.solicitanteNombre,
-            solicitanteDni = entity.solicitanteDni,
-            solicitanteEmail = entity.solicitanteEmail,
-            solicitanteTelefono = entity.solicitanteTelefono,
-            solicitanteDireccion = entity.solicitanteDireccion,
-            asunto = entity.asunto,
-            descripcion = entity.descripcion,
-            fechaCreacion = entity.fechaCreacion,
-            fechaLimite = entity.fechaLimite,
-            estado = entity.estado,
-            diasRestantes = entity.diasRestantes,
-            prioridad = entity.prioridad,
-            silencioAdministrativo = entity.silencioAdministrativo,
-            respuestaFecha = entity.respuestaFecha,
-            respuestaFuncionario = entity.respuestaFuncionario,
-            respuestaTipo = entity.respuestaTipo,
-            respuestaFundamentacion = entity.respuestaFundamentacion,
-            respuestaArchivos = entity.respuestaArchivos,
-            timeline = entity.timeline,
-            sincronizado = false,
-            pendienteSubida = true,
-            ultimaModificacion = System.currentTimeMillis()
-        )
+        guardarSolicitudLocal(solicitud, sincronizado = false, pendienteSubida = true)
         Unit
     }
 
@@ -315,10 +268,19 @@ class SolicitudRepositoryImpl(
             try {
                 val subido = withTimeoutOrNull(5_000L) {
                     val solicitud = SolicitudMapper.toDomain(entity)
-                    remoteDataSource.actualizarSolicitud(solicitud)
+                    if (entity.id.toLongOrNull() == null) {
+                        val solicitudRemota = remoteDataSource.crearSolicitud(solicitud)
+                            .completarDatosLocalesDesde(solicitud)
+                        queries.transaction {
+                            queries.deleteSolicitudById(entity.id)
+                            guardarSolicitudLocal(solicitudRemota, sincronizado = true, pendienteSubida = false)
+                        }
+                    } else {
+                        remoteDataSource.actualizarSolicitud(solicitud)
+                    }
                     true
                 }
-                if (subido == true) {
+                if (subido == true && entity.id.toLongOrNull() != null) {
                     queries.marcarSolicitudSincronizada(entity.id)
                 }
             } catch (e: Exception) {
@@ -339,37 +301,7 @@ class SolicitudRepositoryImpl(
             if (remotas != null) {
                 android.util.Log.d("MiSAIP", "Solicitudes remotas obtenidas: ${remotas.size}")
                 for (solicitud in remotas) {
-                    val entity = SolicitudMapper.toEntity(solicitud, pendienteSubida = false)
-                    queries.insertSolicitud(
-                        id = entity.id,
-                        expediente = entity.expediente,
-                        tipo = entity.tipo,
-                        entidad = entity.entidad,
-                        entidadId = entity.entidadId,
-                        usuarioId = entity.usuarioId,
-                        solicitanteNombre = entity.solicitanteNombre,
-                        solicitanteDni = entity.solicitanteDni,
-                        solicitanteEmail = entity.solicitanteEmail,
-                        solicitanteTelefono = entity.solicitanteTelefono,
-                        solicitanteDireccion = entity.solicitanteDireccion,
-                        asunto = entity.asunto,
-                        descripcion = entity.descripcion,
-                        fechaCreacion = entity.fechaCreacion,
-                        fechaLimite = entity.fechaLimite,
-                        estado = entity.estado,
-                        diasRestantes = entity.diasRestantes,
-                        prioridad = entity.prioridad,
-                        silencioAdministrativo = entity.silencioAdministrativo,
-                        respuestaFecha = entity.respuestaFecha,
-                        respuestaFuncionario = entity.respuestaFuncionario,
-                        respuestaTipo = entity.respuestaTipo,
-                        respuestaFundamentacion = entity.respuestaFundamentacion,
-                        respuestaArchivos = entity.respuestaArchivos,
-                        timeline = entity.timeline,
-                        sincronizado = true,
-                        pendienteSubida = false,
-                        ultimaModificacion = System.currentTimeMillis()
-                    )
+                    guardarSolicitudLocal(solicitud, sincronizado = true, pendienteSubida = false)
                 }
             } else {
                 android.util.Log.w("MiSAIP", "Timeout sincronizando solicitudes (pull) — sin conexión o servidor lento")
@@ -391,6 +323,59 @@ class SolicitudRepositoryImpl(
             android.util.Log.e("MiSAIP", "Error actualizando contador SAIP: ${e.message}", e)
         }
         Unit
+    }
+
+    private fun guardarSolicitudLocal(
+        solicitud: Solicitud,
+        sincronizado: Boolean,
+        pendienteSubida: Boolean
+    ) {
+        val entity = SolicitudMapper.toEntity(solicitud, pendienteSubida)
+        queries.insertSolicitud(
+            id = entity.id,
+            expediente = entity.expediente,
+            tipo = entity.tipo,
+            entidad = entity.entidad,
+            entidadId = entity.entidadId,
+            usuarioId = entity.usuarioId,
+            solicitanteNombre = entity.solicitanteNombre,
+            solicitanteDni = entity.solicitanteDni,
+            solicitanteEmail = entity.solicitanteEmail,
+            solicitanteTelefono = entity.solicitanteTelefono,
+            solicitanteDireccion = entity.solicitanteDireccion,
+            asunto = entity.asunto,
+            descripcion = entity.descripcion,
+            consentimientoDatosPersonales = entity.consentimientoDatosPersonales,
+            canalNotificacion = entity.canalNotificacion,
+            fechaCreacion = entity.fechaCreacion,
+            fechaLimite = entity.fechaLimite,
+            estado = entity.estado,
+            diasRestantes = entity.diasRestantes,
+            prioridad = entity.prioridad,
+            silencioAdministrativo = entity.silencioAdministrativo,
+            respuestaFecha = entity.respuestaFecha,
+            respuestaFuncionario = entity.respuestaFuncionario,
+            respuestaTipo = entity.respuestaTipo,
+            respuestaFundamentacion = entity.respuestaFundamentacion,
+            respuestaArchivos = entity.respuestaArchivos,
+            timeline = entity.timeline,
+            sincronizado = sincronizado,
+            pendienteSubida = pendienteSubida,
+            ultimaModificacion = System.currentTimeMillis()
+        )
+    }
+
+    private fun Solicitud.completarDatosLocalesDesde(local: Solicitud): Solicitud {
+        return copy(
+            solicitante = solicitante.copy(
+                email = solicitante.email.ifBlank { local.solicitante.email },
+                telefono = solicitante.telefono.ifBlank { local.solicitante.telefono },
+                direccion = solicitante.direccion.ifBlank { local.solicitante.direccion }
+            ),
+            consentimientoDatosPersonales = consentimientoDatosPersonales || local.consentimientoDatosPersonales,
+            canalNotificacion = canalNotificacion ?: local.canalNotificacion,
+            timeline = timeline.ifEmpty { local.timeline }
+        )
     }
 
     /**
