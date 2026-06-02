@@ -18,6 +18,8 @@ import com.gestion.misaip.core.domain.repository.SolicitudRepository
 import com.gestion.misaip.core.domain.repository.UsuarioRepository
 import com.gestion.misaip.core.network.di.restNetworkModule
 import com.gestion.misaip.messaging.NotificationPushHelper
+import com.gestion.misaip.messaging.FCMHelper
+import com.gestion.misaip.messaging.PushTokenSyncCoordinator
 import com.gestion.misaip.presentation.di.presentationModule
 import com.gestion.misaip.sync.SyncWorkerFactory
 import org.koin.android.ext.android.get
@@ -58,6 +60,7 @@ class MiSaipApplication : Application(), Configuration.Provider {
 
         // Inicializar helper de notificaciones push
         NotificationPushHelper.init(this)
+        FCMHelper.init(get<PushTokenSyncCoordinator>())
 
         Timber.d("MiSAIP Application initialized")
     }

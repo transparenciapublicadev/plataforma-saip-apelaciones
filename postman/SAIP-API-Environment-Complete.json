@@ -824,6 +824,24 @@
       "value": "",
       "type": "text",
       "enabled": true
+    },
+    {
+      "key": "pushTokenFake",
+      "value": "fake-fcm-token-newman-diagnostic-0000000000000001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "pushDeviceIdHash",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "pushDispositivoId",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"

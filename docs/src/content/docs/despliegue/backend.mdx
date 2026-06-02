@@ -38,6 +38,9 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 | `SPRING_MAIL_SMTP_AUTH` | Habilitar autenticación SMTP (`true`, `false`). | No (Default `prod`: `true`) |
 | `SPRING_MAIL_SMTP_STARTTLS` | Habilitar TLS para SMTP. | No (Default `prod`: `true`) |
 | `SPRING_MAIL_SMTP_STARTTLS_REQUIRED` | Exigir TLS para SMTP. | No (Default `prod`: `true`) |
+| `APP_NOTIFICATIONS_PUSH_ENABLED` | Habilita la preparación del adapter FCM. Mantener `false` hasta integrar Firebase Admin. | No (Default: `false`) |
+| `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account de Firebase. Nunca versionar el JSON. | Solo al habilitar FCM real |
+| `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Clave AES externa en Base64 para cifrar tokens FCM recuperables por el futuro emisor. | Solo al habilitar FCM real |
 | `SPRINGDOC_API_DOCS_ENABLED` | Exponer OpenAPI en producción solo si existe una decisión operativa. | No (Default `prod`: `false`) |
 | `SPRINGDOC_SWAGGER_UI_ENABLED` | Exponer Swagger UI en producción solo si existe una decisión operativa. | No (Default `prod`: `false`) |
 
@@ -46,7 +49,7 @@ NUNCA hardcodear credenciales. En producción, usar variables de entorno del hos
 :::
 
 :::caution[Motor de notificaciones]
-`MOCK` es exclusivo para desarrollo local y Newman y el perfil `prod` lo rechaza al iniciar. `SMTP` habilita correo real configurable mediante variables de entorno; si faltan host, remitente o credenciales requeridas, el arranque productivo falla con un mensaje claro. `CASILLA_ELECTRONICA` dispone de un adapter preparado que responde `NO_DISPONIBLE` hasta contar con contrato API oficial; no existe fallback automático entre canales.
+`MOCK` es exclusivo para desarrollo local y Newman y el perfil `prod` lo rechaza al iniciar. `SMTP` habilita correo real configurable mediante variables de entorno; si faltan host, remitente o credenciales requeridas, el arranque productivo falla con un mensaje claro. `CASILLA_ELECTRONICA` dispone de un adapter preparado que responde `NO_DISPONIBLE` hasta contar con contrato API oficial. Los endpoints push registran tokens FCM de manera autenticada usando hash y cifrado opcional externo; el adapter de envío FCM no simula éxito y sigue pendiente de Firebase Admin. No existe fallback automático entre canales.
 :::
 
 ## Build de Producción
@@ -115,7 +118,12 @@ curl -H "Authorization: Bearer $JWT" \
   http://localhost:8080/api/notificaciones/motor/estado
 ```
 
-El endpoint de estado expone únicamente modo, capacidades y si SMTP está configurado. Nunca retorna hosts, usuarios, passwords, tokens o secretos.
+Los endpoints de estado exponen únicamente modo y capacidades. Nunca retornan hosts, usuarios, passwords, tokens o secretos:
+
+```bash
+curl -H "Authorization: Bearer $JWT" \
+  http://localhost:8080/api/notificaciones/push/estado
+```
 
 ## Checklist Pre-Producción
 
@@ -127,4 +135,5 @@ El endpoint de estado expone únicamente modo, capacidades y si SMTP está confi
 - Mantener la consola H2 deshabilitada y sin exposición pública.
 - Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
 - Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
+- Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin y cargar service account y clave AES desde un gestor de secretos.
 - Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.

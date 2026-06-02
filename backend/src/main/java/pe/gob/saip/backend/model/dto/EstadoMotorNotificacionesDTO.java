@@ -9,6 +9,9 @@ public record EstadoMotorNotificacionesDTO(
         boolean smtpConfigurable,
         boolean smtpHostConfigurado,
         String casillaElectronicaEstado,
+        boolean fcmConfigurable,
+        String fcmEstado,
+        boolean cifradoTokenPushConfigurado,
         String nota
 ) {
 }

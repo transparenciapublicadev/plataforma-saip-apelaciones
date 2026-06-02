@@ -128,6 +128,8 @@ Las bandejas principales ya consumen endpoints paginados y DTOs livianos: ciudad
 App Ciudadano también registra apelaciones externas sin crear SAIP ficticias y puede presentar una apelación local ante la entidad. App Funcionario consulta y remite las elevaciones pendientes; el ciudadano puede comunicar una omisión con referencia verificable. Estas mutaciones requieren conexión.
 
 App TTAIP consulta el expediente agregado completo: sala, miembros, resoluciones, cédulas, notificaciones, intentos persistidos, descargos, suspensiones, reprocesos, cumplimiento e historial. También ejecuta las actuaciones institucionales permitidas, incluida la admisión excepcional ante omisión comunicada y las decisiones finales recientes. Estas acciones son `online-only`: la app no simula actos legales en SQLDelight.
+
+Mobile registra, renueva y revoca el token FCM mediante endpoints backend autenticados. El token no se registra en logs ni Firestore; backend conserva hash y cifrado opcional externo. El adapter de envío FCM todavía no entrega mensajes reales: espera integración Firebase Admin con secretos fuera del repositorio.
 :::
 
 ## Subsecciones

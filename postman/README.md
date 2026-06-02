@@ -56,8 +56,11 @@ The full diagnostic run validates the shared SAIP/TTAIP notification engine in l
 - SAIP delivery using the formal notification channel selected at runtime.
 - TTAIP delivery and persisted attempt history using notification IDs captured during the run.
 - Controlled TTAIP `MOCK` failure with sanitized diagnostics preserved for reproceso.
+- FCM adapter safe status plus authenticated registration, idempotent refresh, ownership rejection and revocation using only a fictitious token.
 
 `MOCK` is intended for local/Newman validation. `SMTP` is configured through backend environment variables for real email delivery. `CASILLA_ELECTRONICA` remains an explicit `NO_DISPONIBLE` adapter until an official API contract exists; automatic channel fallback is not implemented.
+
+FCM device registration is validated without Firebase credentials. Newman uses a fictitious token and a deterministic test device hash; the adapter remains disabled locally and never simulates Firebase delivery.
 
 Start the local backend explicitly in controlled mode before running Newman:
 

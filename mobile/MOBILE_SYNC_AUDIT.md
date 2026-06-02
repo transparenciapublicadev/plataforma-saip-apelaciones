@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #32 y registra el alcance completado de Mobile PR 6. La sincronización sigue siendo incremental: el agregado TTAIP ya está disponible, pero FCM todavía requiere contrato backend dedicado.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #33 y registra el alcance completado de Mobile PR 7. La sincronización sigue siendo incremental: el alta, renovación y revocación FCM ya usan backend autenticado; el envío real queda pendiente de Firebase Admin.
 
 ## Stack y módulos reales
 
@@ -71,7 +71,7 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 | Paginación | Bandejas usaban listados legacy y cargas amplias | Alta | Cubierto en Mobile PR 3: DTO genérico de página, resúmenes livianos, carga incremental y fallback SQLDelight por página. |
 | Apelaciones | No soportaba `EXTERNA` ni flujo `ante-entidad` / elevación | Media | Cubierto en Mobile PR 5: creación externa, presentación ante entidad, bandeja de elevaciones, remisión online y comunicación ciudadana de omisión. |
 | TTAIP | No reflejaba todo el expediente agregado ni flujos posteriores recientes | Media | Cubierto en Mobile PR 6: consulta agregada y operaciones institucionales online-only. |
-| Push | Registro/revocación FCM en backend es un stub mobile y no existe endpoint autenticado dedicado | Alta | Diseñar contrato backend antes de conectar. No escribir tokens en Firestore. |
+| Push | Registro/revocación FCM en backend era un stub mobile y no existía endpoint autenticado dedicado | Alta | Cubierto en Mobile PR 7: endpoints autenticados, hash persistido, cifrado opcional externo, refresh y revocación sin Firestore. El envío Firebase Admin sigue pendiente. |
 | Avisos | Parte de los avisos se genera localmente desde cache, no desde el motor común backend | Media | Mantener como ayuda visual transitoria y migrar a API cuando exista contrato mobile. |
 | Offline | SQLDelight exigía SAIP local para apelación y guarda hash local para login offline | Media | Vínculo SAIP local corregido con migración compatible en Mobile PR 5. El threat model del login offline sigue pendiente. |
 | Firebase histórico | `firebase-setup/` conserva scripts antiguos Auth/Firestore | Media | Mantener fuera del runtime y considerar archivado o eliminación en PR dedicado. |
@@ -149,10 +149,20 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 - La calificación y la subsanación heredadas dejaron de simular mutaciones SQLDelight: ahora llaman al backend y actualizan caché solo tras respuesta válida. Segunda calificación usa `ADMITIDO` o `IMPROCEDENTE`; la resolución final ocurre después.
 - SQLDelight conserva resúmenes de apelación para bandejas. No persiste el agregado completo ni encola actos legales offline.
 
+## Mobile PR 7: contrato backend para FCM
+
+- Backend expone alta/refresh, listado propio, revocación individual, revocación del dispositivo actual y estado seguro bajo `/api/notificaciones/push`.
+- Cada token se asocia al usuario JWT, rol, flavor, plataforma Android, fingerprint del dispositivo, versión, build y estado. El response nunca devuelve el token FCM completo.
+- Backend persiste siempre SHA-256 del token y solo persiste token cifrado recuperable si operaciones configura `FCM_TOKEN_ENCRYPTION_KEY_BASE64`.
+- App Android registra después de login, splash con sesión vigente y renovación `onNewToken`; durante logout intenta revocar antes de limpiar el JWT.
+- Fallos de conectividad push no bloquean login ni logout y no simulan éxito local. La próxima sesión o renovación vuelve a intentar el alta.
+- El motor común reconoce `PUSH_FCM`, pero el adapter no finge entrega real: reporta `DESHABILITADO`, `NO_CONFIGURADO` o `ADAPTER_PREPARADO_PENDIENTE_FIREBASE_ADMIN`.
+- Newman valida estado seguro, alta ficticia, refresh idempotente, ownership de flavor y revocación sin usar credenciales Firebase reales.
+
 ## Riesgos que requieren PR dedicado
 
 1. Perfil, avisos locales y algunos flujos auxiliares conservan métodos legacy compatibles; deben migrarse cuando reciban un contrato paginado específico.
-2. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
+2. El adapter FCM backend aún no envía mensajes reales: requiere integración Firebase Admin, service account externo y clave AES gestionada fuera del repo.
 3. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
 4. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación; Mobile PR 4 incorpora estas actuaciones en el detalle de App Funcionario.
 
@@ -177,4 +187,4 @@ cd mobile
 | Mobile PR 4 | Cubierto: funcionario registra online observación, ampliación con cronograma inicial, encauzamiento total/parcial y liquidación/cupón; consulta su trazabilidad desde el detalle SAIP. |
 | Mobile PR 5 | Cubierto: apelación externa, presentación y elevación por entidad, comunicación ciudadana de omisión y migración SQLDelight compatible. |
 | Mobile PR 6 | Cubierto: expediente agregado TTAIP, admisión excepcional, descargos, suspensiones, constancias, intentos, acuses, reprocesos, cumplimiento, historial y decisiones finales. |
-| Mobile PR 7 | Contrato backend para alta/revocación FCM y consumo del motor común de notificaciones. |
+| Mobile PR 7 | Cubierto: contrato autenticado de alta/revocación FCM, refresh mobile, estado seguro y adapter preparado en motor común. |

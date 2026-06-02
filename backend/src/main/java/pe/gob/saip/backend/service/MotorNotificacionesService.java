@@ -19,6 +19,7 @@ import pe.gob.saip.backend.repository.IntentoNotificacionRepository;
 import pe.gob.saip.backend.repository.NotificacionTtaipRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.service.notification.CasillaElectronicaProveedorNotificacion;
+import pe.gob.saip.backend.service.notification.FcmPushProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.MockProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.NotificacionProveedorRequest;
 import pe.gob.saip.backend.service.notification.NotificacionProveedorResultado;
@@ -38,6 +39,7 @@ public class MotorNotificacionesService {
     private final MockProveedorNotificacion mockProveedor;
     private final SmtpCorreoProveedorNotificacion smtpProveedor;
     private final CasillaElectronicaProveedorNotificacion casillaProveedor;
+    private final FcmPushProveedorNotificacion fcmProveedor;
     private final String modo;
     private final String smtpHost;
     private final String smtpRemitente;
@@ -53,6 +55,7 @@ public class MotorNotificacionesService {
             MockProveedorNotificacion mockProveedor,
             SmtpCorreoProveedorNotificacion smtpProveedor,
             CasillaElectronicaProveedorNotificacion casillaProveedor,
+            FcmPushProveedorNotificacion fcmProveedor,
             @Value("${app.notifications.mode:MOCK}") String modo,
             @Value("${spring.mail.host:}") String smtpHost,
             @Value("${app.notifications.mail.from:}") String smtpRemitente,
@@ -66,6 +69,7 @@ public class MotorNotificacionesService {
         this.mockProveedor = mockProveedor;
         this.smtpProveedor = smtpProveedor;
         this.casillaProveedor = casillaProveedor;
+        this.fcmProveedor = fcmProveedor;
         this.modo = normalizar(modo, MODO_MOCK);
         this.smtpHost = smtpHost;
         this.smtpRemitente = smtpRemitente;
@@ -153,6 +157,9 @@ public class MotorNotificacionesService {
                 true,
                 smtpConfigurado(),
                 "PENDIENTE_CONTRATO_API_OFICIAL",
+                true,
+                fcmProveedor.estadoSeguro(),
+                fcmProveedor.cifradoTokenConfigurado(),
                 "La respuesta no expone credenciales ni valores sensibles de configuración.");
     }
 
@@ -193,6 +200,9 @@ public class MotorNotificacionesService {
                 && canal == IntentoNotificacion.CanalEnvio.CORREO_ELECTRONICO
                 && smtpConfigurado()) {
             return smtpProveedor;
+        }
+        if (canal == IntentoNotificacion.CanalEnvio.PUSH_FCM) {
+            return fcmProveedor;
         }
         if (canal == IntentoNotificacion.CanalEnvio.CASILLA_ELECTRONICA) {
             return casillaProveedor;

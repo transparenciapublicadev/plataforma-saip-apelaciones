@@ -146,7 +146,7 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-La colección valida que `/api/notificaciones/motor/estado` responda `modo = MOCK`. Newman no usa SMTP real, no requiere secretos SMTP y no debe persistir JWT reales en el environment versionado.
+La colección valida que `/api/notificaciones/motor/estado` responda `modo = MOCK`. También valida estado seguro, registro, refresh idempotente y revocación FCM con un token ficticio. Newman no usa SMTP o Firebase reales, no requiere secretos y no debe persistir JWT reales en el environment versionado.
 
 ## Ejecución reproducible
 
