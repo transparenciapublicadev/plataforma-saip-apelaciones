@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #27. La primera pasada aplica únicamente correcciones técnicas pequeñas y seguras. No incorpora pantallas nuevas ni completa de golpe los flujos SAIP/TTAIP.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #28 y registra el alcance completado de Mobile PR 2. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
 
 ## Stack y módulos reales
 
@@ -30,7 +30,7 @@ Módulos Gradle:
 
 | Rol | Funcionalidad mobile existente | Estado frente al backend actual |
 | --- | --- | --- |
-| Ciudadano | Registro, login, dashboard, formulario SAIP, seguimiento, apelación interna, perfil y avisos locales | Parcial. El formulario SAIP todavía no captura consentimiento ni canal formal de notificación. Falta apelación externa y sincronizar subflujos SAIP recientes. |
+| Ciudadano | Registro, login, dashboard, creación SAIP con consentimiento y canal formal, seguimiento básico, apelación interna, perfil y avisos locales | Parcial. La creación SAIP básica ya está alineada al contrato. Falta apelación externa y sincronizar subflujos SAIP recientes. |
 | Funcionario | Login interno, bandeja de entidad, detalle y respuesta SAIP | Parcial. Falta exponer en mobile observación/subsanación, ampliación, encauzamiento, liquidación y notificaciones del motor común. |
 | TTAIP | Login restringido, bandeja, calificación básica, subsanación, segunda calificación y resoluciones principales | Parcial. Falta sincronizar expediente agregado, elevación, descargos, suspensiones, constancias, acuses, reprocesos, cumplimiento y decisiones finales recientes. |
 | Admin | Existe código histórico de dashboard, pero `AppRolePolicy` bloquea acceso | Correcto: administración queda en frontend web. |
@@ -66,7 +66,7 @@ La migración requiere DTOs de página, cursores de UI y estrategia de cache. No
 | Contrato | `mobile/openapi.json` no existía aunque el script de sincronización lo esperaba | Alta | Cubierto en esta pasada con snapshot idéntico a `frontend/openapi.json`. |
 | Auth/JWT | El interceptor excluía todas las rutas `/api/auth/**`, incluyendo perfil autenticado | Alta | Cubierto: excluir solo rutas públicas. |
 | RFC 9457 | Login intentaba leer únicamente el campo legacy `mensaje` | Alta | Cubierto: priorizar `detail`, luego `mensaje` y `title`. |
-| SAIP ciudadano | Creación no envía `consentimientoDatosPersonales` ni `canalNotificacion` | Alta | Próximo PR ciudadano: agregar DTO, dominio y formulario sin valores ficticios. |
+| SAIP ciudadano | Creación no enviaba `consentimientoDatosPersonales` ni `canalNotificacion` | Alta | Cubierto en Mobile PR 2: UI, dominio, request REST, mapper y caché local conservan ambos campos. |
 | SAIP funcionario | No consume observaciones, ampliaciones, encauzamientos ni liquidaciones | Media | Separar por vertical funcional y reutilizar endpoints ya estabilizados. |
 | Paginación | Bandejas usan listados legacy y cargas amplias | Alta | Migrar solicitudes y apelaciones a DTOs livianos paginados. |
 | Apelaciones | No soporta `EXTERNA` ni flujo `ante-entidad` / elevación | Media | Agregar después de estabilizar paginación y SAIP ciudadano. |
@@ -91,13 +91,25 @@ La migración requiere DTOs de página, cursores de UI y estrategia de cache. No
 - Logs FCM y de login sin tokens, payloads ni identificadores personales.
 - Aviso mobile de subsanación TTAIP corregido a 2 días hábiles.
 
+## Mobile PR 2: SAIP ciudadano básico
+
+- El formulario ciudadano exige consentimiento expreso para el tratamiento de datos personales.
+- El ciudadano selecciona un canal formal compatible con backend: `CORREO_ELECTRONICO`, `CASILLA_ELECTRONICA`, `PLATAFORMA` o `FISICA`.
+- El botón permanece bloqueado hasta aceptar el consentimiento y la validación muestra un error claro si falta el canal.
+- El request REST envía `consentimientoDatosPersonales` y `canalNotificacion`.
+- Los rechazos HTTP de creación se muestran con `detail`, `mensaje` o `title` de RFC 9457 Problem Details; no se confunden con modo offline.
+- Si el backend crea la SAIP, el caché reemplaza el registro provisional por el ID y número SAIP oficiales.
+- Si no hay conectividad, SQLDelight conserva la SAIP pendiente y WorkManager reutiliza el endpoint de creación al sincronizar.
+- El detalle ciudadano muestra el número SAIP, estado, fecha de presentación, fecha límite y canal elegido disponible.
+- SQLDelight incorpora una migración verificada para conservar consentimiento y canal en instalaciones existentes.
+
 ## Riesgos que requieren PR dedicado
 
-1. La creación SAIP desde mobile puede ser rechazada por validación backend hasta capturar consentimiento y canal formal.
-2. Los listados legacy siguen operativos, pero no aprovechan paginación ni DTOs livianos.
-3. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
-4. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
-5. La base SQLDelight requiere migración antes de representar apelación externa sin SAIP local.
+1. Los listados legacy siguen operativos, pero no aprovechan paginación ni DTOs livianos.
+2. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
+3. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
+4. La base SQLDelight requiere una migración adicional antes de representar apelación externa sin SAIP local.
+5. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación.
 
 ## Comandos reales de validación
 
@@ -115,7 +127,7 @@ cd mobile
 | PR | Objetivo |
 | --- | --- |
 | Mobile PR 1 | Contrato base, seguridad de red/JWT, OpenAPI snapshot, documentación y build reproducible. |
-| Mobile PR 2 | SAIP ciudadano: consentimiento, canal de notificación, DTOs vigentes y creación end-to-end. |
+| Mobile PR 2 | Cubierto: SAIP ciudadano con consentimiento, canal de notificación, DTOs vigentes, caché migrable y creación end-to-end básica. |
 | Mobile PR 3 | Paginación de solicitudes y apelaciones con DTOs livianos y cache SQLDelight. |
 | Mobile PR 4 | Funcionario: observación, ampliación, encauzamiento y liquidación. |
 | Mobile PR 5 | Apelación externa, elevación por entidad y migración SQLDelight compatible. |
