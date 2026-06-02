@@ -127,7 +127,7 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     }
 
     single<SolicitudRemoteDataSource> {
-        SolicitudRestDataSource(solicitudApi = get(), tokenStorage = get())
+        SolicitudRestDataSource(solicitudApi = get(), tokenStorage = get(), json = get())
     }
 
     single<ApelacionRemoteDataSource> {

@@ -5,8 +5,8 @@ import com.gestion.misaip.core.domain.repository.AuthException
 import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.dto.rest.AuthResponse
 import com.gestion.misaip.core.network.dto.rest.LoginRequest
-import com.gestion.misaip.core.network.dto.rest.ProblemDetailRestDto
 import com.gestion.misaip.core.network.dto.rest.RegistroRequest
+import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import java.io.IOException
@@ -94,14 +94,10 @@ class UsuarioRestDataSource(
      */
     private fun extraerMensajeError(e: HttpException): String? {
         val errorBody = e.response()?.errorBody()?.string() ?: return null
-        return try {
-            json.decodeFromString<ProblemDetailRestDto>(errorBody).mensajeUsuario()
+        return json.extraerMensajeProblemDetails(errorBody) ?: try {
+            json.decodeFromString<AuthResponse>(errorBody).mensaje
         } catch (_: Exception) {
-            try {
-                json.decodeFromString<AuthResponse>(errorBody).mensaje
-            } catch (_: Exception) {
-                null
-            }
+            null
         }
     }
 }

@@ -228,6 +228,9 @@ private fun RequestDetailContent(
                                 DetailRow("Teléfono", uiState.telefonoRecurrente)
                             }
                             DetailRow("Descripción", uiState.solicitud.descripcion)
+                            uiState.solicitud.canalNotificacion?.let { canal ->
+                                DetailRow("Canal de notificación", canal.toDisplayString())
+                            }
                         }
                     }
 
