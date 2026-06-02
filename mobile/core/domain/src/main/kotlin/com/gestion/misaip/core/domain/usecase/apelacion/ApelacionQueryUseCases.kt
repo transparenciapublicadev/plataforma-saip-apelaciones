@@ -22,9 +22,9 @@ class GetApelacionPorSAIPUseCase(
 /**
  * Caso de Uso: Iniciar Calificación de Apelación
  *
- * Un funcionario TTAIP marca una apelación como "En Calificación".
- * El flujo actual ya crea las apelaciones en EN_CALIFICACION_1; se acepta
- * PENDIENTE_ELEVACION solo para registros legados.
+ * El flujo vigente ya crea las apelaciones directas en EN_CALIFICACION_1.
+ * Las apelaciones ante entidad avanzan únicamente mediante elevación formal o
+ * admisión excepcional confirmada por backend.
  */
 class IniciarCalificacionUseCase(
     private val apelacionRepository: ApelacionRepository
@@ -39,22 +39,8 @@ class IniciarCalificacionUseCase(
             return
         }
 
-        if (apelacion.estado != EstadoApelacion.PENDIENTE_ELEVACION) {
-            throw IllegalStateException("Solo se puede iniciar calificación de apelaciones nuevas")
-        }
-
-        val timelineActualizado = apelacion.timeline + TimelineItem(
-            fecha = System.currentTimeMillis(),
-            evento = "Apelación en calificación por el TTAIP",
-            tipo = "calificacion",
-            completado = true
+        throw IllegalStateException(
+            "La apelación debe avanzar mediante elevación formal o admisión excepcional confirmada por el servidor"
         )
-
-        val apelacionActualizada = apelacion.copy(
-            estado = EstadoApelacion.EN_CALIFICACION_1,
-            timeline = timelineActualizado
-        )
-
-        apelacionRepository.actualizarApelacion(apelacionActualizada)
     }
 }

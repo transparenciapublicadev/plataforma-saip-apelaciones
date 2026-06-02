@@ -9,6 +9,8 @@ import com.gestion.misaip.core.network.datasource.ApelacionRemoteDataSource
 import com.gestion.misaip.core.network.datasource.ApelacionRestDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRemoteDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRestDataSource
+import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRemoteDataSource
+import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRestDataSource
 import com.gestion.misaip.core.network.datasource.SolicitudRemoteDataSource
 import com.gestion.misaip.core.network.datasource.SolicitudRestDataSource
 import com.gestion.misaip.core.network.datasource.TokenStorage
@@ -133,6 +135,7 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     single<ApelacionRemoteDataSource> {
         ApelacionRestDataSource(
             apelacionApi = get(),
+            ttaipApi = get(),
             tokenStorage = get(),
             json = get()
         )
@@ -140,5 +143,9 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
 
     single<EntidadPublicaRemoteDataSource> {
         EntidadPublicaRestDataSource(entidadApi = get())
+    }
+
+    single<ExpedienteTtaipRemoteDataSource> {
+        ExpedienteTtaipRestDataSource(apelacionApi = get(), ttaipApi = get(), json = get())
     }
 }

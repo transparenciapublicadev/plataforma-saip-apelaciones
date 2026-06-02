@@ -10,6 +10,7 @@ import com.gestion.misaip.core.network.dto.rest.ElevacionApelacionRestDto
 import com.gestion.misaip.core.network.dto.rest.PaginaRestDto
 import com.gestion.misaip.core.network.dto.rest.ApelacionResumenRestDto
 import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
+import com.gestion.misaip.core.network.dto.rest.AdmitirElevacionExcepcionalRestRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -79,6 +80,12 @@ interface ApelacionApiService {
         @Path("id") id: Long,
         @Body request: ComunicarOmisionElevacionRestRequest
     ): ElevacionApelacionRestDto
+
+    @POST("api/apelaciones/{id}/elevacion/admitir-excepcionalmente")
+    suspend fun admitirExcepcionalmente(
+        @Path("id") id: Long,
+        @Body request: AdmitirElevacionExcepcionalRestRequest
+    ): ApelacionRestDto
 
     @PATCH("api/apelaciones/{id}/estado")
     suspend fun actualizarEstado(

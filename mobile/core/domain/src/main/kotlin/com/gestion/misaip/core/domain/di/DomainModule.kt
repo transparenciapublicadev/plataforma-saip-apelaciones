@@ -73,6 +73,8 @@ val domainModule = module {
     factory { GetPendientesElevacionEntidadUseCase(get()) }
     factory { ElevarApelacionUseCase(get()) }
     factory { ComunicarOmisionElevacionUseCase(get()) }
+    factory { GetExpedienteTtaipUseCase(get()) }
+    factory { GestionarExpedienteTtaipUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - NOTIFICACIONES
