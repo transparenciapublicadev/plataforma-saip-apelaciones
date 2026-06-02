@@ -26,17 +26,17 @@ El módulo `mobile/` es una aplicación Android nativa en Kotlin que se distribu
 
 | Tecnología | Versión | Propósito |
 | --- | --- | --- |
-| Kotlin | 2.3.10 | Lenguaje principal |
+| Kotlin | 2.3.21 | Lenguaje principal |
 | Android Gradle Plugin | 9.2.1 | Build Android |
 | Gradle Wrapper | 9.4.1 | Build reproducible |
-| Jetpack Compose BOM | 2026.02.01 | UI declarativa |
+| Jetpack Compose BOM | 2026.05.01 | UI declarativa |
 | Material 3 | BOM Compose | Design system |
-| Navigation 3 | 1.0.1 | Navegación single-Activity |
-| Koin | 4.1.1 | Inyección de dependencias |
-| SQLDelight | 2.2.1 | Cache local |
+| Navigation 3 | 1.1.2 | Navegación single-Activity |
+| Koin | 4.2.1 | Inyección de dependencias |
+| SQLDelight | 2.3.2 | Cache local |
 | Retrofit | 3.0.0 | Cliente REST |
 | OkHttp | 5.3.2 | Transporte HTTP e interceptores |
-| Firebase BOM | 34.10.0 | Solo FCM push |
+| Firebase BOM | 34.13.0 | Solo FCM push |
 | compileSdk | 36 | SDK de compilación |
 | minSdk | 24 | Android 7.0+ |
 
@@ -109,10 +109,15 @@ cd mobile
 .\gradlew.bat :app:compileTtaipDebugKotlin
 .\gradlew.bat test
 .\gradlew.bat assembleCiudadanoDebug assembleFuncionarioDebug assembleTtaipDebug
+.\gradlew.bat lint
 ```
 
 :::tip[Regla de backend]
 No usar Firebase Auth ni Firestore como backend de datos. La app consume autenticación, consulta de datos y lógica de negocio desde Spring Boot + JWT. FCM solo entrega notificaciones push.
+:::
+
+:::note[Contrato API]
+El snapshot `mobile/openapi.json` se sincroniza desde `/v3/api-docs` mediante `scripts/sync-openapi.ps1`. Retrofit todavía cubre un subconjunto del contrato; la matriz de migración vive en `mobile/MOBILE_SYNC_AUDIT.md`.
 :::
 
 ## Subsecciones

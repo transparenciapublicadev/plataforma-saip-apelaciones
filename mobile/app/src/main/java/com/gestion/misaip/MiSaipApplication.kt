@@ -40,8 +40,10 @@ class MiSaipApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
-        // Capturar excepciones no manejadas para diagnóstico
-        instalarManejadorErrores()
+        // Capturar excepciones detalladas solo en debug para no exponer datos en release.
+        if (BuildConfig.DEBUG) {
+            instalarManejadorErrores()
+        }
 
         // Inicializar Timber para logging (solo en debug)
         if (BuildConfig.DEBUG) {
@@ -103,7 +105,7 @@ class MiSaipApplication : Application(), Configuration.Provider {
                 NotificationChannel(
                     com.gestion.misaip.messaging.NotificationChannels.ALERTAS,
                     getString(R.string.channel_alertas_name),
-                    NotificationManager.IMPORTANCE_MAX
+                    NotificationManager.IMPORTANCE_HIGH
                 ).apply {
                     description = getString(R.string.channel_alertas_desc)
                     enableLights(true)
@@ -139,7 +141,10 @@ class MiSaipApplication : Application(), Configuration.Provider {
             modules(
                 // Core Modules
                 databaseModule,
-                restNetworkModule(BuildConfig.REST_BASE_URL),
+                restNetworkModule(
+                    baseUrl = BuildConfig.REST_BASE_URL,
+                    enableHttpLogging = BuildConfig.DEBUG
+                ),
                 domainModule,
                 dataModule,
 

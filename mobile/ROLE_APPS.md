@@ -15,8 +15,19 @@ La fuente de verdad para autenticacion, datos y reglas de negocio es el backend 
 
 - `core:network` consume REST con Retrofit + OkHttp.
 - `core:data` implementa repositorios contra REST y cache local SQLDelight.
+- `openapi.json` es el snapshot de referencia del contrato actual y se actualiza con `scripts/sync-openapi.ps1`.
 - Firebase Auth y Firestore no deben usarse como backend de datos.
 - Firebase queda limitado a Cloud Messaging para recepcion de push.
+
+## Configuracion local
+
+`REST_BASE_URL` se resuelve desde propiedades Gradle:
+
+- Emulador Android: `http://10.0.2.2:8080/`.
+- Dispositivo con `adb reverse tcp:8080 tcp:8080`: `http://127.0.0.1:8080/`.
+- Dispositivo en red local: URL LAN del backend.
+
+Para sobrescribir el valor versionado, usar `mobile/local.properties`, que no se versiona.
 
 ## Build
 
@@ -45,3 +56,11 @@ las tres apps mobile actuales.
 La app obtiene token FCM, se suscribe a topics por rol y recibe mensajes mediante `MiSaipMessagingService`.
 
 Pendiente del backend: exponer endpoints autenticados para registrar/revocar tokens FCM y enviar notificaciones desde servidor. La app no debe escribir tokens ni colas de notificaciones en Firestore.
+
+## Firebase historico
+
+`firebase-setup/` conserva utilidades antiguas de Firebase Auth y Firestore solo como referencia historica. No ejecutar esos scripts ni usarlos para datos productivos. La aplicacion Android productiva depende unicamente de Firebase Cloud Messaging.
+
+## Auditoria de sincronizacion
+
+La matriz de estado, brechas contra OpenAPI y propuesta de PRs vive en `MOBILE_SYNC_AUDIT.md`.

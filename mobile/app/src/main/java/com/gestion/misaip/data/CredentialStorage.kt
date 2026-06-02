@@ -46,8 +46,11 @@ class CredentialStorage(context: Context) : TokenStorage {
             try {
                 createEncryptedPreferences()
             } catch (secondError: Exception) {
-                Log.e(TAG, "EncryptedSharedPreferences fallo tras limpieza. Usando fallback no encriptado", secondError)
-                appContext.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE)
+                Log.e(TAG, "EncryptedSharedPreferences fallo tras limpieza. Almacenamiento seguro no disponible", secondError)
+                throw IllegalStateException(
+                    "No se pudo inicializar el almacenamiento cifrado de credenciales",
+                    secondError
+                )
             }
         }
     }

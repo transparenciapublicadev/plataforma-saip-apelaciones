@@ -9,7 +9,7 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Android Studio" icon="laptop">
-    Compatible con AGP 9.2.1 y Kotlin 2.3.10.
+    Compatible con AGP 9.2.1 y Kotlin 2.3.21.
   </Card>
   <Card title="JDK 17+" icon="seti:java">
     Requerido por el toolchain Android moderno.
@@ -72,6 +72,16 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
 | `KEY_PASSWORD` | Contraseña de la clave. |
 | `REST_BASE_URL` | URL base del backend Spring Boot. |
 
+Para desarrollo local:
+
+| Entorno | `REST_BASE_URL` |
+| --- | --- |
+| Emulador Android | `http://10.0.2.2:8080/` |
+| Dispositivo con `adb reverse tcp:8080 tcp:8080` | `http://127.0.0.1:8080/` |
+| Dispositivo físico en LAN | URL LAN del backend |
+
+Sobrescribir el valor en `mobile/local.properties`. Ese archivo no se versiona.
+
 :::danger[Secrets]
 No versionar keystores, passwords, tokens, `google-services.json` de producción ni archivos con credenciales.
 :::
@@ -118,6 +128,7 @@ Incluir reglas para librerías que usan reflexión o serialización:
 - Probar consulta de SAIP y apelaciones según rol.
 - Probar recepción de push FCM.
 - Verificar que no existan logs sensibles.
+- Confirmar que `mobile/openapi.json` coincide con el contrato publicado.
 - Confirmar que la app ciudadano es la única destinada a Play Store pública.
 
 ## Especificaciones
@@ -127,6 +138,6 @@ Incluir reglas para librerías que usan reflexión o serialización:
 | `compileSdk` | 36 |
 | `minSdk` | 24 |
 | `targetSdk` | 36 |
-| Kotlin | 2.3.10 |
+| Kotlin | 2.3.21 |
 | AGP | 9.2.1 |
 | Gradle | 9.4.1 |
