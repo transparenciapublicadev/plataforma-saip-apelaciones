@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gestion.misaip.core.domain.model.EntidadPublica
+import com.gestion.misaip.core.domain.model.CanalNotificacion
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.CrearSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.entidad.GetEntidadesActivasUseCase
@@ -24,11 +25,15 @@ data class SAIPFormUiState(
     val entidadNombre: String = "",
     val asunto: String = "",
     val descripcion: String = "",
+    val consentimientoDatosPersonales: Boolean = false,
+    val canalNotificacion: CanalNotificacion? = null,
     val entidades: List<EntidadPublica> = emptyList(),
     val isLoading: Boolean = false,
     val errorAsunto: String? = null,
     val errorDescripcion: String? = null,
-    val errorEntidad: String? = null
+    val errorEntidad: String? = null,
+    val errorConsentimiento: String? = null,
+    val errorCanalNotificacion: String? = null
 )
 
 sealed class SAIPFormEvent {
@@ -106,6 +111,20 @@ class SAIPFormViewModel(
         )
     }
 
+    fun actualizarConsentimiento(aceptado: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            consentimientoDatosPersonales = aceptado,
+            errorConsentimiento = null
+        )
+    }
+
+    fun seleccionarCanalNotificacion(canal: CanalNotificacion) {
+        _uiState.value = _uiState.value.copy(
+            canalNotificacion = canal,
+            errorCanalNotificacion = null
+        )
+    }
+
     fun validarYEnviar() {
         viewModelScope.launch {
             val state = _uiState.value
@@ -133,11 +152,27 @@ class SAIPFormViewModel(
                 hasError = true
             }
 
+            if (!state.consentimientoDatosPersonales) {
+                _uiState.value = _uiState.value.copy(
+                    errorConsentimiento = "Debe aceptar el tratamiento de datos personales"
+                )
+                hasError = true
+            }
+
+            if (state.canalNotificacion == null) {
+                _uiState.value = _uiState.value.copy(
+                    errorCanalNotificacion = "Seleccione un canal formal de notificación"
+                )
+                hasError = true
+            }
+
             if (hasError) {
                 val errores = mutableListOf<String>()
                 if (state.entidadId.isEmpty()) errores.add("entidad")
                 if (state.asunto.isBlank() || state.asunto.length < 10) errores.add("asunto")
                 if (state.descripcion.isBlank() || state.descripcion.length < 20) errores.add("descripción")
+                if (!state.consentimientoDatosPersonales) errores.add("consentimiento")
+                if (state.canalNotificacion == null) errores.add("canal de notificación")
                 _events.emit(SAIPFormEvent.ShowMessage("Complete los campos: ${errores.joinToString(", ")}"))
                 return@launch
             }
@@ -168,7 +203,9 @@ class SAIPFormViewModel(
                             direccion = usuario.direccion ?: ""
                         ),
                         asunto = state.asunto,
-                        descripcion = state.descripcion
+                        descripcion = state.descripcion,
+                        consentimientoDatosPersonales = state.consentimientoDatosPersonales,
+                        canalNotificacion = state.canalNotificacion
                     )
                 )
 
