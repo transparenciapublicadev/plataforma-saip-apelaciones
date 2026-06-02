@@ -41,6 +41,11 @@ val domainModule = module {
     factory { CargarSolicitudesUsuarioPaginaUseCase(get()) }
     factory { CargarSolicitudesEntidadPaginaUseCase(get()) }
     factory { CargarSolicitudesPaginaUseCase(get()) }
+    factory { GetOperacionesSolicitudFuncionarioUseCase(get()) }
+    factory { RegistrarObservacionSolicitudUseCase(get()) }
+    factory { RegistrarAmpliacionPlazoSolicitudUseCase(get()) }
+    factory { RegistrarEncauzamientoSolicitudUseCase(get()) }
+    factory { EmitirLiquidacionCostoSolicitudUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - ENTIDADES PÚBLICAS
