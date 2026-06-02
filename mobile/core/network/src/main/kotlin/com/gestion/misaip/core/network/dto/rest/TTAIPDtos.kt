@@ -21,6 +21,8 @@ data class CalificacionRestRequest(
 @Serializable
 data class ResolucionRestRequest(
     val fundamentos: String,
+    val fundamentoLegal: String? = null,
+    val observaciones: String? = null,
     val miembroId: Long? = null,
     val iniciarProcesoDisciplinario: Boolean? = null
 )

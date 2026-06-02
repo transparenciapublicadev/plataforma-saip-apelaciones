@@ -7,6 +7,7 @@ import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
 import com.gestion.misaip.core.domain.model.TipoDenegatoria
 import com.gestion.misaip.core.network.api.ApelacionApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
+import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.dto.rest.ApelacionRestDto
 import com.gestion.misaip.core.network.dto.rest.ApelacionResumenRestDto
 import com.gestion.misaip.core.network.dto.rest.ElevacionApelacionRestDto
@@ -28,6 +29,7 @@ class PaginatedRestDataSourcesTest {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val tokenStorage = mockk<TokenStorage>(relaxed = true)
+    private val ttaipApi = mockk<TTAIPApiService>(relaxed = true)
 
     @Test
     fun `solicitudes ciudadano usa endpoint paginado con pagina y tamano`() = runTest {
@@ -64,7 +66,7 @@ class PaginatedRestDataSourcesTest {
             ultima = true
         )
 
-        val pagina = ApelacionRestDataSource(api, tokenStorage, json)
+        val pagina = ApelacionRestDataSource(api, ttaipApi, tokenStorage, json)
             .getPaginaApelaciones(0, 20)
 
         assertEquals("00007-2026-JUS/TTAIP", pagina.contenido.single().expediente)
@@ -108,7 +110,7 @@ class PaginatedRestDataSourcesTest {
             evidenciaSilencioAdministrativo = "declaracion-silencio.pdf"
         )
 
-        val apelacion = ApelacionRestDataSource(api, tokenStorage, json)
+        val apelacion = ApelacionRestDataSource(api, ttaipApi, tokenStorage, json)
             .crearApelacionExterna(request)
 
         assertEquals(null, apelacion.solicitudId)
@@ -141,7 +143,7 @@ class PaginatedRestDataSourcesTest {
             solicitudExpediente = "SAIP-2026-00042"
         )
 
-        val apelacion = ApelacionRestDataSource(api, tokenStorage, json)
+        val apelacion = ApelacionRestDataSource(api, ttaipApi, tokenStorage, json)
             .crearApelacionAnteEntidad(request)
 
         assertEquals("42", apelacion.solicitudId)
@@ -183,7 +185,7 @@ class PaginatedRestDataSourcesTest {
             estadoElevacion = "COMUNICADA_POR_CIUDADANO",
             referenciaPruebaOmision = "prueba-omision.pdf"
         )
-        val dataSource = ApelacionRestDataSource(api, tokenStorage, json)
+        val dataSource = ApelacionRestDataSource(api, ttaipApi, tokenStorage, json)
 
         val pendientes = dataSource.getPendientesElevacionEntidad("9")
         val elevada = dataSource.elevarApelacion(

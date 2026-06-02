@@ -1,18 +1,24 @@
 package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Apelacion
+import com.gestion.misaip.core.domain.model.Calificacion
 import com.gestion.misaip.core.domain.model.ComunicarOmisionElevacion
 import com.gestion.misaip.core.domain.model.ElevacionApelacion
 import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.domain.model.RegistrarApelacionAnteEntidad
 import com.gestion.misaip.core.domain.model.RegistrarApelacionExterna
 import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
+import com.gestion.misaip.core.domain.model.ResultadoCalificacion
+import com.gestion.misaip.core.domain.model.Subsanacion
 import com.gestion.misaip.core.network.api.ApelacionApiService
+import com.gestion.misaip.core.network.api.TTAIPApiService
+import com.gestion.misaip.core.network.dto.rest.CalificacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.ComunicarOmisionElevacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.CrearApelacionAnteEntidadRestRequest
 import com.gestion.misaip.core.network.dto.rest.CrearApelacionExternaRestRequest
 import com.gestion.misaip.core.network.dto.rest.ElevarApelacionRestRequest
+import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
@@ -23,6 +29,7 @@ import retrofit2.HttpException
  */
 class ApelacionRestDataSource(
     private val apelacionApi: ApelacionApiService,
+    private val ttaipApi: TTAIPApiService,
     private val tokenStorage: TokenStorage,
     private val json: Json
 ) : ApelacionRemoteDataSource {
@@ -138,6 +145,42 @@ class ApelacionRestDataSource(
                 )
             ).toDomain()
         }
+    }
+
+    override suspend fun calificarApelacion(
+        expediente: String,
+        tipo: String,
+        calificacion: Calificacion
+    ): Apelacion = traducirProblemDetails {
+        val apelacion = apelacionApi.getByExpediente(expediente)
+        val apelacionId = apelacion.id ?: throw NetworkException("La apelación no tiene ID remoto")
+        val request = CalificacionRestRequest(
+            fundamentos = calificacion.fundamentacion,
+            observaciones = calificacion.observacionesSubsanacion
+        )
+        when (calificacion.resultado) {
+            ResultadoCalificacion.ADMISIBLE,
+            ResultadoCalificacion.ADMITIDO -> ttaipApi.admitirApelacion(apelacionId, request)
+            ResultadoCalificacion.INADMISIBLE -> {
+                require(tipo.equals("primera", ignoreCase = true)) {
+                    "La inadmisibilidad solo corresponde a primera calificación"
+                }
+                ttaipApi.requerirSubsanacion(apelacionId, request)
+            }
+            ResultadoCalificacion.IMPROCEDENTE -> ttaipApi.inadmitirApelacion(apelacionId, request)
+        }.toDomain()
+    }
+
+    override suspend fun presentarSubsanacion(
+        expediente: String,
+        subsanacion: Subsanacion
+    ): Apelacion = traducirProblemDetails {
+        val apelacion = apelacionApi.getByExpediente(expediente)
+        val apelacionId = apelacion.id ?: throw NetworkException("La apelación no tiene ID remoto")
+        apelacionApi.presentarSubsanacion(
+            apelacionId,
+            SubsanacionRestRequest(fundamentos = subsanacion.textoCorregido)
+        ).toDomain()
     }
 
     private fun String.toLongRequerido(nombre: String): Long {
