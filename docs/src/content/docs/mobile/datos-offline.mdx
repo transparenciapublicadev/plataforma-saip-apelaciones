@@ -33,7 +33,7 @@ La fuente exacta del esquema vive en `core/database/src/main/sqldelight/`. El ca
 | --- | --- |
 | `Usuario` | Perfil local y hash para fallback offline controlado. |
 | `EntidadPublica` | Catálogo local para formularios. |
-| `Solicitud` | Bandeja SAIP, respuesta, timeline y flags de sincronización. |
+| `Solicitud` | Bandeja SAIP, respuesta, timeline, consentimiento, canal formal de notificación y flags de sincronización. |
 | `Apelacion` | Seguimiento TTAIP local ligado actualmente a SAIP interna. |
 | `Sesion` | Sesión local de trabajo; el JWT no se guarda aquí. |
 | `SyncLog` | Reintentos de sincronización. |
@@ -42,6 +42,8 @@ La fuente exacta del esquema vive en `core/database/src/main/sqldelight/`. El ca
 
 :::caution[Fuente de verdad]
 SQLDelight mejora la experiencia offline, pero no reemplaza MySQL ni decide reglas legales. Antes de soportar apelación externa se requiere migración local porque `Apelacion.expedienteSAIP` todavía es obligatorio.
+
+La creación SAIP ciudadano conserva `consentimientoDatosPersonales` y `canalNotificacion` en caché. Las instalaciones existentes migran con `migrations/1.sqm`, verificada contra la instantánea inicial `databases/1.db`. Cuando una creación online responde correctamente, el repositorio reemplaza el registro provisional por el ID y número SAIP oficiales del backend; si no hay conectividad, mantiene el registro pendiente para sincronización diferida.
 :::
 
 ## Retrofit — REST API Client
