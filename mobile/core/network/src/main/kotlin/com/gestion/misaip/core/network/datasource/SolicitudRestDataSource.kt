@@ -1,6 +1,7 @@
 package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Solicitud
+import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
@@ -16,6 +17,34 @@ class SolicitudRestDataSource(
     private val tokenStorage: TokenStorage,
     private val json: Json
 ) : SolicitudRemoteDataSource {
+
+    override suspend fun getPaginaSolicitudes(pagina: Int, tamano: Int): Pagina<Solicitud> {
+        return traducirProblemDetails {
+            solicitudApi.listarPaginadas(pagina, tamano).map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getPaginaSolicitudesUsuario(
+        usuarioId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud> {
+        val id = usuarioId.toLongOrNull() ?: return paginaVacia(pagina, tamano)
+        return traducirProblemDetails {
+            solicitudApi.getByCiudadanoPaginadas(id, pagina, tamano).map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getPaginaSolicitudesEntidad(
+        entidadId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud> {
+        val id = entidadId.toLongOrNull() ?: return paginaVacia(pagina, tamano)
+        return traducirProblemDetails {
+            solicitudApi.getByEntidadPaginadas(id, pagina, tamano).map { it.toDomain() }
+        }
+    }
 
     override suspend fun crearSolicitud(solicitud: Solicitud): Solicitud {
         val userId = tokenStorage.getUserId() ?: throw NetworkException("Usuario no autenticado")
@@ -46,8 +75,9 @@ class SolicitudRestDataSource(
     }
 
     override suspend fun getSolicitudesUsuario(usuarioId: String): List<Solicitud> {
-        val id = usuarioId.toLongOrNull() ?: return emptyList()
-        return solicitudApi.getByCiudadano(id).map { it.toDomain() }
+        return obtenerTodasLasPaginas { pagina, tamano ->
+            getPaginaSolicitudesUsuario(usuarioId, pagina, tamano)
+        }
     }
 
     override suspend fun getSolicitudPorExpediente(expediente: String): Solicitud? {
@@ -67,20 +97,62 @@ class SolicitudRestDataSource(
         return when (tokenStorage.getTipoUsuario()?.uppercase()) {
             "CIUDADANO" -> {
                 val userId = tokenStorage.getUserId() ?: return emptyList()
-                solicitudApi.getByCiudadano(userId).map { it.toDomain() }
+                obtenerTodasLasPaginas { pagina, tamano ->
+                    getPaginaSolicitudesUsuario(userId.toString(), pagina, tamano)
+                }
             }
             "FUNCIONARIO" -> {
                 val entidadId = tokenStorage.getEntidadId()
                     ?: throw NetworkException("Entidad no disponible para usuario FUNCIONARIO")
-                solicitudApi.getByEntidad(entidadId).map { it.toDomain() }
+                obtenerTodasLasPaginas { pagina, tamano ->
+                    getPaginaSolicitudesEntidad(entidadId.toString(), pagina, tamano)
+                }
             }
             "TTAIP", "ADMIN" -> {
-                solicitudApi.listar(page = 0, size = 1000).map { it.toDomain() }
+                obtenerTodasLasPaginas(::getPaginaSolicitudes)
             }
             else -> {
                 val userId = tokenStorage.getUserId() ?: return emptyList()
-                solicitudApi.getByCiudadano(userId).map { it.toDomain() }
+                obtenerTodasLasPaginas { pagina, tamano ->
+                    getPaginaSolicitudesUsuario(userId.toString(), pagina, tamano)
+                }
             }
         }
+    }
+
+    private suspend fun obtenerTodasLasPaginas(
+        cargarPagina: suspend (pagina: Int, tamano: Int) -> Pagina<Solicitud>
+    ): List<Solicitud> {
+        val resultado = mutableListOf<Solicitud>()
+        var pagina = 0
+        do {
+            val respuesta = cargarPagina(pagina, TAMANO_SYNC)
+            resultado += respuesta.contenido
+            pagina++
+        } while (!respuesta.ultima && pagina < respuesta.totalPaginas)
+        return resultado.distinctBy { it.id.ifBlank { it.expediente } }
+    }
+
+    private suspend fun <T> traducirProblemDetails(block: suspend () -> T): T {
+        return try {
+            block()
+        } catch (e: HttpException) {
+            val mensaje = json.extraerMensajeProblemDetails(e.response()?.errorBody()?.string())
+                ?: "No se pudo consultar solicitudes (${e.code()})"
+            throw ApiProblemException(mensaje, e.code(), e)
+        }
+    }
+
+    private fun paginaVacia(pagina: Int, tamano: Int) = Pagina<Solicitud>(
+        contenido = emptyList(),
+        pagina = pagina,
+        tamano = tamano,
+        totalElementos = 0,
+        totalPaginas = 0,
+        ultima = true
+    )
+
+    private companion object {
+        const val TAMANO_SYNC = 100
     }
 }
