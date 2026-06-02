@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #31 y registra el alcance completado de Mobile PR 5. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #32 y registra el alcance completado de Mobile PR 6. La sincronización sigue siendo incremental: el agregado TTAIP ya está disponible, pero FCM todavía requiere contrato backend dedicado.
 
 ## Stack y módulos reales
 
@@ -32,7 +32,7 @@ Módulos Gradle:
 | --- | --- | --- |
 | Ciudadano | Registro, login, dashboard paginado, creación SAIP con consentimiento y canal formal, seguimiento básico, apelación interna, apelación externa, presentación ante entidad, comunicación de omisión, perfil y avisos locales | Parcial. Mobile PR 5 cubre los orígenes de apelación y la comunicación online de omisión. Falta sincronizar subflujos SAIP recientes. |
 | Funcionario | Login interno, bandeja paginada de entidad, detalle y respuesta SAIP; actuaciones SAIP principales; consulta y remisión online de elevaciones pendientes | Parcial. Mobile PR 5 suma elevación institucional al TTAIP. Quedan actualizaciones operativas posteriores del cronograma o cupón y notificaciones del motor común. |
-| TTAIP | Login restringido, bandeja paginada, calificación básica, subsanación, segunda calificación y resoluciones principales | Parcial. Falta sincronizar expediente agregado, elevación, descargos, suspensiones, constancias, acuses, reprocesos, cumplimiento y decisiones finales recientes. |
+| TTAIP | Login restringido, bandeja paginada, calificación y subsanación online, detalle de expediente agregado, sala, miembros, resoluciones, cédulas, notificaciones, intentos, descargos, suspensiones, reprocesos, cumplimiento, historial, admisión excepcional y decisiones finales | Cubierto para el contrato TTAIP mobile actual. El agregado se consulta online y los actos administrativos solo confirman éxito después de respuesta backend. |
 | Admin | Existe código histórico de dashboard, pero `AppRolePolicy` bloquea acceso | Correcto: administración queda en frontend web. |
 
 ## Endpoints consumidos actualmente
@@ -43,7 +43,7 @@ Módulos Gradle:
 | Entidades | `GET /api/entidades`, `/activas`, `/{id}`, `/buscar` | Catálogo disponible. |
 | Solicitudes | Listados paginados livianos para bandejas, listados legacy compatibles, detalle, expediente, creación y cambio de estado | Ciudadano usa `/ciudadano/{id}/paginadas`; funcionario usa `/entidad/{id}/paginadas`; sincronización en background obtiene páginas por lotes. |
 | Apelaciones | Listados paginados livianos, detalle, creación interna/externa, presentación ante entidad, elevación institucional, comunicación ciudadana de omisión, cambio de estado y subsanación | Ciudadano usa `/ciudadano/{id}/paginadas`; TTAIP usa `/paginadas`. La admisión excepcional posterior a omisión queda pendiente para el agregado TTAIP. |
-| TTAIP | Bandejas segmentadas, calificación básica, decisiones principales y notificación de segunda calificación | Falta cubrir endpoints agregados desde los PRs web/backend recientes. |
+| TTAIP | Bandejas segmentadas; calificación y subsanación online; agregado embebido desde `/api/apelaciones/expediente/{expediente}`; admisión excepcional; descargos; suspensiones; envío, intentos, constancias, acuses, validación manual y reproceso; cumplimiento; decisiones finales | Mobile PR 6 cubre el expediente institucional. Presentar descargo y registrar cumplimiento siguen correspondiendo a la entidad pública, por lo que App TTAIP los consulta, observa o cierra según rol. |
 
 ## Migración a paginación
 
@@ -70,7 +70,7 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 | SAIP funcionario | Las actuaciones principales no estaban disponibles en App Funcionario | Media | Cubierto en Mobile PR 4: consulta de trazabilidad y registro online de observación, ampliación, encauzamiento y liquidación. |
 | Paginación | Bandejas usaban listados legacy y cargas amplias | Alta | Cubierto en Mobile PR 3: DTO genérico de página, resúmenes livianos, carga incremental y fallback SQLDelight por página. |
 | Apelaciones | No soportaba `EXTERNA` ni flujo `ante-entidad` / elevación | Media | Cubierto en Mobile PR 5: creación externa, presentación ante entidad, bandeja de elevaciones, remisión online y comunicación ciudadana de omisión. |
-| TTAIP | No refleja todo el expediente agregado ni flujos posteriores recientes | Media | Implementar por etapas: expediente, notificaciones, plazos y cumplimiento. |
+| TTAIP | No reflejaba todo el expediente agregado ni flujos posteriores recientes | Media | Cubierto en Mobile PR 6: consulta agregada y operaciones institucionales online-only. |
 | Push | Registro/revocación FCM en backend es un stub mobile y no existe endpoint autenticado dedicado | Alta | Diseñar contrato backend antes de conectar. No escribir tokens en Firestore. |
 | Avisos | Parte de los avisos se genera localmente desde cache, no desde el motor común backend | Media | Mantener como ayuda visual transitoria y migrar a API cuando exista contrato mobile. |
 | Offline | SQLDelight exigía SAIP local para apelación y guarda hash local para login offline | Media | Vínculo SAIP local corregido con migración compatible en Mobile PR 5. El threat model del login offline sigue pendiente. |
@@ -137,13 +137,24 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 - Las páginas de apelaciones externas se cachean sin depender de una SAIP local.
 - No se implementó admisión excepcional TTAIP después de omisión: corresponde al agregado TTAIP de la siguiente etapa.
 
+## Mobile PR 6: expediente TTAIP agregado
+
+- App TTAIP consulta el agregado desde el detalle de apelación: resumen global, sala, miembros, resoluciones, cédulas, notificaciones, historial, descargos, suspensiones, reprocesos y cumplimientos.
+- Las notificaciones muestran constancia, acuse, evidencia y validación manual disponible. Los intentos persistidos del motor común se consultan por notificación sin exponer secretos ni configuración sensible del proveedor.
+- TTAIP puede registrar envío, constancia, acuse, validación manual y reproceso. La UI explica que reprocesar conserva la cédula original y crea nueva cédula/notificación.
+- TTAIP puede requerir descargos, registrar informe oral o información complementaria y cancelar suspensiones adicionales. La presentación del descargo corresponde a App Funcionario o frontend institucional.
+- TTAIP puede abrir seguimiento de cumplimiento sobre resoluciones `FUNDADO` o `FUNDADO_EN_PARTE`, observarlo y cerrarlo. La entidad pública conserva la responsabilidad de comunicar el cumplimiento.
+- La omisión de elevación comunicada por el ciudadano habilita admisión excepcional TTAIP con sustento verificable.
+- La resolución final soporta `FUNDADO`, `FUNDADO_EN_PARTE`, `INFUNDADO`, `INFUNDADO_EN_PARTE`, `IMPROCEDENTE`, `CONCLUSION_SUSTRACCION_MATERIA`, `CONCLUSION_DESISTIMIENTO`, `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO`.
+- La calificación y la subsanación heredadas dejaron de simular mutaciones SQLDelight: ahora llaman al backend y actualizan caché solo tras respuesta válida. Segunda calificación usa `ADMITIDO` o `IMPROCEDENTE`; la resolución final ocurre después.
+- SQLDelight conserva resúmenes de apelación para bandejas. No persiste el agregado completo ni encola actos legales offline.
+
 ## Riesgos que requieren PR dedicado
 
 1. Perfil, avisos locales y algunos flujos auxiliares conservan métodos legacy compatibles; deben migrarse cuando reciban un contrato paginado específico.
 2. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
 3. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
-4. La admisión excepcional TTAIP posterior a una omisión comunicada queda para el agregado TTAIP.
-5. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación; Mobile PR 4 incorpora estas actuaciones en el detalle de App Funcionario.
+4. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación; Mobile PR 4 incorpora estas actuaciones en el detalle de App Funcionario.
 
 ## Comandos reales de validación
 
@@ -165,5 +176,5 @@ cd mobile
 | Mobile PR 3 | Cubierto: paginación de solicitudes y apelaciones con DTOs livianos, carga incremental y fallback SQLDelight. |
 | Mobile PR 4 | Cubierto: funcionario registra online observación, ampliación con cronograma inicial, encauzamiento total/parcial y liquidación/cupón; consulta su trazabilidad desde el detalle SAIP. |
 | Mobile PR 5 | Cubierto: apelación externa, presentación y elevación por entidad, comunicación ciudadana de omisión y migración SQLDelight compatible. |
-| Mobile PR 6 | TTAIP agregado: expediente, descargos, suspensiones, constancias, acuses, reprocesos y cumplimiento. |
+| Mobile PR 6 | Cubierto: expediente agregado TTAIP, admisión excepcional, descargos, suspensiones, constancias, intentos, acuses, reprocesos, cumplimiento, historial y decisiones finales. |
 | Mobile PR 7 | Contrato backend para alta/revocación FCM y consumo del motor común de notificaciones. |

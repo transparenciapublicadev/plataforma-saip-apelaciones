@@ -62,6 +62,8 @@ El sobre REST usa `contenido`, `pagina`, `tamano`, `totalElementos`, `totalPagin
 Los resúmenes remotos se combinan con el registro SQLDelight existente antes de persistirse. Así se actualizan estado, expediente, fechas y canal sin perder consentimiento, descripción, timeline ni otros campos de detalle. Si falla conectividad se devuelve la página local equivalente; los errores HTTP reales se propagan para no ocultar rechazos del backend.
 
 La bandeja TTAIP puede cachear una apelación externa creada en web sin depender de una SAIP local. Los actos de presentación ante entidad, elevación institucional y comunicación de omisión se envían online: SQLDelight conserva la consulta, pero no simula éxito administrativo offline.
+
+El detalle agregado TTAIP se consulta desde backend y no se replica íntegramente en SQLDelight. Sala, miembros, resoluciones, cédulas, notificaciones, intentos, descargos, suspensiones, reprocesos, cumplimientos e historial requieren conectividad. De este modo la bandeja conserva un resumen útil offline sin convertir el dispositivo en fuente de verdad para actos legales ni evidencias institucionales.
 :::
 
 ## Actuaciones Administrativas Online
@@ -74,6 +76,8 @@ Las operaciones SAIP de App Funcionario se envían directamente al backend:
 - emitir liquidación o cupón.
 
 Estas operaciones requieren conexión. No se encolan como éxitos locales ni se ejecutan con actualización optimista porque generan actos administrativos sujetos a validaciones legales del backend. Si la conexión falla, la UI conserva el cache de consulta y solicita reintentar con conectividad.
+
+La misma regla aplica a App TTAIP: calificación, subsanación, admisión excepcional, resoluciones, descargos, suspensiones, notificaciones, constancias, acuses, validación manual, reprocesos y seguimiento de cumplimiento solo se registran cuando el backend confirma la operación.
 
 ## Retrofit — REST API Client
 
