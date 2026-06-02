@@ -49,28 +49,25 @@ val presentationModule = module {
     viewModel {
         CitizenDashboardViewModel(
             getUsuarioActualUseCase = get(),
-            getSolicitudesUsuarioUseCase = get(),
-            getApelacionesUsuarioUseCase = get(),
-            sincronizarDatosUseCase = get()
+            cargarSolicitudesUsuarioPaginaUseCase = get(),
+            cargarApelacionesUsuarioPaginaUseCase = get()
         )
     }
 
     viewModel {
         EntityDashboardViewModel(
             getUsuarioActualUseCase = get(),
-            getSolicitudesEntidadUseCase = get(),
-            iniciarRevisionUseCase = get(),
-            sincronizarDatosUseCase = get()
+            cargarSolicitudesEntidadPaginaUseCase = get(),
+            iniciarRevisionUseCase = get()
         )
     }
 
     viewModel {
         TTAIPDashboardViewModel(
             getUsuarioActualUseCase = get(),
-            getTodasLasApelacionesUseCase = get(),
+            cargarApelacionesPaginaUseCase = get(),
             iniciarCalificacionUseCase = get(),
-            calificarApelacionUseCase = get(),
-            sincronizarDatosUseCase = get()
+            calificarApelacionUseCase = get()
         )
     }
 
