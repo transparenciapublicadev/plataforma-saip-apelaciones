@@ -120,6 +120,8 @@ No usar Firebase Auth ni Firestore como backend de datos. La app consume autenti
 El snapshot `mobile/openapi.json` se sincroniza desde `/v3/api-docs` mediante `scripts/sync-openapi.ps1`. Retrofit todavía cubre un subconjunto del contrato; la matriz de migración vive en `mobile/MOBILE_SYNC_AUDIT.md`.
 
 La creación SAIP básica de App Ciudadano ya captura consentimiento expreso de datos personales y canal formal de notificación, envía ambos campos al backend y conserva el canal en el seguimiento local. Los subflujos de observación, ampliación, encauzamiento y liquidación se incorporarán por verticales posteriores.
+
+Las bandejas principales ya consumen endpoints paginados y DTOs livianos: ciudadano pagina sus solicitudes y apelaciones, funcionario pagina las solicitudes de su entidad y TTAIP pagina apelaciones globales. SQLDelight sigue funcionando como respaldo offline por página.
 :::
 
 ## Subsecciones
