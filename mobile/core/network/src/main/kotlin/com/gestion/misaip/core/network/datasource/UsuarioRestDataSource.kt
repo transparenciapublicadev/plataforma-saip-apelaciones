@@ -5,6 +5,7 @@ import com.gestion.misaip.core.domain.repository.AuthException
 import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.dto.rest.AuthResponse
 import com.gestion.misaip.core.network.dto.rest.LoginRequest
+import com.gestion.misaip.core.network.dto.rest.ProblemDetailRestDto
 import com.gestion.misaip.core.network.dto.rest.RegistroRequest
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
@@ -23,7 +24,7 @@ class UsuarioRestDataSource(
 
     override suspend fun autenticar(identificador: String, password: String): Usuario {
         try {
-            android.util.Log.d("MiSAIP", "Intentando login REST → POST api/auth/login (identificador=$identificador)")
+            android.util.Log.d("MiSAIP", "Intentando login REST → POST api/auth/login")
             val response = authApi.login(LoginRequest(identificador, password))
             android.util.Log.d("MiSAIP", "Login REST exitoso → usuarioId=${response.usuarioId}, tipo=${response.tipoUsuario}")
             response.token?.let { tokenStorage.saveToken(it) }
@@ -89,15 +90,18 @@ class UsuarioRestDataSource(
 
     /**
      * Extrae el mensaje de error del body de la respuesta HTTP.
-     * El backend retorna JSON con campo "mensaje".
+     * Prioriza RFC 9457 Problem Details y conserva compatibilidad con respuestas legacy.
      */
     private fun extraerMensajeError(e: HttpException): String? {
         val errorBody = e.response()?.errorBody()?.string() ?: return null
         return try {
-            val errorResponse = json.decodeFromString<AuthResponse>(errorBody)
-            errorResponse.mensaje
+            json.decodeFromString<ProblemDetailRestDto>(errorBody).mensajeUsuario()
         } catch (_: Exception) {
-            null
+            try {
+                json.decodeFromString<AuthResponse>(errorBody).mensaje
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }

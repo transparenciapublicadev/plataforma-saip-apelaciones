@@ -203,8 +203,9 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 ## Ejecutar Tests
 
 ```bash
-# Compilar todo + ejecutar tests (recomendado)
-cd mobile && .\gradlew.bat clean compileDebugKotlin test
+# Compilar los tres flavors + ejecutar tests (recomendado)
+cd mobile
+.\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin test
 
 # Solo tests unitarios
 .\gradlew.bat test

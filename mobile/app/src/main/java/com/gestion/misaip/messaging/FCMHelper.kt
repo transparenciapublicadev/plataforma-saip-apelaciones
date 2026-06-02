@@ -30,7 +30,7 @@ object FCMHelper {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val token = task.result
-                    Log.d(TAG, "Token FCM: $token")
+                    Log.d(TAG, "Token FCM obtenido correctamente")
                     onTokenReceived(token)
                 } else {
                     task.exception?.let { onError(it) }
@@ -158,8 +158,8 @@ object FCMHelper {
      * La app ya no escribe tokens en Firestore. El backend debe exponer el endpoint
      * de registro de token y usarlo para enviar FCM desde servidor.
      */
-    fun registerTokenWithBackend(token: String) {
-        Log.d(TAG, "Token FCM listo para registrar en backend Spring Boot: $token")
+    fun registerTokenWithBackend(@Suppress("UNUSED_PARAMETER") token: String) {
+        Log.d(TAG, "Token FCM listo para registrar en backend Spring Boot")
     }
 
     /**

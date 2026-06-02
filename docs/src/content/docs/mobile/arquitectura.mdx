@@ -84,8 +84,8 @@ flowchart TB
     Red exclusivamente contra el backend Spring Boot:
 
     - Retrofit 3 para API services.
-    - OkHttp 5 para timeouts, logging seguro e interceptor JWT.
-    - DTOs alineados al OpenAPI.
+    - OkHttp 5 para timeouts, logging `BASIC` solo en debug e interceptor JWT.
+    - Snapshot `mobile/openapi.json` como referencia del contrato publicado.
     - Sin Firebase Auth.
     - Sin Firestore.
 
@@ -129,11 +129,12 @@ flowchart TB
 
 | Regla | Implementación esperada |
 | --- | --- |
-| Token JWT | Guardar en almacenamiento seguro y enviarlo por `Authorization: Bearer`. |
+| Token JWT | Guardar en `EncryptedSharedPreferences`, fallar cerrado si no puede inicializarse y enviarlo por `Authorization: Bearer`. |
 | Roles | Validar sesión contra `BuildConfig.APP_ROLE` y `AppRolePolicy`. |
 | Logs | No registrar tokens, contraseñas, DNI completo ni payloads sensibles. |
 | FCM | Registrar token push contra backend cuando exista endpoint; no escribir en Firestore. |
 | Offline | El cache local no decide reglas de negocio finales. |
+| Backup | No respaldar preferencias cifradas ni base local con datos del trámite. |
 
 ## Restricciones
 

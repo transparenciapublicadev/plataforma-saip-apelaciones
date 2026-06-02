@@ -143,7 +143,7 @@ class NotificationsViewModel(
                 NotificacionItem(
                     id = idCounter++,
                     titulo = "Subsanación Requerida",
-                    mensaje = "Tu apelación ${apel.expediente} requiere subsanación. Plazo: 3 días hábiles.",
+                    mensaje = "Tu apelación ${apel.expediente} requiere subsanación. Plazo: 2 días hábiles.",
                     fecha = formatearFecha(apel.fechaPresentacion),
                     tipo = "subsanacion",
                     leida = false,
@@ -318,4 +318,3 @@ class NotificationsViewModel(
         return sdf.format(java.util.Date(timestamp))
     }
 }
-
