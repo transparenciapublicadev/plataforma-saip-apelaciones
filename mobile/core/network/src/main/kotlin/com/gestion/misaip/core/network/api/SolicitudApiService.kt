@@ -2,6 +2,8 @@ package com.gestion.misaip.core.network.api
 
 import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.SolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.PaginaRestDto
+import com.gestion.misaip.core.network.dto.rest.SolicitudResumenRestDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -14,6 +16,26 @@ import retrofit2.http.Query
  * Endpoints: /api/solicitudes
  */
 interface SolicitudApiService {
+
+    @GET("api/solicitudes/paginadas")
+    suspend fun listarPaginadas(
+        @Query("pagina") pagina: Int = 0,
+        @Query("tamano") tamano: Int = 20
+    ): PaginaRestDto<SolicitudResumenRestDto>
+
+    @GET("api/solicitudes/ciudadano/{ciudadanoId}/paginadas")
+    suspend fun getByCiudadanoPaginadas(
+        @Path("ciudadanoId") ciudadanoId: Long,
+        @Query("pagina") pagina: Int = 0,
+        @Query("tamano") tamano: Int = 20
+    ): PaginaRestDto<SolicitudResumenRestDto>
+
+    @GET("api/solicitudes/entidad/{entidadId}/paginadas")
+    suspend fun getByEntidadPaginadas(
+        @Path("entidadId") entidadId: Long,
+        @Query("pagina") pagina: Int = 0,
+        @Query("tamano") tamano: Int = 20
+    ): PaginaRestDto<SolicitudResumenRestDto>
 
     @GET("api/solicitudes")
     suspend fun listar(

@@ -1,6 +1,7 @@
 package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Solicitud
+import com.gestion.misaip.core.domain.model.Pagina
 
 /**
  * Interfaz para la fuente de datos remota de Solicitudes.
@@ -9,6 +10,23 @@ import com.gestion.misaip.core.domain.model.Solicitud
  * Esta interfaz mantiene desacoplada la capa de datos para testing y migración a KMP.
  */
 interface SolicitudRemoteDataSource {
+
+    suspend fun getPaginaSolicitudes(
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud>
+
+    suspend fun getPaginaSolicitudesUsuario(
+        usuarioId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud>
+
+    suspend fun getPaginaSolicitudesEntidad(
+        entidadId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud>
 
     /**
      * Crea una nueva solicitud en el servidor.
