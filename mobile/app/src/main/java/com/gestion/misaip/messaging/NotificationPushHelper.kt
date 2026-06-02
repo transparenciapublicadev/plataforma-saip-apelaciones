@@ -71,7 +71,7 @@ object NotificationPushHelper {
 
         Log.d(
             TAG,
-            "FCM-only activo para usuario=$usuarioId, tipo=$tipoUsuario, topics=$topicsUsuarioActual"
+            "FCM-only activo para tipo=$tipoUsuario con ${topicsUsuarioActual.size} topics"
         )
     }
 
@@ -321,7 +321,7 @@ object NotificationPushHelper {
         _refreshSignal.tryEmit(tipo)
         Log.d(
             TAG,
-            "Evento push delegado al backend: tipo=$tipo, destino=$destinoTipo/$destinoValor, expediente=$expediente, titulo=$titulo, datos=$datos"
+            "Evento push pendiente de integracion backend: tipo=$tipo, destino=$destinoTipo"
         )
     }
 
