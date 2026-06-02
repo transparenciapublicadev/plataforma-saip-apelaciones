@@ -172,35 +172,35 @@
     },
     {
       "key": "ciudadanoToken",
-      "value": "TOKEN_CIUDADANO_LOGIN",
+      "value": "",
       "type": "default",
       "enabled": true,
       "description": "JWT dinámico generado por Login - Ciudadano."
     },
     {
       "key": "funcionarioToken",
-      "value": "TOKEN_FUNCIONARIO_LOGIN",
+      "value": "",
       "type": "default",
       "enabled": true,
       "description": "JWT dinámico generado por Login - Funcionario."
     },
     {
       "key": "cumplimientoFuncionarioToken",
-      "value": "TOKEN_FUNCIONARIO_CUMPLIMIENTO_LOGIN",
+      "value": "",
       "type": "default",
       "enabled": true,
       "description": "JWT dinámico de funcionario usado explícitamente para registrar cumplimiento TTAIP."
     },
     {
       "key": "ttaipToken",
-      "value": "TOKEN_TTAIP_LOGIN",
+      "value": "",
       "type": "default",
       "enabled": true,
       "description": "JWT dinámico generado por Login - TTAIP."
     },
     {
       "key": "adminToken",
-      "value": "TOKEN_ADMIN_LOGIN",
+      "value": "",
       "type": "default",
       "enabled": true,
       "description": "JWT dinámico generado por Login - Administrador."
