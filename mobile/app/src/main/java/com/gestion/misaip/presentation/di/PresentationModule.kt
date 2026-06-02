@@ -58,7 +58,9 @@ val presentationModule = module {
         EntityDashboardViewModel(
             getUsuarioActualUseCase = get(),
             cargarSolicitudesEntidadPaginaUseCase = get(),
-            iniciarRevisionUseCase = get()
+            iniciarRevisionUseCase = get(),
+            getPendientesElevacionEntidadUseCase = get(),
+            elevarApelacionUseCase = get()
         )
     }
 
@@ -96,7 +98,10 @@ val presentationModule = module {
             getUsuarioActualUseCase = get(),
             getSolicitudPorExpedienteUseCase = get(),
             getApelacionPorSAIPUseCase = get(),
-            crearApelacionUseCase = get()
+            crearApelacionUseCase = get(),
+            crearApelacionExternaUseCase = get(),
+            crearApelacionAnteEntidadUseCase = get(),
+            getEntidadesActivasUseCase = get()
         )
     }
 
@@ -117,6 +122,8 @@ val presentationModule = module {
             calificarApelacionUseCase = get(),
             iniciarCalificacionUseCase = get(),
             presentarSubsanacionUseCase = get(),
+            getElevacionApelacionUseCase = get(),
+            comunicarOmisionElevacionUseCase = get(),
             sincronizarDatosUseCase = get()
         )
     }

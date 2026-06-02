@@ -178,7 +178,9 @@ class CitizenDashboardViewModel(
             val expedientes = mutableListOf<ExpedienteItem>()
 
             // Mapa de apelaciones indexadas por expedienteSAIP para búsqueda rápida
-            val apelacionesPorSAIP = apelaciones.associateBy { it.expedienteSAIP }
+            val apelacionesPorSAIP = apelaciones
+                .filter { it.expedienteSAIP.isNotBlank() }
+                .associateBy { it.expedienteSAIP }
 
             // Agregar solicitudes (con apelación vinculada si existe)
             solicitudes.forEach { sol ->
@@ -192,7 +194,7 @@ class CitizenDashboardViewModel(
                     } else {
                         when (apelVinculada.estado) {
                             com.gestion.misaip.core.domain.model.EstadoApelacion.PENDIENTE_ELEVACION ->
-                                "En Primera Calificación"
+                                "Pendiente de Elevación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_CALIFICACION_1 ->
                                 "En Primera Calificación"
                             com.gestion.misaip.core.domain.model.EstadoApelacion.EN_SUBSANACION ->
@@ -312,7 +314,7 @@ class CitizenDashboardViewModel(
                 "En Proceso" -> {
                     val estadosEnProceso = listOf(
                         "En Revisión", "Recepcionada", "En Primera Calificación",
-                        "En Segunda Calificación", "Pendiente", "En Subsanación"
+                        "En Segunda Calificación", "Pendiente", "Pendiente de Elevación", "En Subsanación"
                     )
                     exp.estado in estadosEnProceso ||
                         exp.apelacionVinculada?.estado?.let { it in estadosEnProceso } == true

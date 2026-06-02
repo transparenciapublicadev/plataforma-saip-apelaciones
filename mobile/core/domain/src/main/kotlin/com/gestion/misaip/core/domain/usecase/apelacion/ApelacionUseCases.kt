@@ -103,6 +103,7 @@ class CrearApelacionUseCase(
             id = "",
             expediente = "",
             expedienteSAIP = params.expedienteSAIP,
+            solicitudId = solicitud.id,
             usuarioId = params.usuarioId,
             apelante = params.apelante,
             entidad = solicitud.entidad,

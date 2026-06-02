@@ -67,6 +67,12 @@ val domainModule = module {
     factory { PresentarSubsanacionUseCase(get()) }
     factory { CargarApelacionesUsuarioPaginaUseCase(get()) }
     factory { CargarApelacionesPaginaUseCase(get()) }
+    factory { CrearApelacionExternaUseCase(get()) }
+    factory { CrearApelacionAnteEntidadUseCase(get()) }
+    factory { GetElevacionApelacionUseCase(get()) }
+    factory { GetPendientesElevacionEntidadUseCase(get()) }
+    factory { ElevarApelacionUseCase(get()) }
+    factory { ComunicarOmisionElevacionUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - NOTIFICACIONES

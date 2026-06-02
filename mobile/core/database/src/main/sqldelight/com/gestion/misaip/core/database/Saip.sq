@@ -111,7 +111,8 @@ CREATE INDEX idx_solicitud_pendienteSubida ON Solicitud(pendienteSubida);
 CREATE TABLE Apelacion (
     id TEXT NOT NULL PRIMARY KEY,
     expediente TEXT NOT NULL UNIQUE,
-    expedienteSAIP TEXT NOT NULL,
+    expedienteSAIP TEXT,
+    solicitudId TEXT,
     usuarioId TEXT NOT NULL,
     -- Datos del apelante
     apelanteNombre TEXT NOT NULL,
@@ -141,20 +142,40 @@ CREATE TABLE Apelacion (
     timerPausado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     fechaElevacion INTEGER,
     elevacionExtemporanea INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    -- Origen externo y elevación formal
+    tipoOrigen TEXT NOT NULL DEFAULT 'SAIP_INTERNA',
+    numeroSolicitudExterna TEXT,
+    tipoDenegatoria TEXT,
+    fechaPresentacionSolicitudExterna TEXT,
+    fechaRespuestaEntidad TEXT,
+    resumenSolicitudOriginal TEXT,
+    resumenRespuestaEntidad TEXT,
+    referenciaDocumentoSolicitud TEXT,
+    referenciaCargoRecepcion TEXT,
+    referenciaRespuestaEntidad TEXT,
+    evidenciaSilencioAdministrativo TEXT,
+    observacion TEXT,
+    estadoElevacion TEXT,
+    fechaLimiteElevacion TEXT,
+    referenciaCargoPresentacionElevacion TEXT,
+    referenciaExpedienteElevado TEXT,
+    referenciaPruebaOmision TEXT,
     -- Control de sincronización
     sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
     ultimaModificacion INTEGER NOT NULL,
     -- Foreign keys
-    FOREIGN KEY (usuarioId) REFERENCES Usuario(id),
-    FOREIGN KEY (expedienteSAIP) REFERENCES Solicitud(expediente)
+    FOREIGN KEY (usuarioId) REFERENCES Usuario(id)
 );
 
 -- Índices para Apelacion
 CREATE INDEX idx_apelacion_expediente ON Apelacion(expediente);
 CREATE INDEX idx_apelacion_expedienteSAIP ON Apelacion(expedienteSAIP);
+CREATE INDEX idx_apelacion_solicitudId ON Apelacion(solicitudId);
 CREATE INDEX idx_apelacion_usuarioId ON Apelacion(usuarioId);
 CREATE INDEX idx_apelacion_estado ON Apelacion(estado);
+CREATE INDEX idx_apelacion_tipoOrigen ON Apelacion(tipoOrigen);
+CREATE INDEX idx_apelacion_estadoElevacion ON Apelacion(estadoElevacion);
 CREATE INDEX idx_apelacion_pendienteSubida ON Apelacion(pendienteSubida);
 
 -- =============================================================================

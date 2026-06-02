@@ -167,7 +167,7 @@ class EstadoApelacionTest {
 
     @Test
     fun `toDisplayString retorna texto legible`() {
-        assertEquals("En Primera Calificación", EstadoApelacion.PENDIENTE_ELEVACION.toDisplayString())
+        assertEquals("Pendiente de Elevación", EstadoApelacion.PENDIENTE_ELEVACION.toDisplayString())
         assertEquals("Resuelto - Fundado", EstadoApelacion.RESUELTO_FUNDADO.toDisplayString())
     }
 }

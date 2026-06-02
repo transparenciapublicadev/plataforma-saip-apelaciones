@@ -4,6 +4,10 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gestion.misaip.core.domain.model.Solicitud
+import com.gestion.misaip.core.domain.model.ElevacionApelacion
+import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
+import com.gestion.misaip.core.domain.usecase.apelacion.ElevarApelacionUseCase
+import com.gestion.misaip.core.domain.usecase.apelacion.GetPendientesElevacionEntidadUseCase
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.CargarSolicitudesEntidadPaginaUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.IniciarRevisionUseCase
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 @Immutable
 data class EntityDashboardUiState(
@@ -29,6 +34,7 @@ data class EntityDashboardUiState(
     val busqueda: String = "",
     val solicitudesUrgentes: List<Solicitud> = emptyList(),
     val solicitudesNotificarCostos: List<Solicitud> = emptyList(),
+    val elevacionesPendientes: List<ElevacionApelacion> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val puedeCargarMas: Boolean = false,
@@ -53,7 +59,9 @@ sealed class EntityDashboardEvent {
 class EntityDashboardViewModel(
     private val getUsuarioActualUseCase: GetUsuarioActualUseCase,
     private val cargarSolicitudesEntidadPaginaUseCase: CargarSolicitudesEntidadPaginaUseCase,
-    private val iniciarRevisionUseCase: IniciarRevisionUseCase
+    private val iniciarRevisionUseCase: IniciarRevisionUseCase,
+    private val getPendientesElevacionEntidadUseCase: GetPendientesElevacionEntidadUseCase,
+    private val elevarApelacionUseCase: ElevarApelacionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EntityDashboardUiState())
@@ -114,7 +122,10 @@ class EntityDashboardViewModel(
                 paginaSolicitudes = pagina.pagina
                 hayMasSolicitudes = pagina.tieneSiguiente
                 totalSolicitudes = pagina.totalElementos
-                actualizarVista(usuario.nombre, usuario.entidad ?: "", usuario.cargo ?: "")
+                val elevaciones = runCatching {
+                    getPendientesElevacionEntidadUseCase(entidadId)
+                }.getOrElse { _uiState.value.elevacionesPendientes }
+                actualizarVista(usuario.nombre, usuario.entidad ?: "", usuario.cargo ?: "", elevaciones)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -125,7 +136,12 @@ class EntityDashboardViewModel(
         }
     }
 
-    private fun actualizarVista(nombreUsuario: String, entidad: String, cargo: String) {
+    private fun actualizarVista(
+        nombreUsuario: String,
+        entidad: String,
+        cargo: String,
+        elevacionesPendientes: List<ElevacionApelacion>
+    ) {
             val solicitudes = solicitudesCargadas
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasEntidad(
@@ -164,6 +180,7 @@ class EntityDashboardViewModel(
                 solicitudes = solicitudesItems,
                 solicitudesUrgentes = urgentes,
                 solicitudesNotificarCostos = notificarCostos,
+                elevacionesPendientes = elevacionesPendientes,
                 isLoading = false,
                 isLoadingMore = false,
                 puedeCargarMas = hayMasSolicitudes
@@ -210,6 +227,32 @@ class EntityDashboardViewModel(
     private fun formatearFecha(timestamp: Long): String {
         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("es-PE"))
         return sdf.format(java.util.Date(timestamp))
+    }
+
+    fun elevarApelacion(
+        apelacionId: String,
+        referenciaExpedienteElevado: String,
+        observacion: String
+    ) {
+        viewModelScope.launch {
+            val responsable = getUsuarioActualUseCase().first()?.nombre.orEmpty()
+            try {
+                elevarApelacionUseCase(
+                    apelacionId = apelacionId,
+                    request = RegistrarElevacionApelacion(
+                        responsableEntidad = responsable,
+                        referenciaExpedienteElevado = referenciaExpedienteElevado,
+                        observacion = observacion.ifBlank { null }
+                    )
+                )
+                _events.emit(EntityDashboardEvent.ShowMessage("Apelación elevada al TTAIP correctamente"))
+                cargarDatos()
+            } catch (_: IOException) {
+                _events.emit(EntityDashboardEvent.ShowMessage("Esta operación requiere conexión con el servidor."))
+            } catch (e: Exception) {
+                _events.emit(EntityDashboardEvent.ShowMessage(e.message ?: "No se pudo elevar la apelación"))
+            }
+        }
     }
 
     private fun filtrarSolicitudes(
