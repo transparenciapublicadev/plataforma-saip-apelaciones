@@ -626,7 +626,7 @@ CREATE TABLE IF NOT EXISTS intentos_notificacion (
     CONSTRAINT fk_intento_notificacion_ttaip FOREIGN KEY (id_notificacion_ttaip) REFERENCES notificaciones_ttaip (id_notificacion),
     CONSTRAINT fk_intento_solicitud FOREIGN KEY (id_solicitud) REFERENCES solicitudes (id_solicitud),
     CONSTRAINT chk_intento_notificacion_origen CHECK (origen IN ('TTAIP', 'SAIP')),
-    CONSTRAINT chk_intento_notificacion_canal CHECK (canal IN ('CORREO_ELECTRONICO', 'CASILLA_ELECTRONICA', 'PLATAFORMA', 'FISICA')),
+    CONSTRAINT chk_intento_notificacion_canal CHECK (canal IN ('CORREO_ELECTRONICO', 'CASILLA_ELECTRONICA', 'PLATAFORMA', 'FISICA', 'PUSH_FCM')),
     CONSTRAINT chk_intento_notificacion_estado CHECK (estado IN ('PENDIENTE', 'ENVIADO', 'ENTREGADO', 'FALLIDO', 'NO_DISPONIBLE')),
     CONSTRAINT chk_intento_notificacion_propietario CHECK (
         (id_notificacion_ttaip IS NOT NULL AND id_solicitud IS NULL)
@@ -635,9 +635,38 @@ CREATE TABLE IF NOT EXISTS intentos_notificacion (
 );
 
 CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_origen', 'origen IN (''TTAIP'', ''SAIP'')');
-CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_canal', 'canal IN (''CORREO_ELECTRONICO'', ''CASILLA_ELECTRONICA'', ''PLATAFORMA'', ''FISICA'')');
+CALL drop_check_if_exists('intentos_notificacion', 'chk_intento_notificacion_canal');
+CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_canal', 'canal IN (''CORREO_ELECTRONICO'', ''CASILLA_ELECTRONICA'', ''PLATAFORMA'', ''FISICA'', ''PUSH_FCM'')');
 CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_estado', 'estado IN (''PENDIENTE'', ''ENVIADO'', ''ENTREGADO'', ''FALLIDO'', ''NO_DISPONIBLE'')');
 CALL add_check_if_missing('intentos_notificacion', 'chk_intento_notificacion_propietario', '(id_notificacion_ttaip IS NOT NULL AND id_solicitud IS NULL) OR (id_notificacion_ttaip IS NULL AND id_solicitud IS NOT NULL)');
+
+CREATE TABLE IF NOT EXISTS dispositivos_notificacion_push (
+    id_dispositivo_push BIGINT NOT NULL AUTO_INCREMENT,
+    id_usuario BIGINT NOT NULL,
+    tipo_usuario VARCHAR(20) NOT NULL,
+    app_flavor VARCHAR(20) NOT NULL,
+    plataforma VARCHAR(20) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    token_cifrado TEXT NULL,
+    device_id_hash CHAR(64) NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVO',
+    app_version VARCHAR(40) NULL,
+    build_type VARCHAR(20) NULL,
+    fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_revocacion DATETIME NULL,
+    trazabilidad TEXT NULL,
+    PRIMARY KEY (id_dispositivo_push),
+    UNIQUE KEY uk_dispositivo_push_token_hash (token_hash),
+    KEY idx_dispositivo_push_usuario_estado (id_usuario, estado),
+    KEY idx_dispositivo_push_device_hash (device_id_hash),
+    KEY idx_dispositivo_push_flavor (app_flavor),
+    CONSTRAINT fk_dispositivo_push_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario),
+    CONSTRAINT chk_dispositivo_push_tipo_usuario CHECK (tipo_usuario IN ('CIUDADANO', 'FUNCIONARIO', 'TTAIP')),
+    CONSTRAINT chk_dispositivo_push_flavor CHECK (app_flavor IN ('CIUDADANO', 'FUNCIONARIO', 'TTAIP')),
+    CONSTRAINT chk_dispositivo_push_plataforma CHECK (plataforma IN ('ANDROID')),
+    CONSTRAINT chk_dispositivo_push_estado CHECK (estado IN ('ACTIVO', 'REVOCADO', 'EXPIRADO'))
+);
 
 CALL add_column_if_missing('reprocesos_notificacion', 'id_cedula_nueva', 'BIGINT NULL');
 CALL add_column_if_missing('reprocesos_notificacion', 'id_notificacion_nueva', 'BIGINT NULL');
@@ -646,6 +675,7 @@ DROP PROCEDURE IF EXISTS add_column_if_missing;
 DROP PROCEDURE IF EXISTS add_index_if_missing;
 DROP PROCEDURE IF EXISTS add_foreign_key_if_missing;
 DROP PROCEDURE IF EXISTS add_check_if_missing;
+DROP PROCEDURE IF EXISTS drop_check_if_exists;
 
 START TRANSACTION;
 
