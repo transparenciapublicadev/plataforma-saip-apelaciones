@@ -3,6 +3,7 @@ package com.gestion.misaip.core.domain.repository
 import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.domain.model.Calificacion
 import com.gestion.misaip.core.domain.model.Subsanacion
+import com.gestion.misaip.core.domain.model.Pagina
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,6 +16,17 @@ import kotlinx.coroutines.flow.Flow
  * por lo tanto NO debe tener dependencias de Android ni Firebase.
  */
 interface ApelacionRepository {
+
+    suspend fun cargarPaginaApelaciones(
+        pagina: Int = 0,
+        tamano: Int = 20
+    ): Pagina<Apelacion>
+
+    suspend fun cargarPaginaApelacionesUsuario(
+        usuarioId: String,
+        pagina: Int = 0,
+        tamano: Int = 20
+    ): Pagina<Apelacion>
 
     /**
      * Obtiene todas las apelaciones del usuario como un Flow reactivo.
@@ -84,4 +96,3 @@ interface ApelacionRepository {
      */
     suspend fun sincronizar()
 }
-

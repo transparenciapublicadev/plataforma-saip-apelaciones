@@ -2,6 +2,7 @@ package com.gestion.misaip.core.domain.repository
 
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.RespuestaEntidad
+import com.gestion.misaip.core.domain.model.Pagina
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -16,6 +17,23 @@ import kotlinx.coroutines.flow.Flow
  * por lo tanto NO debe tener dependencias de Android ni Firebase.
  */
 interface SolicitudRepository {
+
+    suspend fun cargarPaginaSolicitudes(
+        pagina: Int = 0,
+        tamano: Int = 20
+    ): Pagina<Solicitud>
+
+    suspend fun cargarPaginaSolicitudesUsuario(
+        usuarioId: String,
+        pagina: Int = 0,
+        tamano: Int = 20
+    ): Pagina<Solicitud>
+
+    suspend fun cargarPaginaSolicitudesEntidad(
+        entidadId: String,
+        pagina: Int = 0,
+        tamano: Int = 20
+    ): Pagina<Solicitud>
 
     /**
      * Obtiene todas las solicitudes del sistema (para administrador).
@@ -98,4 +116,3 @@ data class SolicitudEstadisticas(
     val denegadas: Int,
     val vencidas: Int
 )
-
