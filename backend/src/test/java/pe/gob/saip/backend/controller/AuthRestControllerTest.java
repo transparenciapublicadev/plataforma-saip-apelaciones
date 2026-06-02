@@ -51,6 +51,9 @@ class AuthRestControllerTest {
     @MockitoBean
     PasswordEncoder passwordEncoder;
 
+    @MockitoBean
+    AutorizacionRecursosService autorizacionRecursosService;
+
     @BeforeEach
     void setup() {
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);

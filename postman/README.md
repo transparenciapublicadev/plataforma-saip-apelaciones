@@ -69,7 +69,38 @@ cd backend
 
 The collection asserts that the safe engine status reports `modo = MOCK`. Versioned token variables remain placeholders populated by login requests at runtime.
 
-`newman.config.json` uses a 90-second request timeout so diagnostics can complete
-against local databases with accumulated fixtures. This margin does not replace
-performance validation: paginate global listings and isolate or reset Newman
-fixtures before production load testing.
+Global SAIP and TTAIP list validations use lightweight paginated endpoints. This
+keeps diagnostic runs stable without hiding accumulated local fixtures.
+
+## Reproducible Local Database
+
+Newman creates runtime SAIP and TTAIP records. For a clean local baseline, reset
+the database explicitly and reload the official seed. The reset scripts refuse
+remote hosts and require an explicit confirmation flag.
+
+PowerShell:
+
+```powershell
+.\scripts\reset-local-db.ps1 -ConfirmReset
+cd backend
+.\mvnw.cmd spring-boot:run
+# Stop the backend after Hibernate creates the schema.
+Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
+```
+
+Bash:
+
+```bash
+CONFIRM_RESET=YES ./scripts/reset-local-db.sh
+cd backend
+./mvnw spring-boot:run
+# Stop the backend after Hibernate creates the schema.
+mysql -u root -p saip_db < ../database/script_saip_db.sql
+```
+
+Restart the backend with `APP_NOTIFICATIONS_MODE=MOCK` and execute
+`npm run test:api:diagnostic`. The versioned environment intentionally stores
+empty JWT values; login requests populate tokens only in memory during a run.
+
+`newman.config.json` keeps a 90-second request timeout for local variance. This
+margin is not a substitute for load testing.

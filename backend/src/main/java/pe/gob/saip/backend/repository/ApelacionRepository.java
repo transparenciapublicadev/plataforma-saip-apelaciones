@@ -1,5 +1,7 @@
 package pe.gob.saip.backend.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,7 +22,11 @@ public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
 
     List<Apelacion> findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(Long ciudadanoId);
 
+    Page<Apelacion> findByCiudadano_IdUsuario(Long ciudadanoId, Pageable pageable);
+
     List<Apelacion> findByEstadoOrderByFechaApelacionDesc(Apelacion.EstadoApelacion estado);
+
+    Page<Apelacion> findByEstado(Apelacion.EstadoApelacion estado, Pageable pageable);
 
     List<Apelacion> findByEstadoIn(List<Apelacion.EstadoApelacion> estados);
 

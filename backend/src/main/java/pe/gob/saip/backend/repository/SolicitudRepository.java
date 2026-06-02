@@ -20,7 +20,11 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     List<Solicitud> findByCiudadano_IdUsuarioOrderByFechaPresentacionDesc(Long ciudadanoId);
 
+    Page<Solicitud> findByCiudadano_IdUsuario(Long ciudadanoId, Pageable pageable);
+
     List<Solicitud> findByEntidad_IdEntidadOrderByFechaPresentacionDesc(Long entidadId);
+
+    Page<Solicitud> findByEntidad_IdEntidad(Long entidadId, Pageable pageable);
 
     List<Solicitud> findByEstado(Solicitud.EstadoSolicitud estado);
 

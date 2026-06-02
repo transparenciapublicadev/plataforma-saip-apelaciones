@@ -32,6 +32,7 @@ public class AuthRestController {
     private final AdministradorService administradorService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public AuthRestController(UsuarioService usuarioService,
                                CiudadanoService ciudadanoService,
@@ -39,7 +40,8 @@ public class AuthRestController {
                                MiembroTTAIPService miembroTTAIPService,
                                AdministradorService administradorService,
                                JwtService jwtService,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               AutorizacionRecursosService autorizacionRecursosService) {
         this.usuarioService = usuarioService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
@@ -47,6 +49,7 @@ public class AuthRestController {
         this.administradorService = administradorService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Iniciar sesión", description = "Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.")
@@ -173,6 +176,7 @@ public class AuthRestController {
     @Operation(summary = "Obtener usuario actual", description = "Retorna los datos básicos del usuario autenticado")
     @GetMapping("/me/{usuarioId}")
     public ResponseEntity<Map<String, Object>> obtenerUsuarioActual(@PathVariable Long usuarioId) {
+        autorizacionRecursosService.verificarUsuarioActualOAdministrador(usuarioId);
         Optional<Usuario> usuarioOpt = usuarioService.obtenerUsuarioPorId(usuarioId);
 
         if (usuarioOpt.isEmpty()) {
