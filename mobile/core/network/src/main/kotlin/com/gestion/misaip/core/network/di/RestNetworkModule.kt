@@ -23,6 +23,13 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
+private val PUBLIC_AUTH_PATHS = setOf(
+    "/api/auth/login",
+    "/api/auth/registro",
+    "/api/auth/verificar-dni",
+    "/api/auth/verificar-email"
+)
+
 /**
  * Módulo Koin para la Capa de Red (REST API — Spring Boot Backend).
  *
@@ -34,8 +41,9 @@ import java.util.concurrent.TimeUnit
  *   - Emulador: http://10.0.2.2:8080/ (default)
  *   - Dispositivo físico con adb reverse: http://127.0.0.1:8080/
  *   - LAN: http://<host-ip>:8080/
+ * @param enableHttpLogging Habilita trazas HTTP basicas solo para diagnostico debug.
  */
-fun restNetworkModule(baseUrl: String) = module {
+fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = module {
 
     // ===========================================
     // JSON Serialization
@@ -55,16 +63,15 @@ fun restNetworkModule(baseUrl: String) = module {
 
     single {
         val tokenStorage: TokenStorage = get()
-        OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 val original = chain.request()
                 val path = original.url.encodedPath
-                // No enviar JWT en endpoints de autenticación
-                val isAuthEndpoint = path.startsWith("/api/auth/")
-                val token = if (!isAuthEndpoint) tokenStorage.getToken() else null
+                // El perfil /api/auth/me/{id} requiere JWT; solo se excluyen rutas publicas.
+                val token = if (path !in PUBLIC_AUTH_PATHS) tokenStorage.getToken() else null
                 val request = if (token != null) {
                     original.newBuilder()
                         .header("Authorization", "Bearer $token")
@@ -74,12 +81,17 @@ fun restNetworkModule(baseUrl: String) = module {
                 }
                 chain.proceed(request)
             }
-            .addInterceptor(
+
+        if (enableHttpLogging) {
+            builder.addInterceptor(
                 HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BODY
+                    // No registrar bodies ni headers: pueden contener passwords o JWT.
+                    level = HttpLoggingInterceptor.Level.BASIC
                 }
             )
-            .build()
+        }
+
+        builder.build()
     }
 
     // ===========================================
