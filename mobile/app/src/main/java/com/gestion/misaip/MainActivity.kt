@@ -131,6 +131,9 @@ fun MiSAIPNavigation(
                     onNavigateToSAIPForm = {
                         backStack.add(SAIPForm())
                     },
+                    onNavigateToAppealForm = {
+                        backStack.add(AppealForm())
+                    },
                     onNavigateToLogin = {
                         backStack.clear()
                         backStack.add(Login)

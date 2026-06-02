@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentLate
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -38,6 +39,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
@@ -45,6 +47,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -68,6 +71,7 @@ import com.gestion.misaip.presentation.viewmodel.NotificationsViewModel
 import com.gestion.misaip.presentation.viewmodel.ProfileEvent
 import com.gestion.misaip.presentation.viewmodel.ProfileViewModel
 import com.gestion.misaip.presentation.viewmodel.SolicitudEntidadItem
+import com.gestion.misaip.core.domain.model.ElevacionApelacion
 import com.gestion.misaip.ui.components.AnimatedStatCard
 import com.gestion.misaip.ui.components.EmptyContent
 import com.gestion.misaip.ui.components.NotificationsTabContent
@@ -146,6 +150,7 @@ fun EntityDashboardScreen(
         onLoadMore = viewModel::cargarSiguientePagina,
         onSolicitudClick = { sol -> onNavigateToDetail(sol.expediente, "SAIP") },
         onIniciarRevision = viewModel::iniciarRevision,
+        onElevarApelacion = viewModel::elevarApelacion,
         onNotificacionClick = { notif ->
             notificationsViewModel.marcarComoLeida(notif.id)
             notif.expediente?.let { exp ->
@@ -172,6 +177,7 @@ private fun EntityDashboardContent(
     onLoadMore: () -> Unit,
     onSolicitudClick: (SolicitudEntidadItem) -> Unit,
     onIniciarRevision: (String) -> Unit,
+    onElevarApelacion: (String, String, String) -> Unit,
     onNotificacionClick: (com.gestion.misaip.presentation.viewmodel.NotificacionItem) -> Unit,
     notificaciones: List<com.gestion.misaip.presentation.viewmodel.NotificacionItem>,
     notifLoading: Boolean,
@@ -179,6 +185,7 @@ private fun EntityDashboardContent(
     onCerrarSesion: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var elevacionSeleccionada by remember { mutableStateOf<ElevacionApelacion?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -308,6 +315,26 @@ private fun EntityDashboardContent(
                             }
                         }
 
+                        if (uiState.elevacionesPendientes.isNotEmpty()) {
+                            Text(
+                                "Elevaciones pendientes al TTAIP",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(uiState.elevacionesPendientes, key = { it.id }) { elevacion ->
+                                    ElevacionPendienteCard(
+                                        elevacion = elevacion,
+                                        onElevar = { elevacionSeleccionada = elevacion }
+                                    )
+                                }
+                            }
+                        }
+
                         // Lista de solicitudes con animación staggered
                         if (uiState.solicitudesFiltradas.isEmpty()) {
                             EmptyContent(
@@ -377,6 +404,82 @@ private fun EntityDashboardContent(
                     modifier = Modifier.padding(innerPadding)
                 )
             }
+        }
+    }
+
+    elevacionSeleccionada?.let { elevacion ->
+        ElevarApelacionBottomSheet(
+            elevacion = elevacion,
+            onDismiss = { elevacionSeleccionada = null },
+            onSubmit = { referencia, observacion ->
+                onElevarApelacion(elevacion.apelacionId, referencia, observacion)
+                elevacionSeleccionada = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun ElevacionPendienteCard(
+    elevacion: ElevacionApelacion,
+    onElevar: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.width(280.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(elevacion.expedienteReservado, fontWeight = FontWeight.Bold)
+            Text("Límite: ${elevacion.fechaLimiteElevacion}", style = MaterialTheme.typography.bodySmall)
+            Text(elevacion.referenciaCargoPresentacion, style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            FilledTonalButton(onClick = onElevar, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Gavel, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Elevar al TTAIP")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ElevarApelacionBottomSheet(
+    elevacion: ElevacionApelacion,
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit
+) {
+    var referencia by remember { mutableStateOf("") }
+    var observacion by remember { mutableStateOf("") }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Elevar ${elevacion.expedienteReservado}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Esta operación requiere conexión y quedará trazada en el expediente.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = referencia,
+                onValueChange = { referencia = it },
+                label = { Text("Referencia del expediente remitido *") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = observacion,
+                onValueChange = { observacion = it },
+                label = { Text("Observación") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { onSubmit(referencia, observacion) },
+                enabled = referencia.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirmar elevación")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }

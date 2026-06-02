@@ -2,6 +2,11 @@ package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.domain.model.Pagina
+import com.gestion.misaip.core.domain.model.ComunicarOmisionElevacion
+import com.gestion.misaip.core.domain.model.ElevacionApelacion
+import com.gestion.misaip.core.domain.model.RegistrarApelacionAnteEntidad
+import com.gestion.misaip.core.domain.model.RegistrarApelacionExterna
+import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
 
 /**
  * Interfaz para la fuente de datos remota de Apelaciones.
@@ -20,7 +25,25 @@ interface ApelacionRemoteDataSource {
         tamano: Int
     ): Pagina<Apelacion>
 
-    suspend fun crearApelacion(apelacion: Apelacion)
+    suspend fun crearApelacion(apelacion: Apelacion): Apelacion
+
+    suspend fun crearApelacionExterna(request: RegistrarApelacionExterna): Apelacion
+
+    suspend fun crearApelacionAnteEntidad(request: RegistrarApelacionAnteEntidad): Apelacion
+
+    suspend fun getElevacion(apelacionId: String): ElevacionApelacion
+
+    suspend fun getPendientesElevacionEntidad(entidadId: String): List<ElevacionApelacion>
+
+    suspend fun elevarApelacion(
+        apelacionId: String,
+        request: RegistrarElevacionApelacion
+    ): Apelacion
+
+    suspend fun comunicarOmisionElevacion(
+        apelacionId: String,
+        request: ComunicarOmisionElevacion
+    ): ElevacionApelacion
 
     suspend fun actualizarApelacion(apelacion: Apelacion)
 
