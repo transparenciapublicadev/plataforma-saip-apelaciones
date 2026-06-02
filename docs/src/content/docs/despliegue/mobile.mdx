@@ -97,7 +97,10 @@ Responsabilidades de FCM:
 - Obtener token push del dispositivo.
 - Suscribir topics por rol si aplica.
 - Recibir mensajes en `MiSaipMessagingService`.
-- Delegar persistencia o registro de token al backend cuando exista endpoint autenticado.
+- Registrar o renovar el token contra `POST /api/notificaciones/push/tokens` después de login, splash con sesión válida u `onNewToken`.
+- Revocar el dispositivo actual contra `POST /api/notificaciones/push/tokens/revocar-actual` antes de limpiar el JWT durante logout.
+
+El token se trata como dato opaco: la app no lo escribe en logs ni Firestore. Si backend no está disponible, el alta o revocación no bloquea login/logout; se reintenta en la próxima sesión o renovación. El envío real desde backend permanece pendiente de integrar Firebase Admin con secretos externos.
 
 ## R8 / ProGuard
 

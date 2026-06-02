@@ -57,9 +57,11 @@ las tres apps mobile actuales.
 
 ## FCM
 
-La app obtiene token FCM, se suscribe a topics por rol y recibe mensajes mediante `MiSaipMessagingService`.
+La app obtiene token FCM, lo registra o renueva contra el backend autenticado, se suscribe a topics por rol y recibe mensajes mediante `MiSaipMessagingService`.
 
-Pendiente del backend: exponer endpoints autenticados para registrar/revocar tokens FCM y enviar notificaciones desde servidor. La app no debe escribir tokens ni colas de notificaciones en Firestore.
+El logout intenta revocar el dispositivo actual antes de borrar el JWT. Login, splash y `onNewToken` sincronizan el token sin escribirlo en logs ni Firestore. El backend persiste hash y, si operaciones configura una clave AES externa, una copia cifrada recuperable por el futuro emisor.
+
+Pendiente: integrar Firebase Admin para envío real desde servidor. El adapter backend responde explícitamente como no configurado o pendiente; no simula entrega push.
 
 ## Firebase historico
 
