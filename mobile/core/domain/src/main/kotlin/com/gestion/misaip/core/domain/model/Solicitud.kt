@@ -18,6 +18,8 @@ data class Solicitud(
     val solicitante: Solicitante,
     val asunto: String,
     val descripcion: String,
+    val consentimientoDatosPersonales: Boolean = false,
+    val canalNotificacion: CanalNotificacion? = null,
     val fechaCreacion: Long,
     val fechaLimite: Long,
     val estado: EstadoSolicitud,
@@ -67,6 +69,29 @@ data class Solicitud(
      */
     val fueRespondida: Boolean
         get() = estado == EstadoSolicitud.RESPONDIDA
+}
+
+/**
+ * Canal formal elegido por el ciudadano para recibir notificaciones SAIP.
+ */
+enum class CanalNotificacion {
+    CORREO_ELECTRONICO,
+    CASILLA_ELECTRONICA,
+    PLATAFORMA,
+    FISICA;
+
+    fun toDisplayString(): String = when (this) {
+        CORREO_ELECTRONICO -> "Correo electrónico"
+        CASILLA_ELECTRONICA -> "Casilla electrónica"
+        PLATAFORMA -> "Plataforma"
+        FISICA -> "Entrega física"
+    }
+
+    companion object {
+        fun fromStringOrNull(value: String?): CanalNotificacion? {
+            return entries.firstOrNull { it.name == value?.trim()?.uppercase() }
+        }
+    }
 }
 
 /**
