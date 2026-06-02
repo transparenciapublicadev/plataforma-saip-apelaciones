@@ -23,8 +23,10 @@ import pe.gob.saip.backend.repository.IntentoNotificacionRepository;
 import pe.gob.saip.backend.repository.NotificacionTtaipRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.service.notification.CasillaElectronicaProveedorNotificacion;
+import pe.gob.saip.backend.service.notification.FcmPushProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.MockProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.SmtpCorreoProveedorNotificacion;
+import pe.gob.saip.backend.service.notification.TokenPushProtector;
 
 @ExtendWith(MockitoExtension.class)
 class MotorNotificacionesServiceTest {
@@ -56,6 +58,7 @@ class MotorNotificacionesServiceTest {
                 new MockProveedorNotificacion(true),
                 smtpProveedor,
                 new CasillaElectronicaProveedorNotificacion(),
+                crearProveedorFcm(),
                 "MOCK",
                 "localhost",
                 "no-reply@example.test",
@@ -152,6 +155,7 @@ class MotorNotificacionesServiceTest {
                 new MockProveedorNotificacion(true),
                 smtpProveedor,
                 new CasillaElectronicaProveedorNotificacion(),
+                crearProveedorFcm(),
                 "SMTP",
                 "",
                 "",
@@ -177,6 +181,42 @@ class MotorNotificacionesServiceTest {
         assertThat(service.obtenerEstadoSeguro().smtpHostConfigurado()).isFalse();
     }
 
+    @Test
+    void enviarNotificacionTtaipPushSinCredencialesReportaFcmNoConfigurado() {
+        service = new MotorNotificacionesService(
+                intentoRepository,
+                notificacionRepository,
+                solicitudRepository,
+                historialRepository,
+                new MockProveedorNotificacion(true),
+                smtpProveedor,
+                new CasillaElectronicaProveedorNotificacion(),
+                crearProveedorFcm(),
+                "SMTP",
+                "localhost",
+                "no-reply@example.test",
+                false,
+                "",
+                "");
+        configurarPersistenciaIntento();
+        NotificacionTtaip notificacion = crearNotificacionTtaip();
+        notificacion.setMedioNotificacion("PUSH_FCM");
+        when(notificacionRepository.findByIdNotificacionAndExpediente_IdExpedienteTtaip(7L, 5L))
+                .thenReturn(Optional.of(notificacion));
+
+        IntentoNotificacion intento = service.enviarNotificacionTtaip(
+                5L,
+                7L,
+                new EnviarNotificacionRequest("Resolución TTAIP", "Contenido trazable", "TTAIP", false));
+
+        assertThat(intento.getCanal()).isEqualTo(IntentoNotificacion.CanalEnvio.PUSH_FCM);
+        assertThat(intento.getProveedor()).isEqualTo("FCM");
+        assertThat(intento.getEstado()).isEqualTo(IntentoNotificacion.EstadoIntento.NO_DISPONIBLE);
+        assertThat(intento.getMensajeTecnicoSanitizado()).isEqualTo("FCM_PUSH_NO_CONFIGURADO");
+        assertThat(notificacion.getEstado()).isEqualTo("FALLIDA");
+        assertThat(notificacion.getResultadoNotificacion()).isEqualTo("FALLO_PROVEEDOR_FCM");
+    }
+
     private void configurarPersistenciaIntento() {
         when(intentoRepository.save(any(IntentoNotificacion.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -193,5 +233,9 @@ class MotorNotificacionesServiceTest {
         notificacion.setDestinatarioEmail("ciudadano@example.test");
         notificacion.setMedioNotificacion("CORREO_ELECTRONICO");
         return notificacion;
+    }
+
+    private FcmPushProveedorNotificacion crearProveedorFcm() {
+        return new FcmPushProveedorNotificacion(false, "", new TokenPushProtector(""));
     }
 }

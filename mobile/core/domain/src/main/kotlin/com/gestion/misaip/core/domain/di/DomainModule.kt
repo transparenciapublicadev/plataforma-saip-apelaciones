@@ -83,6 +83,10 @@ val domainModule = module {
     factory { GetNotificacionesUseCase(get()) }
     factory { MarcarNotificacionLeidaUseCase(get()) }
     factory { GenerarNotificacionesDinamicasUseCase(get()) }
+    factory { RegistrarDispositivoPushUseCase(get()) }
+    factory { RevocarDispositivoPushActualUseCase(get()) }
+    factory { ListarDispositivosPushMiosUseCase(get()) }
+    factory { ObtenerEstadoProveedorPushUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - SINCRONIZACIÓN

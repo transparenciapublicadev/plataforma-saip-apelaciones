@@ -113,7 +113,8 @@
     "expedienteTtaipExternoTacitaId",
     "motorIntentoSaipId",
     "motorIntentoTtaipId",
-    "motorIntentoFallidoTtaipId"
+    "motorIntentoFallidoTtaipId",
+    "pushDispositivoId"
   ],
   "tokenVariables": [
     "ciudadanoToken",

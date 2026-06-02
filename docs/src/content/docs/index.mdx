@@ -50,7 +50,8 @@ flowchart TB
     API -->|"/v3/api-docs"| Web
     Postman --> API
     Docs -. documenta .-> API
-    Mobile -. token push .-> FCM
+    Mobile -. registra token push .-> API
+    API -. entrega push pendiente adapter Firebase Admin .-> FCM
 ```
 
 ## Módulos Principales
