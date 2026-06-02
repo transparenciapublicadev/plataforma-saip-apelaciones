@@ -36,7 +36,8 @@ data class Apelacion(
     val elevacionExtemporanea: Boolean = false,
     val tipoOrigen: TipoOrigenApelacion = TipoOrigenApelacion.SAIP_INTERNA,
     val datosExternos: DatosApelacionExterna? = null,
-    val elevacion: ElevacionApelacion? = null
+    val elevacion: ElevacionApelacion? = null,
+    val expedienteTtaip: ExpedienteTtaip? = null
 ) {
 
     /**
@@ -98,7 +99,9 @@ enum class EstadoApelacion {
     RESUELTO_FUNDADO_EN_PARTE,
     RESUELTO_INFUNDADO,
     RESUELTO_INFUNDADO_EN_PARTE,
-    RESUELTO_IMPROCEDENTE;
+    RESUELTO_IMPROCEDENTE,
+    RESUELTO_ESTESE_A_LO_RESUELTO,
+    RESUELTO_NULIDAD_ACTO;
 
     companion object {
         fun fromString(value: String): EstadoApelacion {
@@ -110,7 +113,8 @@ enum class EstadoApelacion {
         val TERMINALES = setOf(
             RESUELTO, RESUELTO_FUNDADO, RESUELTO_FUNDADO_EN_PARTE,
             RESUELTO_INFUNDADO, RESUELTO_INFUNDADO_EN_PARTE,
-            RESUELTO_IMPROCEDENTE, TENER_POR_NO_PRESENTADO,
+            RESUELTO_IMPROCEDENTE, RESUELTO_ESTESE_A_LO_RESUELTO,
+            RESUELTO_NULIDAD_ACTO, TENER_POR_NO_PRESENTADO,
             CONCLUSION_SUSTRACCION_MATERIA, CONCLUSION_DESISTIMIENTO
         )
     }
@@ -133,6 +137,8 @@ enum class EstadoApelacion {
         RESUELTO_INFUNDADO -> "Resuelto - Infundado"
         RESUELTO_INFUNDADO_EN_PARTE -> "Resuelto - Infundado en Parte"
         RESUELTO_IMPROCEDENTE -> "Resuelto - Improcedente"
+        RESUELTO_ESTESE_A_LO_RESUELTO -> "Resuelto - Estese a lo Resuelto"
+        RESUELTO_NULIDAD_ACTO -> "Resuelto - Nulidad del Acto"
     }
 }
 

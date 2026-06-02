@@ -117,6 +117,8 @@ class ApelacionTest {
             EstadoApelacion.RESUELTO_INFUNDADO,
             EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE,
             EstadoApelacion.RESUELTO_IMPROCEDENTE,
+            EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO,
+            EstadoApelacion.RESUELTO_NULIDAD_ACTO,
             EstadoApelacion.TENER_POR_NO_PRESENTADO,
             EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA,
             EstadoApelacion.CONCLUSION_DESISTIMIENTO
@@ -169,6 +171,8 @@ class EstadoApelacionTest {
     fun `toDisplayString retorna texto legible`() {
         assertEquals("Pendiente de Elevación", EstadoApelacion.PENDIENTE_ELEVACION.toDisplayString())
         assertEquals("Resuelto - Fundado", EstadoApelacion.RESUELTO_FUNDADO.toDisplayString())
+        assertEquals("Resuelto - Estese a lo Resuelto", EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO.toDisplayString())
+        assertEquals("Resuelto - Nulidad del Acto", EstadoApelacion.RESUELTO_NULIDAD_ACTO.toDisplayString())
     }
 }
 
