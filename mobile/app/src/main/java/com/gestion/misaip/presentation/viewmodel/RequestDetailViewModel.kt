@@ -13,6 +13,9 @@ import com.gestion.misaip.core.domain.model.TipoRespuesta
 import com.gestion.misaip.core.domain.model.AlcanceEncauzamiento
 import com.gestion.misaip.core.domain.model.CanalNotificacion
 import com.gestion.misaip.core.domain.model.EntidadPublica
+import com.gestion.misaip.core.domain.model.ElevacionApelacion
+import com.gestion.misaip.core.domain.model.EstadoElevacionApelacion
+import com.gestion.misaip.core.domain.model.ComunicarOmisionElevacion
 import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
 import com.gestion.misaip.core.domain.usecase.entidad.GetEntidadesActivasUseCase
@@ -30,6 +33,8 @@ import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionPorSAIPUseCa
 import com.gestion.misaip.core.domain.usecase.apelacion.CalificarApelacionUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.IniciarCalificacionUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.PresentarSubsanacionUseCase
+import com.gestion.misaip.core.domain.usecase.apelacion.ComunicarOmisionElevacionUseCase
+import com.gestion.misaip.core.domain.usecase.apelacion.GetElevacionApelacionUseCase
 import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
 import com.gestion.misaip.messaging.NotificationPushHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +54,7 @@ data class RequestDetailUiState(
     val solicitud: Solicitud? = null,
     val apelacion: Apelacion? = null,
     val apelacionRelacionada: Apelacion? = null,
+    val elevacion: ElevacionApelacion? = null,
     val estado: String = "",
     val diasRestantes: Int? = null,
     val asunto: String = "",
@@ -64,6 +70,7 @@ data class RequestDetailUiState(
     val puedeGestionarSaip: Boolean = false,
     val puedeCalificar: Boolean = false,
     val puedeSubsanar: Boolean = false,
+    val puedeComunicarOmisionElevacion: Boolean = false,
     val isLoading: Boolean = false,
     val isSubmittingOperation: Boolean = false,
     val operacionesDisponiblesOnline: Boolean = true,
@@ -72,7 +79,8 @@ data class RequestDetailUiState(
     val formularioOperacion: FormularioOperacionFuncionario? = null,
     val showResponseForm: Boolean = false,
     val showCalificacionForm: Boolean = false,
-    val showSubsanacionForm: Boolean = false
+    val showSubsanacionForm: Boolean = false,
+    val showOmisionElevacionForm: Boolean = false
 )
 
 enum class FormularioOperacionFuncionario {
@@ -104,6 +112,8 @@ class RequestDetailViewModel(
     private val calificarApelacionUseCase: CalificarApelacionUseCase,
     private val iniciarCalificacionUseCase: IniciarCalificacionUseCase,
     private val presentarSubsanacionUseCase: PresentarSubsanacionUseCase,
+    private val getElevacionApelacionUseCase: GetElevacionApelacionUseCase,
+    private val comunicarOmisionElevacionUseCase: ComunicarOmisionElevacionUseCase,
     private val sincronizarDatosUseCase: SincronizarDatosUseCase
 ) : ViewModel() {
 
@@ -181,6 +191,7 @@ class RequestDetailViewModel(
             } else null
 
             if (solicitud != null) {
+                val elevacion = obtenerElevacion(apelacionRelacionada)
                 // Verificar permisos según rol
                 val puedeApelar = tipoUsuario == TipoUsuario.CIUDADANO &&
                     solicitud.puedeSerApelada &&
@@ -229,7 +240,7 @@ class RequestDetailViewModel(
                         apelacionRelacionada.estado.toDisplayString()
                     } else {
                         when (apelacionRelacionada.estado) {
-                            EstadoApelacion.PENDIENTE_ELEVACION -> "En Primera Calificación"
+                            EstadoApelacion.PENDIENTE_ELEVACION -> "Pendiente de Elevación"
                             EstadoApelacion.EN_CALIFICACION_1 -> "En Primera Calificación"
                             EstadoApelacion.EN_SUBSANACION -> "Requiere Subsanación"
                             EstadoApelacion.EN_CALIFICACION_2 -> "En Segunda Calificación"
@@ -248,6 +259,7 @@ class RequestDetailViewModel(
                     esApelacion = false,
                     solicitud = solicitud,
                     apelacionRelacionada = apelacionRelacionada,
+                    elevacion = elevacion,
                     estado = estadoActual,
                     diasRestantes = solicitud.diasRestantes,
                     asunto = solicitud.asunto,
@@ -262,12 +274,14 @@ class RequestDetailViewModel(
                     puedeResponder = puedeResponder,
                     puedeGestionarSaip = puedeGestionarSaip,
                     puedeSubsanar = puedeSubsanar,
+                    puedeComunicarOmisionElevacion = puedeComunicarOmision(tipoUsuario, usuario?.id, apelacionRelacionada, elevacion),
                     operacionesDisponiblesOnline = operacionesResultado?.isSuccess ?: true,
                     operacionesFuncionario = operacionesResultado?.getOrNull() ?: operacionesPrevias,
                     entidadesDestino = entidadesDestino,
                     isLoading = false
                 )
             } else if (apelacion != null) {
+                val elevacion = obtenerElevacion(apelacion)
                 val puedeCalificar = tipoUsuario == TipoUsuario.TTAIP &&
                     apelacion.estado in listOf(
                         EstadoApelacion.EN_CALIFICACION_1,
@@ -279,7 +293,9 @@ class RequestDetailViewModel(
                     usuario?.id == apelacion.usuarioId
 
                 // Obtener teléfono del ciudadano desde la solicitud SAIP vinculada
-                val solicitudVinculada = getSolicitudPorExpedienteUseCase(apelacion.expedienteSAIP).first()
+                val solicitudVinculada = apelacion.expedienteSAIP
+                    .takeIf { it.isNotBlank() }
+                    ?.let { getSolicitudPorExpedienteUseCase(it).first() }
                 val telefonoCiudadano = solicitudVinculada?.solicitante?.telefono ?: ""
 
                 _uiState.value = RequestDetailUiState(
@@ -287,6 +303,7 @@ class RequestDetailViewModel(
                     esSolicitud = false,
                     esApelacion = true,
                     apelacion = apelacion,
+                    elevacion = elevacion,
                     estado = apelacion.estado.toDisplayString(),
                     diasRestantes = apelacion.diasRestantes,
                     asunto = apelacion.asunto,
@@ -297,6 +314,7 @@ class RequestDetailViewModel(
                     tipoUsuario = tipoUsuario,
                     puedeCalificar = puedeCalificar,
                     puedeSubsanar = puedeSubsanar,
+                    puedeComunicarOmisionElevacion = puedeComunicarOmision(tipoUsuario, usuario?.id, apelacion, elevacion),
                     isLoading = false
                 )
             } else {
@@ -614,6 +632,57 @@ class RequestDetailViewModel(
             val solicitud = _uiState.value.solicitud ?: return@launch
             _events.emit(RequestDetailEvent.NavigateToAppeal(solicitud.expediente))
         }
+    }
+
+    fun mostrarFormularioOmisionElevacion() {
+        if (_uiState.value.puedeComunicarOmisionElevacion) {
+            _uiState.value = _uiState.value.copy(showOmisionElevacionForm = true)
+        }
+    }
+
+    fun ocultarFormularioOmisionElevacion() {
+        _uiState.value = _uiState.value.copy(showOmisionElevacionForm = false)
+    }
+
+    fun comunicarOmisionElevacion(referenciaPrueba: String, observacion: String) {
+        viewModelScope.launch {
+            val apelacion = _uiState.value.apelacion ?: _uiState.value.apelacionRelacionada ?: return@launch
+            try {
+                comunicarOmisionElevacionUseCase(
+                    apelacionId = apelacion.id,
+                    request = ComunicarOmisionElevacion(
+                        referenciaPruebaOmision = referenciaPrueba,
+                        observacion = observacion.ifBlank { null }
+                    )
+                )
+                _uiState.value = _uiState.value.copy(showOmisionElevacionForm = false)
+                _events.emit(RequestDetailEvent.ShowMessage("Omisión de elevación comunicada al TTAIP"))
+                cargarDetalle(_uiState.value.expediente)
+            } catch (_: IOException) {
+                _events.emit(RequestDetailEvent.ShowMessage("Esta operación requiere conexión con el servidor."))
+            } catch (e: Exception) {
+                _events.emit(RequestDetailEvent.ShowMessage(e.message ?: "No se pudo comunicar la omisión"))
+            }
+        }
+    }
+
+    private suspend fun obtenerElevacion(apelacion: Apelacion?): ElevacionApelacion? {
+        if (apelacion?.estado != EstadoApelacion.PENDIENTE_ELEVACION) return apelacion?.elevacion
+        return runCatching { getElevacionApelacionUseCase(apelacion.id) }.getOrNull() ?: apelacion.elevacion
+    }
+
+    private fun puedeComunicarOmision(
+        tipoUsuario: TipoUsuario,
+        usuarioId: String?,
+        apelacion: Apelacion?,
+        elevacion: ElevacionApelacion?
+    ): Boolean {
+        return tipoUsuario == TipoUsuario.CIUDADANO &&
+            usuarioId == apelacion?.usuarioId &&
+            elevacion?.estado in setOf(
+                EstadoElevacionApelacion.PENDIENTE,
+                EstadoElevacionApelacion.VENCIDA_NO_ELEVADA
+            )
     }
 
     private fun formatearFecha(timestamp: Long): String {

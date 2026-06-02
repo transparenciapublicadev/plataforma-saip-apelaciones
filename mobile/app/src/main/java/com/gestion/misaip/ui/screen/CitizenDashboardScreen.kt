@@ -91,6 +91,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun CitizenDashboardScreen(
     onNavigateToDetail: (String, String) -> Unit,
     onNavigateToSAIPForm: () -> Unit,
+    onNavigateToAppealForm: () -> Unit,
     onNavigateToLogin: () -> Unit,
     welcomeMessage: String? = null,
     onWelcomeShown: () -> Unit = {},
@@ -162,6 +163,7 @@ fun CitizenDashboardScreen(
         onLoadMore = viewModel::cargarSiguientePagina,
         onExpedienteClick = { exp -> onNavigateToDetail(exp.expediente, exp.tipo) },
         onNuevaSolicitud = onNavigateToSAIPForm,
+        onNuevaApelacionExterna = onNavigateToAppealForm,
         onNotificacionClick = { notif ->
             notificationsViewModel.marcarComoLeida(notif.id)
             notif.expediente?.let { exp ->
@@ -191,6 +193,7 @@ private fun CitizenDashboardContent(
     onLoadMore: () -> Unit,
     onExpedienteClick: (ExpedienteItem) -> Unit,
     onNuevaSolicitud: () -> Unit,
+    onNuevaApelacionExterna: () -> Unit,
     onNotificacionClick: (com.gestion.misaip.presentation.viewmodel.NotificacionItem) -> Unit,
     notificaciones: List<com.gestion.misaip.presentation.viewmodel.NotificacionItem>,
     notifLoading: Boolean,
@@ -345,6 +348,17 @@ private fun CitizenDashboardContent(
                                     label = { Text(if (filtro == "todas") "Todas" else filtro) }
                                 )
                             }
+                        }
+
+                        FilledTonalButton(
+                            onClick = onNuevaApelacionExterna,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            Icon(Icons.Default.Gavel, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Presentar apelación externa")
                         }
 
                         // Lista de expedientes con animación staggered
