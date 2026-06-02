@@ -133,8 +133,8 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     single<ApelacionRemoteDataSource> {
         ApelacionRestDataSource(
             apelacionApi = get(),
-            ttaipApi = get(),
-            tokenStorage = get()
+            tokenStorage = get(),
+            json = get()
         )
     }
 

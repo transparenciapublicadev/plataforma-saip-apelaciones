@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -51,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -128,6 +129,10 @@ fun EntityDashboardScreen(
         }
     }
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     EntityDashboardContent(
         uiState = uiState,
         listState = listState,
@@ -138,6 +143,7 @@ fun EntityDashboardScreen(
             coroutineScope.launch { listState.animateScrollToItem(0) }
         },
         onRefresh = viewModel::cargarDatos,
+        onLoadMore = viewModel::cargarSiguientePagina,
         onSolicitudClick = { sol -> onNavigateToDetail(sol.expediente, "SAIP") },
         onIniciarRevision = viewModel::iniciarRevision,
         onNotificacionClick = { notif ->
@@ -163,6 +169,7 @@ private fun EntityDashboardContent(
     onBuscar: (String) -> Unit,
     onFiltrar: (String) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onSolicitudClick: (SolicitudEntidadItem) -> Unit,
     onIniciarRevision: (String) -> Unit,
     onNotificacionClick: (com.gestion.misaip.presentation.viewmodel.NotificacionItem) -> Unit,
@@ -324,6 +331,28 @@ private fun EntityDashboardContent(
                                             onClick = { onSolicitudClick(solicitud) },
                                             onIniciarRevision = { onIniciarRevision(solicitud.expediente) }
                                         )
+                                    }
+                                }
+                                if (uiState.puedeCargarMas) {
+                                    item(key = "load-more") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            FilledTonalButton(
+                                                onClick = onLoadMore,
+                                                enabled = !uiState.isLoadingMore
+                                            ) {
+                                                if (uiState.isLoadingMore) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(18.dp),
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                } else {
+                                                    Text("Cargar más")
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

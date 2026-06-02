@@ -38,6 +38,9 @@ val domainModule = module {
     factory { CrearSolicitudUseCase(get()) }
     factory { ResponderSolicitudUseCase(get()) }
     factory { GetTodasLasSolicitudesUseCase(get()) }
+    factory { CargarSolicitudesUsuarioPaginaUseCase(get()) }
+    factory { CargarSolicitudesEntidadPaginaUseCase(get()) }
+    factory { CargarSolicitudesPaginaUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - ENTIDADES PÚBLICAS
@@ -57,6 +60,8 @@ val domainModule = module {
     factory { CrearApelacionUseCase(get(), get()) }
     factory { CalificarApelacionUseCase(get()) }
     factory { PresentarSubsanacionUseCase(get()) }
+    factory { CargarApelacionesUsuarioPaginaUseCase(get()) }
+    factory { CargarApelacionesPaginaUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - NOTIFICACIONES
@@ -72,4 +77,3 @@ val domainModule = module {
 
     factory { SincronizarDatosUseCase(get(), get(), get()) }
 }
-

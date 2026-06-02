@@ -1,9 +1,12 @@
 package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Apelacion
+import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.network.api.ApelacionApiService
-import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
+import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
 
 /**
  * Implementación REST del datasource de apelaciones.
@@ -11,9 +14,26 @@ import com.gestion.misaip.core.network.dto.rest.CrearApelacionRestRequest
  */
 class ApelacionRestDataSource(
     private val apelacionApi: ApelacionApiService,
-    private val ttaipApi: TTAIPApiService,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val json: Json
 ) : ApelacionRemoteDataSource {
+
+    override suspend fun getPaginaApelaciones(pagina: Int, tamano: Int): Pagina<Apelacion> {
+        return traducirProblemDetails {
+            apelacionApi.listarPaginadas(pagina, tamano).map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getPaginaApelacionesUsuario(
+        usuarioId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Apelacion> {
+        val id = usuarioId.toLongOrNull() ?: return paginaVacia(pagina, tamano)
+        return traducirProblemDetails {
+            apelacionApi.getByCiudadanoPaginadas(id, pagina, tamano).map { it.toDomain() }
+        }
+    }
 
     override suspend fun crearApelacion(apelacion: Apelacion) {
         val userId = tokenStorage.getUserId() ?: throw NetworkException("Usuario no autenticado")
@@ -33,15 +53,13 @@ class ApelacionRestDataSource(
     }
 
     override suspend fun getApelacionesUsuario(usuarioId: String): List<Apelacion> {
-        val id = usuarioId.toLongOrNull() ?: return emptyList()
-        return apelacionApi.getByCiudadano(id).map { it.toDomain() }
+        return obtenerTodasLasPaginas { pagina, tamano ->
+            getPaginaApelacionesUsuario(usuarioId, pagina, tamano)
+        }
     }
 
     override suspend fun getTodasLasApelaciones(): List<Apelacion> {
-        return when (tokenStorage.getTipoUsuario()?.uppercase()) {
-            "TTAIP" -> obtenerApelacionesTtaip()
-            else -> apelacionApi.listar().map { it.toDomain() }
-        }
+        return obtenerTodasLasPaginas(::getPaginaApelaciones)
     }
 
     override suspend fun getApelacionPorExpediente(expediente: String): Apelacion? {
@@ -58,33 +76,55 @@ class ApelacionRestDataSource(
         return when (tokenStorage.getTipoUsuario()?.uppercase()) {
             "CIUDADANO" -> {
                 val userId = tokenStorage.getUserId() ?: return emptyList()
-                apelacionApi.getByCiudadano(userId).map { it.toDomain() }
+                obtenerTodasLasPaginas { pagina, tamano ->
+                    getPaginaApelacionesUsuario(userId.toString(), pagina, tamano)
+                }
             }
-            "TTAIP" -> {
-                obtenerApelacionesTtaip()
-            }
-            "FUNCIONARIO", "ADMIN" -> {
-                apelacionApi.listar().map { it.toDomain() }
+            "TTAIP", "FUNCIONARIO", "ADMIN" -> {
+                obtenerTodasLasPaginas(::getPaginaApelaciones)
             }
             else -> {
                 val userId = tokenStorage.getUserId() ?: return emptyList()
-                apelacionApi.getByCiudadano(userId).map { it.toDomain() }
+                obtenerTodasLasPaginas { pagina, tamano ->
+                    getPaginaApelacionesUsuario(userId.toString(), pagina, tamano)
+                }
             }
         }
     }
 
-    private suspend fun obtenerApelacionesTtaip(): List<Apelacion> {
-        val apelacionesSegmentadas = buildList {
-            addAll(ttaipApi.listarPendientes())
-            addAll(ttaipApi.listarEnCalificacion())
-            addAll(ttaipApi.listarSubsanacion())
-            addAll(ttaipApi.listarSegundaCalificacion())
-            addAll(ttaipApi.listarEnResolucion())
-            addAll(ttaipApi.listarResueltas())
-        }
+    private suspend fun obtenerTodasLasPaginas(
+        cargarPagina: suspend (pagina: Int, tamano: Int) -> Pagina<Apelacion>
+    ): List<Apelacion> {
+        val resultado = mutableListOf<Apelacion>()
+        var pagina = 0
+        do {
+            val respuesta = cargarPagina(pagina, TAMANO_SYNC)
+            resultado += respuesta.contenido
+            pagina++
+        } while (!respuesta.ultima && pagina < respuesta.totalPaginas)
+        return resultado.distinctBy { it.id.ifBlank { it.expediente } }
+    }
 
-        return apelacionesSegmentadas
-            .distinctBy { dto -> dto.id?.toString() ?: dto.expediente }
-            .map { it.toDomain() }
+    private suspend fun <T> traducirProblemDetails(block: suspend () -> T): T {
+        return try {
+            block()
+        } catch (e: HttpException) {
+            val mensaje = json.extraerMensajeProblemDetails(e.response()?.errorBody()?.string())
+                ?: "No se pudo consultar apelaciones (${e.code()})"
+            throw ApiProblemException(mensaje, e.code(), e)
+        }
+    }
+
+    private fun paginaVacia(pagina: Int, tamano: Int) = Pagina<Apelacion>(
+        contenido = emptyList(),
+        pagina = pagina,
+        tamano = tamano,
+        totalElementos = 0,
+        totalPaginas = 0,
+        ultima = true
+    )
+
+    private companion object {
+        const val TAMANO_SYNC = 100
     }
 }
