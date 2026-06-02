@@ -244,6 +244,40 @@ class SolicitudRepositoryImpl(
         Unit
     }
 
+    override suspend fun getOperacionesFuncionario(
+        solicitudId: String
+    ): OperacionesSolicitudFuncionario = withContext(Dispatchers.IO) {
+        remoteDataSource.getOperacionesFuncionario(solicitudId)
+    }
+
+    override suspend fun registrarObservacion(
+        solicitudId: String,
+        request: RegistrarObservacionSolicitud
+    ): ObservacionSolicitud = withContext(Dispatchers.IO) {
+        remoteDataSource.registrarObservacion(solicitudId, request)
+    }
+
+    override suspend fun registrarAmpliacion(
+        solicitudId: String,
+        request: RegistrarAmpliacionPlazoSolicitud
+    ): AmpliacionPlazoSolicitud = withContext(Dispatchers.IO) {
+        remoteDataSource.registrarAmpliacion(solicitudId, request)
+    }
+
+    override suspend fun registrarEncauzamiento(
+        solicitudId: String,
+        request: RegistrarEncauzamientoSolicitud
+    ): EncauzamientoSolicitud = withContext(Dispatchers.IO) {
+        remoteDataSource.registrarEncauzamiento(solicitudId, request)
+    }
+
+    override suspend fun emitirLiquidacion(
+        solicitudId: String,
+        request: RegistrarLiquidacionCostoSolicitud
+    ): LiquidacionCostoSolicitud = withContext(Dispatchers.IO) {
+        remoteDataSource.emitirLiquidacion(solicitudId, request)
+    }
+
     /**
      * Registra la respuesta de una entidad.
      */

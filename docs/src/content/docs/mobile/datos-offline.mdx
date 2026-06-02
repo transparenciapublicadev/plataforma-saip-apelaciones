@@ -64,6 +64,17 @@ Los resúmenes remotos se combinan con el registro SQLDelight existente antes de
 La bandeja TTAIP puede mostrar desde red una apelación externa creada en web. Su cache offline completo queda pendiente de la migración local del flujo externo porque la tabla `Apelacion` todavía enlaza obligatoriamente `expedienteSAIP` con una SAIP local.
 :::
 
+## Actuaciones Administrativas Online
+
+Las operaciones SAIP de App Funcionario se envían directamente al backend:
+
+- registrar observación;
+- registrar ampliación con cronograma inicial;
+- registrar encauzamiento total o parcial;
+- emitir liquidación o cupón.
+
+Estas operaciones requieren conexión. No se encolan como éxitos locales ni se ejecutan con actualización optimista porque generan actos administrativos sujetos a validaciones legales del backend. Si la conexión falla, la UI conserva el cache de consulta y solicita reintentar con conectividad.
+
 ## Retrofit — REST API Client
 
 ```kotlin
