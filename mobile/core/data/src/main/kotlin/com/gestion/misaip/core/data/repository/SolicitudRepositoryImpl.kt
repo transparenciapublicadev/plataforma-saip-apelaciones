@@ -44,6 +44,56 @@ class SolicitudRepositoryImpl(
     private val queries = database.solicitudQueries
     private val contadorQueries = database.apelacionQueries // Contadores están aquí
 
+    override suspend fun cargarPaginaSolicitudes(
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud> = cargarPagina(
+        pagina = pagina,
+        tamano = tamano,
+        remote = { remoteDataSource.getPaginaSolicitudes(pagina, tamano) },
+        local = {
+            queries.getAllSolicitudesPaginadas(tamano.toLong(), offset(pagina, tamano))
+                .executeAsList()
+                .map(SolicitudMapper::toDomain) to queries.countAllSolicitudes().executeAsOne()
+        }
+    )
+
+    override suspend fun cargarPaginaSolicitudesUsuario(
+        usuarioId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud> = cargarPagina(
+        pagina = pagina,
+        tamano = tamano,
+        remote = { remoteDataSource.getPaginaSolicitudesUsuario(usuarioId, pagina, tamano) },
+        local = {
+            queries.getSolicitudesByUsuarioPaginadas(
+                usuarioId,
+                tamano.toLong(),
+                offset(pagina, tamano)
+            ).executeAsList().map(SolicitudMapper::toDomain) to
+                queries.countSolicitudesByUsuario(usuarioId).executeAsOne()
+        }
+    )
+
+    override suspend fun cargarPaginaSolicitudesEntidad(
+        entidadId: String,
+        pagina: Int,
+        tamano: Int
+    ): Pagina<Solicitud> = cargarPagina(
+        pagina = pagina,
+        tamano = tamano,
+        remote = { remoteDataSource.getPaginaSolicitudesEntidad(entidadId, pagina, tamano) },
+        local = {
+            queries.getSolicitudesByEntidadPaginadas(
+                entidadId,
+                tamano.toLong(),
+                offset(pagina, tamano)
+            ).executeAsList().map(SolicitudMapper::toDomain) to
+                queries.countSolicitudesByEntidad(entidadId).executeAsOne()
+        }
+    )
+
     /**
      * Obtiene todas las solicitudes del sistema (para administrador).
      */
@@ -365,6 +415,33 @@ class SolicitudRepositoryImpl(
         )
     }
 
+    private suspend fun cargarPagina(
+        pagina: Int,
+        tamano: Int,
+        remote: suspend () -> Pagina<Solicitud>,
+        local: suspend () -> Pair<List<Solicitud>, Long>
+    ): Pagina<Solicitud> = withContext(Dispatchers.IO) {
+        withOfflinePageFallback(
+            remote = {
+                val remota = remote()
+                val actualizadas = remota.contenido.map { resumen ->
+                    val cached = queries.getSolicitudById(resumen.id).executeAsOneOrNull()
+                        ?: queries.getSolicitudByExpediente(resumen.expediente).executeAsOneOrNull()
+                    val merged = resumen.completarResumenDesde(
+                        cached?.let(SolicitudMapper::toDomain)
+                    )
+                    guardarSolicitudLocal(merged, sincronizado = true, pendienteSubida = false)
+                    merged
+                }
+                remota.copy(contenido = actualizadas)
+            },
+            local = {
+                val (items, total) = local()
+                paginaLocal(items, pagina, tamano, total)
+            }
+        )
+    }
+
     private fun Solicitud.completarDatosLocalesDesde(local: Solicitud): Solicitud {
         return copy(
             solicitante = solicitante.copy(
@@ -376,6 +453,52 @@ class SolicitudRepositoryImpl(
             canalNotificacion = canalNotificacion ?: local.canalNotificacion,
             timeline = timeline.ifEmpty { local.timeline }
         )
+    }
+
+    private fun Solicitud.completarResumenDesde(local: Solicitud?): Solicitud {
+        if (local == null) return this
+        return local.copy(
+            id = id.ifBlank { local.id },
+            expediente = expediente.ifBlank { local.expediente },
+            entidad = entidad.ifBlank { local.entidad },
+            entidadId = entidadId.ifBlank { local.entidadId },
+            usuarioId = usuarioId.ifBlank { local.usuarioId },
+            solicitante = local.solicitante.copy(
+                nombre = solicitante.nombre.ifBlank { local.solicitante.nombre }
+            ),
+            asunto = asunto.ifBlank { local.asunto },
+            canalNotificacion = canalNotificacion ?: local.canalNotificacion,
+            fechaCreacion = fechaCreacion.takeIf { it > 0 } ?: local.fechaCreacion,
+            fechaLimite = fechaLimite.takeIf { it > 0 } ?: local.fechaLimite,
+            estado = estado,
+            diasRestantes = diasRestantes ?: local.diasRestantes,
+            prioridad = prioridad
+        )
+    }
+
+    private fun paginaLocal(
+        contenido: List<Solicitud>,
+        pagina: Int,
+        tamano: Int,
+        total: Long
+    ): Pagina<Solicitud> {
+        val totalPaginas = calcularTotalPaginas(total, tamano)
+        return Pagina(
+            contenido = contenido,
+            pagina = pagina,
+            tamano = tamano,
+            totalElementos = total,
+            totalPaginas = totalPaginas,
+            ultima = pagina + 1 >= totalPaginas,
+            desdeCache = true
+        )
+    }
+
+    private fun offset(pagina: Int, tamano: Int): Long = pagina.toLong() * tamano
+
+    private fun calcularTotalPaginas(total: Long, tamano: Int): Int {
+        if (total == 0L) return 0
+        return ((total + tamano - 1) / tamano).toInt()
     }
 
     /**
