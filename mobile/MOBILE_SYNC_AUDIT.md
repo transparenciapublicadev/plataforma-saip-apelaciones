@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #28 y registra el alcance completado de Mobile PR 2. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #29 y registra el alcance completado de Mobile PR 3. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
 
 ## Stack y módulos reales
 
@@ -30,9 +30,9 @@ Módulos Gradle:
 
 | Rol | Funcionalidad mobile existente | Estado frente al backend actual |
 | --- | --- | --- |
-| Ciudadano | Registro, login, dashboard, creación SAIP con consentimiento y canal formal, seguimiento básico, apelación interna, perfil y avisos locales | Parcial. La creación SAIP básica ya está alineada al contrato. Falta apelación externa y sincronizar subflujos SAIP recientes. |
-| Funcionario | Login interno, bandeja de entidad, detalle y respuesta SAIP | Parcial. Falta exponer en mobile observación/subsanación, ampliación, encauzamiento, liquidación y notificaciones del motor común. |
-| TTAIP | Login restringido, bandeja, calificación básica, subsanación, segunda calificación y resoluciones principales | Parcial. Falta sincronizar expediente agregado, elevación, descargos, suspensiones, constancias, acuses, reprocesos, cumplimiento y decisiones finales recientes. |
+| Ciudadano | Registro, login, dashboard paginado, creación SAIP con consentimiento y canal formal, seguimiento básico, apelación interna, perfil y avisos locales | Parcial. Creación SAIP básica y bandejas livianas paginadas ya están alineadas. Falta apelación externa y sincronizar subflujos SAIP recientes. |
+| Funcionario | Login interno, bandeja paginada de entidad, detalle y respuesta SAIP | Parcial. Falta exponer en mobile observación/subsanación, ampliación, encauzamiento, liquidación y notificaciones del motor común. |
+| TTAIP | Login restringido, bandeja paginada, calificación básica, subsanación, segunda calificación y resoluciones principales | Parcial. Falta sincronizar expediente agregado, elevación, descargos, suspensiones, constancias, acuses, reprocesos, cumplimiento y decisiones finales recientes. |
 | Admin | Existe código histórico de dashboard, pero `AppRolePolicy` bloquea acceso | Correcto: administración queda en frontend web. |
 
 ## Endpoints consumidos actualmente
@@ -41,8 +41,8 @@ Módulos Gradle:
 | --- | --- | --- |
 | Auth | `POST /api/auth/login`, `POST /api/auth/registro`, `GET /api/auth/me/{usuarioId}` | El interceptor JWT ahora omite token solo en auth público; `/me/{id}` conserva autorización. |
 | Entidades | `GET /api/entidades`, `/activas`, `/{id}`, `/buscar` | Catálogo disponible. |
-| Solicitudes | Listados legacy, detalle, expediente, creación y cambio de estado | Los listados siguen compatibles, pero deben migrarse a DTOs paginados. |
-| Apelaciones | Listados legacy, detalle, expediente, creación interna, cambio de estado y subsanación | Falta apelación externa y elevación por entidad. |
+| Solicitudes | Listados paginados livianos para bandejas, listados legacy compatibles, detalle, expediente, creación y cambio de estado | Ciudadano usa `/ciudadano/{id}/paginadas`; funcionario usa `/entidad/{id}/paginadas`; sincronización en background obtiene páginas por lotes. |
+| Apelaciones | Listados paginados livianos para bandejas, listados legacy compatibles, detalle, expediente, creación interna, cambio de estado y subsanación | Ciudadano usa `/ciudadano/{id}/paginadas`; TTAIP usa `/paginadas`. Falta apelación externa y elevación por entidad. |
 | TTAIP | Bandejas segmentadas, calificación básica, decisiones principales y notificación de segunda calificación | Falta cubrir endpoints agregados desde los PRs web/backend recientes. |
 
 ## Migración a paginación
@@ -57,7 +57,7 @@ Módulos Gradle:
 | `GET /api/apelaciones/ciudadano/{id}` | `GET /api/apelaciones/ciudadano/{id}/paginadas` |
 | `GET /api/apelaciones/estado/{estado}` | `GET /api/apelaciones/estado/{estado}/paginadas` |
 
-La migración requiere DTOs de página, cursores de UI y estrategia de cache. No se realiza en esta pasada para no romper bandejas existentes.
+Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conservan para pantallas auxiliares aún no migradas y para compatibilidad transitoria.
 
 ## Brechas contra el contrato actual
 
@@ -68,7 +68,7 @@ La migración requiere DTOs de página, cursores de UI y estrategia de cache. No
 | RFC 9457 | Login intentaba leer únicamente el campo legacy `mensaje` | Alta | Cubierto: priorizar `detail`, luego `mensaje` y `title`. |
 | SAIP ciudadano | Creación no enviaba `consentimientoDatosPersonales` ni `canalNotificacion` | Alta | Cubierto en Mobile PR 2: UI, dominio, request REST, mapper y caché local conservan ambos campos. |
 | SAIP funcionario | No consume observaciones, ampliaciones, encauzamientos ni liquidaciones | Media | Separar por vertical funcional y reutilizar endpoints ya estabilizados. |
-| Paginación | Bandejas usan listados legacy y cargas amplias | Alta | Migrar solicitudes y apelaciones a DTOs livianos paginados. |
+| Paginación | Bandejas usaban listados legacy y cargas amplias | Alta | Cubierto en Mobile PR 3: DTO genérico de página, resúmenes livianos, carga incremental y fallback SQLDelight por página. |
 | Apelaciones | No soporta `EXTERNA` ni flujo `ante-entidad` / elevación | Media | Agregar después de estabilizar paginación y SAIP ciudadano. |
 | TTAIP | No refleja todo el expediente agregado ni flujos posteriores recientes | Media | Implementar por etapas: expediente, notificaciones, plazos y cumplimiento. |
 | Push | Registro/revocación FCM en backend es un stub mobile y no existe endpoint autenticado dedicado | Alta | Diseñar contrato backend antes de conectar. No escribir tokens en Firestore. |
@@ -103,9 +103,21 @@ La migración requiere DTOs de página, cursores de UI y estrategia de cache. No
 - El detalle ciudadano muestra el número SAIP, estado, fecha de presentación, fecha límite y canal elegido disponible.
 - SQLDelight incorpora una migración verificada para conservar consentimiento y canal en instalaciones existentes.
 
+## Mobile PR 3: bandejas paginadas y cache SQLDelight
+
+- El contrato mobile usa `PaginaRestDto<T>` con `contenido`, `pagina`, `tamano`, `totalElementos`, `totalPaginas` y `ultima`.
+- Las bandejas consumen `SolicitudResumenRestDto` y `ApelacionResumenRestDto` para evitar relaciones pesadas.
+- App Ciudadano pagina solicitudes y apelaciones propias; App Funcionario pagina solicitudes de su entidad; App TTAIP pagina apelaciones globales respetando ownership backend.
+- Página `0` refresca el contenido visible. Las páginas siguientes se agregan bajo demanda con la acción `Cargar más`.
+- El cache existente se reutiliza sin migración destructiva: los resúmenes remotos se mezclan con el detalle SQLDelight local antes de persistir.
+- `consentimientoDatosPersonales` y `canalNotificacion` se conservan al actualizar resúmenes SAIP.
+- Si falla conectividad, el repositorio consulta la página equivalente desde SQLDelight. Errores HTTP reales se propagan y se muestran a la UI; no quedan ocultos por el fallback offline.
+- TTAIP puede mostrar desde red apelaciones externas creadas en web. Su cache offline completo queda pendiente de Mobile PR 5 porque la tabla local todavía exige una SAIP vinculada.
+- Las sincronizaciones de background conservan los métodos legacy, pero descargan lotes paginados según rol.
+
 ## Riesgos que requieren PR dedicado
 
-1. Los listados legacy siguen operativos, pero no aprovechan paginación ni DTOs livianos.
+1. Perfil, avisos locales y algunos flujos auxiliares conservan métodos legacy compatibles; deben migrarse cuando reciban un contrato paginado específico.
 2. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
 3. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
 4. La base SQLDelight requiere una migración adicional antes de representar apelación externa sin SAIP local.
@@ -128,7 +140,7 @@ cd mobile
 | --- | --- |
 | Mobile PR 1 | Contrato base, seguridad de red/JWT, OpenAPI snapshot, documentación y build reproducible. |
 | Mobile PR 2 | Cubierto: SAIP ciudadano con consentimiento, canal de notificación, DTOs vigentes, caché migrable y creación end-to-end básica. |
-| Mobile PR 3 | Paginación de solicitudes y apelaciones con DTOs livianos y cache SQLDelight. |
+| Mobile PR 3 | Cubierto: paginación de solicitudes y apelaciones con DTOs livianos, carga incremental y fallback SQLDelight. |
 | Mobile PR 4 | Funcionario: observación, ampliación, encauzamiento y liquidación. |
 | Mobile PR 5 | Apelación externa, elevación por entidad y migración SQLDelight compatible. |
 | Mobile PR 6 | TTAIP agregado: expediente, descargos, suspensiones, constancias, acuses, reprocesos y cumplimiento. |
