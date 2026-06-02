@@ -8,9 +8,26 @@ SELECT * FROM Apelacion
 WHERE usuarioId = ?
 ORDER BY fechaPresentacion DESC;
 
+getApelacionesByUsuarioPaginadas:
+SELECT * FROM Apelacion
+WHERE usuarioId = ?
+ORDER BY fechaPresentacion DESC
+LIMIT ? OFFSET ?;
+
+countApelacionesByUsuario:
+SELECT COUNT(*) FROM Apelacion WHERE usuarioId = ?;
+
 -- Obtener todas las apelaciones (para TTAIP)
 getAllApelaciones:
 SELECT * FROM Apelacion ORDER BY fechaPresentacion DESC;
+
+getAllApelacionesPaginadas:
+SELECT * FROM Apelacion
+ORDER BY fechaPresentacion DESC
+LIMIT ? OFFSET ?;
+
+countAllApelaciones:
+SELECT COUNT(*) FROM Apelacion;
 
 -- Obtener apelación por expediente
 getApelacionByExpediente:
@@ -148,4 +165,3 @@ UPDATE SyncLog SET intentos = intentos + 1, ultimoError = ? WHERE id = ?;
 -- Limpiar logs de sincronización
 limpiarSyncLogs:
 DELETE FROM SyncLog;
-
