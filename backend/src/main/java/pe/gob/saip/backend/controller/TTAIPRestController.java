@@ -444,6 +444,7 @@ public class TTAIPRestController {
     public ResponseEntity<List<IntentoNotificacionDTO>> listarIntentos(
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
             @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId) {
+        autorizacionRecursosService.verificarExpedienteTtaipInstitucional(expedienteId);
         List<IntentoNotificacionDTO> intentos = motorNotificacionesService.listarIntentosTtaip(expedienteId, notificacionId)
                 .stream()
                 .map(IntentoNotificacionDTO::from)

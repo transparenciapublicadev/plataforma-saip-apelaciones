@@ -22,19 +22,23 @@ public class FuncionarioRestController {
     private final FuncionarioService funcionarioService;
     private final EntidadService entidadService;
     private final PasswordEncoder passwordEncoder;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public FuncionarioRestController(FuncionarioService funcionarioService,
                                       EntidadService entidadService,
-                                      PasswordEncoder passwordEncoder) {
+                                      PasswordEncoder passwordEncoder,
+                                      AutorizacionRecursosService autorizacionRecursosService) {
         this.funcionarioService = funcionarioService;
         this.entidadService = entidadService;
         this.passwordEncoder = passwordEncoder;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todos los funcionarios")
     @GetMapping
     public ResponseEntity<List<FuncionarioDTO>> listar() {
-        List<FuncionarioDTO> funcionarios = funcionarioService.obtenerTodosLosFuncionarios()
+        List<FuncionarioDTO> funcionarios = autorizacionRecursosService
+                .filtrarFuncionariosAccesibles(funcionarioService.obtenerTodosLosFuncionarios())
                 .stream()
                 .map(FuncionarioDTO::from)
                 .collect(Collectors.toList());
@@ -44,6 +48,7 @@ public class FuncionarioRestController {
     @Operation(summary = "Obtener funcionario por ID")
     @GetMapping("/{id}")
     public ResponseEntity<FuncionarioDTO> obtenerPorId(@Parameter(description = "ID del funcionario") @PathVariable Long id) {
+        autorizacionRecursosService.verificarFuncionarioConsultable(id);
         Funcionario funcionario = funcionarioService.obtenerFuncionarioPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario no encontrado con ID: " + id));
         return ResponseEntity.ok(FuncionarioDTO.from(funcionario));
@@ -52,6 +57,7 @@ public class FuncionarioRestController {
     @Operation(summary = "Listar funcionarios por entidad")
     @GetMapping("/entidad/{entidadId}")
     public ResponseEntity<List<FuncionarioDTO>> listarPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
+        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
         List<FuncionarioDTO> funcionarios = funcionarioService.obtenerFuncionariosPorEntidad(entidadId)
                 .stream()
                 .map(FuncionarioDTO::from)
@@ -94,6 +100,7 @@ public class FuncionarioRestController {
     @Operation(summary = "Actualizar funcionario")
     @PutMapping("/{id}")
     public ResponseEntity<FuncionarioDTO> actualizar(@Parameter(description = "ID del funcionario") @PathVariable Long id, @RequestBody FuncionarioDTO funcionarioDTO) {
+        autorizacionRecursosService.verificarFuncionarioEditable(id);
         Funcionario funcionario = funcionarioService.obtenerFuncionarioPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario no encontrado con ID: " + id));
 
@@ -103,6 +110,7 @@ public class FuncionarioRestController {
         funcionario.setTelefono(funcionarioDTO.telefono());
 
         if (funcionarioDTO.entidadId() != null) {
+            autorizacionRecursosService.verificarEntidadInstitucional(funcionarioDTO.entidadId());
             Entidad entidad = entidadService.findById(funcionarioDTO.entidadId())
                     .orElseThrow(() -> new RecursoNoEncontradoException("Entidad no encontrada con ID: " + funcionarioDTO.entidadId()));
             funcionario.setEntidad(entidad);

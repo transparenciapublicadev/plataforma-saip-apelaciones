@@ -9,6 +9,7 @@ import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.EntidadDTO;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import pe.gob.saip.backend.service.EntidadService;
 import pe.gob.saip.backend.service.SolicitudService;
 
@@ -28,10 +29,14 @@ public class EntidadRestController {
 
     private final EntidadService entidadService;
     private final SolicitudService solicitudService;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
-    public EntidadRestController(EntidadService entidadService, SolicitudService solicitudService) {
+    public EntidadRestController(EntidadService entidadService,
+                                 SolicitudService solicitudService,
+                                 AutorizacionRecursosService autorizacionRecursosService) {
         this.entidadService = entidadService;
         this.solicitudService = solicitudService;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todas las entidades públicas")
@@ -64,6 +69,7 @@ public class EntidadRestController {
     @Operation(summary = "Obtener entidad con estadísticas", description = "Incluye tasa de cumplimiento, solicitudes asignadas/pendientes/respondidas/vencidas")
     @GetMapping("/{id}/estadisticas")
     public ResponseEntity<EntidadDTO> obtenerConEstadisticas(@Parameter(description = "ID de la entidad") @PathVariable Long id) {
+        autorizacionRecursosService.verificarEntidadInstitucional(id);
         Entidad entidad = entidadService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Entidad no encontrada con ID: " + id));
 

@@ -5,17 +5,22 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.AdmitirElevacionExcepcionalRequest;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
+import pe.gob.saip.backend.model.dto.ApelacionResumenDTO;
 import pe.gob.saip.backend.model.dto.ComunicarOmisionElevacionRequest;
 import pe.gob.saip.backend.model.dto.CrearApelacionAnteEntidadRequest;
 import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.dto.ElevacionApelacionTtaipDTO;
 import pe.gob.saip.backend.model.dto.ElevarApelacionTtaipRequest;
+import pe.gob.saip.backend.model.dto.PaginaDTO;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
@@ -52,11 +57,22 @@ public class ApelacionRestController {
     @Operation(summary = "Listar todas las apelaciones")
     @GetMapping
     public ResponseEntity<List<ApelacionDTO>> listar() {
-        List<ApelacionDTO> apelaciones = apelacionService.findAll()
+        List<ApelacionDTO> apelaciones = autorizacionRecursosService
+                .filtrarApelacionesAccesibles(apelacionService.findAll())
                 .stream()
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(apelaciones);
+    }
+
+    @Operation(summary = "Listar apelaciones TTAIP con paginación y DTO liviano")
+    @GetMapping("/paginadas")
+    public ResponseEntity<PaginaDTO<ApelacionResumenDTO>> listarPaginadas(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        return ResponseEntity.ok(PaginaDTO.from(
+                apelacionService.obtenerPagina(crearPaginacion(pagina, tamano)),
+                ApelacionResumenDTO::from));
     }
 
     @Operation(summary = "Obtener apelación por ID")
@@ -64,6 +80,7 @@ public class ApelacionRestController {
     public ResponseEntity<ApelacionDTO> obtenerPorId(@Parameter(description = "ID de la apelación") @PathVariable Long id) {
         Apelacion apelacion = apelacionService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
+        autorizacionRecursosService.verificarApelacionAccesible(apelacion);
         return ResponseEntity.ok(ApelacionDTO.from(apelacion));
     }
 
@@ -88,8 +105,10 @@ public class ApelacionRestController {
         }
 
         String expedienteNormalizado = expediente.trim();
-        return apelacionService.findByExpediente(expedienteNormalizado)
+        Apelacion apelacion = apelacionService.findByExpediente(expedienteNormalizado)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con expediente: " + expedienteNormalizado));
+        autorizacionRecursosService.verificarApelacionAccesible(apelacion);
+        return apelacion;
     }
 
     private String resolverExpediente(String expediente, HttpServletRequest request) {
@@ -117,7 +136,8 @@ public class ApelacionRestController {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Estado no válido: " + estado);
         }
-        List<ApelacionDTO> apelaciones = apelacionService.obtenerApelacionesPorEstado(estadoEnum)
+        List<ApelacionDTO> apelaciones = autorizacionRecursosService
+                .filtrarApelacionesAccesibles(apelacionService.obtenerApelacionesPorEstado(estadoEnum))
                 .stream()
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
@@ -127,11 +147,41 @@ public class ApelacionRestController {
     @Operation(summary = "Listar apelaciones por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}")
     public ResponseEntity<List<ApelacionDTO>> listarPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
+        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
         List<ApelacionDTO> apelaciones = apelacionService.findByCiudadanoId(ciudadanoId)
                 .stream()
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(apelaciones);
+    }
+
+    @Operation(summary = "Listar apelaciones por estado con paginación y DTO liviano")
+    @GetMapping("/estado/{estado}/paginadas")
+    public ResponseEntity<PaginaDTO<ApelacionResumenDTO>> listarPaginadasPorEstado(
+            @Parameter(description = "Estado de la apelación") @PathVariable String estado,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        Apelacion.EstadoApelacion estadoEnum;
+        try {
+            estadoEnum = Apelacion.EstadoApelacion.valueOf(estado.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Estado no válido: " + estado);
+        }
+        return ResponseEntity.ok(PaginaDTO.from(
+                apelacionService.obtenerPaginaPorEstado(estadoEnum, crearPaginacion(pagina, tamano)),
+                ApelacionResumenDTO::from));
+    }
+
+    @Operation(summary = "Listar apelaciones TTAIP de un ciudadano con paginación y DTO liviano")
+    @GetMapping("/ciudadano/{ciudadanoId}/paginadas")
+    public ResponseEntity<PaginaDTO<ApelacionResumenDTO>> listarPaginadasPorCiudadano(
+            @Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId,
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
+        return ResponseEntity.ok(PaginaDTO.from(
+                apelacionService.obtenerPaginaPorCiudadano(ciudadanoId, crearPaginacion(pagina, tamano)),
+                ApelacionResumenDTO::from));
     }
 
     @Operation(summary = "Crear apelación", description = "Crea apelación ante el TTAIP vinculada a una solicitud SAIP y al ciudadano solicitante")
@@ -143,9 +193,14 @@ public class ApelacionRestController {
         if (apelacionDTO.ciudadanoId() == null) {
             throw new IllegalArgumentException("El ID del ciudadano es obligatorio");
         }
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(apelacionDTO.ciudadanoId());
+        autorizacionRecursosService.verificarSolicitudAccesible(apelacionDTO.solicitudId());
 
         Solicitud solicitud = solicitudService.findById(apelacionDTO.solicitudId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + apelacionDTO.solicitudId()));
+        if (solicitud.getCiudadano() == null || !solicitud.getCiudadano().getId().equals(apelacionDTO.ciudadanoId())) {
+            throw new IllegalArgumentException("La solicitud SAIP no corresponde al ciudadano recurrente");
+        }
 
         if (solicitud.getApelacion() != null) {
             throw new IllegalArgumentException("La solicitud ya tiene una apelación asociada");
@@ -172,6 +227,7 @@ public class ApelacionRestController {
             description = "Crea una apelación TTAIP para una SAIP tramitada fuera de la plataforma sin exigir solicitudId local")
     @PostMapping("/externa")
     public ResponseEntity<ApelacionDTO> crearExterna(@Valid @RequestBody CrearApelacionExternaRequest request) {
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(request.ciudadanoId());
         Apelacion apelacion = apelacionService.crearExterna(request);
         expedienteTtaipService.obtenerOCrearParaApelacion(apelacion);
         return ResponseEntity.status(201).body(ApelacionDTO.from(apelacion));
@@ -183,6 +239,8 @@ public class ApelacionRestController {
     @PostMapping("/ante-entidad")
     public ResponseEntity<ApelacionDTO> crearAnteEntidad(
             @Valid @RequestBody CrearApelacionAnteEntidadRequest request) {
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(request.ciudadanoId());
+        autorizacionRecursosService.verificarSolicitudAccesible(request.solicitudId());
         return ResponseEntity.status(201).body(
                 ApelacionDTO.from(elevacionService.registrarPresentacionAnteEntidad(request)));
     }
@@ -190,6 +248,7 @@ public class ApelacionRestController {
     @Operation(summary = "Consultar elevación formal de una apelación")
     @GetMapping("/{id}/elevacion")
     public ResponseEntity<ElevacionApelacionTtaipDTO> obtenerElevacion(@PathVariable Long id) {
+        autorizacionRecursosService.verificarApelacionAccesible(id);
         return ResponseEntity.ok(ElevacionApelacionTtaipDTO.from(elevacionService.obtenerPorApelacion(id)));
     }
 
@@ -226,6 +285,7 @@ public class ApelacionRestController {
     public ResponseEntity<ElevacionApelacionTtaipDTO> comunicarOmision(
             @PathVariable Long id,
             @Valid @RequestBody ComunicarOmisionElevacionRequest request) {
+        autorizacionRecursosService.verificarApelacionCiudadanaOAdministrador(id);
         return ResponseEntity.ok(ElevacionApelacionTtaipDTO.from(elevacionService.comunicarOmision(id, request)));
     }
 
@@ -303,6 +363,7 @@ public class ApelacionRestController {
     @Operation(summary = "Presentar subsanación", description = "Presenta fundamentos adicionales dentro del plazo de 2 días hábiles")
     @PostMapping("/{id}/subsanacion")
     public ResponseEntity<ApelacionDTO> subsanar(@Parameter(description = "ID de la apelación") @PathVariable Long id, @RequestBody Map<String, String> body) {
+        autorizacionRecursosService.verificarApelacionCiudadanaOAdministrador(id);
         Apelacion apelacion = apelacionService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
 
@@ -364,6 +425,16 @@ public class ApelacionRestController {
         response.put("id", id);
 
         return ResponseEntity.ok(response);
+    }
+
+    private Pageable crearPaginacion(int pagina, int tamano) {
+        if (pagina < 0) {
+            throw new IllegalArgumentException("El número de página no puede ser negativo");
+        }
+        if (tamano < 1 || tamano > 100) {
+            throw new IllegalArgumentException("El tamaño de página debe estar entre 1 y 100");
+        }
+        return PageRequest.of(pagina, tamano, Sort.by(Sort.Direction.DESC, "fechaApelacion"));
     }
 }
 

@@ -12,6 +12,7 @@ import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.service.ApelacionService;
+import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import pe.gob.saip.backend.service.CiudadanoService;
 import pe.gob.saip.backend.service.SolicitudService;
 
@@ -28,21 +29,25 @@ public class CiudadanoRestController {
     private final SolicitudService solicitudService;
     private final ApelacionService apelacionService;
     private final PasswordEncoder passwordEncoder;
+    private final AutorizacionRecursosService autorizacionRecursosService;
 
     public CiudadanoRestController(CiudadanoService ciudadanoService,
                                     SolicitudService solicitudService,
                                     ApelacionService apelacionService,
-                                    PasswordEncoder passwordEncoder) {
+                                    PasswordEncoder passwordEncoder,
+                                    AutorizacionRecursosService autorizacionRecursosService) {
         this.ciudadanoService = ciudadanoService;
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.passwordEncoder = passwordEncoder;
+        this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
     @Operation(summary = "Listar todos los ciudadanos")
     @GetMapping
     public ResponseEntity<List<CiudadanoDTO>> listar() {
-        List<CiudadanoDTO> ciudadanos = ciudadanoService.obtenerTodosLosCiudadanos()
+        List<CiudadanoDTO> ciudadanos = autorizacionRecursosService
+                .filtrarCiudadanosAccesibles(ciudadanoService.obtenerTodosLosCiudadanos())
                 .stream()
                 .map(CiudadanoDTO::from)
                 .collect(Collectors.toList());
@@ -52,6 +57,7 @@ public class CiudadanoRestController {
     @Operation(summary = "Obtener ciudadano por ID")
     @GetMapping("/{id}")
     public ResponseEntity<CiudadanoDTO> obtenerPorId(@Parameter(description = "ID del ciudadano") @PathVariable Long id) {
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(id);
         Ciudadano ciudadano = ciudadanoService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
         return ResponseEntity.ok(CiudadanoDTO.from(ciudadano));
@@ -62,12 +68,14 @@ public class CiudadanoRestController {
     public ResponseEntity<CiudadanoDTO> obtenerPorDni(@Parameter(description = "DNI de 8 dígitos") @PathVariable String dni) {
         Ciudadano ciudadano = ciudadanoService.obtenerCiudadanoPorDni(dni)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con DNI: " + dni));
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(ciudadano.getId());
         return ResponseEntity.ok(CiudadanoDTO.from(ciudadano));
     }
 
     @Operation(summary = "Obtener ciudadano con estadísticas", description = "Incluye conteo de solicitudes, apelaciones y estados")
     @GetMapping("/{id}/estadisticas")
     public ResponseEntity<CiudadanoDTO> obtenerConEstadisticas(@Parameter(description = "ID del ciudadano") @PathVariable Long id) {
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(id);
         Ciudadano ciudadano = ciudadanoService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
 
@@ -123,6 +131,7 @@ public class CiudadanoRestController {
     @Operation(summary = "Actualizar datos de ciudadano")
     @PutMapping("/{id}")
     public ResponseEntity<CiudadanoDTO> actualizar(@Parameter(description = "ID del ciudadano") @PathVariable Long id, @RequestBody CiudadanoDTO ciudadanoDTO) {
+        autorizacionRecursosService.verificarCiudadanoActualOAdministrador(id);
         Ciudadano ciudadano = ciudadanoService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
 
