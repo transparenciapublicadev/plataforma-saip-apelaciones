@@ -121,6 +121,9 @@ fun RequestDetailScreen(
         onMostrarFormSubsanacion = viewModel::mostrarFormularioSubsanacion,
         onOcultarFormSubsanacion = viewModel::ocultarFormularioSubsanacion,
         onSubsanar = viewModel::presentarSubsanacion,
+        onMostrarFormOmisionElevacion = viewModel::mostrarFormularioOmisionElevacion,
+        onOcultarFormOmisionElevacion = viewModel::ocultarFormularioOmisionElevacion,
+        onComunicarOmisionElevacion = viewModel::comunicarOmisionElevacion,
         onApelar = viewModel::navegarAApelar
     )
 }
@@ -149,6 +152,9 @@ private fun RequestDetailContent(
     onMostrarFormSubsanacion: () -> Unit,
     onOcultarFormSubsanacion: () -> Unit,
     onSubsanar: (String, String) -> Unit,
+    onMostrarFormOmisionElevacion: () -> Unit,
+    onOcultarFormOmisionElevacion: () -> Unit,
+    onComunicarOmisionElevacion: (String, String) -> Unit,
     onApelar: () -> Unit
 ) {
     Scaffold(
@@ -275,7 +281,7 @@ private fun RequestDetailContent(
                             iconTint = MaterialTheme.colorScheme.primary
                         ) {
                             DetailRow("Recurrente", uiState.apelacion.apelante.nombre)
-                            DetailRow("SAIP Origen", uiState.apelacion.expedienteSAIP)
+                            DetailRow("SAIP Origen", uiState.apelacion.referenciaSolicitudOrigen)
                             DetailRow("Fundamento Legal", uiState.apelacion.fundamentoLegal)
                             DetailRow("Exposición de Hechos", uiState.apelacion.exposicionHechos)
                             DetailRow("Pretensión", uiState.apelacion.pretension)
@@ -336,6 +342,23 @@ private fun RequestDetailContent(
                         ) {
                             DetailRow("Expediente", uiState.apelacionRelacionada.expediente)
                             DetailRow("Estado", uiState.apelacionRelacionada.estado.toDisplayString())
+                        }
+                    }
+                }
+
+                uiState.elevacion?.let { elevacion ->
+                    item(key = "elevacion") {
+                        DetailSectionCard(
+                            icon = Icons.Default.Gavel,
+                            title = "Elevación al TTAIP",
+                            iconTint = MaterialTheme.colorScheme.tertiary
+                        ) {
+                            DetailRow("Estado", elevacion.estado.name.replace("_", " "))
+                            DetailRow("Entidad origen", elevacion.entidadOrigenNombre)
+                            DetailRow("Fecha límite", elevacion.fechaLimiteElevacion)
+                            DetailRow("Cargo", elevacion.referenciaCargoPresentacion)
+                            elevacion.referenciaExpedienteElevado?.let { DetailRow("Remisión", it) }
+                            elevacion.referenciaPruebaOmision?.let { DetailRow("Prueba de omisión", it) }
                         }
                     }
                 }
@@ -482,6 +505,17 @@ private fun RequestDetailContent(
                                 Text("Apelar ante TTAIP")
                             }
                         }
+                        if (uiState.puedeComunicarOmisionElevacion) {
+                            OutlinedButton(
+                                onClick = onMostrarFormOmisionElevacion,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Icon(Icons.Default.Gavel, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Comunicar omisión de elevación")
+                            }
+                        }
                     }
                 }
             }
@@ -507,6 +541,12 @@ private fun RequestDetailContent(
                 onSubmit = onSubsanar
             )
         }
+        if (uiState.showOmisionElevacionForm) {
+            OmisionElevacionBottomSheet(
+                onDismiss = onOcultarFormOmisionElevacion,
+                onSubmit = onComunicarOmisionElevacion
+            )
+        }
         FuncionarioSaipOperationSheet(
             tipo = uiState.formularioOperacion,
             entidadesDestino = uiState.entidadesDestino,
@@ -517,6 +557,47 @@ private fun RequestDetailContent(
             onEncauzamiento = onRegistrarEncauzamiento,
             onLiquidacion = onEmitirLiquidacion
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OmisionElevacionBottomSheet(
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit
+) {
+    var referenciaPrueba by remember { mutableStateOf("") }
+    var observacion by remember { mutableStateOf("") }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Comunicar omisión de elevación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Adjunte una referencia verificable. Esta operación requiere conexión.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = referenciaPrueba,
+                onValueChange = { referenciaPrueba = it },
+                label = { Text("Prueba o referencia de omisión *") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = observacion,
+                onValueChange = { observacion = it },
+                label = { Text("Observación") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = { onSubmit(referenciaPrueba, observacion) },
+                enabled = referenciaPrueba.isNotBlank(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Comunicar al TTAIP")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 

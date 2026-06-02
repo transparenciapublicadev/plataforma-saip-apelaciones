@@ -339,7 +339,7 @@ object ReportExportHelper {
                 val segundaCalif = apel.segundaCalificacion?.resultado?.name ?: "—"
                 sb.append("<tr>")
                 sb.append("<td>${escaparHtml(apel.expediente)}</td>")
-                sb.append("<td>${escaparHtml(apel.expedienteSAIP)}</td>")
+                sb.append("<td>${escaparHtml(apel.referenciaSolicitudOrigen)}</td>")
                 sb.append("<td>${escaparHtml(apel.estado.toDisplayString())}</td>")
                 sb.append("<td>${escaparHtml(apel.entidad)}</td>")
                 sb.append("<td>${escaparHtml(apel.apelante.nombre)}</td>")
@@ -660,7 +660,8 @@ object ReportExportHelper {
 
         apelaciones.forEach { apel ->
             val expediente = if (apel.expediente.length > 16) apel.expediente.take(16) + "…" else apel.expediente
-            val saip = if (apel.expedienteSAIP.length > 16) apel.expedienteSAIP.take(16) + "…" else apel.expedienteSAIP
+            val referenciaOrigen = apel.referenciaSolicitudOrigen
+            val saip = if (referenciaOrigen.length > 16) referenciaOrigen.take(16) + "…" else referenciaOrigen
             val apelante = if (apel.apelante.nombre.length > 16) apel.apelante.nombre.take(16) + "…" else apel.apelante.nombre
             val funcionario = (apel.funcionarioTTAIP ?: "—").let {
                 if (it.length > 8) it.take(8) + "…" else it

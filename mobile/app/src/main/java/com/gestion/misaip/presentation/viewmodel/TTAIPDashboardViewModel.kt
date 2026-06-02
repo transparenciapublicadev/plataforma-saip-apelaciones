@@ -147,7 +147,7 @@ class TTAIPDashboardViewModel(
             val apelacionesItems = apelaciones.map { apel ->
                 ApelacionItem(
                     expediente = apel.expediente,
-                    expedienteSAIP = apel.expedienteSAIP,
+                    expedienteSAIP = apel.referenciaSolicitudOrigen,
                     asunto = apel.asunto,
                     recurrente = apel.apelante.nombre,
                     entidad = apel.entidad,
