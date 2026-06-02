@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -51,7 +53,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -127,6 +128,10 @@ fun TTAIPDashboardScreen(
         }
     }
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     TTAIPDashboardContent(
         uiState = uiState,
         listState = listState,
@@ -137,6 +142,7 @@ fun TTAIPDashboardScreen(
             coroutineScope.launch { listState.animateScrollToItem(0) }
         },
         onRefresh = viewModel::cargarDatos,
+        onLoadMore = viewModel::cargarSiguientePagina,
         onApelacionClick = { apel -> onNavigateToDetail(apel.expediente, "APELACION") },
         onIniciarCalificacion = viewModel::iniciarCalificacion,
         onNotificacionClick = { notif ->
@@ -162,6 +168,7 @@ private fun TTAIPDashboardContent(
     onBuscar: (String) -> Unit,
     onFiltrar: (String) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onApelacionClick: (ApelacionItem) -> Unit,
     onIniciarCalificacion: (String) -> Unit,
     onNotificacionClick: (com.gestion.misaip.presentation.viewmodel.NotificacionItem) -> Unit,
@@ -340,6 +347,28 @@ private fun TTAIPDashboardContent(
                                             onClick = { onApelacionClick(apelacion) },
                                             onIniciarCalificacion = { onIniciarCalificacion(apelacion.expediente) }
                                         )
+                                    }
+                                }
+                                if (uiState.puedeCargarMas) {
+                                    item(key = "load-more") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            FilledTonalButton(
+                                                onClick = onLoadMore,
+                                                enabled = !uiState.isLoadingMore
+                                            ) {
+                                                if (uiState.isLoadingMore) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(18.dp),
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                } else {
+                                                    Text("Cargar más")
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

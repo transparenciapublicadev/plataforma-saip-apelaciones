@@ -5,9 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
-import com.gestion.misaip.core.domain.usecase.solicitud.GetSolicitudesEntidadUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.CargarSolicitudesEntidadPaginaUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.IniciarRevisionUseCase
-import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
 import com.gestion.misaip.data.EstadisticasEntidad
 import com.gestion.misaip.messaging.NotificationPushHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +29,10 @@ data class EntityDashboardUiState(
     val busqueda: String = "",
     val solicitudesUrgentes: List<Solicitud> = emptyList(),
     val solicitudesNotificarCostos: List<Solicitud> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val puedeCargarMas: Boolean = false,
+    val errorMessage: String? = null
 )
 
 data class SolicitudEntidadItem(
@@ -50,9 +52,8 @@ sealed class EntityDashboardEvent {
 
 class EntityDashboardViewModel(
     private val getUsuarioActualUseCase: GetUsuarioActualUseCase,
-    private val getSolicitudesEntidadUseCase: GetSolicitudesEntidadUseCase,
-    private val iniciarRevisionUseCase: IniciarRevisionUseCase,
-    private val sincronizarDatosUseCase: SincronizarDatosUseCase
+    private val cargarSolicitudesEntidadPaginaUseCase: CargarSolicitudesEntidadPaginaUseCase,
+    private val iniciarRevisionUseCase: IniciarRevisionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EntityDashboardUiState())
@@ -60,38 +61,78 @@ class EntityDashboardViewModel(
 
     private val _events = MutableSharedFlow<EntityDashboardEvent>()
     val events: SharedFlow<EntityDashboardEvent> = _events
+    private var solicitudesCargadas = emptyList<Solicitud>()
+    private var paginaSolicitudes = -1
+    private var hayMasSolicitudes = true
+    private var totalSolicitudes = 0L
 
     init {
-        sincronizarYRecargar()
         // Escuchar señal de refresh cuando llegan notificaciones push
         viewModelScope.launch {
             NotificationPushHelper.refreshSignal.collect { tipo ->
                 if (tipo in listOf("nueva_solicitud", "respuesta_entidad", "vencimiento_plazo", "silencio_administrativo")) {
-                    sincronizarYRecargar()
+                    cargarDatos()
                 }
             }
         }
     }
 
-    fun cargarDatos() {
+    fun cargarDatos() = cargarPagina(reiniciar = true)
+
+    fun cargarSiguientePagina() = cargarPagina(reiniciar = false)
+
+    private fun cargarPagina(reiniciar: Boolean) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            if (!reiniciar && (_uiState.value.isLoadingMore || !_uiState.value.puedeCargarMas)) {
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(
+                isLoading = reiniciar,
+                isLoadingMore = !reiniciar,
+                errorMessage = null
+            )
 
             val usuario = getUsuarioActualUseCase().first()
             val entidadId = usuario?.entidadId
             if (usuario == null || entidadId.isNullOrBlank()) {
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
                 return@launch
             }
 
-            val solicitudes = getSolicitudesEntidadUseCase(entidadId).first()
+            try {
+                val pagina = cargarSolicitudesEntidadPaginaUseCase(
+                    entidadId = entidadId,
+                    pagina = if (reiniciar) 0 else paginaSolicitudes + 1,
+                    tamano = TAMANO_PAGINA
+                )
+                solicitudesCargadas = combinarPaginas(
+                    actual = solicitudesCargadas,
+                    nuevos = pagina.contenido,
+                    reiniciar = reiniciar,
+                    key = { it.id.ifBlank { it.expediente } }
+                )
+                paginaSolicitudes = pagina.pagina
+                hayMasSolicitudes = pagina.tieneSiguiente
+                totalSolicitudes = pagina.totalElementos
+                actualizarVista(usuario.nombre, usuario.entidad ?: "", usuario.cargo ?: "")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    errorMessage = e.message ?: "No se pudo actualizar la bandeja"
+                )
+            }
+        }
+    }
 
+    private fun actualizarVista(nombreUsuario: String, entidad: String, cargo: String) {
+            val solicitudes = solicitudesCargadas
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasEntidad(
                 pendientes = solicitudes.count { it.estaPendiente },
                 vencidas = solicitudes.count { it.estaVencida },
                 respondidas = solicitudes.count { it.fueRespondida },
-                total = solicitudes.size
+                total = totalSolicitudes.toInt()
             )
 
             val solicitudesItems = solicitudes.map { sol ->
@@ -114,65 +155,42 @@ class EntityDashboardViewModel(
                 it.diasRestantes == 1 && it.estaPendiente
             }
 
-            _uiState.value = EntityDashboardUiState(
-                nombreUsuario = usuario.nombre,
-                entidad = usuario.entidad ?: "",
-                cargo = usuario.cargo ?: "",
+            val current = _uiState.value
+            val nuevoEstado = current.copy(
+                nombreUsuario = nombreUsuario,
+                entidad = entidad,
+                cargo = cargo,
                 estadisticas = estadisticas,
                 solicitudes = solicitudesItems,
-                solicitudesFiltradas = solicitudesItems,
                 solicitudesUrgentes = urgentes,
                 solicitudesNotificarCostos = notificarCostos,
-                isLoading = false
+                isLoading = false,
+                isLoadingMore = false,
+                puedeCargarMas = hayMasSolicitudes
             )
-        }
+            _uiState.value = nuevoEstado.copy(
+                solicitudesFiltradas = filtrarSolicitudes(
+                    solicitudes = solicitudesItems,
+                    filtro = nuevoEstado.filtroActual,
+                    busqueda = nuevoEstado.busqueda
+                )
+            )
     }
 
     fun aplicarFiltro(filtro: String) {
-        val solicitudes = _uiState.value.solicitudes
-        val busqueda = _uiState.value.busqueda.lowercase()
-
-        val filtradas = solicitudes.filter { sol ->
-            val matchesBusqueda = busqueda.isEmpty() ||
-                sol.expediente.lowercase().contains(busqueda) ||
-                sol.solicitante.lowercase().contains(busqueda) ||
-                sol.asunto.lowercase().contains(busqueda)
-
-            val matchesFiltro = when (filtro) {
-                "Pendiente" -> sol.estado == "Recepcionada"
-                "En Revisión" -> sol.estado == "En Revisión"
-                "Vencida" -> sol.estado == "Vencida"
-                "Respondida" -> sol.estado in listOf("Respondida", "Concluida")
-                else -> true
-            }
-
-            matchesBusqueda && matchesFiltro
-        }
-
         _uiState.value = _uiState.value.copy(
             filtroActual = filtro,
-            solicitudesFiltradas = filtradas
+            solicitudesFiltradas = filtrarSolicitudes(
+                solicitudes = _uiState.value.solicitudes,
+                filtro = filtro,
+                busqueda = _uiState.value.busqueda
+            )
         )
     }
 
     fun buscar(query: String) {
         _uiState.value = _uiState.value.copy(busqueda = query)
         aplicarFiltro(_uiState.value.filtroActual)
-    }
-
-    /**
-     * Sincroniza datos desde el backend REST y recarga la UI.
-     * Se ejecuta cuando se recibe una notificación push relevante.
-     */
-    private fun sincronizarYRecargar() {
-        viewModelScope.launch {
-            try {
-                sincronizarDatosUseCase()
-            } catch (_: Exception) {
-                // Si falla la sincronización, intentar recargar datos locales de todas formas
-            }
-            cargarDatos()
-        }
     }
 
     fun iniciarRevision(expediente: String) {
@@ -193,4 +211,40 @@ class EntityDashboardViewModel(
         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("es-PE"))
         return sdf.format(java.util.Date(timestamp))
     }
+
+    private fun filtrarSolicitudes(
+        solicitudes: List<SolicitudEntidadItem>,
+        filtro: String,
+        busqueda: String
+    ): List<SolicitudEntidadItem> {
+        val query = busqueda.lowercase()
+        return solicitudes.filter { sol ->
+            val matchesBusqueda = query.isEmpty() ||
+                sol.expediente.lowercase().contains(query) ||
+                sol.solicitante.lowercase().contains(query) ||
+                sol.asunto.lowercase().contains(query)
+
+            val matchesFiltro = when (filtro) {
+                "Pendiente" -> sol.estado == "Recepcionada"
+                "En Revisión" -> sol.estado == "En Revisión"
+                "Vencida" -> sol.estado == "Vencida"
+                "Respondida" -> sol.estado in listOf("Respondida", "Concluida")
+                else -> true
+            }
+            matchesBusqueda && matchesFiltro
+        }
+    }
+
+    private companion object {
+        const val TAMANO_PAGINA = 20
+    }
+}
+
+private fun <T> combinarPaginas(
+    actual: List<T>,
+    nuevos: List<T>,
+    reiniciar: Boolean,
+    key: (T) -> String
+): List<T> {
+    return (if (reiniciar) nuevos else actual + nuevos).distinctBy(key)
 }

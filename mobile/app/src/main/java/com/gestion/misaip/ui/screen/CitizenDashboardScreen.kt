@@ -35,7 +35,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -127,6 +129,10 @@ fun CitizenDashboardScreen(
         }
     }
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     val listState = rememberLazyListState()
     // Google Messages pattern: FAB expanded when user scrolls up or is at top
     val fabExpanded by remember {
@@ -153,6 +159,7 @@ fun CitizenDashboardScreen(
             coroutineScope.launch { listState.animateScrollToItem(0) }
         },
         onRefresh = viewModel::cargarDatos,
+        onLoadMore = viewModel::cargarSiguientePagina,
         onExpedienteClick = { exp -> onNavigateToDetail(exp.expediente, exp.tipo) },
         onNuevaSolicitud = onNavigateToSAIPForm,
         onNotificacionClick = { notif ->
@@ -181,6 +188,7 @@ private fun CitizenDashboardContent(
     onBuscar: (String) -> Unit,
     onFiltrar: (String) -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onExpedienteClick: (ExpedienteItem) -> Unit,
     onNuevaSolicitud: () -> Unit,
     onNotificacionClick: (com.gestion.misaip.presentation.viewmodel.NotificacionItem) -> Unit,
@@ -362,6 +370,28 @@ private fun CitizenDashboardContent(
                                             item = expediente,
                                             onClick = { onExpedienteClick(expediente) }
                                         )
+                                    }
+                                }
+                                if (uiState.puedeCargarMas) {
+                                    item(key = "load-more") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            FilledTonalButton(
+                                                onClick = onLoadMore,
+                                                enabled = !uiState.isLoadingMore
+                                            ) {
+                                                if (uiState.isLoadingMore) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(18.dp),
+                                                        strokeWidth = 2.dp
+                                                    )
+                                                } else {
+                                                    Text("Cargar más")
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
