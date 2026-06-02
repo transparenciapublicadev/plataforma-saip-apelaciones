@@ -62,7 +62,7 @@ class UsuarioRepositoryImpl(
             throw e
         } catch (e: Exception) {
             // Error de red (IOException, timeout, etc.) → intentar fallback local
-            android.util.Log.w("MiSAIP", "Red no disponible (${e.javaClass.simpleName}), intentando login local para DNI: $dni")
+            android.util.Log.w("MiSAIP", "Red no disponible (${e.javaClass.simpleName}), intentando login local ciudadano")
         }
 
         // 2. Fallback local (solo cuando la red no está disponible)
@@ -70,7 +70,7 @@ class UsuarioRepositoryImpl(
             ?: throw AuthException(
                 "No se pudo conectar al servidor backend (http://10.0.2.2:8080). " +
                 "Verifique que: 1) El backend esté corriendo (cd backend && ./mvnw spring-boot:run), " +
-                "2) Si usa dispositivo físico, cambie la IP en RestNetworkModule.kt a la IP de su PC (ej: 192.168.x.x). " +
+                "2) Si usa dispositivo físico, configure REST_BASE_URL en local.properties con la IP de su PC. " +
                 "No hay cuenta local guardada para este DNI."
             )
 
@@ -102,7 +102,7 @@ class UsuarioRepositoryImpl(
             throw e
         } catch (e: Exception) {
             // Error de red (IOException, timeout, etc.) → intentar fallback local
-            android.util.Log.w("MiSAIP", "Red no disponible (${e.javaClass.simpleName}), intentando login local para usuario: $usuario")
+            android.util.Log.w("MiSAIP", "Red no disponible (${e.javaClass.simpleName}), intentando login local interno")
         }
 
         // 2. Fallback local (solo cuando la red no está disponible)
@@ -110,7 +110,7 @@ class UsuarioRepositoryImpl(
             ?: throw AuthException(
                 "No se pudo conectar al servidor backend (http://10.0.2.2:8080). " +
                 "Verifique que: 1) El backend esté corriendo, " +
-                "2) Si usa dispositivo físico, cambie la IP en RestNetworkModule.kt a la IP de su PC. " +
+                "2) Si usa dispositivo físico, configure REST_BASE_URL en local.properties con la IP de su PC. " +
                 "No hay cuenta local guardada para este usuario."
             )
 
