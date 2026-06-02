@@ -117,7 +117,8 @@ public class IntentoNotificacion {
         CORREO_ELECTRONICO,
         CASILLA_ELECTRONICA,
         PLATAFORMA,
-        FISICA
+        FISICA,
+        PUSH_FCM
     }
 
     public enum EstadoIntento {
