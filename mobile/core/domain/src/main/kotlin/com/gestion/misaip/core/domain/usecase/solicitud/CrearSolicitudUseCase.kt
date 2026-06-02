@@ -25,7 +25,9 @@ class CrearSolicitudUseCase(
         val usuarioId: String,
         val solicitante: Solicitante,
         val asunto: String,
-        val descripcion: String
+        val descripcion: String,
+        val consentimientoDatosPersonales: Boolean,
+        val canalNotificacion: CanalNotificacion?
     )
 
     /**
@@ -41,6 +43,10 @@ class CrearSolicitudUseCase(
         require(params.descripcion.isNotBlank()) { "La descripción es obligatoria" }
         require(params.entidadId.isNotBlank()) { "Debe seleccionar una entidad" }
         require(params.descripcion.length <= 2000) { "La descripción no puede exceder 2000 caracteres" }
+        require(params.consentimientoDatosPersonales) {
+            "Debe aceptar el tratamiento de datos personales para presentar la SAIP"
+        }
+        requireNotNull(params.canalNotificacion) { "Debe seleccionar un canal formal de notificación" }
 
         val fechaActual = System.currentTimeMillis()
         // El cálculo de fecha límite (10 días hábiles) se hace en el repositorio
@@ -55,6 +61,8 @@ class CrearSolicitudUseCase(
             solicitante = params.solicitante,
             asunto = params.asunto,
             descripcion = params.descripcion,
+            consentimientoDatosPersonales = params.consentimientoDatosPersonales,
+            canalNotificacion = params.canalNotificacion,
             fechaCreacion = fechaActual,
             fechaLimite = 0, // Se calculará en el repositorio
             estado = EstadoSolicitud.RECEPCIONADA,
@@ -119,4 +127,3 @@ class ResponderSolicitudUseCase(
         solicitudRepository.responderSolicitud(params.expediente, respuesta)
     }
 }
-

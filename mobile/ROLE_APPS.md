@@ -40,7 +40,7 @@ cd mobile
 
 ## Reglas Por APK
 
-- App Ciudadano: registro publico, login ciudadano, SAIP, seguimiento, apelaciones y subsanaciones.
+- App Ciudadano: registro publico, login ciudadano, SAIP, seguimiento, apelaciones y subsanaciones. La creación SAIP exige consentimiento expreso y canal formal (`CORREO_ELECTRONICO`, `CASILLA_ELECTRONICA`, `PLATAFORMA` o `FISICA`).
 - App Funcionario: login interno, bandeja de entidad, respuesta de solicitudes y seguimiento de expedientes vinculados.
 - App TTAIP: login restringido, primera calificacion, subsanacion, segunda calificacion y resolucion.
 

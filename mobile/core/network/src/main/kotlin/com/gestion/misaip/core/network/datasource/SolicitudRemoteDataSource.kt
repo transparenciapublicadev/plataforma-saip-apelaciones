@@ -16,7 +16,7 @@ interface SolicitudRemoteDataSource {
      * @param solicitud Solicitud a crear
      * @throws NetworkException si hay error de red
      */
-    suspend fun crearSolicitud(solicitud: Solicitud)
+    suspend fun crearSolicitud(solicitud: Solicitud): Solicitud
 
     /**
      * Actualiza una solicitud existente en el servidor.
@@ -56,3 +56,12 @@ interface SolicitudRemoteDataSource {
  * Excepción de red.
  */
 class NetworkException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/**
+ * Error HTTP rechazado por backend. No debe tratarse como creación offline pendiente.
+ */
+class ApiProblemException(
+    message: String,
+    val status: Int,
+    cause: Throwable? = null
+) : Exception(message, cause)

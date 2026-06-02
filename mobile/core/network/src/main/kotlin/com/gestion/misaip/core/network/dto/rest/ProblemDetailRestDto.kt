@@ -1,6 +1,7 @@
 package com.gestion.misaip.core.network.dto.rest
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 /**
  * Representacion liviana de RFC 9457 Problem Details.
@@ -21,4 +22,11 @@ data class ProblemDetailRestDto(
             ?: mensaje?.takeIf { it.isNotBlank() }
             ?: title?.takeIf { it.isNotBlank() }
     }
+}
+
+fun Json.extraerMensajeProblemDetails(errorBody: String?): String? {
+    if (errorBody.isNullOrBlank()) return null
+    return runCatching {
+        decodeFromString<ProblemDetailRestDto>(errorBody).mensajeUsuario()
+    }.getOrNull()
 }

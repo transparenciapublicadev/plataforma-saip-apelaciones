@@ -1,0 +1,5 @@
+ALTER TABLE Solicitud
+ADD COLUMN consentimientoDatosPersonales INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0;
+
+ALTER TABLE Solicitud
+ADD COLUMN canalNotificacion TEXT;
