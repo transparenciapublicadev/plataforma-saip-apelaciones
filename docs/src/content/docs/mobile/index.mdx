@@ -46,7 +46,7 @@ El módulo `mobile/` es una aplicación Android nativa en Kotlin que se distribu
 | --- | --- | --- | --- |
 | `ciudadano` | `com.gestion.misaip.ciudadano` | Pública, Google Play | Registro, login ciudadano, SAIP, seguimiento, apelaciones y subsanaciones. |
 | `funcionario` | `com.gestion.misaip.funcionario` | Interna | Bandeja de entidad, atención, respuesta y actuaciones SAIP principales. |
-| `ttaip` | `com.gestion.misaip.ttaip` | Restringida | Primera calificación, subsanación, segunda calificación y resolución. |
+| `ttaip` | `com.gestion.misaip.ttaip` | Restringida | Bandeja paginada, expediente agregado, calificación, notificaciones, suspensiones, cumplimiento y resolución. |
 
 :::caution[Sin APK admin]
 La app mobile no genera aplicación de administrador. Los accesos `ADMINISTRADOR` se gestionan desde el frontend web.
@@ -126,6 +126,8 @@ App Funcionario ya consulta la trazabilidad SAIP y registra online observación,
 Las bandejas principales ya consumen endpoints paginados y DTOs livianos: ciudadano pagina sus solicitudes y apelaciones, funcionario pagina las solicitudes de su entidad y TTAIP pagina apelaciones globales. SQLDelight sigue funcionando como respaldo offline por página.
 
 App Ciudadano también registra apelaciones externas sin crear SAIP ficticias y puede presentar una apelación local ante la entidad. App Funcionario consulta y remite las elevaciones pendientes; el ciudadano puede comunicar una omisión con referencia verificable. Estas mutaciones requieren conexión.
+
+App TTAIP consulta el expediente agregado completo: sala, miembros, resoluciones, cédulas, notificaciones, intentos persistidos, descargos, suspensiones, reprocesos, cumplimiento e historial. También ejecuta las actuaciones institucionales permitidas, incluida la admisión excepcional ante omisión comunicada y las decisiones finales recientes. Estas acciones son `online-only`: la app no simula actos legales en SQLDelight.
 :::
 
 ## Subsecciones
