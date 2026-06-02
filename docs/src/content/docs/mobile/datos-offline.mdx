@@ -46,6 +46,24 @@ SQLDelight mejora la experiencia offline, pero no reemplaza MySQL ni decide regl
 La creación SAIP ciudadano conserva `consentimientoDatosPersonales` y `canalNotificacion` en caché. Las instalaciones existentes migran con `migrations/1.sqm`, verificada contra la instantánea inicial `databases/1.db`. Cuando una creación online responde correctamente, el repositorio reemplaza el registro provisional por el ID y número SAIP oficiales del backend; si no hay conectividad, mantiene el registro pendiente para sincronización diferida.
 :::
 
+## Bandejas Paginadas
+
+Las bandejas activas no descargan miles de registros de golpe. Retrofit consume resúmenes livianos y SQLDelight conserva el respaldo offline:
+
+| Rol | Solicitudes | Apelaciones |
+| --- | --- | --- |
+| Ciudadano | `/api/solicitudes/ciudadano/{id}/paginadas` | `/api/apelaciones/ciudadano/{id}/paginadas` |
+| Funcionario | `/api/solicitudes/entidad/{id}/paginadas` | No aplica todavía |
+| TTAIP | No aplica a su bandeja principal | `/api/apelaciones/paginadas` |
+
+El sobre REST usa `contenido`, `pagina`, `tamano`, `totalElementos`, `totalPaginas` y `ultima`. La página `0` refresca el contenido visible; las páginas siguientes se agregan bajo demanda.
+
+:::note[Cache sin pérdida de detalle]
+Los resúmenes remotos se combinan con el registro SQLDelight existente antes de persistirse. Así se actualizan estado, expediente, fechas y canal sin perder consentimiento, descripción, timeline ni otros campos de detalle. Si falla conectividad se devuelve la página local equivalente; los errores HTTP reales se propagan para no ocultar rechazos del backend.
+
+La bandeja TTAIP puede mostrar desde red una apelación externa creada en web. Su cache offline completo queda pendiente de la migración local del flujo externo porque la tabla `Apelacion` todavía enlaza obligatoriamente `expedienteSAIP` con una SAIP local.
+:::
+
 ## Retrofit — REST API Client
 
 ```kotlin

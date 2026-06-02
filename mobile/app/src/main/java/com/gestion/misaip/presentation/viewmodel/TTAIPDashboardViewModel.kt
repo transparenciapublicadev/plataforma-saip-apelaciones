@@ -6,10 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.gestion.misaip.core.domain.model.Apelacion
 import com.gestion.misaip.core.domain.model.ResultadoCalificacion
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
-import com.gestion.misaip.core.domain.usecase.apelacion.GetTodasLasApelacionesUseCase
+import com.gestion.misaip.core.domain.usecase.apelacion.CargarApelacionesPaginaUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.IniciarCalificacionUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.CalificarApelacionUseCase
-import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
 import com.gestion.misaip.data.EstadisticasTTAIP
 import com.gestion.misaip.messaging.NotificationPushHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +29,10 @@ data class TTAIPDashboardUiState(
     val filtroActual: String = "En Calificación",
     val busqueda: String = "",
     val apelacionesUrgentes: List<Apelacion> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val puedeCargarMas: Boolean = false,
+    val errorMessage: String? = null
 )
 
 data class ApelacionItem(
@@ -42,7 +44,8 @@ data class ApelacionItem(
     val fecha: String,
     val estado: String,
     val diasRestantes: Int?,
-    val funcionarioAsignado: String?
+    val funcionarioAsignado: String?,
+    val usuarioId: String
 )
 
 sealed class TTAIPDashboardEvent {
@@ -52,10 +55,9 @@ sealed class TTAIPDashboardEvent {
 
 class TTAIPDashboardViewModel(
     private val getUsuarioActualUseCase: GetUsuarioActualUseCase,
-    private val getTodasLasApelacionesUseCase: GetTodasLasApelacionesUseCase,
+    private val cargarApelacionesPaginaUseCase: CargarApelacionesPaginaUseCase,
     private val iniciarCalificacionUseCase: IniciarCalificacionUseCase,
-    private val calificarApelacionUseCase: CalificarApelacionUseCase,
-    private val sincronizarDatosUseCase: SincronizarDatosUseCase
+    private val calificarApelacionUseCase: CalificarApelacionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TTAIPDashboardUiState())
@@ -63,31 +65,70 @@ class TTAIPDashboardViewModel(
 
     private val _events = MutableSharedFlow<TTAIPDashboardEvent>()
     val events: SharedFlow<TTAIPDashboardEvent> = _events
+    private var apelacionesCargadas = emptyList<Apelacion>()
+    private var paginaApelaciones = -1
+    private var hayMasApelaciones = true
+    private var totalApelaciones = 0L
 
     init {
-        sincronizarYRecargar()
         // Escuchar señal de refresh cuando llegan notificaciones push
         viewModelScope.launch {
             NotificationPushHelper.refreshSignal.collect { tipo ->
                 if (tipo in listOf("nueva_apelacion", "subsanacion_presentada")) {
-                    sincronizarYRecargar()
+                    cargarDatos()
                 }
             }
         }
     }
 
-    fun cargarDatos() {
+    fun cargarDatos() = cargarPagina(reiniciar = true)
+
+    fun cargarSiguientePagina() = cargarPagina(reiniciar = false)
+
+    private fun cargarPagina(reiniciar: Boolean) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
+            if (!reiniciar && (_uiState.value.isLoadingMore || !_uiState.value.puedeCargarMas)) {
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(
+                isLoading = reiniciar,
+                isLoadingMore = !reiniciar,
+                errorMessage = null
+            )
 
             val usuario = getUsuarioActualUseCase().first()
             if (usuario == null) {
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                _uiState.value = _uiState.value.copy(isLoading = false, isLoadingMore = false)
                 return@launch
             }
 
-            val apelaciones = getTodasLasApelacionesUseCase().first()
+            try {
+                val pagina = cargarApelacionesPaginaUseCase(
+                    pagina = if (reiniciar) 0 else paginaApelaciones + 1,
+                    tamano = TAMANO_PAGINA
+                )
+                apelacionesCargadas = combinarPaginas(
+                    actual = apelacionesCargadas,
+                    nuevos = pagina.contenido,
+                    reiniciar = reiniciar,
+                    key = { it.id.ifBlank { it.expediente } }
+                )
+                paginaApelaciones = pagina.pagina
+                hayMasApelaciones = pagina.tieneSiguiente
+                totalApelaciones = pagina.totalElementos
+                actualizarVista(usuario.nombre, usuario.cargo ?: "")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    errorMessage = e.message ?: "No se pudo actualizar la bandeja"
+                )
+            }
+        }
+    }
 
+    private fun actualizarVista(nombreUsuario: String, cargo: String) {
+            val apelaciones = apelacionesCargadas
             // Calcular estadísticas desde los datos
             val estadisticas = EstadisticasTTAIP(
                 pendientesAdmision = apelaciones.count {
@@ -100,7 +141,7 @@ class TTAIPDashboardViewModel(
                 },
                 enSubsanacion = apelaciones.count { it.estado.name == "EN_SUBSANACION" },
                 resueltas = apelaciones.count { it.estaResuelta },
-                total = apelaciones.size
+                total = totalApelaciones.toInt()
             )
 
             val apelacionesItems = apelaciones.map { apel ->
@@ -113,46 +154,34 @@ class TTAIPDashboardViewModel(
                     fecha = formatearFecha(apel.fechaPresentacion),
                     estado = apel.estado.toDisplayString(),
                     diasRestantes = apel.diasRestantes,
-                    funcionarioAsignado = apel.funcionarioTTAIP
+                    funcionarioAsignado = apel.funcionarioTTAIP,
+                    usuarioId = apel.usuarioId
                 )
             }
-
-            val filtroPorDefecto = "En Calificación"
-            val apelacionesFiltradas = filtrarApelaciones(
-                apelaciones = apelacionesItems,
-                filtro = filtroPorDefecto,
-                busqueda = ""
-            )
 
             // Apelaciones urgentes (menos de 3 días)
             val urgentes = apelaciones.filter {
                 !it.estaResuelta && (it.diasRestantes ?: 0) <= 3
             }
 
-            _uiState.value = TTAIPDashboardUiState(
-                nombreUsuario = usuario.nombre,
-                cargo = usuario.cargo ?: "",
+            val current = _uiState.value
+            val nuevoEstado = current.copy(
+                nombreUsuario = nombreUsuario,
+                cargo = cargo,
                 estadisticas = estadisticas,
                 apelaciones = apelacionesItems,
-                apelacionesFiltradas = apelacionesFiltradas,
-                filtroActual = filtroPorDefecto,
                 apelacionesUrgentes = urgentes,
-                isLoading = false
+                isLoading = false,
+                isLoadingMore = false,
+                puedeCargarMas = hayMasApelaciones
             )
-        }
-    }
-
-    /**
-     * Sincroniza datos desde el backend REST y recarga la UI.
-     * Se ejecuta cuando se recibe una notificación push relevante.
-     */
-    private fun sincronizarYRecargar() {
-        viewModelScope.launch {
-            try {
-                sincronizarDatosUseCase()
-            } catch (_: Exception) { }
-            cargarDatos()
-        }
+            _uiState.value = nuevoEstado.copy(
+                apelacionesFiltradas = filtrarApelaciones(
+                    apelaciones = apelacionesItems,
+                    filtro = nuevoEstado.filtroActual,
+                    busqueda = nuevoEstado.busqueda
+                )
+            )
     }
 
     fun aplicarFiltro(filtro: String) {
@@ -229,15 +258,12 @@ class TTAIPDashboardViewModel(
 
                 when (result) {
                     is CalificarApelacionUseCase.Result.Success -> {
-                        // Buscar la apelación para obtener el usuarioId del recurrente
                         val apelacionNotif = _uiState.value.apelaciones.find { it.expediente == expediente }
-                        val apelacionesCompletas = getTodasLasApelacionesUseCase().first()
-                        val apelacionFull = apelacionesCompletas.find { it.expediente == expediente }
 
-                        if (apelacionFull != null) {
+                        if (apelacionNotif != null) {
                             NotificationPushHelper.notificarCalificacionTTAIP(
                                 expediente = expediente,
-                                usuarioId = apelacionFull.usuarioId,
+                                usuarioId = apelacionNotif.usuarioId,
                                 resultado = resultado,
                                 tipoCalificacion = tipoCalificacion
                             )
@@ -260,5 +286,18 @@ class TTAIPDashboardViewModel(
         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("es-PE"))
         return sdf.format(java.util.Date(timestamp))
     }
+
+    private companion object {
+        const val TAMANO_PAGINA = 20
+    }
+}
+
+private fun <T> combinarPaginas(
+    actual: List<T>,
+    nuevos: List<T>,
+    reiniciar: Boolean,
+    key: (T) -> String
+): List<T> {
+    return (if (reiniciar) nuevos else actual + nuevos).distinctBy(key)
 }
 
