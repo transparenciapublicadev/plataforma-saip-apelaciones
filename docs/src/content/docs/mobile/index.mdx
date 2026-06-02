@@ -124,6 +124,8 @@ La creación SAIP básica de App Ciudadano ya captura consentimiento expreso de 
 App Funcionario ya consulta la trazabilidad SAIP y registra online observación, ampliación con cronograma inicial, encauzamiento total/parcial y liquidación o cupón. Estas actuaciones administrativas requieren conexión y no se simulan localmente.
 
 Las bandejas principales ya consumen endpoints paginados y DTOs livianos: ciudadano pagina sus solicitudes y apelaciones, funcionario pagina las solicitudes de su entidad y TTAIP pagina apelaciones globales. SQLDelight sigue funcionando como respaldo offline por página.
+
+App Ciudadano también registra apelaciones externas sin crear SAIP ficticias y puede presentar una apelación local ante la entidad. App Funcionario consulta y remite las elevaciones pendientes; el ciudadano puede comunicar una omisión con referencia verificable. Estas mutaciones requieren conexión.
 :::
 
 ## Subsecciones
