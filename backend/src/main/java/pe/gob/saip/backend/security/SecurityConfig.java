@@ -153,6 +153,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/descargos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/cumplimientos/vencidos/procesar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/notificaciones/motor/estado").hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(resourceMatchers("/api/notificaciones/push")).authenticated()
                         .requestMatchers(resourceMatchers("/api/ttaip")).hasAnyRole("TTAIP", "ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/funcionarios")).hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
