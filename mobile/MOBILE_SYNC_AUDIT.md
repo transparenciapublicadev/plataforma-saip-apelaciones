@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #29 y registra el alcance completado de Mobile PR 3. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #30 y registra el alcance completado de Mobile PR 4. La sincronización sigue siendo incremental: no incorpora de golpe todos los subflujos SAIP/TTAIP.
 
 ## Stack y módulos reales
 
@@ -31,7 +31,7 @@ Módulos Gradle:
 | Rol | Funcionalidad mobile existente | Estado frente al backend actual |
 | --- | --- | --- |
 | Ciudadano | Registro, login, dashboard paginado, creación SAIP con consentimiento y canal formal, seguimiento básico, apelación interna, perfil y avisos locales | Parcial. Creación SAIP básica y bandejas livianas paginadas ya están alineadas. Falta apelación externa y sincronizar subflujos SAIP recientes. |
-| Funcionario | Login interno, bandeja paginada de entidad, detalle y respuesta SAIP | Parcial. Falta exponer en mobile observación/subsanación, ampliación, encauzamiento, liquidación y notificaciones del motor común. |
+| Funcionario | Login interno, bandeja paginada de entidad, detalle y respuesta SAIP; consulta de trazabilidad y registro online de observación, ampliación con cronograma inicial, encauzamiento total/parcial y liquidación/cupón | Parcial. Mobile PR 4 cubre las actuaciones SAIP principales de entidad. Quedan la subsanación ciudadana, actualizaciones operativas posteriores del cronograma o cupón y notificaciones del motor común. |
 | TTAIP | Login restringido, bandeja paginada, calificación básica, subsanación, segunda calificación y resoluciones principales | Parcial. Falta sincronizar expediente agregado, elevación, descargos, suspensiones, constancias, acuses, reprocesos, cumplimiento y decisiones finales recientes. |
 | Admin | Existe código histórico de dashboard, pero `AppRolePolicy` bloquea acceso | Correcto: administración queda en frontend web. |
 
@@ -67,7 +67,7 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 | Auth/JWT | El interceptor excluía todas las rutas `/api/auth/**`, incluyendo perfil autenticado | Alta | Cubierto: excluir solo rutas públicas. |
 | RFC 9457 | Login intentaba leer únicamente el campo legacy `mensaje` | Alta | Cubierto: priorizar `detail`, luego `mensaje` y `title`. |
 | SAIP ciudadano | Creación no enviaba `consentimientoDatosPersonales` ni `canalNotificacion` | Alta | Cubierto en Mobile PR 2: UI, dominio, request REST, mapper y caché local conservan ambos campos. |
-| SAIP funcionario | No consume observaciones, ampliaciones, encauzamientos ni liquidaciones | Media | Separar por vertical funcional y reutilizar endpoints ya estabilizados. |
+| SAIP funcionario | Las actuaciones principales no estaban disponibles en App Funcionario | Media | Cubierto en Mobile PR 4: consulta de trazabilidad y registro online de observación, ampliación, encauzamiento y liquidación. |
 | Paginación | Bandejas usaban listados legacy y cargas amplias | Alta | Cubierto en Mobile PR 3: DTO genérico de página, resúmenes livianos, carga incremental y fallback SQLDelight por página. |
 | Apelaciones | No soporta `EXTERNA` ni flujo `ante-entidad` / elevación | Media | Agregar después de estabilizar paginación y SAIP ciudadano. |
 | TTAIP | No refleja todo el expediente agregado ni flujos posteriores recientes | Media | Implementar por etapas: expediente, notificaciones, plazos y cumplimiento. |
@@ -115,13 +115,25 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 - TTAIP puede mostrar desde red apelaciones externas creadas en web. Su cache offline completo queda pendiente de Mobile PR 5 porque la tabla local todavía exige una SAIP vinculada.
 - Las sincronizaciones de background conservan los métodos legacy, pero descargan lotes paginados según rol.
 
+## Mobile PR 4: operaciones SAIP de funcionario
+
+- El detalle SAIP de App Funcionario consulta observaciones, ampliaciones, encauzamientos y liquidaciones vigentes desde el backend.
+- El funcionario puede registrar una observación con motivo y sustento. El detalle refleja `PENDIENTE_INFORMACION` después de sincronizar la SAIP.
+- La ampliación registra motivo, informe, fecha de notificación y un cronograma mínimo inicial de entrega parcial.
+- El encauzamiento registra entidad destino activa, alcance `TOTAL` o `PARCIAL`, motivo y sustento.
+- La liquidación o cupón registra código, monto, concepto, fecha y canal de notificación compatible con backend.
+- Todas estas actuaciones son actos administrativos online-only: requieren conectividad, nunca simulan éxito local y vuelven a cargar el detalle desde backend después de registrarse.
+- Si el backend devuelve RFC 9457 Problem Details, la UI muestra `detail`, con fallback compatible a `mensaje` o `title`.
+- SQLDelight continúa como respaldo de consulta para bandejas; no se creó una cola offline de mutaciones administrativas.
+- Quedan fuera de este alcance la subsanación ciudadana, la edición posterior del cronograma, el marcado de pago/recojo y las notificaciones del motor común.
+
 ## Riesgos que requieren PR dedicado
 
 1. Perfil, avisos locales y algunos flujos auxiliares conservan métodos legacy compatibles; deben migrarse cuando reciban un contrato paginado específico.
 2. El registro de tokens FCM aún no persiste en backend; recibir FCM funciona, pero el alta/revocación es incompleta.
 3. El login offline basado en hash local y el recordatorio de contraseña cifrada necesitan decisión de seguridad explícita antes de producción.
 4. La base SQLDelight requiere una migración adicional antes de representar apelación externa sin SAIP local.
-5. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación.
+5. El seguimiento ciudadano básico aún no representa observación, ampliación, encauzamiento ni liquidación; Mobile PR 4 incorpora estas actuaciones en el detalle de App Funcionario.
 
 ## Comandos reales de validación
 
@@ -141,7 +153,7 @@ cd mobile
 | Mobile PR 1 | Contrato base, seguridad de red/JWT, OpenAPI snapshot, documentación y build reproducible. |
 | Mobile PR 2 | Cubierto: SAIP ciudadano con consentimiento, canal de notificación, DTOs vigentes, caché migrable y creación end-to-end básica. |
 | Mobile PR 3 | Cubierto: paginación de solicitudes y apelaciones con DTOs livianos, carga incremental y fallback SQLDelight. |
-| Mobile PR 4 | Funcionario: observación, ampliación, encauzamiento y liquidación. |
+| Mobile PR 4 | Cubierto: funcionario registra online observación, ampliación con cronograma inicial, encauzamiento total/parcial y liquidación/cupón; consulta su trazabilidad desde el detalle SAIP. |
 | Mobile PR 5 | Apelación externa, elevación por entidad y migración SQLDelight compatible. |
 | Mobile PR 6 | TTAIP agregado: expediente, descargos, suspensiones, constancias, acuses, reprocesos y cumplimiento. |
 | Mobile PR 7 | Contrato backend para alta/revocación FCM y consumo del motor común de notificaciones. |
