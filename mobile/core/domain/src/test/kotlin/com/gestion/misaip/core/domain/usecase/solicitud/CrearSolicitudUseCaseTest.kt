@@ -18,7 +18,9 @@ class CrearSolicitudUseCaseTest {
     private fun crearParams(
         asunto: String = "Solicito información pública",
         descripcion: String = "Descripción de la solicitud",
-        entidadId: String = "ent-1"
+        entidadId: String = "ent-1",
+        consentimientoDatosPersonales: Boolean = true,
+        canalNotificacion: CanalNotificacion? = CanalNotificacion.CORREO_ELECTRONICO
     ) = CrearSolicitudUseCase.Params(
         tipo = TipoSolicitud.ACCESO_INFORMACION,
         entidad = "Ministerio de Justicia",
@@ -26,7 +28,9 @@ class CrearSolicitudUseCaseTest {
         usuarioId = "usr-1",
         solicitante = solicitante,
         asunto = asunto,
-        descripcion = descripcion
+        descripcion = descripcion,
+        consentimientoDatosPersonales = consentimientoDatosPersonales,
+        canalNotificacion = canalNotificacion
     )
 
     @Before
@@ -54,6 +58,16 @@ class CrearSolicitudUseCaseTest {
         useCase(crearParams(descripcion = "a".repeat(2001)))
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `lanza excepcion cuando no acepta tratamiento de datos personales`() = runTest {
+        useCase(crearParams(consentimientoDatosPersonales = false))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `lanza excepcion cuando no selecciona canal de notificacion`() = runTest {
+        useCase(crearParams(canalNotificacion = null))
+    }
+
     @Test
     fun `crea solicitud con estado RECEPCIONADA`() = runTest {
         val slot = slot<Solicitud>()
@@ -64,6 +78,8 @@ class CrearSolicitudUseCaseTest {
         assertEquals(EstadoSolicitud.RECEPCIONADA, result.estado)
         assertEquals(Prioridad.MEDIA, result.prioridad)
         assertEquals("Solicito información pública", result.asunto)
+        assertTrue(result.consentimientoDatosPersonales)
+        assertEquals(CanalNotificacion.CORREO_ELECTRONICO, result.canalNotificacion)
         assertTrue(result.timeline.isNotEmpty())
         coVerify { solicitudRepository.crearSolicitud(any()) }
     }
