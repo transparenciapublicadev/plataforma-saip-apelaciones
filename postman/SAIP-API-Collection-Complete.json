@@ -82027,6 +82027,435 @@
           ]
         }
       ]
+    },
+    {
+      "name": "13. Push FCM Mobile",
+      "description": "Valida registro autenticado, refresh idempotente, ownership y revocación de dispositivos push sin usar credenciales reales de Firebase.",
+      "item": [
+        {
+          "name": "Consultar Estado Seguro del Adapter FCM",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "estado"
+              ]
+            },
+            "description": "Expone solo capacidades seguras del adapter FCM. Local/Newman debe permanecer deshabilitado y sin credenciales reales."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"FCM adapter status is safe and explicitly disabled locally\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(json.proveedor).to.eql(\"FCM\");",
+                  "  pm.expect(json.estado).to.eql(\"DESHABILITADO\");",
+                  "  pm.expect(json.credencialesExternasConfiguradas).to.eql(false);",
+                  "  pm.expect(json.cifradoTokenConfigurado).to.eql(false);",
+                  "  pm.expect(JSON.stringify(json)).to.not.include(pm.environment.get(\"pushTokenFake\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar Token FCM Ficticio",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{pushTokenFake}}\",\n  \"appFlavor\": \"CIUDADANO\",\n  \"plataforma\": \"ANDROID\",\n  \"deviceIdHash\": \"{{pushDeviceIdHash}}\",\n  \"appVersion\": \"1.0.0-newman\",\n  \"buildType\": \"diagnostic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens"
+              ]
+            },
+            "description": "Registra un token FCM ficticio para el ciudadano autenticado. La respuesta nunca devuelve el token opaco."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"push registration stores opaque token safely\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(json.estado).to.eql(\"ACTIVO\");",
+                  "  pm.expect(json.appFlavor).to.eql(\"CIUDADANO\");",
+                  "  pm.expect(json.plataforma).to.eql(\"ANDROID\");",
+                  "  pm.expect(json.tokenFingerprint).to.have.lengthOf(12);",
+                  "  pm.expect(JSON.stringify(json)).to.not.include(pm.environment.get(\"pushTokenFake\"));",
+                  "});",
+                  "pm.environment.set(\"pushDispositivoId\", json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refrescar Token FCM Idempotente",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{pushTokenFake}}\",\n  \"appFlavor\": \"CIUDADANO\",\n  \"plataforma\": \"ANDROID\",\n  \"deviceIdHash\": \"{{pushDeviceIdHash}}\",\n  \"appVersion\": \"1.0.1-newman\",\n  \"buildType\": \"diagnostic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens"
+              ]
+            },
+            "description": "Reenvía el mismo token ficticio para validar refresh idempotente sin duplicar el dispositivo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"push refresh is idempotent\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(String(json.id)).to.eql(String(pm.environment.get(\"pushDispositivoId\")));",
+                  "  pm.expect(json.estado).to.eql(\"ACTIVO\");",
+                  "  pm.expect(json.appVersion).to.eql(\"1.0.1-newman\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Flavor Push Incompatible",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"fake-fcm-token-invalid-flavor-newman\",\n  \"appFlavor\": \"TTAIP\",\n  \"plataforma\": \"ANDROID\",\n  \"deviceIdHash\": \"{{pushDeviceIdHash}}\",\n  \"appVersion\": \"1.0.0-newman\",\n  \"buildType\": \"diagnostic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens"
+              ]
+            },
+            "description": "Un ciudadano no puede registrar un token como APK TTAIP."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"incompatible push flavor returns RFC 9457 forbidden\", function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(json).to.have.property(\"type\");",
+                  "  pm.expect(json).to.have.property(\"title\");",
+                  "  pm.expect(json).to.have.property(\"status\", 403);",
+                  "  pm.expect(json).to.have.property(\"detail\");",
+                  "  pm.expect(json).to.have.property(\"instance\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Mis Dispositivos Push",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens/mios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens",
+                "mios"
+              ]
+            },
+            "description": "Lista dispositivos propios con fingerprints; nunca retorna tokens FCM completos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"push devices list is owned and sanitized\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const current = json.find(item => String(item.id) === String(pm.environment.get(\"pushDispositivoId\")));",
+                  "  pm.expect(current).to.be.an(\"object\");",
+                  "  pm.expect(current.estado).to.eql(\"ACTIVO\");",
+                  "  pm.expect(JSON.stringify(json)).to.not.include(pm.environment.get(\"pushTokenFake\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revocar Dispositivo Push Actual",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceIdHash\": \"{{pushDeviceIdHash}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens/revocar-actual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens",
+                "revocar-actual"
+              ]
+            },
+            "description": "Simula logout mobile: revoca el token activo del dispositivo autenticado sin depender de ID frágil."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"current push device revocation is idempotent\", function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar Revocación Push",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens/mios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens",
+                "mios"
+              ]
+            },
+            "description": "Confirma que el dispositivo sigue trazado y queda revocado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"revoked push device remains traceable\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const current = json.find(item => String(item.id) === String(pm.environment.get(\"pushDispositivoId\")));",
+                  "  pm.expect(current).to.be.an(\"object\");",
+                  "  pm.expect(current.estado).to.eql(\"REVOCADO\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
