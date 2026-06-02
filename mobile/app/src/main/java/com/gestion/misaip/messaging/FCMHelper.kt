@@ -16,6 +16,11 @@ import com.google.firebase.messaging.FirebaseMessaging
 object FCMHelper {
 
     private const val TAG = "FCMHelper"
+    private var pushTokenSyncCoordinator: PushTokenSyncCoordinator? = null
+
+    fun init(coordinator: PushTokenSyncCoordinator) {
+        pushTokenSyncCoordinator = coordinator
+    }
 
     /**
      * Obtiene el token FCM actual del dispositivo.
@@ -158,14 +163,19 @@ object FCMHelper {
      * La app ya no escribe tokens en Firestore. El backend debe exponer el endpoint
      * de registro de token y usarlo para enviar FCM desde servidor.
      */
-    fun registerTokenWithBackend(@Suppress("UNUSED_PARAMETER") token: String) {
-        Log.d(TAG, "Token FCM listo para registrar en backend Spring Boot")
+    fun registerTokenWithBackend(token: String) {
+        val coordinator = pushTokenSyncCoordinator
+        if (coordinator == null) {
+            Log.w(TAG, "Coordinador push aún no inicializado")
+            return
+        }
+        coordinator.registrarEnSegundoPlano(token)
     }
 
     /**
      * Revoca el token FCM en el backend Spring Boot durante logout.
      */
-    fun unregisterTokenFromBackend() {
-        Log.d(TAG, "Solicitud de revocacion de token FCM delegada al backend Spring Boot")
+    suspend fun unregisterTokenFromBackend() {
+        pushTokenSyncCoordinator?.revocarActualSiEsPosible()
     }
 }

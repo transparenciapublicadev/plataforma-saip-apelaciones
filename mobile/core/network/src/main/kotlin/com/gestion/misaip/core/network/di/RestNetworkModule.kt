@@ -3,12 +3,15 @@ package com.gestion.misaip.core.network.di
 import com.gestion.misaip.core.network.api.ApelacionApiService
 import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.api.EntidadApiService
+import com.gestion.misaip.core.network.api.DispositivoPushApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.datasource.ApelacionRemoteDataSource
 import com.gestion.misaip.core.network.datasource.ApelacionRestDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRemoteDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRestDataSource
+import com.gestion.misaip.core.network.datasource.DispositivoPushRemoteDataSource
+import com.gestion.misaip.core.network.datasource.DispositivoPushRestDataSource
 import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRemoteDataSource
 import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRestDataSource
 import com.gestion.misaip.core.network.datasource.SolicitudRemoteDataSource
@@ -119,6 +122,7 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     single<ApelacionApiService> { get<Retrofit>().create(ApelacionApiService::class.java) }
     single<EntidadApiService> { get<Retrofit>().create(EntidadApiService::class.java) }
     single<TTAIPApiService> { get<Retrofit>().create(TTAIPApiService::class.java) }
+    single<DispositivoPushApiService> { get<Retrofit>().create(DispositivoPushApiService::class.java) }
 
     // ===========================================
     // DATA SOURCES REMOTOS (REST)
@@ -147,5 +151,9 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
 
     single<ExpedienteTtaipRemoteDataSource> {
         ExpedienteTtaipRestDataSource(apelacionApi = get(), ttaipApi = get(), json = get())
+    }
+
+    single<DispositivoPushRemoteDataSource> {
+        DispositivoPushRestDataSource(api = get(), json = get())
     }
 }
