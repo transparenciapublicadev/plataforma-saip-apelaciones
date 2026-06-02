@@ -11,8 +11,8 @@ La carpeta `postman/` contiene la colección operativa para probar manualmente e
 
 | Archivo | Propósito |
 | --- | --- |
-| `postman/SAIP-API-Collection-Complete.json` | Colección completa con 111 requests, ejemplos y documentación de flujos. |
-| `postman/SAIP-API-Environment-Complete.json` | Environment con 57 variables para URLs, tokens, IDs y expedientes dinámicos. |
+| `postman/SAIP-API-Collection-Complete.json` | Colección completa con 247 requests, ejemplos y documentación de flujos. |
+| `postman/SAIP-API-Environment-Complete.json` | Environment con 127 variables para URLs, tokens, IDs y expedientes dinámicos. |
 
 ## Estructura de la Colección
 
@@ -53,10 +53,10 @@ mindmap
 | `02. Ciudadanos` | 8 | CRUD administrativo y estadísticas ciudadanas. |
 | `03. Entidades Públicas` | 9 | Catálogo de entidades, búsqueda y métricas. |
 | `04. Funcionarios` | 7 | Gestión de funcionarios por entidad. |
-| `05. Solicitudes SAIP` | 17 | Creación, consulta, estados y estadísticas de solicitudes. |
+| `05. Solicitudes SAIP` | 45 | Creación, consulta, estados y estadísticas de solicitudes. |
 | `06. Respuestas` | 7 | Entrega, denegatoria y causales legales. |
-| `07. Apelaciones` | 15 | Creación interna/externa, consulta, subsanación y estados TTAIP. |
-| `08. Tribunal TTAIP` | 22 | Calificación, notificación y resolución final. |
+| `07. Apelaciones` | 28 | Creación interna/externa, elevación, consulta, subsanación y estados TTAIP. |
+| `08. Tribunal TTAIP` | 114 | Calificación, notificación, resoluciones, suspensiones y cumplimiento. |
 | `09. Estadísticas` | 8 | Indicadores generales, ranking y tendencias. |
 | `10. Reportes` | 7 | Reportes por módulo y resumen ejecutivo. |
 | `11. Portal Público` | 2 | Home público y ayuda. |
@@ -147,6 +147,33 @@ cd backend
 ```
 
 La colección valida que `/api/notificaciones/motor/estado` responda `modo = MOCK`. Newman no usa SMTP real, no requiere secretos SMTP y no debe persistir JWT reales en el environment versionado.
+
+## Ejecución reproducible
+
+Newman crea SAIP, apelaciones y registros TTAIP runtime para validar flujos
+reales. Cuando el entorno local acumuló fixtures, usar el reset explícito y
+volver a cargar `database/script_saip_db.sql`:
+
+```powershell
+.\scripts\reset-local-db.ps1 -ConfirmReset
+cd backend
+.\mvnw.cmd spring-boot:run
+# Detener backend después de crear el schema.
+Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
+```
+
+El script solo permite hosts locales, exige confirmación y nunca se ejecuta de
+forma implícita. Después del seed, iniciar el backend con
+`APP_NOTIFICATIONS_MODE=MOCK` y ejecutar:
+
+```powershell
+cd postman
+npm run test:api:diagnostic
+```
+
+Los JWT permanecen vacíos en el environment versionado y se capturan en memoria
+durante cada ejecución. Los listados globales validados por Newman usan DTOs
+livianos paginados para evitar respuestas innecesariamente pesadas.
 
 Checklist de mantenimiento:
 
