@@ -55,7 +55,8 @@ flowchart TB
     Compose --> ViewModels
     Postman --> Controllers
     Docs -. referencia .-> OpenAPI
-    Mobile -. push token .-> FCM
+    Mobile -. registra token push .-> Controllers
+    Services -. entrega push pendiente adapter Firebase Admin .-> FCM
 ```
 
 :::note[Regla de independencia]
