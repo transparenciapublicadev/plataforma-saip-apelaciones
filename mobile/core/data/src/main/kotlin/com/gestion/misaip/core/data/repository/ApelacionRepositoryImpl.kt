@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import java.util.UUID
 
 /**
@@ -27,8 +25,6 @@ class ApelacionRepositoryImpl(
 ) : ApelacionRepository {
 
     private val queries = database.apelacionQueries
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-
     override suspend fun cargarPaginaApelaciones(
         pagina: Int,
         tamano: Int
@@ -203,109 +199,19 @@ class ApelacionRepositoryImpl(
         expediente: String,
         tipo: String,
         calificacion: Calificacion
-    ) = withContext(Dispatchers.IO) {
-        val calJson = json.encodeToString(
-            com.gestion.misaip.core.data.mapper.CalificacionSerializable.from(calificacion)
-        )
-
-        // Normalizar tipo a minúsculas para comparación segura
-        // (la UI envía "PRIMERA"/"SEGUNDA" en mayúsculas)
-        val tipoLower = tipo.lowercase()
-
-        val nuevoEstado = when {
-            // Primera calificación: INADMISIBLE → subsanación (BR-TTAIP-003)
-            calificacion.resultado == ResultadoCalificacion.INADMISIBLE && tipoLower == "primera" ->
-                EstadoApelacion.EN_SUBSANACION.toDisplayString()
-            // IMPROCEDENTE → fin del trámite (BR-TTAIP-003/005)
-            calificacion.resultado == ResultadoCalificacion.IMPROCEDENTE ->
-                EstadoApelacion.RESUELTO_IMPROCEDENTE.toDisplayString()
-            // Primera calificación: ADMISIBLE → pasa a segunda calificación (BR-TTAIP-003)
-            calificacion.resultado == ResultadoCalificacion.ADMISIBLE && tipoLower == "primera" ->
-                EstadoApelacion.EN_CALIFICACION_2.toDisplayString()
-            // Segunda calificación: ADMITIDO → notificación (BR-TTAIP-005/006)
-            calificacion.resultado == ResultadoCalificacion.ADMITIDO && tipoLower == "segunda" ->
-                EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION.toDisplayString()
-            else -> EstadoApelacion.EN_CALIFICACION_1.toDisplayString()
+    ) {
+        guardarOperacionOnline {
+            remoteDataSource.calificarApelacion(expediente, tipo, calificacion)
         }
-
-        val current = queries.getApelacionByExpediente(expediente).executeAsOneOrNull()
-        val currentTimeline = current?.timeline ?: "[]"
-
-        // Add event to timeline with human-readable result
-        val resultadoDisplay = when (calificacion.resultado) {
-            ResultadoCalificacion.ADMISIBLE -> "Admisible"
-            ResultadoCalificacion.INADMISIBLE -> "Inadmisible"
-            ResultadoCalificacion.IMPROCEDENTE -> "Improcedente"
-            ResultadoCalificacion.ADMITIDO -> "Admitido"
-        }
-        val eventName = when (tipo) {
-            "primera" -> "Primera calificación: $resultadoDisplay"
-            "segunda" -> "Segunda calificación: $resultadoDisplay"
-            else -> "Calificación emitida: $resultadoDisplay"
-        }
-        val newTimelineItems: MutableList<com.gestion.misaip.core.data.mapper.TimelineSerializable> = try {
-            json.decodeFromString(currentTimeline)
-        } catch (_: Exception) { mutableListOf() }
-        newTimelineItems.add(
-            com.gestion.misaip.core.data.mapper.TimelineSerializable(
-                fecha = System.currentTimeMillis(),
-                evento = eventName,
-                tipo = "calificacion",
-                completado = true,
-                detalle = calificacion.fundamentacion.takeIf { it.isNotBlank() }
-            )
-        )
-        val updatedTimeline = json.encodeToString(newTimelineItems)
-
-        if (tipoLower == "primera") {
-            queries.updatePrimeraCalificacion(
-                estado = nuevoEstado,
-                primeraCalificacion = calJson,
-                timeline = updatedTimeline,
-                ultimaModificacion = System.currentTimeMillis(),
-                expediente = expediente
-            )
-        } else {
-            queries.updateSegundaCalificacion(
-                estado = nuevoEstado,
-                segundaCalificacion = calJson,
-                timeline = updatedTimeline,
-                ultimaModificacion = System.currentTimeMillis(),
-                expediente = expediente
-            )
-        }
-        Unit
     }
 
     override suspend fun presentarSubsanacion(
         expediente: String,
         subsanacion: Subsanacion
-    ) = withContext(Dispatchers.IO) {
-        val subJson = json.encodeToString(
-            com.gestion.misaip.core.data.mapper.SubsanacionSerializable.from(subsanacion)
-        )
-
-        val current = queries.getApelacionByExpediente(expediente).executeAsOneOrNull()
-        val currentTimeline = current?.timeline ?: "[]"
-        val timelineItems: MutableList<com.gestion.misaip.core.data.mapper.TimelineSerializable> = try {
-            json.decodeFromString(currentTimeline)
-        } catch (_: Exception) { mutableListOf() }
-        timelineItems.add(
-            com.gestion.misaip.core.data.mapper.TimelineSerializable(
-                fecha = System.currentTimeMillis(),
-                evento = "Subsanación presentada",
-                tipo = "subsanacion",
-                completado = true
-            )
-        )
-
-        queries.updateSubsanacion(
-            subsanacion = subJson,
-            timeline = json.encodeToString(timelineItems),
-            ultimaModificacion = System.currentTimeMillis(),
-            expediente = expediente
-        )
-        Unit
+    ) {
+        guardarOperacionOnline {
+            remoteDataSource.presentarSubsanacion(expediente, subsanacion)
+        }
     }
 
     /**
