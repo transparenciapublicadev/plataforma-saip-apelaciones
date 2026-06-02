@@ -4364,6 +4364,49 @@
                                                                                                      }
                                                                                    }
                                                                        },
+                  "/api/solicitudes/paginadas":  {
+                                                     "get":  {
+                                                                 "tags":  [
+                                                                              "Solicitudes SAIP"
+                                                                          ],
+                                                                 "summary":  "Listar solicitudes SAIP con paginación y DTO liviano",
+                                                                 "operationId":  "listarPaginadas",
+                                                                 "parameters":  [
+                                                                                    {
+                                                                                        "name":  "pagina",
+                                                                                        "in":  "query",
+                                                                                        "required":  false,
+                                                                                        "schema":  {
+                                                                                                       "type":  "integer",
+                                                                                                       "format":  "int32",
+                                                                                                       "default":  0
+                                                                                                   }
+                                                                                    },
+                                                                                    {
+                                                                                        "name":  "tamano",
+                                                                                        "in":  "query",
+                                                                                        "required":  false,
+                                                                                        "schema":  {
+                                                                                                       "type":  "integer",
+                                                                                                       "format":  "int32",
+                                                                                                       "default":  20
+                                                                                                   }
+                                                                                    }
+                                                                                ],
+                                                                 "responses":  {
+                                                                                   "200":  {
+                                                                                               "description":  "OK",
+                                                                                               "content":  {
+                                                                                                               "application/json":  {
+                                                                                                                                        "schema":  {
+                                                                                                                                                       "$ref":  "#/components/schemas/PaginaDTOSolicitudResumenDTO"
+                                                                                                                                                   }
+                                                                                                                                    }
+                                                                                                           }
+                                                                                           }
+                                                                               }
+                                                             }
+                                                 },
                   "/api/solicitudes/expediente/{expediente}":  {
                                                                    "get":  {
                                                                                "tags":  [
@@ -4433,6 +4476,58 @@
                                                                                      }
                                                                    }
                                                        },
+                  "/api/solicitudes/estado/{estado}/paginadas":  {
+                                                                     "get":  {
+                                                                                 "tags":  [
+                                                                                              "Solicitudes SAIP"
+                                                                                          ],
+                                                                                 "summary":  "Listar solicitudes por estado con paginación y DTO liviano",
+                                                                                 "operationId":  "listarPaginadasPorEstado",
+                                                                                 "parameters":  [
+                                                                                                    {
+                                                                                                        "name":  "estado",
+                                                                                                        "in":  "path",
+                                                                                                        "description":  "Estado de la solicitud",
+                                                                                                        "required":  true,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "string"
+                                                                                                                   }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "name":  "pagina",
+                                                                                                        "in":  "query",
+                                                                                                        "required":  false,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "integer",
+                                                                                                                       "format":  "int32",
+                                                                                                                       "default":  0
+                                                                                                                   }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "name":  "tamano",
+                                                                                                        "in":  "query",
+                                                                                                        "required":  false,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "integer",
+                                                                                                                       "format":  "int32",
+                                                                                                                       "default":  20
+                                                                                                                   }
+                                                                                                    }
+                                                                                                ],
+                                                                                 "responses":  {
+                                                                                                   "200":  {
+                                                                                                               "description":  "OK",
+                                                                                                               "content":  {
+                                                                                                                               "application/json":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "$ref":  "#/components/schemas/PaginaDTOSolicitudResumenDTO"
+                                                                                                                                                                   }
+                                                                                                                                                    }
+                                                                                                                           }
+                                                                                                           }
+                                                                                               }
+                                                                             }
+                                                                 },
                   "/api/solicitudes/estadisticas":  {
                                                         "get":  {
                                                                     "tags":  [
@@ -4493,6 +4588,59 @@
                                                                                          }
                                                                        }
                                                            },
+                  "/api/solicitudes/entidad/{entidadId}/paginadas":  {
+                                                                         "get":  {
+                                                                                     "tags":  [
+                                                                                                  "Solicitudes SAIP"
+                                                                                              ],
+                                                                                     "summary":  "Listar solicitudes SAIP de una entidad con paginación y DTO liviano",
+                                                                                     "operationId":  "listarPaginadasPorEntidad",
+                                                                                     "parameters":  [
+                                                                                                        {
+                                                                                                            "name":  "entidadId",
+                                                                                                            "in":  "path",
+                                                                                                            "description":  "ID de la entidad",
+                                                                                                            "required":  true,
+                                                                                                            "schema":  {
+                                                                                                                           "type":  "integer",
+                                                                                                                           "format":  "int64"
+                                                                                                                       }
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "name":  "pagina",
+                                                                                                            "in":  "query",
+                                                                                                            "required":  false,
+                                                                                                            "schema":  {
+                                                                                                                           "type":  "integer",
+                                                                                                                           "format":  "int32",
+                                                                                                                           "default":  0
+                                                                                                                       }
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "name":  "tamano",
+                                                                                                            "in":  "query",
+                                                                                                            "required":  false,
+                                                                                                            "schema":  {
+                                                                                                                           "type":  "integer",
+                                                                                                                           "format":  "int32",
+                                                                                                                           "default":  20
+                                                                                                                       }
+                                                                                                        }
+                                                                                                    ],
+                                                                                     "responses":  {
+                                                                                                       "200":  {
+                                                                                                                   "description":  "OK",
+                                                                                                                   "content":  {
+                                                                                                                                   "application/json":  {
+                                                                                                                                                            "schema":  {
+                                                                                                                                                                           "$ref":  "#/components/schemas/PaginaDTOSolicitudResumenDTO"
+                                                                                                                                                                       }
+                                                                                                                                                        }
+                                                                                                                               }
+                                                                                                               }
+                                                                                                   }
+                                                                                 }
+                                                                     },
                   "/api/solicitudes/entidad/{entidadId}/estadisticas":  {
                                                                             "get":  {
                                                                                         "tags":  [
@@ -4566,6 +4714,59 @@
                                                                                              }
                                                                            }
                                                                },
+                  "/api/solicitudes/ciudadano/{ciudadanoId}/paginadas":  {
+                                                                             "get":  {
+                                                                                         "tags":  [
+                                                                                                      "Solicitudes SAIP"
+                                                                                                  ],
+                                                                                         "summary":  "Listar solicitudes SAIP de un ciudadano con paginación y DTO liviano",
+                                                                                         "operationId":  "listarPaginadasPorCiudadano",
+                                                                                         "parameters":  [
+                                                                                                            {
+                                                                                                                "name":  "ciudadanoId",
+                                                                                                                "in":  "path",
+                                                                                                                "description":  "ID del ciudadano",
+                                                                                                                "required":  true,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int64"
+                                                                                                                           }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "name":  "pagina",
+                                                                                                                "in":  "query",
+                                                                                                                "required":  false,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int32",
+                                                                                                                               "default":  0
+                                                                                                                           }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "name":  "tamano",
+                                                                                                                "in":  "query",
+                                                                                                                "required":  false,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int32",
+                                                                                                                               "default":  20
+                                                                                                                           }
+                                                                                                            }
+                                                                                                        ],
+                                                                                         "responses":  {
+                                                                                                           "200":  {
+                                                                                                                       "description":  "OK",
+                                                                                                                       "content":  {
+                                                                                                                                       "application/json":  {
+                                                                                                                                                                "schema":  {
+                                                                                                                                                                               "$ref":  "#/components/schemas/PaginaDTOSolicitudResumenDTO"
+                                                                                                                                                                           }
+                                                                                                                                                            }
+                                                                                                                                   }
+                                                                                                                   }
+                                                                                                       }
+                                                                                     }
+                                                                         },
                   "/api/solicitudes/ciudadano/{ciudadanoId}/estadisticas":  {
                                                                                 "get":  {
                                                                                             "tags":  [
@@ -5532,6 +5733,49 @@
                                                                                     }
                                                                   }
                                                       },
+                  "/api/apelaciones/paginadas":  {
+                                                     "get":  {
+                                                                 "tags":  [
+                                                                              "Apelaciones TTAIP"
+                                                                          ],
+                                                                 "summary":  "Listar apelaciones TTAIP con paginación y DTO liviano",
+                                                                 "operationId":  "listarPaginadas_1",
+                                                                 "parameters":  [
+                                                                                    {
+                                                                                        "name":  "pagina",
+                                                                                        "in":  "query",
+                                                                                        "required":  false,
+                                                                                        "schema":  {
+                                                                                                       "type":  "integer",
+                                                                                                       "format":  "int32",
+                                                                                                       "default":  0
+                                                                                                   }
+                                                                                    },
+                                                                                    {
+                                                                                        "name":  "tamano",
+                                                                                        "in":  "query",
+                                                                                        "required":  false,
+                                                                                        "schema":  {
+                                                                                                       "type":  "integer",
+                                                                                                       "format":  "int32",
+                                                                                                       "default":  20
+                                                                                                   }
+                                                                                    }
+                                                                                ],
+                                                                 "responses":  {
+                                                                                   "200":  {
+                                                                                               "description":  "OK",
+                                                                                               "content":  {
+                                                                                                               "application/json":  {
+                                                                                                                                        "schema":  {
+                                                                                                                                                       "$ref":  "#/components/schemas/PaginaDTOApelacionResumenDTO"
+                                                                                                                                                   }
+                                                                                                                                    }
+                                                                                                           }
+                                                                                           }
+                                                                               }
+                                                             }
+                                                 },
                   "/api/apelaciones/expediente":  {
                                                       "get":  {
                                                                   "tags":  [
@@ -5657,6 +5901,58 @@
                                                                                      }
                                                                    }
                                                        },
+                  "/api/apelaciones/estado/{estado}/paginadas":  {
+                                                                     "get":  {
+                                                                                 "tags":  [
+                                                                                              "Apelaciones TTAIP"
+                                                                                          ],
+                                                                                 "summary":  "Listar apelaciones por estado con paginación y DTO liviano",
+                                                                                 "operationId":  "listarPaginadasPorEstado_1",
+                                                                                 "parameters":  [
+                                                                                                    {
+                                                                                                        "name":  "estado",
+                                                                                                        "in":  "path",
+                                                                                                        "description":  "Estado de la apelación",
+                                                                                                        "required":  true,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "string"
+                                                                                                                   }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "name":  "pagina",
+                                                                                                        "in":  "query",
+                                                                                                        "required":  false,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "integer",
+                                                                                                                       "format":  "int32",
+                                                                                                                       "default":  0
+                                                                                                                   }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "name":  "tamano",
+                                                                                                        "in":  "query",
+                                                                                                        "required":  false,
+                                                                                                        "schema":  {
+                                                                                                                       "type":  "integer",
+                                                                                                                       "format":  "int32",
+                                                                                                                       "default":  20
+                                                                                                                   }
+                                                                                                    }
+                                                                                                ],
+                                                                                 "responses":  {
+                                                                                                   "200":  {
+                                                                                                               "description":  "OK",
+                                                                                                               "content":  {
+                                                                                                                               "application/json":  {
+                                                                                                                                                        "schema":  {
+                                                                                                                                                                       "$ref":  "#/components/schemas/PaginaDTOApelacionResumenDTO"
+                                                                                                                                                                   }
+                                                                                                                                                    }
+                                                                                                                           }
+                                                                                                           }
+                                                                                               }
+                                                                             }
+                                                                 },
                   "/api/apelaciones/estadisticas":  {
                                                         "get":  {
                                                                     "tags":  [
@@ -5752,6 +6048,59 @@
                                                                                              }
                                                                            }
                                                                },
+                  "/api/apelaciones/ciudadano/{ciudadanoId}/paginadas":  {
+                                                                             "get":  {
+                                                                                         "tags":  [
+                                                                                                      "Apelaciones TTAIP"
+                                                                                                  ],
+                                                                                         "summary":  "Listar apelaciones TTAIP de un ciudadano con paginación y DTO liviano",
+                                                                                         "operationId":  "listarPaginadasPorCiudadano_1",
+                                                                                         "parameters":  [
+                                                                                                            {
+                                                                                                                "name":  "ciudadanoId",
+                                                                                                                "in":  "path",
+                                                                                                                "description":  "ID del ciudadano",
+                                                                                                                "required":  true,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int64"
+                                                                                                                           }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "name":  "pagina",
+                                                                                                                "in":  "query",
+                                                                                                                "required":  false,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int32",
+                                                                                                                               "default":  0
+                                                                                                                           }
+                                                                                                            },
+                                                                                                            {
+                                                                                                                "name":  "tamano",
+                                                                                                                "in":  "query",
+                                                                                                                "required":  false,
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "integer",
+                                                                                                                               "format":  "int32",
+                                                                                                                               "default":  20
+                                                                                                                           }
+                                                                                                            }
+                                                                                                        ],
+                                                                                         "responses":  {
+                                                                                                           "200":  {
+                                                                                                                       "description":  "OK",
+                                                                                                                       "content":  {
+                                                                                                                                       "application/json":  {
+                                                                                                                                                                "schema":  {
+                                                                                                                                                                               "$ref":  "#/components/schemas/PaginaDTOApelacionResumenDTO"
+                                                                                                                                                                           }
+                                                                                                                                                            }
+                                                                                                                                   }
+                                                                                                                   }
+                                                                                                       }
+                                                                                     }
+                                                                         },
                   "/api/usuarios/{id}":  {
                                              "delete":  {
                                                             "tags":  [
@@ -7960,7 +8309,7 @@
                                                                                                                  "type":  "number",
                                                                                                                  "description":  "Monto de reproducción física",
                                                                                                                  "example":  "18.50",
-                                                                                                                 "minimum":  0.00
+                                                                                                                 "minimum":  0
                                                                                                              },
                                                                                                    "moneda":  {
                                                                                                                   "type":  "string",
@@ -8669,6 +9018,92 @@
                                                                                                                       }
                                                                                           }
                                                                        },
+                                       "PaginaDTOSolicitudResumenDTO":  {
+                                                                            "type":  "object",
+                                                                            "description":  "Página liviana de resultados",
+                                                                            "properties":  {
+                                                                                               "contenido":  {
+                                                                                                                 "type":  "array",
+                                                                                                                 "items":  {
+                                                                                                                               "$ref":  "#/components/schemas/SolicitudResumenDTO"
+                                                                                                                           }
+                                                                                                             },
+                                                                                               "pagina":  {
+                                                                                                              "type":  "integer",
+                                                                                                              "format":  "int32"
+                                                                                                          },
+                                                                                               "tamano":  {
+                                                                                                              "type":  "integer",
+                                                                                                              "format":  "int32"
+                                                                                                          },
+                                                                                               "totalElementos":  {
+                                                                                                                      "type":  "integer",
+                                                                                                                      "format":  "int64"
+                                                                                                                  },
+                                                                                               "totalPaginas":  {
+                                                                                                                    "type":  "integer",
+                                                                                                                    "format":  "int32"
+                                                                                                                },
+                                                                                               "ultima":  {
+                                                                                                              "type":  "boolean"
+                                                                                                          }
+                                                                                           }
+                                                                        },
+                                       "SolicitudResumenDTO":  {
+                                                                   "type":  "object",
+                                                                   "description":  "Resumen liviano de una solicitud SAIP para listados paginados",
+                                                                   "properties":  {
+                                                                                      "id":  {
+                                                                                                 "type":  "integer",
+                                                                                                 "format":  "int64"
+                                                                                             },
+                                                                                      "expediente":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                      "asunto":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                      "estado":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                      "prioridad":  {
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                      "semaforo":  {
+                                                                                                       "type":  "string"
+                                                                                                   },
+                                                                                      "fechaPresentacion":  {
+                                                                                                                "type":  "string"
+                                                                                                            },
+                                                                                      "fechaLimite":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                      "diasRestantes":  {
+                                                                                                            "type":  "integer",
+                                                                                                            "format":  "int32"
+                                                                                                        },
+                                                                                      "ciudadanoId":  {
+                                                                                                          "type":  "integer",
+                                                                                                          "format":  "int64"
+                                                                                                      },
+                                                                                      "ciudadanoNombre":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                      "entidadId":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "format":  "int64"
+                                                                                                    },
+                                                                                      "entidadNombre":  {
+                                                                                                            "type":  "string"
+                                                                                                        },
+                                                                                      "entidadAcronimo":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                      "canalNotificacion":  {
+                                                                                                                "type":  "string"
+                                                                                                            }
+                                                                                  }
+                                                               },
                                        "PortalDistribucionDTO":  {
                                                                      "type":  "object",
                                                                      "properties":  {
@@ -8909,6 +9344,86 @@
                                                                                                "nota":  {
                                                                                                             "type":  "string"
                                                                                                         }
+                                                                                           }
+                                                                        },
+                                       "ApelacionResumenDTO":  {
+                                                                   "type":  "object",
+                                                                   "description":  "Resumen liviano de una apelación TTAIP para listados paginados",
+                                                                   "properties":  {
+                                                                                      "id":  {
+                                                                                                 "type":  "integer",
+                                                                                                 "format":  "int64"
+                                                                                             },
+                                                                                      "expediente":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                      "estado":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                      "resultado":  {
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                      "fechaApelacion":  {
+                                                                                                             "type":  "string"
+                                                                                                         },
+                                                                                      "solicitudId":  {
+                                                                                                          "type":  "integer",
+                                                                                                          "format":  "int64"
+                                                                                                      },
+                                                                                      "solicitudExpediente":  {
+                                                                                                                  "type":  "string"
+                                                                                                              },
+                                                                                      "ciudadanoId":  {
+                                                                                                          "type":  "integer",
+                                                                                                          "format":  "int64"
+                                                                                                      },
+                                                                                      "ciudadanoNombre":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                      "entidadId":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "format":  "int64"
+                                                                                                    },
+                                                                                      "entidadNombre":  {
+                                                                                                            "type":  "string"
+                                                                                                        },
+                                                                                      "tipoOrigen":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                      "numeroSolicitudExterna":  {
+                                                                                                                     "type":  "string"
+                                                                                                                 }
+                                                                                  }
+                                                               },
+                                       "PaginaDTOApelacionResumenDTO":  {
+                                                                            "type":  "object",
+                                                                            "description":  "Página liviana de resultados",
+                                                                            "properties":  {
+                                                                                               "contenido":  {
+                                                                                                                 "type":  "array",
+                                                                                                                 "items":  {
+                                                                                                                               "$ref":  "#/components/schemas/ApelacionResumenDTO"
+                                                                                                                           }
+                                                                                                             },
+                                                                                               "pagina":  {
+                                                                                                              "type":  "integer",
+                                                                                                              "format":  "int32"
+                                                                                                          },
+                                                                                               "tamano":  {
+                                                                                                              "type":  "integer",
+                                                                                                              "format":  "int32"
+                                                                                                          },
+                                                                                               "totalElementos":  {
+                                                                                                                      "type":  "integer",
+                                                                                                                      "format":  "int64"
+                                                                                                                  },
+                                                                                               "totalPaginas":  {
+                                                                                                                    "type":  "integer",
+                                                                                                                    "format":  "int32"
+                                                                                                                },
+                                                                                               "ultima":  {
+                                                                                                              "type":  "boolean"
+                                                                                                          }
                                                                                            }
                                                                         }
                                    },
