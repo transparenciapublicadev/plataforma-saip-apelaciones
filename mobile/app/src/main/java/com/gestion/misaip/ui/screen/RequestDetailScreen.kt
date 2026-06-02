@@ -330,6 +330,11 @@ private fun RequestDetailContent(
                             }
                         }
                     }
+                    if (uiState.tipoUsuario == com.gestion.misaip.core.domain.model.TipoUsuario.TTAIP) {
+                        item(key = "ttaip_agregado") {
+                            TTAIPExpedientePanel(numeroExpediente = uiState.apelacion.expediente)
+                        }
+                    }
                 }
 
                 // Apelación relacionada (desde vista SAIP)
@@ -846,8 +851,8 @@ private fun CalificacionBottomSheet(
         if (tipoCalificacion == "PRIMERA") {
             listOf("ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE")
         } else {
-            // Segunda calificación (post-subsanación): resolución final Fundado/Infundado
-            listOf("FUNDADO", "INFUNDADO")
+            // La resolución final es una actuación posterior del expediente agregado.
+            listOf("ADMITIDO", "IMPROCEDENTE")
         }
     }
 

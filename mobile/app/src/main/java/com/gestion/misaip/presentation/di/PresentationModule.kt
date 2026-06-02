@@ -74,6 +74,13 @@ val presentationModule = module {
     }
 
     viewModel {
+        TTAIPExpedienteViewModel(
+            getExpedienteTtaipUseCase = get(),
+            gestionarExpedienteTtaipUseCase = get()
+        )
+    }
+
+    viewModel {
         AdminDashboardViewModel(
             getUsuarioActualUseCase = get(),
             getTodasLasSolicitudesUseCase = get(),
