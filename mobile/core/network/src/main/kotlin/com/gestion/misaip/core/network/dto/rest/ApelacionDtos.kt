@@ -67,13 +67,16 @@ data class SubsanacionRestRequest(
 @Serializable
 data class ResolucionRestDto(
     val id: Long? = null,
+    val numeroResolucion: String? = null,
     val tipoResolucion: String? = null,
     val decision: String? = null,
     val fundamentos: String? = null,
+    val fundamentoLegal: String? = null,
     val observaciones: String? = null,
     val fechaResolucion: String? = null,
     val miembroTTAIPId: Long? = null,
-    val miembroTTAIPNombre: String? = null
+    val miembroTTAIPNombre: String? = null,
+    val cedulas: List<CedulaTtaipRestDto> = emptyList()
 )
 
 @Serializable
@@ -156,6 +159,8 @@ data class ApelacionRestDto(
     val resolucion: ResolucionRestDto? = null,
     val resolucionPrimeraCalificacion: ResolucionRestDto? = null,
     val resolucionSegundaCalificacion: ResolucionRestDto? = null,
+    val expedienteTtaip: ExpedienteTtaipRestDto? = null,
+    val resoluciones: List<ResolucionRestDto> = emptyList(),
     val documentos: List<DocumentoRestDto>? = null
 ) {
     fun toDomain(): Apelacion {
@@ -215,7 +220,8 @@ data class ApelacionRestDto(
                     observacion = observacion
                 )
             },
-            elevacion = elevacion?.toDomain()
+            elevacion = elevacion?.toDomain(),
+            expedienteTtaip = expedienteTtaip?.toDomain()
         )
     }
 }

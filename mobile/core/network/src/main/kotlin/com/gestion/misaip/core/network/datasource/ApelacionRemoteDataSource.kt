@@ -1,12 +1,14 @@
 package com.gestion.misaip.core.network.datasource
 
 import com.gestion.misaip.core.domain.model.Apelacion
+import com.gestion.misaip.core.domain.model.Calificacion
 import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.domain.model.ComunicarOmisionElevacion
 import com.gestion.misaip.core.domain.model.ElevacionApelacion
 import com.gestion.misaip.core.domain.model.RegistrarApelacionAnteEntidad
 import com.gestion.misaip.core.domain.model.RegistrarApelacionExterna
 import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
+import com.gestion.misaip.core.domain.model.Subsanacion
 
 /**
  * Interfaz para la fuente de datos remota de Apelaciones.
@@ -44,6 +46,17 @@ interface ApelacionRemoteDataSource {
         apelacionId: String,
         request: ComunicarOmisionElevacion
     ): ElevacionApelacion
+
+    suspend fun calificarApelacion(
+        expediente: String,
+        tipo: String,
+        calificacion: Calificacion
+    ): Apelacion
+
+    suspend fun presentarSubsanacion(
+        expediente: String,
+        subsanacion: Subsanacion
+    ): Apelacion
 
     suspend fun actualizarApelacion(apelacion: Apelacion)
 
