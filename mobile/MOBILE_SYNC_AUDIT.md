@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #34 y registra el alcance completado de Mobile PR 7. La sincronización sigue siendo incremental: el alta, renovación y revocación FCM ya usan backend autenticado; el envío real queda pendiente de Firebase Admin.
+Esta auditoría compara `mobile/` contra el contrato OpenAPI vigente del backend después del PR #35 y registra el alcance completado de Mobile PR 7. La sincronización sigue siendo incremental: el alta, renovación y revocación FCM ya usan backend autenticado; el envío real queda pendiente de Firebase Admin. PR #35 agregó la checklist de release readiness y dejó alineada la limpieza de topics FCM en logout con el `entidadId` real.
 
 ## Stack y módulos reales
 
