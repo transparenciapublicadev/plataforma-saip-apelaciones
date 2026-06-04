@@ -1,6 +1,6 @@
 ---
 title: Despliegue Backend
-description: Configuración de producción para el backend Spring Boot con MySQL, JWT y variables de entorno.
+description: Configuración de producción para el backend Spring Boot con MySQL, perfil PostgreSQL opt-in, JWT y variables de entorno.
 ---
 
 import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
@@ -12,7 +12,10 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
     JDK alineado con `backend/pom.xml`.
   </Card>
   <Card title="MySQL 8+" icon="setting">
-    Base de datos relacional principal.
+    Base de datos relacional principal actual.
+  </Card>
+  <Card title="PostgreSQL 16+" icon="database">
+    Perfil opt-in preparado para migración controlada, sin cutover todavía.
   </Card>
   <Card title="Maven" icon="puzzle">
     Maven Wrapper incluido en el proyecto.
@@ -24,9 +27,9 @@ import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/
 | Variable | Descripción | Obligatoria |
 |----------|-------------|-------------|
 | `SPRING_PROFILES_ACTIVE` | Perfil activo. Usar `prod` en producción. | Sí |
-| `DB_URL` | JDBC URL de MySQL. | Sí en `prod` |
-| `DB_USERNAME` | Usuario de MySQL. | Sí en `prod` |
-| `DB_PASSWORD` | Contraseña de MySQL. | Sí en `prod` |
+| `DB_URL` | JDBC URL de la base activa. MySQL en runtime principal; PostgreSQL solo con perfil `postgres`. | Sí en `prod` |
+| `DB_USERNAME` | Usuario de base de datos. | Sí en `prod` |
+| `DB_PASSWORD` | Contraseña de base de datos. | Sí en `prod` |
 | `JWT_SECRET` | Clave secreta para firmar tokens JWT (mín. 256 bits). | Sí en `prod` |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes web autorizados, separados por coma. | Sí en `prod` |
 | `APP_NOTIFICATIONS_MODE` | Modo del motor: `MOCK` para local/Newman o `SMTP` para producción. | `SMTP` por defecto en `prod` |
@@ -50,6 +53,10 @@ NUNCA hardcodear credenciales. En producción, usar variables de entorno del hos
 
 :::caution[Motor de notificaciones]
 `MOCK` es exclusivo para desarrollo local y Newman y el perfil `prod` lo rechaza al iniciar. `SMTP` habilita correo real configurable mediante variables de entorno; si faltan host, remitente o credenciales requeridas, el arranque productivo falla con un mensaje claro. `CASILLA_ELECTRONICA` dispone de un adapter preparado que responde `NO_DISPONIBLE` hasta contar con contrato API oficial. Los endpoints push registran tokens FCM de manera autenticada usando hash y cifrado opcional externo; el adapter de envío FCM no simula éxito y sigue pendiente de Firebase Admin. No existe fallback automático entre canales.
+:::
+
+:::note[PostgreSQL en migración controlada]
+MySQL sigue siendo el runtime principal. El perfil `postgres` existe solo para ensayos locales/staging de migración y usa `ddl-auto=validate`; no ejecuta seed ni DDL automáticamente. Antes de iniciar el backend con ese perfil, ejecutar `database/postgres/script_saip_db_postgres.sql` con los scripts de ayuda.
 :::
 
 ## Build de Producción
@@ -99,6 +106,8 @@ En producción, usar `validate` (NO `update`) para evitar cambios accidentales e
 
 ## Base de Datos
 
+### MySQL actual
+
 ```sql
 -- Crear base de datos y usuario
 CREATE DATABASE saip_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -106,6 +115,48 @@ CREATE USER 'saip_user'@'%' IDENTIFIED BY 'secure_password';
 GRANT ALL PRIVILEGES ON saip_db.* TO 'saip_user'@'%';
 FLUSH PRIVILEGES;
 ```
+
+### PostgreSQL opt-in
+
+El perfil PostgreSQL no reemplaza el runtime principal. Para ensayar el schema paralelo:
+
+```powershell
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+$env:PGDATABASE = "saip_db_postgres"
+$env:PGUSER = "postgres"
+$env:PGPASSWORD = "<local-password>"
+.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
+```
+
+Luego iniciar el backend con el perfil aislado:
+
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:5432/saip_db_postgres"
+$env:DB_USERNAME = $env:PGUSER
+$env:DB_PASSWORD = $env:PGPASSWORD
+cd backend
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=postgres
+```
+
+Variables equivalentes en Linux/macOS:
+
+```bash
+export PGHOST=localhost
+export PGPORT=5432
+export PGDATABASE=saip_db_postgres
+export PGUSER=postgres
+export PGPASSWORD='<local-password>'
+RUN_TWICE=true ./scripts/postgres/run-postgres-schema.sh
+
+export DB_URL=jdbc:postgresql://localhost:5432/saip_db_postgres
+export DB_USERNAME="$PGUSER"
+export DB_PASSWORD="$PGPASSWORD"
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
+```
+
+No usar `postgres` como perfil productivo hasta completar la validación real, pruebas contra PostgreSQL y PR de cutover.
 
 ## Verificación
 
@@ -134,6 +185,7 @@ curl -H "Authorization: Bearer $JWT" \
 - Mantener OpenAPI y Swagger UI deshabilitados salvo necesidad operativa aprobada.
 - Mantener la consola H2 deshabilitada y sin exposición pública.
 - Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
+- Para ensayos PostgreSQL, ejecutar el script paralelo con `-RunTwice` o `RUN_TWICE=true` y revisar conteos/idempotencia antes de iniciar `--spring.profiles.active=postgres`.
 - Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
 - Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin y cargar service account y clave AES desde un gestor de secretos.
 - Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.

@@ -2,7 +2,7 @@
 
 Fecha de auditoria: 2026-06-04
 Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: auditoria y preparacion. El runtime principal del backend sigue usando MySQL.
+Estado: PR 2 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
 
 ## Resumen ejecutivo
 
@@ -12,7 +12,38 @@ Se inicio la migracion controlada de MySQL a PostgreSQL sin cambiar el runtime p
 
 El script PostgreSQL es autocontenido para ensayos locales o de CI futuros: crea las tablas base que hoy normalmente genera JPA/Hibernate, crea las tablas operativas agregadas por el script MySQL, conserva relaciones, indices principales y seeds oficiales. Tambien mantiene los datos funcionales actuales de SAIP, TTAIP, salas, miembros, cédulas, notificaciones y reproceso de prueba.
 
-No se modificaron `application.properties`, perfiles runtime, backend Java, frontend, mobile ni reglas funcionales.
+No se modifico `application.properties` principal, frontend, mobile ni reglas funcionales.
+
+## Estado PR 2
+
+Se agrego soporte backend aislado para PostgreSQL sin hacer cutover:
+
+- Driver PostgreSQL en `backend/pom.xml`, manteniendo `mysql-connector-j`.
+- Perfil `postgres` en `backend/src/main/resources/application-postgres.properties`.
+- `ddl-auto=validate` y `spring.sql.init.mode=never` para evitar DDL o seed automaticos.
+- Datasource por variables externas `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
+- Scripts de ayuda:
+  - `scripts/postgres/run-postgres-schema.ps1`
+  - `scripts/postgres/run-postgres-schema.sh`
+
+El perfil `postgres` debe usarse solo despues de ejecutar el script paralelo:
+
+```powershell
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+$env:PGDATABASE = "saip_db_postgres"
+$env:PGUSER = "postgres"
+$env:PGPASSWORD = "<local-password>"
+.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
+
+$env:DB_URL = "jdbc:postgresql://localhost:5432/saip_db_postgres"
+$env:DB_USERNAME = $env:PGUSER
+$env:DB_PASSWORD = $env:PGPASSWORD
+cd backend
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=postgres
+```
+
+No usar este perfil para produccion hasta que exista un PR de cutover aprobado.
 
 ## Alcance real del script MySQL actual
 
@@ -132,26 +163,21 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 | Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
 | Collation y busqueda case-insensitive | Medio | MySQL suele tener collations case-insensitive; PostgreSQL no. PR 2 debe decidir si usar `citext` o indices funcionales donde aplique. |
 
-## Pendientes para PR 2
+## Pendientes para PR 3
 
-1. Crear perfil backend PostgreSQL sin cambiar aun produccion:
-   - Driver JDBC PostgreSQL.
-   - Perfil `postgres` o `application-postgres.properties`.
-   - Datasource por variables de entorno.
-   - Dialecto Hibernate correspondiente.
-2. Ejecutar el script en PostgreSQL real:
-   - `psql -d saip_db_postgres -f database/postgres/script_saip_db_postgres.sql`
+1. Ejecutar el script en PostgreSQL real con credenciales locales o de staging:
+   - `.\scripts\postgres\run-postgres-schema.ps1 -RunTwice`
    - Validar conteos finales.
    - Validar idempotencia ejecutandolo dos veces.
-3. Ejecutar backend tests contra PostgreSQL:
+2. Ejecutar backend tests contra PostgreSQL:
    - Unidad.
    - Integracion si se habilita Testcontainers o base local.
-4. Sincronizar OpenAPI solo si el cambio runtime revela diferencias contractuales.
-5. Revisar queries nativas o JPQL sensibles a dialecto.
-6. Definir estrategia para collations/case-insensitive:
+3. Sincronizar OpenAPI solo si el cambio runtime revela diferencias contractuales.
+4. Revisar JPQL sensible a dialecto contra PostgreSQL real.
+5. Definir estrategia para collations/case-insensitive:
    - `citext` para email si se aprueba.
    - Indices funcionales `lower(email)` si se prefiere no usar extension.
-7. Planear migracion real de datos:
+6. Planear migracion real de datos:
    - Dump MySQL.
    - Transformacion.
    - Carga PostgreSQL.
@@ -170,15 +196,31 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 
 ### Validacion real pendiente
 
-No se pudo ejecutar `psql` localmente porque el CLI PostgreSQL no esta disponible en el entorno actual. La validacion real pendiente es:
+El CLI PostgreSQL 18 esta disponible y el servidor local acepta conexiones en `localhost:5432`, pero la ejecucion no interactiva fallo por falta de password local:
+
+```text
+fe_sendauth: no password supplied
+```
+
+Por seguridad no se solicitaron ni inventaron credenciales. La validacion real pendiente es:
 
 ```powershell
-createdb saip_db_postgres
-psql -d saip_db_postgres -f database/postgres/script_saip_db_postgres.sql
-psql -d saip_db_postgres -f database/postgres/script_saip_db_postgres.sql
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+$env:PGDATABASE = "saip_db_postgres"
+$env:PGUSER = "postgres"
+$env:PGPASSWORD = "<local-password>"
+.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
 ```
 
 La segunda ejecucion debe confirmar idempotencia sin duplicar registros.
+
+### Compatibilidad JPA revisada en PR 2
+
+- No se encontraron queries nativas MySQL en `backend/src/main/java`.
+- Las consultas revisadas usan JPQL/HQL y metodos Spring Data.
+- Existen expresiones JPQL `MONTH`, `YEAR`, `SUBSTRING` y `CAST` en reportes/listados; Hibernate debe traducirlas por dialecto, pero conviene validarlas contra PostgreSQL real en PR 3.
+- La comparacion case-insensitive de emails/acronimos queda como decision tecnica pendiente: PostgreSQL es case-sensitive por defecto a diferencia de muchas collations MySQL.
 
 ## Estrategia recomendada por fases
 
@@ -188,10 +230,11 @@ La segunda ejecucion debe confirmar idempotencia sin duplicar registros.
    - Sin runtime change.
 
 2. **Fase 2 - Perfil backend PostgreSQL**
-   - Agregar dependencia PostgreSQL.
-   - Crear perfil `postgres`.
-   - Ejecutar tests contra PostgreSQL real o Testcontainers.
-   - Mantener MySQL como perfil principal hasta aprobacion.
+   - Dependencia PostgreSQL agregada.
+   - Perfil `postgres` creado.
+   - Scripts de ejecucion PostgreSQL preparados.
+   - Falta ejecutar schema y tests contra PostgreSQL real por credenciales locales no disponibles.
+   - MySQL sigue como perfil principal hasta aprobacion.
 
 3. **Fase 3 - Migracion de datos**
    - Exportar MySQL.
