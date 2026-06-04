@@ -29,6 +29,7 @@ data class ProfileUiState(
     val telefono: String? = null,
     val direccion: String? = null,
     val entidad: String? = null,
+    val entidadId: String? = null,
     val cargo: String? = null,
     val fechaRegistro: String = "",
     val totalSolicitudes: Int = 0,
@@ -104,6 +105,7 @@ class ProfileViewModel(
                 telefono = usuario.telefono,
                 direccion = usuario.direccion,
                 entidad = usuario.entidad,
+                entidadId = usuario.entidadId,
                 cargo = usuario.cargo,
                 fechaRegistro = formatearFecha(usuario.fechaRegistro),
                 totalSolicitudes = totalSolicitudes,
@@ -125,7 +127,7 @@ class ProfileViewModel(
                 FCMHelper.unregisterTokenFromBackend()
                 FCMHelper.unsubscribeAll(
                     tipoUsuario = state.tipoUsuario.name,
-                    entidadId = state.entidad
+                    entidadId = state.entidadId
                 )
             } catch (e: Exception) {
                 // No bloquear el logout por error de FCM
