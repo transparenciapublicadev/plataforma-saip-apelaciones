@@ -129,7 +129,8 @@ Incluir reglas para librerías que usan reflexión o serialización:
 - Confirmar que cada APK rechaza sesiones de otros roles.
 - Probar login contra backend real o staging.
 - Probar consulta de SAIP y apelaciones según rol.
-- Probar recepción de push FCM.
+- Probar registro, refresh y revocación de token FCM contra backend autenticado.
+- Probar recepción de push FCM solo en un entorno donde Firebase Admin real ya esté configurado con credenciales externas.
 - Verificar que no existan logs sensibles.
 - Confirmar que `mobile/openapi.json` coincide con el contrato publicado.
 - Confirmar que la app ciudadano es la única destinada a Play Store pública.

@@ -113,6 +113,7 @@ export default defineConfig({
             { slug: 'despliegue/backend' },
             { slug: 'despliegue/frontend' },
             { slug: 'despliegue/mobile' },
+            { slug: 'despliegue/release-readiness' },
           ],
         },
         {

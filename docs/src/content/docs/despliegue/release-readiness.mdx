@@ -1,0 +1,92 @@
+---
+title: Release Readiness
+description: Checklist final de estabilización, seguridad y validación para publicar la Plataforma SAIP/TTAIP.
+---
+
+import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
+
+Esta checklist consolida la preparación final de release después del roadmap principal de backend, frontend, mobile, Postman y documentación.
+
+:::caution[Alcance]
+No habilitar envío push real, casilla electrónica real ni fallback automático entre canales sin un PR dedicado, contrato externo validado y credenciales gestionadas fuera del repositorio.
+:::
+
+## Estado Esperado
+
+<CardGrid>
+  <Card title="Backend" icon="server">
+    Spring Boot con RFC 9457, ownership, endpoints FCM autenticados, SMTP configurable y producción sin `MOCK`.
+  </Card>
+  <Card title="Mobile" icon="mobile">
+    Tres APKs Android, JWT contra backend propio, FCM solo para push y sin Firebase Auth ni Firestore.
+  </Card>
+  <Card title="Postman" icon="document">
+    Newman usa datos runtime, modo `MOCK`, tokens ficticios para FCM y JWT generados en memoria.
+  </Card>
+  <Card title="Secretos" icon="lock">
+    Sin `.env`, service accounts, JWT reales, tokens FCM reales ni credenciales versionadas.
+  </Card>
+</CardGrid>
+
+## Checklist de Validación
+
+- Backend: ejecutar `cd backend; .\mvnw.cmd test`.
+- Mobile compile: ejecutar `cd mobile; .\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin`.
+- Mobile tests: ejecutar `cd mobile; .\gradlew.bat test`.
+- Mobile artifacts: ejecutar `cd mobile; .\gradlew.bat assembleCiudadanoDebug assembleFuncionarioDebug assembleTtaipDebug`.
+- Mobile lint: ejecutar `cd mobile; .\gradlew.bat lint`.
+- Frontend tests: ejecutar `cd frontend; npm test`.
+- Frontend build: ejecutar `cd frontend; npm run build`.
+- Docs build: ejecutar `cd docs; npm run build`.
+- Newman diagnostic: iniciar backend local con `APP_NOTIFICATIONS_MODE=MOCK` y ejecutar `cd postman; npm run test:api:diagnostic`.
+- OpenAPI sync: si cambió backend, ejecutar `.\scripts\sync-openapi.ps1` y revisar `frontend/openapi.json`, `frontend/src/app/api/schema.ts` y `mobile/openapi.json`.
+- Diff hygiene: ejecutar `git diff --check` y revisar `git status --short --branch`.
+- Secret audit: buscar `.env`, claves privadas, service accounts, passwords, tokens JWT reales, tokens FCM reales, `SMTP_PASSWORD`, `FCM_TOKEN_ENCRYPTION_KEY_BASE64` y credenciales Firebase Admin.
+- Generated artifacts: confirmar que no entren `postman/reports/*`, `backend/target/*`, `frontend/dist/*`, `docs/dist/*`, `mobile/**/build/*`, `.gradle/`, APKs/AABs ni archivos temporales.
+
+## FCM y Push
+
+Reglas obligatorias antes de producción:
+
+- Firebase se usa solo para Cloud Messaging.
+- No usar Firebase Auth ni Firestore como backend de datos.
+- Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin real.
+- Mantener service account Firebase Admin y clave AES `FCM_TOKEN_ENCRYPTION_KEY_BASE64` fuera del repositorio.
+- El adapter `PUSH_FCM` no debe simular entrega real: debe reportar `DESHABILITADO`, `NO_CONFIGURADO` o pendiente de Firebase Admin.
+- `google-services.json` contiene configuración Android preexistente para FCM; no moverlo ni editarlo en hardening. Restringir la API key desde Firebase Console por package name y certificado SHA.
+- Logs backend/mobile no deben imprimir tokens FCM completos; responses solo deben devolver fingerprints.
+
+## Variables Productivas
+
+| Variable | Uso | Nota |
+| --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE=prod` | Activa configuración productiva. | Obligatoria. |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión MySQL. | Secretos externos. |
+| `JWT_SECRET` | Firma JWT. | Mínimo 256 bits, externo. |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes web permitidos. | Restringir a dominios productivos. |
+| `APP_NOTIFICATIONS_MODE=SMTP` | Correo real en producción. | `MOCK` solo local/Newman. |
+| `APP_NOTIFICATIONS_MAIL_FROM` | Remitente institucional. | Obligatoria con SMTP. |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` | Servidor SMTP. | Externos. |
+| `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | Credenciales SMTP. | Si `SPRING_MAIL_SMTP_AUTH=true`. |
+| `APP_NOTIFICATIONS_PUSH_ENABLED=false` | Mantener FCM real desactivado. | Cambiar solo con Firebase Admin real. |
+| `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account. | Nunca versionar JSON. |
+| `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Cifrado recuperable de tokens push. | Externa, Base64 AES 128/192/256. |
+| `DOCS_SITE_URL` | URL canónica de docs. | Recomendado para sitemap. |
+
+## Comprobaciones de Seguridad
+
+<Steps>
+1. Confirmar que `/api/notificaciones/motor/estado` y `/api/notificaciones/push/estado` no exponen hosts, usuarios, passwords, tokens ni rutas sensibles.
+2. Confirmar que los endpoints FCM requieren JWT y ownership: cada usuario lista o revoca solo sus dispositivos; `ADMINISTRADOR` no registra flavor mobile.
+3. Confirmar que Newman usa `pushTokenFake` y que el environment versionado mantiene JWT vacíos.
+4. Confirmar que mobile registra token después de sesión válida, renueva en `onNewToken` y no bloquea login/logout si falla la red.
+5. Confirmar que no se versionan `.env`, service account Firebase Admin, keystores, APK/AAB, reports ni builds.
+</Steps>
+
+## Pendientes Antes de Push Real
+
+- Implementar Firebase Admin SDK en backend con credenciales externas.
+- Definir operación segura para rotación de service account y clave AES de tokens push.
+- Probar envío end-to-end en staging con dispositivos reales por flavor.
+- Diseñar fallback entre canales solo cuando exista decisión legal/producto.
+- Integrar casilla electrónica real únicamente con contrato API oficial.
