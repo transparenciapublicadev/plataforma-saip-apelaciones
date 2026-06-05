@@ -188,6 +188,36 @@ El workflow manual `.github/workflows/postgres-validation.yml` ofrece la misma v
 
 PostgreSQL conserva la semántica case-insensitive actual mediante índices únicos funcionales `lower(email)` y `lower(acronimo)`. El backend normaliza emails a minúsculas y acrónimos a mayúsculas, y sus consultas de identidad no distinguen casing. No se requiere la extensión `citext`.
 
+### Ensayo MySQL a PostgreSQL
+
+Antes de exportar datos, ejecutar el preflight read-only:
+
+```powershell
+$env:MYSQL_HOST = "localhost"
+$env:MYSQL_PORT = "3306"
+$env:MYSQL_DATABASE = "saip_db"
+$env:MYSQL_USER = "<local-user>"
+$env:MYSQL_PASSWORD = "<local-password>"
+.\scripts\postgres\preflight-mysql-to-postgres.ps1
+```
+
+El preflight valida tablas esperadas, duplicados case-insensitive, huérfanos,
+campos obligatorios, longitudes y checks estables. No modifica datos. La muestra
+local actual quedó bloqueada por 8 SAIP legacy sin consentimiento ni canal de
+notificación; esos valores no deben inventarse durante la migración.
+
+Después de una carga aprobada en una base aislada:
+
+```powershell
+.\scripts\postgres\verify-postgres-rehearsal.ps1
+.\scripts\postgres\run-newman-postgres.ps1
+```
+
+La regresión seed de PR 5 pasó con 252 requests y 428 assertions. La guía
+completa, incluido rollback, está en
+`database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`. Aún falta repetirla con
+datos transformados en staging antes del cutover.
+
 No usar `postgres` como perfil productivo hasta completar el ensayo de migración de datos, la regresión funcional en staging y un PR de cutover aprobado.
 
 ## Verificación
@@ -219,7 +249,7 @@ curl -H "Authorization: Bearer $JWT" \
 - Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
 - Para ensayos PostgreSQL, ejecutar el script paralelo con `-RunTwice` o `RUN_TWICE=true` y revisar conteos/idempotencia antes de iniciar `--spring.profiles.active=postgres`.
 - Para la validación completa opt-in, usar `validate-postgres-profile.ps1`/`.sh` o lanzar manualmente el workflow `PostgreSQL Validation`.
-- Antes de migrar datos reales, detectar emails o acrónimos duplicados que solo difieran en mayúsculas/minúsculas.
+- Antes de migrar datos reales, ejecutar el preflight y resolver cualquier dato obligatorio faltante o duplicado por casing.
 - Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
 - Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin y cargar service account y clave AES desde un gestor de secretos.
 - Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.
