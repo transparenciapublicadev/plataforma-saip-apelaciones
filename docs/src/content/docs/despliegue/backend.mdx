@@ -156,7 +156,11 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
 ```
 
-No usar `postgres` como perfil productivo hasta completar la validación real, pruebas contra PostgreSQL y PR de cutover.
+:::note[Validación local completada]
+El schema se ejecutó dos veces sobre PostgreSQL local, Hibernate `ddl-auto=validate` pasó y las consultas JPQL sensibles de reportes mensuales y correlativo SAIP respondieron correctamente. Se corrigieron `token_hash` y `device_id_hash` a `VARCHAR(64)` para alinearlos con JPA.
+:::
+
+No usar `postgres` como perfil productivo hasta completar el ensayo de migración de datos, la regresión funcional en staging y un PR de cutover aprobado.
 
 ## Verificación
 

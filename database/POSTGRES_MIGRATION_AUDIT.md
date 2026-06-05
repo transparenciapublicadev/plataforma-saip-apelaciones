@@ -1,8 +1,8 @@
 # Auditoria de migracion MySQL a PostgreSQL
 
-Fecha de auditoria: 2026-06-04
+Fecha de auditoria: 2026-06-05
 Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: PR 2 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
+Estado: PR 3 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
 
 ## Resumen ejecutivo
 
@@ -45,6 +45,56 @@ cd backend
 
 No usar este perfil para produccion hasta que exista un PR de cutover aprobado.
 
+## Estado PR 3
+
+La validacion real del schema PostgreSQL se completo sin cambiar runtime principal ni reglas funcionales:
+
+- `psql` esta disponible localmente (`PostgreSQL 18.x`).
+- El servidor PostgreSQL local acepta conexiones en `localhost:5432`.
+- Las variables `PG*` y `DB_*` se cargaron desde el entorno de Windows sin imprimir passwords.
+- Se verifico que `PGHOST` era local y que `PGDATABASE` era exactamente `saip_db` antes del `DROP/CREATE`.
+- La base local se recreo conectando a la base administrativa `postgres`.
+- `run-postgres-schema.ps1 -RunTwice` completo dos ejecuciones sin errores de sintaxis, constraints ni duplicacion de seeds.
+- El schema final contiene 29 tablas.
+- El backend arranco con perfil `postgres`, conecto mediante el driver PostgreSQL y Hibernate `ddl-auto=validate` completo correctamente.
+- `/v3/api-docs` respondio HTTP 200 en el arranque local.
+- La suite backend completa se ejecuto con `spring.profiles.active=postgres`: 158 tests, 0 fallos, 0 errores y 0 omitidos.
+
+Hibernate detecto dos incompatibilidades reales entre el script y la entidad `DispositivoNotificacionPush`:
+
+| Columna | Tipo anterior | Tipo JPA esperado | Correccion |
+| --- | --- | --- | --- |
+| `device_id_hash` | `CHAR(64)` | `VARCHAR(64)` | Cambiada a `VARCHAR(64)`. |
+| `token_hash` | `CHAR(64)` | `VARCHAR(64)` | Cambiada a `VARCHAR(64)` despues de que Hibernate revelara el segundo mismatch. |
+
+No se cambiaron otros tipos porque Hibernate no reporto incompatibilidades adicionales.
+
+Conteos validados despues de la segunda ejecucion:
+
+| Tabla | Registros |
+| --- | ---: |
+| `usuarios` | 27 |
+| `entidades` | 10 |
+| `ciudadanos` | 10 |
+| `funcionarios` | 10 |
+| `miembros_ttaip` | 6 |
+| `solicitudes` | 5 |
+| `apelaciones` | 3 |
+| `salas_ttaip` | 2 |
+| `expedientes_ttaip` | 3 |
+| `resoluciones` | 5 |
+| `cedulas_notificacion` | 9 |
+| `notificaciones_ttaip` | 9 |
+| `historial_ttaip` | 27 |
+| `intentos_notificacion` | 0 |
+| `dispositivos_notificacion_push` | 0 |
+
+Las queries JPQL sensibles tambien se validaron contra PostgreSQL real:
+
+- `SolicitudRepository.countByMonth`: paso mediante `GET /api/public/portal`.
+- `ApelacionRepository.countByMonth`: paso mediante `GET /api/public/portal`.
+- `SolicitudRepository.findMaxExpedienteNumber`: paso creando dos SAIP temporales, que generaron correlativos `00001` y `00002`; despues se eliminaron y el conteo de solicitudes volvio a 5.
+
 ## Alcance real del script MySQL actual
 
 `database/script_saip_db.sql` no es solo un DDL completo. Es un script hibrido:
@@ -54,7 +104,7 @@ No usar este perfil para produccion hasta que exista un PR de cutover aprobado.
 - Crea tablas operativas para SAIP, TTAIP, notificaciones, push, reprocesos y trazabilidad.
 - Carga seed local idempotente para entidades, usuarios demo, salas TTAIP, expedientes y casos de prueba Postman/Newman.
 
-Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para que pueda ejecutarse en una base PostgreSQL limpia durante el siguiente PR de perfil PostgreSQL.
+Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para que pueda ejecutarse en una base PostgreSQL limpia durante un ensayo local/staging de validacion real.
 
 ## Tablas convertidas
 
@@ -156,33 +206,31 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 
 | Riesgo | Nivel | Comentario |
 | --- | --- | --- |
-| Divergencia entre JPA y SQL manual | Medio | El script MySQL ya es hibrido. PR 2 debe validar Hibernate contra PostgreSQL real. |
-| Ejecucion no validada con `psql` local | Medio | El entorno actual no tiene CLI PostgreSQL disponible. Falta prueba real en PostgreSQL. |
+| Divergencia entre JPA y SQL manual | Bajo | Hibernate `ddl-auto=validate` paso contra PostgreSQL local despues de corregir ambos hashes `CHAR(64)` a `VARCHAR(64)`. Debe mantenerse esta validacion en cambios futuros de entidades. |
+| Ejecucion manual no automatizada en CI | Medio | La validacion real se completo localmente, pero todavia no existe un test PostgreSQL opt-in automatizado para CI. |
 | Seeds con passwords demo | Bajo para local, alto si se usa en prod | Ya existian en MySQL. Deben mantenerse fuera de entornos productivos. |
 | Checks demasiado estrictos | Bajo | Se limitaron checks a valores estables. Enums de negocio siguen como `VARCHAR`. |
 | Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
-| Collation y busqueda case-insensitive | Medio | MySQL suele tener collations case-insensitive; PostgreSQL no. PR 2 debe decidir si usar `citext` o indices funcionales donde aplique. |
+| Collation y busqueda case-insensitive | Medio | MySQL suele tener collations case-insensitive; PostgreSQL no. PR 4 debe decidir si usar `citext`, normalizacion de datos o indices funcionales donde aplique. |
 
-## Pendientes para PR 3
+## Pendientes para PR 4
 
-1. Ejecutar el script en PostgreSQL real con credenciales locales o de staging:
-   - `.\scripts\postgres\run-postgres-schema.ps1 -RunTwice`
-   - Validar conteos finales.
-   - Validar idempotencia ejecutandolo dos veces.
-2. Ejecutar backend tests contra PostgreSQL:
-   - Unidad.
-   - Integracion si se habilita Testcontainers o base local.
-3. Sincronizar OpenAPI solo si el cambio runtime revela diferencias contractuales.
-4. Revisar JPQL sensible a dialecto contra PostgreSQL real.
-5. Definir estrategia para collations/case-insensitive:
+1. Agregar una prueba de integracion PostgreSQL opt-in o un job CI dedicado que:
+   - cargue el schema en una base efimera;
+   - ejecute Hibernate `validate`;
+   - cubra los reportes mensuales y la generacion de correlativo.
+2. Definir estrategia para collations/case-insensitive:
    - `citext` para email si se aprueba.
    - Indices funcionales `lower(email)` si se prefiere no usar extension.
-6. Planear migracion real de datos:
+   - Normalizacion previa a lower-case en servicios de auth/catalogos si se decide por aplicacion.
+3. Planear y ensayar migracion real de datos:
    - Dump MySQL.
    - Transformacion.
    - Carga PostgreSQL.
    - Verificacion referencial.
    - Ventana de corte.
+4. Ejecutar regresion funcional completa y Newman contra un entorno staging PostgreSQL antes del cutover.
+5. Evaluar retirar la configuracion explicita de `PostgreSQLDialect`; Hibernate la selecciona automaticamente y actualmente solo emite un warning no bloqueante.
 
 ## Validaciones necesarias
 
@@ -194,33 +242,35 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 - Ejecutar auditoria basica de secretos.
 - Ejecutar tests backend para confirmar que no se cambio runtime ni codigo funcional.
 
-### Validacion real pendiente
+### Validacion real completada
 
-El CLI PostgreSQL 18 esta disponible y el servidor local acepta conexiones en `localhost:5432`, pero la ejecucion no interactiva fallo por falta de password local:
-
-```text
-fe_sendauth: no password supplied
-```
-
-Por seguridad no se solicitaron ni inventaron credenciales. La validacion real pendiente es:
+La validacion se ejecuto contra PostgreSQL local en `localhost:5432/saip_db`. Las credenciales se obtuvieron exclusivamente de variables de entorno y no se escribieron ni mostraron.
 
 ```powershell
 $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
-$env:PGDATABASE = "saip_db_postgres"
+$env:PGDATABASE = "saip_db"
 $env:PGUSER = "postgres"
 $env:PGPASSWORD = "<local-password>"
 .\scripts\postgres\run-postgres-schema.ps1 -RunTwice
 ```
 
-La segunda ejecucion debe confirmar idempotencia sin duplicar registros.
+Resultados:
 
-### Compatibilidad JPA revisada en PR 2
+- Primera ejecucion: creo schema y seeds.
+- Segunda ejecucion: completo sin duplicar registros.
+- Conteo final: 29 tablas.
+- Hibernate `ddl-auto=validate`: paso.
+- Backend con perfil `postgres`: arranco correctamente.
+- `/v3/api-docs`: HTTP 200.
+- Tests backend con perfil `postgres`: 158 tests, 0 fallos, 0 errores y 0 omitidos.
+
+### Compatibilidad JPA revisada en PR 3
 
 - No se encontraron queries nativas MySQL en `backend/src/main/java`.
 - Las consultas revisadas usan JPQL/HQL y metodos Spring Data.
-- Existen expresiones JPQL `MONTH`, `YEAR`, `SUBSTRING` y `CAST` en reportes/listados; Hibernate debe traducirlas por dialecto, pero conviene validarlas contra PostgreSQL real en PR 3.
-- La comparacion case-insensitive de emails/acronimos queda como decision tecnica pendiente: PostgreSQL es case-sensitive por defecto a diferencia de muchas collations MySQL.
+- Las expresiones JPQL `MONTH`, `YEAR`, `SUBSTRING` y `CAST` pasaron contra PostgreSQL real sin cambios de comportamiento.
+- La comparacion case-insensitive de emails/acronimos queda como decision tecnica pendiente: PostgreSQL es case-sensitive por defecto a diferencia de muchas collations MySQL. No se aplico `citext` ni indices `lower(...)` para evitar cambios de comportamiento sin validacion de datos.
 
 ## Estrategia recomendada por fases
 
@@ -233,21 +283,28 @@ La segunda ejecucion debe confirmar idempotencia sin duplicar registros.
    - Dependencia PostgreSQL agregada.
    - Perfil `postgres` creado.
    - Scripts de ejecucion PostgreSQL preparados.
-   - Falta ejecutar schema y tests contra PostgreSQL real por credenciales locales no disponibles.
+   - Schema, Hibernate validate y queries sensibles validados contra PostgreSQL local.
    - MySQL sigue como perfil principal hasta aprobacion.
 
-3. **Fase 3 - Migracion de datos**
+3. **Fase 3 - Validacion real PostgreSQL**
+   - Completada localmente con `-RunTwice`.
+   - Conteos e idempotencia validados.
+   - Backend iniciado con perfil `postgres`.
+   - Hibernate y JPQL sensible validados.
+   - Queda automatizar una prueba PostgreSQL opt-in y resolver case-insensitive.
+
+4. **Fase 4 - Migracion de datos**
    - Exportar MySQL.
    - Transformar tipos/fechas/booleans.
    - Cargar PostgreSQL.
    - Validar conteos, claves, relaciones y flujos Newman.
 
-4. **Fase 4 - Cutover controlado**
+5. **Fase 5 - Cutover controlado**
    - Cambiar entorno de staging a PostgreSQL.
    - Ejecutar backend, frontend, mobile y Newman.
    - Congelar escritura si se migra produccion real.
 
-5. **Fase 5 - Document storage**
+6. **Fase 6 - Document storage**
    - Modelar metadatos documentales en PostgreSQL.
    - Integrar Supabase Storage o S3-compatible en PR separado.
    - No guardar binarios en tablas SAIP/TTAIP salvo decision explicita.
