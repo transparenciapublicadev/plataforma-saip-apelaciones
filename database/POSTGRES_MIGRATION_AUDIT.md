@@ -2,7 +2,7 @@
 
 Fecha de auditoria: 2026-06-05
 Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: PR 3 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
+Estado: PR 4 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
 
 ## Resumen ejecutivo
 
@@ -95,6 +95,36 @@ Las queries JPQL sensibles tambien se validaron contra PostgreSQL real:
 - `ApelacionRepository.countByMonth`: paso mediante `GET /api/public/portal`.
 - `SolicitudRepository.findMaxExpedienteNumber`: paso creando dos SAIP temporales, que generaron correlativos `00001` y `00002`; despues se eliminaron y el conteo de solicitudes volvio a 5.
 
+## Estado PR 4
+
+La validacion PostgreSQL quedo automatizada de forma opt-in, sin incorporarla como gate obligatorio del CI principal:
+
+- Workflow manual: `.github/workflows/postgres-validation.yml`.
+- Scripts reutilizables:
+  - `scripts/postgres/validate-postgres-profile.ps1`
+  - `scripts/postgres/validate-postgres-profile.sh`
+- El workflow levanta PostgreSQL 16 efimero, usa credenciales exclusivas de CI, ejecuta el schema dos veces y corre la suite backend con perfil `postgres`.
+- Los scripts solo aceptan host local o mapeado por CI, rechazan nombres de base productivos y requieren credenciales por variables de entorno.
+- `run-postgres-schema.ps1` ahora falla explicitamente si cualquier invocacion de `psql` retorna un codigo distinto de cero.
+
+La estrategia case-insensitive no usa `citext`, para evitar extensiones y privilegios adicionales:
+
+- `uq_usuarios_email_lower`: indice unico funcional sobre `lower(usuarios.email)`.
+- `uq_entidades_acronimo_lower`: indice unico funcional sobre `lower(entidades.acronimo)`.
+- Los repositorios de usuario, ciudadano, funcionario y miembro TTAIP comparan email con `lower(...)`.
+- `EntidadRepository` compara acronimos con `lower(...)`.
+- JPA normaliza emails a minusculas y acronimos a mayusculas antes de persistir o actualizar.
+
+La validacion local de PR 4 recreo exclusivamente `localhost/saip_db`, ejecuto `RunTwice` y confirmo:
+
+- 29 tablas.
+- 27 usuarios, 10 entidades, 5 solicitudes, 3 apelaciones y 3 expedientes TTAIP.
+- Ambos indices funcionales creados.
+- Suite default: 162 tests, 0 fallos, 0 errores y 2 pruebas PostgreSQL opt-in omitidas.
+- Suite PostgreSQL opt-in: 162 tests, 0 fallos, 0 errores y 0 omitidos.
+- Lookups case-insensitive reales para usuario, ciudadano, funcionario, miembro TTAIP y entidad.
+- Hibernate autodetecta el dialecto PostgreSQL; se retiro la configuracion explicita que generaba un warning no bloqueante.
+
 ## Alcance real del script MySQL actual
 
 `database/script_saip_db.sql` no es solo un DDL completo. Es un script hibrido:
@@ -185,7 +215,7 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 | Montos | `DECIMAL(12,2)` | `NUMERIC(12,2)` |
 | Enums JPA | `VARCHAR(...)` + checks puntuales | `VARCHAR(...)` + checks puntuales solo donde son estables |
 | JSON/metadata | No se detecto JSON productivo en el script actual | Futuro: `JSONB` cuando se modele metadata documental |
-| Hash/token cifrado | `CHAR(64)` / `TEXT` | `CHAR(64)` / `TEXT` |
+| Hash/token cifrado | `CHAR(64)` / `TEXT` | `VARCHAR(64)` / `TEXT`, alineado con JPA |
 
 ## Decisiones tomadas
 
@@ -207,30 +237,23 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 | Riesgo | Nivel | Comentario |
 | --- | --- | --- |
 | Divergencia entre JPA y SQL manual | Bajo | Hibernate `ddl-auto=validate` paso contra PostgreSQL local despues de corregir ambos hashes `CHAR(64)` a `VARCHAR(64)`. Debe mantenerse esta validacion en cambios futuros de entidades. |
-| Ejecucion manual no automatizada en CI | Medio | La validacion real se completo localmente, pero todavia no existe un test PostgreSQL opt-in automatizado para CI. |
+| Validacion PostgreSQL omitida accidentalmente | Bajo | Existe workflow manual y scripts opt-in; no afecta el CI MySQL/default. |
 | Seeds con passwords demo | Bajo para local, alto si se usa en prod | Ya existian en MySQL. Deben mantenerse fuera de entornos productivos. |
 | Checks demasiado estrictos | Bajo | Se limitaron checks a valores estables. Enums de negocio siguen como `VARCHAR`. |
 | Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
-| Collation y busqueda case-insensitive | Medio | MySQL suele tener collations case-insensitive; PostgreSQL no. PR 4 debe decidir si usar `citext`, normalizacion de datos o indices funcionales donde aplique. |
+| Datos migrados con duplicados por casing | Medio | Los indices `lower(...)` rechazaran duplicados. El ensayo de migracion debe detectar y resolver previamente emails/acronimos equivalentes. |
 
-## Pendientes para PR 4
+## Pendientes para PR 5
 
-1. Agregar una prueba de integracion PostgreSQL opt-in o un job CI dedicado que:
-   - cargue el schema en una base efimera;
-   - ejecute Hibernate `validate`;
-   - cubra los reportes mensuales y la generacion de correlativo.
-2. Definir estrategia para collations/case-insensitive:
-   - `citext` para email si se aprueba.
-   - Indices funcionales `lower(email)` si se prefiere no usar extension.
-   - Normalizacion previa a lower-case en servicios de auth/catalogos si se decide por aplicacion.
-3. Planear y ensayar migracion real de datos:
+1. Planear y ensayar migracion real de datos:
    - Dump MySQL.
    - Transformacion.
+   - Deteccion y resolucion de duplicados case-insensitive.
    - Carga PostgreSQL.
    - Verificacion referencial.
    - Ventana de corte.
-4. Ejecutar regresion funcional completa y Newman contra un entorno staging PostgreSQL antes del cutover.
-5. Evaluar retirar la configuracion explicita de `PostgreSQLDialect`; Hibernate la selecciona automaticamente y actualmente solo emite un warning no bloqueante.
+2. Ejecutar regresion funcional completa y Newman contra un entorno staging PostgreSQL antes del cutover.
+3. Definir estrategia de rollback y reconciliacion para el ensayo de datos.
 
 ## Validaciones necesarias
 
@@ -265,12 +288,13 @@ Resultados:
 - `/v3/api-docs`: HTTP 200.
 - Tests backend con perfil `postgres`: 158 tests, 0 fallos, 0 errores y 0 omitidos.
 
-### Compatibilidad JPA revisada en PR 3
+### Compatibilidad JPA revisada en PR 4
 
 - No se encontraron queries nativas MySQL en `backend/src/main/java`.
 - Las consultas revisadas usan JPQL/HQL y metodos Spring Data.
 - Las expresiones JPQL `MONTH`, `YEAR`, `SUBSTRING` y `CAST` pasaron contra PostgreSQL real sin cambios de comportamiento.
-- La comparacion case-insensitive de emails/acronimos queda como decision tecnica pendiente: PostgreSQL es case-sensitive por defecto a diferencia de muchas collations MySQL. No se aplico `citext` ni indices `lower(...)` para evitar cambios de comportamiento sin validacion de datos.
+- La comparacion case-insensitive de emails/acronimos se resolvio con indices funcionales `lower(...)`, consultas JPQL portables y normalizacion JPA.
+- No se uso `citext`, por lo que el schema no requiere instalar extensiones PostgreSQL.
 
 ## Estrategia recomendada por fases
 
@@ -291,7 +315,8 @@ Resultados:
    - Conteos e idempotencia validados.
    - Backend iniciado con perfil `postgres`.
    - Hibernate y JPQL sensible validados.
-   - Queda automatizar una prueba PostgreSQL opt-in y resolver case-insensitive.
+   - Workflow y scripts opt-in disponibles.
+   - Case-insensitive resuelto sin extensiones PostgreSQL.
 
 4. **Fase 4 - Migracion de datos**
    - Exportar MySQL.
