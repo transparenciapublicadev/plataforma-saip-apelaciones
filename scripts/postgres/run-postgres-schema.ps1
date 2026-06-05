@@ -49,6 +49,10 @@ function Invoke-SchemaRun {
         -U $User `
         -d $Database `
         -f $resolvedScript
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "PostgreSQL schema script failed during run $RunNumber."
+    }
 }
 
 Invoke-SchemaRun -RunNumber 1
@@ -66,6 +70,10 @@ Write-Host "PostgreSQL table count:"
     -d $Database `
     -c "select count(*) as table_count from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE';"
 
+if ($LASTEXITCODE -ne 0) {
+    throw "PostgreSQL table count validation failed."
+}
+
 Write-Host "PostgreSQL seed smoke counts:"
 & $psql.Source `
     -v ON_ERROR_STOP=1 `
@@ -74,3 +82,7 @@ Write-Host "PostgreSQL seed smoke counts:"
     -U $User `
     -d $Database `
     -c "select 'usuarios' tabla, count(*) total from usuarios union all select 'entidades', count(*) from entidades union all select 'salas_ttaip', count(*) from salas_ttaip union all select 'miembros_ttaip', count(*) from miembros_ttaip union all select 'expedientes_ttaip', count(*) from expedientes_ttaip union all select 'cedulas_notificacion', count(*) from cedulas_notificacion union all select 'dispositivos_notificacion_push', count(*) from dispositivos_notificacion_push;"
+
+if ($LASTEXITCODE -ne 0) {
+    throw "PostgreSQL seed smoke count validation failed."
+}

@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Data
 @NoArgsConstructor
@@ -45,9 +46,21 @@ public class Usuario {
 
     @PrePersist
     protected void onCreate() {
+        normalizeEmail();
         fechaRegistro = LocalDateTime.now();
         if (activo == null) {
             activo = true;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        normalizeEmail();
+    }
+
+    private void normalizeEmail() {
+        if (email != null) {
+            email = email.trim().toLowerCase(Locale.ROOT);
         }
     }
 

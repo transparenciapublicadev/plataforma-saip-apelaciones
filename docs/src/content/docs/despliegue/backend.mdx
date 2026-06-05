@@ -160,6 +160,34 @@ cd backend
 El schema se ejecutó dos veces sobre PostgreSQL local, Hibernate `ddl-auto=validate` pasó y las consultas JPQL sensibles de reportes mensuales y correlativo SAIP respondieron correctamente. Se corrigieron `token_hash` y `device_id_hash` a `VARCHAR(64)` para alinearlos con JPA.
 :::
 
+### Validación PostgreSQL Opt-In
+
+La validación completa puede ejecutarse localmente con variables externas:
+
+```powershell
+$env:PGHOST = "localhost"
+$env:PGPORT = "5432"
+$env:PGDATABASE = "saip_db"
+$env:PGUSER = "postgres"
+$env:PGPASSWORD = "<local-password>"
+.\scripts\postgres\validate-postgres-profile.ps1
+```
+
+```bash
+export PGHOST=localhost
+export PGPORT=5432
+export PGDATABASE=saip_db
+export PGUSER=postgres
+export PGPASSWORD='<local-password>'
+./scripts/postgres/validate-postgres-profile.sh
+```
+
+Estos scripts ejecutan el schema dos veces y luego corren los tests backend con el perfil `postgres`, incluyendo pruebas reales de lookups case-insensitive. Rechazan hosts remotos y nombres de base productivos.
+
+El workflow manual `.github/workflows/postgres-validation.yml` ofrece la misma validación sobre PostgreSQL 16 efímero. No forma parte del gate MySQL/default ni requiere secretos reales.
+
+PostgreSQL conserva la semántica case-insensitive actual mediante índices únicos funcionales `lower(email)` y `lower(acronimo)`. El backend normaliza emails a minúsculas y acrónimos a mayúsculas, y sus consultas de identidad no distinguen casing. No se requiere la extensión `citext`.
+
 No usar `postgres` como perfil productivo hasta completar el ensayo de migración de datos, la regresión funcional en staging y un PR de cutover aprobado.
 
 ## Verificación
@@ -190,6 +218,8 @@ curl -H "Authorization: Bearer $JWT" \
 - Mantener la consola H2 deshabilitada y sin exposición pública.
 - Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
 - Para ensayos PostgreSQL, ejecutar el script paralelo con `-RunTwice` o `RUN_TWICE=true` y revisar conteos/idempotencia antes de iniciar `--spring.profiles.active=postgres`.
+- Para la validación completa opt-in, usar `validate-postgres-profile.ps1`/`.sh` o lanzar manualmente el workflow `PostgreSQL Validation`.
+- Antes de migrar datos reales, detectar emails o acrónimos duplicados que solo difieran en mayúsculas/minúsculas.
 - Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
 - Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin y cargar service account y clave AES desde un gestor de secretos.
 - Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.

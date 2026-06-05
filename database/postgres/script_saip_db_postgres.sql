@@ -51,6 +51,14 @@ CREATE TABLE IF NOT EXISTS entidades (
     estado VARCHAR(20)
 );
 
+-- Preserve the case-insensitive uniqueness provided by the current MySQL
+-- collations without requiring the PostgreSQL citext extension.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_email_lower
+    ON usuarios (lower(email));
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_entidades_acronimo_lower
+    ON entidades (lower(acronimo));
+
 CREATE TABLE IF NOT EXISTS ciudadanos (
     id_usuario BIGINT PRIMARY KEY REFERENCES usuarios (id_usuario),
     dni VARCHAR(8) NOT NULL UNIQUE,
