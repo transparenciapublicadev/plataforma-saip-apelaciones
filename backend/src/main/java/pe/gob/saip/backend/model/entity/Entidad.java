@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Data
 @NoArgsConstructor
@@ -75,12 +76,24 @@ public class Entidad {
 
     @PrePersist
     protected void onCreate() {
+        normalizeAcronimo();
         fechaRegistro = LocalDateTime.now();
         if (activa == null) {
             activa = true;
         }
         if (estado == null) {
             estado = "Activa";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        normalizeAcronimo();
+    }
+
+    private void normalizeAcronimo() {
+        if (acronimo != null) {
+            acronimo = acronimo.trim().toUpperCase(Locale.ROOT);
         }
     }
 
