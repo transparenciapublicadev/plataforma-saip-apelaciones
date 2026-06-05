@@ -1,0 +1,63 @@
+name: PostgreSQL Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-postgres:
+    name: Validate PostgreSQL profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: saip_db
+          POSTGRES_USER: saip_ci
+          POSTGRES_PASSWORD: postgres_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U saip_ci -d saip_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: saip_db
+      PGUSER: saip_ci
+      PGPASSWORD: postgres_ci_only
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install --yes postgresql-client
+
+      - name: Make validation scripts executable
+        run: chmod +x backend/mvnw scripts/postgres/*.sh
+
+      - name: Validate schema, idempotency and backend profile
+        run: ./scripts/postgres/validate-postgres-profile.sh
+
+      - name: Upload PostgreSQL test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: postgres-test-results
+          path: backend/target/surefire-reports/
+          retention-days: 7
