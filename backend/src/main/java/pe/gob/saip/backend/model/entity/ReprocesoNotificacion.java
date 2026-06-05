@@ -41,36 +41,36 @@ public class ReprocesoNotificacion {
     @NotNull(message = "El expediente asociado es obligatorio")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_expediente_ttaip", nullable = false)
     private ExpedienteTtaip expediente;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_notificacion")
     private NotificacionTtaip notificacion;
 
     @NotNull(message = "La cédula original es obligatoria")
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cedula_original", nullable = false)
     private CedulaNotificacion cedulaOriginal;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cedula_nueva")
     private CedulaNotificacion cedulaNueva;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_notificacion_nueva")
     private NotificacionTtaip notificacionNueva;
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_reproceso_padre")
     private ReprocesoNotificacion reprocesoPadre;
 
