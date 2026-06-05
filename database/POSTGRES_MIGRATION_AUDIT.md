@@ -2,7 +2,7 @@
 
 Fecha de auditoria: 2026-06-05
 Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: PR 4 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
+Estado: PR 5 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
 
 ## Resumen ejecutivo
 
@@ -123,7 +123,60 @@ La validacion local de PR 4 recreo exclusivamente `localhost/saip_db`, ejecuto `
 - Suite default: 162 tests, 0 fallos, 0 errores y 2 pruebas PostgreSQL opt-in omitidas.
 - Suite PostgreSQL opt-in: 162 tests, 0 fallos, 0 errores y 0 omitidos.
 - Lookups case-insensitive reales para usuario, ciudadano, funcionario, miembro TTAIP y entidad.
-- Hibernate autodetecta el dialecto PostgreSQL; se retiro la configuracion explicita que generaba un warning no bloqueante.
+- El perfil `postgres` fija `PostgreSQLDialect` para no heredar el dialecto MySQL del perfil base.
+
+## Estado PR 5
+
+Se preparo y ejecuto un ensayo controlado de migracion sin copiar datos reales ni cambiar el runtime default:
+
+- Preflight MySQL read-only:
+  - `scripts/postgres/preflight-mysql-to-postgres.ps1`
+  - `scripts/postgres/preflight-mysql-to-postgres.sh`
+  - `database/postgres/preflight_mysql_to_postgres.sql`
+- Verificacion PostgreSQL read-only:
+  - `scripts/postgres/verify-postgres-rehearsal.ps1`
+  - `scripts/postgres/verify-postgres-rehearsal.sh`
+  - `database/postgres/verify_postgres_rehearsal.sql`
+- Regresion automatizada:
+  - `scripts/postgres/run-newman-postgres.ps1`
+  - `scripts/postgres/run-newman-postgres.sh`
+- Guia operativa:
+  - `database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`
+
+El preflight real sobre la base MySQL local encontro:
+
+- 0 grupos duplicados por `lower(usuarios.email)`.
+- 0 grupos duplicados por `lower(entidades.acronimo)`.
+- 0 huerfanos en las relaciones criticas revisadas.
+- 8 solicitudes legacy con `consentimiento_datos_personales IS NULL`.
+- Las mismas 8 solicitudes legacy con `canal_notificacion IS NULL`.
+
+Por tanto, no se exportaron ni cargaron datos MySQL. Corregir esos valores exige
+una politica de remediacion aprobada; el ensayo no inventa consentimiento ni
+canal de notificacion.
+
+Sobre una base local separada `saip_db_rehearsal_pr5`:
+
+- El schema PostgreSQL se ejecuto dos veces sin duplicar seeds.
+- Se validaron 29 tablas y cero violaciones referenciales.
+- El backend completo arranco con perfil `postgres`.
+- Suite backend default: 163 tests, 0 fallos, 0 errores y 2 omitidos.
+- Suite backend con perfil `postgres`: 163 tests, 0 fallos, 0 errores y 0 omitidos.
+- Newman diagnostic contra PostgreSQL: 252 requests, 428 assertions, 0 fallos y 0 violaciones Problem Details.
+
+La regresion detecto y corrigio dos incompatibilidades tecnicas:
+
+1. El perfil PostgreSQL heredaba `MySQLDialect`, generando `LIMIT ?,?`,
+   `CAST(... AS signed)` y escapes incompatibles. Ahora declara
+   `PostgreSQLDialect`.
+2. `ReprocesoNotificacion` cargaba seis asociaciones `ManyToOne` de forma
+   EAGER, superando el limite PostgreSQL de 1664 columnas en consultas del
+   agregado TTAIP. Esas asociaciones usan carga LAZY y conservan el mismo DTO.
+
+El perfil de ensayo mantiene `spring.jpa.open-in-view=true` porque los
+controladores legacy aun convierten relaciones lazy a DTO despues de salir del
+servicio. Migrar ese mapping a una capa transaccional es deuda tecnica separada,
+no un requisito para el ensayo ni una regla funcional.
 
 ## Alcance real del script MySQL actual
 
@@ -241,19 +294,20 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 | Seeds con passwords demo | Bajo para local, alto si se usa en prod | Ya existian en MySQL. Deben mantenerse fuera de entornos productivos. |
 | Checks demasiado estrictos | Bajo | Se limitaron checks a valores estables. Enums de negocio siguen como `VARCHAR`. |
 | Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
-| Datos migrados con duplicados por casing | Medio | Los indices `lower(...)` rechazaran duplicados. El ensayo de migracion debe detectar y resolver previamente emails/acronimos equivalentes. |
+| Datos migrados con duplicados por casing | Bajo en la muestra local | El preflight local encontro cero grupos duplicados. Debe repetirse contra el origen congelado antes de cada carga. |
+| SAIP legacy sin consentimiento/canal | Alto para la carga actual | Ocho solicitudes tienen ambos valores nulos. La carga queda bloqueada hasta aprobar y ejecutar una remediacion trazable. |
+| Grafo JPA legacy y Open Session in View | Medio, no bloqueante para ensayo | El perfil conserva el comportamiento actual. Debe migrarse el mapping de DTOs a servicios transaccionales antes de endurecer `open-in-view=false`. |
 
-## Pendientes para PR 5
+## Pendientes para PR 6
 
-1. Planear y ensayar migracion real de datos:
-   - Dump MySQL.
-   - Transformacion.
-   - Deteccion y resolucion de duplicados case-insensitive.
-   - Carga PostgreSQL.
-   - Verificacion referencial.
-   - Ventana de corte.
-2. Ejecutar regresion funcional completa y Newman contra un entorno staging PostgreSQL antes del cutover.
-3. Definir estrategia de rollback y reconciliacion para el ensayo de datos.
+1. Aprobar la remediacion de las 8 SAIP legacy sin consentimiento ni canal.
+2. Seleccionar y revisar la herramienta de exportacion/transformacion (`pgloader`
+   o ETL propio) sin versionar dumps.
+3. Ejecutar una carga real en staging aislado y comparar todos los conteos del
+   preflight contra `verify-postgres-rehearsal`.
+4. Repetir backend y Newman sobre los datos transformados, no solo sobre seed.
+5. Aprobar ventana de corte, rollback y reconciliacion antes de cualquier
+   cutover.
 
 ## Validaciones necesarias
 
@@ -296,6 +350,17 @@ Resultados:
 - La comparacion case-insensitive de emails/acronimos se resolvio con indices funcionales `lower(...)`, consultas JPQL portables y normalizacion JPA.
 - No se uso `citext`, por lo que el schema no requiere instalar extensiones PostgreSQL.
 
+### Ensayo de datos y regresion completado en PR 5
+
+- El preflight MySQL se ejecuto en modo read-only y bloqueo la copia por datos
+  legacy incompletos.
+- No se generaron dumps, CSV, credenciales ni datos personales dentro del
+  repositorio.
+- El schema seed PostgreSQL paso `RunTwice` y verificacion referencial.
+- El backend con perfil `postgres` paso la suite completa.
+- Newman paso con 252 requests y 428 assertions.
+- El runtime principal y el perfil default siguen siendo MySQL.
+
 ## Estrategia recomendada por fases
 
 1. **Fase 1 - Preparacion paralela**
@@ -319,10 +384,10 @@ Resultados:
    - Case-insensitive resuelto sin extensiones PostgreSQL.
 
 4. **Fase 4 - Migracion de datos**
-   - Exportar MySQL.
-   - Transformar tipos/fechas/booleans.
-   - Cargar PostgreSQL.
-   - Validar conteos, claves, relaciones y flujos Newman.
+   - Preflight, verificacion y regresion seed completados.
+   - Carga de datos reales bloqueada por 8 SAIP legacy incompletas.
+   - Pendiente aprobar remediacion y herramienta ETL.
+   - Pendiente cargar staging y comparar conteos, claves y relaciones.
 
 5. **Fase 5 - Cutover controlado**
    - Cambiar entorno de staging a PostgreSQL.
@@ -342,4 +407,4 @@ Resultados:
 - No se modifico frontend.
 - No se modifico mobile.
 - No se cambiaron reglas de negocio SAIP/TTAIP.
-- No se altero Newman/Postman.
+- No se altero la coleccion ni el environment Newman/Postman; solo se agrego un runner PostgreSQL.
