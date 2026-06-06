@@ -2,7 +2,7 @@
 
 Fecha de auditoria: 2026-06-05
 Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: PR 5 de migracion controlada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
+Estado: eliminacion controlada de datos demo/legacy completada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
 
 ## Resumen ejecutivo
 
@@ -143,7 +143,7 @@ Se preparo y ejecuto un ensayo controlado de migracion sin copiar datos reales n
 - Guia operativa:
   - `database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`
 
-El preflight real sobre la base MySQL local encontro:
+El preflight inicial sobre la base MySQL local encontro:
 
 - 0 grupos duplicados por `lower(usuarios.email)`.
 - 0 grupos duplicados por `lower(entidades.acronimo)`.
@@ -151,9 +151,12 @@ El preflight real sobre la base MySQL local encontro:
 - 8 solicitudes legacy con `consentimiento_datos_personales IS NULL`.
 - Las mismas 8 solicitudes legacy con `canal_notificacion IS NULL`.
 
-Por tanto, no se exportaron ni cargaron datos MySQL. Corregir esos valores exige
-una politica de remediacion aprobada; el ensayo no inventa consentimiento ni
-canal de notificacion.
+No se exportaron ni cargaron datos MySQL mientras existio ese bloqueo. La
+revision posterior confirmo que las ocho solicitudes eran registros demo/legacy
+con un grafo dependiente autocontenido. Se eliminaron de forma protegida y
+transaccional sin inventar consentimiento ni canal de notificacion. El
+preflight post-delete quedo con cero valores obligatorios nulos y cero
+bloqueantes.
 
 Sobre una base local separada `saip_db_rehearsal_pr5`:
 
@@ -177,6 +180,78 @@ El perfil de ensayo mantiene `spring.jpa.open-in-view=true` porque los
 controladores legacy aun convierten relaciones lazy a DTO despues de salir del
 servicio. Migrar ese mapping a una capa transaccional es deuda tecnica separada,
 no un requisito para el ensayo ni una regla funcional.
+
+## Eliminacion controlada de SAIP demo/legacy
+
+La revision confirmo que `SAIP-2025-00001` a `SAIP-2025-00008` provenian del
+seed demo y que ninguna tenia evidencia historica suficiente para inferir
+consentimiento o canal. Se eligio eliminar el grafo demo incompleto, no
+completar datos legales ausentes.
+
+Componentes preparados:
+
+- Diagnostico sanitizado de dependencias:
+  - `database/postgres/diagnose_delete_legacy_saip_mysql.sql`
+- SQL transaccional:
+  - `database/postgres/delete_legacy_saip_mysql.sql`
+- Runners protegidos:
+  - `scripts/postgres/delete-legacy-saip-mysql.ps1`
+  - `scripts/postgres/delete-legacy-saip-mysql.sh`
+- Plan ETL:
+  - `database/postgres/MYSQL_TO_POSTGRES_ETL_PLAN.md`
+
+El dry-run local confirmo exactamente ocho candidatas, cero dependencias
+compartidas o ambiguas y el siguiente grafo dependiente:
+
+| Tabla | Filas eliminadas |
+| --- | ---: |
+| `solicitudes` | 8 |
+| `respuestas` | 3 |
+| `apelaciones` | 5 |
+| `expedientes_ttaip` | 3 |
+| `resoluciones` | 8 |
+| `documentos` | 4 |
+| `expediente_ttaip_miembros` | 9 |
+| `cedulas_notificacion` | 7 |
+| `notificaciones_ttaip` | 7 |
+| `cumplimientos_resolucion_ttaip` | 19 |
+| `historial_ttaip` | 99 |
+| `reprocesos_notificacion` | 1 |
+
+Las tablas de observaciones, ampliaciones, cronogramas, encauzamientos,
+liquidaciones, elevaciones, descargos, suspensiones e intentos de notificacion
+no tenian filas vinculadas a estas solicitudes.
+
+El apply local exigio:
+
+- `EXPECTED_LEGACY_SAIP_ROWS=8`.
+- Confirmacion exacta
+  `DELETE_LEGACY_SAIP_2025_00001_00008`.
+- Operador identificado.
+- Host local; las bases con nombre de produccion se rechazan automaticamente.
+
+La eliminacion se ejecuto en una transaccion, de hijos a padres. La auditoria
+tecnica registro la politica `DELETE_LEGACY_INCOMPLETE_SAIP`, el motivo
+`MIGRACION_POSTGRESQL_LEGACY_INCOMPLETE_RECORDS`, actor, fecha, conteos y
+numeros SAIP, sin datos personales. El resultado fue ocho solicitudes
+eliminadas y cero candidatas restantes.
+
+El preflight post-delete reporto:
+
+- 0 consentimientos nulos.
+- 0 canales de notificacion nulos.
+- 0 duplicados case-insensitive.
+- 0 huerfanos o inconsistencias criticas.
+- 0 bloqueantes.
+
+`backend/src/main/resources/data.sql` dejo de crear automaticamente el grafo
+demo incompleto, evitando que un arranque local vuelva a introducir el bloqueo.
+Los catalogs y usuarios demo necesarios para pruebas se mantienen.
+
+Para el ETL se recomienda un job propio y revisado, no conversion automatica de
+schema con `pgloader`. El schema PostgreSQL ya esta validado y la carga necesita
+orden explicito, conversion de fechas/booleanos, preservacion de PK, reset de
+secuencias y reconciliacion sin registrar payloads personales.
 
 ## Alcance real del script MySQL actual
 
@@ -295,19 +370,16 @@ Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para 
 | Checks demasiado estrictos | Bajo | Se limitaron checks a valores estables. Enums de negocio siguen como `VARCHAR`. |
 | Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
 | Datos migrados con duplicados por casing | Bajo en la muestra local | El preflight local encontro cero grupos duplicados. Debe repetirse contra el origen congelado antes de cada carga. |
-| SAIP legacy sin consentimiento/canal | Alto para la carga actual | Ocho solicitudes tienen ambos valores nulos. La carga queda bloqueada hasta aprobar y ejecutar una remediacion trazable. |
+| Reaparicion de SAIP demo incompletas | Bajo | Las ocho filas se eliminaron y el seed automatico ya no las recrea. El preflight debe repetirse sobre cada snapshot de staging antes de exportar. |
 | Grafo JPA legacy y Open Session in View | Medio, no bloqueante para ensayo | El perfil conserva el comportamiento actual. Debe migrarse el mapping de DTOs a servicios transaccionales antes de endurecer `open-in-view=false`. |
 
-## Pendientes para PR 6
+## Pendientes para PR 7
 
-1. Aprobar la remediacion de las 8 SAIP legacy sin consentimiento ni canal.
-2. Seleccionar y revisar la herramienta de exportacion/transformacion (`pgloader`
-   o ETL propio) sin versionar dumps.
-3. Ejecutar una carga real en staging aislado y comparar todos los conteos del
-   preflight contra `verify-postgres-rehearsal`.
-4. Repetir backend y Newman sobre los datos transformados, no solo sobre seed.
-5. Aprobar ventana de corte, rollback y reconciliacion antes de cualquier
-   cutover.
+1. Implementar el job ETL revisado sin datos ni credenciales versionadas.
+2. Repetir dry-run, guardas y preflight sobre el snapshot de staging aprobado.
+3. Cargar staging aislado y comparar conteos, IDs y relaciones.
+4. Repetir backend y Newman sobre datos transformados.
+5. Aprobar ventana de corte, rollback y reconciliacion antes del cutover.
 
 ## Validaciones necesarias
 
@@ -361,6 +433,28 @@ Resultados:
 - Newman paso con 252 requests y 428 assertions.
 - El runtime principal y el perfil default siguen siendo MySQL.
 
+### Eliminacion demo/legacy y preparacion ETL
+
+- Dry-run MySQL ejecutado sobre las ocho SAIP legacy/demo.
+- No se mostraron datos personales ni contactos completos.
+- No existe evidencia de canal en `intentos_notificacion` para esas filas.
+- El grafo fue validado sin dependencias compartidas o ambiguas.
+- La eliminacion transaccional retiro ocho solicitudes y sus dependencias.
+- La auditoria tecnica registro actor, politica, motivo, conteos y numeros SAIP.
+- El preflight post-delete quedo con cero consentimientos nulos, cero canales
+  nulos y cero bloqueantes.
+- El ETL propio sigue siendo la ruta recomendada para la siguiente fase.
+- Suite backend default: 163 tests, 0 fallos, 0 errores y 2 omitidos.
+- Schema PostgreSQL ejecutado dos veces: 29 tablas y conteos seed estables.
+- Suite backend con perfil `postgres`: 163 tests, 0 fallos, 0 errores y 0
+  omitidos.
+- Newman PostgreSQL se repitio. La primera corrida detecto que el test de
+  ownership de cumplimiento podia seleccionar una resolucion de la misma
+  entidad tras datos acumulados; la seleccion se hizo explicita por entidad
+  distinta para mantener el ensayo reproducible. La corrida final paso con
+  252 requests, 428 assertions, 0 fallos y 0 violaciones Problem Details.
+- Docs Starlight: 40 paginas construidas correctamente.
+
 ## Estrategia recomendada por fases
 
 1. **Fase 1 - Preparacion paralela**
@@ -385,8 +479,10 @@ Resultados:
 
 4. **Fase 4 - Migracion de datos**
    - Preflight, verificacion y regresion seed completados.
-   - Carga de datos reales bloqueada por 8 SAIP legacy incompletas.
-   - Pendiente aprobar remediacion y herramienta ETL.
+   - Diagnostico sanitizado de las 8 SAIP completado.
+   - Eliminacion trazable del grafo demo/legacy completada.
+   - Preflight MySQL post-delete sin bloqueantes.
+   - ETL propio recomendado y planificado.
    - Pendiente cargar staging y comparar conteos, claves y relaciones.
 
 5. **Fase 5 - Cutover controlado**
