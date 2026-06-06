@@ -30,9 +30,48 @@ stable PostgreSQL checks. Remote analysis requires two explicit confirmation
 flags. Production-like database names require a separate double confirmation.
 
 The PR 5 local preflight found no case-insensitive duplicates or referential
-orphans, but it found eight legacy SAIP rows where both personal-data consent
-and notification channel are null. No source data was exported or changed.
-Those rows require an approved remediation policy before a data load can begin.
+orphans, but it found eight demo/legacy SAIP rows where both personal-data
+consent and notification channel were null. The dependency audit confirmed
+that they formed a self-contained demo graph. They were deleted locally with
+the protected, transactional policy `DELETE_LEGACY_INCOMPLETE_SAIP`; no
+consent or notification channel was invented.
+
+Run the deletion diagnosis in dry-run mode with:
+
+```powershell
+.\scripts\postgres\delete-legacy-saip-mysql.ps1
+```
+
+Dry-run is the default. It lists technical identifiers, SAIP number, status,
+dates, entity/citizen IDs and dependency counts. It does not return personal
+names, DNI, full email, phone, address, document content, tokens or payloads.
+
+The local diagnosis confirmed `SAIP-2025-00001` through
+`SAIP-2025-00008`. None has a successful SAIP notification attempt that proves
+a channel. A registered user email is not evidence of citizen consent or
+channel choice.
+
+### Protected deletion
+
+Apply requires the exact row count, confirmation phrase and identified actor:
+
+```powershell
+$env:EXPECTED_LEGACY_SAIP_ROWS = "8"
+$env:LEGACY_SAIP_DELETE_CONFIRMATION = "DELETE_LEGACY_SAIP_2025_00001_00008"
+$env:MIGRATION_ACTOR = "<identified-operator>"
+.\scripts\postgres\delete-legacy-saip-mysql.ps1 -Apply
+```
+
+The script rejects production-like database names, requires explicit staging
+confirmation for remote execution, aborts on shared or ambiguous dependencies
+and deletes child rows before the eight requests in one transaction. It records
+the actor, policy, reason, expected/deleted counts and SAIP numbers in
+`auditoria_migracion_saip` and its detail table, without personal data.
+
+After the local apply, the full preflight reported zero null consent values,
+zero null notification channels and zero blocking findings. The automatic
+Spring seed was also adjusted so application startup cannot recreate this
+incomplete demo graph.
 
 ## 2. Export and Transform
 
@@ -49,8 +88,11 @@ approve a migration tool before handling real data. A rehearsal must:
 7. Load tables in dependency order, without disabling validation permanently.
 8. Record source and target counts in the release evidence, not in Git.
 
-Candidate tools such as `pgloader` or a reviewed ETL job must be evaluated in a
-separate PR. This repository does not ship an unverified data transformer.
+PR 6 recommends a reviewed custom ETL job over direct `pgloader` schema
+conversion. The target schema already exists and the load needs explicit table
+order, strict transformations, preserved IDs, sequence resets and
+reconciliation. The concrete plan is documented in
+`database/postgres/MYSQL_TO_POSTGRES_ETL_PLAN.md`.
 
 ## 3. Prepare and Verify PostgreSQL
 

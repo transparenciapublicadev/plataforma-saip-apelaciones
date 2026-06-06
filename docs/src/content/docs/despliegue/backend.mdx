@@ -203,8 +203,28 @@ $env:MYSQL_PASSWORD = "<local-password>"
 
 El preflight valida tablas esperadas, duplicados case-insensitive, huérfanos,
 campos obligatorios, longitudes y checks estables. No modifica datos. La muestra
-local actual quedó bloqueada por 8 SAIP legacy sin consentimiento ni canal de
-notificación; esos valores no deben inventarse durante la migración.
+local detectó 8 SAIP demo/legacy sin consentimiento ni canal de notificación;
+el grafo fue auditado y eliminado de forma transaccional, sin inventar esos
+valores.
+
+El diagnóstico de eliminación se ejecuta en dry-run por defecto:
+
+```powershell
+.\scripts\postgres\delete-legacy-saip-mysql.ps1
+```
+
+El modo apply exige conteo exacto de 8 filas, frase de confirmación, operador
+identificado y un host local o staging confirmado. Rechaza bases con nombre de
+producción, detiene la operación ante dependencias compartidas y registra la
+política `DELETE_LEGACY_INCOMPLETE_SAIP` en tablas técnicas de auditoría sin
+datos personales. Después de la eliminación local, el preflight quedó con cero
+consentimientos nulos, cero canales nulos y cero bloqueantes. El seed automático
+ya no recrea esas solicitudes demo incompletas.
+
+El plan de carga recomienda un ETL propio y revisado, porque el schema destino
+ya está validado y se deben preservar IDs, convertir fechas/booleanos, resetear
+secuencias y reconciliar conteos sin registrar datos personales. La guía está en
+`database/postgres/MYSQL_TO_POSTGRES_ETL_PLAN.md`.
 
 Después de una carga aprobada en una base aislada:
 
