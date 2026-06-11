@@ -40,8 +40,14 @@ oficial es `database/postgres/script_saip_db_postgres.sql`; Hibernate usa
 | `APP_NOTIFICATIONS_PUSH_ENABLED` | Mantener `false` hasta Firebase Admin real. | No |
 | `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account. | Solo con FCM real |
 | `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Clave AES externa para tokens push. | Solo con FCM real |
-| `APP_STORAGE_PROVIDER` | Provider documental. En esta fase: `local`. | No (default local) |
+| `APP_STORAGE_PROVIDER` | `local` o `s3`. | No (default `local`) |
 | `APP_STORAGE_LOCAL_BASE_PATH` | Directorio externo para binarios. | Sí con provider local en producción |
+| `APP_STORAGE_S3_ENDPOINT` | Endpoint HTTP(S) S3-compatible. | Sí con provider `s3` |
+| `APP_STORAGE_S3_REGION` | Región usada para firma S3. | No (default `us-east-1`) |
+| `APP_STORAGE_S3_BUCKET` | Bucket documental aprovisionado externamente. | Sí con provider `s3` |
+| `APP_STORAGE_S3_ACCESS_KEY` | Access key externa. | Sí con provider `s3` |
+| `APP_STORAGE_S3_SECRET_KEY` | Secret key externa. | Sí con provider `s3` |
+| `APP_STORAGE_S3_FORCE_PATH_STYLE` | Fuerza addressing path-style. | No (default `true`) |
 | `APP_STORAGE_MAX_FILE_SIZE` | Máximo en bytes por archivo. | No (default 10 MiB) |
 | `APP_STORAGE_MAX_REQUEST_SIZE` | Máximo del request multipart completo. | No (default 11 MiB) |
 | `APP_STORAGE_ALLOWED_CONTENT_TYPES` | Allowlist MIME separada por comas. | No |
@@ -99,6 +105,11 @@ binarios fuera del repositorio y usa como default de desarrollo
 `${user.home}/.saip-storage`. En producción, `APP_STORAGE_LOCAL_BASE_PATH` debe
 apuntar a un volumen externo con permisos mínimos para el proceso backend.
 
+Para un bucket S3-compatible, definir `APP_STORAGE_PROVIDER=s3` y las variables
+de endpoint, región, bucket y credenciales. Si falta una variable obligatoria,
+el backend falla al iniciar con un mensaje que identifica la variable, sin
+imprimir su valor. `local` continúa siendo el default.
+
 Tipos permitidos por defecto:
 
 - `application/pdf`
@@ -107,16 +118,30 @@ Tipos permitidos por defecto:
 - `text/plain`
 
 La API valida tamaño, extensión, tipo y firma básica, calcula SHA-256 y genera
-una clave UUID. No expone rutas absolutas, bucket ni `storageKey`. Supabase
-Storage/S3-compatible no está integrado todavía y no se deben versionar
-credenciales ni archivos subidos.
+una clave UUID antes de invocar cualquier provider. No expone rutas absolutas,
+bucket, endpoint ni `storageKey`. El provider S3-compatible usa AWS SDK v2; no
+crea buckets, no configura la consola de Supabase y no genera URLs públicas o
+presigned. Las credenciales y archivos subidos nunca se versionan.
+
+Ejemplo de activación, usando exclusivamente secretos externos:
+
+```bash
+APP_STORAGE_PROVIDER=s3 \
+APP_STORAGE_S3_ENDPOINT=https://storage.example.invalid \
+APP_STORAGE_S3_REGION=us-east-1 \
+APP_STORAGE_S3_BUCKET=saip-documents \
+APP_STORAGE_S3_ACCESS_KEY=secret_manager_reference \
+APP_STORAGE_S3_SECRET_KEY=secret_manager_reference \
+APP_STORAGE_S3_FORCE_PATH_STYLE=true \
+java -jar target/saip-backend-0.0.1-SNAPSHOT.jar
+```
 
 ## Producción
 
 <Steps>
 1. Aprovisionar PostgreSQL y ejecutar el schema mediante un proceso controlado.
 2. Cargar BD, JWT, CORS y SMTP desde variables o un gestor de secretos.
-3. Aprovisionar el volumen documental y definir `APP_STORAGE_LOCAL_BASE_PATH`.
+3. Aprovisionar un volumen local o un bucket S3-compatible y configurar solo el provider elegido.
 4. Ejecutar tests y Newman contra staging.
 5. Iniciar con `SPRING_PROFILES_ACTIVE=prod`.
 6. Verificar salud, logs y ownership antes de exponer tráfico.
@@ -163,5 +188,6 @@ deshabilitado hasta integrar Firebase Admin con credenciales externas.
 - Ejecutar Newman con `APP_NOTIFICATIONS_MODE=MOCK`.
 - En producción usar `ddl-auto=validate`, `spring.sql.init.mode=never` y secretos externos.
 - Confirmar que la ruta documental está fuera del checkout y no es servida directamente por el web server.
+- Con provider `s3`, verificar bucket, permisos mínimos y conectividad en staging sin publicar URLs directas.
 - Mantener OpenAPI/Swagger deshabilitados en producción salvo aprobación operativa.
 - No versionar dumps, reports, logs, builds ni credenciales.
