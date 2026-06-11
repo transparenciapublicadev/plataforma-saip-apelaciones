@@ -1,506 +1,71 @@
-# Auditoria de migracion MySQL a PostgreSQL
-
-Fecha de auditoria: 2026-06-05
-Alcance: `database/script_saip_db.sql`, entidades JPA actuales y script PostgreSQL paralelo.
-Estado: eliminacion controlada de datos demo/legacy completada. El runtime principal del backend sigue usando MySQL; PostgreSQL queda disponible como perfil opt-in.
-
-## Resumen ejecutivo
-
-Se inicio la migracion controlada de MySQL a PostgreSQL sin cambiar el runtime principal del backend, sin eliminar MySQL y sin introducir almacenamiento de documentos. El resultado de esta fase es un script paralelo:
-
-`database/postgres/script_saip_db_postgres.sql`
-
-El script PostgreSQL es autocontenido para ensayos locales o de CI futuros: crea las tablas base que hoy normalmente genera JPA/Hibernate, crea las tablas operativas agregadas por el script MySQL, conserva relaciones, indices principales y seeds oficiales. Tambien mantiene los datos funcionales actuales de SAIP, TTAIP, salas, miembros, cédulas, notificaciones y reproceso de prueba.
-
-No se modifico `application.properties` principal, frontend, mobile ni reglas funcionales.
-
-## Estado PR 2
-
-Se agrego soporte backend aislado para PostgreSQL sin hacer cutover:
-
-- Driver PostgreSQL en `backend/pom.xml`, manteniendo `mysql-connector-j`.
-- Perfil `postgres` en `backend/src/main/resources/application-postgres.properties`.
-- `ddl-auto=validate` y `spring.sql.init.mode=never` para evitar DDL o seed automaticos.
-- Datasource por variables externas `DB_URL`, `DB_USERNAME` y `DB_PASSWORD`.
-- Scripts de ayuda:
-  - `scripts/postgres/run-postgres-schema.ps1`
-  - `scripts/postgres/run-postgres-schema.sh`
-
-El perfil `postgres` debe usarse solo despues de ejecutar el script paralelo:
-
-```powershell
-$env:PGHOST = "localhost"
-$env:PGPORT = "5432"
-$env:PGDATABASE = "saip_db_postgres"
-$env:PGUSER = "postgres"
-$env:PGPASSWORD = "<local-password>"
-.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
-
-$env:DB_URL = "jdbc:postgresql://localhost:5432/saip_db_postgres"
-$env:DB_USERNAME = $env:PGUSER
-$env:DB_PASSWORD = $env:PGPASSWORD
-cd backend
-.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=postgres
-```
-
-No usar este perfil para produccion hasta que exista un PR de cutover aprobado.
-
-## Estado PR 3
-
-La validacion real del schema PostgreSQL se completo sin cambiar runtime principal ni reglas funcionales:
-
-- `psql` esta disponible localmente (`PostgreSQL 18.x`).
-- El servidor PostgreSQL local acepta conexiones en `localhost:5432`.
-- Las variables `PG*` y `DB_*` se cargaron desde el entorno de Windows sin imprimir passwords.
-- Se verifico que `PGHOST` era local y que `PGDATABASE` era exactamente `saip_db` antes del `DROP/CREATE`.
-- La base local se recreo conectando a la base administrativa `postgres`.
-- `run-postgres-schema.ps1 -RunTwice` completo dos ejecuciones sin errores de sintaxis, constraints ni duplicacion de seeds.
-- El schema final contiene 29 tablas.
-- El backend arranco con perfil `postgres`, conecto mediante el driver PostgreSQL y Hibernate `ddl-auto=validate` completo correctamente.
-- `/v3/api-docs` respondio HTTP 200 en el arranque local.
-- La suite backend completa se ejecuto con `spring.profiles.active=postgres`: 158 tests, 0 fallos, 0 errores y 0 omitidos.
-
-Hibernate detecto dos incompatibilidades reales entre el script y la entidad `DispositivoNotificacionPush`:
-
-| Columna | Tipo anterior | Tipo JPA esperado | Correccion |
-| --- | --- | --- | --- |
-| `device_id_hash` | `CHAR(64)` | `VARCHAR(64)` | Cambiada a `VARCHAR(64)`. |
-| `token_hash` | `CHAR(64)` | `VARCHAR(64)` | Cambiada a `VARCHAR(64)` despues de que Hibernate revelara el segundo mismatch. |
-
-No se cambiaron otros tipos porque Hibernate no reporto incompatibilidades adicionales.
-
-Conteos validados despues de la segunda ejecucion:
-
-| Tabla | Registros |
-| --- | ---: |
-| `usuarios` | 27 |
-| `entidades` | 10 |
-| `ciudadanos` | 10 |
-| `funcionarios` | 10 |
-| `miembros_ttaip` | 6 |
-| `solicitudes` | 5 |
-| `apelaciones` | 3 |
-| `salas_ttaip` | 2 |
-| `expedientes_ttaip` | 3 |
-| `resoluciones` | 5 |
-| `cedulas_notificacion` | 9 |
-| `notificaciones_ttaip` | 9 |
-| `historial_ttaip` | 27 |
-| `intentos_notificacion` | 0 |
-| `dispositivos_notificacion_push` | 0 |
-
-Las queries JPQL sensibles tambien se validaron contra PostgreSQL real:
-
-- `SolicitudRepository.countByMonth`: paso mediante `GET /api/public/portal`.
-- `ApelacionRepository.countByMonth`: paso mediante `GET /api/public/portal`.
-- `SolicitudRepository.findMaxExpedienteNumber`: paso creando dos SAIP temporales, que generaron correlativos `00001` y `00002`; despues se eliminaron y el conteo de solicitudes volvio a 5.
-
-## Estado PR 4
-
-La validacion PostgreSQL quedo automatizada de forma opt-in, sin incorporarla como gate obligatorio del CI principal:
-
-- Workflow manual: `.github/workflows/postgres-validation.yml`.
-- Scripts reutilizables:
-  - `scripts/postgres/validate-postgres-profile.ps1`
-  - `scripts/postgres/validate-postgres-profile.sh`
-- El workflow levanta PostgreSQL 16 efimero, usa credenciales exclusivas de CI, ejecuta el schema dos veces y corre la suite backend con perfil `postgres`.
-- Los scripts solo aceptan host local o mapeado por CI, rechazan nombres de base productivos y requieren credenciales por variables de entorno.
-- `run-postgres-schema.ps1` ahora falla explicitamente si cualquier invocacion de `psql` retorna un codigo distinto de cero.
-
-La estrategia case-insensitive no usa `citext`, para evitar extensiones y privilegios adicionales:
-
-- `uq_usuarios_email_lower`: indice unico funcional sobre `lower(usuarios.email)`.
-- `uq_entidades_acronimo_lower`: indice unico funcional sobre `lower(entidades.acronimo)`.
-- Los repositorios de usuario, ciudadano, funcionario y miembro TTAIP comparan email con `lower(...)`.
-- `EntidadRepository` compara acronimos con `lower(...)`.
-- JPA normaliza emails a minusculas y acronimos a mayusculas antes de persistir o actualizar.
-
-La validacion local de PR 4 recreo exclusivamente `localhost/saip_db`, ejecuto `RunTwice` y confirmo:
-
-- 29 tablas.
-- 27 usuarios, 10 entidades, 5 solicitudes, 3 apelaciones y 3 expedientes TTAIP.
-- Ambos indices funcionales creados.
-- Suite default: 162 tests, 0 fallos, 0 errores y 2 pruebas PostgreSQL opt-in omitidas.
-- Suite PostgreSQL opt-in: 162 tests, 0 fallos, 0 errores y 0 omitidos.
-- Lookups case-insensitive reales para usuario, ciudadano, funcionario, miembro TTAIP y entidad.
-- El perfil `postgres` fija `PostgreSQLDialect` para no heredar el dialecto MySQL del perfil base.
-
-## Estado PR 5
-
-Se preparo y ejecuto un ensayo controlado de migracion sin copiar datos reales ni cambiar el runtime default:
-
-- Preflight MySQL read-only:
-  - `scripts/postgres/preflight-mysql-to-postgres.ps1`
-  - `scripts/postgres/preflight-mysql-to-postgres.sh`
-  - `database/postgres/preflight_mysql_to_postgres.sql`
-- Verificacion PostgreSQL read-only:
-  - `scripts/postgres/verify-postgres-rehearsal.ps1`
-  - `scripts/postgres/verify-postgres-rehearsal.sh`
-  - `database/postgres/verify_postgres_rehearsal.sql`
-- Regresion automatizada:
-  - `scripts/postgres/run-newman-postgres.ps1`
-  - `scripts/postgres/run-newman-postgres.sh`
-- Guia operativa:
-  - `database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`
-
-El preflight inicial sobre la base MySQL local encontro:
-
-- 0 grupos duplicados por `lower(usuarios.email)`.
-- 0 grupos duplicados por `lower(entidades.acronimo)`.
-- 0 huerfanos en las relaciones criticas revisadas.
-- 8 solicitudes legacy con `consentimiento_datos_personales IS NULL`.
-- Las mismas 8 solicitudes legacy con `canal_notificacion IS NULL`.
-
-No se exportaron ni cargaron datos MySQL mientras existio ese bloqueo. La
-revision posterior confirmo que las ocho solicitudes eran registros demo/legacy
-con un grafo dependiente autocontenido. Se eliminaron de forma protegida y
-transaccional sin inventar consentimiento ni canal de notificacion. El
-preflight post-delete quedo con cero valores obligatorios nulos y cero
-bloqueantes.
-
-Sobre una base local separada `saip_db_rehearsal_pr5`:
-
-- El schema PostgreSQL se ejecuto dos veces sin duplicar seeds.
-- Se validaron 29 tablas y cero violaciones referenciales.
-- El backend completo arranco con perfil `postgres`.
-- Suite backend default: 163 tests, 0 fallos, 0 errores y 2 omitidos.
-- Suite backend con perfil `postgres`: 163 tests, 0 fallos, 0 errores y 0 omitidos.
-- Newman diagnostic contra PostgreSQL: 252 requests, 428 assertions, 0 fallos y 0 violaciones Problem Details.
-
-La regresion detecto y corrigio dos incompatibilidades tecnicas:
-
-1. El perfil PostgreSQL heredaba `MySQLDialect`, generando `LIMIT ?,?`,
-   `CAST(... AS signed)` y escapes incompatibles. Ahora declara
-   `PostgreSQLDialect`.
-2. `ReprocesoNotificacion` cargaba seis asociaciones `ManyToOne` de forma
-   EAGER, superando el limite PostgreSQL de 1664 columnas en consultas del
-   agregado TTAIP. Esas asociaciones usan carga LAZY y conservan el mismo DTO.
-
-El perfil de ensayo mantiene `spring.jpa.open-in-view=true` porque los
-controladores legacy aun convierten relaciones lazy a DTO despues de salir del
-servicio. Migrar ese mapping a una capa transaccional es deuda tecnica separada,
-no un requisito para el ensayo ni una regla funcional.
-
-## Eliminacion controlada de SAIP demo/legacy
-
-La revision confirmo que `SAIP-2025-00001` a `SAIP-2025-00008` provenian del
-seed demo y que ninguna tenia evidencia historica suficiente para inferir
-consentimiento o canal. Se eligio eliminar el grafo demo incompleto, no
-completar datos legales ausentes.
-
-Componentes preparados:
-
-- Diagnostico sanitizado de dependencias:
-  - `database/postgres/diagnose_delete_legacy_saip_mysql.sql`
-- SQL transaccional:
-  - `database/postgres/delete_legacy_saip_mysql.sql`
-- Runners protegidos:
-  - `scripts/postgres/delete-legacy-saip-mysql.ps1`
-  - `scripts/postgres/delete-legacy-saip-mysql.sh`
-- Plan ETL:
-  - `database/postgres/MYSQL_TO_POSTGRES_ETL_PLAN.md`
-
-El dry-run local confirmo exactamente ocho candidatas, cero dependencias
-compartidas o ambiguas y el siguiente grafo dependiente:
-
-| Tabla | Filas eliminadas |
-| --- | ---: |
-| `solicitudes` | 8 |
-| `respuestas` | 3 |
-| `apelaciones` | 5 |
-| `expedientes_ttaip` | 3 |
-| `resoluciones` | 8 |
-| `documentos` | 4 |
-| `expediente_ttaip_miembros` | 9 |
-| `cedulas_notificacion` | 7 |
-| `notificaciones_ttaip` | 7 |
-| `cumplimientos_resolucion_ttaip` | 19 |
-| `historial_ttaip` | 99 |
-| `reprocesos_notificacion` | 1 |
-
-Las tablas de observaciones, ampliaciones, cronogramas, encauzamientos,
-liquidaciones, elevaciones, descargos, suspensiones e intentos de notificacion
-no tenian filas vinculadas a estas solicitudes.
-
-El apply local exigio:
-
-- `EXPECTED_LEGACY_SAIP_ROWS=8`.
-- Confirmacion exacta
-  `DELETE_LEGACY_SAIP_2025_00001_00008`.
-- Operador identificado.
-- Host local; las bases con nombre de produccion se rechazan automaticamente.
-
-La eliminacion se ejecuto en una transaccion, de hijos a padres. La auditoria
-tecnica registro la politica `DELETE_LEGACY_INCOMPLETE_SAIP`, el motivo
-`MIGRACION_POSTGRESQL_LEGACY_INCOMPLETE_RECORDS`, actor, fecha, conteos y
-numeros SAIP, sin datos personales. El resultado fue ocho solicitudes
-eliminadas y cero candidatas restantes.
-
-El preflight post-delete reporto:
-
-- 0 consentimientos nulos.
-- 0 canales de notificacion nulos.
-- 0 duplicados case-insensitive.
-- 0 huerfanos o inconsistencias criticas.
-- 0 bloqueantes.
-
-`backend/src/main/resources/data.sql` dejo de crear automaticamente el grafo
-demo incompleto, evitando que un arranque local vuelva a introducir el bloqueo.
-Los catalogs y usuarios demo necesarios para pruebas se mantienen.
-
-Para el ETL se recomienda un job propio y revisado, no conversion automatica de
-schema con `pgloader`. El schema PostgreSQL ya esta validado y la carga necesita
-orden explicito, conversion de fechas/booleanos, preservacion de PK, reset de
-secuencias y reconciliacion sin registrar payloads personales.
-
-## Alcance real del script MySQL actual
-
-`database/script_saip_db.sql` no es solo un DDL completo. Es un script hibrido:
-
-- Asume que varias tablas base ya existen por JPA/Hibernate: `usuarios`, `entidades`, `ciudadanos`, `funcionarios`, `administradores`, `miembros_ttaip`, `solicitudes`, `respuestas`, `apelaciones`, `resoluciones` y `documentos`.
-- Agrega columnas de compatibilidad a tablas existentes.
-- Crea tablas operativas para SAIP, TTAIP, notificaciones, push, reprocesos y trazabilidad.
-- Carga seed local idempotente para entidades, usuarios demo, salas TTAIP, expedientes y casos de prueba Postman/Newman.
-
-Por esa razon, el script PostgreSQL paralelo se diseño como autocontenido para que pueda ejecutarse en una base PostgreSQL limpia durante un ensayo local/staging de validacion real.
-
-## Tablas convertidas
-
-### Tablas base del modelo JPA
-
-| Tabla | Estado en PostgreSQL | Nota |
-| --- | --- | --- |
-| `usuarios` | Convertida | Identity, email unico, boolean real. |
-| `entidades` | Convertida | Acronimo unico e indices equivalentes. |
-| `ciudadanos` | Convertida | PK/FK hacia `usuarios`; DNI unico. |
-| `funcionarios` | Convertida | PK/FK hacia `usuarios`; FK a `entidades`. |
-| `administradores` | Convertida | PK/FK hacia `usuarios`. |
-| `miembros_ttaip` | Convertida | Periodos y presidencia del Tribunal con boolean real. |
-| `solicitudes` | Convertida | Incluye consentimiento y canal formal de notificacion. |
-| `respuestas` | Convertida | Relacion uno a uno con solicitud. |
-| `apelaciones` | Convertida | Soporta origen interno/externo y `solicitudId` nullable. |
-| `resoluciones` | Convertida | Relaciona apelacion, expediente, sala y miembro. |
-| `documentos` | Convertida | Mantiene referencias actuales; no se implemento storage. |
-
-### Tablas SAIP operativas
-
-| Tabla | Estado en PostgreSQL | Nota |
-| --- | --- | --- |
-| `observaciones_solicitud` | Convertida | Observacion/subsanacion formal. |
-| `ampliaciones_plazo_solicitud` | Convertida | Ampliacion con fechas y trazabilidad. |
-| `cronograma_entregas_parciales_solicitud` | Convertida | Entregas parciales por ampliacion. |
-| `encauzamientos_solicitud` | Convertida | Origen/destino y alcance total/parcial. |
-| `liquidaciones_costo_solicitud` | Convertida | Monto `NUMERIC(12,2)` y fechas de recojo. |
-
-### Tablas TTAIP, notificaciones y trazabilidad
-
-| Tabla | Estado en PostgreSQL | Nota |
-| --- | --- | --- |
-| `elevaciones_apelacion_ttaip` | Convertida | Elevacion por entidad. |
-| `salas_ttaip` | Convertida | Primera y Segunda Sala. |
-| `expedientes_ttaip` | Convertida | Agregado principal TTAIP. |
-| `expediente_ttaip_miembros` | Convertida | Relacion muchos a muchos expediente/miembros. |
-| `cedulas_notificacion` | Convertida | Unicidad por numero y destinatario. |
-| `notificaciones_ttaip` | Convertida | Constancias, acuses y validacion manual. |
-| `descargos_entidad_ttaip` | Convertida | Descargos y expediente administrativo. |
-| `suspensiones_plazo_ttaip` | Convertida | Descargos, informe oral e informacion complementaria. |
-| `cumplimientos_resolucion_ttaip` | Convertida | Seguimiento de resoluciones fundadas. |
-| `historial_ttaip` | Convertida | Eventos trazables del expediente. |
-| `reprocesos_notificacion` | Convertida | Conserva cedula original y nueva cedula/notificacion. |
-| `intentos_notificacion` | Convertida | Motor comun SAIP/TTAIP. |
-| `dispositivos_notificacion_push` | Convertida | FCM token hash/cifrado sin exponer tokens. |
-
-## Incompatibilidades MySQL encontradas
-
-| MySQL | Impacto | Resolucion PostgreSQL |
-| --- | --- | --- |
-| `USE saip_db` | PostgreSQL no cambia de base dentro del script. | Omitido; se ejecuta contra la base seleccionada por `psql`. |
-| `DELIMITER`, procedimientos auxiliares y `CALL` | Sintaxis propia de MySQL para DDL dinamico. | Reemplazado por DDL PostgreSQL directo, `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` e indices idempotentes. |
-| `AUTO_INCREMENT` | No existe en PostgreSQL. | `BIGINT GENERATED BY DEFAULT AS IDENTITY`. |
-| `TINYINT(1)` | Boolean simulado en MySQL. | `BOOLEAN` real. |
-| `DATETIME` | No guarda zona horaria. | `TIMESTAMPTZ` para eventos operativos; `DATE` se mantiene para plazos legales. |
-| `ON UPDATE CURRENT_TIMESTAMP` | No existe como atributo de columna. | Funcion trigger `set_fecha_actualizacion()` y triggers por tabla. |
-| `ON DUPLICATE KEY UPDATE` | Sintaxis MySQL. | `ON CONFLICT (...) DO UPDATE`. |
-| `INSERT IGNORE` | Sintaxis MySQL. | `ON CONFLICT (...) DO NOTHING`. |
-| `UPDATE ... JOIN` | Sintaxis MySQL. | `UPDATE ... FROM`. |
-| `DATE_ADD`, `DATE_SUB` | Funciones MySQL. | Aritmetica con `INTERVAL`. |
-| `DATE_FORMAT` | Funcion MySQL. | `to_char(...)`. |
-| `CONCAT` y `LPAD` | Existen diferencias menores. | Se uso `||`, `lpad(...::text, ...)` y `to_char` donde aplica. |
-| `VALUES(col)` en upsert | Forma MySQL. | Alias `EXCLUDED.col`. |
-| `KEY` y `UNIQUE KEY` inline | Sintaxis MySQL. | `CREATE INDEX IF NOT EXISTS` y constraints `UNIQUE`. |
-| Checks gestionados con procedimientos | El script MySQL crea o elimina checks dinamicamente. | Se definieron checks inline solo donde son estables y de bajo riesgo, especialmente notificaciones y push. |
-| Charset/collation/engine | Propio de MySQL. | Omitido; se debe definir collation/encoding de la base PostgreSQL en provisionamiento. |
-
-## Equivalencias de tipos
-
-| Concepto | MySQL actual | PostgreSQL paralelo |
-| --- | --- | --- |
-| IDs | `BIGINT AUTO_INCREMENT` | `BIGINT GENERATED BY DEFAULT AS IDENTITY` |
-| Booleanos | `TINYINT(1)` | `BOOLEAN` |
-| Fechas de plazo | `DATE` | `DATE` |
-| Fechas con hora | `DATETIME` | `TIMESTAMPTZ` |
-| Textos largos | `TEXT` / `LONGTEXT` si aparece | `TEXT` |
-| Montos | `DECIMAL(12,2)` | `NUMERIC(12,2)` |
-| Enums JPA | `VARCHAR(...)` + checks puntuales | `VARCHAR(...)` + checks puntuales solo donde son estables |
-| JSON/metadata | No se detecto JSON productivo en el script actual | Futuro: `JSONB` cuando se modele metadata documental |
-| Hash/token cifrado | `CHAR(64)` / `TEXT` | `VARCHAR(64)` / `TEXT`, alineado con JPA |
-
-## Decisiones tomadas
-
-- MySQL sigue siendo la base runtime actual.
-- PostgreSQL queda preparado como script paralelo, no como reemplazo inmediato.
-- El script PostgreSQL es autocontenido porque el script MySQL depende de tablas base generadas por JPA.
-- Se uso `TIMESTAMPTZ` para eventos con hora porque facilita auditoria y despliegues multi-entorno.
-- Los plazos legales se mantienen como `DATE` para evitar mezclar tiempo/zona horaria con reglas de dias habiles.
-- Los enums JPA se mantienen como `VARCHAR` para no acoplar el DDL a tipos enum PostgreSQL en esta primera fase.
-- Los seeds oficiales de TTAIP se conservan:
-  - Presidencia del Tribunal: Julio Cesar Mancilla Crespo, `jmancilla@minjus.gob.pe`, 2025-06-09 al 2026-06-08.
-  - Primera Sala: Tatiana Azucena Valverde Alvarado, Luis Guillermo Agurto Villegas y Segundo Ulises Zamora Barboza, 2025-03-22 al 2026-03-21.
-  - Segunda Sala: Junior Pichon De la Cruz, Julio Cesar Mancilla Crespo y Jessica Martha Rojas Barrueta, 2025-06-04 al 2026-06-03.
-- Se conservaron los casos de prueba TTAIP con resoluciones, cedulas, notificaciones e historial.
-- Se conservaron los placeholders de password del seed local (`Saip2026*`) solo por equivalencia con MySQL; no son configuracion productiva.
-
-## Riesgos detectados
-
-| Riesgo | Nivel | Comentario |
-| --- | --- | --- |
-| Divergencia entre JPA y SQL manual | Bajo | Hibernate `ddl-auto=validate` paso contra PostgreSQL local despues de corregir ambos hashes `CHAR(64)` a `VARCHAR(64)`. Debe mantenerse esta validacion en cambios futuros de entidades. |
-| Validacion PostgreSQL omitida accidentalmente | Bajo | Existe workflow manual y scripts opt-in; no afecta el CI MySQL/default. |
-| Seeds con passwords demo | Bajo para local, alto si se usa en prod | Ya existian en MySQL. Deben mantenerse fuera de entornos productivos. |
-| Checks demasiado estrictos | Bajo | Se limitaron checks a valores estables. Enums de negocio siguen como `VARCHAR`. |
-| Secuencias identity despues de upserts | Bajo | Al no insertar IDs fijos, PostgreSQL mantiene las identidades naturalmente. |
-| Datos migrados con duplicados por casing | Bajo en la muestra local | El preflight local encontro cero grupos duplicados. Debe repetirse contra el origen congelado antes de cada carga. |
-| Reaparicion de SAIP demo incompletas | Bajo | Las ocho filas se eliminaron y el seed automatico ya no las recrea. El preflight debe repetirse sobre cada snapshot de staging antes de exportar. |
-| Grafo JPA legacy y Open Session in View | Medio, no bloqueante para ensayo | El perfil conserva el comportamiento actual. Debe migrarse el mapping de DTOs a servicios transaccionales antes de endurecer `open-in-view=false`. |
-
-## Pendientes para PR 7
-
-1. Implementar el job ETL revisado sin datos ni credenciales versionadas.
-2. Repetir dry-run, guardas y preflight sobre el snapshot de staging aprobado.
-3. Cargar staging aislado y comparar conteos, IDs y relaciones.
-4. Repetir backend y Newman sobre datos transformados.
-5. Aprobar ventana de corte, rollback y reconciliacion antes del cutover.
-
-## Validaciones necesarias
-
-### Validacion estatica de esta fase
-
-- Revisar que el script PostgreSQL no contenga sintaxis MySQL critica como `AUTO_INCREMENT`, `ON DUPLICATE KEY UPDATE`, `TINYINT(1)`, `DELIMITER`, `CALL` o `UPDATE ... JOIN`.
-- Revisar que use `ON CONFLICT`, `BOOLEAN`, `TIMESTAMPTZ`, `NUMERIC` e indices PostgreSQL.
-- Ejecutar `git diff --check`.
-- Ejecutar auditoria basica de secretos.
-- Ejecutar tests backend para confirmar que no se cambio runtime ni codigo funcional.
-
-### Validacion real completada
-
-La validacion se ejecuto contra PostgreSQL local en `localhost:5432/saip_db`. Las credenciales se obtuvieron exclusivamente de variables de entorno y no se escribieron ni mostraron.
-
-```powershell
-$env:PGHOST = "localhost"
-$env:PGPORT = "5432"
-$env:PGDATABASE = "saip_db"
-$env:PGUSER = "postgres"
-$env:PGPASSWORD = "<local-password>"
-.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
-```
-
-Resultados:
-
-- Primera ejecucion: creo schema y seeds.
-- Segunda ejecucion: completo sin duplicar registros.
-- Conteo final: 29 tablas.
-- Hibernate `ddl-auto=validate`: paso.
-- Backend con perfil `postgres`: arranco correctamente.
-- `/v3/api-docs`: HTTP 200.
-- Tests backend con perfil `postgres`: 158 tests, 0 fallos, 0 errores y 0 omitidos.
-
-### Compatibilidad JPA revisada en PR 4
-
-- No se encontraron queries nativas MySQL en `backend/src/main/java`.
-- Las consultas revisadas usan JPQL/HQL y metodos Spring Data.
-- Las expresiones JPQL `MONTH`, `YEAR`, `SUBSTRING` y `CAST` pasaron contra PostgreSQL real sin cambios de comportamiento.
-- La comparacion case-insensitive de emails/acronimos se resolvio con indices funcionales `lower(...)`, consultas JPQL portables y normalizacion JPA.
-- No se uso `citext`, por lo que el schema no requiere instalar extensiones PostgreSQL.
-
-### Ensayo de datos y regresion completado en PR 5
-
-- El preflight MySQL se ejecuto en modo read-only y bloqueo la copia por datos
-  legacy incompletos.
-- No se generaron dumps, CSV, credenciales ni datos personales dentro del
-  repositorio.
-- El schema seed PostgreSQL paso `RunTwice` y verificacion referencial.
-- El backend con perfil `postgres` paso la suite completa.
-- Newman paso con 252 requests y 428 assertions.
-- El runtime principal y el perfil default siguen siendo MySQL.
-
-### Eliminacion demo/legacy y preparacion ETL
-
-- Dry-run MySQL ejecutado sobre las ocho SAIP legacy/demo.
-- No se mostraron datos personales ni contactos completos.
-- No existe evidencia de canal en `intentos_notificacion` para esas filas.
-- El grafo fue validado sin dependencias compartidas o ambiguas.
-- La eliminacion transaccional retiro ocho solicitudes y sus dependencias.
-- La auditoria tecnica registro actor, politica, motivo, conteos y numeros SAIP.
-- El preflight post-delete quedo con cero consentimientos nulos, cero canales
-  nulos y cero bloqueantes.
-- El ETL propio sigue siendo la ruta recomendada para la siguiente fase.
-- Suite backend default: 163 tests, 0 fallos, 0 errores y 2 omitidos.
-- Schema PostgreSQL ejecutado dos veces: 29 tablas y conteos seed estables.
-- Suite backend con perfil `postgres`: 163 tests, 0 fallos, 0 errores y 0
-  omitidos.
-- Newman PostgreSQL se repitio. La primera corrida detecto que el test de
-  ownership de cumplimiento podia seleccionar una resolucion de la misma
-  entidad tras datos acumulados; la seleccion se hizo explicita por entidad
-  distinta para mantener el ensayo reproducible. La corrida final paso con
-  252 requests, 428 assertions, 0 fallos y 0 violaciones Problem Details.
-- Docs Starlight: 40 paginas construidas correctamente.
-
-## Estrategia recomendada por fases
-
-1. **Fase 1 - Preparacion paralela**
-   - Auditoria MySQL -> PostgreSQL.
-   - Script PostgreSQL paralelo.
-   - Sin runtime change.
-
-2. **Fase 2 - Perfil backend PostgreSQL**
-   - Dependencia PostgreSQL agregada.
-   - Perfil `postgres` creado.
-   - Scripts de ejecucion PostgreSQL preparados.
-   - Schema, Hibernate validate y queries sensibles validados contra PostgreSQL local.
-   - MySQL sigue como perfil principal hasta aprobacion.
-
-3. **Fase 3 - Validacion real PostgreSQL**
-   - Completada localmente con `-RunTwice`.
-   - Conteos e idempotencia validados.
-   - Backend iniciado con perfil `postgres`.
-   - Hibernate y JPQL sensible validados.
-   - Workflow y scripts opt-in disponibles.
-   - Case-insensitive resuelto sin extensiones PostgreSQL.
-
-4. **Fase 4 - Migracion de datos**
-   - Preflight, verificacion y regresion seed completados.
-   - Diagnostico sanitizado de las 8 SAIP completado.
-   - Eliminacion trazable del grafo demo/legacy completada.
-   - Preflight MySQL post-delete sin bloqueantes.
-   - ETL propio recomendado y planificado.
-   - Pendiente cargar staging y comparar conteos, claves y relaciones.
-
-5. **Fase 5 - Cutover controlado**
-   - Cambiar entorno de staging a PostgreSQL.
-   - Ejecutar backend, frontend, mobile y Newman.
-   - Congelar escritura si se migra produccion real.
-
-6. **Fase 6 - Document storage**
-   - Modelar metadatos documentales en PostgreSQL.
-   - Integrar Supabase Storage o S3-compatible en PR separado.
-   - No guardar binarios en tablas SAIP/TTAIP salvo decision explicita.
-
-## Confirmaciones de alcance
-
-- No se cambio el runtime principal del backend.
-- No se elimino MySQL.
-- No se agrego storage documental.
-- No se modifico frontend.
-- No se modifico mobile.
-- No se cambiaron reglas de negocio SAIP/TTAIP.
-- No se altero la coleccion ni el environment Newman/Postman; solo se agrego un runner PostgreSQL.
+# PostgreSQL Runtime Migration Audit
+
+## Executive Summary
+
+The controlled database migration is complete for the repository runtime.
+PostgreSQL is now the principal and only supported relational database for
+local, staging and production execution.
+
+The previous MySQL database contained demo data only. No production cutover or
+production data transfer occurred. Eight incomplete legacy demo SAIP records
+were removed before the final PostgreSQL baseline was established; the official
+seed does not recreate their identifiers or invent consent or notification
+channel values.
+
+## Final State
+
+- Official schema: `database/postgres/script_saip_db_postgres.sql`.
+- Backend driver: PostgreSQL only.
+- Default JDBC URL: `jdbc:postgresql://localhost:5432/saip_db`.
+- Hibernate schema policy: `validate`.
+- Spring SQL initialization: disabled.
+- Local/Newman notification mode: `MOCK`.
+- Production notification mode: `SMTP`.
+- MySQL driver, active configuration, schema and operational migration scripts:
+  removed.
+- Document storage: not implemented in this migration.
+
+## Compatibility Decisions
+
+| Concern | PostgreSQL implementation |
+| --- | --- |
+| Generated IDs | `GENERATED BY DEFAULT AS IDENTITY` |
+| Boolean values | Native `BOOLEAN` |
+| Operational timestamps | `TIMESTAMPTZ` |
+| Long text | `TEXT` |
+| Monetary values | `NUMERIC` |
+| Idempotent seed | `ON CONFLICT` |
+| Case-insensitive email/acronym uniqueness | Functional indexes on `lower(...)` |
+| Automatic update timestamps | PostgreSQL trigger function |
+
+No MySQL-specific native query remains in `backend/src/main/java`.
+
+## Validation Baseline
+
+Before making PostgreSQL the default, the migration path validated:
+
+- Schema execution twice without duplicate seed rows.
+- 29 expected tables.
+- Hibernate `validate`.
+- Backend tests against PostgreSQL.
+- Case-insensitive repository behavior.
+- Newman diagnostic against PostgreSQL.
+- Zero invalid consent/channel rows in the PostgreSQL seed.
+
+The scripts under `scripts/postgres/` remain the supported way to recreate,
+verify and regression-test a local or approved staging database.
+
+## Residual Work
+
+- Introduce a versioned migration tool before managing production schema
+  evolution.
+- Define backup, restore, monitoring and retention procedures for the selected
+  PostgreSQL hosting environment.
+- Implement document storage in a separate phase; no Supabase Storage or
+  S3-compatible integration is part of this change.
+
+## Historical Note
+
+The original MySQL-to-PostgreSQL analysis is summarized in
+`database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`. It is historical context,
+not an operational runbook.

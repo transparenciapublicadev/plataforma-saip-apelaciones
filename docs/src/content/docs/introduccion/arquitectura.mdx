@@ -21,7 +21,7 @@ flowchart TB
         Security["Spring Security + JWT"]
     end
 
-    DB[("MySQL")]
+    DB[("PostgreSQL")]
     OpenAPI["/v3/api-docs\nOpenAPI contract"]
 
     subgraph Frontend["frontend/ Angular"]
@@ -185,7 +185,7 @@ Reglas:
 | Lenguaje | Java 25 | TypeScript 5.9 | Kotlin 2.3.10 | MDX |
 | Framework | Spring Boot 4.0.6 | Angular 21.2 | Jetpack Compose | Astro 6 |
 | UI | Swagger UI | Tailwind CSS 4.1 + Lucide + GSAP | Material 3 | Starlight |
-| Persistencia | MySQL + JPA | - | SQLDelight 2.2.1 | - |
+| Persistencia | PostgreSQL + JPA | - | SQLDelight 2.2.1 | - |
 | Seguridad | Spring Security + JWT | Guards + interceptor | JWT + role policy | - |
 | Red | REST JSON | HttpClient | Retrofit 3 + OkHttp 5 | - |
 | Push | - | - | Firebase Cloud Messaging | - |
