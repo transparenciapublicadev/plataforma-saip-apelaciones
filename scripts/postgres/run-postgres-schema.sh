@@ -23,7 +23,7 @@ if [[ "$PGHOST" != "localhost" && "$PGHOST" != "127.0.0.1" && "$PGHOST" != "::1"
 fi
 
 if [[ "$PGDATABASE" =~ [Pp][Rr][Oo][Dd] ]]; then
-  echo "Refusing to run against database '$PGDATABASE'. This script is only for local/staging rehearsal." >&2
+  echo "Refusing to run against database '$PGDATABASE'. This script is only for local/staging schema preparation." >&2
   exit 1
 fi
 
