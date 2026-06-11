@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("postgres")
+@ActiveProfiles("postgres-integration")
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_INTEGRATION_TESTS", matches = "true")
 @Transactional(readOnly = true)
 class PostgresCaseInsensitiveRepositoryIntegrationTest {
