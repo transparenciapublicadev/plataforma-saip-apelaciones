@@ -37,7 +37,7 @@ class LocalStorageProviderTest {
                 "image/png",
                 "image/jpeg",
                 "text/plain"));
-        provider = new LocalStorageProvider(properties);
+        provider = new LocalStorageProvider(properties, new StorageUploadValidator(properties));
     }
 
     @Test
@@ -108,7 +108,7 @@ class LocalStorageProviderTest {
         assertThat(provider.exists(metadata.storageKey())).isFalse();
         assertThatThrownBy(() -> provider.download("../fuera.txt", "text/plain"))
                 .isInstanceOf(StorageException.class)
-                .hasMessageContaining("salir del directorio");
+                .hasMessageContaining("ruta no permitida");
     }
 
     @Test
