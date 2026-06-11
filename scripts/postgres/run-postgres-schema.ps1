@@ -29,7 +29,7 @@ if (-not $isLocalHost -and -not $AllowRemote) {
 }
 
 if ($Database -match "(?i)(prod|production)") {
-    throw "Refusing to run against database name '$Database'. This script is only for local/staging rehearsal."
+    throw "Refusing to run against database name '$Database'. This script is only for local/staging schema preparation."
 }
 
 $resolvedScript = Resolve-Path $ScriptPath

@@ -1,16 +1,13 @@
--- Plataforma SAIP/TTAIP - PostgreSQL parallel schema and local seed
+-- Plataforma SAIP/TTAIP - official PostgreSQL schema and local seed
 -- ---------------------------------------------------------------------------
 -- Purpose:
---   Parallel PostgreSQL script for the controlled MySQL -> PostgreSQL migration.
---   MySQL remains the current backend runtime. This script is intended for
---   validation, future PostgreSQL profiles and local migration rehearsals.
+--   Create the official PostgreSQL schema and idempotent local validation seed.
+--   PostgreSQL is the backend runtime for local, staging and production.
 --
 -- Notes:
 --   - Uses PostgreSQL-native identity columns, boolean, timestamptz, text and
 --     numeric types.
---   - Keeps seed data aligned with database/script_saip_db.sql.
---   - Demo passwords are inherited from the MySQL local seed and are not
---     production credentials.
+--   - Demo credentials are local validation data, never production credentials.
 -- ---------------------------------------------------------------------------
 
 BEGIN;
@@ -26,7 +23,7 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Base tables equivalent to the current JPA/MySQL model.
+-- Base tables aligned with the current JPA model.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -51,8 +48,7 @@ CREATE TABLE IF NOT EXISTS entidades (
     estado VARCHAR(20)
 );
 
--- Preserve the case-insensitive uniqueness provided by the current MySQL
--- collations without requiring the PostgreSQL citext extension.
+-- Preserve case-insensitive uniqueness without requiring the citext extension.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_email_lower
     ON usuarios (lower(email));
 
@@ -595,7 +591,7 @@ CREATE INDEX IF NOT EXISTS idx_dispositivo_push_usuario_estado ON dispositivos_n
 CREATE INDEX IF NOT EXISTS idx_dispositivo_push_device_hash ON dispositivos_notificacion_push (device_id_hash);
 CREATE INDEX IF NOT EXISTS idx_dispositivo_push_flavor ON dispositivos_notificacion_push (app_flavor);
 
--- PostgreSQL equivalent of MySQL ON UPDATE CURRENT_TIMESTAMP.
+-- PostgreSQL triggers for automatic update timestamps.
 DROP TRIGGER IF EXISTS trg_observaciones_solicitud_updated_at ON observaciones_solicitud;
 CREATE TRIGGER trg_observaciones_solicitud_updated_at
 BEFORE UPDATE ON observaciones_solicitud
@@ -652,7 +648,7 @@ BEFORE UPDATE ON dispositivos_notificacion_push
 FOR EACH ROW EXECUTE FUNCTION set_fecha_actualizacion();
 
 -- ---------------------------------------------------------------------------
--- Local seed aligned with database/script_saip_db.sql.
+-- Idempotent local validation seed.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO entidades (nombre, acronimo, descripcion, fecha_registro, activa, direccion, telefono, email, estado)
@@ -816,11 +812,11 @@ SELECT s.expediente, s.asunto, s.descripcion, c.id_usuario, e.id_entidad, s.fech
        s.estado, s.prioridad, s.formato_digital, s.formato_fisico, s.copia_simple, s.copia_certificada,
        s.tipo_informacion, TRUE, s.canal_notificacion
 FROM (VALUES
-    ('SAIP-2025-00001', 'Solicitud de informacion sobre presupuesto institucional', 'Solicito el detalle del presupuesto institucional y su ejecucion del ultimo periodo.', 'ciudadano01@gmail.com', 'MINEDU', CURRENT_TIMESTAMP - INTERVAL '6 days', (CURRENT_DATE + INTERVAL '4 days')::date, 'RECEPCIONADA', 'MEDIA', TRUE, FALSE, TRUE, FALSE, 'Informacion presupuestal', 'CASILLA_ELECTRONICA'),
-    ('SAIP-2025-00002', 'Solicitud de contratos de adquisicion', 'Solicito informacion sobre contratos de adquisicion del ultimo trimestre.', 'ciudadano02@hotmail.com', 'MINSA', CURRENT_TIMESTAMP - INTERVAL '8 days', (CURRENT_DATE + INTERVAL '2 days')::date, 'EN_REVISION', 'ALTA', TRUE, TRUE, TRUE, FALSE, 'Contrataciones del Estado', 'CORREO_ELECTRONICO'),
-    ('SAIP-2025-00003', 'Solicitud de ejecucion de obras publicas', 'Solicito reportes de avance y ejecucion de obras publicas del periodo anual.', 'ciudadano03@outlook.com', 'MININTER', CURRENT_TIMESTAMP - INTERVAL '15 days', (CURRENT_DATE - INTERVAL '2 days')::date, 'RESPONDIDA', 'MEDIA', TRUE, FALSE, TRUE, FALSE, 'Obras publicas', 'CASILLA_ELECTRONICA'),
-    ('SAIP-2025-00004', 'Solicitud de informes disciplinarios', 'Solicito informes disciplinarios emitidos durante el ultimo semestre.', 'ciudadano04@yahoo.com', 'MINJUSDH', CURRENT_TIMESTAMP - INTERVAL '13 days', (CURRENT_DATE - INTERVAL '1 day')::date, 'DENEGADA', 'ALTA', TRUE, FALSE, TRUE, TRUE, 'Informes disciplinarios', 'CASILLA_ELECTRONICA'),
-    ('SAIP-2025-00005', 'Solicitud de actas de comite tecnico', 'Solicito actas y acuerdos del comite tecnico del ultimo bimestre.', 'ciudadano05@gmail.com', 'MEF', CURRENT_TIMESTAMP - INTERVAL '20 days', (CURRENT_DATE - INTERVAL '5 days')::date, 'CONCLUIDA', 'NORMAL', TRUE, TRUE, TRUE, FALSE, 'Actas institucionales', 'FISICA')
+    ('SAIP-2026-10001', 'Solicitud de informacion sobre presupuesto institucional', 'Solicito el detalle del presupuesto institucional y su ejecucion del ultimo periodo.', 'ciudadano01@gmail.com', 'MINEDU', CURRENT_TIMESTAMP - INTERVAL '6 days', (CURRENT_DATE + INTERVAL '4 days')::date, 'RECEPCIONADA', 'MEDIA', TRUE, FALSE, TRUE, FALSE, 'Informacion presupuestal', 'CASILLA_ELECTRONICA'),
+    ('SAIP-2026-10002', 'Solicitud de contratos de adquisicion', 'Solicito informacion sobre contratos de adquisicion del ultimo trimestre.', 'ciudadano02@hotmail.com', 'MINSA', CURRENT_TIMESTAMP - INTERVAL '8 days', (CURRENT_DATE + INTERVAL '2 days')::date, 'EN_REVISION', 'ALTA', TRUE, TRUE, TRUE, FALSE, 'Contrataciones del Estado', 'CORREO_ELECTRONICO'),
+    ('SAIP-2026-10003', 'Solicitud de ejecucion de obras publicas', 'Solicito reportes de avance y ejecucion de obras publicas del periodo anual.', 'ciudadano03@outlook.com', 'MININTER', CURRENT_TIMESTAMP - INTERVAL '15 days', (CURRENT_DATE - INTERVAL '2 days')::date, 'RESPONDIDA', 'MEDIA', TRUE, FALSE, TRUE, FALSE, 'Obras publicas', 'CASILLA_ELECTRONICA'),
+    ('SAIP-2026-10004', 'Solicitud de informes disciplinarios', 'Solicito informes disciplinarios emitidos durante el ultimo semestre.', 'ciudadano04@yahoo.com', 'MINJUSDH', CURRENT_TIMESTAMP - INTERVAL '13 days', (CURRENT_DATE - INTERVAL '1 day')::date, 'DENEGADA', 'ALTA', TRUE, FALSE, TRUE, TRUE, 'Informes disciplinarios', 'CASILLA_ELECTRONICA'),
+    ('SAIP-2026-10005', 'Solicitud de actas de comite tecnico', 'Solicito actas y acuerdos del comite tecnico del ultimo bimestre.', 'ciudadano05@gmail.com', 'MEF', CURRENT_TIMESTAMP - INTERVAL '20 days', (CURRENT_DATE - INTERVAL '5 days')::date, 'CONCLUIDA', 'NORMAL', TRUE, TRUE, TRUE, FALSE, 'Actas institucionales', 'FISICA')
 ) AS s(expediente, asunto, descripcion, ciudadano_email, entidad_acronimo, fecha_presentacion, fecha_limite, estado, prioridad, formato_digital, formato_fisico, copia_simple, copia_certificada, tipo_informacion, canal_notificacion)
 JOIN usuarios u ON u.email = s.ciudadano_email
 JOIN ciudadanos c ON c.id_usuario = u.id_usuario
@@ -839,8 +835,8 @@ ON CONFLICT (expediente) DO UPDATE SET
 INSERT INTO respuestas (id_solicitud, id_funcionario, tipo_respuesta, contenido, causal_denegatoria, fundamento_legal, fecha_respuesta, decision)
 SELECT s.id_solicitud, f.id_usuario, r.tipo_respuesta, r.contenido, r.causal_denegatoria, r.fundamento_legal, r.fecha_respuesta, r.decision
 FROM (VALUES
-    ('SAIP-2025-00003', 'func.mininter@mininter.gob.pe', 'ENTREGA_TOTAL', 'Se entrega la informacion solicitada en formato digital, con detalle de obras y avances.', NULL::varchar, NULL::text, CURRENT_TIMESTAMP - INTERVAL '3 days', 'aceptar'),
-    ('SAIP-2025-00004', 'func.minjusdh@minjusdh.gob.pe', 'DENEGACION_TOTAL', 'No es posible atender la solicitud por tratarse de informacion clasificada.', 'Informacion vinculada a investigaciones en tramite', 'Articulo 15-B de la Ley 27806', CURRENT_TIMESTAMP - INTERVAL '2 days', 'denegar')
+    ('SAIP-2026-10003', 'func.mininter@mininter.gob.pe', 'ENTREGA_TOTAL', 'Se entrega la informacion solicitada en formato digital, con detalle de obras y avances.', NULL::varchar, NULL::text, CURRENT_TIMESTAMP - INTERVAL '3 days', 'aceptar'),
+    ('SAIP-2026-10004', 'func.minjusdh@minjusdh.gob.pe', 'DENEGACION_TOTAL', 'No es posible atender la solicitud por tratarse de informacion clasificada.', 'Informacion vinculada a investigaciones en tramite', 'Articulo 15-B de la Ley 27806', CURRENT_TIMESTAMP - INTERVAL '2 days', 'denegar')
 ) AS r(expediente, funcionario_email, tipo_respuesta, contenido, causal_denegatoria, fundamento_legal, fecha_respuesta, decision)
 JOIN solicitudes s ON s.expediente = r.expediente
 JOIN usuarios uf ON uf.email = r.funcionario_email
@@ -859,9 +855,9 @@ SELECT a.expediente, a.fundamentos, a.estado, a.resultado, a.calificacion_primer
        s.id_solicitud, s.id_ciudadano, a.fecha_apelacion, a.fecha_subsanacion, a.dias_subsanacion,
        'SAIP_INTERNA', s.id_entidad
 FROM (VALUES
-    ('01560-2025-JUS/TTAIP', 'SAIP-2025-00004', 'Apelo la denegatoria por considerar que la informacion es de interes publico y no se acredito excepcion legal suficiente.', 'EN_RESOLUCION', NULL::varchar, 'ADMISIBLE', NULL::varchar, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL::date, NULL::integer),
-    ('01561-2025-JUS/TTAIP', 'SAIP-2025-00005', 'Se presentan fundamentos adicionales para subsanar las observaciones notificadas por el Tribunal.', 'EN_CALIFICACION_2', NULL::varchar, 'INADMISIBLE', NULL::varchar, CURRENT_TIMESTAMP - INTERVAL '4 days', CURRENT_DATE, 2),
-    ('01562-2025-JUS/TTAIP', 'SAIP-2025-00003', 'Apelo la respuesta emitida y adjunto subsanacion para que el Tribunal emita pronunciamiento de fondo.', 'RESUELTO_FUNDADO_EN_PARTE', 'FUNDADO_EN_PARTE', 'INADMISIBLE', 'ADMITIDO', CURRENT_TIMESTAMP - INTERVAL '18 days', (CURRENT_DATE - INTERVAL '12 days')::date, 2)
+    ('01560-2025-JUS/TTAIP', 'SAIP-2026-10004', 'Apelo la denegatoria por considerar que la informacion es de interes publico y no se acredito excepcion legal suficiente.', 'EN_RESOLUCION', NULL::varchar, 'ADMISIBLE', NULL::varchar, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL::date, NULL::integer),
+    ('01561-2025-JUS/TTAIP', 'SAIP-2026-10005', 'Se presentan fundamentos adicionales para subsanar las observaciones notificadas por el Tribunal.', 'EN_CALIFICACION_2', NULL::varchar, 'INADMISIBLE', NULL::varchar, CURRENT_TIMESTAMP - INTERVAL '4 days', CURRENT_DATE, 2),
+    ('01562-2025-JUS/TTAIP', 'SAIP-2026-10003', 'Apelo la respuesta emitida y adjunto subsanacion para que el Tribunal emita pronunciamiento de fondo.', 'RESUELTO_FUNDADO_EN_PARTE', 'FUNDADO_EN_PARTE', 'INADMISIBLE', 'ADMITIDO', CURRENT_TIMESTAMP - INTERVAL '18 days', (CURRENT_DATE - INTERVAL '12 days')::date, 2)
 ) AS a(expediente, solicitud_expediente, fundamentos, estado, resultado, calificacion_primera, calificacion_segunda, fecha_apelacion, fecha_subsanacion, dias_subsanacion)
 JOIN solicitudes s ON s.expediente = a.solicitud_expediente
 ON CONFLICT (expediente) DO UPDATE SET
