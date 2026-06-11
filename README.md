@@ -110,6 +110,7 @@ flowchart TB
 | Framework | Spring Boot 4.0.0 |
 | API | Spring Web MVC, REST JSON |
 | Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ |
+| Documentos | Metadatos en PostgreSQL + `StorageProvider` local configurable |
 | Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
 | Validación | Jakarta Bean Validation |
 | Documentación API | springdoc-openapi, Swagger UI |
@@ -481,6 +482,16 @@ Variables relevantes:
 | `JWT_SECRET` | Solo desarrollo local |
 | `JWT_EXPIRATION_MS` | `86400000` |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
+| `APP_STORAGE_PROVIDER` | `local` |
+| `APP_STORAGE_LOCAL_BASE_PATH` | `${user.home}/.saip-storage`; configurar externamente en producción |
+| `APP_STORAGE_MAX_FILE_SIZE` | `10485760` bytes |
+| `APP_STORAGE_MAX_REQUEST_SIZE` | `11534336` bytes para archivo y overhead multipart |
+| `APP_STORAGE_ALLOWED_CONTENT_TYPES` | PDF, PNG, JPEG y texto plano |
+
+PostgreSQL almacena únicamente metadatos documentales. Los binarios se escriben
+fuera del repositorio mediante `StorageProvider`; la implementación actual es
+local y genera claves opacas sin nombres originales ni datos personales. La
+integración Supabase/S3-compatible queda para una fase posterior.
 
 ### Newman reproducible
 
@@ -608,13 +619,14 @@ flowchart LR
 | `docs/` | Sitio técnico y funcional con Astro + Starlight. |
 | `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
 | `database/postgres/script_saip_db_postgres.sql` | Schema PostgreSQL oficial y seed local idempotente. |
+| `StorageProvider` | Abstracción backend para mantener binarios fuera de PostgreSQL y del repositorio. |
 | `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
 
 ## Roadmap técnico sugerido
 
 | Área | Próxima mejora |
 | --- | --- |
-| Backend | Incorporar migraciones versionadas y ampliar pruebas de integración de ownership por flujo legal. |
+| Backend | Incorporar migraciones versionadas y un provider Supabase/S3-compatible con credenciales externas. |
 | Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
 | Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
 | Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |

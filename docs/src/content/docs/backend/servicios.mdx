@@ -5,7 +5,7 @@ description: Capa de servicios del backend — lógica de negocio, transacciones
 
 import { Card, CardGrid, Tabs, TabItem, Badge, Steps } from '@astrojs/starlight/components';
 
-El backend cuenta con **15 servicios** que implementan toda la lógica de negocio de la plataforma SAIP.
+El backend separa la lógica de negocio de la infraestructura documental mediante servicios transaccionales y providers configurables.
 
 ## Inventario de Servicios
 
@@ -32,12 +32,29 @@ El backend cuenta con **15 servicios** que implementan toda la lógica de negoci
     | Servicio | Responsabilidad |
     |----------|-----------------|
     | `EntidadService` | CRUD entidades públicas |
-    | `DocumentoService` | Gestión de documentos adjuntos |
-    | `FileStorageService` | Almacenamiento físico de archivos |
+    | `DocumentoService` | Ownership y persistencia de metadatos documentales |
+    | `StorageProvider` | Contrato para upload, download, existencia y eliminación |
+    | `LocalStorageProvider` | Binarios locales fuera del repositorio con claves opacas |
     | `JwtService` | Generación y validación de tokens JWT |
     | `CustomUserDetailsService` | Carga de usuario para Spring Security |
   </TabItem>
 </Tabs>
+
+## Almacenamiento Documental
+
+`DocumentoService` guarda en PostgreSQL solamente metadatos: nombre original
+sanitizado, MIME type, tamaño, SHA-256, provider, clave opaca, estado, actor,
+fechas y relación SAIP/TTAIP. No existe una columna binaria en `documentos`.
+
+`LocalStorageProvider` valida tamaño, extensión, tipo y firma básica del
+contenido antes de escribir. La clave física usa UUID y nunca reutiliza el
+nombre original. Las descargas se solicitan por ID documental, pasan por
+ownership y no exponen bucket, `storageKey` ni rutas absolutas.
+
+:::caution[Provider externo pendiente]
+La interfaz permite incorporar Supabase Storage o S3-compatible después, pero
+esta fase no incluye credenciales ni integración externa.
+:::
 
 ## Servicios Críticos
 
