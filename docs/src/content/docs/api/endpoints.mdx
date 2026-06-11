@@ -34,6 +34,7 @@ graph LR
     Respuestas["/respuestas\nRespuesta entidad"]
     Apelaciones["/apelaciones\nRecurso TTAIP"]
     TTAIP["/ttaip\nCalificacion y resolucion"]
+    Documentos["/documentos\nMetadatos y binarios externos"]
     Stats["/estadisticas\nMetricas"]
     Reportes["/reportes\nExportables"]
     Publico["/public\nPortal y ayuda"]
@@ -44,6 +45,8 @@ graph LR
     Solicitudes --> Respuestas
     Respuestas --> Apelaciones
     Apelaciones --> TTAIP
+    Solicitudes --> Documentos
+    TTAIP --> Documentos
     Solicitudes --> Stats
     Apelaciones --> Stats
     Stats --> Reportes
@@ -299,6 +302,27 @@ graph LR
     | `UsuarioRestController` | `POST` | `/usuarios` | Crear usuario por rol. |
     | `UsuarioRestController` | `PATCH` | `/usuarios/{id}/estado` | Activar/desactivar usuario. |
     | `UsuarioRestController` | `DELETE` | `/usuarios/{id}` | Eliminar usuario. |
+  </TabItem>
+
+  <TabItem label="Documentos">
+    **`DocumentoRestController`** — `/api/documentos`
+
+    | Método | Ruta | Uso principal | Auth |
+    | --- | --- | --- | --- |
+    | `POST` | `/documentos/upload` | Carga un archivo y registra metadatos asociados a un único recurso. | JWT + ownership |
+    | `GET` | `/documentos/{id}/metadata` | Consulta metadatos sin exponer ruta, bucket ni clave interna. | JWT + ownership |
+    | `GET` | `/documentos/{id}/download` | Descarga autenticada del binario. | JWT + ownership |
+    | `DELETE` | `/documentos/{id}` | Elimina el objeto y conserva el metadato como `ELIMINADO`. | ADMIN |
+
+    La carga usa `multipart/form-data`: parte `file`, parámetro
+    `tipoDocumento` y exactamente uno entre `solicitudId`, `apelacionId`,
+    `expedienteTtaipId`, `resolucionId` o `cedulaNotificacionId`.
+
+    :::caution[Storage interno]
+    PostgreSQL almacena solo metadatos y SHA-256. Las respuestas nunca incluyen
+    `storageKey`, bucket ni rutas físicas. La implementación actual es local
+    configurable; S3/Supabase Storage permanece fuera de alcance.
+    :::
   </TabItem>
 
   <TabItem label="Analítica">
