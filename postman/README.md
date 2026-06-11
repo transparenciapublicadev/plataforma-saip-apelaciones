@@ -40,7 +40,7 @@ Every run writes artifacts to `postman/reports/`:
 - `credenciales incorrectas`: login credentials or role/token mismatch.
 - `token faltante`: protected requests ran before a valid login token was captured.
 - `IDs inexistentes`: environment IDs or expediente values do not exist in the loaded database.
-- `seed SQL desalineado`: collection assumes data not produced by `database/script_saip_db.sql`.
+- `seed SQL desalineado`: collection assumes data not produced by `database/postgres/script_saip_db_postgres.sql`.
 - `payload inválido`: request body/query does not match backend validation.
 - `regla de negocio`: valid request rejected by domain state, dates, ownership or transition rules.
 - `backend no disponible`: Newman could not connect to `baseUrl` or the API process is not running.
@@ -84,24 +84,23 @@ remote hosts and require an explicit confirmation flag.
 PowerShell:
 
 ```powershell
+$env:PGHOST='localhost'
+$env:PGPORT='5432'
+$env:PGDATABASE='saip_db'
+$env:PGUSER='<local-user>'
+$env:PGPASSWORD='<local-password>'
 .\scripts\reset-local-db.ps1 -ConfirmReset
-cd backend
-.\mvnw.cmd spring-boot:run
-# Stop the backend after Hibernate creates the schema.
-Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
 ```
 
 Bash:
 
 ```bash
+export PGHOST=localhost PGPORT=5432 PGDATABASE=saip_db PGUSER='<local-user>'
+export PGPASSWORD='<local-password>'
 CONFIRM_RESET=YES ./scripts/reset-local-db.sh
-cd backend
-./mvnw spring-boot:run
-# Stop the backend after Hibernate creates the schema.
-mysql -u root -p saip_db < ../database/script_saip_db.sql
 ```
 
-Restart the backend with `APP_NOTIFICATIONS_MODE=MOCK` and execute
+Start the default PostgreSQL backend with `APP_NOTIFICATIONS_MODE=MOCK` and execute
 `npm run test:api:diagnostic`. The versioned environment intentionally stores
 empty JWT values; login requests populate tokens only in memory during a run.
 
