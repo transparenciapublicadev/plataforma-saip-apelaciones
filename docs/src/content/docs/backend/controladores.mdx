@@ -23,6 +23,7 @@ El catálogo exhaustivo de rutas, ejemplos y flujo end-to-end vive en [API Endpo
 | `RespuestaRestController` | `/api/respuestas` | 7 | Respuestas de entidad, entrega, denegación y causales. |
 | `ApelacionRestController` | `/api/apelaciones` | 13 | Creación interna/externa, consulta, subsanación y estados de apelaciones. |
 | `TTAIPRestController` | `/api/ttaip` | 22 | Calificación, notificación y resolución final TTAIP. |
+| `DocumentoRestController` | `/api/documentos` | 4 | Upload, metadatos, descarga con ownership y eliminación administrativa. |
 | `EstadisticasRestController` | `/api/estadisticas` | 7 | Indicadores globales, ranking y tendencias. |
 | `ReportesRestController` | `/api/reportes` | 6 | Reportes operativos y resumen ejecutivo. |
 | `PortalPublicoRestController` | `/api/public/portal` | 1 | Datos de portada pública. |
@@ -37,11 +38,14 @@ flowchart TB
     Catalogos["Catalogos\nciudadanos, entidades, funcionarios, usuarios"]
     SAIP["Primera instancia\n/solicitudes + /respuestas"]
     TTAIP["Segunda instancia\n/apelaciones + /ttaip"]
+    Documentos["Documentos\n/documentos"]
     Analitica["Analitica\n/estadisticas + /reportes"]
 
     Publico --> SAIP
     Catalogos --> SAIP
     SAIP --> TTAIP
+    SAIP --> Documentos
+    TTAIP --> Documentos
     SAIP --> Analitica
     TTAIP --> Analitica
 ```
@@ -113,6 +117,19 @@ flowchart TB
     | Entidad | Nombre/acrónimo, estado activo y estadísticas de cumplimiento. |
     | Funcionario | Entidad asociada, cargo, área y estado activo. |
     | Usuario | Rol, activación/desactivación y eliminación controlada. |
+  </TabItem>
+
+  <TabItem label="Documentos">
+    ### Metadatos y storage
+
+    `DocumentoRestController` conserva metadatos en PostgreSQL y delega los
+    binarios al `StorageProvider` activo. La API no expone rutas físicas,
+    buckets ni claves internas.
+
+    - `POST /documentos/upload`: carga multipart asociada exactamente a un recurso SAIP/TTAIP accesible.
+    - `GET /documentos/{id}/metadata`: metadatos sanitizados con ownership.
+    - `GET /documentos/{id}/download`: descarga autenticada como attachment.
+    - `DELETE /documentos/{id}`: eliminación física y baja lógica del metadato, solo administrador.
   </TabItem>
 
   <TabItem label="Analítica">

@@ -16,12 +16,12 @@ public record DocumentoDTO(
     public static DocumentoDTO from(Documento d) {
         return new DocumentoDTO(
             d.getId(),
-            d.getNombreArchivo(),
-            d.getRutaArchivo(),
-            d.getTipoArchivo(),
-            d.getTamanio(),
+            d.getNombreOriginal(),
+            null,
+            d.getContentType(),
+            d.getSizeBytes(),
             d.getTipoDocumento() != null ? d.getTipoDocumento().name() : null,
-            d.getFechaSubida() != null ? d.getFechaSubida().toString() : null
+            d.getFechaCreacion() != null ? d.getFechaCreacion().toString() : null
         );
     }
 }

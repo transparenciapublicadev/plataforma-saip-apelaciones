@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("postgres-integration")
 @EnabledIfEnvironmentVariable(named = "RUN_POSTGRES_INTEGRATION_TESTS", matches = "true")
-@Transactional(readOnly = true)
+@Transactional
 class PostgresCaseInsensitiveRepositoryIntegrationTest {
 
     @Autowired
@@ -53,5 +53,53 @@ class PostgresCaseInsensitiveRepositoryIntegrationTest {
                 """, Integer.class);
 
         assertThat(total).isEqualTo(2);
+    }
+
+    @Test
+    void persisteMetadatosDocumentalesSinGuardarBinarios() {
+        Long documentoId = jdbcTemplate.queryForObject("""
+                insert into documentos (
+                    nombre_archivo,
+                    ruta_archivo,
+                    tipo_archivo,
+                    tamanio,
+                    hash_sha256,
+                    storage_provider,
+                    storage_bucket,
+                    tipo_documento,
+                    estado,
+                    id_creado_por,
+                    id_solicitud
+                )
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                returning id_documento
+                """,
+                Long.class,
+                "documento-prueba.pdf",
+                "2026/06/00000000-0000-0000-0000-000000000001.pdf",
+                "application/pdf",
+                128L,
+                "a".repeat(64),
+                "LOCAL",
+                "local",
+                "DOCUMENTO_ADJUNTO",
+                "ACTIVO",
+                1L,
+                1L);
+
+        String hash = jdbcTemplate.queryForObject(
+                "select hash_sha256 from documentos where id_documento = ?",
+                String.class,
+                documentoId);
+        Integer binaryColumns = jdbcTemplate.queryForObject("""
+                select count(*)
+                from information_schema.columns
+                where table_schema = 'public'
+                  and table_name = 'documentos'
+                  and data_type = 'bytea'
+                """, Integer.class);
+
+        assertThat(hash).isEqualTo("a".repeat(64));
+        assertThat(binaryColumns).isZero();
     }
 }

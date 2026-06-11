@@ -40,6 +40,11 @@ oficial es `database/postgres/script_saip_db_postgres.sql`; Hibernate usa
 | `APP_NOTIFICATIONS_PUSH_ENABLED` | Mantener `false` hasta Firebase Admin real. | No |
 | `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account. | Solo con FCM real |
 | `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Clave AES externa para tokens push. | Solo con FCM real |
+| `APP_STORAGE_PROVIDER` | Provider documental. En esta fase: `local`. | No (default local) |
+| `APP_STORAGE_LOCAL_BASE_PATH` | Directorio externo para binarios. | Sí con provider local en producción |
+| `APP_STORAGE_MAX_FILE_SIZE` | Máximo en bytes por archivo. | No (default 10 MiB) |
+| `APP_STORAGE_MAX_REQUEST_SIZE` | Máximo del request multipart completo. | No (default 11 MiB) |
+| `APP_STORAGE_ALLOWED_CONTENT_TYPES` | Allowlist MIME separada por comas. | No |
 
 :::danger[Secretos]
 No versionar passwords, JWT, `.env`, service accounts ni claves de cifrado.
@@ -87,14 +92,34 @@ cd backend
 No se necesita un perfil PostgreSQL especial: la configuración base ya usa
 PostgreSQL.
 
+## Documentos
+
+PostgreSQL guarda únicamente metadatos documentales. El provider local escribe
+binarios fuera del repositorio y usa como default de desarrollo
+`${user.home}/.saip-storage`. En producción, `APP_STORAGE_LOCAL_BASE_PATH` debe
+apuntar a un volumen externo con permisos mínimos para el proceso backend.
+
+Tipos permitidos por defecto:
+
+- `application/pdf`
+- `image/png`
+- `image/jpeg`
+- `text/plain`
+
+La API valida tamaño, extensión, tipo y firma básica, calcula SHA-256 y genera
+una clave UUID. No expone rutas absolutas, bucket ni `storageKey`. Supabase
+Storage/S3-compatible no está integrado todavía y no se deben versionar
+credenciales ni archivos subidos.
+
 ## Producción
 
 <Steps>
 1. Aprovisionar PostgreSQL y ejecutar el schema mediante un proceso controlado.
 2. Cargar BD, JWT, CORS y SMTP desde variables o un gestor de secretos.
-3. Ejecutar tests y Newman contra staging.
-4. Iniciar con `SPRING_PROFILES_ACTIVE=prod`.
-5. Verificar salud, logs y ownership antes de exponer tráfico.
+3. Aprovisionar el volumen documental y definir `APP_STORAGE_LOCAL_BASE_PATH`.
+4. Ejecutar tests y Newman contra staging.
+5. Iniciar con `SPRING_PROFILES_ACTIVE=prod`.
+6. Verificar salud, logs y ownership antes de exponer tráfico.
 </Steps>
 
 Ejemplo:
@@ -137,5 +162,6 @@ deshabilitado hasta integrar Firebase Admin con credenciales externas.
 - Arrancar sin perfil especial y validar `/v3/api-docs`.
 - Ejecutar Newman con `APP_NOTIFICATIONS_MODE=MOCK`.
 - En producción usar `ddl-auto=validate`, `spring.sql.init.mode=never` y secretos externos.
+- Confirmar que la ruta documental está fuera del checkout y no es servida directamente por el web server.
 - Mantener OpenAPI/Swagger deshabilitados en producción salvo aprobación operativa.
 - No versionar dumps, reports, logs, builds ni credenciales.

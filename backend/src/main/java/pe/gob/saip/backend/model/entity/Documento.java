@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import pe.gob.saip.backend.storage.StorageProviderType;
 
 import java.time.LocalDateTime;
 
@@ -22,43 +25,94 @@ public class Documento {
 
     @NotBlank(message = "El nombre del archivo no puede estar vacío")
     @Column(name = "nombre_archivo", nullable = false, length = 255)
-    private String nombreArchivo;
+    private String nombreOriginal;
 
     @Column(name = "ruta_archivo", nullable = false, length = 500)
-    private String rutaArchivo;
+    private String storageKey;
 
-    @Column(name = "tipo_archivo", length = 50)
-    private String tipoArchivo;
+    @Column(name = "tipo_archivo", nullable = false, length = 150)
+    private String contentType;
 
     @Column(name = "tamanio")
-    private Long tamanio;
+    private Long sizeBytes;
+
+    @Column(name = "hash_sha256", length = 64)
+    private String hashSha256;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "storage_provider", nullable = false, length = 30)
+    private StorageProviderType storageProvider;
+
+    @Column(name = "storage_bucket", length = 120)
+    private String storageBucket;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_documento", length = 30)
     private TipoDocumento tipoDocumento;
 
-    @Column(name = "fecha_subida", nullable = false)
-    private LocalDateTime fechaSubida;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private EstadoDocumento estado;
 
-    @ManyToOne
+    @Column(name = "fecha_subida", nullable = false)
+    private LocalDateTime fechaCreacion;
+
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_creado_por")
+    private Usuario creadoPor;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_solicitud")
     private Solicitud solicitud;
 
-    @ManyToOne
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_respuesta")
     private Respuesta respuesta;
 
-    @ManyToOne
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_apelacion")
     private Apelacion apelacion;
 
-    @ManyToOne
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_resolucion")
     private Resolucion resolucion;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_expediente_ttaip")
+    private ExpedienteTtaip expedienteTtaip;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cedula")
+    private CedulaNotificacion cedulaNotificacion;
+
     @PrePersist
     protected void onCreate() {
-        fechaSubida = LocalDateTime.now();
+        fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();
+        fechaActualizacion = fechaCreacion;
+        storageProvider = storageProvider != null ? storageProvider : StorageProviderType.LOCAL;
+        estado = estado != null ? estado : EstadoDocumento.ACTIVO;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        fechaActualizacion = LocalDateTime.now();
     }
 
     public enum TipoDocumento {
@@ -66,18 +120,27 @@ public class Documento {
         RESPUESTA_ENTIDAD,
         RECURSO_APELACION,
         RESOLUCION_TTAIP,
+        CEDULA_NOTIFICACION,
+        EXPEDIENTE_ADMINISTRATIVO,
+        INFORME,
         DOCUMENTO_ADJUNTO,
-        SUBSANACION
+        SUBSANACION,
+        OTRO
+    }
+
+    public enum EstadoDocumento {
+        ACTIVO,
+        ELIMINADO
     }
 
     public String getTamanioLegible() {
-        if (tamanio == null) {
+        if (sizeBytes == null) {
             return "N/D";
         }
 
-        double size = tamanio.doubleValue();
+        double size = sizeBytes.doubleValue();
         if (size < 1024) {
-            return tamanio + " B";
+            return sizeBytes + " B";
         }
 
         size /= 1024.0;
