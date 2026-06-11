@@ -23,7 +23,9 @@ channel values.
 - Production notification mode: `SMTP`.
 - MySQL driver, active configuration, schema and operational migration scripts:
   removed.
-- Document storage: not implemented in this migration.
+- Document metadata: persisted in PostgreSQL without binary columns.
+- Document binaries: delegated to `StorageProvider`; the current implementation
+  is local and configurable outside the repository.
 
 ## Compatibility Decisions
 
@@ -61,8 +63,9 @@ verify and regression-test a local or approved staging database.
   evolution.
 - Define backup, restore, monitoring and retention procedures for the selected
   PostgreSQL hosting environment.
-- Implement document storage in a separate phase; no Supabase Storage or
-  S3-compatible integration is part of this change.
+- Implement the Supabase Storage or S3-compatible provider with externally
+  managed credentials. The local provider remains the only implementation in
+  this phase.
 
 ## Historical Note
 

@@ -211,12 +211,20 @@ Resolución emitida por un miembro del TTAIP sobre una apelación.
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `id` | `Long` | PK |
-| `nombreArchivo` | `String` | — |
-| `rutaArchivo` | `String` | — |
-| `tipoArchivo` | `String` | MIME type |
-| `tamanio` | `Long` | Bytes |
-| `tipoDocumento` | `TipoDocumento` | Enum (6 valores) |
-| `fechaSubida` | `LocalDateTime` | Auto-set |
+| `nombreOriginal` | `String` | Nombre sanitizado solo para presentación |
+| `contentType` | `String` | MIME type validado |
+| `sizeBytes` | `Long` | Tamaño real |
+| `hashSha256` | `String` | Integridad del contenido |
+| `storageProvider` | `StorageProviderType` | Provider físico |
+| `storageKey` | `String` | Clave opaca interna, nunca expuesta por API |
+| `estado` | `EstadoDocumento` | `ACTIVO` o `ELIMINADO` |
+| `creadoPor` | `Usuario` | Actor autenticado |
+| `fechaCreacion` | `LocalDateTime` | Auto-set |
+| `fechaActualizacion` | `LocalDateTime` | Auditoría |
+| Relaciones | Entidades SAIP/TTAIP | Una relación de negocio por documento |
+
+PostgreSQL conserva metadatos, no binarios. La ubicación física se resuelve
+mediante `StorageProvider`.
 
 ## Enumeraciones
 
