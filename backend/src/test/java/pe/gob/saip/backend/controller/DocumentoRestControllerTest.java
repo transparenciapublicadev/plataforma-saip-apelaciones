@@ -102,6 +102,22 @@ class DocumentoRestControllerTest {
                         "El contenido del archivo no corresponde al tipo declarado"));
     }
 
+    @Test
+    void providerFailureReturnsGenericProblemDetailsWithoutLeakingInternalMessage() throws Exception {
+        when(documentoService.descargar(8L)).thenThrow(new StorageException(
+                StorageException.Reason.IO_ERROR,
+                "Provider failure at private endpoint"));
+
+        mockMvc.perform(get("/api/documentos/8/download"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Internal server error"))
+                .andExpect(jsonPath("$.detail").value(
+                        "No fue posible completar la operación documental."))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        containsString("private endpoint"))));
+    }
+
     private DocumentoMetadataDTO metadata() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 11, 10, 0);
         return new DocumentoMetadataDTO(
