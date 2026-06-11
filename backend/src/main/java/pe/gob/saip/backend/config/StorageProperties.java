@@ -24,10 +24,22 @@ public class StorageProperties {
             "image/jpeg",
             "text/plain"));
     private final Local local = new Local();
+    private final S3 s3 = new S3();
 
     @Getter
     @Setter
     public static class Local {
         private String basePath;
+    }
+
+    @Getter
+    @Setter
+    public static class S3 {
+        private String endpoint;
+        private String region = "us-east-1";
+        private String bucket;
+        private String accessKey;
+        private String secretKey;
+        private boolean forcePathStyle = true;
     }
 }
