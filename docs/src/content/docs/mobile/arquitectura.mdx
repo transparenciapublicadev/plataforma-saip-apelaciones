@@ -17,7 +17,7 @@ flowchart TB
     Network["core/network/\nRetrofit\nOkHttp\nDTOs\nJWT interceptor"]
     Database["core/database/\nSQLDelight cache"]
     Common["core/common/\nUtilidades compartidas"]
-    Backend["Spring Boot API\nMySQL + JWT"]
+    Backend["Spring Boot API\nPostgreSQL + JWT"]
     FCM["Firebase Cloud Messaging\nsolo push"]
 
     App --> Domain
@@ -141,7 +141,7 @@ flowchart TB
 | Restricción | Motivo |
 | --- | --- |
 | No usar Firebase Auth | La autenticación oficial es Spring Boot + JWT. |
-| No usar Firestore | MySQL detrás del backend es la fuente de verdad. |
+| No usar Firestore | PostgreSQL detrás del backend es la fuente de verdad. |
 | No app administrador | Admin se gestiona en frontend web. |
 | No XML Views | UI en Jetpack Compose. |
 | No múltiples Activities por flujo | Navegación single-Activity con Navigation 3. |

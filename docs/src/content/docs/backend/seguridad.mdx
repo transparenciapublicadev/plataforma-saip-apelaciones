@@ -266,8 +266,8 @@ boolean matches = passwordEncoder.matches(
 
 | Variable | Uso | Default (solo dev) |
 |----------|-----|-------------------|
-| `DB_USERNAME` | Usuario MySQL | `root` |
-| `DB_PASSWORD` | Contraseña MySQL | Fallback local; sobrescribir en despliegues |
+| `DB_USERNAME` | Usuario PostgreSQL | `postgres` local |
+| `DB_PASSWORD` | Contraseña PostgreSQL | Sin fallback versionado; definir externamente |
 | `JWT_SECRET` | Clave HMAC-SHA para JWT | Fallback local no productivo; sobrescribir en despliegues |
 
 ```properties

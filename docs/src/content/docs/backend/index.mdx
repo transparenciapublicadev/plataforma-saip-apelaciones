@@ -1,6 +1,6 @@
 ---
 title: Backend — Visión General
-description: Módulo API REST con Spring Boot 4, Java 25, MySQL y Spring Security para la Plataforma SAIP.
+description: Módulo API REST con Spring Boot 4, Java 25, PostgreSQL y Spring Security para la Plataforma SAIP.
 ---
 
 import { Card, CardGrid, LinkCard, Tabs, TabItem, Steps, FileTree, Badge } from '@astrojs/starlight/components';
@@ -16,8 +16,8 @@ El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST
   <Card title="Java 25" icon="seti:java">
     Versión configurada en `backend/pom.xml` mediante `java.version`.
   </Card>
-  <Card title="MySQL + JPA" icon="seti:db">
-    Spring Data JPA con Hibernate y dialecto `MySQLDialect`. DDL auto-update en desarrollo.
+  <Card title="PostgreSQL + JPA" icon="seti:db">
+    Spring Data JPA con Hibernate, `PostgreSQLDialect` y schema validado.
   </Card>
   <Card title="Spring Security" icon="approve-check-circle">
     JWT (JJWT 0.12.6) + BCrypt(12) + autorización basada en roles.
@@ -32,7 +32,7 @@ El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST
 | **Package base** | `pe.gob.saip.backend` |
 | **Build tool** | Maven Wrapper (`mvnw`) |
 | **Java version** | 25 |
-| **Base de datos** | MySQL (`saip_db`) |
+| **Base de datos** | PostgreSQL (`saip_db`) |
 | **OpenAPI** | `/v3/api-docs` |
 
 ## Estructura del Proyecto
@@ -80,14 +80,16 @@ El módulo **backend** es el corazón de la Plataforma SAIP. Expone una API REST
 ## Ejecutar el Backend
 
 ```bash
-# Requisito: MySQL corriendo en localhost:3306/saip_db
+# Requisito: PostgreSQL preparado con el schema oficial en localhost:5432/saip_db
 cd backend
 ./mvnw spring-boot:run        # Linux/macOS
 .\mvnw.cmd spring-boot:run    # Windows
 ```
 
 :::note
-`application.properties` conserva fallbacks exclusivamente locales para `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET`. En cualquier despliegue, sobrescribir obligatoriamente `DB_PASSWORD` y `JWT_SECRET` mediante variables de entorno o un gestor de secretos.
+`application.properties` conserva fallbacks locales para URL/usuario y JWT. La
+contraseña PostgreSQL no tiene valor versionado; definir `DB_PASSWORD`
+externamente. En cualquier despliegue, externalizar también `JWT_SECRET`.
 :::
 
 ## Secciones de esta Guía

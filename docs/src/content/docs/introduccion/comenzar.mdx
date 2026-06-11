@@ -11,7 +11,7 @@ import { Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/compone
 
 <CardGrid>
   <Card title="Backend" icon="setting">
-    JDK 25 según `backend/pom.xml`, Maven Wrapper incluido y MySQL disponible.
+    JDK 25, Maven Wrapper, PostgreSQL 16+ y cliente `psql`.
   </Card>
   <Card title="Frontend" icon="laptop">
     Node compatible con Angular 21, npm 11.6.x y backend disponible para sincronizar OpenAPI.
@@ -27,7 +27,7 @@ import { Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/compone
 ## Orden Recomendado
 
 <Steps>
-1. Levantar MySQL y preparar la base de datos `saip_db`.
+1. Levantar PostgreSQL y ejecutar el schema oficial con `run-postgres-schema`.
 2. Ejecutar backend y validar `/v3/api-docs`.
 3. Sincronizar contrato OpenAPI si hubo cambios de API.
 4. Ejecutar frontend Angular.
@@ -47,7 +47,7 @@ Variables habituales:
 
 | Variable | Uso |
 | --- | --- |
-| `DB_URL` | JDBC de MySQL. |
+| `DB_URL` | JDBC PostgreSQL; default `jdbc:postgresql://localhost:5432/saip_db`. |
 | `DB_USERNAME` | Usuario de base de datos. |
 | `DB_PASSWORD` | Password de base de datos. |
 | `JWT_SECRET` | Secreto HMAC para firmar JWT. |

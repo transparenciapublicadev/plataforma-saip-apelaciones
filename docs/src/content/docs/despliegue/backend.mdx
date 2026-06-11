@@ -1,275 +1,141 @@
 ---
 title: Despliegue Backend
-description: Configuración de producción para el backend Spring Boot con MySQL, perfil PostgreSQL opt-in, JWT y variables de entorno.
+description: Configuración del backend Spring Boot con PostgreSQL, JWT y notificaciones.
 ---
 
-import { Card, CardGrid, Tabs, TabItem, Steps, Badge } from '@astrojs/starlight/components';
+import { Card, CardGrid, Steps } from '@astrojs/starlight/components';
 
-## Requisitos de Producción
+## Requisitos
 
 <CardGrid>
   <Card title="Java 25" icon="seti:java">
     JDK alineado con `backend/pom.xml`.
   </Card>
-  <Card title="MySQL 8+" icon="setting">
-    Base de datos relacional principal actual.
-  </Card>
   <Card title="PostgreSQL 16+" icon="database">
-    Perfil opt-in preparado para migración controlada, sin cutover todavía.
+    Base de datos principal y única soportada por el runtime.
   </Card>
   <Card title="Maven" icon="puzzle">
     Maven Wrapper incluido en el proyecto.
   </Card>
 </CardGrid>
 
+PostgreSQL es el runtime principal en local, staging y producción. El schema
+oficial es `database/postgres/script_saip_db_postgres.sql`; Hibernate usa
+`ddl-auto=validate` y Spring no ejecuta seeds automáticamente.
+
 ## Variables de Entorno
 
 | Variable | Descripción | Obligatoria |
-|----------|-------------|-------------|
-| `SPRING_PROFILES_ACTIVE` | Perfil activo. Usar `prod` en producción. | Sí |
-| `DB_URL` | JDBC URL de la base activa. MySQL en runtime principal; PostgreSQL solo con perfil `postgres`. | Sí en `prod` |
-| `DB_USERNAME` | Usuario de base de datos. | Sí en `prod` |
-| `DB_PASSWORD` | Contraseña de base de datos. | Sí en `prod` |
-| `JWT_SECRET` | Clave secreta para firmar tokens JWT (mín. 256 bits). | Sí en `prod` |
-| `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes web autorizados, separados por coma. | Sí en `prod` |
-| `APP_NOTIFICATIONS_MODE` | Modo del motor: `MOCK` para local/Newman o `SMTP` para producción. | `SMTP` por defecto en `prod` |
-| `APP_NOTIFICATIONS_MAIL_FROM` | Dirección de remitente para correo. | Sí si `APP_NOTIFICATIONS_MODE=SMTP` |
-| `SPRING_MAIL_HOST` | Host del servidor SMTP. | Sí si `APP_NOTIFICATIONS_MODE=SMTP` |
-| `SPRING_MAIL_PORT` | Puerto del servidor SMTP. | No (Default `prod`: `587`) |
-| `SPRING_MAIL_USERNAME` | Usuario de autenticación SMTP. | Sí si `SPRING_MAIL_SMTP_AUTH=true` |
-| `SPRING_MAIL_PASSWORD` | Contraseña de autenticación SMTP. | Sí si `SPRING_MAIL_SMTP_AUTH=true` |
-| `SPRING_MAIL_SMTP_AUTH` | Habilitar autenticación SMTP (`true`, `false`). | No (Default `prod`: `true`) |
-| `SPRING_MAIL_SMTP_STARTTLS` | Habilitar TLS para SMTP. | No (Default `prod`: `true`) |
-| `SPRING_MAIL_SMTP_STARTTLS_REQUIRED` | Exigir TLS para SMTP. | No (Default `prod`: `true`) |
-| `APP_NOTIFICATIONS_PUSH_ENABLED` | Habilita la preparación del adapter FCM. Mantener `false` hasta integrar Firebase Admin. | No (Default: `false`) |
-| `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account de Firebase. Nunca versionar el JSON. | Solo al habilitar FCM real |
-| `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Clave AES externa en Base64 para cifrar tokens FCM recuperables por el futuro emisor. | Solo al habilitar FCM real |
-| `SPRINGDOC_API_DOCS_ENABLED` | Exponer OpenAPI en producción solo si existe una decisión operativa. | No (Default `prod`: `false`) |
-| `SPRINGDOC_SWAGGER_UI_ENABLED` | Exponer Swagger UI en producción solo si existe una decisión operativa. | No (Default `prod`: `false`) |
+| --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE` | Usar `prod` en producción. | Sí en producción |
+| `DB_URL` | JDBC PostgreSQL, por ejemplo `jdbc:postgresql://db:5432/saip_db`. | Sí en producción |
+| `DB_USERNAME` | Usuario PostgreSQL. | Sí en producción |
+| `DB_PASSWORD` | Password PostgreSQL. | Sí en producción |
+| `JWT_SECRET` | Secreto HMAC de al menos 256 bits. | Sí en producción |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes web autorizados. | Sí en producción |
+| `APP_NOTIFICATIONS_MODE` | `MOCK` local/Newman o `SMTP` producción. | `SMTP` por defecto en `prod` |
+| `APP_NOTIFICATIONS_MAIL_FROM` | Remitente institucional. | Con SMTP |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` | Servidor SMTP. | Con SMTP |
+| `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | Credenciales SMTP. | Si SMTP exige auth |
+| `APP_NOTIFICATIONS_PUSH_ENABLED` | Mantener `false` hasta Firebase Admin real. | No |
+| `FCM_FIREBASE_SERVICE_ACCOUNT_PATH` | Ruta externa al service account. | Solo con FCM real |
+| `FCM_TOKEN_ENCRYPTION_KEY_BASE64` | Clave AES externa para tokens push. | Solo con FCM real |
 
-:::danger[Secrets]
-NUNCA hardcodear credenciales. En producción, usar variables de entorno del hosting platform o un gestor de secretos para passwords de BD, JWT y SMTP.
+:::danger[Secretos]
+No versionar passwords, JWT, `.env`, service accounts ni claves de cifrado.
+Usar variables del entorno o un gestor de secretos.
 :::
 
-:::caution[Motor de notificaciones]
-`MOCK` es exclusivo para desarrollo local y Newman y el perfil `prod` lo rechaza al iniciar. `SMTP` habilita correo real configurable mediante variables de entorno; si faltan host, remitente o credenciales requeridas, el arranque productivo falla con un mensaje claro. `CASILLA_ELECTRONICA` dispone de un adapter preparado que responde `NO_DISPONIBLE` hasta contar con contrato API oficial. Los endpoints push registran tokens FCM de manera autenticada usando hash y cifrado opcional externo; el adapter de envío FCM no simula éxito y sigue pendiente de Firebase Admin. No existe fallback automático entre canales.
-:::
+## Preparar PostgreSQL
 
-:::note[PostgreSQL en migración controlada]
-MySQL sigue siendo el runtime principal. El perfil `postgres` existe solo para ensayos locales/staging de migración y usa `ddl-auto=validate`; no ejecuta seed ni DDL automáticamente. Antes de iniciar el backend con ese perfil, ejecutar `database/postgres/script_saip_db_postgres.sql` con los scripts de ayuda.
-:::
-
-## Build de Producción
-
-<Steps>
-1. **Compilar** el proyecto con Maven
-   ```bash
-   cd backend
-   ./mvnw clean package -DskipTests
-   ```
-2. **Verificar** el JAR generado
-   ```bash
-   ls target/saip-backend-*.jar
-   ```
-3. **Ejecutar** con variables de entorno
-   ```bash
-   DB_USERNAME=saip_user \
-   DB_PASSWORD=secure_password \
-   DB_URL=jdbc:mysql://db.internal:3306/saip_db \
-   JWT_SECRET=clave_secreta_minimo_256_bits_segura \
-   CORS_ALLOWED_ORIGIN_PATTERNS=https://misaip.gob.pe \
-   APP_NOTIFICATIONS_MODE=SMTP \
-   APP_NOTIFICATIONS_MAIL_FROM=no-reply@misaip.gob.pe \
-   SPRING_MAIL_HOST=smtp.example.net \
-   SPRING_MAIL_USERNAME=saip_mailer \
-   SPRING_MAIL_PASSWORD=secret_manager_reference \
-   java -jar target/saip-backend-0.0.1-SNAPSHOT.jar \
-     --spring.profiles.active=prod
-   ```
-</Steps>
-
-## Configuración de Producción
-
-```properties
-# application-prod.properties
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=false
-server.port=8080
-
-# CORS — restringir a dominios de producción
-app.cors.allowed-origin-patterns=https://misaip.gob.pe
-```
-
-:::caution[ddl-auto]
-En producción, usar `validate` (NO `update`) para evitar cambios accidentales en el schema. Las migraciones deben ejecutarse de forma controlada.
-:::
-
-## Base de Datos
-
-### MySQL actual
-
-```sql
--- Crear base de datos y usuario
-CREATE DATABASE saip_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'saip_user'@'%' IDENTIFIED BY 'secure_password';
-GRANT ALL PRIVILEGES ON saip_db.* TO 'saip_user'@'%';
-FLUSH PRIVILEGES;
-```
-
-### PostgreSQL opt-in
-
-El perfil PostgreSQL no reemplaza el runtime principal. Para ensayar el schema paralelo:
-
-```powershell
-$env:PGHOST = "localhost"
-$env:PGPORT = "5432"
-$env:PGDATABASE = "saip_db_postgres"
-$env:PGUSER = "postgres"
-$env:PGPASSWORD = "<local-password>"
-.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
-```
-
-Luego iniciar el backend con el perfil aislado:
-
-```powershell
-$env:DB_URL = "jdbc:postgresql://localhost:5432/saip_db_postgres"
-$env:DB_USERNAME = $env:PGUSER
-$env:DB_PASSWORD = $env:PGPASSWORD
-cd backend
-.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=postgres
-```
-
-Variables equivalentes en Linux/macOS:
-
-```bash
-export PGHOST=localhost
-export PGPORT=5432
-export PGDATABASE=saip_db_postgres
-export PGUSER=postgres
-export PGPASSWORD='<local-password>'
-RUN_TWICE=true ./scripts/postgres/run-postgres-schema.sh
-
-export DB_URL=jdbc:postgresql://localhost:5432/saip_db_postgres
-export DB_USERNAME="$PGUSER"
-export DB_PASSWORD="$PGPASSWORD"
-cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres
-```
-
-:::note[Validación local completada]
-El schema se ejecutó dos veces sobre PostgreSQL local, Hibernate `ddl-auto=validate` pasó y las consultas JPQL sensibles de reportes mensuales y correlativo SAIP respondieron correctamente. Se corrigieron `token_hash` y `device_id_hash` a `VARCHAR(64)` para alinearlos con JPA.
-:::
-
-### Validación PostgreSQL Opt-In
-
-La validación completa puede ejecutarse localmente con variables externas:
+PowerShell:
 
 ```powershell
 $env:PGHOST = "localhost"
 $env:PGPORT = "5432"
 $env:PGDATABASE = "saip_db"
-$env:PGUSER = "postgres"
+$env:PGUSER = "<local-user>"
 $env:PGPASSWORD = "<local-password>"
-.\scripts\postgres\validate-postgres-profile.ps1
+.\scripts\postgres\run-postgres-schema.ps1 -RunTwice
 ```
+
+Linux/macOS:
 
 ```bash
 export PGHOST=localhost
 export PGPORT=5432
 export PGDATABASE=saip_db
-export PGUSER=postgres
+export PGUSER='<local-user>'
 export PGPASSWORD='<local-password>'
-./scripts/postgres/validate-postgres-profile.sh
+RUN_TWICE=true ./scripts/postgres/run-postgres-schema.sh
 ```
 
-Estos scripts ejecutan el schema dos veces y luego corren los tests backend con el perfil `postgres`, incluyendo pruebas reales de lookups case-insensitive. Rechazan hosts remotos y nombres de base productivos.
+Los scripts rechazan nombres de producción y hosts remotos no confirmados. La
+segunda ejecución valida idempotencia del DDL y del seed.
 
-El workflow manual `.github/workflows/postgres-validation.yml` ofrece la misma validación sobre PostgreSQL 16 efímero. No forma parte del gate MySQL/default ni requiere secretos reales.
-
-PostgreSQL conserva la semántica case-insensitive actual mediante índices únicos funcionales `lower(email)` y `lower(acronimo)`. El backend normaliza emails a minúsculas y acrónimos a mayúsculas, y sus consultas de identidad no distinguen casing. No se requiere la extensión `citext`.
-
-### Ensayo MySQL a PostgreSQL
-
-Antes de exportar datos, ejecutar el preflight read-only:
+## Ejecución Local
 
 ```powershell
-$env:MYSQL_HOST = "localhost"
-$env:MYSQL_PORT = "3306"
-$env:MYSQL_DATABASE = "saip_db"
-$env:MYSQL_USER = "<local-user>"
-$env:MYSQL_PASSWORD = "<local-password>"
-.\scripts\postgres\preflight-mysql-to-postgres.ps1
+$env:DB_URL = "jdbc:postgresql://localhost:5432/saip_db"
+$env:DB_USERNAME = $env:PGUSER
+$env:DB_PASSWORD = $env:PGPASSWORD
+$env:APP_NOTIFICATIONS_MODE = "MOCK"
+cd backend
+.\mvnw.cmd spring-boot:run
 ```
 
-El preflight valida tablas esperadas, duplicados case-insensitive, huérfanos,
-campos obligatorios, longitudes y checks estables. No modifica datos. La muestra
-local detectó 8 SAIP demo/legacy sin consentimiento ni canal de notificación;
-el grafo fue auditado y eliminado de forma transaccional, sin inventar esos
-valores.
+No se necesita un perfil PostgreSQL especial: la configuración base ya usa
+PostgreSQL.
 
-El diagnóstico de eliminación se ejecuta en dry-run por defecto:
+## Producción
 
-```powershell
-.\scripts\postgres\delete-legacy-saip-mysql.ps1
+<Steps>
+1. Aprovisionar PostgreSQL y ejecutar el schema mediante un proceso controlado.
+2. Cargar BD, JWT, CORS y SMTP desde variables o un gestor de secretos.
+3. Ejecutar tests y Newman contra staging.
+4. Iniciar con `SPRING_PROFILES_ACTIVE=prod`.
+5. Verificar salud, logs y ownership antes de exponer tráfico.
+</Steps>
+
+Ejemplo:
+
+```bash
+DB_URL=jdbc:postgresql://db.internal:5432/saip_db \
+DB_USERNAME=saip_user \
+DB_PASSWORD=secret_manager_reference \
+JWT_SECRET=secret_manager_reference \
+CORS_ALLOWED_ORIGIN_PATTERNS=https://misaip.gob.pe \
+APP_NOTIFICATIONS_MODE=SMTP \
+APP_NOTIFICATIONS_MAIL_FROM=no-reply@misaip.gob.pe \
+SPRING_MAIL_HOST=smtp.example.net \
+java -jar target/saip-backend-0.0.1-SNAPSHOT.jar \
+  --spring.profiles.active=prod
 ```
 
-El modo apply exige conteo exacto de 8 filas, frase de confirmación, operador
-identificado y un host local o staging confirmado. Rechaza bases con nombre de
-producción, detiene la operación ante dependencias compartidas y registra la
-política `DELETE_LEGACY_INCOMPLETE_SAIP` en tablas técnicas de auditoría sin
-datos personales. Después de la eliminación local, el preflight quedó con cero
-consentimientos nulos, cero canales nulos y cero bloqueantes. El seed automático
-ya no recrea esas solicitudes demo incompletas.
+## Newman
 
-El plan de carga recomienda un ETL propio y revisado, porque el schema destino
-ya está validado y se deben preservar IDs, convertir fechas/booleanos, resetear
-secuencias y reconciliar conteos sin registrar datos personales. La guía está en
-`database/postgres/MYSQL_TO_POSTGRES_ETL_PLAN.md`.
-
-Después de una carga aprobada en una base aislada:
+El runner prepara y verifica PostgreSQL, arranca el backend normal en modo
+`MOCK`, ejecuta Newman y detiene el proceso:
 
 ```powershell
-.\scripts\postgres\verify-postgres-rehearsal.ps1
 .\scripts\postgres\run-newman-postgres.ps1
 ```
 
-La regresión seed de PR 5 pasó con 252 requests y 428 assertions. La guía
-completa, incluido rollback, está en
-`database/postgres/MYSQL_TO_POSTGRES_REHEARSAL.md`. Aún falta repetirla con
-datos transformados en staging antes del cutover.
+Los reportes quedan en `postman/reports/`, que está ignorado por Git.
 
-No usar `postgres` como perfil productivo hasta completar el ensayo de migración de datos, la regresión funcional en staging y un PR de cutover aprobado.
+## Motor de Notificaciones
 
-## Verificación
+`MOCK` es exclusivo para local y Newman. Producción lo rechaza y usa `SMTP` por
+defecto. `CASILLA_ELECTRONICA` sigue sin integración externa real y no existe
+fallback automático. El adapter FCM no simula entrega y debe permanecer
+deshabilitado hasta integrar Firebase Admin con credenciales externas.
 
-```bash
-# Verificar OpenAPI spec
-curl http://localhost:8080/v3/api-docs
+## Checklist
 
-# Consultar estado seguro del motor con un JWT válido
-curl -H "Authorization: Bearer $JWT" \
-  http://localhost:8080/api/notificaciones/motor/estado
-```
-
-Los endpoints de estado exponen únicamente modo y capacidades. Nunca retornan hosts, usuarios, passwords, tokens o secretos:
-
-```bash
-curl -H "Authorization: Bearer $JWT" \
-  http://localhost:8080/api/notificaciones/push/estado
-```
-
-## Checklist Pre-Producción
-
-- Activar `SPRING_PROFILES_ACTIVE=prod`.
-- Cargar BD, JWT y SMTP desde variables de entorno o gestor de secretos.
-- Confirmar que `APP_NOTIFICATIONS_MODE=SMTP`; `MOCK` no inicia en `prod`.
-- Restringir `CORS_ALLOWED_ORIGIN_PATTERNS` a dominios productivos.
-- Mantener OpenAPI y Swagger UI deshabilitados salvo necesidad operativa aprobada.
-- Mantener la consola H2 deshabilitada y sin exposición pública.
-- Ejecutar migraciones controladas antes de iniciar con `ddl-auto=validate`.
-- Para ensayos PostgreSQL, ejecutar el script paralelo con `-RunTwice` o `RUN_TWICE=true` y revisar conteos/idempotencia antes de iniciar `--spring.profiles.active=postgres`.
-- Para la validación completa opt-in, usar `validate-postgres-profile.ps1`/`.sh` o lanzar manualmente el workflow `PostgreSQL Validation`.
-- Antes de migrar datos reales, ejecutar el preflight y resolver cualquier dato obligatorio faltante o duplicado por casing.
-- Consultar `/api/notificaciones/motor/estado` con JWT válido y verificar `smtpHostConfigurado=true`.
-- Mantener `APP_NOTIFICATIONS_PUSH_ENABLED=false` hasta integrar Firebase Admin y cargar service account y clave AES desde un gestor de secretos.
-- Ejecutar tests, build, Newman en modo local `MOCK` y auditoría de secretos antes del despliegue.
+- Ejecutar el schema oficial y validar `RunTwice`.
+- Ejecutar `cd backend; .\mvnw.cmd test`.
+- Arrancar sin perfil especial y validar `/v3/api-docs`.
+- Ejecutar Newman con `APP_NOTIFICATIONS_MODE=MOCK`.
+- En producción usar `ddl-auto=validate`, `spring.sql.init.mode=never` y secretos externos.
+- Mantener OpenAPI/Swagger deshabilitados en producción salvo aprobación operativa.
+- No versionar dumps, reports, logs, builds ni credenciales.
