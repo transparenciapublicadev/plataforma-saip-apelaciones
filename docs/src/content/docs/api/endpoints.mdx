@@ -320,8 +320,9 @@ graph LR
 
     :::caution[Storage interno]
     PostgreSQL almacena solo metadatos y SHA-256. Las respuestas nunca incluyen
-    `storageKey`, bucket ni rutas físicas. La implementación actual es local
-    configurable; S3/Supabase Storage permanece fuera de alcance.
+    `storageKey`, bucket, endpoint ni rutas físicas. El provider activo puede ser
+    local o S3-compatible, pero el backend siempre intermedia las descargas y no
+    entrega URLs públicas o presigned.
     :::
   </TabItem>
 

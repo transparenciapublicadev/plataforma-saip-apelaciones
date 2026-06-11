@@ -80,8 +80,8 @@ class PostgresCaseInsensitiveRepositoryIntegrationTest {
                 "application/pdf",
                 128L,
                 "a".repeat(64),
-                "LOCAL",
-                "local",
+                "S3_COMPATIBLE",
+                "saip-documents-test",
                 "DOCUMENTO_ADJUNTO",
                 "ACTIVO",
                 1L,
@@ -89,6 +89,10 @@ class PostgresCaseInsensitiveRepositoryIntegrationTest {
 
         String hash = jdbcTemplate.queryForObject(
                 "select hash_sha256 from documentos where id_documento = ?",
+                String.class,
+                documentoId);
+        String storageProvider = jdbcTemplate.queryForObject(
+                "select storage_provider from documentos where id_documento = ?",
                 String.class,
                 documentoId);
         Integer binaryColumns = jdbcTemplate.queryForObject("""
@@ -100,6 +104,7 @@ class PostgresCaseInsensitiveRepositoryIntegrationTest {
                 """, Integer.class);
 
         assertThat(hash).isEqualTo("a".repeat(64));
+        assertThat(storageProvider).isEqualTo("S3_COMPATIBLE");
         assertThat(binaryColumns).isZero();
     }
 }

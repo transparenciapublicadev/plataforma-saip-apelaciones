@@ -484,14 +484,23 @@ Variables relevantes:
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
 | `APP_STORAGE_PROVIDER` | `local` |
 | `APP_STORAGE_LOCAL_BASE_PATH` | `${user.home}/.saip-storage`; configurar externamente en producción |
+| `APP_STORAGE_S3_ENDPOINT` | Obligatoria con `APP_STORAGE_PROVIDER=s3`; URL S3-compatible |
+| `APP_STORAGE_S3_REGION` | `us-east-1` |
+| `APP_STORAGE_S3_BUCKET` | Obligatoria con provider `s3` |
+| `APP_STORAGE_S3_ACCESS_KEY` | Obligatoria con provider `s3`; secreto externo |
+| `APP_STORAGE_S3_SECRET_KEY` | Obligatoria con provider `s3`; secreto externo |
+| `APP_STORAGE_S3_FORCE_PATH_STYLE` | `true` |
 | `APP_STORAGE_MAX_FILE_SIZE` | `10485760` bytes |
 | `APP_STORAGE_MAX_REQUEST_SIZE` | `11534336` bytes para archivo y overhead multipart |
 | `APP_STORAGE_ALLOWED_CONTENT_TYPES` | PDF, PNG, JPEG y texto plano |
 
 PostgreSQL almacena únicamente metadatos documentales. Los binarios se escriben
-fuera del repositorio mediante `StorageProvider`; la implementación actual es
-local y genera claves opacas sin nombres originales ni datos personales. La
-integración Supabase/S3-compatible queda para una fase posterior.
+fuera del repositorio mediante `StorageProvider`. `local` sigue siendo el
+default y genera claves opacas sin nombres originales ni datos personales.
+El provider `s3` usa AWS SDK v2 contra endpoints S3-compatible, incluido
+Supabase Storage cuando exista un bucket aprovisionado externamente. El backend
+no crea buckets, no devuelve URLs públicas y exige endpoint, bucket y
+credenciales mediante variables externas.
 
 ### Newman reproducible
 
@@ -626,7 +635,7 @@ flowchart LR
 
 | Área | Próxima mejora |
 | --- | --- |
-| Backend | Incorporar migraciones versionadas y un provider Supabase/S3-compatible con credenciales externas. |
+| Backend | Incorporar migraciones versionadas y validar el provider S3-compatible contra staging aprovisionado externamente. |
 | Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
 | Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
 | Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |
