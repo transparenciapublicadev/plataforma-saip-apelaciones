@@ -22,7 +22,7 @@ if [[ "$PGDATABASE" =~ [Pp][Rr][Oo][Dd] ]]; then
 fi
 if command -v curl >/dev/null 2>&1 && curl --silent --fail --max-time 2 \
   http://localhost:8080/v3/api-docs >/dev/null 2>&1; then
-  printf 'Port 8080 already serves a backend. Stop it before this rehearsal.\n' >&2
+  printf 'Port 8080 already serves a backend. Stop it before running Newman.\n' >&2
   exit 1
 fi
 
@@ -47,13 +47,13 @@ export APP_NOTIFICATIONS_MODE=MOCK
 export APP_NOTIFICATIONS_PUSH_ENABLED=false
 
 if command -v setsid >/dev/null 2>&1; then
-  setsid bash -c 'cd "$1" && ./mvnw -B spring-boot:run -Dspring-boot.run.profiles=postgres' \
+  setsid bash -c 'cd "$1" && ./mvnw -B spring-boot:run' \
     bash "$ROOT_DIR/backend" >"$TEMP_DIR/backend.out.log" 2>"$TEMP_DIR/backend.err.log" &
   BACKEND_PROCESS_GROUP=true
 else
   (
     cd "$ROOT_DIR/backend"
-    ./mvnw -B spring-boot:run -Dspring-boot.run.profiles=postgres
+    ./mvnw -B spring-boot:run
   ) >"$TEMP_DIR/backend.out.log" 2>"$TEMP_DIR/backend.err.log" &
 fi
 BACKEND_PID=$!
@@ -71,7 +71,7 @@ for _ in $(seq 1 90); do
 done
 
 if [[ "$ready" != "true" ]]; then
-  printf 'Backend did not become ready with the PostgreSQL profile.\n' >&2
+  printf 'Backend did not become ready with the default PostgreSQL runtime.\n' >&2
   tail -n 40 "$TEMP_DIR/backend.out.log" "$TEMP_DIR/backend.err.log" >&2 || true
   exit 1
 fi

@@ -42,9 +42,9 @@ try {
 
     Push-Location "backend"
     try {
-        & ".\mvnw.cmd" -B test "-Dspring.profiles.active=postgres"
+        & ".\mvnw.cmd" -B test
         if ($LASTEXITCODE -ne 0) {
-            throw "Backend tests failed with the PostgreSQL profile."
+            throw "Backend tests failed against the default PostgreSQL runtime."
         }
     }
     finally {

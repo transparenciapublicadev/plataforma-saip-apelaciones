@@ -5,7 +5,7 @@ Esta guia define como ejecutar la coleccion Postman del proyecto SAIP/TTAIP con 
 ## Contexto
 
 - Coleccion oficial: `postman/SAIP-API-Collection-Complete.json`.
-- Base de datos local: `database/script_saip_db.sql`.
+- Base de datos local: PostgreSQL con `database/postgres/script_saip_db_postgres.sql`.
 - Backend esperado: `http://localhost:8080/api`.
 - La carpeta `reports/` debe contener salidas generadas por Newman y no debe usarse como fuente funcional.
 
@@ -118,7 +118,7 @@ if (status >= 500) {
 
 ## Reglas de diagnostico
 
-- Si falla `401` en logins: revisar credenciales del environment contra `database/script_saip_db.sql`.
+- Si falla `401` en logins: revisar credenciales del environment contra `database/postgres/script_saip_db_postgres.sql`.
 - Si falla `401` fuera de login: revisar que la carpeta `01. Autenticacion` se ejecute primero y que se guarden tokens.
 - Si falla `403`: revisar rol requerido por endpoint y token usado.
 - Si falla `404` con IDs: revisar que el seed SQL haya sido cargado y que las variables ID apunten a registros existentes.
@@ -143,7 +143,7 @@ if (status >= 500) {
 
 ## Flujo local recomendado
 
-1. Cargar base de datos con `database/script_saip_db.sql`.
+1. Cargar PostgreSQL con `scripts/postgres/run-postgres-schema.ps1 -RunTwice`.
 2. Levantar backend local.
 3. Ejecutar primero la carpeta `01. Autenticacion`.
 4. Ejecutar coleccion completa con Newman.

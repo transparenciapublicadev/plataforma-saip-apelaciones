@@ -68,7 +68,7 @@ flowchart TB
 
     subgraph Platform["Nucleo de plataforma"]
         API["backend/\nSpring Boot 4 + Java 25\nREST + Security + OpenAPI"]
-        DB[("MySQL\nsaip_db")]
+        DB[("PostgreSQL\nsaip_db")]
         OpenAPI["/v3/api-docs\nContrato OpenAPI"]
     end
 
@@ -109,7 +109,7 @@ flowchart TB
 | Runtime | Java 25 |
 | Framework | Spring Boot 4.0.0 |
 | API | Spring Web MVC, REST JSON |
-| Persistencia | Spring Data JPA, Hibernate, MySQL 8.x |
+| Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ |
 | Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
 | Validación | Jakarta Bean Validation |
 | Documentación API | springdoc-openapi, Swagger UI |
@@ -149,7 +149,7 @@ flowchart TB
 | --- | --- |
 | Docs | Astro 6, Starlight, Mermaid |
 | API collections | Postman collection operativa |
-| Database seed | `database/script_saip_db.sql` |
+| Database schema/seed | `database/postgres/script_saip_db_postgres.sql` |
 | CI/CD | GitHub Actions por módulo |
 | OpenAPI sync | `scripts/sync-openapi.ps1` y `scripts/sync-openapi.sh` |
 
@@ -183,12 +183,12 @@ flowchart LR
     Repository["Repositories\nSpring Data JPA"]
     Entity["Entities + DTOs"]
     Security["Security\nJWT + Roles"]
-    MySQL[("MySQL")]
+    PostgreSQL[("PostgreSQL")]
 
     Controller --> Service
     Service --> Repository
     Repository --> Entity
-    Entity --> MySQL
+    Entity --> PostgreSQL
     Security --> Controller
 ```
 
@@ -449,7 +449,7 @@ Para despliegues productivos, activar `SPRING_PROFILES_ACTIVE=prod`. Ese perfil 
 | --- | --- |
 | Java 25 | Backend Spring Boot. |
 | JDK 17 | Build Android. |
-| MySQL 8.x | Base de datos `saip_db`. |
+| PostgreSQL 16+ | Base de datos `saip_db` y cliente `psql`. |
 | Node.js 22 | Frontend Angular y docs Astro. |
 | npm 11.x | Gestión de paquetes web. |
 | Android Studio / SDK | Build y ejecución mobile. |
@@ -475,8 +475,9 @@ Variables relevantes:
 
 | Variable | Default local |
 | --- | --- |
-| `DB_USERNAME` | `root` |
-| `DB_PASSWORD` | `cibertec` |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/saip_db` |
+| `DB_USERNAME` | `postgres` |
+| `DB_PASSWORD` | Vacío; definir externamente |
 | `JWT_SECRET` | Solo desarrollo local |
 | `JWT_EXPIRATION_MS` | `86400000` |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
@@ -489,11 +490,8 @@ seed oficial:
 
 ```powershell
 .\scripts\reset-local-db.ps1 -ConfirmReset
-cd backend
-.\mvnw.cmd spring-boot:run
-# Detener backend después de crear el schema.
-Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
 $env:APP_NOTIFICATIONS_MODE='MOCK'
+cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -609,7 +607,7 @@ flowchart LR
 | --- | --- |
 | `docs/` | Sitio técnico y funcional con Astro + Starlight. |
 | `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
-| `database/script_saip_db.sql` | Script SQL de apoyo para datos locales. |
+| `database/postgres/script_saip_db_postgres.sql` | Schema PostgreSQL oficial y seed local idempotente. |
 | `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
 
 ## Roadmap técnico sugerido

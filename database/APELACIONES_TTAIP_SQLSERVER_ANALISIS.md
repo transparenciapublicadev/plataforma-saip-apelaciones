@@ -4,7 +4,7 @@
 
 La carpeta `BaseDeDatos_APELACIONES_TTAIP_V1/` describe una base SQL Server especializada en la segunda instancia ante el Tribunal de Transparencia y Acceso a la Información Pública. No representa la plataforma completa SAIP. Su alcance aprobado aplica a expedientes TTAIP, salas, vocales, resoluciones, cédulas/notificaciones, reprocesos y auditoría del trámite.
 
-El proyecto actual ya conserva la primera instancia SAIP como flujo propio y usa el backend Spring Boot + MySQL como fuente de verdad. Por eso esta referencia no debe importarse literalmente ni reemplazar el modelo existente; debe usarse para fortalecer el agregado `ExpedienteTtaip`.
+El proyecto actual ya conserva la primera instancia SAIP como flujo propio y usa el backend Spring Boot + PostgreSQL como fuente de verdad. Por eso esta referencia no debe importarse literalmente ni reemplazar el modelo existente; debe usarse para fortalecer el agregado `ExpedienteTtaip`.
 
 Archivo esperado por el pedido y archivo real encontrado:
 
@@ -35,7 +35,7 @@ Ya cubierto:
 
 - Apelación vinculada al expediente.
 - Primera Sala y Segunda Sala.
-- Miembros TTAIP reales y presidencia del tribunal en el seed MySQL.
+- Miembros TTAIP reales y presidencia del tribunal en el seed PostgreSQL.
 - Resoluciones con tipo `PRIMERA_CALIFICACION`, `SEGUNDA_CALIFICACION` y `RESOLUCION_FINAL`.
 - Número de resolución con sufijo de sala.
 
@@ -65,7 +65,7 @@ SQL Server incluye `Notificaciones.Reproceso` para reprocesar cargos observados 
 Integrado:
 
 - Nueva entidad `ReprocesoNotificacion`.
-- Nueva tabla MySQL `reprocesos_notificacion`.
+- Tabla PostgreSQL `reprocesos_notificacion`.
 - Relación con expediente, notificación, cédula original, destinatario, intento y estado.
 - Seed idempotente con un escenario de reproceso para entidad pública.
 - Exposición del reproceso dentro del DTO del expediente TTAIP.
@@ -77,7 +77,7 @@ SQL Server usa triggers y tablas de auditoría. En Spring Boot no conviene copia
 Integrado:
 
 - Nueva entidad `HistorialTtaip`.
-- Nueva tabla MySQL `historial_ttaip`.
+- Tabla PostgreSQL `historial_ttaip`.
 - Registro automático de apertura de expediente, cambio de estado, resolución emitida, cédula emitida, notificación registrada y reproceso registrado.
 
 No integrado literalmente:
@@ -93,7 +93,7 @@ No integrado literalmente:
 - `SalaTtaip` y miembros asignados al expediente.
 - Resoluciones TTAIP en la tabla `resoluciones`.
 - Cédulas y notificaciones normalizadas.
-- Seed MySQL idempotente para Primera Sala y Segunda Sala.
+- Seed PostgreSQL idempotente para Primera Sala y Segunda Sala.
 - DTO del expediente con sala, miembros, resoluciones, cédulas y notificaciones.
 - RFC 9457 / Problem Details en el backend.
 - Colección Postman/Newman ya validada previamente.
@@ -102,7 +102,7 @@ No integrado literalmente:
 
 - Modelo de reproceso de notificación.
 - Historial estructurado consultable desde el expediente, no solo `trazabilidad_minima` en texto.
-- Seed MySQL de reproceso y eventos de historial.
+- Seed PostgreSQL de reproceso y eventos de historial.
 - Visualización frontend de historial y reprocesos en el detalle TTAIP.
 
 ## Qué no conviene integrar
@@ -112,7 +112,7 @@ No integrado literalmente:
 - Seis tablas físicas de notificación: la normalización actual `cedulas_notificacion` + `notificaciones_ttaip` evita duplicación y preserva destinatario/etapa mediante resolución.
 - Triggers y procedures SQL Server: deben vivir como servicios transaccionales Java para mantener reglas de negocio testeables.
 - Seguridad SQL Server avanzada: el proyecto usa Spring Security + JWT, roles de aplicación y configuración de CORS.
-- SQL Server full-text y jobs de backup: son específicos del motor y no aplican al MySQL local del proyecto.
+- SQL Server full-text y jobs de backup: son específicos del motor y no aplican al PostgreSQL del proyecto.
 
 ## Tabla de trazabilidad
 
@@ -154,7 +154,7 @@ No integrado literalmente:
 - `ReprocesoNotificacion` y `reprocesos_notificacion` para reprocesos de cédula/notificación.
 - DTOs de historial y reproceso dentro de `ExpedienteTtaipDTO`.
 - Registro automático de eventos desde `ExpedienteTtaipService`.
-- Seed MySQL idempotente con historial y reproceso de prueba.
+- Seed PostgreSQL idempotente con historial y reproceso de prueba.
 - Vista TTAIP de detalle enriquecida con trazabilidad y reprocesos.
 
 ## Pendientes técnicos recomendados

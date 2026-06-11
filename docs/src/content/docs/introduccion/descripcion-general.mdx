@@ -50,12 +50,12 @@ Una **SAIP no es un expediente TTAIP**. La SAIP usa formato `SAIP-AAAA-NNNNN`. E
 
 | Carpeta | Stack real | Responsabilidad |
 | --- | --- | --- |
-| `backend/` | Spring Boot 4.0.6, Java 25, Maven, MySQL | API REST, seguridad, reglas de negocio, OpenAPI. |
+| `backend/` | Spring Boot 4.0.6, Java 25, Maven, PostgreSQL | API REST, seguridad, reglas de negocio, OpenAPI. |
 | `frontend/` | Angular 21.2, TypeScript 5.9, Tailwind CSS 4.1, SSR | Experiencia web pública e interna multirol. |
 | `mobile/` | Kotlin 2.3, Compose, Navigation 3, SQLDelight, Retrofit | Tres APKs por rol: ciudadano, funcionario y TTAIP. |
 | `docs/` | Astro 6, Starlight, Mermaid | Documentación técnica y funcional del proyecto. |
 | `postman/` | Postman Collection + Environment | Validación operativa de API con ejemplos de request/response. |
-| `database/` | SQL | Scripts de apoyo y datos semilla para MySQL. |
+| `database/` | PostgreSQL SQL | Schema oficial y seed local idempotente. |
 | `scripts/` | PowerShell/Bash | Sincronización del contrato OpenAPI. |
 
 ## Flujo End-to-End

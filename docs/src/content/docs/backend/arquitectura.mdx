@@ -27,7 +27,7 @@ El backend sigue una **arquitectura en capas** estricta donde cada capa tiene un
 │  Entities JPA + DTOs (records Java)         │
 ├─────────────────────────────────────────────┤
 │          Infrastructure                     │
-│  MySQL, Spring Security, OpenAPI            │
+│  PostgreSQL, Spring Security, OpenAPI       │
 └─────────────────────────────────────────────┘
 ```
 
@@ -126,7 +126,7 @@ El backend sigue una **arquitectura en capas** estricta donde cada capa tiene un
 1. **HTTP Request** llega al controller con validación `@Valid`
 2. **Controller** delega al service correspondiente
 3. **Service** aplica lógica de negocio y reglas (transaccional)
-4. **Repository** ejecuta query JPA contra MySQL
+4. **Repository** ejecuta query JPA contra PostgreSQL
 5. **Entity** se mapea a **DTO** (record) via método `from()`
 6. **Controller** retorna `ResponseEntity` con el DTO
 </Steps>
@@ -202,11 +202,11 @@ public class GlobalExceptionHandler {
   <TabItem label="application.properties">
     ```properties
     # Base de datos
-    spring.datasource.url=jdbc:mysql://localhost:3306/saip_db
+    spring.datasource.url=jdbc:postgresql://localhost:5432/saip_db
     spring.datasource.username=${DB_USERNAME}
     spring.datasource.password=${DB_PASSWORD}
     spring.jpa.hibernate.ddl-auto=update
-    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+    spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 
     # JWT
     jwt.secret=${JWT_SECRET}

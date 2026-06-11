@@ -16,13 +16,13 @@ if ($hostName -notin @("localhost", "127.0.0.1", "::1")) {
     throw "The Newman PostgreSQL runner only accepts a local database. Use a separately deployed staging backend for remote staging."
 }
 if ([string]::IsNullOrWhiteSpace($database) -or $database -match '(?i)(prod|production)') {
-    throw "PGDATABASE is required and must identify a non-production rehearsal database."
+    throw "PGDATABASE is required and must identify a non-production local database."
 }
 if ([string]::IsNullOrWhiteSpace($user) -or [string]::IsNullOrWhiteSpace($password)) {
     throw "PGUSER and PGPASSWORD are required."
 }
 if (Test-NetConnection -ComputerName localhost -Port 8080 -InformationLevel Quiet -WarningAction SilentlyContinue) {
-    throw "Port 8080 is already in use. Stop the existing backend before running the PostgreSQL Newman rehearsal."
+    throw "Port 8080 is already in use. Stop the existing backend before running Newman."
 }
 
 function Stop-ProcessTree {
@@ -75,7 +75,7 @@ try {
     $stderrPath = Join-Path $tempDirectory "backend.err.log"
     $backendProcess = Start-Process `
         -FilePath (Join-Path $repoRoot "backend/mvnw.cmd") `
-        -ArgumentList @("-B", "spring-boot:run", "-Dspring-boot.run.profiles=postgres") `
+        -ArgumentList @("-B", "spring-boot:run") `
         -WorkingDirectory (Join-Path $repoRoot "backend") `
         -WindowStyle Hidden `
         -RedirectStandardOutput $stdoutPath `
@@ -104,7 +104,7 @@ try {
         Write-Host "Backend startup log tail:"
         Get-Content -LiteralPath $stdoutPath -Tail 40 -ErrorAction SilentlyContinue
         Get-Content -LiteralPath $stderrPath -Tail 40 -ErrorAction SilentlyContinue
-        throw "Backend did not become ready with the PostgreSQL profile."
+        throw "Backend did not become ready with the default PostgreSQL runtime."
     }
 
     Push-Location (Join-Path $repoRoot "postman")

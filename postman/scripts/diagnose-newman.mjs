@@ -293,7 +293,7 @@ function classifyError({ status, itemName, method, url, request, parsedBody, bod
 
   if (status === 401) {
     if (url.includes('/auth/login')) {
-      return problem('credenciales incorrectas', 'Environment credentials', 'El login falló; valide usuario/password contra database/script_saip_db.sql.');
+      return problem('credenciales incorrectas', 'Environment credentials', 'El login falló; valide usuario/password contra database/postgres/script_saip_db_postgres.sql.');
     }
     return problem('token faltante', 'Environment tokens', 'La request protegida no recibió un JWT válido.');
   }
@@ -487,7 +487,7 @@ function markdown(diagnostic) {
     '- `credenciales incorrectas`: login credentials or role/token mismatch.',
     '- `token faltante`: protected requests ran before a valid login token was captured.',
     '- `IDs inexistentes`: environment IDs or expediente values do not exist in the loaded database.',
-    '- `seed SQL desalineado`: collection assumes data not produced by `database/script_saip_db.sql`.',
+    '- `seed SQL desalineado`: collection assumes data not produced by `database/postgres/script_saip_db_postgres.sql`.',
     '- `payload inválido`: request body/query does not match backend validation.',
     '- `regla de negocio`: valid request rejected by domain state, dates, ownership or transition rules.',
     '- `backend no disponible`: Newman could not connect to `baseUrl` or the API process is not running.',
