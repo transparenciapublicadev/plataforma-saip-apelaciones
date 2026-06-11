@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import pe.gob.saip.backend.storage.StorageException;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -145,6 +147,30 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ProblemDetail> manejarStorage(StorageException ex,
+                                                         HttpServletRequest request) {
+        HttpStatus status = switch (ex.getReason()) {
+            case INVALID_INPUT -> HttpStatus.BAD_REQUEST;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case IO_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
+        };
+        if (ex.getReason() == StorageException.Reason.IO_ERROR) {
+            LOGGER.error("Error controlado de almacenamiento documental", ex);
+        }
+
+        String detail = ex.getReason() == StorageException.Reason.IO_ERROR
+                ? "No fue posible completar la operación documental."
+                : ex.getMessage();
+        ProblemDetail problem = ApiProblemDetails.create(
+                status,
+                status == HttpStatus.NOT_FOUND ? "Resource not found"
+                        : status == HttpStatus.BAD_REQUEST ? "Bad request" : "Internal server error",
+                detail,
+                request.getRequestURI());
+        return ResponseEntity.status(status).body(problem);
     }
 
     @ExceptionHandler(Exception.class)

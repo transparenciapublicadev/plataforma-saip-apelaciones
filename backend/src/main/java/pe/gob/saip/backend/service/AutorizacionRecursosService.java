@@ -262,6 +262,32 @@ public class AutorizacionRecursosService {
         verificarEntidadDelFuncionario(entidad);
     }
 
+    public void verificarExpedienteTtaipAccesible(Long expedienteId) {
+        ExpedienteTtaip expediente = expedienteRepository.findById(expedienteId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Expediente TTAIP no encontrado con ID: " + expedienteId));
+        verificarApelacionAccesible(expediente.getApelacion());
+    }
+
+    public void verificarTtaipOAdministrador() {
+        if (!esAdministradorOTtaip()) {
+            throw new AccessDeniedException("La operación documental requiere rol TTAIP o administrador");
+        }
+    }
+
+    public void verificarAdministrador() {
+        if (!esAdministrador()) {
+            throw new AccessDeniedException("La eliminación documental requiere rol administrador");
+        }
+    }
+
+    public Usuario obtenerUsuarioActual() {
+        String email = obtenerAutenticacion().getName();
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "No existe un usuario asociado a la identidad autenticada"));
+    }
+
     public void verificarEntidadInstitucional(Long entidadId) {
         if (esAdministradorOTtaip()) {
             return;
@@ -354,13 +380,6 @@ public class AutorizacionRecursosService {
             throw new AccessDeniedException("El funcionario autenticado no tiene entidad asociada");
         }
         return funcionario.getEntidad().getId();
-    }
-
-    private Usuario obtenerUsuarioActual() {
-        String email = obtenerAutenticacion().getName();
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new AccessDeniedException(
-                        "No existe un usuario asociado a la identidad autenticada"));
     }
 
     private Ciudadano obtenerCiudadanoActual() {
