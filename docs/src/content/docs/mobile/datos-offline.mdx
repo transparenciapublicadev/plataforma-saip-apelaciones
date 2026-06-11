@@ -41,7 +41,7 @@ La fuente exacta del esquema vive en `core/database/src/main/sqldelight/`. El ca
 | `Notificacion` | Avisos locales y lectura. |
 
 :::caution[Fuente de verdad]
-SQLDelight mejora la experiencia offline, pero no reemplaza MySQL ni decide reglas legales. La migración `migrations/2.sqm` hace opcional el vínculo con SAIP local y conserva metadatos mínimos de apelación externa y elevación.
+SQLDelight mejora la experiencia offline, pero no reemplaza PostgreSQL ni decide reglas legales. La migración `migrations/2.sqm` hace opcional el vínculo con SAIP local y conserva metadatos mínimos de apelación externa y elevación.
 
 La creación SAIP ciudadano conserva `consentimientoDatosPersonales` y `canalNotificacion` en caché. Las instalaciones existentes migran con `migrations/1.sqm`, verificada contra la instantánea inicial `databases/1.db`. Cuando una creación online responde correctamente, el repositorio reemplaza el registro provisional por el ID y número SAIP oficiales del backend; si no hay conectividad, mantiene el registro pendiente para sincronización diferida.
 :::

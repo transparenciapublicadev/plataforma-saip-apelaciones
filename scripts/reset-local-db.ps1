@@ -1,9 +1,10 @@
+[CmdletBinding()]
 param(
     [switch]$ConfirmReset,
-    [string]$Database = "saip_db",
-    [string]$DatabaseHost = "127.0.0.1",
-    [int]$Port = 3306,
-    [string]$User = "root"
+    [string]$Database = $(if ($env:PGDATABASE) { $env:PGDATABASE } else { "saip_db" }),
+    [string]$DatabaseHost = $(if ($env:PGHOST) { $env:PGHOST } else { "127.0.0.1" }),
+    [int]$Port = $(if ($env:PGPORT) { [int]$env:PGPORT } else { 5432 }),
+    [string]$User = $(if ($env:PGUSER) { $env:PGUSER } else { "postgres" })
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,31 +12,32 @@ $ErrorActionPreference = "Stop"
 if (-not $ConfirmReset) {
     throw "Reset cancelado. Ejecute nuevamente con -ConfirmReset para recrear una base local."
 }
-
 if ($DatabaseHost -notin @("127.0.0.1", "localhost", "::1")) {
     throw "Reset bloqueado: DatabaseHost debe ser localhost, 127.0.0.1 o ::1."
 }
-
-if ($Database -notmatch "^[A-Za-z0-9_]+$") {
-    throw "Reset bloqueado: el nombre de base de datos contiene caracteres no permitidos."
+if ($Database -notmatch "^[A-Za-z0-9_]+$" -or $Database -match "(?i)(prod|production)") {
+    throw "Reset bloqueado: use un nombre valido de base local no productiva."
+}
+if ([string]::IsNullOrWhiteSpace($env:PGPASSWORD)) {
+    throw "PGPASSWORD debe definirse externamente."
 }
 
-if (-not (Get-Command mysql -ErrorAction SilentlyContinue)) {
-    throw "No se encontro el cliente mysql en PATH."
+$psql = Get-Command psql -ErrorAction SilentlyContinue
+if (-not $psql) {
+    throw "No se encontro el cliente psql en PATH."
 }
 
-$sql = "DROP DATABASE IF EXISTS ``$Database``; CREATE DATABASE ``$Database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-
-Write-Host "Recreando base MySQL local '$Database' en ${DatabaseHost}:$Port..."
-& mysql "--host=$DatabaseHost" "--port=$Port" "--user=$User" "--password" "--execute=$sql"
-
+Write-Host "Recreando schema PostgreSQL local en '$Database' (${DatabaseHost}:$Port)..."
+& $psql.Source -v ON_ERROR_STOP=1 -h $DatabaseHost -p $Port -U $User -d $Database `
+    -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 if ($LASTEXITCODE -ne 0) {
-    throw "mysql finalizo con codigo $LASTEXITCODE."
+    throw "psql finalizo con codigo $LASTEXITCODE durante el reset."
 }
 
-Write-Host ""
-Write-Host "Base local recreada. Siguiente paso:"
-Write-Host "1. Inicie una vez el backend local para que Hibernate cree el esquema."
-Write-Host "2. Detenga el backend."
-Write-Host "3. Cargue database/script_saip_db.sql."
-Write-Host "4. Inicie backend con APP_NOTIFICATIONS_MODE=MOCK y ejecute Newman."
+$env:PGHOST = $DatabaseHost
+$env:PGPORT = $Port.ToString()
+$env:PGDATABASE = $Database
+$env:PGUSER = $User
+
+& "$PSScriptRoot/postgres/run-postgres-schema.ps1" -RunTwice
+Write-Host "Base local recreada con el schema oficial PostgreSQL."

@@ -153,14 +153,19 @@ La colección valida que `/api/notificaciones/motor/estado` responda `modo = MOC
 
 Newman crea SAIP, apelaciones y registros TTAIP runtime para validar flujos
 reales. Cuando el entorno local acumuló fixtures, usar el reset explícito y
-volver a cargar `database/script_saip_db.sql`:
+volver a cargar el schema PostgreSQL oficial:
 
 ```powershell
 .\scripts\reset-local-db.ps1 -ConfirmReset
 cd backend
 .\mvnw.cmd spring-boot:run
 # Detener backend después de crear el schema.
-Get-Content ..\database\script_saip_db.sql -Raw | mysql -u root -p saip_db
+$env:PGHOST='localhost'
+$env:PGPORT='5432'
+$env:PGDATABASE='saip_db'
+$env:PGUSER='<local-user>'
+$env:PGPASSWORD='<local-password>'
+.\scripts\reset-local-db.ps1 -ConfirmReset
 ```
 
 El script solo permite hosts locales, exige confirmación y nunca se ejecuta de

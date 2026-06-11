@@ -61,7 +61,7 @@ Reglas obligatorias antes de producción:
 | Variable | Uso | Nota |
 | --- | --- | --- |
 | `SPRING_PROFILES_ACTIVE=prod` | Activa configuración productiva. | Obligatoria. |
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión MySQL. | Secretos externos. |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Conexión PostgreSQL. | Secretos externos. |
 | `JWT_SECRET` | Firma JWT. | Mínimo 256 bits, externo. |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes web permitidos. | Restringir a dominios productivos. |
 | `APP_NOTIFICATIONS_MODE=SMTP` | Correo real en producción. | `MOCK` solo local/Newman. |

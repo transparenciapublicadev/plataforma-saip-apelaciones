@@ -74,7 +74,7 @@
     },
     {
       "key": "solicitudExpediente",
-      "value": "SAIP-2025-00001",
+      "value": "SAIP-2026-10001",
       "type": "default",
       "enabled": true,
       "description": "Expediente SAIP autenticado, formato SAIP-AAAA-NNNNN."
@@ -350,14 +350,14 @@
       "value": "func.minjusdh@minjusdh.gob.pe",
       "type": "default",
       "enabled": true,
-      "description": "Fallback alineado con database/script_saip_db.sql para login de funcionario."
+      "description": "Fallback alineado con database/postgres/script_saip_db_postgres.sql para login de funcionario."
     },
     {
       "key": "funcionarioPasswordFallback",
       "value": "Saip2026*",
       "type": "secret",
       "enabled": true,
-      "description": "Fallback alineado con database/script_saip_db.sql para login de funcionario."
+      "description": "Fallback alineado con database/postgres/script_saip_db_postgres.sql para login de funcionario."
     },
     {
       "key": "createdUsuarioId",
@@ -382,10 +382,10 @@
     },
     {
       "key": "consultaPublicaExpediente",
-      "value": "SAIP-2025-00001",
+      "value": "SAIP-2026-10001",
       "type": "default",
       "enabled": true,
-      "description": "Expediente SAIP usado por consulta pública enmascarada; debe existir en database/script_saip_db.sql."
+      "description": "Expediente SAIP usado por consulta publica enmascarada; debe existir en database/postgres/script_saip_db_postgres.sql."
     },
     {
       "key": "reportDesde",

@@ -30,4 +30,4 @@ export DB_PASSWORD="$PGPASSWORD"
 export RUN_POSTGRES_INTEGRATION_TESTS=true
 
 cd backend
-./mvnw -B test -Dspring.profiles.active=postgres
+./mvnw -B test
