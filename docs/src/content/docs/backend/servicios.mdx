@@ -35,6 +35,7 @@ El backend separa la lógica de negocio de la infraestructura documental mediant
     | `DocumentoService` | Ownership y persistencia de metadatos documentales |
     | `StorageProvider` | Contrato para upload, download, existencia y eliminación |
     | `LocalStorageProvider` | Binarios locales fuera del repositorio con claves opacas |
+    | `S3CompatibleStorageProvider` | Binarios en un bucket S3-compatible con credenciales externas |
     | `JwtService` | Generación y validación de tokens JWT |
     | `CustomUserDetailsService` | Carga de usuario para Spring Security |
   </TabItem>
@@ -46,14 +47,16 @@ El backend separa la lógica de negocio de la infraestructura documental mediant
 sanitizado, MIME type, tamaño, SHA-256, provider, clave opaca, estado, actor,
 fechas y relación SAIP/TTAIP. No existe una columna binaria en `documentos`.
 
-`LocalStorageProvider` valida tamaño, extensión, tipo y firma básica del
-contenido antes de escribir. La clave física usa UUID y nunca reutiliza el
-nombre original. Las descargas se solicitan por ID documental, pasan por
-ownership y no exponen bucket, `storageKey` ni rutas absolutas.
+`StorageUploadValidator` aplica a ambos providers la misma validación de tamaño,
+extensión, tipo y firma básica antes de escribir. La clave física usa UUID y
+nunca reutiliza el nombre original. Las descargas se solicitan por ID
+documental, pasan por ownership y no exponen bucket, `storageKey`, endpoint ni
+rutas absolutas.
 
-:::caution[Provider externo pendiente]
-La interfaz permite incorporar Supabase Storage o S3-compatible después, pero
-esta fase no incluye credenciales ni integración externa.
+:::caution[Infraestructura externa]
+`S3CompatibleStorageProvider` prepara la integración con Supabase Storage u
+otro endpoint compatible mediante AWS SDK v2. El repositorio no contiene
+credenciales, no crea buckets y no genera URLs públicas o presigned.
 :::
 
 ## Servicios Críticos
