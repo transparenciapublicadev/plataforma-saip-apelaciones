@@ -24,49 +24,49 @@
       "key": "ciudadanoUsername",
       "expected": "ciudadano01@gmail.com",
       "category": "credenciales incorrectas",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "funcionarioUsername",
       "expected": "func.minjusdh@minjusdh.gob.pe",
       "category": "credenciales incorrectas",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "funcionarioUsernameFallback",
       "expected": "func.minjusdh@minjusdh.gob.pe",
       "category": "credenciales incorrectas",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "ttaipUsername",
       "expected": "tvalverde@minjus.gob.pe",
       "category": "credenciales incorrectas",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "adminUsername",
       "expected": "admin@saip.gob.pe",
       "category": "credenciales incorrectas",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "solicitudExpediente",
-      "expected": "SAIP-2025-00001",
+      "expected": "SAIP-2026-10001",
       "category": "seed SQL desalineado",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "consultaPublicaExpediente",
-      "expected": "SAIP-2025-00001",
+      "expected": "SAIP-2026-10001",
       "category": "seed SQL desalineado",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     },
     {
       "key": "apelacionExpediente",
       "expected": "01560-2025-JUS/TTAIP",
       "category": "seed SQL desalineado",
-      "source": "database/script_saip_db.sql"
+      "source": "database/postgres/script_saip_db_postgres.sql"
     }
   ],
   "runtimeVariables": [
