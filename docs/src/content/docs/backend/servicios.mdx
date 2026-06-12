@@ -45,13 +45,25 @@ El backend separa la lógica de negocio de la infraestructura documental mediant
 
 `DocumentoService` guarda en PostgreSQL solamente metadatos: nombre original
 sanitizado, MIME type, tamaño, SHA-256, provider, clave opaca, estado, actor,
-fechas y relación SAIP/TTAIP. No existe una columna binaria en `documentos`.
+fechas y relación SAIP/TTAIP. Las relaciones soportadas son solicitud,
+respuesta, apelación, expediente TTAIP, resolución y cédula. No existe una
+columna binaria en `documentos`.
 
 `StorageUploadValidator` aplica a ambos providers la misma validación de tamaño,
 extensión, tipo y firma básica antes de escribir. La clave física usa UUID y
 nunca reutiliza el nombre original. Las descargas se solicitan por ID
 documental, pasan por ownership y no exponen bucket, `storageKey`, endpoint ni
 rutas absolutas.
+
+La API pública transforma esos datos a `DocumentoMetadataDTO`. Ese DTO omite
+provider, actor, bucket, endpoint, clave opaca y ruta física. Los detalles SAIP
+y TTAIP incluyen metadata segura, y `GET /api/documentos` permite consultar
+documentos activos por exactamente una relación funcional.
+
+La asociación por `respuestaId` requiere acceso institucional a la solicitud.
+Las consultas de resolución y cédula validan la apelación del expediente antes
+de devolver metadata. Una notificación consulta documentos mediante su cédula;
+no existe una relación documental directa inventada para la notificación.
 
 :::caution[Infraestructura externa]
 `S3CompatibleStorageProvider` prepara la integración con Supabase Storage u
