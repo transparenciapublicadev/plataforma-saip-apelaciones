@@ -3,6 +3,7 @@ package com.gestion.misaip.core.data.di
 import com.gestion.misaip.core.data.repository.ApelacionRepositoryImpl
 import com.gestion.misaip.core.data.repository.EntidadPublicaRepositoryImpl
 import com.gestion.misaip.core.data.repository.DispositivoPushRepositoryImpl
+import com.gestion.misaip.core.data.repository.DocumentoRepositoryImpl
 import com.gestion.misaip.core.data.repository.ExpedienteTtaipRepositoryImpl
 import com.gestion.misaip.core.data.repository.NotificacionRepositoryImpl
 import com.gestion.misaip.core.data.repository.SolicitudRepositoryImpl
@@ -10,6 +11,7 @@ import com.gestion.misaip.core.data.repository.UsuarioRepositoryImpl
 import com.gestion.misaip.core.domain.repository.ApelacionRepository
 import com.gestion.misaip.core.domain.repository.EntidadPublicaRepository
 import com.gestion.misaip.core.domain.repository.DispositivoPushRepository
+import com.gestion.misaip.core.domain.repository.DocumentoRepository
 import com.gestion.misaip.core.domain.repository.ExpedienteTtaipRepository
 import com.gestion.misaip.core.domain.repository.NotificacionRepository
 import com.gestion.misaip.core.domain.repository.SolicitudRepository
@@ -53,5 +55,9 @@ val dataModule = module {
 
     single<DispositivoPushRepository> {
         DispositivoPushRepositoryImpl(remoteDataSource = get())
+    }
+
+    single<DocumentoRepository> {
+        DocumentoRepositoryImpl(remoteDataSource = get())
     }
 }

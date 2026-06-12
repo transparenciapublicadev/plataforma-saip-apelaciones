@@ -20,6 +20,7 @@ import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
 import com.gestion.misaip.core.domain.usecase.auth.GetUsuarioActualUseCase
 import com.gestion.misaip.core.domain.usecase.entidad.GetEntidadesActivasUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.GetSolicitudPorExpedienteUseCase
+import com.gestion.misaip.core.domain.usecase.solicitud.RefrescarSolicitudDetalleUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.CrearSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.ResponderSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.IniciarRevisionUseCase
@@ -29,6 +30,7 @@ import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarAmpliacionPlazo
 import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarEncauzamientoSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.solicitud.RegistrarObservacionSolicitudUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionPorExpedienteUseCase
+import com.gestion.misaip.core.domain.usecase.apelacion.RefrescarApelacionDetalleUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionPorSAIPUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.CalificarApelacionUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.IniciarCalificacionUseCase
@@ -99,7 +101,9 @@ sealed class RequestDetailEvent {
 class RequestDetailViewModel(
     private val getUsuarioActualUseCase: GetUsuarioActualUseCase,
     private val getSolicitudPorExpedienteUseCase: GetSolicitudPorExpedienteUseCase,
+    private val refrescarSolicitudDetalleUseCase: RefrescarSolicitudDetalleUseCase,
     private val getApelacionPorExpedienteUseCase: GetApelacionPorExpedienteUseCase,
+    private val refrescarApelacionDetalleUseCase: RefrescarApelacionDetalleUseCase,
     private val getApelacionPorSAIPUseCase: GetApelacionPorSAIPUseCase,
     private val responderSolicitudUseCase: ResponderSolicitudUseCase,
     private val iniciarRevisionUseCase: IniciarRevisionUseCase,
@@ -153,6 +157,13 @@ class RequestDetailViewModel(
                 sincronizarDatosUseCase()
             } catch (_: Exception) {
                 // Si falla la sincronización, intentar con datos locales
+            }
+
+            val solicitudActualizada = runCatching {
+                refrescarSolicitudDetalleUseCase(expediente)
+            }.getOrNull()
+            if (solicitudActualizada == null) {
+                runCatching { refrescarApelacionDetalleUseCase(expediente) }
             }
 
             cargarDesdeLocal(expediente)

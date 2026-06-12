@@ -27,7 +27,8 @@ data class Solicitud(
     val prioridad: Prioridad = Prioridad.MEDIA,
     val respuestaEntidad: RespuestaEntidad? = null,
     val silencioAdministrativo: Boolean = false,
-    val timeline: List<TimelineItem> = emptyList()
+    val timeline: List<TimelineItem> = emptyList(),
+    val documentos: List<Documento> = emptyList()
 ) {
 
     /**
