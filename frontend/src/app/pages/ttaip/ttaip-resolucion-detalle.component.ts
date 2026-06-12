@@ -5,6 +5,9 @@ import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { Apelacion } from '../../models/apelacion.model';
 import { CumplimientoResolucionTtaip, NotificacionTtaip, SuspensionPlazoTtaip } from '../../models/resolucion.model';
+import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentListComponent } from '../../shared/document-list.component';
+import { DocumentUploadComponent } from '../../shared/document-upload.component';
 
 type DetailTab = 'apelacion' | 'descargos' | 'cumplimiento' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
@@ -19,11 +22,6 @@ interface TimelineItem {
   icon: TimelineIcon;
 }
 
-interface AttachmentItem {
-  nombre: string;
-  meta: string;
-}
-
 interface ResultadoMeta {
   label: string;
   accent: string;
@@ -31,7 +29,7 @@ interface ResultadoMeta {
 
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
   templateUrl: './ttaip-resolucion-detalle.component.html',
   styleUrl: './ttaip-resolucion-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -151,16 +149,9 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     };
   });
 
-  readonly adjuntos = computed<AttachmentItem[]>(() => {
-    const docs = this.apelacion()?.documentos;
-    if (docs && docs.length > 0) {
-      return docs.map((doc) => ({
-        nombre: doc.nombreArchivo || 'Documento',
-        meta: `${(doc.tipoArchivo || 'PDF').toUpperCase()} · Archivo` 
-      }));
-    }
-
-    return [];
+  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
+    const apelacionId = this.apelacion()?.id;
+    return apelacionId ? { apelacionId } : null;
   });
 
   readonly timeline = computed<TimelineItem[]>(() => this.buildTimeline());
@@ -219,6 +210,13 @@ export class TtaipResolucionDetalleComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onDocumentoSubido(): void {
+    const expediente = this.expedienteDisplay();
+    if (expediente && expediente !== '—') {
+      this.cargarApelacion(expediente);
+    }
   }
 
   cambiarTab(tab: DetailTab): void {

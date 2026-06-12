@@ -1,0 +1,72 @@
+<div class="space-y-3">
+  @for (documento of documents(); track documento.id || documento.nombreArchivo) {
+    <article
+      data-table-row
+      class="flex items-center justify-between gap-3 rounded-lg p-4"
+      style="background: var(--card); border: 1px solid var(--border)"
+    >
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+          <svg lucideFileText class="h-5 w-5" style="color: var(--brand-700)"></svg>
+        </div>
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-foreground">{{ documento.nombreArchivo }}</p>
+          <p class="font-mono text-[11px] text-muted-foreground">
+            {{ documento.tipoArchivo || 'ARCHIVO' }}
+            @if (documento.tamanio) {
+              · {{ formatFileSize(documento.tamanio) }}
+            }
+            @if (documento.fechaSubida) {
+              · {{ documento.fechaSubida | date:'dd MMM yyyy' }}
+            }
+          </p>
+        </div>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          class="btn-ghost-brand !h-9 !w-9 !p-0"
+          aria-label="Descargar documento"
+          title="Descargar documento"
+          [disabled]="!documento.id || downloadingId() === documento.id"
+          (click)="download(documento)"
+        >
+          @if (downloadingId() === documento.id) {
+            <svg lucideLoaderCircle class="h-4 w-4 animate-spin"></svg>
+          } @else {
+            <svg lucideDownload class="h-4 w-4"></svg>
+          }
+        </button>
+
+        @if (allowDelete()) {
+          <button
+            type="button"
+            class="btn-ghost-brand !h-9 !w-9 !p-0"
+            aria-label="Eliminar documento"
+            title="Eliminar documento"
+            [disabled]="deletingId() === documento.id"
+            (click)="delete(documento)"
+          >
+            @if (deletingId() === documento.id) {
+              <svg lucideLoaderCircle class="h-4 w-4 animate-spin"></svg>
+            } @else {
+              <svg lucideTrash2 class="h-4 w-4"></svg>
+            }
+          </button>
+        }
+      </div>
+    </article>
+  } @empty {
+    <div class="rounded-lg p-10 text-center" style="background: var(--card); border: 1px dashed var(--border)">
+      <svg lucideFileText class="mx-auto mb-3 h-12 w-12 text-muted-foreground/50"></svg>
+      <p class="text-sm text-muted-foreground">{{ emptyMessage() }}</p>
+    </div>
+  }
+
+  @if (error()) {
+    <p class="rounded-md p-3 text-sm" role="alert" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
+      {{ error() }}
+    </p>
+  }
+</div>

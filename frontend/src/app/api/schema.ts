@@ -941,6 +941,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notificaciones/push/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar o renovar el token FCM del dispositivo autenticado */
+        post: operations["registrar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notificaciones/push/tokens/revocar-actual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revocar tokens activos del dispositivo autenticado durante cierre de sesión */
+        post: operations["revocarActual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/funcionarios": {
         parameters: {
             query?: never;
@@ -971,6 +1005,23 @@ export interface paths {
         put?: never;
         /** Registrar entidad pública */
         post: operations["crear_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cargar documento asociado a un recurso SAIP/TTAIP */
+        post: operations["upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2127,6 +2178,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notificaciones/push/tokens/mios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar los dispositivos push del usuario autenticado sin exponer tokens */
+        get: operations["listarMios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notificaciones/push/estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar estado seguro del adapter FCM */
+        get: operations["obtenerEstadoSeguro"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notificaciones/motor/estado": {
         parameters: {
             query?: never;
@@ -2135,7 +2220,7 @@ export interface paths {
             cookie?: never;
         };
         /** Consultar estado seguro del motor de notificaciones */
-        get: operations["obtenerEstadoSeguro"];
+        get: operations["obtenerEstadoSeguro_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2344,6 +2429,40 @@ export interface paths {
         };
         /** Listar entidades activas */
         get: operations["listarActivas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar metadatos seguros de un documento */
+        get: operations["metadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Descargar un documento validando ownership */
+        get: operations["download"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2651,6 +2770,40 @@ export interface paths {
         post?: never;
         /** Eliminar usuario */
         delete: operations["eliminar_5"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notificaciones/push/tokens/{dispositivoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revocar un dispositivo push propio */
+        delete: operations["revocarPorId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Eliminar físicamente un documento y conservar su metadato como eliminado */
+        delete: operations["delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3732,6 +3885,72 @@ export interface components {
             /** Format: int32 */
             plazoEntrega?: number;
         };
+        RegistrarDispositivoPushRequest: {
+            token: string;
+            /** @enum {string} */
+            appFlavor: "CIUDADANO" | "FUNCIONARIO" | "TTAIP";
+            /** @enum {string} */
+            plataforma: "ANDROID";
+            deviceIdHash: string;
+            appVersion?: string;
+            buildType?: string;
+        };
+        DispositivoNotificacionPushDTO: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            tipoUsuario?: "CIUDADANO" | "FUNCIONARIO" | "TTAIP" | "ADMINISTRADOR";
+            /** @enum {string} */
+            appFlavor?: "CIUDADANO" | "FUNCIONARIO" | "TTAIP";
+            /** @enum {string} */
+            plataforma?: "ANDROID";
+            tokenFingerprint?: string;
+            deviceFingerprint?: string;
+            /** @enum {string} */
+            estado?: "ACTIVO" | "REVOCADO" | "EXPIRADO";
+            appVersion?: string;
+            buildType?: string;
+            /** Format: date-time */
+            fechaRegistro?: string;
+            /** Format: date-time */
+            fechaActualizacion?: string;
+            /** Format: date-time */
+            fechaRevocacion?: string;
+        };
+        RevocarDispositivoPushActualRequest: {
+            deviceIdHash: string;
+        };
+        /** @description Metadatos seguros de un documento almacenado; no expone claves ni rutas internas */
+        DocumentoMetadataDTO: {
+            /** Format: int64 */
+            id?: number;
+            tipoDocumento?: string;
+            nombreOriginal?: string;
+            contentType?: string;
+            /** Format: int64 */
+            sizeBytes?: number;
+            hashSha256?: string;
+            storageProvider?: string;
+            estado?: string;
+            /** Format: int64 */
+            creadoPorId?: number;
+            /** Format: date-time */
+            fechaCreacion?: string;
+            /** Format: date-time */
+            fechaActualizacion?: string;
+            /** Format: int64 */
+            solicitudId?: number;
+            /** Format: int64 */
+            respuestaId?: number;
+            /** Format: int64 */
+            apelacionId?: number;
+            /** Format: int64 */
+            expedienteTtaipId?: number;
+            /** Format: int64 */
+            resolucionId?: number;
+            /** Format: int64 */
+            cedulaNotificacionId?: number;
+        };
         /** @description Datos de registro de ciudadano */
         RegistroRequestDTO: {
             /**
@@ -4039,6 +4258,15 @@ export interface components {
             pregunta?: string;
             respuesta?: string;
         };
+        /** @description Estado seguro del adapter push; nunca expone tokens ni credenciales Firebase */
+        EstadoPushNotificacionesDTO: {
+            proveedor?: string;
+            estado?: string;
+            configurable?: boolean;
+            credencialesExternasConfiguradas?: boolean;
+            cifradoTokenConfigurado?: boolean;
+            nota?: string;
+        };
         /** @description Estado seguro del motor de notificaciones; nunca expone credenciales */
         EstadoMotorNotificacionesDTO: {
             modo?: string;
@@ -4046,6 +4274,9 @@ export interface components {
             smtpConfigurable?: boolean;
             smtpHostConfigurado?: boolean;
             casillaElectronicaEstado?: string;
+            fcmConfigurable?: boolean;
+            fcmEstado?: string;
+            cifradoTokenPushConfigurado?: boolean;
             nota?: string;
         };
         /** @description Resumen liviano de una apelación TTAIP para listados paginados */
@@ -5743,6 +5974,52 @@ export interface operations {
             };
         };
     };
+    registrar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrarDispositivoPushRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispositivoNotificacionPushDTO"];
+                };
+            };
+        };
+    };
+    revocarActual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevocarDispositivoPushActualRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listar_3: {
         parameters: {
             query?: never;
@@ -5829,6 +6106,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntidadDTO"];
+                };
+            };
+        };
+    };
+    upload: {
+        parameters: {
+            query: {
+                tipoDocumento: "SOLICITUD_ORIGINAL" | "RESPUESTA_ENTIDAD" | "RECURSO_APELACION" | "RESOLUCION_TTAIP" | "CEDULA_NOTIFICACION" | "EXPEDIENTE_ADMINISTRATIVO" | "INFORME" | "DOCUMENTO_ADJUNTO" | "SUBSANACION" | "OTRO";
+                solicitudId?: number;
+                apelacionId?: number;
+                expedienteTtaipId?: number;
+                resolucionId?: number;
+                cedulaNotificacionId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoMetadataDTO"];
                 };
             };
         };
@@ -7425,7 +7736,47 @@ export interface operations {
             };
         };
     };
+    listarMios: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispositivoNotificacionPushDTO"][];
+                };
+            };
+        };
+    };
     obtenerEstadoSeguro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoPushNotificacionesDTO"];
+                };
+            };
+        };
+    };
+    obtenerEstadoSeguro_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -7693,6 +8044,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntidadDTO"][];
+                };
+            };
+        };
+    };
+    metadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoMetadataDTO"];
+                };
+            };
+        };
+    };
+    download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
@@ -8088,6 +8483,46 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+        };
+    };
+    revocarPorId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dispositivoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
