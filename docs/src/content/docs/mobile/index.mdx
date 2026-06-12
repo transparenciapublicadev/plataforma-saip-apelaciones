@@ -129,6 +129,8 @@ App Ciudadano también registra apelaciones externas sin crear SAIP ficticias y 
 
 App TTAIP consulta el expediente agregado completo: sala, miembros, resoluciones, cédulas, notificaciones, intentos persistidos, descargos, suspensiones, reprocesos, cumplimiento e historial. También ejecuta las actuaciones institucionales permitidas, incluida la admisión excepcional ante omisión comunicada y las decisiones finales recientes. Estas acciones son `online-only`: la app no simula actos legales en SQLDelight.
 
+Los detalles SAIP y de apelación integran documentos mediante `/api/documentos`: Ciudadano puede seleccionar, subir y descargar; Funcionario y TTAIP pueden consultar y descargar según ownership backend. Los binarios se transmiten por stream y solo la metadata liviana se conserva en SQLDelight. Android no accede directamente al provider local, S3 o Supabase.
+
 Mobile registra, renueva y revoca el token FCM mediante endpoints backend autenticados. El token no se registra en logs ni Firestore; backend conserva hash y cifrado opcional externo. El adapter de envío FCM todavía no entrega mensajes reales: espera integración Firebase Admin con secretos fuera del repositorio.
 :::
 

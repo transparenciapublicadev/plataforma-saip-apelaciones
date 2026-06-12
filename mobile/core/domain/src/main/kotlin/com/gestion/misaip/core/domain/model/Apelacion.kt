@@ -37,7 +37,8 @@ data class Apelacion(
     val tipoOrigen: TipoOrigenApelacion = TipoOrigenApelacion.SAIP_INTERNA,
     val datosExternos: DatosApelacionExterna? = null,
     val elevacion: ElevacionApelacion? = null,
-    val expedienteTtaip: ExpedienteTtaip? = null
+    val expedienteTtaip: ExpedienteTtaip? = null,
+    val documentos: List<Documento> = emptyList()
 ) {
 
     /**

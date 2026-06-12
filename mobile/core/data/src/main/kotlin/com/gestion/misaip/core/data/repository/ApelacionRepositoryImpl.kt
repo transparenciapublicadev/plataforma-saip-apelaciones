@@ -156,6 +156,12 @@ class ApelacionRepositoryImpl(
         Unit
     }
 
+    override suspend fun refrescarDetalle(expediente: String): Apelacion? {
+        val remota = remoteDataSource.getApelacionPorExpediente(expediente) ?: return null
+        guardarApelacionLocal(remota, sincronizado = true, pendienteSubida = false)
+        return remota
+    }
+
     override suspend fun crearApelacionExterna(
         request: RegistrarApelacionExterna
     ): Apelacion = guardarOperacionOnline {
@@ -317,6 +323,7 @@ class ApelacionRepositoryImpl(
             primeraCalificacion = entity.primeraCalificacion,
             segundaCalificacion = entity.segundaCalificacion,
             subsanacion = entity.subsanacion, timeline = entity.timeline,
+            documentosMetadata = entity.documentosMetadata,
             diasHabiles = entity.diasHabiles, diasRestantes = entity.diasRestantes,
             informeOralSolicitado = entity.informeOralSolicitado,
             timerPausado = entity.timerPausado, fechaElevacion = entity.fechaElevacion,

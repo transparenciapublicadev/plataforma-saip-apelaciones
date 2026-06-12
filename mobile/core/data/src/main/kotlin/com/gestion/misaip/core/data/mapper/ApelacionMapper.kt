@@ -77,7 +77,8 @@ object ApelacionMapper {
                     referenciaExpedienteElevado = entity.referenciaExpedienteElevado,
                     referenciaPruebaOmision = entity.referenciaPruebaOmision
                 )
-            }
+            },
+            documentos = DocumentoMapper.decodeMetadata(entity.documentosMetadata)
         )
     }
 
@@ -127,6 +128,7 @@ object ApelacionMapper {
             referenciaCargoPresentacionElevacion = domain.elevacion?.referenciaCargoPresentacion,
             referenciaExpedienteElevado = domain.elevacion?.referenciaExpedienteElevado,
             referenciaPruebaOmision = domain.elevacion?.referenciaPruebaOmision,
+            documentosMetadata = DocumentoMapper.encodeMetadata(domain.documentos),
             sincronizado = false,
             pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()

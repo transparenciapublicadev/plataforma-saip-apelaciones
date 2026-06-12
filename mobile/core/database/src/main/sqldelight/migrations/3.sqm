@@ -1,0 +1,6 @@
+ALTER TABLE Solicitud
+ADD COLUMN documentosMetadata TEXT NOT NULL DEFAULT '[]';
+
+ALTER TABLE Apelacion
+ADD COLUMN documentosMetadata TEXT NOT NULL DEFAULT '[]';
+
