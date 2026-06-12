@@ -84,9 +84,9 @@ INSERT OR REPLACE INTO Solicitud (
     fechaCreacion, fechaLimite, estado,
     diasRestantes, prioridad, silencioAdministrativo,
     respuestaFecha, respuestaFuncionario, respuestaTipo,
-    respuestaFundamentacion, respuestaArchivos, timeline,
+    respuestaFundamentacion, respuestaArchivos, timeline, documentosMetadata,
     sincronizado, pendienteSubida, ultimaModificacion
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Eliminar registro local provisional después de reconciliar con backend
 deleteSolicitudById:
