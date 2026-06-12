@@ -86,6 +86,8 @@ CREATE TABLE Solicitud (
     respuestaArchivos TEXT, -- JSON array serializado
     -- Timeline (JSON serializado)
     timeline TEXT NOT NULL DEFAULT '[]',
+    -- Metadatos livianos; nunca contiene binarios ni claves del storage
+    documentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Control de sincronización
     sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
@@ -135,6 +137,8 @@ CREATE TABLE Apelacion (
     subsanacion TEXT,
     -- Timeline (JSON serializado)
     timeline TEXT NOT NULL DEFAULT '[]',
+    -- Metadatos livianos; nunca contiene binarios ni claves del storage
+    documentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Otros campos
     diasHabiles INTEGER,
     diasRestantes INTEGER,

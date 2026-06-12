@@ -49,7 +49,7 @@ INSERT OR REPLACE INTO Apelacion (
     entidad, entidadId, asunto, fundamentoLegal,
     exposicionHechos, pretension, fechaPresentacion, estado,
     funcionarioTTAIP, primeraCalificacion, segundaCalificacion,
-    subsanacion, timeline, diasHabiles, diasRestantes,
+    subsanacion, timeline, documentosMetadata, diasHabiles, diasRestantes,
     informeOralSolicitado, timerPausado, fechaElevacion,
     elevacionExtemporanea, tipoOrigen, numeroSolicitudExterna, tipoDenegatoria,
     fechaPresentacionSolicitudExterna, fechaRespuestaEntidad,
@@ -59,7 +59,7 @@ INSERT OR REPLACE INTO Apelacion (
     estadoElevacion, fechaLimiteElevacion, referenciaCargoPresentacionElevacion,
     referenciaExpedienteElevado, referenciaPruebaOmision,
     sincronizado, pendienteSubida, ultimaModificacion
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- Actualizar estado de apelación
 updateEstadoApelacion:
