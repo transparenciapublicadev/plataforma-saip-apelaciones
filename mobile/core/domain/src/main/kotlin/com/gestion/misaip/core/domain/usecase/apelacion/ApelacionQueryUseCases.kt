@@ -44,3 +44,11 @@ class IniciarCalificacionUseCase(
         )
     }
 }
+
+class RefrescarApelacionDetalleUseCase(
+    private val apelacionRepository: ApelacionRepository
+) {
+    suspend operator fun invoke(expediente: String): Apelacion? {
+        return apelacionRepository.refrescarDetalle(expediente)
+    }
+}

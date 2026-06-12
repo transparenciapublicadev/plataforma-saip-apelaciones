@@ -244,6 +244,16 @@ class SolicitudRepositoryImpl(
         Unit
     }
 
+    override suspend fun refrescarDetalle(expediente: String): Solicitud? {
+        val remota = remoteDataSource.getSolicitudPorExpediente(expediente) ?: return null
+        val local = queries.getSolicitudByExpediente(expediente)
+            .executeAsOneOrNull()
+            ?.let(SolicitudMapper::toDomain)
+        val completa = remota.completarDatosLocalesDesde(local ?: remota)
+        guardarSolicitudLocal(completa, sincronizado = true, pendienteSubida = false)
+        return completa
+    }
+
     override suspend fun getOperacionesFuncionario(
         solicitudId: String
     ): OperacionesSolicitudFuncionario = withContext(Dispatchers.IO) {
@@ -443,6 +453,7 @@ class SolicitudRepositoryImpl(
             respuestaFundamentacion = entity.respuestaFundamentacion,
             respuestaArchivos = entity.respuestaArchivos,
             timeline = entity.timeline,
+            documentosMetadata = entity.documentosMetadata,
             sincronizado = sincronizado,
             pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()
@@ -485,7 +496,8 @@ class SolicitudRepositoryImpl(
             ),
             consentimientoDatosPersonales = consentimientoDatosPersonales || local.consentimientoDatosPersonales,
             canalNotificacion = canalNotificacion ?: local.canalNotificacion,
-            timeline = timeline.ifEmpty { local.timeline }
+            timeline = timeline.ifEmpty { local.timeline },
+            documentos = documentos.ifEmpty { local.documentos }
         )
     }
 

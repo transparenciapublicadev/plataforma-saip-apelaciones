@@ -2,6 +2,7 @@ package com.gestion.misaip.core.domain.di
 
 import com.gestion.misaip.core.domain.usecase.apelacion.*
 import com.gestion.misaip.core.domain.usecase.auth.*
+import com.gestion.misaip.core.domain.usecase.documento.*
 import com.gestion.misaip.core.domain.usecase.entidad.*
 import com.gestion.misaip.core.domain.usecase.notificacion.*
 import com.gestion.misaip.core.domain.usecase.solicitud.*
@@ -32,6 +33,7 @@ val domainModule = module {
 
     factory { GetSolicitudesUsuarioUseCase(get()) }
     factory { GetSolicitudPorExpedienteUseCase(get()) }
+    factory { RefrescarSolicitudDetalleUseCase(get()) }
     factory { GetEstadisticasSolicitudesUseCase(get()) }
     factory { GetSolicitudesEntidadUseCase(get()) }
     factory { IniciarRevisionUseCase(get()) }
@@ -60,6 +62,7 @@ val domainModule = module {
     factory { GetApelacionesUsuarioUseCase(get()) }
     factory { GetTodasLasApelacionesUseCase(get()) }
     factory { GetApelacionPorExpedienteUseCase(get()) }
+    factory { RefrescarApelacionDetalleUseCase(get()) }
     factory { GetApelacionPorSAIPUseCase(get()) }
     factory { IniciarCalificacionUseCase(get()) }
     factory { CrearApelacionUseCase(get(), get()) }
@@ -87,6 +90,16 @@ val domainModule = module {
     factory { RevocarDispositivoPushActualUseCase(get()) }
     factory { ListarDispositivosPushMiosUseCase(get()) }
     factory { ObtenerEstadoProveedorPushUseCase(get()) }
+
+    // ===========================================
+    // CASOS DE USO - DOCUMENTOS
+    // ===========================================
+
+    factory { ValidarArchivoDocumentoUseCase() }
+    factory { UploadDocumentoUseCase(get(), get()) }
+    factory { GetDocumentoMetadataUseCase(get()) }
+    factory { DownloadDocumentoUseCase(get()) }
+    factory { DeleteDocumentoUseCase(get()) }
 
     // ===========================================
     // CASOS DE USO - SINCRONIZACIÓN

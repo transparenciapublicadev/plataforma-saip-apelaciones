@@ -74,6 +74,14 @@ class GetSolicitudPorExpedienteUseCase(
     }
 }
 
+class RefrescarSolicitudDetalleUseCase(
+    private val solicitudRepository: SolicitudRepository
+) {
+    suspend operator fun invoke(expediente: String): Solicitud? {
+        return solicitudRepository.refrescarDetalle(expediente)
+    }
+}
+
 /**
  * Caso de Uso: Obtener Estadísticas de Solicitudes
  *
@@ -93,4 +101,3 @@ class GetEstadisticasSolicitudesUseCase(
      */
     operator fun invoke(usuarioId: String) = solicitudRepository.getEstadisticas(usuarioId)
 }
-
