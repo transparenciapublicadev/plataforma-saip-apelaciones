@@ -42,6 +42,7 @@ flowchart TB
     - Renderizar pantallas Compose.
     - Validar acceso por rol con `AppRolePolicy`.
     - Gestionar FCM mediante `MiSaipMessagingService`.
+    - Seleccionar y guardar documentos mediante Activity Result y `ContentResolver`.
 
     ```kotlin
     enum class AppRole {
@@ -57,6 +58,7 @@ flowchart TB
     No depende de Android, Retrofit, SQLDelight ni Firebase. Contiene:
 
     - Modelos de dominio (`Solicitud`, `Apelacion`, `Usuario`, `EntidadPublica`).
+    - Modelo documental seguro, relaciones y streams de entrada/salida.
     - Use cases con `operator fun invoke()`.
     - Interfaces de repositorio.
 
@@ -85,6 +87,7 @@ flowchart TB
 
     - Retrofit 3 para API services.
     - OkHttp 5 para timeouts, logging `BASIC` solo en debug e interceptor JWT.
+    - `DocumentoApiService` para multipart, metadata, descarga `@Streaming` y eliminación técnica.
     - Snapshot `mobile/openapi.json` como referencia del contrato publicado.
     - Sin Firebase Auth.
     - Sin Firestore.
@@ -109,6 +112,7 @@ flowchart TB
     | `Usuario` | Sesión y perfil cacheado. |
     | `Solicitud` | Bandeja y seguimiento SAIP. |
     | `Apelacion` | Seguimiento TTAIP. |
+    | Metadata documental | JSON liviano asociado a solicitud o apelación; nunca bytes. |
     | `EntidadPublica` | Catálogo para formularios. |
     | `Notificacion` | Push y estado de lectura local. |
   </TabItem>
@@ -132,6 +136,7 @@ flowchart TB
 | Token JWT | Guardar en `EncryptedSharedPreferences`, fallar cerrado si no puede inicializarse y enviarlo por `Authorization: Bearer`. |
 | Roles | Validar sesión contra `BuildConfig.APP_ROLE` y `AppRolePolicy`. |
 | Logs | No registrar tokens, contraseñas, DNI completo ni payloads sensibles. |
+| Documentos | Consumir solo `/api/documentos`; no construir URLs S3 ni exponer claves internas. |
 | FCM | Registrar, renovar y revocar token push contra backend autenticado; no escribir tokens en logs ni Firestore. |
 | Offline | El cache local no decide reglas de negocio finales. |
 | Backup | No respaldar preferencias cifradas ni base local con datos del trámite. |
@@ -142,6 +147,8 @@ flowchart TB
 | --- | --- |
 | No usar Firebase Auth | La autenticación oficial es Spring Boot + JWT. |
 | No usar Firestore | PostgreSQL detrás del backend es la fuente de verdad. |
+| No acceso directo a storage | El backend valida ownership e intermedia upload y descarga. |
+| No binarios en SQLDelight | El cache local documental contiene solo metadata liviana. |
 | No app administrador | Admin se gestiona en frontend web. |
 | No XML Views | UI en Jetpack Compose. |
 | No múltiples Activities por flujo | Navegación single-Activity con Navigation 3. |

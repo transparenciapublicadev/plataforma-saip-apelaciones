@@ -159,6 +159,17 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 - El motor común reconoce `PUSH_FCM`, pero el adapter no finge entrega real: reporta `DESHABILITADO`, `NO_CONFIGURADO` o `ADAPTER_PREPARADO_PENDIENTE_FIREBASE_ADMIN`.
 - Newman valida estado seguro, alta ficticia, refresh idempotente, ownership de flavor y revocación sin usar credenciales Firebase reales.
 
+## Integración documental mobile
+
+- `mobile/openapi.json` incluye los endpoints autenticados `/api/documentos` para upload multipart, metadata, descarga intermediada y eliminación técnica.
+- App Ciudadano puede ver, seleccionar, validar, subir y descargar documentos desde el detalle SAIP o de apelación.
+- App Funcionario y App TTAIP reutilizan el mismo bloque de detalle para ver y descargar documentos relacionados; la eliminación no se expone en UI.
+- Android usa `OpenDocument` para seleccionar y `CreateDocument` para elegir el destino de descarga. El contenido se transmite por stream durante la petición o escritura y no se conserva en memoria completa.
+- La validación cliente acepta PDF, JPEG, PNG y TXT hasta 10 MB. El backend mantiene la validación definitiva y el ownership.
+- SQLDelight conserva únicamente metadata liviana para sostener el detalle offline. No guarda bytes, rutas físicas, `storageKey`, bucket, endpoint ni URLs S3.
+- Mobile nunca accede directamente a S3/Supabase: upload, metadata y download pasan exclusivamente por el backend y usan el interceptor JWT existente.
+- RFC 9457 se presenta con mensajes seguros para sesión expirada, ownership, tipo o tamaño inválido y fallos de descarga.
+
 ## Riesgos que requieren PR dedicado
 
 1. Perfil, avisos locales y algunos flujos auxiliares conservan métodos legacy compatibles; deben migrarse cuando reciban un contrato paginado específico.
@@ -188,3 +199,4 @@ cd mobile
 | Mobile PR 5 | Cubierto: apelación externa, presentación y elevación por entidad, comunicación ciudadana de omisión y migración SQLDelight compatible. |
 | Mobile PR 6 | Cubierto: expediente agregado TTAIP, admisión excepcional, descargos, suspensiones, constancias, intentos, acuses, reprocesos, cumplimiento, historial y decisiones finales. |
 | Mobile PR 7 | Cubierto: contrato autenticado de alta/revocación FCM, refresh mobile, estado seguro y adapter preparado en motor común. |
+| Mobile documentos | Cubierto: multipart y streaming contra `/api/documentos`, metadata offline liviana y componentes reutilizables en detalles SAIP/apelación. |
