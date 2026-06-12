@@ -3,6 +3,7 @@ package pe.gob.saip.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -19,18 +20,22 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.access.AccessDeniedException;
 
 import pe.gob.saip.backend.config.StorageProperties;
 import pe.gob.saip.backend.model.dto.DocumentoDownloadDTO;
 import pe.gob.saip.backend.model.dto.DocumentoMetadataDTO;
+import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Documento;
+import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.ApelacionRepository;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
 import pe.gob.saip.backend.repository.DocumentoRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
+import pe.gob.saip.backend.repository.RespuestaRepository;
 import pe.gob.saip.backend.repository.ResolucionRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.storage.StorageDownloadResult;
@@ -46,6 +51,8 @@ class DocumentoServiceTest {
     private DocumentoRepository documentoRepository;
     @Mock
     private SolicitudRepository solicitudRepository;
+    @Mock
+    private RespuestaRepository respuestaRepository;
     @Mock
     private ApelacionRepository apelacionRepository;
     @Mock
@@ -69,6 +76,7 @@ class DocumentoServiceTest {
         service = new DocumentoService(
                 documentoRepository,
                 solicitudRepository,
+                respuestaRepository,
                 apelacionRepository,
                 expedienteRepository,
                 resolucionRepository,
@@ -116,6 +124,7 @@ class DocumentoServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null));
 
         assertThat(result.id()).isEqualTo(99L);
@@ -146,6 +155,7 @@ class DocumentoServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exactamente");
@@ -158,11 +168,133 @@ class DocumentoServiceTest {
                         2L,
                         null,
                         null,
+                        null,
                         null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("exactamente");
 
         verifyNoInteractions(documentoRepository, solicitudRepository, autorizacion);
+    }
+
+    @Test
+    void uploadAssociatesRespuestaOnlyAfterInstitutionalOwnershipValidation() {
+        byte[] content = "respuesta".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "respuesta.txt",
+                "text/plain",
+                content);
+        Solicitud solicitud = new Solicitud();
+        solicitud.setIdSolicitud(10L);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(20L);
+        respuesta.setSolicitud(solicitud);
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(4L);
+
+        when(autorizacion.obtenerUsuarioActual()).thenReturn(usuario);
+        when(respuestaRepository.findById(20L)).thenReturn(Optional.of(respuesta));
+        when(storageProvider.upload(any())).thenReturn(new StorageUploadResult(
+                new StorageObjectMetadata(
+                        StorageProviderType.LOCAL,
+                        "local",
+                        "2026/06/respuesta.txt",
+                        "respuesta.txt",
+                        "text/plain",
+                        content.length,
+                        "b".repeat(64))));
+        when(documentoRepository.save(any())).thenAnswer(invocation -> {
+            Documento documento = invocation.getArgument(0);
+            documento.setIdDocumento(100L);
+            return documento;
+        });
+
+        DocumentoMetadataDTO result = service.subir(
+                file,
+                new DocumentoUploadRequest(
+                        Documento.TipoDocumento.RESPUESTA_ENTIDAD,
+                        null,
+                        20L,
+                        null,
+                        null,
+                        null,
+                        null));
+
+        assertThat(result.respuestaId()).isEqualTo(20L);
+        verify(autorizacion).verificarSolicitudInstitucional(10L);
+
+        ArgumentCaptor<Documento> captor = ArgumentCaptor.forClass(Documento.class);
+        verify(documentoRepository).save(captor.capture());
+        assertThat(captor.getValue().getRespuesta()).isSameAs(respuesta);
+    }
+
+    @Test
+    void listByRespuestaChecksOwnershipAndReturnsOnlyActiveRepositoryResults() {
+        Documento documento = documentoActivo();
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(20L);
+        documento.setRespuesta(respuesta);
+        when(documentoRepository.findByRespuesta_IdRespuestaAndEstadoOrderByFechaCreacionDesc(
+                20L,
+                Documento.EstadoDocumento.ACTIVO))
+                .thenReturn(List.of(documento));
+
+        List<DocumentoMetadataDTO> result = service.listarPorRelacion(new DocumentoRelacionRequest(
+                null,
+                20L,
+                null,
+                null,
+                null,
+                null));
+
+        assertThat(result).singleElement().satisfies(metadata -> {
+            assertThat(metadata.id()).isEqualTo(99L);
+            assertThat(metadata.respuestaId()).isEqualTo(20L);
+        });
+        verify(autorizacion).verificarRespuestaAccesible(20L);
+    }
+
+    @Test
+    void listRejectsMissingOrAmbiguousRelationBeforeRepositoryAccess() {
+        assertThatThrownBy(() -> service.listarPorRelacion(new DocumentoRelacionRequest(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactamente");
+
+        assertThatThrownBy(() -> service.listarPorRelacion(new DocumentoRelacionRequest(
+                10L,
+                20L,
+                null,
+                null,
+                null,
+                null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactamente");
+
+        verifyNoInteractions(documentoRepository);
+    }
+
+    @Test
+    void listStopsBeforeRepositoryWhenOwnershipIsDenied() {
+        doThrow(new AccessDeniedException("recurso ajeno"))
+                .when(autorizacion)
+                .verificarRespuestaAccesible(20L);
+
+        assertThatThrownBy(() -> service.listarPorRelacion(new DocumentoRelacionRequest(
+                null,
+                20L,
+                null,
+                null,
+                null,
+                null)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verifyNoInteractions(documentoRepository);
     }
 
     @Test

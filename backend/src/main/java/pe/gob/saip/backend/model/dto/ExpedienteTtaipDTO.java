@@ -19,6 +19,8 @@ public record ExpedienteTtaipDTO(
         String trazabilidadMinima,
         SalaTtaipDTO sala,
         List<MiembroTTAIPDTO> miembros,
+        @Schema(description = "Metadatos documentales seguros asociados directamente al expediente TTAIP")
+        List<DocumentoMetadataDTO> documentos,
         List<ResolucionDTO> resoluciones,
         List<CedulaNotificacionDTO> cedulas,
         List<NotificacionTtaipDTO> notificaciones,
@@ -56,6 +58,7 @@ public record ExpedienteTtaipDTO(
                 expediente.getMiembrosAsignados() != null
                         ? expediente.getMiembrosAsignados().stream().map(MiembroTTAIPDTO::from).toList()
                         : List.of(),
+                DocumentoMetadataDTO.fromActive(expediente.getDocumentos()),
                 resoluciones,
                 cedulas,
                 expediente.getNotificaciones() != null

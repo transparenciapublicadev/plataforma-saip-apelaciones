@@ -14,17 +14,20 @@ import pe.gob.saip.backend.config.StorageProperties;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.DocumentoDownloadDTO;
 import pe.gob.saip.backend.model.dto.DocumentoMetadataDTO;
+import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
+import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.ApelacionRepository;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
 import pe.gob.saip.backend.repository.DocumentoRepository;
 import pe.gob.saip.backend.repository.ExpedienteTtaipRepository;
+import pe.gob.saip.backend.repository.RespuestaRepository;
 import pe.gob.saip.backend.repository.ResolucionRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.storage.StorageDownloadResult;
@@ -40,6 +43,7 @@ public class DocumentoService {
 
     private final DocumentoRepository documentoRepository;
     private final SolicitudRepository solicitudRepository;
+    private final RespuestaRepository respuestaRepository;
     private final ApelacionRepository apelacionRepository;
     private final ExpedienteTtaipRepository expedienteRepository;
     private final ResolucionRepository resolucionRepository;
@@ -51,6 +55,7 @@ public class DocumentoService {
     public DocumentoService(
             DocumentoRepository documentoRepository,
             SolicitudRepository solicitudRepository,
+            RespuestaRepository respuestaRepository,
             ApelacionRepository apelacionRepository,
             ExpedienteTtaipRepository expedienteRepository,
             ResolucionRepository resolucionRepository,
@@ -60,6 +65,7 @@ public class DocumentoService {
             StorageProperties storageProperties) {
         this.documentoRepository = documentoRepository;
         this.solicitudRepository = solicitudRepository;
+        this.respuestaRepository = respuestaRepository;
         this.apelacionRepository = apelacionRepository;
         this.expedienteRepository = expedienteRepository;
         this.resolucionRepository = resolucionRepository;
@@ -128,6 +134,54 @@ public class DocumentoService {
     }
 
     @Transactional(readOnly = true)
+    public List<DocumentoMetadataDTO> listarPorRelacion(DocumentoRelacionRequest request) {
+        validarRelacion(request);
+        List<Documento> documentos;
+
+        if (request.solicitudId() != null) {
+            autorizacion.verificarSolicitudAccesible(request.solicitudId());
+            documentos = documentoRepository
+                    .findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
+                            request.solicitudId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        } else if (request.respuestaId() != null) {
+            autorizacion.verificarRespuestaAccesible(request.respuestaId());
+            documentos = documentoRepository
+                    .findByRespuesta_IdRespuestaAndEstadoOrderByFechaCreacionDesc(
+                            request.respuestaId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        } else if (request.apelacionId() != null) {
+            autorizacion.verificarApelacionAccesible(request.apelacionId());
+            documentos = documentoRepository
+                    .findByApelacion_IdApelacionAndEstadoOrderByFechaCreacionDesc(
+                            request.apelacionId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        } else if (request.expedienteTtaipId() != null) {
+            autorizacion.verificarExpedienteTtaipAccesible(request.expedienteTtaipId());
+            documentos = documentoRepository
+                    .findByExpedienteTtaip_IdExpedienteTtaipAndEstadoOrderByFechaCreacionDesc(
+                            request.expedienteTtaipId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        } else if (request.resolucionId() != null) {
+            Resolucion resolucion = buscarResolucion(request.resolucionId());
+            autorizacion.verificarApelacionAccesible(resolucion.getApelacion());
+            documentos = documentoRepository
+                    .findByResolucion_IdResolucionAndEstadoOrderByFechaCreacionDesc(
+                            request.resolucionId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        } else {
+            CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            autorizacion.verificarApelacionAccesible(cedula.getResolucion().getApelacion());
+            documentos = documentoRepository
+                    .findByCedulaNotificacion_IdCedulaAndEstadoOrderByFechaCreacionDesc(
+                            request.cedulaNotificacionId(),
+                            Documento.EstadoDocumento.ACTIVO);
+        }
+
+        return documentos.stream().map(DocumentoMetadataDTO::from).toList();
+    }
+
+    @Transactional(readOnly = true)
     public DocumentoDownloadDTO descargar(Long documentoId) {
         Documento documento = buscarActivo(documentoId);
         verificarAcceso(documento);
@@ -167,6 +221,12 @@ public class DocumentoService {
         if (request.solicitudId() != null) {
             autorizacion.verificarSolicitudAccesible(request.solicitudId());
             documento.setSolicitud(buscarSolicitud(request.solicitudId()));
+            return;
+        }
+        if (request.respuestaId() != null) {
+            Respuesta respuesta = buscarRespuesta(request.respuestaId());
+            autorizacion.verificarSolicitudInstitucional(respuesta.getSolicitud().getIdSolicitud());
+            documento.setRespuesta(respuesta);
             return;
         }
         if (request.apelacionId() != null) {
@@ -229,6 +289,12 @@ public class DocumentoService {
                         "Solicitud SAIP no encontrada con ID: " + id));
     }
 
+    private Respuesta buscarRespuesta(Long id) {
+        return respuestaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Respuesta no encontrada con ID: " + id));
+    }
+
     private Apelacion buscarApelacion(Long id) {
         return apelacionRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -260,5 +326,12 @@ public class DocumentoService {
                     "No existe un StorageProvider configurado para " + providerType);
         }
         return provider;
+    }
+
+    private void validarRelacion(DocumentoRelacionRequest request) {
+        if (request == null || request.relationCount() != 1) {
+            throw new IllegalArgumentException(
+                    "Debe indicar exactamente una relación documental para la consulta");
+        }
     }
 }

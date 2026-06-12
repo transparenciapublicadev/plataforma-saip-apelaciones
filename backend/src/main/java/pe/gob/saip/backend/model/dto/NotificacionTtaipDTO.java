@@ -3,9 +3,12 @@ package pe.gob.saip.backend.model.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.NotificacionTtaip;
 
+import java.util.List;
+
 @Schema(description = "Notificación TTAIP asociada a una cédula y a un destinatario")
 public record NotificacionTtaipDTO(
         Long id,
+        Long cedulaId,
         String numeroCedula,
         String destinatario,
         String destinatarioNombre,
@@ -31,11 +34,14 @@ public record NotificacionTtaipDTO(
         String observacionValidacion,
         String responsableConstancia,
         String observacionConstancia,
-        String trazabilidad
+        String trazabilidad,
+        @Schema(description = "Metadatos documentales seguros de la cédula asociada")
+        List<DocumentoMetadataDTO> documentosCedula
 ) {
     public static NotificacionTtaipDTO from(NotificacionTtaip notificacion) {
         return new NotificacionTtaipDTO(
                 notificacion.getId(),
+                notificacion.getCedula() != null ? notificacion.getCedula().getIdCedula() : null,
                 notificacion.getCedula() != null ? notificacion.getCedula().getNumeroCedula() : null,
                 notificacion.getDestinatario() != null ? notificacion.getDestinatario().name() : null,
                 notificacion.getDestinatarioNombre(),
@@ -61,7 +67,10 @@ public record NotificacionTtaipDTO(
                 notificacion.getObservacionValidacion(),
                 notificacion.getResponsableConstancia(),
                 notificacion.getObservacionConstancia(),
-                notificacion.getTrazabilidad()
+                notificacion.getTrazabilidad(),
+                notificacion.getCedula() != null
+                        ? DocumentoMetadataDTO.fromActive(notificacion.getCedula().getDocumentos())
+                        : List.of()
         );
     }
 }

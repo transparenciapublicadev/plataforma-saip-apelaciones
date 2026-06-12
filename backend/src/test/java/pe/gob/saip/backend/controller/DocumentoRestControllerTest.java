@@ -14,6 +14,7 @@ import static org.hamcrest.Matchers.containsString;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -57,9 +59,37 @@ class DocumentoRestControllerTest {
                 .andExpect(jsonPath("$.id").value(8))
                 .andExpect(jsonPath("$.nombreOriginal").value("resolucion.pdf"))
                 .andExpect(jsonPath("$.hashSha256").value("a".repeat(64)))
+                .andExpect(jsonPath("$.storageProvider").doesNotExist())
+                .andExpect(jsonPath("$.creadoPorId").doesNotExist())
                 .andExpect(jsonPath("$.storageKey").doesNotExist())
                 .andExpect(jsonPath("$.rutaArchivo").doesNotExist())
                 .andExpect(jsonPath("$.storageBucket").doesNotExist());
+    }
+
+    @Test
+    void listByRelationReturnsSafeMetadata() throws Exception {
+        when(documentoService.listarPorRelacion(any())).thenReturn(List.of(metadata()));
+
+        mockMvc.perform(get("/api/documentos").param("resolucionId", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(8))
+                .andExpect(jsonPath("$[0].resolucionId").value(5))
+                .andExpect(jsonPath("$[0].storageProvider").doesNotExist())
+                .andExpect(jsonPath("$[0].storageKey").doesNotExist())
+                .andExpect(jsonPath("$[0].rutaArchivo").doesNotExist());
+    }
+
+    @Test
+    void listByRelationReturnsProblemDetailsWhenOwnershipFails() throws Exception {
+        when(documentoService.listarPorRelacion(any()))
+                .thenThrow(new AccessDeniedException("recurso ajeno"));
+
+        mockMvc.perform(get("/api/documentos").param("respuestaId", "99"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Forbidden"))
+                .andExpect(jsonPath("$.detail").value(
+                        "El usuario autenticado no tiene permisos para ejecutar esta operación."));
     }
 
     @Test
@@ -127,10 +157,7 @@ class DocumentoRestControllerTest {
                 "application/pdf",
                 100L,
                 "a".repeat(64),
-                "LOCAL",
                 "ACTIVO",
-                31L,
-                now,
                 now,
                 null,
                 null,

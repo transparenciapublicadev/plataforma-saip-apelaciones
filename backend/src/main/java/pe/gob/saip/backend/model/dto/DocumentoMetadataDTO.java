@@ -1,6 +1,8 @@
 package pe.gob.saip.backend.model.dto;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.Documento;
@@ -13,11 +15,8 @@ public record DocumentoMetadataDTO(
         String contentType,
         Long sizeBytes,
         String hashSha256,
-        String storageProvider,
         String estado,
-        Long creadoPorId,
         LocalDateTime fechaCreacion,
-        LocalDateTime fechaActualizacion,
         Long solicitudId,
         Long respuestaId,
         Long apelacionId,
@@ -33,11 +32,8 @@ public record DocumentoMetadataDTO(
                 documento.getContentType(),
                 documento.getSizeBytes(),
                 documento.getHashSha256(),
-                enumName(documento.getStorageProvider()),
                 enumName(documento.getEstado()),
-                documento.getCreadoPor() != null ? documento.getCreadoPor().getIdUsuario() : null,
                 documento.getFechaCreacion(),
-                documento.getFechaActualizacion(),
                 documento.getSolicitud() != null ? documento.getSolicitud().getIdSolicitud() : null,
                 documento.getRespuesta() != null ? documento.getRespuesta().getIdRespuesta() : null,
                 documento.getApelacion() != null ? documento.getApelacion().getIdApelacion() : null,
@@ -48,6 +44,19 @@ public record DocumentoMetadataDTO(
                 documento.getCedulaNotificacion() != null
                         ? documento.getCedulaNotificacion().getIdCedula()
                         : null);
+    }
+
+    public static List<DocumentoMetadataDTO> fromActive(List<Documento> documentos) {
+        if (documentos == null) {
+            return List.of();
+        }
+        return documentos.stream()
+                .filter(documento -> documento.getEstado() == Documento.EstadoDocumento.ACTIVO)
+                .sorted(Comparator.comparing(
+                        Documento::getFechaCreacion,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(DocumentoMetadataDTO::from)
+                .toList();
     }
 
     private static String enumName(Enum<?> value) {
