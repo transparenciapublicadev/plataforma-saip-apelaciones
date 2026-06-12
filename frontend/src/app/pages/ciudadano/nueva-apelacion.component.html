@@ -357,11 +357,11 @@
                   </div>
                 } @else {
                   <label class="block cursor-pointer">
-                    <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png" (change)="onFileChange($event, documento.fileNum)" />
+                    <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" (change)="onFileChange($event, documento.fileNum)" />
                     <span class="space-y-2 block">
                       <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
                       <span class="text-sm text-foreground block">Arrastra tu archivo aquí o <span style="color: var(--brand-700)">haz clic para seleccionar</span></span>
-                      <span class="text-xs text-muted-foreground block">PDF, JPG o PNG (máx. 10MB)</span>
+                      <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT (máx. 10MB)</span>
                     </span>
                   </label>
                 }

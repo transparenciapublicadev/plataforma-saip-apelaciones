@@ -23,6 +23,10 @@ import {
   ReferenceSuccessModalComponent,
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { DocumentoService } from '../../services/documento.service';
+import { TipoDocumento, validarDocumento } from '../../models/documento.model';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 
 interface RequiredAppealDocument {
   n: string;
@@ -45,6 +49,7 @@ export class NuevaApelacionComponent implements OnInit {
   private readonly entidadService = inject(EntidadService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
+  private readonly documentoService = inject(DocumentoService);
 
   solicitud = signal<Solicitud | null>(null);
   solicitudesApelables = signal<Solicitud[]>([]);
@@ -55,6 +60,8 @@ export class NuevaApelacionComponent implements OnInit {
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
   expedienteTtaip = signal<string>('');
+  uploadedDocumentsCount = signal<number>(0);
+  documentUploadWarning = signal<string>('');
 
   modoSeleccion = signal<boolean>(false);
   searchTerm = signal<string>('');
@@ -247,6 +254,14 @@ export class NuevaApelacionComponent implements OnInit {
   onFileChange(event: Event, fileNum: 1 | 2 | 3): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
+    if (file) {
+      const validationError = validarDocumento(file);
+      if (validationError) {
+        input.value = '';
+        this.error.set(validationError);
+        return;
+      }
+    }
 
     if (fileNum === 1) {
       this.file1.set(file);
@@ -255,6 +270,7 @@ export class NuevaApelacionComponent implements OnInit {
     } else {
       this.file3.set(file);
     }
+    this.error.set('');
   }
 
   removeFile(fileNum: 1 | 2 | 3): void {
@@ -321,6 +337,8 @@ export class NuevaApelacionComponent implements OnInit {
     this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
+    this.documentUploadWarning.set('');
+    this.uploadedDocumentsCount.set(0);
 
     const creacion$ = this.esApelacionExterna()
       ? this.apelacionService.crearExterna({
@@ -363,16 +381,39 @@ export class NuevaApelacionComponent implements OnInit {
           fundamentos: this.fundamentos.trim()
         });
 
-    creacion$.subscribe({
-      next: (resp) => {
-        this.loading.set(false);
+    creacion$.pipe(
+      switchMap((resp) => {
         this.expedienteTtaip.set(resp.expediente || '');
+        return forkJoin([
+          this.uploadAppealDocument(resp.id, this.file1()!, 'SOLICITUD_ORIGINAL'),
+          this.uploadAppealDocument(
+            resp.id,
+            this.file2()!,
+            this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
+              ? 'DOCUMENTO_ADJUNTO'
+              : 'RESPUESTA_ENTIDAD'
+          ),
+          this.uploadAppealDocument(resp.id, this.file3()!, 'RECURSO_APELACION')
+        ]).pipe(
+          map((results) => ({
+            resp,
+            uploadedCount: results.filter(Boolean).length
+          }))
+        );
+      })
+    ).subscribe({
+      next: ({ resp, uploadedCount }) => {
+        this.loading.set(false);
+        this.uploadedDocumentsCount.set(uploadedCount);
+        this.file1.set(null);
+        this.file2.set(null);
+        this.file3.set(null);
         this.mensaje.set(`Apelación creada correctamente. Expediente: ${resp.expediente}`);
         this.successModalAbierto.set(true);
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err.error?.detail || err.error?.mensaje || 'Error al crear la apelación');
+        this.error.set(problemDetailsMessage(err, 'Error al crear la apelación.'));
       }
     });
   }
@@ -399,7 +440,7 @@ export class NuevaApelacionComponent implements OnInit {
     return [
       { label: this.esApelacionExterna() ? 'Solicitud externa' : 'Expediente original', value: this.solicitudOrigenDisplay(), mono: true },
       { label: 'Entidad apelada', value: this.entidadOrigenDisplay() },
-      { label: 'Documentos adjuntos', value: `${this.uploadedCount()} de 3` },
+      { label: 'Documentos adjuntos', value: `${this.uploadedDocumentsCount()} de 3` },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
     ];
   }
@@ -467,6 +508,9 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   successDescription(): string {
+    if (this.documentUploadWarning()) {
+      return `El recurso fue registrado, pero ${this.documentUploadWarning()}`;
+    }
     return this.esPresentacionAnteEntidad()
       ? 'Su recurso quedó registrado ante la entidad pública. La entidad dispone de 2 días hábiles para elevarlo al TTAIP.'
       : 'Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento.';
@@ -581,6 +625,22 @@ export class NuevaApelacionComponent implements OnInit {
 
   private fechaHoyIso(): string {
     return new Date().toISOString().slice(0, 10);
+  }
+
+  private uploadAppealDocument(
+    apelacionId: number,
+    file: File,
+    tipoDocumento: TipoDocumento
+  ) {
+    return this.documentoService.upload(file, tipoDocumento, { apelacionId }).pipe(
+      map(() => true),
+      catchError((error) => {
+        this.documentUploadWarning.set(
+          problemDetailsMessage(error, 'no todos los documentos pudieron cargarse.')
+        );
+        return of(false);
+      })
+    );
   }
 }
 
