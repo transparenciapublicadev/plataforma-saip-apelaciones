@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, computed, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -8,6 +8,9 @@ import { AuthService } from '../../services/auth.service';
 import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
 import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentListComponent } from '../../shared/document-list.component';
+import { DocumentUploadComponent } from '../../shared/document-upload.component';
 
 interface RequestTab {
   id: 'solicitud' | 'respuesta' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'adjuntos' | 'apelacion';
@@ -24,7 +27,7 @@ interface TimelineEvent {
 
 @Component({
   selector: 'app-solicitud-detalle',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -60,6 +63,11 @@ export class SolicitudDetalleComponent implements OnInit {
     { id: 'apelacion', label: 'Apelación' }
   ];
 
+  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
+    const solicitudId = this.solicitud()?.id;
+    return solicitudId ? { solicitudId } : null;
+  });
+
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
     if (!expediente) {
@@ -82,6 +90,13 @@ export class SolicitudDetalleComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onDocumentoSubido(): void {
+    const expediente = this.solicitud()?.expediente;
+    if (expediente) {
+      this.cargarSolicitud(expediente);
+    }
   }
 
   cambiarTab(tab: RequestTab['id']): void {
