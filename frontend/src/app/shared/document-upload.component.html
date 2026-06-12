@@ -1,0 +1,83 @@
+<section class="space-y-3">
+  <div class="flex items-center justify-between gap-3">
+    <h3 class="text-sm font-semibold text-foreground">{{ heading() }}</h3>
+    <span class="font-mono text-[11px] text-muted-foreground">Máx. 10 MB</span>
+  </div>
+
+  <div
+    class="reference-upload-zone rounded-lg border-2 border-dashed p-5 text-center transition-colors"
+    [style.border-color]="dragging() ? 'var(--brand-600)' : 'var(--border)'"
+    [style.background]="dragging() ? 'var(--brand-subtle)' : 'var(--card)'"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    @if (selectedFile(); as file) {
+      <div class="flex items-center gap-3 text-left">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+          <svg lucideFileText class="h-5 w-5" style="color: var(--brand-700)"></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-foreground">{{ file.name }}</p>
+          <p class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }}</p>
+        </div>
+        <button
+          type="button"
+          class="btn-ghost-brand !h-9 !w-9 !p-0"
+          aria-label="Quitar archivo seleccionado"
+          title="Quitar archivo"
+          [disabled]="loading()"
+          (click)="clearFile()"
+        >
+          <svg lucideX class="h-4 w-4"></svg>
+        </button>
+      </div>
+    } @else {
+      <label class="block cursor-pointer" [class.pointer-events-none]="disabled()">
+        <input
+          #fileInput
+          type="file"
+          class="hidden"
+          [accept]="accept"
+          [disabled]="disabled()"
+          (change)="onFileSelected($event)"
+        />
+        <svg lucideUpload class="mx-auto h-7 w-7 text-muted-foreground"></svg>
+        <span class="mt-2 block text-sm text-foreground">
+          Arrastre un archivo o <span style="color: var(--brand-700)">selecciónelo</span>
+        </span>
+        <span class="mt-1 block text-xs text-muted-foreground">PDF, JPG, PNG o TXT</span>
+      </label>
+    }
+  </div>
+
+  @if (selectedFile()) {
+    <button
+      type="button"
+      class="btn-brand w-full justify-center"
+      [disabled]="loading() || disabled()"
+      (click)="upload()"
+    >
+      @if (loading()) {
+        <svg lucideLoaderCircle class="h-4 w-4 animate-spin"></svg>
+        Cargando
+      } @else {
+        <svg lucideUpload class="h-4 w-4"></svg>
+        Cargar documento
+      }
+    </button>
+  }
+
+  @if (error()) {
+    <p class="rounded-md p-3 text-sm" role="alert" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
+      {{ error() }}
+    </p>
+  }
+
+  @if (success()) {
+    <p class="flex items-center gap-2 rounded-md p-3 text-sm" role="status" style="background: var(--success-subtle); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 25%, transparent)">
+      <svg lucideCheckCircle2 class="h-4 w-4"></svg>
+      {{ success() }}
+    </p>
+  }
+</section>
