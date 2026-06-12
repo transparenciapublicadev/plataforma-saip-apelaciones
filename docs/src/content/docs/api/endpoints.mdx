@@ -310,19 +310,34 @@ graph LR
     | Método | Ruta | Uso principal | Auth |
     | --- | --- | --- | --- |
     | `POST` | `/documentos/upload` | Carga un archivo y registra metadatos asociados a un único recurso. | JWT + ownership |
+    | `GET` | `/documentos?{relacionId}=...` | Lista documentos activos por una única relación funcional. | JWT + ownership |
     | `GET` | `/documentos/{id}/metadata` | Consulta metadatos sin exponer ruta, bucket ni clave interna. | JWT + ownership |
     | `GET` | `/documentos/{id}/download` | Descarga autenticada del binario. | JWT + ownership |
     | `DELETE` | `/documentos/{id}` | Elimina el objeto y conserva el metadato como `ELIMINADO`. | ADMIN |
 
     La carga usa `multipart/form-data`: parte `file`, parámetro
-    `tipoDocumento` y exactamente uno entre `solicitudId`, `apelacionId`,
-    `expedienteTtaipId`, `resolucionId` o `cedulaNotificacionId`.
+    `tipoDocumento` y exactamente uno entre `solicitudId`, `respuestaId`,
+    `apelacionId`, `expedienteTtaipId`, `resolucionId` o
+    `cedulaNotificacionId`.
+
+    El listado usa los mismos identificadores de relación y exige exactamente
+    uno. Devuelve `DocumentoMetadataDTO` con `id`, nombre original, MIME type,
+    tamaño, SHA-256, estado, fecha, tipo documental e identificadores
+    funcionales. No devuelve el provider, actor creador, bucket, endpoint,
+    `storageKey`, ruta física ni URL S3.
+
+    Los detalles `SolicitudDTO`, `RespuestaDTO` y `ApelacionDTO` conservan el
+    campo legacy `documentos` y agregan `documentosMetadata` como contrato
+    recomendado. `ExpedienteTtaipDTO`, `ResolucionDTO` y
+    `CedulaNotificacionDTO` exponen metadata segura en `documentos`.
+    `NotificacionTtaipDTO` expone `cedulaId` y `documentosCedula`, sin crear una
+    relación documental artificial con la notificación.
 
     :::caution[Storage interno]
     PostgreSQL almacena solo metadatos y SHA-256. Las respuestas nunca incluyen
-    `storageKey`, bucket, endpoint ni rutas físicas. El provider activo puede ser
-    local o S3-compatible, pero el backend siempre intermedia las descargas y no
-    entrega URLs públicas o presigned.
+    `storageKey`, bucket, endpoint, provider ni rutas físicas. El provider
+    activo puede ser local o S3-compatible, pero el backend siempre intermedia
+    las descargas y no entrega URLs públicas o presigned.
     :::
   </TabItem>
 

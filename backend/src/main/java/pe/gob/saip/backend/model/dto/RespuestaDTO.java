@@ -17,7 +17,9 @@ public record RespuestaDTO(
     String fechaRespuesta,
     Long funcionarioId,
     String funcionarioNombre,
-    List<DocumentoDTO> documentos
+    List<DocumentoDTO> documentos,
+    @Schema(description = "Metadatos documentales seguros asociados directamente a la respuesta")
+    List<DocumentoMetadataDTO> documentosMetadata
 ) {
     public static RespuestaDTO from(Respuesta r) {
         return new RespuestaDTO(
@@ -30,7 +32,8 @@ public record RespuestaDTO(
             r.getFechaRespuesta() != null ? r.getFechaRespuesta().toString() : null,
             r.getFuncionario() != null ? r.getFuncionario().getId() : null,
             r.getFuncionario() != null ? r.getFuncionario().getNombreCompleto() : null,
-            r.getDocumentos() != null ? r.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of()
+            DocumentoDTO.fromActive(r.getDocumentos()),
+            DocumentoMetadataDTO.fromActive(r.getDocumentos())
         );
     }
 }

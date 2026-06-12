@@ -5,9 +5,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -54,6 +57,11 @@ public class CedulaNotificacion {
 
     @Column(name = "documento_referencia", length = 500)
     private String documentoReferencia;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "cedulaNotificacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Documento> documentos;
 
     @PrePersist
     protected void onCreate() {

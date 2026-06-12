@@ -23,7 +23,7 @@ El catálogo exhaustivo de rutas, ejemplos y flujo end-to-end vive en [API Endpo
 | `RespuestaRestController` | `/api/respuestas` | 7 | Respuestas de entidad, entrega, denegación y causales. |
 | `ApelacionRestController` | `/api/apelaciones` | 13 | Creación interna/externa, consulta, subsanación y estados de apelaciones. |
 | `TTAIPRestController` | `/api/ttaip` | 22 | Calificación, notificación y resolución final TTAIP. |
-| `DocumentoRestController` | `/api/documentos` | 4 | Upload, metadatos, descarga con ownership y eliminación administrativa. |
+| `DocumentoRestController` | `/api/documentos` | 5 | Upload, listado por relación, metadatos, descarga con ownership y eliminación administrativa. |
 | `EstadisticasRestController` | `/api/estadisticas` | 7 | Indicadores globales, ranking y tendencias. |
 | `ReportesRestController` | `/api/reportes` | 6 | Reportes operativos y resumen ejecutivo. |
 | `PortalPublicoRestController` | `/api/public/portal` | 1 | Datos de portada pública. |
@@ -127,9 +127,14 @@ flowchart TB
     buckets ni claves internas.
 
     - `POST /documentos/upload`: carga multipart asociada exactamente a un recurso SAIP/TTAIP accesible.
+    - `GET /documentos`: lista metadata segura usando exactamente uno de `solicitudId`, `respuestaId`, `apelacionId`, `expedienteTtaipId`, `resolucionId` o `cedulaNotificacionId`.
     - `GET /documentos/{id}/metadata`: metadatos sanitizados con ownership.
     - `GET /documentos/{id}/download`: descarga autenticada como attachment.
     - `DELETE /documentos/{id}`: eliminación física y baja lógica del metadato, solo administrador.
+
+    La carga por `respuestaId` es institucional: solo el funcionario de la
+    entidad propietaria o un administrador puede asociar documentos a una
+    respuesta. La consulta hereda el ownership de la SAIP o apelación.
   </TabItem>
 
   <TabItem label="Analítica">

@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.controller;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
@@ -21,6 +22,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import pe.gob.saip.backend.model.dto.DocumentoDownloadDTO;
 import pe.gob.saip.backend.model.dto.DocumentoMetadataDTO;
+import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.service.DocumentoService;
@@ -42,6 +44,7 @@ public class DocumentoRestController {
             @RequestPart("file") MultipartFile file,
             @RequestParam Documento.TipoDocumento tipoDocumento,
             @RequestParam(required = false) Long solicitudId,
+            @RequestParam(required = false) Long respuestaId,
             @RequestParam(required = false) Long apelacionId,
             @RequestParam(required = false) Long expedienteTtaipId,
             @RequestParam(required = false) Long resolucionId,
@@ -49,11 +52,30 @@ public class DocumentoRestController {
         DocumentoUploadRequest request = new DocumentoUploadRequest(
                 tipoDocumento,
                 solicitudId,
+                respuestaId,
                 apelacionId,
                 expedienteTtaipId,
                 resolucionId,
                 cedulaNotificacionId);
         return ResponseEntity.status(201).body(documentoService.subir(file, request));
+    }
+
+    @GetMapping
+    @Operation(summary = "Listar metadatos documentales seguros por relación de negocio")
+    public List<DocumentoMetadataDTO> listar(
+            @RequestParam(required = false) Long solicitudId,
+            @RequestParam(required = false) Long respuestaId,
+            @RequestParam(required = false) Long apelacionId,
+            @RequestParam(required = false) Long expedienteTtaipId,
+            @RequestParam(required = false) Long resolucionId,
+            @RequestParam(required = false) Long cedulaNotificacionId) {
+        return documentoService.listarPorRelacion(new DocumentoRelacionRequest(
+                solicitudId,
+                respuestaId,
+                apelacionId,
+                expedienteTtaipId,
+                resolucionId,
+                cedulaNotificacionId));
     }
 
     @GetMapping("/{documentoId}/metadata")
