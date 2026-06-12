@@ -17,6 +17,9 @@ import {
 } from '../../models/solicitud.model';
 import { Entidad } from '../../models/entidad.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentListComponent } from '../../shared/document-list.component';
+import { DocumentUploadComponent } from '../../shared/document-upload.component';
 
 type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
 
@@ -35,7 +38,7 @@ interface HistorialItem {
 
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -221,6 +224,11 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null
   );
 
+  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
+    const solicitudId = this.solicitud()?.id;
+    return solicitudId ? { solicitudId } : null;
+  });
+
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
     if (!expediente) {
@@ -246,6 +254,13 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onDocumentoSubido(): void {
+    const expediente = this.solicitud()?.expediente;
+    if (expediente) {
+      this.cargarSolicitud(expediente, 'adjuntos');
+    }
   }
 
   cambiarTab(tab: DetailTabId): void {
