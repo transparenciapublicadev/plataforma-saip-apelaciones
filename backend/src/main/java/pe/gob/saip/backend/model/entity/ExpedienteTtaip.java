@@ -88,6 +88,11 @@ public class ExpedienteTtaip {
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "expedienteTtaip", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    private List<Documento> documentos;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "expediente", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<NotificacionTtaip> notificaciones;
 

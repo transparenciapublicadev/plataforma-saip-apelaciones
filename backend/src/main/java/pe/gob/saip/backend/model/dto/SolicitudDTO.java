@@ -43,6 +43,8 @@ public record SolicitudDTO(
     RespuestaDTO respuesta,
     ApelacionInfoDTO apelacion,
     List<DocumentoDTO> documentos,
+    @Schema(description = "Metadatos documentales seguros asociados directamente a la SAIP")
+    List<DocumentoMetadataDTO> documentosMetadata,
     List<ObservacionSolicitudDTO> observaciones,
     List<AmpliacionPlazoSolicitudDTO> ampliacionesPlazo,
     List<EncauzamientoSolicitudDTO> encauzamientos,
@@ -75,7 +77,8 @@ public record SolicitudDTO(
             s.getCanalNotificacion() != null ? s.getCanalNotificacion().name() : null,
             s.getRespuesta() != null ? RespuestaDTO.from(s.getRespuesta()) : null,
             s.getApelacion() != null ? ApelacionInfoDTO.from(s.getApelacion()) : null,
-            s.getDocumentos() != null ? s.getDocumentos().stream().map(DocumentoDTO::from).toList() : List.of(),
+            DocumentoDTO.fromActive(s.getDocumentos()),
+            DocumentoMetadataDTO.fromActive(s.getDocumentos()),
             s.getObservaciones() != null
                     ? s.getObservaciones().stream()
                             .sorted(Comparator.comparing(
