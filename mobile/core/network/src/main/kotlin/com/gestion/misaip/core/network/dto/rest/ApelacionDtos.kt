@@ -221,7 +221,8 @@ data class ApelacionRestDto(
                 )
             },
             elevacion = elevacion?.toDomain(),
-            expedienteTtaip = expedienteTtaip?.toDomain()
+            expedienteTtaip = expedienteTtaip?.toDomain(),
+            documentos = documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
         )
     }
 }

@@ -125,7 +125,8 @@ data class SolicitudRestDto(
                 )
             },
             silencioAdministrativo = estado == "VENCIDA",
-            timeline = emptyList()
+            timeline = emptyList(),
+            documentos = documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
         )
     }
 }

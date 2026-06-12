@@ -57,6 +57,11 @@ interface ApelacionRepository {
     fun getApelacionPorExpediente(expediente: String): Flow<Apelacion?>
 
     /**
+     * Actualiza el detalle completo desde backend y conserva metadata documental liviana.
+     */
+    suspend fun refrescarDetalle(expediente: String): Apelacion?
+
+    /**
      * Obtiene la apelación relacionada con una solicitud SAIP.
      *
      * @param expedienteSAIP Número de expediente SAIP

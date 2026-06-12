@@ -77,6 +77,11 @@ interface SolicitudRepository {
     fun getSolicitudPorExpediente(expediente: String): Flow<Solicitud?>
 
     /**
+     * Actualiza el detalle completo desde backend y conserva metadata documental liviana.
+     */
+    suspend fun refrescarDetalle(expediente: String): Solicitud?
+
+    /**
      * Crea una nueva solicitud.
      * Guarda localmente y programa sincronización con el servidor.
      *

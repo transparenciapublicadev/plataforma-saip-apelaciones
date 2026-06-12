@@ -56,7 +56,8 @@ object SolicitudMapper {
                 )
             },
             silencioAdministrativo = entity.silencioAdministrativo,
-            timeline = parseTimeline(entity.timeline)
+            timeline = parseTimeline(entity.timeline),
+            documentos = DocumentoMapper.decodeMetadata(entity.documentosMetadata)
         )
     }
 
@@ -92,6 +93,7 @@ object SolicitudMapper {
             respuestaFundamentacion = domain.respuestaEntidad?.fundamentacion,
             respuestaArchivos = domain.respuestaEntidad?.archivos?.let { json.encodeToString(it) },
             timeline = json.encodeToString(domain.timeline.map { TimelineDto(it) }),
+            documentosMetadata = DocumentoMapper.encodeMetadata(domain.documentos),
             sincronizado = false,
             pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()
