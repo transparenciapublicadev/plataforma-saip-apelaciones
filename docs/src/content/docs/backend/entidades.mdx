@@ -226,6 +226,12 @@ Resolución emitida por un miembro del TTAIP sobre una apelación.
 PostgreSQL conserva metadatos, no binarios. La ubicación física se resuelve
 mediante `StorageProvider`.
 
+Cada documento se asocia exactamente a una relación funcional: `Solicitud`,
+`Respuesta`, `Apelacion`, `ExpedienteTtaip`, `Resolucion` o
+`CedulaNotificacion`. Los DTOs públicos exponen los identificadores de esa
+relación, pero omiten `storageKey`, bucket, endpoint, provider y rutas físicas.
+`NotificacionTtaip` accede a documentos mediante su cédula asociada.
+
 ## Enumeraciones
 
 <Tabs>
