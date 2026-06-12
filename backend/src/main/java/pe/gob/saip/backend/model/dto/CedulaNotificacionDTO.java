@@ -3,6 +3,8 @@ package pe.gob.saip.backend.model.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 
+import java.util.List;
+
 @Schema(description = "Cédula de notificación emitida para una resolución TTAIP")
 public record CedulaNotificacionDTO(
         Long id,
@@ -13,7 +15,9 @@ public record CedulaNotificacionDTO(
         String fechaEmision,
         String canal,
         String estado,
-        String documentoReferencia
+        String documentoReferencia,
+        @Schema(description = "Metadatos documentales seguros asociados directamente a la cédula")
+        List<DocumentoMetadataDTO> documentos
 ) {
     public static CedulaNotificacionDTO from(CedulaNotificacion cedula) {
         return new CedulaNotificacionDTO(
@@ -25,7 +29,8 @@ public record CedulaNotificacionDTO(
                 cedula.getFechaEmision() != null ? cedula.getFechaEmision().toString() : null,
                 cedula.getCanal(),
                 cedula.getEstado(),
-                cedula.getDocumentoReferencia()
+                cedula.getDocumentoReferencia(),
+                DocumentoMetadataDTO.fromActive(cedula.getDocumentos())
         );
     }
 }

@@ -19,6 +19,8 @@ public record ResolucionDTO(
     String miembroTTAIPNombre,
     Boolean iniciarProcesoDisciplinario,
     SalaTtaipDTO sala,
+    @Schema(description = "Metadatos documentales seguros asociados directamente a la resolución")
+    List<DocumentoMetadataDTO> documentos,
     List<CedulaNotificacionDTO> cedulas
 ) {
     public static ResolucionDTO from(Resolucion r) {
@@ -35,6 +37,7 @@ public record ResolucionDTO(
             r.getMiembroTTAIP() != null ? r.getMiembroTTAIP().getNombreCompleto() : null,
             r.getIniciarProcesoDisciplinario(),
             r.getSalaTtaip() != null ? SalaTtaipDTO.from(r.getSalaTtaip()) : null,
+            DocumentoMetadataDTO.fromActive(r.getDocumentos()),
             r.getCedulasNotificacion() != null
                     ? r.getCedulasNotificacion().stream().map(CedulaNotificacionDTO::from).toList()
                     : List.of()
