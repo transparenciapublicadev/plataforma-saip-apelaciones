@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,30 @@ class S3CompatibleStorageProviderTest {
         assertThat(request.getValue().key()).isEqualTo(metadata.storageKey());
         assertThat(request.getValue().contentType()).isEqualTo("application/pdf");
         assertThat(request.getValue().metadata()).containsEntry("sha256", metadata.hashSha256());
+    }
+
+    @Test
+    void uploadSupportsAnInjectedOpaqueKeyForIsolatedIntegrationTests() {
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().eTag("etag").build());
+        StorageProperties properties = s3Properties();
+        Function<String, String> keyFactory =
+                extension -> "integration-tests/00000000-0000-0000-0000-000000000001." + extension;
+        provider = new S3CompatibleStorageProvider(
+                properties,
+                new StorageUploadValidator(properties),
+                s3Client,
+                keyFactory);
+
+        StorageObjectMetadata metadata = provider.upload(new StorageUploadRequest(
+                        "validacion.txt",
+                        "text/plain",
+                        9,
+                        new ByteArrayInputStream("contenido".getBytes(StandardCharsets.UTF_8))))
+                .metadata();
+
+        assertThat(metadata.storageKey())
+                .isEqualTo("integration-tests/00000000-0000-0000-0000-000000000001.txt");
     }
 
     @Test
