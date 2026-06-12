@@ -13,6 +13,7 @@ export type ApelacionInfoDTO = components['schemas']['ApelacionInfoDTO'];
 export type RespuestaDTO = components['schemas']['RespuestaDTO'];
 export type ResolucionDTO = components['schemas']['ResolucionDTO'];
 export type DocumentoDTO = components['schemas']['DocumentoDTO'];
+export type DocumentoMetadataDTO = components['schemas']['DocumentoMetadataDTO'];
 export type CiudadanoDTO = components['schemas']['CiudadanoDTO'];
 export type EntidadDTO = components['schemas']['EntidadDTO'];
 export type FuncionarioDTO = components['schemas']['FuncionarioDTO'];
