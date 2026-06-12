@@ -33,8 +33,8 @@ La fuente exacta del esquema vive en `core/database/src/main/sqldelight/`. El ca
 | --- | --- |
 | `Usuario` | Perfil local y hash para fallback offline controlado. |
 | `EntidadPublica` | Catálogo local para formularios. |
-| `Solicitud` | Bandeja SAIP, respuesta, timeline, consentimiento, canal formal de notificación y flags de sincronización. |
-| `Apelacion` | Seguimiento TTAIP local para SAIP interna o apelación externa, con metadatos mínimos de elevación. |
+| `Solicitud` | Bandeja SAIP, respuesta, timeline, consentimiento, canal formal de notificación, metadata documental y flags de sincronización. |
+| `Apelacion` | Seguimiento TTAIP local para SAIP interna o apelación externa, con metadatos mínimos de elevación y documentos. |
 | `Sesion` | Sesión local de trabajo; el JWT no se guarda aquí. |
 | `SyncLog` | Reintentos de sincronización. |
 | `Contadores` | Numeración offline transitoria. |
@@ -78,6 +78,21 @@ Las operaciones SAIP de App Funcionario se envían directamente al backend:
 Estas operaciones requieren conexión. No se encolan como éxitos locales ni se ejecutan con actualización optimista porque generan actos administrativos sujetos a validaciones legales del backend. Si la conexión falla, la UI conserva el cache de consulta y solicita reintentar con conectividad.
 
 La misma regla aplica a App TTAIP: calificación, subsanación, admisión excepcional, resoluciones, descargos, suspensiones, notificaciones, constancias, acuses, validación manual, reprocesos y seguimiento de cumplimiento solo se registran cuando el backend confirma la operación.
+
+## Documentos
+
+La integración documental usa exclusivamente el backend:
+
+```text
+OpenDocument -> ContentResolver -> multipart /api/documentos/upload
+/api/documentos/{id}/download -> stream -> CreateDocument
+```
+
+- El archivo seleccionado se abre solo durante el upload y no se copia a SQLDelight.
+- La descarga se escribe por stream en el destino elegido por el usuario.
+- SQLDelight guarda únicamente metadata segura: ID, nombre, MIME, tamaño, hash, estado, fecha y tipo.
+- Mobile no recibe ni persiste `storageKey`, bucket, endpoint, ruta física o URL S3.
+- El provider local o S3-compatible es transparente para Android porque el backend intermedia las operaciones y valida ownership.
 
 ## Retrofit — REST API Client
 
