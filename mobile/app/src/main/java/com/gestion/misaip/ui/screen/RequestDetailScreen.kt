@@ -1,5 +1,8 @@
 package com.gestion.misaip.ui.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -64,11 +67,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gestion.misaip.core.domain.model.TimelineItem
+import com.gestion.misaip.core.domain.model.Documento
+import com.gestion.misaip.core.domain.model.DocumentoRelacion
+import com.gestion.misaip.core.domain.model.TipoDocumento
+import com.gestion.misaip.core.domain.model.TipoUsuario
+import com.gestion.misaip.presentation.viewmodel.DocumentoEvent
+import com.gestion.misaip.presentation.viewmodel.DocumentoUiState
+import com.gestion.misaip.presentation.viewmodel.DocumentoViewModel
 import com.gestion.misaip.presentation.viewmodel.RequestDetailEvent
 import com.gestion.misaip.presentation.viewmodel.RequestDetailUiState
 import com.gestion.misaip.presentation.viewmodel.RequestDetailViewModel
 import com.gestion.misaip.presentation.viewmodel.FormularioOperacionFuncionario
 import com.gestion.misaip.ui.components.LoadingContent
+import com.gestion.misaip.ui.components.DocumentListSection
+import com.gestion.misaip.ui.components.DocumentUploadSection
 import com.gestion.misaip.ui.components.PulsingDot
 import com.gestion.misaip.ui.components.SemaphoreIndicator
 import com.gestion.misaip.ui.components.StatusBadge
@@ -80,10 +92,22 @@ fun RequestDetailScreen(
     tipo: String,
     onNavigateBack: () -> Unit,
     onNavigateToAppeal: (String) -> Unit,
-    viewModel: RequestDetailViewModel = koinViewModel()
+    viewModel: RequestDetailViewModel = koinViewModel(),
+    documentoViewModel: DocumentoViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val documentoUiState by documentoViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var descargaPendiente by remember { mutableStateOf<Documento?>(null) }
+    val downloadLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val documento = descargaPendiente
+        if (uri != null && documento != null) {
+            documentoViewModel.download(documento, uri)
+        }
+        descargaPendiente = null
+    }
 
     LaunchedEffect(expediente) {
         viewModel.cargarDetalle(expediente)
@@ -99,8 +123,43 @@ fun RequestDetailScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        documentoViewModel.events.collect { event ->
+            when (event) {
+                is DocumentoEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+
+    LaunchedEffect(
+        uiState.solicitud?.id,
+        uiState.apelacion?.id,
+        uiState.solicitud?.documentos,
+        uiState.apelacion?.documentos,
+        uiState.tipoUsuario
+    ) {
+        val solicitud = uiState.solicitud
+        val apelacion = uiState.apelacion
+        val relacion = when {
+            solicitud?.id?.toLongOrNull() != null -> DocumentoRelacion.Solicitud(solicitud.id)
+            apelacion?.id?.toLongOrNull() != null -> DocumentoRelacion.Apelacion(apelacion.id)
+            else -> null
+        }
+        documentoViewModel.configurar(
+            relacion = relacion,
+            tipoDocumento = if (apelacion != null) {
+                TipoDocumento.RECURSO_APELACION
+            } else {
+                TipoDocumento.DOCUMENTO_ADJUNTO
+            },
+            documentos = solicitud?.documentos ?: apelacion?.documentos.orEmpty(),
+            puedeSubir = uiState.tipoUsuario == TipoUsuario.CIUDADANO
+        )
+    }
+
     RequestDetailContent(
         uiState = uiState,
+        documentoUiState = documentoUiState,
         snackbarHostState = snackbarHostState,
         onNavigateBack = onNavigateBack,
         onIniciarRevision = viewModel::iniciarRevision,
@@ -124,7 +183,14 @@ fun RequestDetailScreen(
         onMostrarFormOmisionElevacion = viewModel::mostrarFormularioOmisionElevacion,
         onOcultarFormOmisionElevacion = viewModel::ocultarFormularioOmisionElevacion,
         onComunicarOmisionElevacion = viewModel::comunicarOmisionElevacion,
-        onApelar = viewModel::navegarAApelar
+        onApelar = viewModel::navegarAApelar,
+        onDocumentoSeleccionado = documentoViewModel::seleccionarArchivo,
+        onLimpiarDocumento = documentoViewModel::limpiarSeleccion,
+        onSubirDocumento = documentoViewModel::upload,
+        onDescargarDocumento = { documento ->
+            descargaPendiente = documento
+            downloadLauncher.launch(documento.nombreOriginal.ifBlank { "documento" })
+        }
     )
 }
 
@@ -132,6 +198,7 @@ fun RequestDetailScreen(
 @Composable
 private fun RequestDetailContent(
     uiState: RequestDetailUiState,
+    documentoUiState: DocumentoUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateBack: () -> Unit,
     onIniciarRevision: () -> Unit,
@@ -155,7 +222,11 @@ private fun RequestDetailContent(
     onMostrarFormOmisionElevacion: () -> Unit,
     onOcultarFormOmisionElevacion: () -> Unit,
     onComunicarOmisionElevacion: (String, String) -> Unit,
-    onApelar: () -> Unit
+    onApelar: () -> Unit,
+    onDocumentoSeleccionado: (Uri) -> Unit,
+    onLimpiarDocumento: () -> Unit,
+    onSubirDocumento: () -> Unit,
+    onDescargarDocumento: (Documento) -> Unit
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -380,6 +451,26 @@ private fun RequestDetailContent(
                             onRecargar = onRecargarOperaciones,
                             onAbrirFormulario = onMostrarOperacion
                         )
+                    }
+                }
+
+                item(key = "documentos") {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        DocumentListSection(
+                            documentos = documentoUiState.documentos,
+                            downloadingId = documentoUiState.downloadingId,
+                            onDownload = onDescargarDocumento
+                        )
+                        if (documentoUiState.puedeSubir) {
+                            DocumentUploadSection(
+                                selected = documentoUiState.archivoSeleccionado,
+                                uploading = documentoUiState.isUploading,
+                                error = documentoUiState.error,
+                                onFileSelected = onDocumentoSeleccionado,
+                                onClear = onLimpiarDocumento,
+                                onUpload = onSubirDocumento
+                            )
+                        }
                     }
                 }
 

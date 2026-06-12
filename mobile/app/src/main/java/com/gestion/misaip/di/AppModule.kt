@@ -2,6 +2,7 @@ package com.gestion.misaip.di
 
 import com.gestion.misaip.data.CredentialStorage
 import com.gestion.misaip.data.NotificacionReadTracker
+import com.gestion.misaip.data.DocumentoContentResolver
 import com.gestion.misaip.core.network.datasource.TokenStorage
 import com.gestion.misaip.messaging.PushTokenSyncCoordinator
 import org.koin.dsl.module
@@ -20,6 +21,8 @@ val appModule = module {
 
     // Rastreador de lectura de notificaciones (SharedPreferences)
     single { NotificacionReadTracker(get()) }
+
+    single { DocumentoContentResolver(get()) }
 
     // TokenStorage — puente entre CredentialStorage y la capa de red REST
     single<TokenStorage> { get<CredentialStorage>() }
