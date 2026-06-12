@@ -136,6 +136,42 @@ APP_STORAGE_S3_FORCE_PATH_STYLE=true \
 java -jar target/saip-backend-0.0.1-SNAPSHOT.jar
 ```
 
+### Validación real opt-in
+
+La suite normal no se conecta a S3. Para validar un bucket real de staging,
+definir externamente `RUN_S3_STORAGE_INTEGRATION_TESTS=true`,
+`APP_STORAGE_PROVIDER=s3`, endpoint, region, bucket, access key, secret key y
+`APP_STORAGE_S3_FORCE_PATH_STYLE`. Puede usarse
+`APP_STORAGE_S3_TEST_PREFIX`; su default es `integration-tests`.
+
+El endpoint debe copiarse de la configuración S3 de Supabase Storage o del
+proveedor S3-compatible elegido. No hardcodearlo en el repositorio. El bucket
+debe estar aprovisionado previamente: ni el backend, ni la prueba, ni los
+scripts crean buckets o cambian permisos.
+
+PowerShell:
+
+```powershell
+$env:RUN_S3_STORAGE_INTEGRATION_TESTS = "true"
+# Cargar las variables APP_STORAGE_S3_* desde la sesión o gestor de secretos.
+.\scripts\storage\validate-s3-storage.ps1
+```
+
+Linux/macOS:
+
+```bash
+export RUN_S3_STORAGE_INTEGRATION_TESTS=true
+# Cargar las variables APP_STORAGE_S3_* desde la sesión o gestor de secretos.
+bash ./scripts/storage/validate-s3-storage.sh
+```
+
+La prueba opt-in crea un texto controlado con key
+`integration-tests/<uuid>.txt` o el prefijo externo indicado, comprueba
+existencia, descarga, contenido y SHA-256, y elimina el objeto incluso si una
+validación intermedia falla. No usa documentos reales ni persiste binarios en
+PostgreSQL. Los runners no imprimen credenciales, bucket o endpoint y no
+escriben archivos `.env`.
+
 ## Producción
 
 <Steps>
