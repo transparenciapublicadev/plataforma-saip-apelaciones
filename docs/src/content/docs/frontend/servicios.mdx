@@ -1,11 +1,11 @@
 ---
 title: Servicios HTTP
-description: 8 servicios Angular que consumen la API REST del backend mediante HttpClient y RxJS.
+description: Servicios Angular que consumen la API REST del backend mediante HttpClient y RxJS.
 ---
 
 import { Card, CardGrid, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
 
-El frontend cuenta con **8 servicios HTTP** que encapsulan toda la comunicación con el backend REST API. Todos usan `inject(HttpClient)` y `environment.apiUrl`.
+El frontend encapsula la comunicación con el backend REST API en servicios que usan `inject(HttpClient)` y `environment.apiUrl`.
 
 ## Patrón de Servicio
 
@@ -133,7 +133,24 @@ export class SolicitudService {
     | `declararEsteseALoResuelto(id, body)` | POST | `/ttaip/resolucion/{id}/estese-a-lo-resuelto` |
     | `declararNulidadDelActo(id, body)` | POST | `/ttaip/resolucion/{id}/nulidad-acto` |
     | `declararNoPresentado(id, body)` | POST | `/ttaip/resolucion/{id}/no-presentado` |
-    | `notificarSegundaCalificacion(id)` | POST | `/ttaip/notificar-segunda-calificacion/{id}` |
+      | `notificarSegundaCalificacion(id)` | POST | `/ttaip/notificar-segunda-calificacion/{id}` |
+  </TabItem>
+  <TabItem label="DocumentoService">
+    ### DocumentoService <Badge text="Storage transparente" variant="tip" />
+
+    | Método | HTTP | Ruta | Descripción |
+    |--------|------|------|-------------|
+    | `upload(file, tipo, relation)` | POST multipart | `/documentos/upload` | Carga un archivo asociado a una única relación SAIP/TTAIP. |
+    | `getMetadata(id)` | GET | `/documentos/{id}/metadata` | Consulta metadatos sanitizados. |
+    | `download(id)` | GET Blob | `/documentos/{id}/download` | Descarga autenticada y preserva el nombre de `Content-Disposition`. |
+    | `delete(id)` | DELETE | `/documentos/{id}` | Operación administrativa; las vistas no autorizadas no muestran la acción. |
+
+    El frontend nunca construye URLs S3, no conoce bucket, endpoint,
+    `storageKey` ni rutas físicas. El backend valida ownership, intermedia cada
+    descarga y mantiene transparente si el provider activo es local o
+    S3-compatible. Los archivos seleccionados permanecen solo en memoria hasta
+    completar la petición multipart; no se guardan en `localStorage` ni
+    `sessionStorage`.
   </TabItem>
   <TabItem label="Otros">
     ### RespuestaService <Badge text="Funcionario" variant="note" />
