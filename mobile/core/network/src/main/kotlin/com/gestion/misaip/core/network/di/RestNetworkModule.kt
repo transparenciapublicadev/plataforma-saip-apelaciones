@@ -4,6 +4,7 @@ import com.gestion.misaip.core.network.api.ApelacionApiService
 import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.api.EntidadApiService
 import com.gestion.misaip.core.network.api.DispositivoPushApiService
+import com.gestion.misaip.core.network.api.DocumentoApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.datasource.ApelacionRemoteDataSource
@@ -12,6 +13,8 @@ import com.gestion.misaip.core.network.datasource.EntidadPublicaRemoteDataSource
 import com.gestion.misaip.core.network.datasource.EntidadPublicaRestDataSource
 import com.gestion.misaip.core.network.datasource.DispositivoPushRemoteDataSource
 import com.gestion.misaip.core.network.datasource.DispositivoPushRestDataSource
+import com.gestion.misaip.core.network.datasource.DocumentoRemoteDataSource
+import com.gestion.misaip.core.network.datasource.DocumentoRestDataSource
 import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRemoteDataSource
 import com.gestion.misaip.core.network.datasource.ExpedienteTtaipRestDataSource
 import com.gestion.misaip.core.network.datasource.SolicitudRemoteDataSource
@@ -123,6 +126,7 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     single<EntidadApiService> { get<Retrofit>().create(EntidadApiService::class.java) }
     single<TTAIPApiService> { get<Retrofit>().create(TTAIPApiService::class.java) }
     single<DispositivoPushApiService> { get<Retrofit>().create(DispositivoPushApiService::class.java) }
+    single<DocumentoApiService> { get<Retrofit>().create(DocumentoApiService::class.java) }
 
     // ===========================================
     // DATA SOURCES REMOTOS (REST)
@@ -155,5 +159,9 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
 
     single<DispositivoPushRemoteDataSource> {
         DispositivoPushRestDataSource(api = get(), json = get())
+    }
+
+    single<DocumentoRemoteDataSource> {
+        DocumentoRestDataSource(api = get(), json = get())
     }
 }
