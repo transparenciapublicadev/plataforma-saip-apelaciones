@@ -113,10 +113,21 @@ val presentationModule = module {
     }
 
     viewModel {
+        DocumentoViewModel(
+            uploadDocumentoUseCase = get(),
+            downloadDocumentoUseCase = get(),
+            validarArchivoDocumentoUseCase = get(),
+            contentResolver = get()
+        )
+    }
+
+    viewModel {
         RequestDetailViewModel(
             getUsuarioActualUseCase = get(),
             getSolicitudPorExpedienteUseCase = get(),
+            refrescarSolicitudDetalleUseCase = get(),
             getApelacionPorExpedienteUseCase = get(),
+            refrescarApelacionDetalleUseCase = get(),
             getApelacionPorSAIPUseCase = get(),
             responderSolicitudUseCase = get(),
             iniciarRevisionUseCase = get(),
