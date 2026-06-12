@@ -502,6 +502,41 @@ Supabase Storage cuando exista un bucket aprovisionado externamente. El backend
 no crea buckets, no devuelve URLs públicas y exige endpoint, bucket y
 credenciales mediante variables externas.
 
+### Validación S3-compatible opt-in
+
+La comprobación contra un bucket real de staging no corre dentro de la suite
+normal. El bucket debe existir previamente en Supabase Storage o en el proveedor
+S3-compatible elegido; el backend y los scripts no crean buckets ni cambian sus
+permisos. El endpoint debe copiarse de la configuración S3 del proveedor, sin
+hardcodearlo ni versionarlo.
+
+Definir en la sesión o gestor de secretos:
+
+- `RUN_S3_STORAGE_INTEGRATION_TESTS=true`
+- `APP_STORAGE_PROVIDER=s3`
+- `APP_STORAGE_S3_ENDPOINT`
+- `APP_STORAGE_S3_REGION`
+- `APP_STORAGE_S3_BUCKET`
+- `APP_STORAGE_S3_ACCESS_KEY`
+- `APP_STORAGE_S3_SECRET_KEY`
+- `APP_STORAGE_S3_FORCE_PATH_STYLE`
+- `APP_STORAGE_S3_TEST_PREFIX` opcional; default `integration-tests`
+
+Ejecutar desde la raíz:
+
+```powershell
+.\scripts\storage\validate-s3-storage.ps1
+```
+
+```bash
+bash ./scripts/storage/validate-s3-storage.sh
+```
+
+La prueba sube un texto controlado con una key opaca bajo el prefijo de pruebas,
+valida existencia, descarga, contenido y SHA-256, y elimina el objeto en la
+misma ejecución. No usa archivos de ciudadanos, no guarda binarios en
+PostgreSQL y no imprime credenciales, bucket ni endpoint.
+
 ### Newman reproducible
 
 La colección Newman crea datos runtime para validar flujos reales. Si el entorno

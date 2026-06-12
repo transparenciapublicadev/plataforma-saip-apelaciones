@@ -3,6 +3,8 @@ package pe.gob.saip.backend.storage;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
@@ -31,22 +33,32 @@ public class S3CompatibleStorageProvider implements StorageProvider {
     private final StorageUploadValidator uploadValidator;
     private final S3Client s3Client;
     private final String bucket;
+    private final Function<String, String> storageKeyFactory;
 
     @Autowired
     public S3CompatibleStorageProvider(
             StorageProperties properties,
             StorageUploadValidator uploadValidator) {
-        this(properties, uploadValidator, buildClient(properties));
+        this(properties, uploadValidator, buildClient(properties), StorageObjectKey::create);
     }
 
     S3CompatibleStorageProvider(
             StorageProperties properties,
             StorageUploadValidator uploadValidator,
             S3Client s3Client) {
+        this(properties, uploadValidator, s3Client, StorageObjectKey::create);
+    }
+
+    S3CompatibleStorageProvider(
+            StorageProperties properties,
+            StorageUploadValidator uploadValidator,
+            S3Client s3Client,
+            Function<String, String> storageKeyFactory) {
         validateSettings(properties.getS3());
         this.uploadValidator = uploadValidator;
         this.s3Client = s3Client;
         this.bucket = properties.getS3().getBucket().strip();
+        this.storageKeyFactory = Objects.requireNonNull(storageKeyFactory);
     }
 
     @Override
@@ -57,7 +69,8 @@ public class S3CompatibleStorageProvider implements StorageProvider {
     @Override
     public StorageUploadResult upload(StorageUploadRequest request) {
         try (ValidatedStorageUpload validated = uploadValidator.validate(request)) {
-            String storageKey = StorageObjectKey.create(validated.extension());
+            String storageKey = StorageObjectKey.requireSafe(
+                    storageKeyFactory.apply(validated.extension()));
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(storageKey)
@@ -154,7 +167,7 @@ public class S3CompatibleStorageProvider implements StorageProvider {
         s3Client.close();
     }
 
-    private static S3Client buildClient(StorageProperties properties) {
+    static S3Client buildClient(StorageProperties properties) {
         StorageProperties.S3 settings = properties.getS3();
         validateSettings(settings);
         URI endpoint = parseEndpoint(settings.getEndpoint());
