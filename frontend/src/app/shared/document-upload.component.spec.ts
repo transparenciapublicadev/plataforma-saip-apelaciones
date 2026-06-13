@@ -50,6 +50,23 @@ describe('DocumentUploadComponent', () => {
     expect(component.success()).toContain('correctamente');
   });
 
+  it('uploads documents using the explicit response relation', () => {
+    const file = new File(['contenido'], 'respuesta.pdf', { type: 'application/pdf' });
+    fixture.componentRef.setInput('relation', { respuestaId: 22 });
+    fixture.componentRef.setInput('tipoDocumento', 'RESPUESTA_ENTIDAD');
+    fixture.detectChanges();
+    documentoService.upload.mockReturnValue(of({ id: 9, nombreOriginal: file.name }));
+
+    component.onFileSelected({ target: { files: [file], value: file.name } } as unknown as Event);
+    component.upload();
+
+    expect(documentoService.upload).toHaveBeenCalledWith(
+      file,
+      'RESPUESTA_ENTIDAD',
+      { respuestaId: 22 }
+    );
+  });
+
   it('shows RFC 9457 detail when upload fails', () => {
     const file = new File(['contenido'], 'solicitud.pdf', { type: 'application/pdf' });
     documentoService.upload.mockReturnValue(throwError(() => new HttpErrorResponse({
