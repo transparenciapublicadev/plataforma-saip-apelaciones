@@ -2437,6 +2437,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar metadatos documentales seguros por relación de negocio */
+        get: operations["listar_7"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documentos/{documentoId}/metadata": {
         parameters: {
             query?: never;
@@ -2863,12 +2880,37 @@ export interface components {
             /** Format: int64 */
             id?: number;
             nombreArchivo?: string;
-            rutaArchivo?: string;
             tipoArchivo?: string;
             /** Format: int64 */
             tamanio?: number;
             tipoDocumento?: string;
             fechaSubida?: string;
+        };
+        /** @description Metadatos seguros de un documento almacenado; no expone claves ni rutas internas */
+        DocumentoMetadataDTO: {
+            /** Format: int64 */
+            id?: number;
+            tipoDocumento?: string;
+            nombreOriginal?: string;
+            contentType?: string;
+            /** Format: int64 */
+            sizeBytes?: number;
+            hashSha256?: string;
+            estado?: string;
+            /** Format: date-time */
+            fechaCreacion?: string;
+            /** Format: int64 */
+            solicitudId?: number;
+            /** Format: int64 */
+            respuestaId?: number;
+            /** Format: int64 */
+            apelacionId?: number;
+            /** Format: int64 */
+            expedienteTtaipId?: number;
+            /** Format: int64 */
+            resolucionId?: number;
+            /** Format: int64 */
+            cedulaNotificacionId?: number;
         };
         /** @description Elevación formal de una apelación presentada ante una entidad pública */
         ElevacionApelacionTtaipDTO: {
@@ -2977,6 +3019,8 @@ export interface components {
             funcionarioId?: number;
             funcionarioNombre?: string;
             documentos?: components["schemas"]["DocumentoDTO"][];
+            /** @description Metadatos documentales seguros asociados directamente a la respuesta */
+            documentosMetadata?: components["schemas"]["DocumentoMetadataDTO"][];
         };
         /** @description Solicitud de Acceso a la Información Pública (SAIP) */
         SolicitudDTO: {
@@ -3043,6 +3087,8 @@ export interface components {
             respuesta?: components["schemas"]["RespuestaDTO"];
             apelacion?: components["schemas"]["ApelacionInfoDTO"];
             documentos?: components["schemas"]["DocumentoDTO"][];
+            /** @description Metadatos documentales seguros asociados directamente a la SAIP */
+            documentosMetadata?: components["schemas"]["DocumentoMetadataDTO"][];
             observaciones?: components["schemas"]["ObservacionSolicitudDTO"][];
             ampliacionesPlazo?: components["schemas"]["AmpliacionPlazoSolicitudDTO"][];
             encauzamientos?: components["schemas"]["EncauzamientoSolicitudDTO"][];
@@ -3178,6 +3224,8 @@ export interface components {
             /** @description Todas las resoluciones emitidas dentro del expediente */
             resoluciones?: components["schemas"]["ResolucionDTO"][];
             documentos?: components["schemas"]["DocumentoDTO"][];
+            /** @description Metadatos documentales seguros asociados directamente a la apelación */
+            documentosMetadata?: components["schemas"]["DocumentoMetadataDTO"][];
         };
         /** @description Cédula de notificación emitida para una resolución TTAIP */
         CedulaNotificacionDTO: {
@@ -3191,6 +3239,8 @@ export interface components {
             canal?: string;
             estado?: string;
             documentoReferencia?: string;
+            /** @description Metadatos documentales seguros asociados directamente a la cédula */
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
         };
         /** @description Seguimiento de cumplimiento de una resolución final fundada o fundada en parte */
         CumplimientoResolucionTtaipDTO: {
@@ -3257,6 +3307,8 @@ export interface components {
             trazabilidadMinima?: string;
             sala?: components["schemas"]["SalaTtaipDTO"];
             miembros?: components["schemas"]["MiembroTTAIPDTO"][];
+            /** @description Metadatos documentales seguros asociados directamente al expediente TTAIP */
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
             resoluciones?: components["schemas"]["ResolucionDTO"][];
             cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
             notificaciones?: components["schemas"]["NotificacionTtaipDTO"][];
@@ -3295,6 +3347,8 @@ export interface components {
         NotificacionTtaipDTO: {
             /** Format: int64 */
             id?: number;
+            /** Format: int64 */
+            cedulaId?: number;
             numeroCedula?: string;
             destinatario?: string;
             destinatarioNombre?: string;
@@ -3321,6 +3375,8 @@ export interface components {
             responsableConstancia?: string;
             observacionConstancia?: string;
             trazabilidad?: string;
+            /** @description Metadatos documentales seguros de la cédula asociada */
+            documentosCedula?: components["schemas"]["DocumentoMetadataDTO"][];
         };
         /** @description Reproceso de notificación vinculado a una cédula del expediente TTAIP */
         ReprocesoNotificacionDTO: {
@@ -3368,6 +3424,8 @@ export interface components {
             miembroTTAIPNombre?: string;
             iniciarProcesoDisciplinario?: boolean;
             sala?: components["schemas"]["SalaTtaipDTO"];
+            /** @description Metadatos documentales seguros asociados directamente a la resolución */
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
             cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
         };
         /** @description Sala del Tribunal de Transparencia asignada a un expediente */
@@ -3919,37 +3977,6 @@ export interface components {
         };
         RevocarDispositivoPushActualRequest: {
             deviceIdHash: string;
-        };
-        /** @description Metadatos seguros de un documento almacenado; no expone claves ni rutas internas */
-        DocumentoMetadataDTO: {
-            /** Format: int64 */
-            id?: number;
-            tipoDocumento?: string;
-            nombreOriginal?: string;
-            contentType?: string;
-            /** Format: int64 */
-            sizeBytes?: number;
-            hashSha256?: string;
-            storageProvider?: string;
-            estado?: string;
-            /** Format: int64 */
-            creadoPorId?: number;
-            /** Format: date-time */
-            fechaCreacion?: string;
-            /** Format: date-time */
-            fechaActualizacion?: string;
-            /** Format: int64 */
-            solicitudId?: number;
-            /** Format: int64 */
-            respuestaId?: number;
-            /** Format: int64 */
-            apelacionId?: number;
-            /** Format: int64 */
-            expedienteTtaipId?: number;
-            /** Format: int64 */
-            resolucionId?: number;
-            /** Format: int64 */
-            cedulaNotificacionId?: number;
         };
         /** @description Datos de registro de ciudadano */
         RegistroRequestDTO: {
@@ -6115,6 +6142,7 @@ export interface operations {
             query: {
                 tipoDocumento: "SOLICITUD_ORIGINAL" | "RESPUESTA_ENTIDAD" | "RECURSO_APELACION" | "RESOLUCION_TTAIP" | "CEDULA_NOTIFICACION" | "EXPEDIENTE_ADMINISTRATIVO" | "INFORME" | "DOCUMENTO_ADJUNTO" | "SUBSANACION" | "OTRO";
                 solicitudId?: number;
+                respuestaId?: number;
                 apelacionId?: number;
                 expedienteTtaipId?: number;
                 resolucionId?: number;
@@ -8044,6 +8072,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntidadDTO"][];
+                };
+            };
+        };
+    };
+    listar_7: {
+        parameters: {
+            query?: {
+                solicitudId?: number;
+                respuestaId?: number;
+                apelacionId?: number;
+                expedienteTtaipId?: number;
+                resolucionId?: number;
+                cedulaNotificacionId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoMetadataDTO"][];
                 };
             };
         };

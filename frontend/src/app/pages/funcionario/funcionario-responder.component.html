@@ -197,11 +197,11 @@
                           </div>
                         } @else {
                           <label class="block cursor-pointer">
-                            <input type="file" (change)="onEvidenciaSelected($event)" class="hidden" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+                            <input type="file" (change)="onEvidenciaSelected($event)" class="hidden" [accept]="documentAccept" />
                             <span class="space-y-2 block">
                               <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
                               <span class="text-sm text-foreground block">Arrastre su archivo aquí o <span style="color: var(--brand-700)">haga clic para seleccionar</span></span>
-                              <span class="text-xs text-muted-foreground block">PDF, DOC, JPG o PNG</span>
+                              <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT</span>
                             </span>
                           </label>
                         }
@@ -268,11 +268,11 @@
                         </div>
                       } @else {
                         <label class="block cursor-pointer">
-                          <input type="file" (change)="onDocumentosEntregaSelected($event)" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+                          <input type="file" (change)="onDocumentosEntregaSelected($event)" class="hidden" [accept]="documentAccept" />
                           <span class="space-y-2 block">
                             <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
                             <span class="text-sm text-foreground block">Arrastre su archivo aquí o <span style="color: var(--brand-700)">haga clic para seleccionar</span></span>
-                            <span class="text-xs text-muted-foreground block">PDF, DOC, XLSX, JPG o PNG</span>
+                            <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT</span>
                           </span>
                         </label>
                       }
@@ -368,31 +368,13 @@
         }
 
         @if (activeTab() === 'adjuntos') {
-          @if (sol.documentos && sol.documentos.length > 0) {
-          <div class="p-6 md:p-8 space-y-3 animate-fade-in">
-              @for (doc of sol.documentos; track doc.id || doc.nombreArchivo) {
-                <div data-table-row class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                      <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-                    </div>
-                    <div>
-                      <div class="text-sm font-medium">{{ doc.nombreArchivo }}</div>
-                      <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
-                    </div>
-                  </div>
-                  <button type="button" class="btn-ghost-brand !px-3 !py-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
-                  </button>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="p-12 text-center">
-              <svg class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-              <p class="text-sm text-muted-foreground">No hay adjuntos en esta solicitud.</p>
-            </div>
-          }
+          <div class="p-6 md:p-8 animate-fade-in">
+            <app-document-list
+              [relation]="solicitudDocumentoRelation()"
+              [documents]="sol.documentosMetadata || sol.documentos || []"
+              emptyMessage="No hay adjuntos en esta solicitud."
+            />
+          </div>
         }
       </div>
     </div>

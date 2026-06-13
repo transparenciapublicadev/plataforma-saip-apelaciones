@@ -2841,6 +2841,15 @@
                                                                                                 }
                                                                                  },
                                                                                  {
+                                                                                     "name":  "respuestaId",
+                                                                                     "in":  "query",
+                                                                                     "required":  false,
+                                                                                     "schema":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "format":  "int64"
+                                                                                                }
+                                                                                 },
+                                                                                 {
                                                                                      "name":  "apelacionId",
                                                                                      "in":  "query",
                                                                                      "required":  false,
@@ -5745,6 +5754,86 @@
                                                                            }
                                                          }
                                              },
+                  "/api/documentos":  {
+                                          "get":  {
+                                                      "tags":  [
+                                                                   "Documentos"
+                                                               ],
+                                                      "summary":  "Listar metadatos documentales seguros por relación de negocio",
+                                                      "operationId":  "listar_7",
+                                                      "parameters":  [
+                                                                         {
+                                                                             "name":  "solicitudId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         },
+                                                                         {
+                                                                             "name":  "respuestaId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         },
+                                                                         {
+                                                                             "name":  "apelacionId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         },
+                                                                         {
+                                                                             "name":  "expedienteTtaipId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         },
+                                                                         {
+                                                                             "name":  "resolucionId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         },
+                                                                         {
+                                                                             "name":  "cedulaNotificacionId",
+                                                                             "in":  "query",
+                                                                             "required":  false,
+                                                                             "schema":  {
+                                                                                            "type":  "integer",
+                                                                                            "format":  "int64"
+                                                                                        }
+                                                                         }
+                                                                     ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "OK",
+                                                                                    "content":  {
+                                                                                                    "application/json":  {
+                                                                                                                             "schema":  {
+                                                                                                                                            "type":  "array",
+                                                                                                                                            "items":  {
+                                                                                                                                                          "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                                                      }
+                                                                                                                                        }
+                                                                                                                         }
+                                                                                                }
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
                   "/api/documentos/{documentoId}/metadata":  {
                                                                  "get":  {
                                                                              "tags":  [
@@ -6594,9 +6683,6 @@
                                                                                "nombreArchivo":  {
                                                                                                      "type":  "string"
                                                                                                  },
-                                                                               "rutaArchivo":  {
-                                                                                                   "type":  "string"
-                                                                                               },
                                                                                "tipoArchivo":  {
                                                                                                    "type":  "string"
                                                                                                },
@@ -6612,6 +6698,63 @@
                                                                                                }
                                                                            }
                                                         },
+                                       "DocumentoMetadataDTO":  {
+                                                                    "type":  "object",
+                                                                    "description":  "Metadatos seguros de un documento almacenado; no expone claves ni rutas internas",
+                                                                    "properties":  {
+                                                                                       "id":  {
+                                                                                                  "type":  "integer",
+                                                                                                  "format":  "int64"
+                                                                                              },
+                                                                                       "tipoDocumento":  {
+                                                                                                             "type":  "string"
+                                                                                                         },
+                                                                                       "nombreOriginal":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                       "contentType":  {
+                                                                                                           "type":  "string"
+                                                                                                       },
+                                                                                       "sizeBytes":  {
+                                                                                                         "type":  "integer",
+                                                                                                         "format":  "int64"
+                                                                                                     },
+                                                                                       "hashSha256":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                       "estado":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                       "fechaCreacion":  {
+                                                                                                             "type":  "string",
+                                                                                                             "format":  "date-time"
+                                                                                                         },
+                                                                                       "solicitudId":  {
+                                                                                                           "type":  "integer",
+                                                                                                           "format":  "int64"
+                                                                                                       },
+                                                                                       "respuestaId":  {
+                                                                                                           "type":  "integer",
+                                                                                                           "format":  "int64"
+                                                                                                       },
+                                                                                       "apelacionId":  {
+                                                                                                           "type":  "integer",
+                                                                                                           "format":  "int64"
+                                                                                                       },
+                                                                                       "expedienteTtaipId":  {
+                                                                                                                 "type":  "integer",
+                                                                                                                 "format":  "int64"
+                                                                                                             },
+                                                                                       "resolucionId":  {
+                                                                                                            "type":  "integer",
+                                                                                                            "format":  "int64"
+                                                                                                        },
+                                                                                       "cedulaNotificacionId":  {
+                                                                                                                    "type":  "integer",
+                                                                                                                    "format":  "int64"
+                                                                                                                }
+                                                                                   }
+                                                                },
                                        "ElevacionApelacionTtaipDTO":  {
                                                                           "type":  "object",
                                                                           "description":  "Elevación formal de una apelación presentada ante una entidad pública",
@@ -6888,7 +7031,14 @@
                                                                                                   "items":  {
                                                                                                                 "$ref":  "#/components/schemas/DocumentoDTO"
                                                                                                             }
-                                                                                              }
+                                                                                              },
+                                                                               "documentosMetadata":  {
+                                                                                                          "type":  "array",
+                                                                                                          "description":  "Metadatos documentales seguros asociados directamente a la respuesta",
+                                                                                                          "items":  {
+                                                                                                                        "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                    }
+                                                                                                      }
                                                                            }
                                                         },
                                        "SolicitudDTO":  {
@@ -7023,6 +7173,13 @@
                                                                                                                 "$ref":  "#/components/schemas/DocumentoDTO"
                                                                                                             }
                                                                                               },
+                                                                               "documentosMetadata":  {
+                                                                                                          "type":  "array",
+                                                                                                          "description":  "Metadatos documentales seguros asociados directamente a la SAIP",
+                                                                                                          "items":  {
+                                                                                                                        "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                    }
+                                                                                                      },
                                                                                "observaciones":  {
                                                                                                      "type":  "array",
                                                                                                      "items":  {
@@ -7341,7 +7498,14 @@
                                                                                                   "items":  {
                                                                                                                 "$ref":  "#/components/schemas/DocumentoDTO"
                                                                                                             }
-                                                                                              }
+                                                                                              },
+                                                                               "documentosMetadata":  {
+                                                                                                          "type":  "array",
+                                                                                                          "description":  "Metadatos documentales seguros asociados directamente a la apelación",
+                                                                                                          "items":  {
+                                                                                                                        "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                    }
+                                                                                                      }
                                                                            }
                                                         },
                                        "CedulaNotificacionDTO":  {
@@ -7375,7 +7539,14 @@
                                                                                                    },
                                                                                         "documentoReferencia":  {
                                                                                                                     "type":  "string"
-                                                                                                                }
+                                                                                                                },
+                                                                                        "documentos":  {
+                                                                                                           "type":  "array",
+                                                                                                           "description":  "Metadatos documentales seguros asociados directamente a la cédula",
+                                                                                                           "items":  {
+                                                                                                                         "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                     }
+                                                                                                       }
                                                                                     }
                                                                  },
                                        "CumplimientoResolucionTtaipDTO":  {
@@ -7548,6 +7719,13 @@
                                                                                                                     "$ref":  "#/components/schemas/MiembroTTAIPDTO"
                                                                                                                 }
                                                                                                   },
+                                                                                     "documentos":  {
+                                                                                                        "type":  "array",
+                                                                                                        "description":  "Metadatos documentales seguros asociados directamente al expediente TTAIP",
+                                                                                                        "items":  {
+                                                                                                                      "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                  }
+                                                                                                    },
                                                                                      "resoluciones":  {
                                                                                                           "type":  "array",
                                                                                                           "items":  {
@@ -7671,6 +7849,10 @@
                                                                                                   "type":  "integer",
                                                                                                   "format":  "int64"
                                                                                               },
+                                                                                       "cedulaId":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "format":  "int64"
+                                                                                                    },
                                                                                        "numeroCedula":  {
                                                                                                             "type":  "string"
                                                                                                         },
@@ -7748,7 +7930,14 @@
                                                                                                                  },
                                                                                        "trazabilidad":  {
                                                                                                             "type":  "string"
-                                                                                                        }
+                                                                                                        },
+                                                                                       "documentosCedula":  {
+                                                                                                                "type":  "array",
+                                                                                                                "description":  "Metadatos documentales seguros de la cédula asociada",
+                                                                                                                "items":  {
+                                                                                                                              "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                                          }
+                                                                                                            }
                                                                                    }
                                                                 },
                                        "ReprocesoNotificacionDTO":  {
@@ -7866,6 +8055,13 @@
                                                                                 "sala":  {
                                                                                              "$ref":  "#/components/schemas/SalaTtaipDTO"
                                                                                          },
+                                                                                "documentos":  {
+                                                                                                   "type":  "array",
+                                                                                                   "description":  "Metadatos documentales seguros asociados directamente a la resolución",
+                                                                                                   "items":  {
+                                                                                                                 "$ref":  "#/components/schemas/DocumentoMetadataDTO"
+                                                                                                             }
+                                                                                               },
                                                                                 "cedulas":  {
                                                                                                 "type":  "array",
                                                                                                 "items":  {
@@ -8638,7 +8834,7 @@
                                                                                                                  "type":  "number",
                                                                                                                  "description":  "Monto de reproducción física",
                                                                                                                  "example":  "18.50",
-                                                                                                                 "minimum":  0
+                                                                                                                 "minimum":  0.0
                                                                                                              },
                                                                                                    "moneda":  {
                                                                                                                   "type":  "string",
@@ -8993,74 +9189,6 @@
                                                                                                     "deviceIdHash"
                                                                                                 ]
                                                                                },
-                                       "DocumentoMetadataDTO":  {
-                                                                    "type":  "object",
-                                                                    "description":  "Metadatos seguros de un documento almacenado; no expone claves ni rutas internas",
-                                                                    "properties":  {
-                                                                                       "id":  {
-                                                                                                  "type":  "integer",
-                                                                                                  "format":  "int64"
-                                                                                              },
-                                                                                       "tipoDocumento":  {
-                                                                                                             "type":  "string"
-                                                                                                         },
-                                                                                       "nombreOriginal":  {
-                                                                                                              "type":  "string"
-                                                                                                          },
-                                                                                       "contentType":  {
-                                                                                                           "type":  "string"
-                                                                                                       },
-                                                                                       "sizeBytes":  {
-                                                                                                         "type":  "integer",
-                                                                                                         "format":  "int64"
-                                                                                                     },
-                                                                                       "hashSha256":  {
-                                                                                                          "type":  "string"
-                                                                                                      },
-                                                                                       "storageProvider":  {
-                                                                                                               "type":  "string"
-                                                                                                           },
-                                                                                       "estado":  {
-                                                                                                      "type":  "string"
-                                                                                                  },
-                                                                                       "creadoPorId":  {
-                                                                                                           "type":  "integer",
-                                                                                                           "format":  "int64"
-                                                                                                       },
-                                                                                       "fechaCreacion":  {
-                                                                                                             "type":  "string",
-                                                                                                             "format":  "date-time"
-                                                                                                         },
-                                                                                       "fechaActualizacion":  {
-                                                                                                                  "type":  "string",
-                                                                                                                  "format":  "date-time"
-                                                                                                              },
-                                                                                       "solicitudId":  {
-                                                                                                           "type":  "integer",
-                                                                                                           "format":  "int64"
-                                                                                                       },
-                                                                                       "respuestaId":  {
-                                                                                                           "type":  "integer",
-                                                                                                           "format":  "int64"
-                                                                                                       },
-                                                                                       "apelacionId":  {
-                                                                                                           "type":  "integer",
-                                                                                                           "format":  "int64"
-                                                                                                       },
-                                                                                       "expedienteTtaipId":  {
-                                                                                                                 "type":  "integer",
-                                                                                                                 "format":  "int64"
-                                                                                                             },
-                                                                                       "resolucionId":  {
-                                                                                                            "type":  "integer",
-                                                                                                            "format":  "int64"
-                                                                                                        },
-                                                                                       "cedulaNotificacionId":  {
-                                                                                                                    "type":  "integer",
-                                                                                                                    "format":  "int64"
-                                                                                                                }
-                                                                                   }
-                                                                },
                                        "RegistroRequestDTO":  {
                                                                   "type":  "object",
                                                                   "description":  "Datos de registro de ciudadano",

@@ -1,6 +1,7 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
 import type {
-    SolicitudDTO, ApelacionInfoDTO, RespuestaDTO, DocumentoDTO, ObservacionSolicitudDTO,
+    SolicitudDTO, ApelacionInfoDTO, RespuestaDTO, DocumentoDTO, DocumentoMetadataDTO,
+    ObservacionSolicitudDTO,
     EstadoSolicitud as _EstadoSolicitud,
     Prioridad as _Prioridad,
     SemaforoEstado as _SemaforoEstado
@@ -86,10 +87,11 @@ export interface LiquidacionCostoSolicitud {
     fechaRecojo?: string | null;
 }
 
-export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos' | 'liquidacionesCosto'>> & {
+export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'documentosMetadata' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos' | 'liquidacionesCosto'>> & {
     respuesta?: Required<RespuestaDTO> | null;
     apelacion?: Required<ApelacionInfoDTO> | null;
     documentos: Required<DocumentoDTO>[];
+    documentosMetadata: Required<DocumentoMetadataDTO>[];
     observaciones: ObservacionSolicitud[];
     ampliacionesPlazo: AmpliacionPlazoSolicitud[];
     encauzamientos: EncauzamientoSolicitud[];
