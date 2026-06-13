@@ -97,6 +97,7 @@ val domainModule = module {
 
     factory { ValidarArchivoDocumentoUseCase() }
     factory { UploadDocumentoUseCase(get(), get()) }
+    factory { ListDocumentosPorRelacionUseCase(get()) }
     factory { GetDocumentoMetadataUseCase(get()) }
     factory { DownloadDocumentoUseCase(get()) }
     factory { DeleteDocumentoUseCase(get()) }
