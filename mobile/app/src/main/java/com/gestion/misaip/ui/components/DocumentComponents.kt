@@ -52,6 +52,8 @@ fun DocumentUploadSection(
     onFileSelected: (Uri) -> Unit,
     onClear: () -> Unit,
     onUpload: () -> Unit,
+    title: String = "Subir documento",
+    showUploadAction: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -71,7 +73,7 @@ fun DocumentUploadSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Upload, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Subir documento", fontWeight = FontWeight.SemiBold)
+                Text(title, fontWeight = FontWeight.SemiBold)
             }
             Text(
                 "PDF, JPEG, PNG o TXT. Tamaño máximo: 10 MB.",
@@ -110,19 +112,21 @@ fun DocumentUploadSection(
                         Icon(Icons.Default.Close, contentDescription = "Quitar archivo")
                     }
                 }
-                Button(
-                    onClick = onUpload,
-                    enabled = !uploading,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (uploading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(8.dp))
+                if (showUploadAction) {
+                    Button(
+                        onClick = onUpload,
+                        enabled = !uploading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (uploading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (uploading) "Subiendo..." else "Subir archivo")
                     }
-                    Text(if (uploading) "Subiendo..." else "Subir archivo")
                 }
             }
             error?.let {
@@ -141,6 +145,8 @@ fun DocumentListSection(
     documentos: List<Documento>,
     downloadingId: String?,
     onDownload: (Documento) -> Unit,
+    title: String = "Documentos",
+    loading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -150,9 +156,14 @@ fun DocumentListSection(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Documentos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            if (documentos.isEmpty()) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else if (documentos.isEmpty()) {
                 Text(
                     "No hay documentos adjuntos.",
                     style = MaterialTheme.typography.bodySmall,
@@ -227,4 +238,3 @@ private fun formatFileSize(sizeBytes: Long): String {
     if (kilobytes < 1024) return "%.1f KB".format(kilobytes)
     return "%.1f MB".format(kilobytes / 1024.0)
 }
-

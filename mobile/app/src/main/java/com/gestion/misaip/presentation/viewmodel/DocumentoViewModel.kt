@@ -9,6 +9,7 @@ import com.gestion.misaip.core.domain.model.Documento
 import com.gestion.misaip.core.domain.model.DocumentoRelacion
 import com.gestion.misaip.core.domain.model.TipoDocumento
 import com.gestion.misaip.core.domain.usecase.documento.DownloadDocumentoUseCase
+import com.gestion.misaip.core.domain.usecase.documento.ListDocumentosPorRelacionUseCase
 import com.gestion.misaip.core.domain.usecase.documento.UploadDocumentoUseCase
 import com.gestion.misaip.core.domain.usecase.documento.ValidarArchivoDocumentoUseCase
 import com.gestion.misaip.data.DocumentoContentResolver
@@ -26,6 +27,7 @@ data class DocumentoUiState(
     val documentos: List<Documento> = emptyList(),
     val archivoSeleccionado: DocumentoSeleccionadoUi? = null,
     val puedeSubir: Boolean = false,
+    val isLoading: Boolean = false,
     val isUploading: Boolean = false,
     val downloadingId: String? = null,
     val error: String? = null
@@ -44,6 +46,7 @@ sealed interface DocumentoEvent {
 
 class DocumentoViewModel(
     private val uploadDocumentoUseCase: UploadDocumentoUseCase,
+    private val listDocumentosPorRelacionUseCase: ListDocumentosPorRelacionUseCase,
     private val downloadDocumentoUseCase: DownloadDocumentoUseCase,
     private val validarArchivoDocumentoUseCase: ValidarArchivoDocumentoUseCase,
     private val contentResolver: DocumentoContentResolver
@@ -81,6 +84,9 @@ class DocumentoViewModel(
                 error = null
             )
         }
+        if (relacionCambio && relacion != null) {
+            cargarDocumentos(relacion, documentos)
+        }
     }
 
     fun seleccionarArchivo(uri: Uri) {
@@ -114,13 +120,19 @@ class DocumentoViewModel(
         _uiState.update { it.copy(archivoSeleccionado = null, error = null) }
     }
 
-    fun upload() {
+    fun upload(
+        relacionDestino: DocumentoRelacion? = null,
+        tipoDocumentoDestino: TipoDocumento? = null,
+        successMessage: String = "Archivo subido correctamente.",
+        failureMessage: String = "No se pudo subir el documento."
+    ) {
         val archivo = archivoSeleccionado ?: return
-        val relacionActual = relacion ?: return
+        val relacionActual = relacionDestino ?: relacion ?: return
+        val tipoActual = tipoDocumentoDestino ?: tipoDocumento
         viewModelScope.launch {
             _uiState.update { it.copy(isUploading = true, error = null) }
             runCatching {
-                uploadDocumentoUseCase(archivo, tipoDocumento, relacionActual)
+                uploadDocumentoUseCase(archivo, tipoActual, relacionActual)
             }.onSuccess { documento ->
                 archivoSeleccionado = null
                 _uiState.update {
@@ -131,14 +143,19 @@ class DocumentoViewModel(
                         isUploading = false
                     )
                 }
-                _events.emit(DocumentoEvent.ShowMessage("Archivo subido correctamente."))
+                _events.emit(DocumentoEvent.ShowMessage(successMessage))
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
                         isUploading = false,
-                        error = error.message ?: "No se pudo subir el documento."
+                        error = error.message ?: failureMessage
                     )
                 }
+                _events.emit(
+                    DocumentoEvent.ShowMessage(
+                        error.message?.let { "$failureMessage $it" } ?: failureMessage
+                    )
+                )
             }
         }
     }
@@ -166,6 +183,46 @@ class DocumentoViewModel(
                         error.message ?: "No se pudo descargar el documento."
                     )
                 )
+            }
+        }
+    }
+
+    private fun cargarDocumentos(
+        relacionConsultada: DocumentoRelacion,
+        documentosEmbebidos: List<Documento>
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            runCatching {
+                listDocumentosPorRelacionUseCase(relacionConsultada)
+            }.onSuccess { documentosRemotos ->
+                if (relacion == relacionConsultada) {
+                    _uiState.update {
+                        it.copy(
+                            documentos = documentosRemotos
+                                .distinctBy(Documento::id)
+                                .sortedByDescending(Documento::fechaCreacion),
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                }
+            }.onFailure { error ->
+                if (relacion == relacionConsultada) {
+                    _uiState.update {
+                        it.copy(
+                            documentos = documentosEmbebidos
+                                .distinctBy(Documento::id)
+                                .sortedByDescending(Documento::fechaCreacion),
+                            isLoading = false,
+                            error = if (documentosEmbebidos.isEmpty()) {
+                                error.message ?: "No se pudieron consultar los documentos."
+                            } else {
+                                null
+                            }
+                        )
+                    }
+                }
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.gestion.misaip.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gavel
@@ -11,18 +13,44 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gestion.misaip.core.domain.model.*
 import com.gestion.misaip.presentation.viewmodel.*
+import com.gestion.misaip.ui.components.DocumentListSection
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun TTAIPExpedientePanel(
     numeroExpediente: String,
     modifier: Modifier = Modifier,
-    viewModel: TTAIPExpedienteViewModel = koinViewModel()
+    viewModel: TTAIPExpedienteViewModel = koinViewModel(),
+    documentoViewModel: DocumentoViewModel = koinViewModel(key = "ttaip-documents")
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val documentoState by documentoViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var descargaPendiente by remember { mutableStateOf<Documento?>(null) }
+    val downloadLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val documento = descargaPendiente
+        if (uri != null && documento != null) {
+            documentoViewModel.download(documento, uri)
+        }
+        descargaPendiente = null
+    }
     LaunchedEffect(numeroExpediente) { viewModel.cargar(numeroExpediente) }
+    LaunchedEffect(Unit) {
+        documentoViewModel.events.collect { event ->
+            when (event) {
+                is DocumentoEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+    val descargarDocumento: (Documento) -> Unit = { documento ->
+        descargaPendiente = documento
+        downloadLauncher.launch(documento.nombreOriginal.ifBlank { "documento" })
+    }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SnackbarHost(snackbarHostState)
         Text("Expediente TTAIP agregado", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
             "Consulta en línea. Las actuaciones institucionales no se simulan ni se encolan offline.",
@@ -45,16 +73,34 @@ fun TTAIPExpedientePanel(
                     expediente.miembros.forEach { Text("${it.cargo}: ${it.nombre}", style = MaterialTheme.typography.bodySmall) }
                 }
             }
+            DocumentListSection(
+                documentos = expediente.documentos,
+                downloadingId = documentoState.downloadingId,
+                onDownload = descargarDocumento,
+                title = "Documentos del expediente"
+            )
             if (state.puedeAdmitirExcepcionalmente) {
                 AggregateCard("Elevación omitida") {
                     Text("Existe evidencia ciudadana de omisión. El TTAIP puede evaluar admisión excepcional.", style = MaterialTheme.typography.bodySmall)
                     OnlineButton("Admitir excepcionalmente") { viewModel.abrir(TtaipActionContext(TtaipAction.ADMITIR_EXCEPCIONALMENTE)) }
                 }
             }
-            ResolutionsCard(expediente, state.apelacion, viewModel)
+            ResolutionsCard(
+                expediente = expediente,
+                apelacion = state.apelacion,
+                viewModel = viewModel,
+                downloadingId = documentoState.downloadingId,
+                onDownload = descargarDocumento
+            )
             DescargosCard(expediente, viewModel)
             SuspensionesCard(expediente, viewModel)
-            NotificacionesCard(expediente, state.intentosPorNotificacion, viewModel)
+            NotificacionesCard(
+                expediente = expediente,
+                intentosPorNotificacion = state.intentosPorNotificacion,
+                viewModel = viewModel,
+                downloadingId = documentoState.downloadingId,
+                onDownload = descargarDocumento
+            )
             ReprocesosCard(expediente)
             CumplimientosCard(expediente, viewModel)
             HistorialCard(expediente)
@@ -66,13 +112,40 @@ fun TTAIPExpedientePanel(
 }
 
 @Composable
-private fun ResolutionsCard(expediente: ExpedienteTtaip, apelacion: Apelacion?, viewModel: TTAIPExpedienteViewModel) {
+private fun ResolutionsCard(
+    expediente: ExpedienteTtaip,
+    apelacion: Apelacion?,
+    viewModel: TTAIPExpedienteViewModel,
+    downloadingId: String?,
+    onDownload: (Documento) -> Unit
+) {
     AggregateCard("Resoluciones y cédulas") {
         if (expediente.resoluciones.isEmpty()) Text("Sin resoluciones emitidas", style = MaterialTheme.typography.bodySmall)
         expediente.resoluciones.forEach { resolucion ->
             Text(resolucion.numeroResolucion.ifBlank { resolucion.tipoResolucion }, fontWeight = FontWeight.SemiBold)
             Text(resolucion.decision.replace("_", " "), style = MaterialTheme.typography.bodySmall)
-            resolucion.cedulas.forEach { Text("Cédula ${it.numeroCedula} · ${it.destinatario}", style = MaterialTheme.typography.labelSmall) }
+            if (resolucion.documentos.isNotEmpty()) {
+                DocumentListSection(
+                    documentos = resolucion.documentos,
+                    downloadingId = downloadingId,
+                    onDownload = onDownload,
+                    title = "Documentos de la resolución"
+                )
+            }
+            resolucion.cedulas.forEach { cedula ->
+                Text(
+                    "Cédula ${cedula.numeroCedula} · ${cedula.destinatario}",
+                    style = MaterialTheme.typography.labelSmall
+                )
+                if (cedula.documentos.isNotEmpty()) {
+                    DocumentListSection(
+                        documentos = cedula.documentos,
+                        downloadingId = downloadingId,
+                        onDownload = onDownload,
+                        title = "Documentos de la cédula"
+                    )
+                }
+            }
             if (resolucion.decision in setOf("FUNDADO", "FUNDADO_EN_PARTE") &&
                 expediente.cumplimientos.none { it.resolucionId == resolucion.id }) {
                 OnlineButton("Abrir seguimiento de cumplimiento") {
@@ -126,7 +199,9 @@ private fun SuspensionesCard(expediente: ExpedienteTtaip, viewModel: TTAIPExpedi
 private fun NotificacionesCard(
     expediente: ExpedienteTtaip,
     intentosPorNotificacion: Map<String, List<IntentoNotificacionTtaip>>,
-    viewModel: TTAIPExpedienteViewModel
+    viewModel: TTAIPExpedienteViewModel,
+    downloadingId: String?,
+    onDownload: (Documento) -> Unit
 ) {
     AggregateCard("Notificaciones, constancias y acuses") {
         if (expediente.notificaciones.isEmpty()) Text("Sin notificaciones registradas", style = MaterialTheme.typography.bodySmall)
@@ -136,6 +211,14 @@ private fun NotificacionesCard(
             notificacion.codigoConstancia?.let { Text("Constancia: $it", style = MaterialTheme.typography.bodySmall) }
             notificacion.referenciaEvidencia?.let { Text("Evidencia: $it", style = MaterialTheme.typography.bodySmall) }
             if (notificacion.validadaManualmente) Text("Validada manualmente por ${notificacion.responsableValidacion.orEmpty()}", style = MaterialTheme.typography.bodySmall)
+            if (notificacion.documentosCedula.isNotEmpty()) {
+                DocumentListSection(
+                    documentos = notificacion.documentosCedula,
+                    downloadingId = downloadingId,
+                    onDownload = onDownload,
+                    title = "Documentos de la cédula notificada"
+                )
+            }
             OutlinedButton(onClick = { viewModel.consultarIntentos(notificacion.id) }) { Text("Consultar intentos") }
             intentosPorNotificacion[notificacion.id]?.forEach { intento ->
                 Text(
