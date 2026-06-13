@@ -141,12 +141,23 @@ El frontend cuenta con **18+ componentes standalone** organizados por rol de usu
 ciudadano de SAIP, el detalle funcionario y el expediente TTAIP.
 
 - Validan PDF, JPG, PNG o TXT hasta 10 MB antes de invocar el backend.
+- Reciben una relación tipada y consultan metadata por solicitud, respuesta,
+  apelación, expediente TTAIP, resolución o cédula.
 - Muestran estados de carga, éxito y errores RFC 9457.
 - Descargan exclusivamente mediante `/api/documentos/{id}/download`.
 - Limpian el input después de una carga correcta.
 - Ocultan eliminación en páginas ciudadano, funcionario y TTAIP; el backend
   conserva la autorización definitiva.
 - No exponen `storageKey`, bucket, endpoint ni rutas internas.
+
+Las vistas mantienen separadas las asociaciones funcionales:
+
+- El detalle SAIP muestra documentos de la solicitud y documentos de la
+  respuesta en bloques independientes.
+- El funcionario puede cargar documentos de una respuesta existente mediante
+  `respuestaId`.
+- El agregado TTAIP muestra adjuntos de apelación y expediente, además de
+  documentos específicos de resoluciones y cédulas/notificaciones.
 
 ## Patrones Comunes
 
