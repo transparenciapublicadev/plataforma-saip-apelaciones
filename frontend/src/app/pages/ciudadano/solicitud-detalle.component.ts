@@ -63,9 +63,14 @@ export class SolicitudDetalleComponent implements OnInit {
     { id: 'apelacion', label: 'Apelación' }
   ];
 
-  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
+  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
     const solicitudId = this.solicitud()?.id;
     return solicitudId ? { solicitudId } : null;
+  });
+
+  readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
+    const respuestaId = this.solicitud()?.respuesta?.id;
+    return respuestaId ? { respuestaId } : null;
   });
 
   ngOnInit(): void {
