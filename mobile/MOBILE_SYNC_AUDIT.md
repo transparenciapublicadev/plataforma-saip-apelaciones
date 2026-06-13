@@ -161,9 +161,10 @@ Mobile PR 3 cubre las bandejas activas por rol. Los endpoints legacy se conserva
 
 ## Integración documental mobile
 
-- `mobile/openapi.json` incluye los endpoints autenticados `/api/documentos` para upload multipart, metadata, descarga intermediada y eliminación técnica.
-- App Ciudadano puede ver, seleccionar, validar, subir y descargar documentos desde el detalle SAIP o de apelación.
-- App Funcionario y App TTAIP reutilizan el mismo bloque de detalle para ver y descargar documentos relacionados; la eliminación no se expone en UI.
+- `mobile/openapi.json` refleja el contrato ampliado: listado por exactamente una relación y upload para `solicitudId`, `respuestaId`, `apelacionId`, `expedienteTtaipId`, `resolucionId` o `cedulaNotificacionId`.
+- App Ciudadano separa documentos de la solicitud y de la respuesta, y mantiene documentos propios de apelación.
+- App Funcionario consulta documentos de solicitud y puede adjuntar documentos a una respuesta usando el `respuestaId` confirmado por backend. Si la respuesta se crea y el upload posterior falla, informa éxito parcial y no recrea la respuesta.
+- App TTAIP muestra metadata documental del expediente, resoluciones y cédulas/notificaciones cuando el agregado expone sus IDs y documentos.
 - Android usa `OpenDocument` para seleccionar y `CreateDocument` para elegir el destino de descarga. El contenido se transmite por stream durante la petición o escritura y no se conserva en memoria completa.
 - La validación cliente acepta PDF, JPEG, PNG y TXT hasta 10 MB. El backend mantiene la validación definitiva y el ownership.
 - SQLDelight conserva únicamente metadata liviana para sostener el detalle offline. No guarda bytes, rutas físicas, `storageKey`, bucket, endpoint ni URLs S3.
@@ -199,4 +200,4 @@ cd mobile
 | Mobile PR 5 | Cubierto: apelación externa, presentación y elevación por entidad, comunicación ciudadana de omisión y migración SQLDelight compatible. |
 | Mobile PR 6 | Cubierto: expediente agregado TTAIP, admisión excepcional, descargos, suspensiones, constancias, intentos, acuses, reprocesos, cumplimiento, historial y decisiones finales. |
 | Mobile PR 7 | Cubierto: contrato autenticado de alta/revocación FCM, refresh mobile, estado seguro y adapter preparado en motor común. |
-| Mobile documentos | Cubierto: multipart y streaming contra `/api/documentos`, metadata offline liviana y componentes reutilizables en detalles SAIP/apelación. |
+| Mobile documentos | Cubierto: seis relaciones documentales tipadas, listado por relación única, upload con `respuestaId`, metadata segura SAIP/TTAIP y streaming intermediado por backend. |
