@@ -93,10 +93,12 @@ fun RequestDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAppeal: (String) -> Unit,
     viewModel: RequestDetailViewModel = koinViewModel(),
-    documentoViewModel: DocumentoViewModel = koinViewModel()
+    documentoViewModel: DocumentoViewModel = koinViewModel(key = "request-documents"),
+    respuestaDocumentoViewModel: DocumentoViewModel = koinViewModel(key = "response-documents")
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val documentoUiState by documentoViewModel.uiState.collectAsStateWithLifecycle()
+    val respuestaDocumentoUiState by respuestaDocumentoViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var descargaPendiente by remember { mutableStateOf<Documento?>(null) }
     val downloadLauncher = rememberLauncherForActivityResult(
@@ -117,6 +119,20 @@ fun RequestDetailScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is RequestDetailEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+                is RequestDetailEvent.RespuestaRegistrada -> {
+                    val archivoSeleccionado =
+                        respuestaDocumentoViewModel.uiState.value.archivoSeleccionado
+                    if (archivoSeleccionado != null && event.respuestaId.toLongOrNull() != null) {
+                        respuestaDocumentoViewModel.upload(
+                            relacionDestino = DocumentoRelacion.Respuesta(event.respuestaId),
+                            tipoDocumentoDestino = TipoDocumento.RESPUESTA_ENTIDAD,
+                            successMessage = "Respuesta y documento registrados correctamente.",
+                            failureMessage = "La respuesta fue registrada, pero el documento no pudo subirse."
+                        )
+                    } else {
+                        snackbarHostState.showSnackbar("Respuesta registrada exitosamente")
+                    }
+                }
                 is RequestDetailEvent.NavigateBack -> onNavigateBack()
                 is RequestDetailEvent.NavigateToAppeal -> onNavigateToAppeal(event.expedienteSAIP)
             }
@@ -125,6 +141,14 @@ fun RequestDetailScreen(
 
     LaunchedEffect(Unit) {
         documentoViewModel.events.collect { event ->
+            when (event) {
+                is DocumentoEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        respuestaDocumentoViewModel.events.collect { event ->
             when (event) {
                 is DocumentoEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
             }
@@ -157,9 +181,27 @@ fun RequestDetailScreen(
         )
     }
 
+    LaunchedEffect(
+        uiState.solicitud?.respuestaEntidad?.id,
+        uiState.solicitud?.respuestaEntidad?.documentos,
+        uiState.tipoUsuario
+    ) {
+        val respuesta = uiState.solicitud?.respuestaEntidad
+        val relacion = respuesta?.id
+            ?.takeIf { it.toLongOrNull() != null }
+            ?.let(DocumentoRelacion::Respuesta)
+        respuestaDocumentoViewModel.configurar(
+            relacion = relacion,
+            tipoDocumento = TipoDocumento.RESPUESTA_ENTIDAD,
+            documentos = respuesta?.documentos.orEmpty(),
+            puedeSubir = uiState.tipoUsuario == TipoUsuario.FUNCIONARIO
+        )
+    }
+
     RequestDetailContent(
         uiState = uiState,
         documentoUiState = documentoUiState,
+        respuestaDocumentoUiState = respuestaDocumentoUiState,
         snackbarHostState = snackbarHostState,
         onNavigateBack = onNavigateBack,
         onIniciarRevision = viewModel::iniciarRevision,
@@ -186,7 +228,10 @@ fun RequestDetailScreen(
         onApelar = viewModel::navegarAApelar,
         onDocumentoSeleccionado = documentoViewModel::seleccionarArchivo,
         onLimpiarDocumento = documentoViewModel::limpiarSeleccion,
-        onSubirDocumento = documentoViewModel::upload,
+        onSubirDocumento = { documentoViewModel.upload() },
+        onRespuestaDocumentoSeleccionado = respuestaDocumentoViewModel::seleccionarArchivo,
+        onLimpiarRespuestaDocumento = respuestaDocumentoViewModel::limpiarSeleccion,
+        onSubirRespuestaDocumento = { respuestaDocumentoViewModel.upload() },
         onDescargarDocumento = { documento ->
             descargaPendiente = documento
             downloadLauncher.launch(documento.nombreOriginal.ifBlank { "documento" })
@@ -199,6 +244,7 @@ fun RequestDetailScreen(
 private fun RequestDetailContent(
     uiState: RequestDetailUiState,
     documentoUiState: DocumentoUiState,
+    respuestaDocumentoUiState: DocumentoUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateBack: () -> Unit,
     onIniciarRevision: () -> Unit,
@@ -226,6 +272,9 @@ private fun RequestDetailContent(
     onDocumentoSeleccionado: (Uri) -> Unit,
     onLimpiarDocumento: () -> Unit,
     onSubirDocumento: () -> Unit,
+    onRespuestaDocumentoSeleccionado: (Uri) -> Unit,
+    onLimpiarRespuestaDocumento: () -> Unit,
+    onSubirRespuestaDocumento: () -> Unit,
     onDescargarDocumento: (Documento) -> Unit
 ) {
     Scaffold(
@@ -459,7 +508,13 @@ private fun RequestDetailContent(
                         DocumentListSection(
                             documentos = documentoUiState.documentos,
                             downloadingId = documentoUiState.downloadingId,
-                            onDownload = onDescargarDocumento
+                            onDownload = onDescargarDocumento,
+                            title = if (uiState.esApelacion) {
+                                "Documentos de la apelación"
+                            } else {
+                                "Documentos de la solicitud"
+                            },
+                            loading = documentoUiState.isLoading
                         )
                         if (documentoUiState.puedeSubir) {
                             DocumentUploadSection(
@@ -470,6 +525,26 @@ private fun RequestDetailContent(
                                 onClear = onLimpiarDocumento,
                                 onUpload = onSubirDocumento
                             )
+                        }
+                        if (uiState.solicitud?.respuestaEntidad != null) {
+                            DocumentListSection(
+                                documentos = respuestaDocumentoUiState.documentos,
+                                downloadingId = documentoUiState.downloadingId,
+                                onDownload = onDescargarDocumento,
+                                title = "Documentos de la respuesta",
+                                loading = respuestaDocumentoUiState.isLoading
+                            )
+                            if (respuestaDocumentoUiState.puedeSubir) {
+                                DocumentUploadSection(
+                                    selected = respuestaDocumentoUiState.archivoSeleccionado,
+                                    uploading = respuestaDocumentoUiState.isUploading,
+                                    error = respuestaDocumentoUiState.error,
+                                    onFileSelected = onRespuestaDocumentoSeleccionado,
+                                    onClear = onLimpiarRespuestaDocumento,
+                                    onUpload = onSubirRespuestaDocumento,
+                                    title = "Agregar documento a la respuesta"
+                                )
+                            }
                         }
                     }
                 }
@@ -621,7 +696,10 @@ private fun RequestDetailContent(
         if (uiState.showResponseForm) {
             ResponseBottomSheet(
                 onDismiss = onOcultarFormRespuesta,
-                onSubmit = onResponder
+                onSubmit = onResponder,
+                documentoUiState = respuestaDocumentoUiState,
+                onDocumentoSeleccionado = onRespuestaDocumentoSeleccionado,
+                onLimpiarDocumento = onLimpiarRespuestaDocumento
             )
         }
         if (uiState.showCalificacionForm) {
@@ -845,7 +923,10 @@ private fun TimelineEntry(item: TimelineItem, isLast: Boolean) {
 @Composable
 private fun ResponseBottomSheet(
     onDismiss: () -> Unit,
-    onSubmit: (tipoRespuesta: String, fundamentacion: String) -> Unit
+    onSubmit: (tipoRespuesta: String, fundamentacion: String) -> Unit,
+    documentoUiState: DocumentoUiState,
+    onDocumentoSeleccionado: (Uri) -> Unit,
+    onLimpiarDocumento: () -> Unit
 ) {
     var tipoSeleccionado by remember { mutableStateOf("") }
     var fundamentacion by remember { mutableStateOf("") }
@@ -904,6 +985,18 @@ private fun ResponseBottomSheet(
                 minLines = 3,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            DocumentUploadSection(
+                selected = documentoUiState.archivoSeleccionado,
+                uploading = documentoUiState.isUploading,
+                error = documentoUiState.error,
+                onFileSelected = onDocumentoSeleccionado,
+                onClear = onLimpiarDocumento,
+                onUpload = {},
+                title = "Documento de la respuesta (opcional)",
+                showUploadAction = false
             )
 
             Spacer(modifier = Modifier.height(16.dp))
