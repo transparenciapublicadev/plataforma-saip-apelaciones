@@ -80,6 +80,38 @@ class DocumentoUseCasesTest {
         }
     }
 
+    @Test
+    fun `relacion documental rechaza cero relaciones`() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            DocumentoRelacion.fromIds()
+        }
+
+        assertEquals("Debe indicar exactamente una relación documental.", exception.message)
+    }
+
+    @Test
+    fun `relacion documental rechaza multiples relaciones`() {
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            DocumentoRelacion.fromIds(solicitudId = "42", respuestaId = "31")
+        }
+
+        assertEquals("Debe indicar exactamente una relación documental.", exception.message)
+    }
+
+    @Test
+    fun `listado delega una relacion tipada`() = runTest {
+        val relation = DocumentoRelacion.CedulaNotificacion("9")
+        val expected = listOf(
+            Documento("7", "cedula.pdf", "application/pdf", 4, relacion = relation)
+        )
+        coEvery { repository.listByRelation(relation) } returns expected
+
+        val result = ListDocumentosPorRelacionUseCase(repository)(relation)
+
+        assertEquals(expected, result)
+        coVerify(exactly = 1) { repository.listByRelation(relation) }
+    }
+
     private fun archivo(
         contentType: String = "application/pdf",
         sizeBytes: Long = 4

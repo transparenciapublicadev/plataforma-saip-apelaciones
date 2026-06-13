@@ -56,16 +56,23 @@ object DocumentoMapper {
     }
 
     private fun DocumentoMetadataRestDto.toRelacion(): DocumentoRelacion? {
-        return when {
-            solicitudId != null -> DocumentoRelacion.Solicitud(solicitudId.toString())
-            apelacionId != null -> DocumentoRelacion.Apelacion(apelacionId.toString())
-            expedienteTtaipId != null ->
-                DocumentoRelacion.ExpedienteTtaip(expedienteTtaipId.toString())
-            resolucionId != null -> DocumentoRelacion.Resolucion(resolucionId.toString())
-            cedulaNotificacionId != null ->
-                DocumentoRelacion.CedulaNotificacion(cedulaNotificacionId.toString())
-            else -> null
-        }
+        val ids = listOf(
+            solicitudId,
+            respuestaId,
+            apelacionId,
+            expedienteTtaipId,
+            resolucionId,
+            cedulaNotificacionId
+        )
+        if (ids.all { it == null }) return null
+        return DocumentoRelacion.fromIds(
+            solicitudId = solicitudId?.toString(),
+            respuestaId = respuestaId?.toString(),
+            apelacionId = apelacionId?.toString(),
+            expedienteTtaipId = expedienteTtaipId?.toString(),
+            resolucionId = resolucionId?.toString(),
+            cedulaNotificacionId = cedulaNotificacionId?.toString()
+        )
     }
 }
 
@@ -78,7 +85,9 @@ private data class DocumentoCacheDto(
     val hashSha256: String? = null,
     val estado: String,
     val fechaCreacion: String? = null,
-    val tipoDocumento: String
+    val tipoDocumento: String,
+    val relacionTipo: String? = null,
+    val relacionId: String? = null
 ) {
     fun toDomain() = Documento(
         id = id,
@@ -88,8 +97,22 @@ private data class DocumentoCacheDto(
         hashSha256 = hashSha256,
         estado = EstadoDocumento.fromString(estado),
         fechaCreacion = fechaCreacion,
-        tipoDocumento = TipoDocumento.fromString(tipoDocumento)
+        tipoDocumento = TipoDocumento.fromString(tipoDocumento),
+        relacion = toRelacion()
     )
+
+    private fun toRelacion(): DocumentoRelacion? {
+        val relationId = relacionId?.takeIf(String::isNotBlank) ?: return null
+        return when (relacionTipo) {
+            "SOLICITUD" -> DocumentoRelacion.Solicitud(relationId)
+            "RESPUESTA" -> DocumentoRelacion.Respuesta(relationId)
+            "APELACION" -> DocumentoRelacion.Apelacion(relationId)
+            "EXPEDIENTE_TTAIP" -> DocumentoRelacion.ExpedienteTtaip(relationId)
+            "RESOLUCION" -> DocumentoRelacion.Resolucion(relationId)
+            "CEDULA_NOTIFICACION" -> DocumentoRelacion.CedulaNotificacion(relationId)
+            else -> null
+        }
+    }
 
     companion object {
         fun fromDomain(documento: Documento) = DocumentoCacheDto(
@@ -100,7 +123,18 @@ private data class DocumentoCacheDto(
             hashSha256 = documento.hashSha256,
             estado = documento.estado.name,
             fechaCreacion = documento.fechaCreacion,
-            tipoDocumento = documento.tipoDocumento.name
+            tipoDocumento = documento.tipoDocumento.name,
+            relacionTipo = documento.relacion?.cacheType(),
+            relacionId = documento.relacion?.id
         )
+
+        private fun DocumentoRelacion.cacheType(): String = when (this) {
+            is DocumentoRelacion.Solicitud -> "SOLICITUD"
+            is DocumentoRelacion.Respuesta -> "RESPUESTA"
+            is DocumentoRelacion.Apelacion -> "APELACION"
+            is DocumentoRelacion.ExpedienteTtaip -> "EXPEDIENTE_TTAIP"
+            is DocumentoRelacion.Resolucion -> "RESOLUCION"
+            is DocumentoRelacion.CedulaNotificacion -> "CEDULA_NOTIFICACION"
+        }
     }
 }

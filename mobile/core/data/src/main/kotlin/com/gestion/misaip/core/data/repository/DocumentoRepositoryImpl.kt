@@ -14,6 +14,10 @@ class DocumentoRepositoryImpl(
     private val remoteDataSource: DocumentoRemoteDataSource
 ) : DocumentoRepository {
 
+    override suspend fun listByRelation(relacion: DocumentoRelacion): List<Documento> {
+        return remoteDataSource.listByRelation(relacion).map(DocumentoMapper::toDomain)
+    }
+
     override suspend fun upload(
         archivo: ArchivoDocumento,
         tipoDocumento: TipoDocumento,
@@ -39,4 +43,3 @@ class DocumentoRepositoryImpl(
         remoteDataSource.delete(documentoId)
     }
 }
-

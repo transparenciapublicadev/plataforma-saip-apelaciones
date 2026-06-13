@@ -26,10 +26,22 @@ class DocumentoMapperTest {
         val serialized = DocumentoMapper.encodeMetadata(listOf(original))
         val restored = DocumentoMapper.decodeMetadata(serialized).single()
 
-        assertEquals(original.copy(relacion = null), restored)
+        assertEquals(original, restored)
         assertFalse(serialized.contains("storageKey", ignoreCase = true))
         assertFalse(serialized.contains("bucket", ignoreCase = true))
         assertFalse(serialized.contains("endpoint", ignoreCase = true))
+        assertFalse(serialized.contains("provider", ignoreCase = true))
+        assertFalse(serialized.contains("rutaArchivo", ignoreCase = true))
+        assertFalse(serialized.contains("url", ignoreCase = true))
+    }
+
+    @Test
+    fun `metadata de respuesta conserva respuestaId sin campos internos`() {
+        val documento = DocumentoMapper.toDomain(
+            metadata().copy(solicitudId = null, respuestaId = 31)
+        )
+
+        assertEquals(DocumentoRelacion.Respuesta("31"), documento.relacion)
     }
 
     private fun metadata() = DocumentoMetadataRestDto(

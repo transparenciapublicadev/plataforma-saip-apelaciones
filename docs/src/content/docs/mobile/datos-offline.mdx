@@ -85,9 +85,13 @@ La integración documental usa exclusivamente el backend:
 
 ```text
 OpenDocument -> ContentResolver -> multipart /api/documentos/upload
+GET /api/documentos?{relacionId}=... -> metadata segura de una relación
 /api/documentos/{id}/download -> stream -> CreateDocument
 ```
 
+- Cada consulta o carga usa exactamente una relación: solicitud, respuesta, apelación, expediente TTAIP, resolución o cédula.
+- Los documentos de respuesta se vinculan con el `respuestaId` confirmado por backend. Si la respuesta se registra y el upload falla después, mobile informa éxito parcial sin duplicar el acto administrativo.
+- Las notificaciones consumen documentos mediante su `cedulaNotificacionId`; no fabrican una relación directa con storage.
 - El archivo seleccionado se abre solo durante el upload y no se copia a SQLDelight.
 - La descarga se escribe por stream en el destino elegido por el usuario.
 - SQLDelight guarda únicamente metadata segura: ID, nombre, MIME, tamaño, hash, estado, fecha y tipo.

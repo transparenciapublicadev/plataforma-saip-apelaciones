@@ -22,6 +22,18 @@ data class CrearSolicitudRestRequest(
     val canalNotificacion: String
 )
 
+@Serializable
+data class CrearRespuestaRestRequest(
+    val solicitudId: Long,
+    val funcionarioId: Long,
+    val tipoRespuesta: String,
+    val contenido: String,
+    val causalDenegatoria: String? = null,
+    val fundamentoLegal: String? = null,
+    val formatoEntrega: String? = null,
+    val plazoEntrega: String? = null
+)
+
 // =============================================
 // RESPONSE DTOs
 // =============================================
@@ -37,8 +49,22 @@ data class RespuestaRestDto(
     val fechaRespuesta: String? = null,
     val funcionarioId: Long? = null,
     val funcionarioNombre: String? = null,
-    val documentos: List<DocumentoRestDto>? = null
-)
+    val documentos: List<DocumentoRestDto>? = null,
+    val documentosMetadata: List<DocumentoMetadataRestDto>? = null
+) {
+    fun toDomain() = RespuestaEntidad(
+        id = id?.toString().orEmpty(),
+        fechaRespuesta = parseDate(fechaRespuesta),
+        funcionario = funcionarioNombre.orEmpty(),
+        tipo = TipoRespuesta.fromString(tipoRespuesta.orEmpty()),
+        fundamentacion = contenido.orEmpty(),
+        documentos = documentosMetadata.orEmpty()
+            .map(DocumentoMetadataRestDto::toDomainDocumento)
+            .ifEmpty {
+                documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
+            }
+    )
+}
 
 @Serializable
 data class ApelacionInfoRestDto(
@@ -55,7 +81,6 @@ data class ApelacionInfoRestDto(
 data class DocumentoRestDto(
     val id: Long? = null,
     val nombreArchivo: String? = null,
-    val rutaArchivo: String? = null,
     val tipoArchivo: String? = null,
     val tamanio: Long? = null,
     val tipoDocumento: String? = null,
@@ -89,7 +114,8 @@ data class SolicitudRestDto(
     val canalNotificacion: String? = null,
     val respuesta: RespuestaRestDto? = null,
     val apelacion: ApelacionInfoRestDto? = null,
-    val documentos: List<DocumentoRestDto>? = null
+    val documentos: List<DocumentoRestDto>? = null,
+    val documentosMetadata: List<DocumentoMetadataRestDto>? = null
 ) {
     fun toDomain(): Solicitud {
         return Solicitud(
@@ -115,18 +141,14 @@ data class SolicitudRestDto(
             estado = EstadoSolicitud.fromString(estado ?: "RECEPCIONADA"),
             diasRestantes = diasRestantes,
             prioridad = Prioridad.fromString(prioridad ?: "MEDIA"),
-            respuestaEntidad = respuesta?.let { r ->
-                RespuestaEntidad(
-                    fechaRespuesta = parseDate(r.fechaRespuesta),
-                    funcionario = r.funcionarioNombre ?: "",
-                    tipo = TipoRespuesta.fromString(r.tipoRespuesta ?: ""),
-                    fundamentacion = r.contenido ?: "",
-                    archivos = r.documentos?.mapNotNull { it.rutaArchivo } ?: emptyList()
-                )
-            },
+            respuestaEntidad = respuesta?.toDomain(),
             silencioAdministrativo = estado == "VENCIDA",
             timeline = emptyList(),
-            documentos = documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
+            documentos = documentosMetadata.orEmpty()
+                .map(DocumentoMetadataRestDto::toDomainDocumento)
+                .ifEmpty {
+                    documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
+                }
         )
     }
 }

@@ -94,6 +94,7 @@ enum class FormularioOperacionFuncionario {
 
 sealed class RequestDetailEvent {
     data class ShowMessage(val message: String) : RequestDetailEvent()
+    data class RespuestaRegistrada(val respuestaId: String) : RequestDetailEvent()
     object NavigateBack : RequestDetailEvent()
     data class NavigateToAppeal(val expedienteSAIP: String) : RequestDetailEvent()
 }
@@ -374,7 +375,7 @@ class RequestDetailViewModel(
                     return@launch
                 }
 
-                responderSolicitudUseCase(
+                val respuestaRegistrada = responderSolicitudUseCase(
                     ResponderSolicitudUseCase.Params(
                         expediente = solicitud.expediente,
                         funcionario = usuario?.nombre ?: "Funcionario",
@@ -384,7 +385,9 @@ class RequestDetailViewModel(
                 )
 
                 _uiState.value = _uiState.value.copy(showResponseForm = false)
-                _events.emit(RequestDetailEvent.ShowMessage("Respuesta registrada exitosamente"))
+                _events.emit(
+                    RequestDetailEvent.RespuestaRegistrada(respuestaRegistrada.id)
+                )
 
                 // Notificar al ciudadano sobre la respuesta de la entidad
                 NotificationPushHelper.notificarRespuestaEntidad(

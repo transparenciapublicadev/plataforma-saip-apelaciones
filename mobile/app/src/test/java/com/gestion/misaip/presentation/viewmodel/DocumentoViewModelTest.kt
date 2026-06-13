@@ -7,6 +7,7 @@ import com.gestion.misaip.core.domain.model.DocumentoRelacion
 import com.gestion.misaip.core.domain.model.TipoDocumento
 import com.gestion.misaip.core.domain.repository.DocumentoRepository
 import com.gestion.misaip.core.domain.usecase.documento.DownloadDocumentoUseCase
+import com.gestion.misaip.core.domain.usecase.documento.ListDocumentosPorRelacionUseCase
 import com.gestion.misaip.core.domain.usecase.documento.UploadDocumentoUseCase
 import com.gestion.misaip.core.domain.usecase.documento.ValidarArchivoDocumentoUseCase
 import com.gestion.misaip.data.DocumentoContentResolver
@@ -40,11 +41,13 @@ class DocumentoViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        coEvery { repository.listByRelation(any()) } returns emptyList()
         viewModel = DocumentoViewModel(
             uploadDocumentoUseCase = UploadDocumentoUseCase(
                 repository,
                 ValidarArchivoDocumentoUseCase()
             ),
+            listDocumentosPorRelacionUseCase = ListDocumentosPorRelacionUseCase(repository),
             downloadDocumentoUseCase = DownloadDocumentoUseCase(repository),
             validarArchivoDocumentoUseCase = ValidarArchivoDocumentoUseCase(),
             contentResolver = resolver
@@ -91,6 +94,36 @@ class DocumentoViewModelTest {
         coVerify(exactly = 1) {
             repository.upload(file, TipoDocumento.DOCUMENTO_ADJUNTO, relation)
         }
+    }
+
+    @Test
+    fun `upload de respuesta fallido conserva seleccion para reintento`() = runTest(dispatcher) {
+        val uri = mockk<Uri>()
+        val file = ArchivoDocumento(
+            nombre = "respuesta.pdf",
+            contentType = "application/pdf",
+            sizeBytes = 4,
+            abrirContenido = { ByteArrayInputStream(byteArrayOf(1, 2, 3, 4)) }
+        )
+        every { resolver.resolveUpload(uri) } returns file
+        coEvery {
+            repository.upload(
+                file,
+                TipoDocumento.RESPUESTA_ENTIDAD,
+                DocumentoRelacion.Respuesta("31")
+            )
+        } throws IllegalStateException("Sin conexión")
+
+        viewModel.seleccionarArchivo(uri)
+        viewModel.upload(
+            relacionDestino = DocumentoRelacion.Respuesta("31"),
+            tipoDocumentoDestino = TipoDocumento.RESPUESTA_ENTIDAD,
+            failureMessage = "La respuesta fue registrada, pero el documento no pudo subirse."
+        )
+        advanceUntilIdle()
+
+        assertEquals("respuesta.pdf", viewModel.uiState.value.archivoSeleccionado?.nombre)
+        assertFalse(viewModel.uiState.value.isUploading)
     }
 
     @Test

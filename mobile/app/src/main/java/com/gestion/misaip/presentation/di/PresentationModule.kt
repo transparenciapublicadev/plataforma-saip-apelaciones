@@ -115,6 +115,7 @@ val presentationModule = module {
     viewModel {
         DocumentoViewModel(
             uploadDocumentoUseCase = get(),
+            listDocumentosPorRelacionUseCase = get(),
             downloadDocumentoUseCase = get(),
             validarArchivoDocumentoUseCase = get(),
             contentResolver = get()
