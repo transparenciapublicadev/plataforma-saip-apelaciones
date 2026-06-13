@@ -71,8 +71,7 @@ data class SolicitudDto(
                     fechaRespuesta = it,
                     funcionario = respuestaFuncionario ?: "",
                     tipo = TipoRespuesta.fromString(respuestaTipo ?: ""),
-                    fundamentacion = respuestaFundamentacion ?: "",
-                    archivos = respuestaArchivos ?: emptyList()
+                    fundamentacion = respuestaFundamentacion ?: ""
                 )
             },
             silencioAdministrativo = silencioAdministrativo,
@@ -155,7 +154,7 @@ data class SolicitudDto(
                 respuestaFuncionario = solicitud.respuestaEntidad?.funcionario,
                 respuestaTipo = solicitud.respuestaEntidad?.tipo?.name,
                 respuestaFundamentacion = solicitud.respuestaEntidad?.fundamentacion,
-                respuestaArchivos = solicitud.respuestaEntidad?.archivos,
+                respuestaArchivos = emptyList(),
                 timeline = solicitud.timeline.map { item ->
                     mutableMapOf<String, Any>(
                         "fecha" to item.fecha,

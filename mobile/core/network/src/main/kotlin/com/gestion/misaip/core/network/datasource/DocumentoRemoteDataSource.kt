@@ -20,6 +20,8 @@ import retrofit2.HttpException
 
 interface DocumentoRemoteDataSource {
 
+    suspend fun listByRelation(relacion: DocumentoRelacion): List<DocumentoMetadataRestDto>
+
     suspend fun upload(
         archivo: ArchivoDocumento,
         tipoDocumento: TipoDocumento,
@@ -41,6 +43,20 @@ class DocumentoRestDataSource(
     private val json: Json
 ) : DocumentoRemoteDataSource {
 
+    override suspend fun listByRelation(
+        relacion: DocumentoRelacion
+    ): List<DocumentoMetadataRestDto> = traducirProblemDetails {
+        val query = relacion.toQuery()
+        api.listByRelation(
+            solicitudId = query.solicitudId,
+            respuestaId = query.respuestaId,
+            apelacionId = query.apelacionId,
+            expedienteTtaipId = query.expedienteTtaipId,
+            resolucionId = query.resolucionId,
+            cedulaNotificacionId = query.cedulaNotificacionId
+        )
+    }
+
     override suspend fun upload(
         archivo: ArchivoDocumento,
         tipoDocumento: TipoDocumento,
@@ -48,18 +64,17 @@ class DocumentoRestDataSource(
     ): DocumentoMetadataRestDto = traducirProblemDetails {
         val body = StreamingDocumentoRequestBody(archivo)
         val part = MultipartBody.Part.createFormData("file", archivo.nombre, body)
-        val relationId = relacion.id.requireRemoteId()
+        val query = relacion.toQuery()
 
         api.upload(
             file = part,
             tipoDocumento = tipoDocumento.name,
-            solicitudId = relationId.takeIf { relacion is DocumentoRelacion.Solicitud },
-            apelacionId = relationId.takeIf { relacion is DocumentoRelacion.Apelacion },
-            expedienteTtaipId = relationId.takeIf { relacion is DocumentoRelacion.ExpedienteTtaip },
-            resolucionId = relationId.takeIf { relacion is DocumentoRelacion.Resolucion },
-            cedulaNotificacionId = relationId.takeIf {
-                relacion is DocumentoRelacion.CedulaNotificacion
-            }
+            solicitudId = query.solicitudId,
+            respuestaId = query.respuestaId,
+            apelacionId = query.apelacionId,
+            expedienteTtaipId = query.expedienteTtaipId,
+            resolucionId = query.resolucionId,
+            cedulaNotificacionId = query.cedulaNotificacionId
         )
     }
 
@@ -142,7 +157,26 @@ class DocumentoRestDataSource(
     }
 
     private fun String.requireRemoteId(): Long {
-        return toLongOrNull() ?: throw NetworkException("El documento no tiene un ID remoto válido.")
+        return toLongOrNull()?.takeIf { it > 0 }
+            ?: throw NetworkException("El documento no tiene un ID remoto válido.")
+    }
+
+    private fun DocumentoRelacion.toQuery(): DocumentoRelacionQuery {
+        val relationId = id.requireRemoteId()
+        return when (this) {
+            is DocumentoRelacion.Solicitud ->
+                DocumentoRelacionQuery(solicitudId = relationId)
+            is DocumentoRelacion.Respuesta ->
+                DocumentoRelacionQuery(respuestaId = relationId)
+            is DocumentoRelacion.Apelacion ->
+                DocumentoRelacionQuery(apelacionId = relationId)
+            is DocumentoRelacion.ExpedienteTtaip ->
+                DocumentoRelacionQuery(expedienteTtaipId = relationId)
+            is DocumentoRelacion.Resolucion ->
+                DocumentoRelacionQuery(resolucionId = relationId)
+            is DocumentoRelacion.CedulaNotificacion ->
+                DocumentoRelacionQuery(cedulaNotificacionId = relationId)
+        }
     }
 
     private fun parseFilename(contentDisposition: String?): String? {
@@ -159,6 +193,15 @@ class DocumentoRestDataSource(
         val FILENAME = Regex("""filename="?([^";]+)"?""", RegexOption.IGNORE_CASE)
     }
 }
+
+private data class DocumentoRelacionQuery(
+    val solicitudId: Long? = null,
+    val respuestaId: Long? = null,
+    val apelacionId: Long? = null,
+    val expedienteTtaipId: Long? = null,
+    val resolucionId: Long? = null,
+    val cedulaNotificacionId: Long? = null
+)
 
 private class StreamingDocumentoRequestBody(
     private val archivo: ArchivoDocumento

@@ -11,7 +11,10 @@ import com.gestion.misaip.core.domain.model.RegistrarAmpliacionPlazoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarEncauzamientoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarLiquidacionCostoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarObservacionSolicitud
+import com.gestion.misaip.core.domain.model.RespuestaEntidad
+import com.gestion.misaip.core.network.api.RespuestaApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
+import com.gestion.misaip.core.network.dto.rest.CrearRespuestaRestRequest
 import com.gestion.misaip.core.network.dto.rest.CrearSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
 import com.gestion.misaip.core.network.dto.rest.toRest
@@ -24,6 +27,7 @@ import retrofit2.HttpException
  */
 class SolicitudRestDataSource(
     private val solicitudApi: SolicitudApiService,
+    private val respuestaApi: RespuestaApiService,
     private val tokenStorage: TokenStorage,
     private val json: Json
 ) : SolicitudRemoteDataSource {
@@ -96,6 +100,21 @@ class SolicitudRestDataSource(
         request: RegistrarLiquidacionCostoSolicitud
     ): LiquidacionCostoSolicitud = traducirProblemDetails {
         solicitudApi.emitirLiquidacion(solicitudId.requireRemoteId(), request.toRest()).toDomain()
+    }
+
+    override suspend fun responderSolicitud(
+        solicitudId: String,
+        respuesta: RespuestaEntidad
+    ): RespuestaEntidad = traducirProblemDetails {
+        respuestaApi.crear(
+            CrearRespuestaRestRequest(
+                solicitudId = solicitudId.requireRemoteId(),
+                funcionarioId = tokenStorage.getUserId()
+                    ?: throw NetworkException("Usuario no autenticado"),
+                tipoRespuesta = respuesta.tipo.name,
+                contenido = respuesta.fundamentacion
+            )
+        ).toDomain()
     }
 
     override suspend fun crearSolicitud(solicitud: Solicitud): Solicitud {

@@ -76,6 +76,7 @@ data class ResolucionRestDto(
     val fechaResolucion: String? = null,
     val miembroTTAIPId: Long? = null,
     val miembroTTAIPNombre: String? = null,
+    val documentos: List<DocumentoMetadataRestDto> = emptyList(),
     val cedulas: List<CedulaTtaipRestDto> = emptyList()
 )
 
@@ -161,7 +162,8 @@ data class ApelacionRestDto(
     val resolucionSegundaCalificacion: ResolucionRestDto? = null,
     val expedienteTtaip: ExpedienteTtaipRestDto? = null,
     val resoluciones: List<ResolucionRestDto> = emptyList(),
-    val documentos: List<DocumentoRestDto>? = null
+    val documentos: List<DocumentoRestDto>? = null,
+    val documentosMetadata: List<DocumentoMetadataRestDto>? = null
 ) {
     fun toDomain(): Apelacion {
         return Apelacion(
@@ -222,7 +224,11 @@ data class ApelacionRestDto(
             },
             elevacion = elevacion?.toDomain(),
             expedienteTtaip = expedienteTtaip?.toDomain(),
-            documentos = documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
+            documentos = documentosMetadata.orEmpty()
+                .map(DocumentoMetadataRestDto::toDomainDocumento)
+                .ifEmpty {
+                    documentos.orEmpty().mapNotNull(DocumentoRestDto::toDomainDocumento)
+                }
         )
     }
 }
