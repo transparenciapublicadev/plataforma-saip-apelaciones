@@ -1,0 +1,9 @@
+ALTER TABLE Solicitud
+ADD COLUMN respuestaId TEXT;
+
+ALTER TABLE Solicitud
+ADD COLUMN respuestaDocumentosMetadata TEXT NOT NULL DEFAULT '[]';
+
+UPDATE Solicitud
+SET respuestaArchivos = '[]'
+WHERE respuestaArchivos IS NOT NULL;
