@@ -47,4 +47,27 @@ class DocumentoRepositoryImplTest {
             remote.upload(file, TipoDocumento.RECURSO_APELACION, relation)
         }
     }
+
+    @Test
+    fun `listado por relacion conserva metadata segura`() = runTest {
+        val relation = DocumentoRelacion.Respuesta("31")
+        coEvery { remote.listByRelation(relation) } returns listOf(
+            DocumentoMetadataRestDto(
+                id = 10,
+                tipoDocumento = "RESPUESTA_ENTIDAD",
+                nombreOriginal = "respuesta.pdf",
+                contentType = "application/pdf",
+                sizeBytes = 8,
+                hashSha256 = "b".repeat(64),
+                estado = "ACTIVO",
+                respuestaId = 31
+            )
+        )
+
+        val result = repository.listByRelation(relation)
+
+        assertEquals("10", result.single().id)
+        assertEquals(relation, result.single().relacion)
+        assertEquals("b".repeat(64), result.single().hashSha256)
+    }
 }

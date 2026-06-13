@@ -37,6 +37,7 @@ class DocumentoRestDataSourceTest {
                 file = any(),
                 tipoDocumento = "DOCUMENTO_ADJUNTO",
                 solicitudId = 42,
+                respuestaId = null,
                 apelacionId = null,
                 expedienteTtaipId = null,
                 resolucionId = null,
@@ -52,8 +53,38 @@ class DocumentoRestDataSourceTest {
 
         assertEquals(7L, result.id)
         coVerify(exactly = 1) {
-            api.upload(any(), "DOCUMENTO_ADJUNTO", 42, null, null, null, null)
+            api.upload(any(), "DOCUMENTO_ADJUNTO", 42, null, null, null, null, null)
         }
+    }
+
+    @Test
+    fun `listado envia exactamente respuestaId`() = runTest {
+        coEvery {
+            api.listByRelation(null, 31, null, null, null, null)
+        } returns listOf(metadata().copy(solicitudId = null, respuestaId = 31))
+
+        val result = dataSource.listByRelation(DocumentoRelacion.Respuesta("31"))
+
+        assertEquals(1, result.size)
+        assertEquals(31L, result.single().respuestaId)
+        coVerify(exactly = 1) {
+            api.listByRelation(null, 31, null, null, null, null)
+        }
+    }
+
+    @Test
+    fun `upload permite asociar documento a respuesta`() = runTest {
+        coEvery {
+            api.upload(any(), "RESPUESTA_ENTIDAD", null, 31, null, null, null, null)
+        } returns metadata().copy(solicitudId = null, respuestaId = 31)
+
+        val result = dataSource.upload(
+            archivo = archivo(),
+            tipoDocumento = TipoDocumento.RESPUESTA_ENTIDAD,
+            relacion = DocumentoRelacion.Respuesta("31")
+        )
+
+        assertEquals(31L, result.respuestaId)
     }
 
     @Test
