@@ -143,7 +143,14 @@ class ResponderSolicitudUseCaseTest {
 
     @Test
     fun `responde solicitud con datos validos`() = runTest {
-        coEvery { solicitudRepository.responderSolicitud(any(), any()) } just Runs
+        val expected = RespuestaEntidad(
+            id = "31",
+            fechaRespuesta = 1L,
+            funcionario = "func-1",
+            tipo = TipoRespuesta.ENTREGA_TOTAL,
+            fundamentacion = "Se entrega toda la información solicitada"
+        )
+        coEvery { solicitudRepository.responderSolicitud(any(), any()) } returns expected
 
         val params = ResponderSolicitudUseCase.Params(
             expediente = "SAIP-2025-00001",
@@ -151,8 +158,9 @@ class ResponderSolicitudUseCaseTest {
             tipoRespuesta = TipoRespuesta.ENTREGA_TOTAL,
             fundamentacion = "Se entrega toda la información solicitada"
         )
-        useCase(params)
+        val result = useCase(params)
 
+        assertEquals(expected, result)
         coVerify { solicitudRepository.responderSolicitud(eq("SAIP-2025-00001"), any()) }
     }
 }
