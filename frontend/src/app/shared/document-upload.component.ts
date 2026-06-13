@@ -45,6 +45,7 @@ export class DocumentUploadComponent {
   readonly tipoDocumento = input<TipoDocumento>('DOCUMENTO_ADJUNTO');
   readonly heading = input('Agregar documento');
   readonly disabled = input(false);
+  readonly readOnly = input(false);
   readonly uploaded = output<DocumentoMetadata>();
 
   readonly accept = DOCUMENTO_ACCEPT;
@@ -61,7 +62,7 @@ export class DocumentUploadComponent {
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
-    if (!this.disabled()) {
+    if (!this.isDisabled()) {
       this.dragging.set(true);
     }
   }
@@ -74,7 +75,7 @@ export class DocumentUploadComponent {
   onDrop(event: DragEvent): void {
     event.preventDefault();
     this.dragging.set(false);
-    if (!this.disabled()) {
+    if (!this.isDisabled()) {
       this.selectFile(event.dataTransfer?.files?.[0] ?? null);
     }
   }
@@ -90,7 +91,7 @@ export class DocumentUploadComponent {
 
   upload(): void {
     const file = this.selectedFile();
-    if (!file || this.loading() || this.disabled()) {
+    if (!file || this.loading() || this.isDisabled()) {
       return;
     }
 
@@ -121,6 +122,10 @@ export class DocumentUploadComponent {
     return bytes >= 1024 * 1024
       ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
       : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  isDisabled(): boolean {
+    return this.disabled() || this.readOnly();
   }
 
   private selectFile(file: File | null): void {
