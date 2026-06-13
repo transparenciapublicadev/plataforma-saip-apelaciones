@@ -13,6 +13,7 @@ data class ExpedienteTtaip(
     val trazabilidadMinima: String?,
     val sala: SalaTtaip?,
     val miembros: List<MiembroTtaip>,
+    val documentos: List<Documento> = emptyList(),
     val resoluciones: List<ResolucionTtaip>,
     val cedulas: List<CedulaTtaip>,
     val notificaciones: List<NotificacionTtaip>,
@@ -52,6 +53,7 @@ data class ResolucionTtaip(
     val fundamentoLegal: String?,
     val observaciones: String?,
     val fechaResolucion: String?,
+    val documentos: List<Documento> = emptyList(),
     val cedulas: List<CedulaTtaip>
 )
 
@@ -64,11 +66,13 @@ data class CedulaTtaip(
     val fechaEmision: String?,
     val canal: String?,
     val estado: String?,
-    val documentoReferencia: String?
+    val documentoReferencia: String?,
+    val documentos: List<Documento> = emptyList()
 )
 
 data class NotificacionTtaip(
     val id: String,
+    val cedulaId: String?,
     val numeroCedula: String,
     val destinatario: String,
     val destinatarioNombre: String?,
@@ -92,7 +96,8 @@ data class NotificacionTtaip(
     val fechaValidacionManual: String?,
     val responsableValidacion: String?,
     val observacionValidacion: String?,
-    val trazabilidad: String?
+    val trazabilidad: String?,
+    val documentosCedula: List<Documento> = emptyList()
 ) {
     val permiteReproceso: Boolean
         get() = estado in setOf("FALLIDA", "OBSERVADA") ||

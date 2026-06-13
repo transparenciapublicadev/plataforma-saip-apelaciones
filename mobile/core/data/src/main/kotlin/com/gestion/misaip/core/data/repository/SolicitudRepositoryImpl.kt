@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.gestion.misaip.core.common.util.DateUtils
+import com.gestion.misaip.core.data.mapper.DocumentoMapper
 import com.gestion.misaip.core.data.mapper.SolicitudMapper
 import com.gestion.misaip.core.data.mapper.TimelineDto
 import com.gestion.misaip.core.database.SaipDatabase
@@ -17,8 +18,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.Date
 import java.util.UUID
@@ -294,25 +293,33 @@ class SolicitudRepositoryImpl(
     override suspend fun responderSolicitud(
         expediente: String,
         respuesta: RespuestaEntidad
-    ) = withContext(Dispatchers.IO) {
+    ): RespuestaEntidad = withContext(Dispatchers.IO) {
         require(respuesta.tipo != TipoRespuesta.SILENCIO_ADMINISTRATIVO) {
             "Silencio administrativo se aplica automáticamente y no se registra como respuesta manual"
         }
 
-        val nuevoEstado = when (respuesta.tipo) {
+        val solicitudActual = queries.getSolicitudByExpediente(expediente).executeAsOneOrNull()
+            ?: throw IllegalArgumentException("Solicitud no encontrada")
+        val respuestaRegistrada = remoteDataSource.responderSolicitud(
+            solicitudId = solicitudActual.id,
+            respuesta = respuesta
+        )
+
+        val nuevoEstado = when (respuestaRegistrada.tipo) {
             TipoRespuesta.DENEGACION_TOTAL -> "Denegada"
             else -> "Respondida"
         }
 
-        // Obtener la solicitud actual para actualizar el timeline
-        val solicitudActual = queries.getSolicitudByExpediente(expediente).executeAsOneOrNull()
-        val timelineActual = solicitudActual?.timeline ?: "[]"
+        val timelineActual = solicitudActual.timeline
 
         // Agregar nuevo evento al timeline
-        val eventoNombre = when (respuesta.tipo) {
-            TipoRespuesta.DENEGACION_TOTAL -> "Solicitud DENEGADA por ${respuesta.funcionario}"
-            TipoRespuesta.ENTREGA_TOTAL -> "Solicitud RESPONDIDA — entrega total por ${respuesta.funcionario}"
-            TipoRespuesta.ENTREGA_PARCIAL -> "Solicitud RESPONDIDA — entrega parcial por ${respuesta.funcionario}"
+        val eventoNombre = when (respuestaRegistrada.tipo) {
+            TipoRespuesta.DENEGACION_TOTAL ->
+                "Solicitud DENEGADA por ${respuestaRegistrada.funcionario}"
+            TipoRespuesta.ENTREGA_TOTAL ->
+                "Solicitud RESPONDIDA — entrega total por ${respuestaRegistrada.funcionario}"
+            TipoRespuesta.ENTREGA_PARCIAL ->
+                "Solicitud RESPONDIDA — entrega parcial por ${respuestaRegistrada.funcionario}"
             TipoRespuesta.SILENCIO_ADMINISTRATIVO -> error("Tipo de respuesta no permitido: SILENCIO_ADMINISTRATIVO")
         }
         val timelineItems: MutableList<TimelineDto> = try {
@@ -320,33 +327,34 @@ class SolicitudRepositoryImpl(
         } catch (_: Exception) { mutableListOf() }
         timelineItems.add(
             TimelineDto(
-                fecha = respuesta.fechaRespuesta,
+                fecha = respuestaRegistrada.fechaRespuesta,
                 evento = eventoNombre,
-                tipo = when (respuesta.tipo) {
+                tipo = when (respuestaRegistrada.tipo) {
                     TipoRespuesta.DENEGACION_TOTAL -> "denegacion"
                     else -> "respuesta"
                 },
                 completado = true,
-                detalle = respuesta.fundamentacion
+                detalle = respuestaRegistrada.fundamentacion
             )
         )
         val timelineActualizado = Json.encodeToString(timelineItems)
 
         queries.updateRespuestaSolicitud(
             estado = nuevoEstado,
-            respuestaFecha = respuesta.fechaRespuesta,
-            respuestaFuncionario = respuesta.funcionario,
-            respuestaTipo = respuesta.tipo.name,
-            respuestaFundamentacion = respuesta.fundamentacion,
-            respuestaArchivos = Json.encodeToString(
-                ListSerializer(String.serializer()),
-                respuesta.archivos
+            respuestaFecha = respuestaRegistrada.fechaRespuesta,
+            respuestaFuncionario = respuestaRegistrada.funcionario,
+            respuestaTipo = respuestaRegistrada.tipo.name,
+            respuestaFundamentacion = respuestaRegistrada.fundamentacion,
+            respuestaArchivos = "[]",
+            respuestaId = respuestaRegistrada.id.ifBlank { null },
+            respuestaDocumentosMetadata = DocumentoMapper.encodeMetadata(
+                respuestaRegistrada.documentos
             ),
             timeline = timelineActualizado,
             ultimaModificacion = System.currentTimeMillis(),
             expediente = expediente
         )
-        Unit
+        respuestaRegistrada
     }
 
     /**
@@ -452,6 +460,8 @@ class SolicitudRepositoryImpl(
             respuestaTipo = entity.respuestaTipo,
             respuestaFundamentacion = entity.respuestaFundamentacion,
             respuestaArchivos = entity.respuestaArchivos,
+            respuestaId = entity.respuestaId,
+            respuestaDocumentosMetadata = entity.respuestaDocumentosMetadata,
             timeline = entity.timeline,
             documentosMetadata = entity.documentosMetadata,
             sincronizado = sincronizado,

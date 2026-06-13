@@ -129,7 +129,10 @@ interface SolicitudRepository {
      * @param expediente Número de expediente
      * @param respuesta Datos de la respuesta
      */
-    suspend fun responderSolicitud(expediente: String, respuesta: RespuestaEntidad)
+    suspend fun responderSolicitud(
+        expediente: String,
+        respuesta: RespuestaEntidad
+    ): RespuestaEntidad
 
     /**
      * Sincroniza las solicitudes con el servidor remoto.

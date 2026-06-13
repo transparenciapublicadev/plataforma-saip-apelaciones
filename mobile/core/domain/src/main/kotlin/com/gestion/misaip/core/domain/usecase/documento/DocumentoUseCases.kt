@@ -45,6 +45,13 @@ class UploadDocumentoUseCase(
     )
 }
 
+class ListDocumentosPorRelacionUseCase(
+    private val repository: DocumentoRepository
+) {
+    suspend operator fun invoke(relacion: DocumentoRelacion) =
+        repository.listByRelation(relacion)
+}
+
 class GetDocumentoMetadataUseCase(
     private val repository: DocumentoRepository
 ) {
@@ -65,4 +72,3 @@ class DeleteDocumentoUseCase(
 ) {
     suspend operator fun invoke(documentoId: String) = repository.delete(documentoId)
 }
-
