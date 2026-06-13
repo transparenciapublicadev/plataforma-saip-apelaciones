@@ -8,16 +8,19 @@ describe('DocumentListComponent', () => {
   let fixture: ComponentFixture<DocumentListComponent>;
   const documentoService = {
     download: vi.fn(),
-    delete: vi.fn()
+    delete: vi.fn(),
+    listByRelation: vi.fn()
   };
 
   beforeEach(async () => {
     documentoService.download.mockReset();
     documentoService.delete.mockReset();
+    documentoService.listByRelation.mockReset();
     documentoService.download.mockReturnValue(of({
       blob: new Blob(['pdf'], { type: 'application/pdf' }),
       filename: 'solicitud.pdf'
     }));
+    documentoService.listByRelation.mockReturnValue(of([]));
 
     await TestBed.configureTestingModule({
       imports: [DocumentListComponent],
@@ -57,5 +60,23 @@ describe('DocumentListComponent', () => {
     );
 
     expect(deleteButton).toBeNull();
+  });
+
+  it('loads and renders safe metadata for a typed relation', () => {
+    documentoService.listByRelation.mockReturnValue(of([{
+      id: 10,
+      respuestaId: 4,
+      nombreOriginal: 'respuesta.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 2048,
+      fechaCreacion: '2026-06-12T10:00:00'
+    }]));
+
+    fixture.componentRef.setInput('relation', { respuestaId: 4 });
+    fixture.detectChanges();
+
+    expect(documentoService.listByRelation).toHaveBeenCalledWith({ respuestaId: 4 });
+    expect(fixture.nativeElement.textContent).toContain('respuesta.pdf');
+    expect(fixture.nativeElement.textContent).toContain('application/pdf');
   });
 });
