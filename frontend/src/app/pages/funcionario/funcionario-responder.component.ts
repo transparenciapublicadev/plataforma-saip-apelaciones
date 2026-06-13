@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,6 +7,14 @@ import { RespuestaService } from '../../services/respuesta.service';
 import { AuthService } from '../../services/auth.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
 import { Respuesta } from '../../models/respuesta.model';
+import {
+  DOCUMENTO_ACCEPT,
+  DocumentoRelation,
+  validarDocumento
+} from '../../models/documento.model';
+import { DocumentoService } from '../../services/documento.service';
+import { DocumentListComponent } from '../../shared/document-list.component';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import {
   ReferenceConfirmModalComponent,
@@ -32,7 +40,14 @@ interface ResponseDecision {
 
 @Component({
   selector: 'app-funcionario-responder',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    DocumentListComponent,
+    ReferenceConfirmModalComponent,
+    ReferenceSuccessModalComponent
+  ],
   templateUrl: './funcionario-responder.component.html',
   styleUrl: './funcionario-responder.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -42,6 +57,7 @@ export class FuncionarioResponderComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly solicitudService = inject(SolicitudService);
   private readonly respuestaService = inject(RespuestaService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
 
   solicitud = signal<Solicitud | null>(null);
@@ -50,6 +66,7 @@ export class FuncionarioResponderComponent implements OnInit {
   loadingSolicitud = signal<boolean>(true);
   error = signal<string>('');
   mensaje = signal<string>('');
+  documentUploadWarning = signal<string>('');
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
 
@@ -65,6 +82,11 @@ export class FuncionarioResponderComponent implements OnInit {
 
   documentosEntrega = signal<File | null>(null);
   evidenciaDenegatoria = signal<File | null>(null);
+  readonly documentAccept = DOCUMENTO_ACCEPT;
+  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
+    const solicitudId = this.solicitud()?.id;
+    return solicitudId ? { solicitudId } : null;
+  });
 
   readonly tabs: ReadonlyArray<{ id: ResponseTabId; label: string }> = [
     { id: 'responder', label: 'Responder' },
@@ -153,12 +175,12 @@ export class FuncionarioResponderComponent implements OnInit {
 
   onDocumentosEntregaSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.documentosEntrega.set(input.files?.[0] || null);
+    this.setSelectedDocument(input, this.documentosEntrega);
   }
 
   onEvidenciaSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.evidenciaDenegatoria.set(input.files?.[0] || null);
+    this.setSelectedDocument(input, this.evidenciaDenegatoria);
   }
 
   removeDocumentosEntrega(): void {
@@ -185,6 +207,7 @@ export class FuncionarioResponderComponent implements OnInit {
     this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
+    this.documentUploadWarning.set('');
 
     if (currentDecision === 'entrega_total' || currentDecision === 'entrega_parcial') {
       const tipoRespuesta = currentDecision === 'entrega_total' ? 'ENTREGA_TOTAL' : 'ENTREGA_PARCIAL';
@@ -197,10 +220,11 @@ export class FuncionarioResponderComponent implements OnInit {
         formatoEntrega: this.formatoEntrega,
         plazoEntrega: this.plazoEntrega
       }).subscribe({
-        next: (respuesta) => this.handleSuccess(
+        next: (respuesta) => this.uploadResponseDocument(
+          respuesta,
+          this.documentosEntrega(),
           'Respuesta enviada correctamente. El ciudadano fue notificado.',
-          'RESPONDIDA',
-          respuesta
+          'RESPONDIDA'
         ),
         error: (err) => this.handleError(err)
       });
@@ -216,10 +240,11 @@ export class FuncionarioResponderComponent implements OnInit {
       causalDenegatoria: this.causalDenegatoria,
       fundamentoLegal: this.fundamentoLegal.trim()
     }).subscribe({
-      next: (respuesta) => this.handleSuccess(
+      next: (respuesta) => this.uploadResponseDocument(
+        respuesta,
+        this.evidenciaDenegatoria(),
         'Denegatoria registrada y notificada al ciudadano.',
-        'DENEGADA',
-        respuesta
+        'DENEGADA'
       ),
       error: (err) => this.handleError(err)
     });
@@ -240,9 +265,9 @@ export class FuncionarioResponderComponent implements OnInit {
     this.successModalAbierto.set(true);
   }
 
-  private handleError(err: { error?: { mensaje?: string } }): void {
+  private handleError(err: unknown): void {
     this.loading.set(false);
-    this.error.set(err.error?.mensaje || 'Error al enviar respuesta');
+    this.error.set(problemDetailsMessage(err, 'Error al enviar respuesta'));
   }
 
   getEstadoClass(estado: string): string {
@@ -341,20 +366,32 @@ export class FuncionarioResponderComponent implements OnInit {
   }
 
   respuestaSuccessTone(): ReferenceSuccessTone {
+    if (this.documentUploadWarning()) {
+      return 'warning';
+    }
     return this.decision() === 'denegacion_total' ? 'brand' : 'success';
   }
 
   respuestaSuccessEyebrow(): string {
+    if (this.documentUploadWarning()) {
+      return 'Respuesta registrada · Documento pendiente';
+    }
     return this.decision() === 'denegacion_total' ? 'Denegatoria registrada' : 'Respuesta entregada';
   }
 
   respuestaSuccessTitle(): string {
+    if (this.documentUploadWarning()) {
+      return 'La respuesta se guardó con una incidencia documental';
+    }
     return this.decision() === 'denegacion_total'
       ? 'Denegatoria notificada al ciudadano'
       : 'Respuesta enviada al ciudadano';
   }
 
   respuestaSuccessDescription(): string {
+    if (this.documentUploadWarning()) {
+      return this.documentUploadWarning();
+    }
     return this.decision() === 'denegacion_total'
       ? 'Se ha registrado la denegatoria con su fundamento legal. El ciudadano fue notificado y dispone de su derecho a apelar ante el TTAIP.'
       : 'La información ha sido entregada al ciudadano dentro del plazo legal. La solicitud queda atendida en el expediente.';
@@ -380,6 +417,13 @@ export class FuncionarioResponderComponent implements OnInit {
   }
 
   respuestaNextSteps(): ReferenceSuccessNextStep[] {
+    if (this.documentUploadWarning()) {
+      return [
+        { label: 'La respuesta administrativa ya quedó registrada y no debe duplicarse.' },
+        { label: 'Vuelva al detalle de la solicitud y cargue el documento en la sección de respuesta.' },
+        { label: 'La incidencia del upload no revierte la respuesta emitida.' }
+      ];
+    }
     if (this.decision() === 'denegacion_total') {
       return [
         { label: 'El ciudadano recibirá la notificación con la causal y el fundamento legal invocado.' },
@@ -409,6 +453,66 @@ export class FuncionarioResponderComponent implements OnInit {
     return this.decision() === 'denegacion_total'
       ? this.evidenciaDenegatoria()?.name || ''
       : this.documentosEntrega()?.name || '';
+  }
+
+  private uploadResponseDocument(
+    respuesta: Respuesta,
+    file: File | null,
+    successMessage: string,
+    nextEstado: EstadoSolicitud
+  ): void {
+    if (!respuesta.id || !file) {
+      this.documentUploadWarning.set(
+        'La respuesta fue registrada, pero no se pudo identificar el documento o la respuesta para completar la carga.'
+      );
+      this.handleSuccess(
+        'Respuesta registrada con carga documental pendiente.',
+        nextEstado,
+        respuesta
+      );
+      return;
+    }
+
+    this.documentoService.upload(
+      file,
+      'RESPUESTA_ENTIDAD',
+      { respuestaId: respuesta.id }
+    ).subscribe({
+      next: () => this.handleSuccess(successMessage, nextEstado, respuesta),
+      error: (error) => {
+        const detail = problemDetailsMessage(error, 'No se pudo cargar el documento de la respuesta.');
+        this.documentUploadWarning.set(
+          `La respuesta fue registrada correctamente, pero el documento no pudo cargarse: ${detail}`
+        );
+        this.handleSuccess(
+          'Respuesta registrada con carga documental pendiente.',
+          nextEstado,
+          respuesta
+        );
+      }
+    });
+  }
+
+  private setSelectedDocument(
+    input: HTMLInputElement,
+    target: { set(value: File | null): void }
+  ): void {
+    const file = input.files?.[0] || null;
+    if (!file) {
+      target.set(null);
+      return;
+    }
+
+    const validationError = validarDocumento(file);
+    if (validationError) {
+      target.set(null);
+      input.value = '';
+      this.error.set(validationError);
+      return;
+    }
+
+    target.set(file);
+    this.error.set('');
   }
 
   private validarRespuesta(): boolean {

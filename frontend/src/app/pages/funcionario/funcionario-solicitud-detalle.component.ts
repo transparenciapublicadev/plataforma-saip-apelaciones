@@ -224,9 +224,14 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null
   );
 
-  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
+  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
     const solicitudId = this.solicitud()?.id;
     return solicitudId ? { solicitudId } : null;
+  });
+
+  readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
+    const respuestaId = this.solicitud()?.respuesta?.id;
+    return respuestaId ? { respuestaId } : null;
   });
 
   ngOnInit(): void {
@@ -256,10 +261,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     });
   }
 
-  onDocumentoSubido(): void {
+  onDocumentoSubido(preferredTab: DetailTabId = 'adjuntos'): void {
     const expediente = this.solicitud()?.expediente;
     if (expediente) {
-      this.cargarSolicitud(expediente, 'adjuntos');
+      this.cargarSolicitud(expediente, preferredTab);
     }
   }
 

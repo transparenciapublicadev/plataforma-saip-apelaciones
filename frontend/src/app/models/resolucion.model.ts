@@ -1,5 +1,6 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
 import type { ResolucionDTO } from '../api/types';
+import type { DocumentoMetadata } from './documento.model';
 
 // Enums tipados del lado cliente (el spec los expone como string)
 // TODO: Agregar @Schema(allowableValues) al backend para generar enums
@@ -53,10 +54,12 @@ export interface CedulaNotificacion {
     canal?: string | null;
     estado?: string | null;
     documentoReferencia?: string | null;
+    documentos?: DocumentoMetadata[];
 }
 
 export interface NotificacionTtaip {
     id: number;
+    cedulaId?: number | null;
     numeroCedula?: string | null;
     destinatario: 'CIUDADANO' | 'ENTIDAD_PUBLICA';
     destinatarioNombre?: string | null;
@@ -83,6 +86,7 @@ export interface NotificacionTtaip {
     responsableConstancia?: string | null;
     observacionConstancia?: string | null;
     trazabilidad?: string | null;
+    documentosCedula?: DocumentoMetadata[];
 }
 
 export interface HistorialTtaip {
@@ -263,5 +267,6 @@ export interface ValidarNotificacionManualPayload {
 export type Resolucion = Required<ResolucionDTO> & {
     numeroResolucion?: string | null;
     sala?: SalaTtaipResumen | null;
+    documentos?: DocumentoMetadata[];
     cedulas?: CedulaNotificacion[];
 };

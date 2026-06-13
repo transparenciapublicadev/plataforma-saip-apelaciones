@@ -154,6 +154,19 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     return apelacionId ? { apelacionId } : null;
   });
 
+  readonly expedienteDocumentoRelation = computed<DocumentoRelation | null>(() => {
+    const expedienteTtaipId = this.expedienteTtaip()?.id;
+    return expedienteTtaipId ? { expedienteTtaipId } : null;
+  });
+
+  resolucionDocumentoRelation(resolucionId?: number | null): DocumentoRelation | null {
+    return resolucionId ? { resolucionId } : null;
+  }
+
+  cedulaDocumentoRelation(cedulaId?: number | null): DocumentoRelation | null {
+    return cedulaId ? { cedulaNotificacionId: cedulaId } : null;
+  }
+
   readonly timeline = computed<TimelineItem[]>(() => this.buildTimeline());
 
   readonly mostrarCajaResultado = computed(() => {
