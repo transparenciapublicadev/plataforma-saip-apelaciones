@@ -5,6 +5,7 @@ import com.gestion.misaip.core.network.api.AuthApiService
 import com.gestion.misaip.core.network.api.EntidadApiService
 import com.gestion.misaip.core.network.api.DispositivoPushApiService
 import com.gestion.misaip.core.network.api.DocumentoApiService
+import com.gestion.misaip.core.network.api.RespuestaApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
 import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.datasource.ApelacionRemoteDataSource
@@ -127,6 +128,7 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     single<TTAIPApiService> { get<Retrofit>().create(TTAIPApiService::class.java) }
     single<DispositivoPushApiService> { get<Retrofit>().create(DispositivoPushApiService::class.java) }
     single<DocumentoApiService> { get<Retrofit>().create(DocumentoApiService::class.java) }
+    single<RespuestaApiService> { get<Retrofit>().create(RespuestaApiService::class.java) }
 
     // ===========================================
     // DATA SOURCES REMOTOS (REST)
@@ -137,7 +139,12 @@ fun restNetworkModule(baseUrl: String, enableHttpLogging: Boolean = false) = mod
     }
 
     single<SolicitudRemoteDataSource> {
-        SolicitudRestDataSource(solicitudApi = get(), tokenStorage = get(), json = get())
+        SolicitudRestDataSource(
+            solicitudApi = get(),
+            respuestaApi = get(),
+            tokenStorage = get(),
+            json = get()
+        )
     }
 
     single<ApelacionRemoteDataSource> {

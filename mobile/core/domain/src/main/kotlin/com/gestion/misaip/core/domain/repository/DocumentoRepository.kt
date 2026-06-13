@@ -9,6 +9,8 @@ import com.gestion.misaip.core.domain.model.TipoDocumento
 
 interface DocumentoRepository {
 
+    suspend fun listByRelation(relacion: DocumentoRelacion): List<Documento>
+
     suspend fun upload(
         archivo: ArchivoDocumento,
         tipoDocumento: TipoDocumento,
@@ -24,4 +26,3 @@ interface DocumentoRepository {
 
     suspend fun delete(documentoId: String)
 }
-

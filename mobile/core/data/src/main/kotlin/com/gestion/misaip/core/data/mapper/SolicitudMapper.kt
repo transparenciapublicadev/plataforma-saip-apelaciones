@@ -48,11 +48,14 @@ object SolicitudMapper {
             prioridad = Prioridad.fromString(entity.prioridad),
             respuestaEntidad = entity.respuestaFecha?.let { fecha ->
                 RespuestaEntidad(
+                    id = entity.respuestaId.orEmpty(),
                     fechaRespuesta = fecha,
                     funcionario = entity.respuestaFuncionario ?: "",
                     tipo = TipoRespuesta.fromString(entity.respuestaTipo ?: ""),
                     fundamentacion = entity.respuestaFundamentacion ?: "",
-                    archivos = parseJsonList(entity.respuestaArchivos)
+                    documentos = DocumentoMapper.decodeMetadata(
+                        entity.respuestaDocumentosMetadata
+                    )
                 )
             },
             silencioAdministrativo = entity.silencioAdministrativo,
@@ -91,22 +94,17 @@ object SolicitudMapper {
             respuestaFuncionario = domain.respuestaEntidad?.funcionario,
             respuestaTipo = domain.respuestaEntidad?.tipo?.name,
             respuestaFundamentacion = domain.respuestaEntidad?.fundamentacion,
-            respuestaArchivos = domain.respuestaEntidad?.archivos?.let { json.encodeToString(it) },
+            respuestaArchivos = "[]",
+            respuestaId = domain.respuestaEntidad?.id?.ifBlank { null },
+            respuestaDocumentosMetadata = DocumentoMapper.encodeMetadata(
+                domain.respuestaEntidad?.documentos.orEmpty()
+            ),
             timeline = json.encodeToString(domain.timeline.map { TimelineDto(it) }),
             documentosMetadata = DocumentoMapper.encodeMetadata(domain.documentos),
             sincronizado = false,
             pendienteSubida = pendienteSubida,
             ultimaModificacion = System.currentTimeMillis()
         )
-    }
-
-    private fun parseJsonList(jsonStr: String?): List<String> {
-        if (jsonStr.isNullOrBlank()) return emptyList()
-        return try {
-            json.decodeFromString(jsonStr)
-        } catch (e: Exception) {
-            emptyList()
-        }
     }
 
     private fun parseTimeline(jsonStr: String): List<TimelineItem> {

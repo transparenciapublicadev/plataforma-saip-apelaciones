@@ -185,11 +185,12 @@ enum class Prioridad {
  * Respuesta de la entidad a una solicitud.
  */
 data class RespuestaEntidad(
+    val id: String = "",
     val fechaRespuesta: Long,
     val funcionario: String,
     val tipo: TipoRespuesta,
     val fundamentacion: String,
-    val archivos: List<String> = emptyList()
+    val documentos: List<Documento> = emptyList()
 )
 
 /**

@@ -99,8 +99,7 @@ class ResponderSolicitudUseCase(
         val expediente: String,
         val funcionario: String,
         val tipoRespuesta: TipoRespuesta,
-        val fundamentacion: String,
-        val archivos: List<String> = emptyList()
+        val fundamentacion: String
     )
 
     /**
@@ -109,7 +108,7 @@ class ResponderSolicitudUseCase(
      * @param params Parámetros de la respuesta
      * @throws IllegalArgumentException si los parámetros son inválidos
      */
-    suspend operator fun invoke(params: Params) {
+    suspend operator fun invoke(params: Params): RespuestaEntidad {
         require(params.expediente.isNotBlank()) { "El expediente es obligatorio" }
         require(params.fundamentacion.isNotBlank()) { "La fundamentación es obligatoria" }
         require(params.tipoRespuesta != TipoRespuesta.SILENCIO_ADMINISTRATIVO) {
@@ -120,10 +119,9 @@ class ResponderSolicitudUseCase(
             fechaRespuesta = System.currentTimeMillis(),
             funcionario = params.funcionario,
             tipo = params.tipoRespuesta,
-            fundamentacion = params.fundamentacion,
-            archivos = params.archivos
+            fundamentacion = params.fundamentacion
         )
 
-        solicitudRepository.responderSolicitud(params.expediente, respuesta)
+        return solicitudRepository.responderSolicitud(params.expediente, respuesta)
     }
 }

@@ -1,6 +1,8 @@
 package com.gestion.misaip.core.network.dto.rest
 
 import com.gestion.misaip.core.domain.model.Documento
+import com.gestion.misaip.core.domain.model.DocumentoRelacion
+import com.gestion.misaip.core.domain.model.EstadoDocumento
 import com.gestion.misaip.core.domain.model.TipoDocumento
 import kotlinx.serialization.Serializable
 
@@ -13,9 +15,7 @@ data class DocumentoMetadataRestDto(
     val sizeBytes: Long,
     val hashSha256: String? = null,
     val estado: String,
-    val creadoPorId: Long? = null,
     val fechaCreacion: String? = null,
-    val fechaActualizacion: String? = null,
     val solicitudId: Long? = null,
     val respuestaId: Long? = null,
     val apelacionId: Long? = null,
@@ -23,6 +23,40 @@ data class DocumentoMetadataRestDto(
     val resolucionId: Long? = null,
     val cedulaNotificacionId: Long? = null
 )
+
+fun DocumentoMetadataRestDto.toDomainDocumento(): Documento {
+    val relationIds = listOf(
+        solicitudId,
+        respuestaId,
+        apelacionId,
+        expedienteTtaipId,
+        resolucionId,
+        cedulaNotificacionId
+    )
+    val relacion = if (relationIds.all { it == null }) {
+        null
+    } else {
+        DocumentoRelacion.fromIds(
+            solicitudId = solicitudId?.toString(),
+            respuestaId = respuestaId?.toString(),
+            apelacionId = apelacionId?.toString(),
+            expedienteTtaipId = expedienteTtaipId?.toString(),
+            resolucionId = resolucionId?.toString(),
+            cedulaNotificacionId = cedulaNotificacionId?.toString()
+        )
+    }
+    return Documento(
+        id = id.toString(),
+        nombreOriginal = nombreOriginal,
+        contentType = contentType,
+        sizeBytes = sizeBytes,
+        hashSha256 = hashSha256,
+        estado = EstadoDocumento.fromString(estado),
+        fechaCreacion = fechaCreacion,
+        tipoDocumento = TipoDocumento.fromString(tipoDocumento),
+        relacion = relacion
+    )
+}
 
 fun DocumentoRestDto.toDomainDocumento(): Documento? {
     val documentoId = id ?: return null

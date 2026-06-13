@@ -15,12 +15,23 @@ import retrofit2.http.Streaming
 
 interface DocumentoApiService {
 
+    @GET("api/documentos")
+    suspend fun listByRelation(
+        @Query("solicitudId") solicitudId: Long? = null,
+        @Query("respuestaId") respuestaId: Long? = null,
+        @Query("apelacionId") apelacionId: Long? = null,
+        @Query("expedienteTtaipId") expedienteTtaipId: Long? = null,
+        @Query("resolucionId") resolucionId: Long? = null,
+        @Query("cedulaNotificacionId") cedulaNotificacionId: Long? = null
+    ): List<DocumentoMetadataRestDto>
+
     @Multipart
     @POST("api/documentos/upload")
     suspend fun upload(
         @Part file: MultipartBody.Part,
         @Query("tipoDocumento") tipoDocumento: String,
         @Query("solicitudId") solicitudId: Long? = null,
+        @Query("respuestaId") respuestaId: Long? = null,
         @Query("apelacionId") apelacionId: Long? = null,
         @Query("expedienteTtaipId") expedienteTtaipId: Long? = null,
         @Query("resolucionId") resolucionId: Long? = null,
@@ -43,4 +54,3 @@ interface DocumentoApiService {
         @Path("documentoId") documentoId: Long
     ): Response<Unit>
 }
-

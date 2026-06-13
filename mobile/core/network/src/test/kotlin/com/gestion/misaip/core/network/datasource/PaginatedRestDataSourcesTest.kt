@@ -7,6 +7,7 @@ import com.gestion.misaip.core.domain.model.RegistrarElevacionApelacion
 import com.gestion.misaip.core.domain.model.TipoDenegatoria
 import com.gestion.misaip.core.network.api.ApelacionApiService
 import com.gestion.misaip.core.network.api.SolicitudApiService
+import com.gestion.misaip.core.network.api.RespuestaApiService
 import com.gestion.misaip.core.network.api.TTAIPApiService
 import com.gestion.misaip.core.network.dto.rest.ApelacionRestDto
 import com.gestion.misaip.core.network.dto.rest.ApelacionResumenRestDto
@@ -30,6 +31,7 @@ class PaginatedRestDataSourcesTest {
     private val json = Json { ignoreUnknownKeys = true }
     private val tokenStorage = mockk<TokenStorage>(relaxed = true)
     private val ttaipApi = mockk<TTAIPApiService>(relaxed = true)
+    private val respuestaApi = mockk<RespuestaApiService>(relaxed = true)
 
     @Test
     fun `solicitudes ciudadano usa endpoint paginado con pagina y tamano`() = runTest {
@@ -45,7 +47,7 @@ class PaginatedRestDataSourcesTest {
             ultima = true
         )
 
-        val pagina = SolicitudRestDataSource(api, tokenStorage, json)
+        val pagina = SolicitudRestDataSource(api, respuestaApi, tokenStorage, json)
             .getPaginaSolicitudesUsuario("20", 1, 15)
 
         assertEquals("SAIP-2026-00042", pagina.contenido.single().expediente)
@@ -230,7 +232,7 @@ class PaginatedRestDataSourcesTest {
             LiquidacionCostoSolicitudRestDto(id = 4, solicitudId = 42, estadoLiquidacion = "NOTIFICADA")
         )
 
-        val result = SolicitudRestDataSource(api, tokenStorage, json)
+        val result = SolicitudRestDataSource(api, respuestaApi, tokenStorage, json)
             .getOperacionesFuncionario("42")
 
         assertEquals(1, result.observaciones.size)
