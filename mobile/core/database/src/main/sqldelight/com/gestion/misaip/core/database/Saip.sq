@@ -86,14 +86,16 @@ CREATE TABLE Solicitud (
     respuestaArchivos TEXT, -- JSON array serializado
     -- Timeline (JSON serializado)
     timeline TEXT NOT NULL DEFAULT '[]',
-    -- Metadatos livianos; nunca contiene binarios ni claves del storage
-    documentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Control de sincronización
     sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
     ultimaModificacion INTEGER NOT NULL,
     consentimientoDatosPersonales INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     canalNotificacion TEXT,
+    -- Metadatos livianos; nunca contiene binarios ni claves del storage
+    documentosMetadata TEXT NOT NULL DEFAULT '[]',
+    respuestaId TEXT,
+    respuestaDocumentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Foreign keys
     FOREIGN KEY (usuarioId) REFERENCES Usuario(id),
     FOREIGN KEY (entidadId) REFERENCES EntidadPublica(id)
@@ -137,8 +139,6 @@ CREATE TABLE Apelacion (
     subsanacion TEXT,
     -- Timeline (JSON serializado)
     timeline TEXT NOT NULL DEFAULT '[]',
-    -- Metadatos livianos; nunca contiene binarios ni claves del storage
-    documentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Otros campos
     diasHabiles INTEGER,
     diasRestantes INTEGER,
@@ -168,6 +168,8 @@ CREATE TABLE Apelacion (
     sincronizado INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
     pendienteSubida INTEGER AS kotlin.Boolean NOT NULL DEFAULT 1,
     ultimaModificacion INTEGER NOT NULL,
+    -- Metadatos livianos; nunca contiene binarios ni claves del storage
+    documentosMetadata TEXT NOT NULL DEFAULT '[]',
     -- Foreign keys
     FOREIGN KEY (usuarioId) REFERENCES Usuario(id)
 );
