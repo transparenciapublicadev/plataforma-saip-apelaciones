@@ -1,5 +1,6 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
 import type { ApelacionDTO, CrearApelacionExternaRequest } from '../api/types';
+import type { DocumentoMetadata } from './documento.model';
 import type {
     CedulaNotificacion,
     CumplimientoResolucionTtaip,
@@ -100,6 +101,7 @@ export type Apelacion = Required<ApelacionDTO> & {
         trazabilidadMinima?: string | null;
         sala?: SalaTtaipResumen | null;
         miembros?: MiembroTtaipResumen[];
+        documentos?: DocumentoMetadata[];
         resoluciones?: Resolucion[];
         cedulas?: CedulaNotificacion[];
         notificaciones?: NotificacionTtaip[];
@@ -111,7 +113,7 @@ export type Apelacion = Required<ApelacionDTO> & {
     } | null;
     resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;
-    documentosSubsanacion?: { id: number; nombreArchivo: string; rutaArchivo: string; tipoArchivo: string }[];
+    documentosSubsanacion?: { id: number; nombreArchivo: string; tipoArchivo: string }[];
 };
 
 // Tipo solo del lado cliente — no existe en el contrato OpenAPI

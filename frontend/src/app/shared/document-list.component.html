@@ -1,5 +1,12 @@
 <div class="space-y-3">
-  @for (documento of documents(); track documento.id || documento.nombreArchivo) {
+  @if (loadingDocuments()) {
+    <div class="flex items-center justify-center gap-2 rounded-lg p-6 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+      <svg lucideLoaderCircle class="h-4 w-4 animate-spin"></svg>
+      Consultando documentos
+    </div>
+  }
+
+  @for (documento of displayedDocuments(); track documento.id || documentName(documento)) {
     <article
       data-table-row
       class="flex items-center justify-between gap-3 rounded-lg p-4"
@@ -10,14 +17,14 @@
           <svg lucideFileText class="h-5 w-5" style="color: var(--brand-700)"></svg>
         </div>
         <div class="min-w-0">
-          <p class="truncate text-sm font-medium text-foreground">{{ documento.nombreArchivo }}</p>
+          <p class="truncate text-sm font-medium text-foreground">{{ documentName(documento) }}</p>
           <p class="font-mono text-[11px] text-muted-foreground">
-            {{ documento.tipoArchivo || 'ARCHIVO' }}
-            @if (documento.tamanio) {
-              · {{ formatFileSize(documento.tamanio) }}
+            {{ documentType(documento) }}
+            @if (documentSize(documento); as size) {
+              · {{ formatFileSize(size) }}
             }
-            @if (documento.fechaSubida) {
-              · {{ documento.fechaSubida | date:'dd MMM yyyy' }}
+            @if (documentDate(documento); as date) {
+              · {{ date | date:'dd MMM yyyy' }}
             }
           </p>
         </div>
@@ -39,7 +46,7 @@
           }
         </button>
 
-        @if (allowDelete()) {
+        @if (!readOnly() && allowDelete()) {
           <button
             type="button"
             class="btn-ghost-brand !h-9 !w-9 !p-0"

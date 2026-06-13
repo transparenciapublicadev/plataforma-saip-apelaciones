@@ -141,9 +141,15 @@ export class SolicitudService {
     | Método | HTTP | Ruta | Descripción |
     |--------|------|------|-------------|
     | `upload(file, tipo, relation)` | POST multipart | `/documentos/upload` | Carga un archivo asociado a una única relación SAIP/TTAIP. |
+    | `listByRelation(relation)` | GET | `/documentos` | Lista metadata segura filtrando por exactamente una relación funcional. |
     | `getMetadata(id)` | GET | `/documentos/{id}/metadata` | Consulta metadatos sanitizados. |
     | `download(id)` | GET Blob | `/documentos/{id}/download` | Descarga autenticada y preserva el nombre de `Content-Disposition`. |
     | `delete(id)` | DELETE | `/documentos/{id}` | Operación administrativa; las vistas no autorizadas no muestran la acción. |
+
+    Las relaciones admitidas son `solicitudId`, `respuestaId`, `apelacionId`,
+    `expedienteTtaipId`, `resolucionId` y `cedulaNotificacionId`. El servicio
+    rechaza localmente una petición sin relación o con más de una relación para
+    evitar asociaciones ambiguas.
 
     El frontend nunca construye URLs S3, no conoce bucket, endpoint,
     `storageKey` ni rutas físicas. El backend valida ownership, intermedia cada
@@ -151,6 +157,10 @@ export class SolicitudService {
     S3-compatible. Los archivos seleccionados permanecen solo en memoria hasta
     completar la petición multipart; no se guardan en `localStorage` ni
     `sessionStorage`.
+
+    En el flujo funcionario, primero se registra la respuesta y luego se carga
+    el archivo con `respuestaId`. Si la segunda operación falla, la interfaz
+    informa éxito parcial y no vuelve a crear la respuesta.
   </TabItem>
   <TabItem label="Otros">
     ### RespuestaService <Badge text="Funcionario" variant="note" />

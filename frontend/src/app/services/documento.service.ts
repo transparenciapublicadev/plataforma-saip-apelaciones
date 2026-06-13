@@ -6,6 +6,7 @@ import {
   DocumentoDescarga,
   DocumentoMetadata,
   DocumentoRelation,
+  getDocumentoRelationEntry,
   TipoDocumento
 } from '../models/documento.model';
 
@@ -21,15 +22,21 @@ export class DocumentoService {
     tipoDocumento: TipoDocumento,
     relation: DocumentoRelation
   ): Observable<DocumentoMetadata> {
+    const [relationKey, relationId] = getDocumentoRelationEntry(relation);
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    let params = new HttpParams().set('tipoDocumento', tipoDocumento);
-    for (const [key, value] of Object.entries(relation)) {
-      params = params.set(key, value);
-    }
+    const params = new HttpParams()
+      .set('tipoDocumento', tipoDocumento)
+      .set(relationKey, relationId);
 
     return this.http.post<DocumentoMetadata>(`${this.apiUrl}/upload`, formData, { params });
+  }
+
+  listByRelation(relation: DocumentoRelation): Observable<DocumentoMetadata[]> {
+    const [relationKey, relationId] = getDocumentoRelationEntry(relation);
+    const params = new HttpParams().set(relationKey, relationId);
+    return this.http.get<DocumentoMetadata[]>(this.apiUrl, { params });
   }
 
   getMetadata(id: number): Observable<DocumentoMetadata> {

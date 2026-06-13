@@ -213,6 +213,23 @@
                     </div>
                   </div>
                 }
+
+                @if (respuestaDocumentoRelation(); as relation) {
+                  <div data-testid="respuesta-documentos-funcionario" class="space-y-4">
+                    <div class="rule-ornament"></div>
+                    <app-document-upload
+                      heading="Adjuntar documento a la respuesta"
+                      tipoDocumento="RESPUESTA_ENTIDAD"
+                      [relation]="relation"
+                      (uploaded)="onDocumentoSubido('respuesta')"
+                    />
+                    <app-document-list
+                      [relation]="relation"
+                      [documents]="sol.respuesta?.documentosMetadata || []"
+                      emptyMessage="La respuesta no tiene documentos adjuntos."
+                    />
+                  </div>
+                }
               }
             </div>
           } @else {
@@ -781,17 +798,17 @@
 
         @if (activeTab() === 'adjuntos') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (documentoRelation(); as relation) {
+            @if (solicitudDocumentoRelation(); as relation) {
               <app-document-upload
-                heading="Adjuntar documento de atención"
-                tipoDocumento="RESPUESTA_ENTIDAD"
+                heading="Adjuntar documento a la solicitud"
+                tipoDocumento="DOCUMENTO_ADJUNTO"
                 [relation]="relation"
                 (uploaded)="onDocumentoSubido()"
               />
             }
             <app-document-list
-              [documents]="sol.documentos || []"
-              [allowDelete]="false"
+              [relation]="solicitudDocumentoRelation()"
+              [documents]="sol.documentosMetadata || sol.documentos || []"
               emptyMessage="No hay documentos adjuntos para esta solicitud."
             />
           </div>
