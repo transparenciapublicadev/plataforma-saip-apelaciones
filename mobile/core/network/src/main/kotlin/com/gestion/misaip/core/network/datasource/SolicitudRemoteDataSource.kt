@@ -11,6 +11,7 @@ import com.gestion.misaip.core.domain.model.RegistrarAmpliacionPlazoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarEncauzamientoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarLiquidacionCostoSolicitud
 import com.gestion.misaip.core.domain.model.RegistrarObservacionSolicitud
+import com.gestion.misaip.core.domain.model.RespuestaEntidad
 
 /**
  * Interfaz para la fuente de datos remota de Solicitudes.
@@ -58,6 +59,11 @@ interface SolicitudRemoteDataSource {
         solicitudId: String,
         request: RegistrarLiquidacionCostoSolicitud
     ): LiquidacionCostoSolicitud
+
+    suspend fun responderSolicitud(
+        solicitudId: String,
+        respuesta: RespuestaEntidad
+    ): RespuestaEntidad
 
     /**
      * Crea una nueva solicitud en el servidor.

@@ -17,6 +17,7 @@ data class ExpedienteTtaipRestDto(
     val trazabilidadMinima: String? = null,
     val sala: SalaTtaipRestDto? = null,
     val miembros: List<MiembroTtaipRestDto> = emptyList(),
+    val documentos: List<DocumentoMetadataRestDto> = emptyList(),
     val resoluciones: List<ResolucionRestDto> = emptyList(),
     val cedulas: List<CedulaTtaipRestDto> = emptyList(),
     val notificaciones: List<NotificacionTtaipRestDto> = emptyList(),
@@ -39,6 +40,7 @@ data class ExpedienteTtaipRestDto(
         trazabilidadMinima = trazabilidadMinima,
         sala = sala?.toDomain(),
         miembros = miembros.map { it.toDomain() },
+        documentos = documentos.map(DocumentoMetadataRestDto::toDomainDocumento),
         resoluciones = resoluciones.map { it.toTtaipDomain() },
         cedulas = cedulas.map { it.toDomain() },
         notificaciones = notificaciones.map { it.toDomain() },
@@ -86,14 +88,27 @@ data class CedulaTtaipRestDto(
     val fechaEmision: String? = null,
     val canal: String? = null,
     val estado: String? = null,
-    val documentoReferencia: String? = null
+    val documentoReferencia: String? = null,
+    val documentos: List<DocumentoMetadataRestDto> = emptyList()
 ) {
-    fun toDomain() = CedulaTtaip(id?.toString().orEmpty(), numeroCedula.orEmpty(), destinatario.orEmpty(), destinatarioNombre, destinatarioEmail, fechaEmision, canal, estado, documentoReferencia)
+    fun toDomain() = CedulaTtaip(
+        id = id?.toString().orEmpty(),
+        numeroCedula = numeroCedula.orEmpty(),
+        destinatario = destinatario.orEmpty(),
+        destinatarioNombre = destinatarioNombre,
+        destinatarioEmail = destinatarioEmail,
+        fechaEmision = fechaEmision,
+        canal = canal,
+        estado = estado,
+        documentoReferencia = documentoReferencia,
+        documentos = documentos.map(DocumentoMetadataRestDto::toDomainDocumento)
+    )
 }
 
 @Serializable
 data class NotificacionTtaipRestDto(
     val id: Long? = null,
+    val cedulaId: Long? = null,
     val numeroCedula: String? = null,
     val destinatario: String? = null,
     val destinatarioNombre: String? = null,
@@ -117,14 +132,37 @@ data class NotificacionTtaipRestDto(
     val fechaValidacionManual: String? = null,
     val responsableValidacion: String? = null,
     val observacionValidacion: String? = null,
-    val trazabilidad: String? = null
+    val trazabilidad: String? = null,
+    val documentosCedula: List<DocumentoMetadataRestDto> = emptyList()
 ) {
     fun toDomain() = NotificacionTtaip(
-        id?.toString().orEmpty(), numeroCedula.orEmpty(), destinatario.orEmpty(), destinatarioNombre,
-        destinatarioEmail, fechaNotificacion, medio, medioNotificacion, estado, detalle, fechaEnvio,
-        codigoEnvio, codigoConstancia, constanciaEnvio, acuseAutomatico, fechaAcuse, estadoAcuse,
-        resultadoNotificacion, evidenciaUrl, referenciaEvidencia, validadaManualmente == true,
-        fechaValidacionManual, responsableValidacion, observacionValidacion, trazabilidad
+        id = id?.toString().orEmpty(),
+        cedulaId = cedulaId?.toString(),
+        numeroCedula = numeroCedula.orEmpty(),
+        destinatario = destinatario.orEmpty(),
+        destinatarioNombre = destinatarioNombre,
+        destinatarioEmail = destinatarioEmail,
+        fechaNotificacion = fechaNotificacion,
+        medio = medio,
+        medioNotificacion = medioNotificacion,
+        estado = estado,
+        detalle = detalle,
+        fechaEnvio = fechaEnvio,
+        codigoEnvio = codigoEnvio,
+        codigoConstancia = codigoConstancia,
+        constanciaEnvio = constanciaEnvio,
+        acuseAutomatico = acuseAutomatico,
+        fechaAcuse = fechaAcuse,
+        estadoAcuse = estadoAcuse,
+        resultadoNotificacion = resultadoNotificacion,
+        evidenciaUrl = evidenciaUrl,
+        referenciaEvidencia = referenciaEvidencia,
+        validadaManualmente = validadaManualmente == true,
+        fechaValidacionManual = fechaValidacionManual,
+        responsableValidacion = responsableValidacion,
+        observacionValidacion = observacionValidacion,
+        trazabilidad = trazabilidad,
+        documentosCedula = documentosCedula.map(DocumentoMetadataRestDto::toDomainDocumento)
     )
 }
 
@@ -252,5 +290,6 @@ fun ResolucionRestDto.toTtaipDomain() = ResolucionTtaip(
     fundamentoLegal = fundamentoLegal,
     observaciones = observaciones,
     fechaResolucion = fechaResolucion,
+    documentos = documentos.map(DocumentoMetadataRestDto::toDomainDocumento),
     cedulas = cedulas.map { it.toDomain() }
 )
