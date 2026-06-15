@@ -25,6 +25,13 @@ class PushTokenSyncCoordinator(
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Registra el token FCM del dispositivo en segundo plano.
+     *
+     * NOTA DE SEGURIDAD (AppSec): El payload enviado contiene únicamente datos técnicos del terminal.
+     * La vinculación con el usuario autenticado se delega de forma implícita al interceptor de red
+     * que adjunta las cabeceras de autorización de la sesión activa (Bearer Token / Cookie).
+     */
     fun registrarEnSegundoPlano(token: String) {
         scope.launch {
             runCatching {

@@ -2,6 +2,14 @@ package com.gestion.misaip.core.network.dto.rest
 
 import kotlinx.serialization.Serializable
 
+/**
+ * DTO para registrar un dispositivo push.
+ *
+ * NOTA DE SEGURIDAD (AppSec): Este DTO debe contener únicamente datos técnicos
+ * del terminal. JAMÁS debe exponer información de identidad (como usuarioId, email o DNI).
+ * La vinculación al propietario del dispositivo se realiza de forma implícita y segura
+ * en el backend a través del contexto de seguridad de la sesión activa.
+ */
 @Serializable
 data class RegistrarDispositivoPushRestRequest(
     val token: String,
