@@ -23,4 +23,8 @@ public interface DispositivoNotificacionPushRepository extends JpaRepository<Dis
             Long usuarioId,
             String deviceIdHash,
             DispositivoNotificacionPush.EstadoDispositivo estado);
+
+    List<DispositivoNotificacionPush> findByUsuario_EmailAndEstado(
+            String email,
+            DispositivoNotificacionPush.EstadoDispositivo estado);
 }
