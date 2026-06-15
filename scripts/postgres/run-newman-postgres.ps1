@@ -75,7 +75,7 @@ try {
     $stderrPath = Join-Path $tempDirectory "backend.err.log"
     $backendProcess = Start-Process `
         -FilePath (Join-Path $repoRoot "backend/mvnw.cmd") `
-        -ArgumentList @("-B", "spring-boot:run") `
+        -ArgumentList @("-B", "spring-boot:run", "-Dpe.gob.saip.storage.provider=LOCAL") `
         -WorkingDirectory (Join-Path $repoRoot "backend") `
         -WindowStyle Hidden `
         -RedirectStandardOutput $stdoutPath `
