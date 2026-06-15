@@ -19,11 +19,29 @@ import com.gestion.misaip.core.domain.model.TipoUsuario
 import com.gestion.misaip.navigation.*
 import com.gestion.misaip.ui.screen.*
 import com.gestion.misaip.ui.theme.MiSAIPTheme
+import com.google.firebase.messaging.FirebaseMessaging
+import com.gestion.misaip.messaging.PushTokenSyncCoordinator
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
 
+    private val pushTokenSyncCoordinator: PushTokenSyncCoordinator by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Handshake inicial del token FCM en el arranque del dispositivo
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                if (token != null) {
+                    pushTokenSyncCoordinator.registrarEnSegundoPlano(token)
+                }
+            } else {
+                android.util.Log.e("MainActivity", "Error al obtener token FCM al arrancar", task.exception)
+            }
+        }
+
         enableEdgeToEdge()
         setContent {
             MiSAIPTheme {
