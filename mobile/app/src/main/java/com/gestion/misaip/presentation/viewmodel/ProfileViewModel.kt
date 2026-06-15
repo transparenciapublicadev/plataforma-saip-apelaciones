@@ -12,6 +12,8 @@ import com.gestion.misaip.core.domain.usecase.apelacion.GetApelacionesUsuarioUse
 import com.gestion.misaip.core.domain.usecase.apelacion.GetTodasLasApelacionesUseCase
 import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.messaging.NotificationPushHelper
+import com.gestion.misaip.data.CredentialStorage
+import com.gestion.misaip.messaging.PushTokenSyncCoordinator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,7 +51,9 @@ class ProfileViewModel(
     private val getSolicitudesUsuarioUseCase: GetSolicitudesUsuarioUseCase,
     private val getSolicitudesEntidadUseCase: GetSolicitudesEntidadUseCase,
     private val getApelacionesUsuarioUseCase: GetApelacionesUsuarioUseCase,
-    private val getTodasLasApelacionesUseCase: GetTodasLasApelacionesUseCase
+    private val getTodasLasApelacionesUseCase: GetTodasLasApelacionesUseCase,
+    private val credentialStorage: CredentialStorage,
+    private val pushTokenSyncCoordinator: PushTokenSyncCoordinator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -121,10 +125,10 @@ class ProfileViewModel(
             NotificationPushHelper.detenerEscuchaNotificaciones()
             NotificationPushHelper.limpiarDatosSesion()
 
-            // Limpiar FCM antes de cerrar sesión en el backend REST.
+            // Limpiar FCM en el backend REST antes de destruir el token JWT local
             val state = _uiState.value
             try {
-                FCMHelper.unregisterTokenFromBackend()
+                pushTokenSyncCoordinator.revocarSincronamente()
                 FCMHelper.unsubscribeAll(
                     tipoUsuario = state.tipoUsuario.name,
                     entidadId = state.entidadId
@@ -133,7 +137,9 @@ class ProfileViewModel(
                 // No bloquear el logout por error de FCM
             }
 
-            cerrarSesionUseCase()
+            cerrarSesionUseCase() // Limpia el JWT local
+            credentialStorage.clearCachedFcmToken() // Limpia caché local de token FCM
+
             // Navegar inmediatamente sin mostrar snackbar — mejor UX
             _events.emit(ProfileEvent.NavigateToLogin)
         }
