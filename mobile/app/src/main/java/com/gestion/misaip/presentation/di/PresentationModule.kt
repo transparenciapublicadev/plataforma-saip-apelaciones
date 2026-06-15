@@ -25,7 +25,8 @@ val presentationModule = module {
         LoginViewModel(
             autenticarUsuarioUseCase = get(),
             sincronizarDatosUseCase = get(),
-            credentialStorage = get()
+            credentialStorage = get(),
+            pushTokenSyncCoordinator = get()
         )
     }
 
@@ -42,7 +43,9 @@ val presentationModule = module {
             getSolicitudesUsuarioUseCase = get(),
             getSolicitudesEntidadUseCase = get(),
             getApelacionesUsuarioUseCase = get(),
-            getTodasLasApelacionesUseCase = get()
+            getTodasLasApelacionesUseCase = get(),
+            credentialStorage = get(),
+            pushTokenSyncCoordinator = get()
         )
     }
 

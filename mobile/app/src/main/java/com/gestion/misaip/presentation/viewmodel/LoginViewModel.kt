@@ -9,6 +9,7 @@ import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
 import com.gestion.misaip.data.CredentialStorage
 import com.gestion.misaip.messaging.FCMHelper
 import com.gestion.misaip.messaging.NotificationPushHelper
+import com.gestion.misaip.messaging.PushTokenSyncCoordinator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +46,8 @@ sealed class LoginEvent {
 class LoginViewModel(
     private val autenticarUsuarioUseCase: AutenticarUsuarioUseCase,
     private val sincronizarDatosUseCase: SincronizarDatosUseCase,
-    private val credentialStorage: CredentialStorage
+    private val credentialStorage: CredentialStorage,
+    private val pushTokenSyncCoordinator: PushTokenSyncCoordinator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -185,6 +187,18 @@ class LoginViewModel(
                                 credentialStorage.borrarCiudadano()
                             } else {
                                 credentialStorage.borrarFuncionario()
+                            }
+                        }
+
+                        // Sincronizar token de FCM guardado en caché local
+                        val cachedToken = credentialStorage.getCachedFcmToken()
+                        if (!cachedToken.isNullOrBlank()) {
+                            viewModelScope.launch {
+                                val success = pushTokenSyncCoordinator.registrarSincronamente(cachedToken)
+                                if (success) {
+                                    credentialStorage.clearCachedFcmToken()
+                                    android.util.Log.d("LoginViewModel", "Token FCM en caché sincronizado y liberado")
+                                }
                             }
                         }
 
