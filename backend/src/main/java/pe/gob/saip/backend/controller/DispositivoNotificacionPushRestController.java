@@ -34,7 +34,13 @@ public class DispositivoNotificacionPushRestController {
     @PostMapping("/tokens")
     public ResponseEntity<DispositivoNotificacionPushDTO> registrar(
             @Valid @RequestBody RegistrarDispositivoPushRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(dispositivoService.registrar(request));
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("Se requiere autenticación para operar dispositivos push");
+        }
+        String email = authentication.getName();
+        return ResponseEntity.status(HttpStatus.CREATED).body(dispositivoService.registrar(request, email));
     }
 
     @Operation(summary = "Listar los dispositivos push del usuario autenticado sin exponer tokens")

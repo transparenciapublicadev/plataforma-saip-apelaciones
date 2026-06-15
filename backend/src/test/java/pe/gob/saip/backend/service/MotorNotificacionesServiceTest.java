@@ -22,6 +22,7 @@ import pe.gob.saip.backend.repository.HistorialTtaipRepository;
 import pe.gob.saip.backend.repository.IntentoNotificacionRepository;
 import pe.gob.saip.backend.repository.NotificacionTtaipRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
+import pe.gob.saip.backend.repository.DispositivoNotificacionPushRepository;
 import pe.gob.saip.backend.service.notification.CasillaElectronicaProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.FcmPushProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.MockProveedorNotificacion;
@@ -45,6 +46,9 @@ class MotorNotificacionesServiceTest {
 
     @Mock
     private SmtpCorreoProveedorNotificacion smtpProveedor;
+
+    @Mock
+    private DispositivoNotificacionPushRepository dispositivoRepository;
 
     private MotorNotificacionesService service;
 
@@ -236,6 +240,6 @@ class MotorNotificacionesServiceTest {
     }
 
     private FcmPushProveedorNotificacion crearProveedorFcm() {
-        return new FcmPushProveedorNotificacion(false, "", new TokenPushProtector(""));
+        return new FcmPushProveedorNotificacion(false, "", new TokenPushProtector(""), dispositivoRepository);
     }
 }

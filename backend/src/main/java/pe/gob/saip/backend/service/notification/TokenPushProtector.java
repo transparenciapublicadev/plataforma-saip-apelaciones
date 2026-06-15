@@ -34,6 +34,10 @@ public class TokenPushProtector {
         }
     }
 
+    public String cifrar(String token) {
+        return cifrarSiDisponible(token);
+    }
+
     public String cifrarSiDisponible(String token) {
         if (!cifradoDisponible()) {
             return null;
@@ -51,6 +55,30 @@ public class TokenPushProtector {
             return Base64.getEncoder().encodeToString(output);
         } catch (Exception exception) {
             throw new IllegalStateException("No se pudo cifrar el token push", exception);
+        }
+    }
+
+    public String descifrarSiDisponible(String tokenCifrado) {
+        if (!cifradoDisponible() || tokenCifrado == null || tokenCifrado.isBlank()) {
+            return null;
+        }
+        try {
+            byte[] decoded = Base64.getDecoder().decode(tokenCifrado);
+            if (decoded.length <= GCM_IV_BYTES) {
+                throw new IllegalArgumentException("Token cifrado malformado");
+            }
+            byte[] iv = new byte[GCM_IV_BYTES];
+            System.arraycopy(decoded, 0, iv, 0, GCM_IV_BYTES);
+            byte[] ciphertext = new byte[decoded.length - GCM_IV_BYTES];
+            System.arraycopy(decoded, GCM_IV_BYTES, ciphertext, 0, ciphertext.length);
+
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(encryptionKey, "AES"),
+                    new GCMParameterSpec(GCM_TAG_BITS, iv));
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            return new String(decrypted, StandardCharsets.UTF_8);
+        } catch (Exception exception) {
+            throw new IllegalStateException("No se pudo descifrar el token push", exception);
         }
     }
 
