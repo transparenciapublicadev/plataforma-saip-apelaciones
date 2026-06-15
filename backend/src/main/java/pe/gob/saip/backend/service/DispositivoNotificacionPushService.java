@@ -41,8 +41,10 @@ public class DispositivoNotificacionPushService {
     }
 
     @Transactional
-    public DispositivoNotificacionPushDTO registrar(RegistrarDispositivoPushRequest request) {
-        Usuario usuario = obtenerUsuarioActual();
+    public DispositivoNotificacionPushDTO registrar(RegistrarDispositivoPushRequest request, String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "No existe un usuario asociado a la identidad autenticada"));
         validarFlavor(usuario, request.appFlavor());
         String tokenNormalizado = request.token().trim();
         String tokenHash = tokenProtector.hash(tokenNormalizado);
@@ -65,7 +67,7 @@ public class DispositivoNotificacionPushService {
         dispositivo.setAppFlavor(request.appFlavor());
         dispositivo.setPlataforma(request.plataforma());
         dispositivo.setTokenHash(tokenHash);
-        dispositivo.setTokenCifrado(tokenProtector.cifrarSiDisponible(tokenNormalizado));
+        dispositivo.setTokenCifrado(tokenProtector.cifrar(tokenNormalizado));
         dispositivo.setDeviceIdHash(deviceIdHash);
         dispositivo.setEstado(DispositivoNotificacionPush.EstadoDispositivo.ACTIVO);
         dispositivo.setAppVersion(limpiar(request.appVersion()));
