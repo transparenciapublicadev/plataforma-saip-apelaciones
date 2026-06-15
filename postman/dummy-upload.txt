@@ -1,0 +1,2 @@
+Contenido ficticio para pruebas de carga de documentos por Postman/Newman.
+Proyecto Plataforma SAIP y Apelaciones.

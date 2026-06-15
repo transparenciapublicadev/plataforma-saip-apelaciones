@@ -82456,6 +82456,326 @@
               }
             }
           ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Registro Push Sin Autenticación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{pushTokenFake}}\",\n  \"appFlavor\": \"CIUDADANO\",\n  \"plataforma\": \"ANDROID\",\n  \"deviceIdHash\": \"{{pushDeviceIdHash}}\",\n  \"appVersion\": \"1.0.0-newman\",\n  \"buildType\": \"diagnostic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/push/tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notificaciones",
+                "push",
+                "tokens"
+              ]
+            },
+            "description": "Verifica que el registro de tokens push sea estrictamente denegado sin una sesión activa."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"unauthorized push registration returns RFC 9457 forbidden\", function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(json.type).to.eql(\"urn:saip:problem:forbidden\");",
+                  "  pm.expect(json.title).to.eql(\"Forbidden\");",
+                  "  pm.expect(json.status).to.eql(403);",
+                  "  pm.expect(json.detail).to.eql(\"El usuario autenticado no tiene permisos para ejecutar esta operación.\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "14. Gestión Documental",
+      "item": [
+        {
+          "name": "Cargar Documento de Solicitud",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "dummy-upload.txt"
+                },
+                {
+                  "key": "tipoDocumento",
+                  "value": "DOCUMENTO_ADJUNTO",
+                  "type": "text"
+                },
+                {
+                  "key": "solicitudId",
+                  "value": "101",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documentos/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos",
+                "upload"
+              ]
+            },
+            "description": "Prueba la carga exitosa de un documento asociado a la solicitud mock 101."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"upload document for solicitud is successful\", function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(json).to.have.property(\"id\");",
+                  "  pm.expect(json.nombreOriginal).to.eql(\"dummy-upload.txt\");",
+                  "  pm.expect(json.tipoDocumento).to.eql(\"DOCUMENTO_ADJUNTO\");",
+                  "  pm.expect(json.solicitudId).to.eql(101);",
+                  "  pm.environment.set(\"lastDocumentoId\", json.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Upload Sin Relación",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "dummy-upload.txt"
+                },
+                {
+                  "key": "tipoDocumento",
+                  "value": "DOCUMENTO_ADJUNTO",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documentos/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos",
+                "upload"
+              ]
+            },
+            "description": "Verifica que el backend rechace la carga si no se especifica ninguna relación de negocio."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"upload without relation returns RFC 9457 bad request\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(json.type).to.eql(\"about:blank\");",
+                  "  pm.expect(json.title).to.eql(\"Bad request\");",
+                  "  pm.expect(json.status).to.eql(400);",
+                  "  pm.expect(json.detail).to.contain(\"Debe especificar exactamente una relación\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[EXPECTED_ERROR] Rechazar Upload Multi-Relación",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "dummy-upload.txt"
+                },
+                {
+                  "key": "tipoDocumento",
+                  "value": "DOCUMENTO_ADJUNTO",
+                  "type": "text"
+                },
+                {
+                  "key": "solicitudId",
+                  "value": "101",
+                  "type": "text"
+                },
+                {
+                  "key": "respuestaId",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documentos/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos",
+                "upload"
+              ]
+            },
+            "description": "Verifica que el backend rechace la carga si se especifican múltiples relaciones simultáneamente."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"upload with multi-relation returns RFC 9457 bad request\", function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(json.type).to.eql(\"about:blank\");",
+                  "  pm.expect(json.title).to.eql(\"Bad request\");",
+                  "  pm.expect(json.status).to.eql(400);",
+                  "  pm.expect(json.detail).to.contain(\"Debe especificar exactamente una relación\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar Documento",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documentos/{{lastDocumentoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "documentos",
+                "{{lastDocumentoId}}"
+              ]
+            },
+            "description": "Elimina el documento cargado durante las pruebas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"delete document is successful\", function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

@@ -47,13 +47,13 @@ export APP_NOTIFICATIONS_MODE=MOCK
 export APP_NOTIFICATIONS_PUSH_ENABLED=false
 
 if command -v setsid >/dev/null 2>&1; then
-  setsid bash -c 'cd "$1" && ./mvnw -B spring-boot:run' \
+  setsid bash -c 'cd "$1" && ./mvnw -B spring-boot:run -Dpe.gob.saip.storage.provider=LOCAL' \
     bash "$ROOT_DIR/backend" >"$TEMP_DIR/backend.out.log" 2>"$TEMP_DIR/backend.err.log" &
   BACKEND_PROCESS_GROUP=true
 else
   (
     cd "$ROOT_DIR/backend"
-    ./mvnw -B spring-boot:run
+    ./mvnw -B spring-boot:run -Dpe.gob.saip.storage.provider=LOCAL
   ) >"$TEMP_DIR/backend.out.log" 2>"$TEMP_DIR/backend.err.log" &
 fi
 BACKEND_PID=$!
