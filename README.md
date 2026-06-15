@@ -23,6 +23,7 @@ La plataforma modela el ciclo completo de transparencia pública: el ciudadano s
 - [Modelo de dominio](#modelo-de-dominio)
 - [Contrato API y sincronización](#contrato-api-y-sincronización)
 - [Seguridad y roles](#seguridad-y-roles)
+- [Gestión de Almacenamiento Seguro (Supabase S3 API)](#gestión-de-almacenamiento-seguro-supabase-s3-api)
 - [Ejecución local](#ejecución-local)
 - [Validación y CI](#validación-y-ci)
 - [Documentación y herramientas](#documentación-y-herramientas)
@@ -441,6 +442,128 @@ Principios de seguridad:
 El backend persiste intentos de notificación para SAIP y TTAIP. El modo `MOCK` se usa en desarrollo local y Newman; el modo `SMTP` habilita correo real mediante variables de entorno. `CASILLA_ELECTRONICA` cuenta con un adaptador preparado que responde explícitamente como no disponible hasta contar con el contrato API oficial. Mobile registra, renueva y revoca tokens FCM contra endpoints autenticados; el adapter de envío FCM permanece preparado pero reporta explícitamente que falta la integración Firebase Admin. No existe fallback automático entre canales.
 
 Para despliegues productivos, activar `SPRING_PROFILES_ACTIVE=prod`. Ese perfil usa `SMTP` por defecto, rechaza `MOCK`, exige configuración externa de base de datos, JWT, CORS y SMTP, desactiva inicialización automática del seed y mantiene OpenAPI/Swagger deshabilitados salvo habilitación operativa explícita.
+
+## 📦 Gestión de Almacenamiento Seguro (Supabase S3 API)
+
+La plataforma SAIP y Apelaciones TTAIP delega la persistencia de los archivos binarios (PDFs, imágenes de constancias, resoluciones y subsanaciones) en un Object Storage externo, utilizando la API compatible con S3 de Supabase.
+
+### 1. Arquitectura del Flujo Mediado (Aislamiento de Infraestructura)
+
+Por directivas de ciberseguridad y de diseño defensivo (AppSec), **el Frontend Web y la App Móvil Android jamás se conectan directamente con Supabase o S3**. Todo el acceso de lectura y escritura es mediado por el Backend (Spring Boot), el cual actúa como un proxy inverso y orquestador transaccional.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as Cliente (Web / Mobile)
+    participant API as Backend (Spring Boot)
+    database DB as PostgreSQL (saip_db)
+    participant S3 as Supabase Storage (S3 API)
+
+    Note over Cliente, S3: Flujo de Subida (Upload) Mediada
+    Cliente->>API: POST /api/documentos/upload (MultipartFile + metadata)
+    Note over API: Valida tamaño, extensión y tipo MIME
+    API->>S3: PUT /bucket/integration-tests/opaque-key.pdf (S3 client)
+    S3-->>API: Confirmación de guardado en Bucket
+    API->>DB: INSERT INTO documentos (nombre_archivo, ruta_archivo, hash_sha256, ...)
+    Note over DB: Transacción confirmada en DB
+    DB-->>API: OK (id_documento)
+    API-->>Cliente: 201 Created (DocumentoMetadataDTO sin llaves físicas)
+
+    Note over Cliente, S3: Flujo de Descarga (Download) Mediada
+    Cliente->>API: GET /api/documentos/{id}/download
+    Note over API: Valida roles y ownership del expediente
+    API->>DB: SELECT ruta_archivo, storage_bucket FROM documentos WHERE id = {id}
+    DB-->>API: Datos del archivo (storageKey)
+    API->>S3: GET /bucket/integration-tests/opaque-key.pdf
+    S3-->>API: Stream binario de datos
+    API-->>Cliente: Stream binario (200 OK) con Content-Type correcto
+```
+
+**Ventajas de Seguridad del Flujo Mediado:**
+*   **Llaves ocultas:** Las credenciales maestras de AWS/Supabase, nombres físicos de buckets y tokens de API no se exponen al cliente.
+*   **URLs efímeras/ocultas:** No se generan URLs públicas directas ni firmadas accesibles desde el exterior. El cliente descarga y sube a través de `/api/documentos`.
+*   **Aislamiento de metadata:** La API responde con `DocumentoMetadataDTO`, el cual oculta explícitamente los campos sensibles `storageKey`, `storageBucket`, `storageProvider` y cualquier URL física. El cliente solo recibe un identificador seguro y el nombre original del archivo.
+
+### 2. Matriz de Variables de Entorno para Almacenamiento
+
+El backend de Spring Boot se configura mediante las siguientes propiedades del sistema y variables de entorno para activar la persistencia S3/Supabase en el perfil de `staging`:
+
+| Propiedad Spring / Variable de Entorno | Descripción | Ejemplo de Valor | Requerido |
+| --- | --- | --- | --- |
+| `pe.gob.saip.storage.provider`<br>`APP_STORAGE_PROVIDER` | Define el proveedor de almacenamiento local o remoto. | `S3_COMPATIBLE` (o `LOCAL`) | Sí |
+| `pe.gob.saip.storage.s3.endpoint`<br>`SUPABASE_S3_ENDPOINT` | URL del Endpoint compatible con S3 provisto por Supabase. | `https://uxgawcsqkxgscx.supabase.co/storage/v1/s3` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.bucket-name`<br>`SUPABASE_S3_BUCKET_NAME` | Nombre del Bucket creado en Supabase. | `saip-documents` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.access-key`<br>`SUPABASE_S3_ACCESS_KEY` | Clave de acceso generada en Supabase (S3 Access Key). | `88c2b7...` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.secret-key`<br>`SUPABASE_S3_SECRET_KEY` | Clave secreta generada en Supabase (S3 Secret Key). | `df92c1a...` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.region`<br>`AWS_REGION` | Región AWS virtual del servicio. | `us-east-1` | Sí (si provider=S3) |
+
+> [!WARNING]
+> **REGLA DE ORO DE APPSEC:** Está estrictamente prohibido escribir llaves, credenciales, tokens o secretos en duro (*hardcoded*) dentro de los archivos `application.properties`, YAML o en cualquier archivo bajo control de versiones. Toda credencial de infraestructura debe ser inyectada dinámicamente mediante variables de entorno o gestores de secretos.
+
+### 3. Guía de Configuración Defensiva en la Consola de Supabase
+
+Para aislar por completo la infraestructura de almacenamiento y evitar accesos públicos anónimos a través de la API REST nativa de Supabase, el Bucket debe ser configurado defensivamente:
+
+1.  **Bucket Privado:** Al crear el bucket en el panel de control de Supabase (`Storage` -> `New Bucket`), la casilla de verificación **Public** debe establecerse como **False** (Bucket estrictamente privado).
+2.  **Desactivación de Políticas de Acceso Público (RLS):** No crees políticas RLS que permitan accesos `select`, `insert`, `update` o `delete` para roles anónimos (`anon`) o usuarios autenticados directamente en el cliente de Supabase (`authenticated`). El backend se conecta de forma externa utilizando credenciales S3 (Access/Secret Key) con privilegios administrativos dedicados, haciendo que el almacenamiento de Supabase sea invisible al exterior del backend.
+
+### 4. Guía de Ejecución y Verificación Local (Paso a Paso)
+
+Para arrancar el backend Spring Boot localmente apuntando a Supabase y verificar el funcionamiento de las subidas y descargas mediadas:
+
+#### Paso 1: Configurar las variables de entorno en la terminal
+Ejecuta en tu terminal de comandos (reemplazando con tus credenciales de Supabase):
+
+**PowerShell (Windows):**
+```powershell
+$env:SPRING_PROFILES_ACTIVE="staging"
+$env:APP_STORAGE_PROVIDER="S3_COMPATIBLE"
+$env:SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
+$env:SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
+$env:SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
+$env:SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
+$env:AWS_REGION="us-east-1"
+```
+
+**Bash (Linux/macOS):**
+```bash
+export SPRING_PROFILES_ACTIVE="staging"
+export APP_STORAGE_PROVIDER="S3_COMPATIBLE"
+export SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
+export SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
+export SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
+export SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
+export AWS_REGION="us-east-1"
+```
+
+#### Paso 2: Iniciar el backend Spring Boot
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+#### Paso 3: Simular una carga multipart utilizando `curl`
+El contrato de carga exige mapear el documento a una relación de negocio específica. Por ejemplo, vinculando el archivo a una solicitud SAIP (con `solicitudId`):
+
+```bash
+curl -X POST http://localhost:8080/api/documentos/upload \
+  -H "Authorization: Bearer <tu-token-jwt>" \
+  -F "file=@/ruta/a/tu/archivo.pdf" \
+  -F "tipoDocumento=SOLICITUD_ORIGINAL" \
+  -F "solicitudId=1"
+```
+
+*(El backend validará la extensión, cargará el archivo a Supabase, registrará la entrada en la base de datos de PostgreSQL y retornará el `DocumentoMetadataDTO` con el ID autogenerado del documento).*
+
+#### Paso 4: Simular una descarga/stream seguro desde el backend
+Utilizando el ID de documento retornado en el paso anterior, realiza la petición GET de descarga:
+
+```bash
+curl -O -J -L http://localhost:8080/api/documentos/1/download \
+  -H "Authorization: Bearer <tu-token-jwt>"
+```
+
+*(El backend descargará el archivo desde Supabase S3 en memoria y lo transmitirá al cliente en un flujo continuo o stream, sin almacenar copias físicas locales ni exponer URLs internas).*
 
 ## Ejecución local
 
