@@ -11,11 +11,15 @@ import com.gestion.misaip.MainActivity
 import com.gestion.misaip.R
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
  * Servicio para manejar notificaciones push de Firebase Cloud Messaging.
  */
-class MiSaipMessagingService : FirebaseMessagingService() {
+class MiSaipMessagingService : FirebaseMessagingService(), KoinComponent {
+
+    private val pushTokenSyncCoordinator: PushTokenSyncCoordinator by inject()
 
     companion object {
         private const val TAG = "MiSaipFCM"
@@ -43,8 +47,7 @@ class MiSaipMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         Log.d(TAG, "Token FCM renovado")
-        // Aquí puedes enviar el token a tu servidor para asociarlo con el usuario
-        sendTokenToServer(token)
+        pushTokenSyncCoordinator.registrarEnSegundoPlano(token)
     }
 
     private fun handleDataMessage(data: Map<String, String>) {
@@ -126,10 +129,5 @@ class MiSaipMessagingService : FirebaseMessagingService() {
             .build()
 
         notificationManager.notify(notificationId, notification)
-    }
-
-    private fun sendTokenToServer(token: String) {
-        Log.d(TAG, "Registrando token renovado en backend Spring Boot")
-        FCMHelper.registerTokenWithBackend(token)
     }
 }

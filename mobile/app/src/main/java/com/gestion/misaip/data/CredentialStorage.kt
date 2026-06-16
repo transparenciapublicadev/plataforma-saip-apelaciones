@@ -35,6 +35,9 @@ class CredentialStorage(context: Context) : TokenStorage {
         private const val KEY_USER_ID = "rest_user_id"
         private const val KEY_TIPO_USUARIO = "rest_tipo_usuario"
         private const val KEY_ENTIDAD_ID = "rest_entidad_id"
+
+        // FCM Cache
+        private const val KEY_CACHED_FCM_TOKEN = "cached_fcm_token"
     }
 
     private fun createSafePreferences(): SharedPreferences {
@@ -179,5 +182,21 @@ class CredentialStorage(context: Context) : TokenStorage {
     override fun getEntidadId(): Long? {
         val id = prefs.getLong(KEY_ENTIDAD_ID, -1L)
         return if (id != -1L) id else null
+    }
+
+    // ═══════════════════════════════════════════
+    // Caché local para token FCM cuando no está autenticado
+    // ═══════════════════════════════════════════
+
+    fun saveCachedFcmToken(token: String) {
+        prefs.edit().putString(KEY_CACHED_FCM_TOKEN, token).apply()
+    }
+
+    fun getCachedFcmToken(): String? {
+        return prefs.getString(KEY_CACHED_FCM_TOKEN, null)
+    }
+
+    fun clearCachedFcmToken() {
+        prefs.edit().remove(KEY_CACHED_FCM_TOKEN).apply()
     }
 }
