@@ -27,5 +27,10 @@ val appModule = module {
     // TokenStorage — puente entre CredentialStorage y la capa de red REST
     single<TokenStorage> { get<CredentialStorage>() }
 
-    single { PushTokenSyncCoordinator(context = get(), registrarDispositivoPushUseCase = get(), revocarDispositivoPushActualUseCase = get()) }
+    single { PushTokenSyncCoordinator(
+        context = get(),
+        credentialStorage = get(),
+        registrarDispositivoPushUseCase = get(),
+        revocarDispositivoPushActualUseCase = get()
+    ) }
 }
