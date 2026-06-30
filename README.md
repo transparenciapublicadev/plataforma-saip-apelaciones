@@ -1,93 +1,80 @@
 # Plataforma SAIP y Apelaciones TTAIP
 
-> Plataforma integral y segura para gestionar Solicitudes de Acceso a la Información Pública (SAIP), respuestas de entidades públicas y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), alineada al marco de la Ley N.° 27806 (Ley de Transparencia y Acceso a la Información Pública) de la República del Perú.
+> Plataforma integral para gestionar Solicitudes de Acceso a la Información Pública (SAIP), respuestas de entidades públicas y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), alineada al marco de la Ley N.° 27806 del Perú.
 
-[![Backend](https://img.shields.io/badge/backend-Spring%20Boot%204.0.6-6DB33F?style=flat-square&logo=springboot&logoColor=white)](backend/)
-[![Frontend](https://img.shields.io/badge/frontend-Angular%2021.2.5-DD0031?style=flat-square&logo=angular&logoColor=white)](frontend/)
-[![Mobile](https://img.shields.io/badge/mobile-Kotlin%202.3.21%20%2B%20Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](mobile/)
-[![Docs](https://img.shields.io/badge/docs-Astro%206.0.4%20%2B%20Starlight-FF5D01?style=flat-square&logo=astro&logoColor=white)](docs/)
+[![Backend](https://img.shields.io/badge/backend-Spring%20Boot%204-6DB33F?style=flat-square&logo=springboot&logoColor=white)](backend/)
+[![Frontend](https://img.shields.io/badge/frontend-Angular%2021-DD0031?style=flat-square&logo=angular&logoColor=white)](frontend/)
+[![Mobile](https://img.shields.io/badge/mobile-Kotlin%20%2B%20Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](mobile/)
+[![Docs](https://img.shields.io/badge/docs-Astro%20%2B%20Starlight-FF5D01?style=flat-square&logo=astro&logoColor=white)](docs/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
 
-La plataforma modela el ciclo completo de transparencia pública: el ciudadano solicita información, la entidad responde dentro de los plazos legales y, si corresponde, el TTAIP califica y resuelve la apelación. El repositorio está organizado como un monorepo con backend API, frontend web, app móvil nativa, documentación técnica, base de datos, colecciones de validación de API (Newman) y automatización de contratos OpenAPI.
+La plataforma modela el ciclo completo de transparencia pública: el ciudadano solicita información, la entidad responde dentro de los plazos legales y, si corresponde, el TTAIP califica y resuelve la apelación. El repositorio está organizado como un monorepo con backend, frontend web, app mobile, documentación, base de datos, colecciones de API y automatización de contrato OpenAPI.
 
-> [!IMPORTANT]
-> Este proyecto es una iniciativa académica y tecnológica de alto nivel. No representa ni está afiliado oficialmente a ninguna entidad gubernamental de la República del Perú.
+> Este proyecto es una iniciativa académica y tecnológica. No representa ni está afiliado oficialmente a ninguna entidad gubernamental.
 
----
+## Tabla de contenidos
 
-## 📋 Tabla de Contenidos
+- [Visión del producto](#visión-del-producto)
+- [Co-creadores](#co-creadores)
+- [Arquitectura general](#arquitectura-general)
+- [Stack tecnológico](#stack-tecnológico)
+- [Estructura del monorepo](#estructura-del-monorepo)
+- [Módulos principales](#módulos-principales)
+- [Modelo de dominio](#modelo-de-dominio)
+- [Contrato API y sincronización](#contrato-api-y-sincronización)
+- [Seguridad y roles](#seguridad-y-roles)
+- [Gestión de Almacenamiento Seguro (Supabase S3 API)](#gestión-de-almacenamiento-seguro-supabase-s3-api)
+- [Ejecución local](#ejecución-local)
+- [Validación y CI](#validación-y-ci)
+- [Documentación y herramientas](#documentación-y-herramientas)
+- [Licencia](#licencia)
 
-- [Visión del Producto](#-visión-del-producto)
-- [Co-Creadores](#-co-creadores)
-- [Arquitectura General del Sistema](#-arquitectura-general-del-sistema)
-- [Stack Tecnológico por Módulo](#-stack-tecnológico-por-módulo)
-- [Estructura del Monorepo](#-estructura-del-monorepo)
-- [Módulos Principales](#-módulos-principales)
-- [Modelo de Dominio y Reglas Legales](#-modelo-de-dominio-y-reglas-legales)
-- [Contrato API y Sincronización OpenAPI](#-contrato-api-y-sincronización-openapi)
-- [Seguridad y Control de Accesos](#-seguridad-y-control-de-accesos)
-- [📦 Gestión de Almacenamiento Seguro (Supabase S3 API)](#-gestión-de-almacenamiento-seguro-supabase-s3-api)
-- [🔥 Integración y Configuración de Firebase Cloud Messaging (FCM)](#-integración-y-configuración-de-firebase-cloud-messaging-fcm)
-- [🗄️ Persistencia de Datos (PostgreSQL)](#️-persistencia-de-datos-postgresql)
-- [📮 Validación End-to-End con Newman / Postman](#-validación-end-to-end-con-newman--postman)
-- [🚀 Ejecución Local Paso a Paso](#-ejecución-local-paso-a-paso)
-- [🧪 Validación y Pipelines de CI/CD](#-validación-y-pipelines-de-cicd)
-- [Roadmap Técnico y Próximas Mejoras](#-roadmap-técnico-y-próximas-mejoras)
-- [Licencia](#-licencia)
+## Visión del producto
 
----
+Plataforma SAIP centraliza la gestión digital de solicitudes de acceso a la información pública y apelaciones TTAIP con una arquitectura preparada para tres experiencias independientes:
 
-## 👁️ Visión del Producto
-
-La plataforma centraliza la gestión digital de solicitudes de acceso a la información pública y apelaciones TTAIP bajo una arquitectura multi-inquilino y multi-superficie:
-
-| Superficie | Usuario Principal | Propósito Operativo |
+| Superficie | Usuario principal | Objetivo |
 | --- | --- | --- |
-| **Web Pública** | Ciudadano / Persona Natural | Presentar SAIP, realizar consultas de estado, registrar recursos de apelación y subsanar inadmisibilidades. |
-| **Web Interna** | Funcionarios Públicos / Miembros TTAIP | Evaluar solicitudes, emitir respuestas, calificar recursos, adjuntar resoluciones, cédulas de notificación y administrar el sistema. |
-| **App Móvil Nativa** | Ciudadano | Seguimiento transaccional en tiempo real, recepción de notificaciones push de estado y consulta offline mediante caché local. |
+| Web pública | Ciudadano | Presentar SAIP, consultar estado, registrar apelaciones y subsanar observaciones. |
+| Web interna | Funcionarios, TTAIP, administradores | Gestionar expedientes, responder solicitudes, calificar apelaciones, emitir resoluciones y revisar indicadores. |
+| Mobile Android | Ciudadano y operadores | Consultar y operar flujos clave desde una aplicación nativa con sincronización local. |
 
-El backend es el único motor del dominio y expone un contrato REST formal. El frontend web y la aplicación móvil consumen este contrato de forma independiente, garantizando el desacoplamiento técnico absoluto.
+El backend es la fuente de verdad del dominio y expone el contrato REST formal. El frontend Angular y la app Android consumen el mismo contrato, pero evolucionan como clientes independientes.
 
----
+## Co-creadores
 
-## 👥 Co-Creadores
-
-| Nombre | Rol de Ingeniería | Contribución Principal |
+| Nombre | Rol en el proyecto | Contribucion principal |
 | --- | --- | --- |
-| **Kelly Medalit De La Cruz Lopez** | Analista Funcional Senior / PO | Modelado de dominio legal, reglas de negocio bajo Ley N.° 27806, diseño de flujos de apelación, especificación funcional y validación de aceptación. |
-| **Daniel Angel Leon Salazar** | Arquitecto de Software / Tech Lead | Diseño de la arquitectura de software, implementación del backend Spring Boot, desarrollo del frontend Angular, app nativa Android (Kotlin), AppSec, CI/CD y despliegue local. |
+| **Kelly Medalit De La Cruz Lopez** | Co-creadora, Analista Funcional | Ideación del producto, levantamiento funcional, reglas de negocio, flujo SAIP/TTAIP, criterios de validación y modelado del dominio. |
+| **Daniel Angel Leon Salazar** | Co-creador, Arquitecto de Software | Arquitectura técnica, backend Spring Boot, frontend Angular, app Android nativa, integración API, seguridad, automatización y despliegue técnico. |
 
----
+## Arquitectura general
 
-## 🏗️ Arquitectura General del Sistema
-
-La arquitectura implementa patrones modernos de diseño de sistemas orientados a servicios REST, con interfaces desacopladas, persistencia transaccional y delegación controlada de servicios periféricos.
+La arquitectura prioriza separación de responsabilidades, contrato API versionable, clientes desacoplados y validación independiente por módulo.
 
 ```mermaid
 flowchart TB
-    subgraph Users["Usuarios finales"]
+    subgraph Users["Usuarios"]
         Citizen["Ciudadano"]
-        Officer["Funcionario Entidad"]
+        Officer["Funcionario de entidad pública"]
         Tribunal["Miembro TTAIP"]
         Admin["Administrador"]
     end
 
-    subgraph Clients["Clientes (Interfaces)"]
-        Web["frontend/\nAngular 21.2.5 + SSR\nTailwind CSS 4.1"]
-        Android["mobile/\nKotlin 2.3.21 + Compose\nSQLDelight + Retrofit 3"]
-        Docs["docs/\nAstro 6.0.4 + Starlight"]
+    subgraph Clients["Clientes"]
+        Web["frontend/\nAngular 21 + SSR\nTailwind CSS"]
+        Android["mobile/\nKotlin + Jetpack Compose\nSQLDelight + Retrofit"]
+        Docs["docs/\nAstro + Starlight"]
     end
 
-    subgraph Platform["Núcleo del Sistema (Backend)"]
-        API["backend/\nSpring Boot 4.0.6 + Java 25\nREST API + Security JWT"]
+    subgraph Platform["Nucleo de plataforma"]
+        API["backend/\nSpring Boot 4 + Java 25\nREST + Security + OpenAPI"]
         DB[("PostgreSQL\nsaip_db")]
         OpenAPI["/v3/api-docs\nContrato OpenAPI"]
     end
 
-    subgraph External["Servicios Externos Integrados"]
-        Supabase["Supabase Storage\n(S3-Compatible API)"]
-        Firebase["Firebase Cloud Messaging\n(Servicio de Push)"]
+    subgraph External["Servicios externos"]
+        Firebase["Firebase Cloud Messaging\nPush notifications"]
     end
 
     Citizen --> Web
@@ -100,425 +87,722 @@ flowchart TB
     Android -->|Retrofit + JWT| API
     API --> DB
     API --> OpenAPI
-    API -->|S3 Client SDK v2| Supabase
-    API -->|Firebase Admin SDK 9.9.0| Firebase
-    Android -. FCM Push .-> Firebase
-    Docs -. Documenta .-> Platform
+    Android -. push .-> Firebase
+    Docs -. documenta .-> Platform
 ```
 
----
+### Decisiones arquitectónicas
 
-## 🛠️ Stack Tecnológico por Módulo
+| Decisión | Razón |
+| --- | --- |
+| Backend como source of truth | Centraliza reglas legales, seguridad, persistencia y transiciones de estado. |
+| OpenAPI como contrato formal | Permite sincronizar frontend y mobile sin compartir código fuente. |
+| Monorepo modular | Facilita consistencia técnica, CI por paths y versionado coordinado. |
+| Clientes desacoplados | Web y mobile consumen la API de forma independiente y pueden desplegarse por separado. |
+| Documentación viva | `docs/` y `README.md` explican arquitectura, dominio, operación y decisiones clave. |
 
-### Backend (API REST)
-* **Runtime:** Java 25
-* **Framework:** Spring Boot 4.0.6 (Spring Starter Parent)
-* **Acceso a Datos:** Spring Data JPA / Hibernate (DDL-Auto: `validate`)
-* **Base de Datos:** PostgreSQL (Runtime) / H2 en memoria (Modo PostgreSQL para CI local/OpenAPI build)
-* **Seguridad:** Spring Security 6.x, JWT (`jjwt` v0.12.6), CORS dinámico
-* **Motor Documental:** Abstracción `StorageProvider` (Soporte local en filesystem / S3-Compatible vía AWS SDK S3 v2.46.9)
-* **Notificaciones:** Motor de notificaciones configurable (Modos: `MOCK`, `SMTP` vía Spring Mail, y `FCM` para Push)
-* **Integración Push:** Firebase Admin SDK v9.9.0
-* **API Documentation:** springdoc-openapi-starter-webmvc-ui v3.0.2
+## Stack tecnológico
 
-### Frontend Web (Angular App)
-* **Framework:** Angular 21.2.5
-* **Lenguaje:** TypeScript 5.9.3
-* **Estilos & UI:** Tailwind CSS 4.1.12, Lucide Angular v1.14.0, GSAP v3.14.2 (Animaciones interactivas)
-* **Arquitectura de UI:** Componentes reactivos, Reactive Forms, SSR con Express 5.1.0
-* **Consumo de API:** Tipado estático generado mediante `openapi-typescript` v7.8.0
-* **Testing:** Vitest v4.0.8, JSDOM v27.1.0
+### Backend
 
-### App Móvil (Android Nativo)
-* **Lenguaje:** Kotlin 2.3.21
-* **Android Gradle Plugin (AGP):** v9.2.1
-* **UI Framework:** Jetpack Compose (Compose BOM 2026.05.01)
-* **Navigation:** Jetpack Navigation 3 (v1.1.2)
-* **Inyección de Dependencias:** Koin v4.2.1
-* **Caché Local / Offline:** SQLDelight v2.3.2
-* **Red:** Retrofit v3.0.0, OkHttp v5.3.2
-* **Tareas en segundo plano:** WorkManager v2.11.2
-* **Seguridad:** Android Security Crypto v1.1.0 (EncryptedSharedPreferences para FCM token y credenciales)
-* **Push Client:** Firebase Messaging BOM v34.13.0
-* **Testing:** JUnit v4.13.2, MockK v1.14.9, Turbine v1.2.1 (Flow testing)
+| Área | Tecnología |
+| --- | --- |
+| Runtime | Java 25 |
+| Framework | Spring Boot 4.0.0 |
+| API | Spring Web MVC, REST JSON |
+| Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ |
+| Documentos | Metadatos en PostgreSQL + `StorageProvider` local configurable |
+| Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
+| Validación | Jakarta Bean Validation |
+| Documentación API | springdoc-openapi, Swagger UI |
+| Build y testing | Maven Wrapper, Spring Boot Test, H2 para escenarios de prueba |
 
-### Documentación
-* **Engine:** Astro 6.0.4 + Starlight 0.38.1
-* **Diagramas:** Astro-Mermaid v1.3.1 + Mermaid 11.13.0
+### Frontend web
 
----
+| Área | Tecnología |
+| --- | --- |
+| Framework | Angular 21.2.x |
+| Lenguaje | TypeScript 5.9 |
+| UI | Tailwind CSS 4.1, Lucide Angular, GSAP |
+| SSR | Angular SSR con Express 5 |
+| Formularios | Angular Forms / Reactive Forms |
+| API contract | `openapi-typescript` |
+| Testing | Vitest + Angular unit test builder |
+| Package manager | npm 11.6.x |
 
-## 📂 Estructura del Monorepo
+### Mobile Android
+
+| Área | Tecnología |
+| --- | --- |
+| Lenguaje | Kotlin 2.3.x |
+| UI | Jetpack Compose + Material 3 |
+| Arquitectura | Clean Architecture + MVVM |
+| Navegación | Navigation 3 |
+| DI | Koin 4.1 |
+| Datos locales | SQLDelight 2.2 |
+| Red | Retrofit 3, OkHttp 5 |
+| Sincronización / jobs | Coroutines, Flow, WorkManager |
+| Firebase | FCM exclusivamente para push notifications |
+| Build | Gradle 9.x, Android Gradle Plugin 9.x |
+
+### Documentación y automatización
+
+| Área | Tecnología |
+| --- | --- |
+| Docs | Astro 6, Starlight, Mermaid |
+| API collections | Postman collection operativa |
+| Database schema/seed | `database/postgres/script_saip_db_postgres.sql` |
+| CI/CD | GitHub Actions por módulo |
+| OpenAPI sync | `scripts/sync-openapi.ps1` y `scripts/sync-openapi.sh` |
+
+## Estructura del monorepo
 
 ```text
 plataforma-saip-apelaciones/
-├── .github/workflows/    # Pipelines de CI/CD independientes por módulo
-├── .agents/              # Configuración y skills locales para Codex
-├── .codex/               # Wrappers resumidos de agentes Codex
-├── backend/              # API REST Spring Boot 4.0.6 + Java 25
+├── backend/              # API REST Spring Boot 4 + Java 25
 ├── frontend/             # Aplicación web Angular 21 + SSR
-├── mobile/               # App móvil Android nativa (Kotlin + Compose)
-│   ├── app/              # Código fuente de la interfaz (Presentación / UI)
-│   ├── core/             # Módulos comunes, red, base de datos SQLDelight y dominio
-│   └── firebase-setup/   # Scripts y utilidades de configuración de base de datos Firebase
-├── docs/                 # Documentación técnica Astro + Starlight
-├── database/             # Scripts SQL PostgreSQL y auditorías de base de datos
-├── postman/              # Pruebas automatizadas de API mediante Newman y colecciones Postman
-├── scripts/              # Scripts de automatización (Reset de DB, Sync OpenAPI, etc.)
-├── AGENTS.md             # Instrucciones principales de gobernanza de IA
-└── README.md             # Documentación principal del monorepo
+├── mobile/               # App Android Kotlin + Jetpack Compose
+├── docs/                 # Documentación Astro + Starlight
+├── database/             # Scripts SQL de apoyo y datos seed
+├── postman/              # Colección operativa de API
+├── scripts/              # Sincronización OpenAPI y utilidades
+├── .github/workflows/    # CI independiente por módulo
+├── AGENTS.md             # Instrucciones locales para Codex
+├── LICENSE               # Apache License 2.0
+└── README.md             # Visión técnica y funcional del proyecto
 ```
 
----
+## Módulos principales
 
-## 📦 Módulos Principales
+### `backend/` - API REST y dominio transaccional
 
-### `backend/` - Dominio Transaccional y API REST
-Implementa todas las reglas legales y transiciones de estado de las solicitudes SAIP y apelaciones TTAIP.
-- **`config/`**: Contiene la inicialización de Firebase App, almacenamiento S3, CORS, seguridad JWT y converters.
-- **`controller/`**: Expone endpoints REST validados mediante anotaciones Jakarta Validation.
-- **`service/`**: Contiene las reglas del negocio (plazos, cálculo de días hábiles, autorizaciones de descarga).
-- **`storage/`**: Gestiona el ciclo de vida de binarios abstrayendo el filesystem local y la API S3.
+El backend implementa las reglas centrales del sistema: solicitudes SAIP, respuestas de entidades, apelaciones TTAIP, calificación, resolución, estadísticas, reportes y autenticación.
 
-### `frontend/` - Cliente Web Multirol
-- **`src/app/pages/public/`**: Landing y consultas de estado no autenticadas.
-- **`src/app/pages/ciudadano/`**: Panel personal, radicación de solicitudes, apelaciones y subsanaciones.
-- **`src/app/pages/funcionario/`**: Dashboard de la entidad pública, carga de respuestas y liquidación de costos.
-- **`src/app/pages/ttaip/`**: Tablero del Tribunal, calificación de admisibilidad, expedición de resoluciones y generación de cédulas de notificación.
+```mermaid
+flowchart LR
+    Controller["REST Controllers"]
+    Service["Services\nReglas de negocio"]
+    Repository["Repositories\nSpring Data JPA"]
+    Entity["Entities + DTOs"]
+    Security["Security\nJWT + Roles"]
+    PostgreSQL[("PostgreSQL")]
 
-### `mobile/` - Cliente Móvil Android
-Estructura modularizada bajo Clean Architecture:
-- **`:core:domain`**: Contiene entidades puras y Casos de Uso (UseCases).
-- **`:core:data`**: Implementa repositorios y mapeadores de datos.
-- **`:core:network`**: Clientes Retrofit configurados con interceptores de seguridad JWT.
-- **`:core:database`**: Definiciones SQLDelight para la base de datos local cifrada.
-- **`:app`**: Pantallas declarativas en Jetpack Compose y ViewModels reactivos controlados con Koin.
+    Controller --> Service
+    Service --> Repository
+    Repository --> Entity
+    Entity --> PostgreSQL
+    Security --> Controller
+```
 
----
+Controladores principales:
 
-## ⚖️ Modelo de Dominio y Reglas Legales
+| Controller | Responsabilidad |
+| --- | --- |
+| `AuthRestController` | Login, registro y usuario autenticado. |
+| `SolicitudRestController` | Ciclo SAIP y consultas de solicitudes. |
+| `RespuestaRestController` | Respuestas de funcionarios a solicitudes. |
+| `ApelacionRestController` | Presentación y seguimiento de apelaciones. |
+| `TTAIPRestController` | Calificación, subsanación y resolución TTAIP. |
+| `EntidadRestController` | Gestión de entidades públicas. |
+| `CiudadanoRestController` | Operaciones del ciudadano. |
+| `FuncionarioRestController` | Operaciones de funcionarios. |
+| `EstadisticasRestController` | Indicadores operativos. |
+| `ReportesRestController` | Generación de reportes. |
 
-El flujo está regulado estrictamente bajo el TUO de la Ley N.° 27806.
+### `frontend/` - Web Angular multirol
 
-### Primera Instancia: SAIP
-La Solicitud de Acceso a la Información Pública (SAIP) se tramita directamente ante la Entidad Pública. Formato identificador: `SAIP-AAAA-NNNNN`.
-- **Plazo de atención:** 10 días hábiles desde el día hábil siguiente a la presentación.
-- **Subsanación por observaciones:** Si la solicitud carece de requisitos, la entidad notifica la observación dentro de los primeros 2 días hábiles. El ciudadano cuenta con 2 días hábiles para subsanar.
-- **Costo de reproducción:** Si aplica, el funcionario debe liquidar los costos y notificar al ciudadano antes del vencimiento del plazo legal. El plazo de entrega se suspende hasta el pago correspondiente.
+El frontend entrega la experiencia web pública e interna. La aplicación está organizada por rol y consume servicios HTTP tipados hacia el backend.
+
+```mermaid
+flowchart TB
+    App["Angular App"]
+    Routes["Rutas por rol"]
+    Guards["Auth Guards"]
+    Interceptors["Auth Interceptor"]
+    Pages["Pages\npublic / ciudadano / funcionario / ttaip / admin"]
+    Services["Services\nAuth, Solicitud, Apelación, TTAIP"]
+    API["Backend REST API"]
+
+    App --> Routes
+    Routes --> Guards
+    Routes --> Pages
+    Pages --> Services
+    Services --> Interceptors
+    Interceptors --> API
+```
+
+Áreas de interfaz:
+
+| Carpeta | Alcance |
+| --- | --- |
+| `pages/public/` | Consulta pública y ayuda. |
+| `pages/auth/` | Login y registro del ciudadano. |
+| `pages/ciudadano/` | Panel, nueva SAIP, detalle, apelación y subsanación. |
+| `pages/funcionario/` | Panel de entidad, detalle y respuesta de solicitud. |
+| `pages/ttaip/` | Bandeja TTAIP, calificaciones, resolución y procesos disciplinarios. |
+| `pages/admin/` | Administración general del sistema. |
+
+### `mobile/` - Android nativo
+
+La app mobile está construida con Kotlin, Jetpack Compose, arquitectura limpia y persistencia local. Su objetivo es ofrecer una experiencia nativa desacoplada del frontend web.
+
+```mermaid
+flowchart TB
+    UI["app/\nScreens + ViewModels + Navigation"]
+    Domain["core/domain\nModels + UseCases + Repository contracts"]
+    Data["core/data\nRepository implementations + Mappers"]
+    Network["core/network\nRetrofit + JWT REST"]
+    Database["core/database\nSQLDelight"]
+    Common["core/common\nUtilities"]
+
+    UI --> Domain
+    Domain --> Data
+    Data --> Network
+    Data --> Database
+    UI --> Common
+    Data --> Common
+```
+
+| Módulo Gradle | Responsabilidad |
+| --- | --- |
+| `app/` | Presentación, tema, navegación, ViewModels y pantallas. |
+| `core/domain/` | Modelos de dominio, casos de uso e interfaces. |
+| `core/data/` | Repositorios concretos y mapeadores. |
+| `core/network/` | Cliente Retrofit, DTOs, JWT y comunicación REST con backend. |
+| `core/database/` | SQLDelight y persistencia local. |
+| `core/common/` | Utilidades compartidas. |
+
+### `docs/` - Documentación técnica y funcional
+
+Sitio de documentación construido con Astro + Starlight. Complementa este README con contenido navegable, diagramas y material técnico/funcional extendido.
+
+### `database/`, `postman/` y `scripts/`
+
+| Carpeta | Uso |
+| --- | --- |
+| `database/` | Script SQL de apoyo para inicialización o pruebas locales. |
+| `postman/` | Colección operativa para validar flujos API end-to-end. |
+| `scripts/` | Sincronización del contrato OpenAPI hacia consumidores. |
+
+## Modelo de dominio
+
+### Conceptos clave
+
+| Concepto | Definición |
+| --- | --- |
+| SAIP | Solicitud de Acceso a la Información Pública. Es primera instancia y usa formato `SAIP-AAAA-NNNNN`. |
+| Entidad pública | Organismo que posee o administra la información solicitada. |
+| Funcionario | Usuario interno de entidad pública encargado de evaluar y responder SAIP. |
+| Apelación | Recurso presentado por el ciudadano cuando la respuesta no satisface o no existe respuesta. |
+| Expediente TTAIP | Contenedor de segunda instancia. Solo existe cuando hay apelación y usa formato `NNNNN-AAAA-JUS/TTAIP`. |
+| TTAIP | Tribunal que califica y resuelve apelaciones. |
+| Resolución | Decisión formal emitida durante calificación o resolución final. |
+| Cédula de notificación | Documento que acredita notificación en el procedimiento. |
+
+### Distinción crítica
+
+SAIP no es expediente. La SAIP pertenece a la primera instancia ante la entidad pública. El expediente TTAIP solo nace cuando el ciudadano apela.
+
+```mermaid
+flowchart LR
+    SAIP["SAIP\nSAIP-AAAA-NNNNN"]
+    Response["Respuesta de entidad\no silencio administrativo"]
+    Appeal["Apelación ciudadana"]
+    Case["Expediente TTAIP\nNNNNN-AAAA-JUS/TTAIP"]
+
+    SAIP --> Response
+    Response -->|si corresponde| Appeal
+    Appeal --> Case
+```
+
+### Flujo SAIP
 
 ```mermaid
 stateDiagram-v2
     [*] --> Presentada
-    Presentada --> EnRevision: Recepción automática
-    EnRevision --> Observada: Subsanación requerida (2 días hábiles)
-    Observada --> EnRevision: Ciudadano subsana
-    Observada --> Rechazada: No subsana en plazo (Cierre)
-    EnRevision --> Liquidada: Notificación de costo de reproducción
-    Liquidada --> EnRevision: Pago confirmado (Reanuda plazo)
-    EnRevision --> Respondida: Entrega de información (Total/Parcial)
-    EnRevision --> Vencida: Silencio Administrativo Negativo (10 días hábiles sin respuesta)
-    Respondida --> Apelable
+    Presentada --> EnRevision: recepción por entidad
+    EnRevision --> Subsanacion: observación dentro de 2 días hábiles
+    Subsanacion --> EnRevision: ciudadano subsana
+    EnRevision --> Respondida: entrega total/parcial o denegatoria
+    EnRevision --> Vencida: silencio administrativo negativo
+    Respondida --> Apelable: plazo legal aplicable
     Vencida --> Apelable
     Apelable --> [*]
 ```
 
-### Segunda Instancia: Apelación ante el TTAIP
-Si la entidad deniega la solicitud o incurre en silencio administrativo negativo, el ciudadano puede apelar ante el Tribunal (TTAIP). Al presentarse la apelación, se genera el Expediente TTAIP con formato: `NNNNN-AAAA-JUS/TTAIP`.
+Reglas principales:
 
-- **Plazo de elevación:** La entidad pública debe elevar el recurso al TTAIP en un plazo máximo de 2 días hábiles.
-- **Etapa de Calificación (Admisibilidad):** El TTAIP tiene 7 días hábiles para evaluar el recurso:
-  - **Admisible:** El expediente pasa directamente a la etapa de resolución final.
-  - **Inadmisible:** Se requiere subsanación. El ciudadano tiene 2 días hábiles para corregir.
-  - **Improcedente:** Rechazo de plano (duplicidad, fuera de plazo, materia no regulada).
-- **Notificación Obligatoria:** La admisión del recurso debe notificarse tanto al recurrente como a la entidad pública antes de resolver el fondo.
-- **Resolución Final:** El TTAIP cuenta con 10 días hábiles para emitir la resolución final.
-- **Cédulas de Notificación:** Toda resolución del TTAIP requiere emitir dos cédulas independientes (una para el ciudadano, otra para la entidad pública). La única excepción es el auto de inadmisibilidad, que se notifica únicamente al ciudadano apelante.
+| Regla | Criterio |
+| --- | --- |
+| Plazo SAIP | 10 días hábiles desde el día hábil siguiente a la recepción. |
+| Subsanación | Solo dentro de los 2 primeros días hábiles. |
+| Liquidación de costos | Debe notificarse antes del vencimiento del plazo legal. |
+| Silencio administrativo | Aplica si la entidad no responde dentro del plazo. |
+| Apelación | Ante denegatoria expresa aplica el plazo legal que se defina con criterio legal/producto; ante silencio administrativo negativo no existe plazo perentorio. |
 
----
+### Flujo TTAIP
 
-## 🔄 Contrato API y Sincronización OpenAPI
+```mermaid
+stateDiagram-v2
+    [*] --> PendienteElevacion
+    PendienteElevacion --> EnCalificacionPrimera: elevación en 2 días hábiles
+    EnCalificacionPrimera --> Improcedente: rechazo definitivo
+    EnCalificacionPrimera --> EnSubsanacion: inadmisible
+    EnCalificacionPrimera --> Admitido: admisible
+    EnSubsanacion --> EnCalificacionSegunda: subsanado
+    EnSubsanacion --> NoPresentado: no subsana
+    EnCalificacionSegunda --> Improcedente
+    EnCalificacionSegunda --> NotificacionSegunda
+    NotificacionSegunda --> EnResolucion
+    Admitido --> EnResolucion
+    EnResolucion --> Resuelto
+    Improcedente --> [*]
+    NoPresentado --> [*]
+    Resuelto --> [*]
+```
 
-El backend actúa como el Single Source of Truth del contrato REST, publicando la especificación OpenAPI v3 en `/v3/api-docs`. Los scripts de sincronización permiten descargar este contrato y compilar los tipos de TypeScript para el frontend Angular.
+Reglas principales:
+
+| Etapa | Plazo / criterio |
+| --- | --- |
+| Elevación | 2 días hábiles para remitir el recurso al TTAIP. |
+| Primera calificación | 7 días hábiles para calificar admisibilidad. |
+| Subsanación | 2 días hábiles cuando el recurso es inadmisible. |
+| Segunda calificación | Determina admisión posterior o improcedencia. |
+| Notificación | La segunda calificación debe notificarse antes de iniciar resolución final. |
+| Resolución final | 10 días hábiles para emitir decisión final. |
+
+Decisiones de resolución final:
+
+| Decisión | Resultado |
+| --- | --- |
+| Fundado | Ordena entregar la información. |
+| Fundado en parte | Ordena entrega parcial. |
+| Infundado | Confirma la decisión o conducta de la entidad. |
+| Infundado en parte | Confirma parcialmente. |
+| Improcedente | Rechazo por causal formal o de fondo. |
+| Conclusión por sustracción de la materia | La entidad entrega información durante el trámite. |
+| Conclusión por desistimiento | El ciudadano desiste del recurso. |
+
+## Contrato API y sincronización
+
+El backend publica el contrato OpenAPI en `/v3/api-docs`. Ese contrato se sincroniza hacia el frontend y mobile para mantener consistencia entre clientes.
 
 ```mermaid
 sequenceDiagram
-    participant B as backend/ (Spring Boot)
+    participant B as backend/
+    participant O as OpenAPI /v3/api-docs
     participant S as scripts/sync-openapi
-    participant F as frontend/ (Angular)
-    participant M as mobile/ (Android Reference)
+    participant F as frontend/
+    participant M as mobile/
 
-    Note over B: Servidor corriendo en puerto 8080
-    S->>B: Petición GET /v3/api-docs
-    B-->>S: OpenAPI JSON schema
-    S->>F: Escribe frontend/openapi.json
-    Note over F: Ejecuta openapi-typescript
-    F->>F: Genera src/app/api/schema.ts
-    S->>M: Copia openapi.json a mobile/ como referencia
+    B->>O: Publica contrato REST
+    S->>O: Descarga especificación JSON
+    S->>F: Actualiza frontend/openapi.json
+    S->>F: Regenera src/app/api/schema.ts
+    S->>M: Actualiza mobile/openapi.json como referencia
 ```
 
-### Comandos de Sincronización (Ejecutar desde la raíz)
+Sincronización en Windows:
 
-**En Windows (PowerShell):**
 ```powershell
 .\scripts\sync-openapi.ps1
 ```
 
-**En Linux / macOS (Bash):**
+Sincronización en Linux/macOS:
+
 ```bash
 ./scripts/sync-openapi.sh
 ```
 
----
+Regla operativa: si cambian endpoints, DTOs o modelos de API en `backend/`, sincronizar OpenAPI y validar los consumidores impactados.
 
-## 🔒 Seguridad y Control de Accesos
+## Seguridad y roles
 
-La plataforma implementa un diseño defensivo que se adhiere a las prácticas líderes en AppSec:
+La autenticación principal se resuelve con JWT emitido por el backend. El frontend usa guards e interceptor de autenticación. Mobile consume el backend con Retrofit y conserva Firebase Cloud Messaging exclusivamente para push notifications.
 
-1. **Aislamiento de Infraestructura:** El frontend y la app móvil jamás interactúan directamente con bases de datos ni buckets de almacenamiento externo. Todo pasa por el backend Spring Boot.
-2. **Validación de Archivos:** Las cargas multipart se validan estrictamente en el backend por:
-   - **Tamaño:** Límite máximo de 10 MB.
-   - **Extensión:** Coincidencia exacta con lista blanca (`.pdf`, `.png`, `.jpg`, `.jpeg`).
-   - **Tipo MIME real:** Inspección del Content-Type de la cabecera.
-3. **Firmas de Commits (GPG):** Gobernanza estricta. Todo commit en el flujo del proyecto debe estar firmado con GPG por los desarrolladores y seguir las convenciones de Gitmoji y Conventional Commits.
-4. **Protección de Tokens FCM:** Los tokens de notificaciones push de los terminales móviles se almacenan encriptados en base de datos (`AES-GCM-256`) y localmente en `EncryptedSharedPreferences`.
+| Rol | Enum | Superficie principal | Capacidades |
+| --- | --- | --- | --- |
+| Ciudadano | `CIUDADANO` | Web pública, mobile | Registro, login, SAIP, consulta, apelación y subsanación. |
+| Funcionario | `FUNCIONARIO` | Web interna | Gestionar solicitudes de su entidad y emitir respuestas. |
+| TTAIP | `TTAIP` | Web interna | Calificar, admitir, resolver y revisar expedientes. |
+| Administrador | `ADMIN` / `ADMINISTRADOR` | Web interna | Gestión de usuarios, entidades, reportes e indicadores. |
 
----
+Principios de seguridad:
+
+- Validar entradas en backend con Jakarta Bean Validation.
+- Proteger endpoints con Spring Security y roles.
+- Usar CORS configurable por entorno.
+- Mantener secretos fuera del repositorio y usar variables de entorno.
+- Validar tamaño, extensión y tipo de archivos cargados.
+- Evitar logs con tokens, credenciales o información sensible.
+
+### Motor común de notificaciones
+
+El backend persiste intentos de notificación para SAIP y TTAIP. El modo `MOCK` se usa en desarrollo local y Newman; el modo `SMTP` habilita correo real mediante variables de entorno. `CASILLA_ELECTRONICA` cuenta con un adaptador preparado que responde explícitamente como no disponible hasta contar con el contrato API oficial. Mobile registra, renueva y revoca tokens FCM contra endpoints autenticados; el adapter de envío FCM permanece preparado pero reporta explícitamente que falta la integración Firebase Admin. No existe fallback automático entre canales.
+
+Para despliegues productivos, activar `SPRING_PROFILES_ACTIVE=prod`. Ese perfil usa `SMTP` por defecto, rechaza `MOCK`, exige configuración externa de base de datos, JWT, CORS y SMTP, desactiva inicialización automática del seed y mantiene OpenAPI/Swagger deshabilitados salvo habilitación operativa explícita.
 
 ## 📦 Gestión de Almacenamiento Seguro (Supabase S3 API)
 
-Los documentos presentados por los ciudadanos y las resoluciones del TTAIP se persisten en el Object Storage privado de Supabase utilizando su API compatible con AWS S3.
+La plataforma SAIP y Apelaciones TTAIP delega la persistencia de los archivos binarios (PDFs, imágenes de constancias, resoluciones y subsanaciones) en un Object Storage externo, utilizando la API compatible con S3 de Supabase.
 
-### Arquitectura de Subida/Descarga Mediada (Proxy Seguro)
+### 1. Arquitectura del Flujo Mediado (Aislamiento de Infraestructura)
 
-El cliente interactúa únicamente con el backend. El backend gestiona el flujo de streams binarios hacia el storage sin exponer URLs públicas directas ni credenciales maestras.
+Por directivas de ciberseguridad y de diseño defensivo (AppSec), **el Frontend Web y la App Móvil Android jamás se conectan directamente con Supabase o S3**. Todo el acceso de lectura y escritura es mediado por el Backend (Spring Boot), el cual actúa como un proxy inverso y orquestador transaccional.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Cliente (Web / App)
+    actor Cliente as Cliente (Web / Mobile)
     participant API as Backend (Spring Boot)
-    database DB as PostgreSQL
-    participant Storage as Supabase Storage (S3 API)
+    database DB as PostgreSQL (saip_db)
+    participant S3 as Supabase Storage (S3 API)
 
-    Note over Cliente, Storage: Carga de Archivo (Upload)
-    Cliente->>API: POST /api/documentos/upload (Multipart file)
-    Note over API: Valida tamaño, extensión y MIME
-    API->>Storage: PUT /integration-tests/opaque-uuid-key.pdf
-    Storage-->>API: 200 OK (Upload Success)
-    API->>DB: INSERT INTO documentos (storage_key, hash_sha256, ...)
-    DB-->>API: OK (documento_id)
-    API-->>Cliente: 201 Created (DocumentoMetadataDTO sin credenciales)
+    Note over Cliente, S3: Flujo de Subida (Upload) Mediada
+    Cliente->>API: POST /api/documentos/upload (MultipartFile + metadata)
+    Note over API: Valida tamaño, extensión y tipo MIME
+    API->>S3: PUT /bucket/integration-tests/opaque-key.pdf (S3 client)
+    S3-->>API: Confirmación de guardado en Bucket
+    API->>DB: INSERT INTO documentos (nombre_archivo, ruta_archivo, hash_sha256, ...)
+    Note over DB: Transacción confirmada en DB
+    DB-->>API: OK (id_documento)
+    API-->>Cliente: 201 Created (DocumentoMetadataDTO sin llaves físicas)
 
-    Note over Cliente, Storage: Descarga Segura (Download)
+    Note over Cliente, S3: Flujo de Descarga (Download) Mediada
     Cliente->>API: GET /api/documentos/{id}/download
-    Note over API: Verifica credenciales JWT y posesión del expediente
-    API->>DB: SELECT storage_key, storage_bucket FROM documentos WHERE id = {id}
-    DB-->>API: Retorna llaves de ubicación
-    API->>Storage: GET /integration-tests/opaque-uuid-key.pdf
-    Storage-->>API: Stream binario (archivo)
-    API-->>Cliente: Stream binario (200 OK) con Content-Type
+    Note over API: Valida roles y ownership del expediente
+    API->>DB: SELECT ruta_archivo, storage_bucket FROM documentos WHERE id = {id}
+    DB-->>API: Datos del archivo (storageKey)
+    API->>S3: GET /bucket/integration-tests/opaque-key.pdf
+    S3-->>API: Stream binario de datos
+    API-->>Cliente: Stream binario (200 OK) con Content-Type correcto
 ```
 
-### Matriz de Configuración del Almacenamiento
+**Ventajas de Seguridad del Flujo Mediado:**
+*   **Llaves ocultas:** Las credenciales maestras de AWS/Supabase, nombres físicos de buckets y tokens de API no se exponen al cliente.
+*   **URLs efímeras/ocultas:** No se generan URLs públicas directas ni firmadas accesibles desde el exterior. El cliente descarga y sube a través de `/api/documentos`.
+*   **Aislamiento de metadata:** La API responde con `DocumentoMetadataDTO`, el cual oculta explícitamente los campos sensibles `storageKey`, `storageBucket`, `storageProvider` y cualquier URL física. El cliente solo recibe un identificador seguro y el nombre original del archivo.
 
-El backend carga las siguientes variables de entorno para habilitar el motor compatible con S3 cuando el perfil activo es `staging` o `prod`:
+### 2. Matriz de Variables de Entorno para Almacenamiento
 
-| Variable de Entorno | Propiedad de Spring | Propósito | Ejemplo / Valor |
+El backend de Spring Boot se configura mediante las siguientes propiedades del sistema y variables de entorno para activar la persistencia S3/Supabase en el perfil de `staging`:
+
+| Propiedad Spring / Variable de Entorno | Descripción | Ejemplo de Valor | Requerido |
 | --- | --- | --- | --- |
-| `APP_STORAGE_PROVIDER` | `pe.gob.saip.storage.provider` | Define el backend de almacenamiento | `S3_COMPATIBLE` (Default: `LOCAL`) |
-| `SUPABASE_S3_ENDPOINT` | `pe.gob.saip.storage.s3.endpoint` | URL de conexión S3 de Supabase | `https://[id-proyecto].supabase.co/storage/v1/s3` |
-| `SUPABASE_S3_BUCKET_NAME`| `pe.gob.saip.storage.s3.bucket-name`| Nombre del bucket privado | `saip-documents` |
-| `SUPABASE_S3_ACCESS_KEY` | `pe.gob.saip.storage.s3.access-key` | Credencial de acceso (S3 Key) | `9cf931ac87...` |
-| `SUPABASE_S3_SECRET_KEY` | `pe.gob.saip.storage.s3.secret-key` | Secreto de firma (S3 Secret) | `afb8901cb...` |
-| `AWS_REGION` | `pe.gob.saip.storage.s3.region` | Región AWS virtual | `us-east-1` |
+| `pe.gob.saip.storage.provider`<br>`APP_STORAGE_PROVIDER` | Define el proveedor de almacenamiento local o remoto. | `S3_COMPATIBLE` (o `LOCAL`) | Sí |
+| `pe.gob.saip.storage.s3.endpoint`<br>`SUPABASE_S3_ENDPOINT` | URL del Endpoint compatible con S3 provisto por Supabase. | `https://uxgawcsqkxgscx.supabase.co/storage/v1/s3` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.bucket-name`<br>`SUPABASE_S3_BUCKET_NAME` | Nombre del Bucket creado en Supabase. | `saip-documents` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.access-key`<br>`SUPABASE_S3_ACCESS_KEY` | Clave de acceso generada en Supabase (S3 Access Key). | `88c2b7...` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.secret-key`<br>`SUPABASE_S3_SECRET_KEY` | Clave secreta generada en Supabase (S3 Secret Key). | `df92c1a...` | Sí (si provider=S3) |
+| `pe.gob.saip.storage.s3.region`<br>`AWS_REGION` | Región AWS virtual del servicio. | `us-east-1` | Sí (si provider=S3) |
 
-### Guía de Configuración en Supabase Console
-1. **Creación del Bucket:** Vaya a **Storage** -> **New Bucket**. Defina el nombre del bucket (ej. `saip-documents`).
-2. **Establecer Privacidad:** Configure el interruptor **Public** en **False** (Bucket privado).
-3. **Obtención de Llaves S3:** Navegue a **Project Settings** -> **API** -> **S3 Access Keys**. Genere un nuevo par de llaves y guarde de forma segura el *Access Key* y el *Secret Key*.
-4. **Políticas de Acceso (RLS):** Mantenga el bucket sin políticas RLS habilitadas para clientes externos (`anon`, `authenticated`). El backend utilizará la credencial administrativa S3 directamente.
+> [!WARNING]
+> **REGLA DE ORO DE APPSEC:** Está estrictamente prohibido escribir llaves, credenciales, tokens o secretos en duro (*hardcoded*) dentro de los archivos `application.properties`, YAML o en cualquier archivo bajo control de versiones. Toda credencial de infraestructura debe ser inyectada dinámicamente mediante variables de entorno o gestores de secretos.
 
----
+### 3. Guía de Configuración Defensiva en la Consola de Supabase
 
-## 🔥 Integración y Configuración de Firebase Cloud Messaging (FCM)
+Para aislar por completo la infraestructura de almacenamiento y evitar accesos públicos anónimos a través de la API REST nativa de Supabase, el Bucket debe ser configurado defensivamente:
 
-La aplicación móvil Android recibe notificaciones push sobre actualizaciones críticas de sus trámites mediante Firebase Cloud Messaging.
+1.  **Bucket Privado:** Al crear el bucket en el panel de control de Supabase (`Storage` -> `New Bucket`), la casilla de verificación **Public** debe establecerse como **False** (Bucket estrictamente privado).
+2.  **Desactivación de Políticas de Acceso Público (RLS):** No crees políticas RLS que permitan accesos `select`, `insert`, `update` o `delete` para roles anónimos (`anon`) o usuarios autenticados directamente en el cliente de Supabase (`authenticated`). El backend se conecta de forma externa utilizando credenciales S3 (Access/Secret Key) con privilegios administrativos dedicados, haciendo que el almacenamiento de Supabase sea invisible al exterior del backend.
 
-### Ciclo de Registro de Tokens FCM en Dispositivos
+### 4. Guía de Ejecución y Verificación Local (Paso a Paso)
 
-El backend expone un endpoint seguro `/api/push/tokens` para registrar los identificadores de dispositivo de los ciudadanos autenticados de manera segura.
+Para arrancar el backend Spring Boot localmente apuntando a Supabase y verificar el funcionamiento de las subidas y descargas mediadas:
 
-```mermaid
-sequenceDiagram
-    participant Device as App Móvil (Android)
-    participant FCM as Firebase Cloud Messaging
-    participant API as Backend (Spring Boot)
-    database DB as PostgreSQL
+#### Paso 1: Configurar las variables de entorno en la terminal
+Ejecuta en tu terminal de comandos (reemplazando con tus credenciales de Supabase):
 
-    Note over Device: Inicio de aplicación
-    Device->>FCM: Solicita token de terminal
-    FCM-->>Device: Retorna token de registro FCM
-    Note over Device: Valida sesión activa
-    Device->>API: POST /api/push/tokens (Cuerpo con token encriptado)
-    Note over API: Valida roles de usuario
-    Note over API: Cifra el token con AES-GCM-256
-    API->>DB: INSERT/UPDATE push_token (user_id, token_encriptado, ...)
-    DB-->>API: Confirmación de guardado
-    API-->>Device: 200 OK (Registro exitoso)
+**PowerShell (Windows):**
+```powershell
+$env:SPRING_PROFILES_ACTIVE="staging"
+$env:APP_STORAGE_PROVIDER="S3_COMPATIBLE"
+$env:SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
+$env:SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
+$env:SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
+$env:SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
+$env:AWS_REGION="us-east-1"
 ```
 
-### Guía de Configuración de Firebase
-1. **Crear Proyecto en Firebase Console:** Ingrese a [Firebase Console](https://console.firebase.google.com/), cree un proyecto y asígnele el nombre `misaip`.
-2. **Registrar Aplicación Móvil Android:** En el asistente, registre las aplicaciones con los package names correspondientes a los flavors del proyecto:
-   - Ciudadano: `com.gestion.misaip.ciudadano`
-   - Funcionario: `com.gestion.misaip.funcionario`
-   - TTAIP: `com.gestion.misaip.ttaip`
-3. **Descargar Archivo de Servicios:** Descargue el archivo `google-services.json` correspondiente a su aplicación de Firebase y colóquelo dentro de la carpeta: `mobile/app/`.
-4. **Generar Archivo de Credenciales del Servidor:**
-   - Ingrese a Firebase Console, vaya a **Configuración del Proyecto** -> **Cuentas de Servicio**.
-   - Haga clic en **Generar nueva clave privada**. Se descargará un archivo JSON (Service Account Credentials).
-5. **Configuración de Variables de Entorno en el Backend:**
-   - Habilite el motor push: `APP_NOTIFICATIONS_PUSH_ENABLED=true`
-   - Establezca la clave secreta de cifrado de tokens (32 bytes en Base64): `FCM_TOKEN_ENCRYPTION_KEY_BASE64=[tu-clave-base64]`
-   - Configure las credenciales de Firebase en el backend inyectando el JSON descargado directamente en formato string de una sola línea:
-     `FIREBASE_CREDENTIALS_JSON={"type": "service_account", "project_id": "misaip", ...}`
-
----
-
-## 🗄️ Persistencia de Datos (PostgreSQL)
-
-La plataforma utiliza PostgreSQL como motor principal de base de datos relacional. El esquema oficial se encuentra versionado en la carpeta `database/`.
-
-* **Esquema Inicial y Datos Semilla:** El script completo de creación de tablas, índices y datos iniciales (entidades públicas, tipos de documentos preestablecidos, usuarios de prueba) está ubicado en:
-  `database/postgres/script_saip_db_postgres.sql`
-
-* **Restablecimiento Rápido de Base de Datos:** Si necesita restaurar la base de datos local a su estado inicial para realizar pruebas limpias, ejecute desde la raíz del monorepo:
-  - **En Windows (PowerShell):**
-    ```powershell
-    .\scripts\reset-local-db.ps1 -ConfirmReset
-    ```
-  - **En Linux / macOS (Bash):**
-    ```bash
-    ./scripts/reset-local-db.sh --confirm
-    ```
-
----
-
-## 📮 Validación End-to-End con Newman / Postman
-
-El monorepo cuenta con una suite completa de pruebas de regresión automatizadas de API escritas para Postman y ejecutadas en consola utilizando Newman. Las pruebas cubren el ciclo transaccional completo: autenticación, creación de solicitudes, subsanaciones, resoluciones y generación de cédulas de notificación.
-
-### Ejecución de Pruebas Newman
-
-Las pruebas requieren que el backend Spring Boot esté levantado localmente en el puerto `8080` utilizando el modo de notificaciones `MOCK` para evitar envíos de correos reales.
-
-**Paso 1: Levantar el backend con perfil local y notificaciones MOCK**
+**Bash (Linux/macOS):**
 ```bash
-$env:APP_NOTIFICATIONS_MODE="MOCK" # PowerShell
-# export APP_NOTIFICATIONS_MODE="MOCK" # Bash
+export SPRING_PROFILES_ACTIVE="staging"
+export APP_STORAGE_PROVIDER="S3_COMPATIBLE"
+export SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
+export SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
+export SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
+export SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
+export AWS_REGION="us-east-1"
+```
+
+#### Paso 2: Iniciar el backend Spring Boot
+```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
-**Paso 2: Ejecutar los tests de Newman**
-En una nueva terminal, diríjase al directorio `postman` y corra las pruebas:
+#### Paso 3: Simular una carga multipart utilizando `curl`
+El contrato de carga exige mapear el documento a una relación de negocio específica. Por ejemplo, vinculando el archivo a una solicitud SAIP (con `solicitudId`):
+
 ```bash
+curl -X POST http://localhost:8080/api/documentos/upload \
+  -H "Authorization: Bearer <tu-token-jwt>" \
+  -F "file=@/ruta/a/tu/archivo.pdf" \
+  -F "tipoDocumento=SOLICITUD_ORIGINAL" \
+  -F "solicitudId=1"
+```
+
+*(El backend validará la extensión, cargará el archivo a Supabase, registrará la entrada en la base de datos de PostgreSQL y retornará el `DocumentoMetadataDTO` con el ID autogenerado del documento).*
+
+#### Paso 4: Simular una descarga/stream seguro desde el backend
+Utilizando el ID de documento retornado en el paso anterior, realiza la petición GET de descarga:
+
+```bash
+curl -O -J -L http://localhost:8080/api/documentos/1/download \
+  -H "Authorization: Bearer <tu-token-jwt>"
+```
+
+*(El backend descargará el archivo desde Supabase S3 en memoria y lo transmitirá al cliente en un flujo continuo o stream, sin almacenar copias físicas locales ni exponer URLs internas).*
+
+## Ejecución local
+
+### Requisitos
+
+| Herramienta | Uso |
+| --- | --- |
+| Java 25 | Backend Spring Boot. |
+| JDK 17 | Build Android. |
+| PostgreSQL 16+ | Base de datos `saip_db` y cliente `psql`. |
+| Node.js 22 | Frontend Angular y docs Astro. |
+| npm 11.x | Gestión de paquetes web. |
+| Android Studio / SDK | Build y ejecución mobile. |
+| PowerShell o Bash | Scripts de sincronización OpenAPI. |
+
+### Backend
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Comandos útiles:
+
+```powershell
+cd backend
+.\mvnw.cmd compile
+.\mvnw.cmd test
+.\mvnw.cmd package -DskipTests
+```
+
+Variables relevantes:
+
+| Variable | Default local |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/saip_db` |
+| `DB_USERNAME` | `postgres` |
+| `DB_PASSWORD` | Vacío; definir externamente |
+| `JWT_SECRET` | Solo desarrollo local |
+| `JWT_EXPIRATION_MS` | `86400000` |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes locales y Postman |
+| `APP_STORAGE_PROVIDER` | `local` |
+| `APP_STORAGE_LOCAL_BASE_PATH` | `${user.home}/.saip-storage`; configurar externamente en producción |
+| `APP_STORAGE_S3_ENDPOINT` | Obligatoria con `APP_STORAGE_PROVIDER=s3`; URL S3-compatible |
+| `APP_STORAGE_S3_REGION` | `us-east-1` |
+| `APP_STORAGE_S3_BUCKET` | Obligatoria con provider `s3` |
+| `APP_STORAGE_S3_ACCESS_KEY` | Obligatoria con provider `s3`; secreto externo |
+| `APP_STORAGE_S3_SECRET_KEY` | Obligatoria con provider `s3`; secreto externo |
+| `APP_STORAGE_S3_FORCE_PATH_STYLE` | `true` |
+| `APP_STORAGE_MAX_FILE_SIZE` | `10485760` bytes |
+| `APP_STORAGE_MAX_REQUEST_SIZE` | `11534336` bytes para archivo y overhead multipart |
+| `APP_STORAGE_ALLOWED_CONTENT_TYPES` | PDF, PNG, JPEG y texto plano |
+
+PostgreSQL almacena únicamente metadatos documentales. Los binarios se escriben
+fuera del repositorio mediante `StorageProvider`. `local` sigue siendo el
+default y genera claves opacas sin nombres originales ni datos personales.
+El provider `s3` usa AWS SDK v2 contra endpoints S3-compatible, incluido
+Supabase Storage cuando exista un bucket aprovisionado externamente. El backend
+no crea buckets, no devuelve URLs públicas y exige endpoint, bucket y
+credenciales mediante variables externas.
+
+### Validación S3-compatible opt-in
+
+La comprobación contra un bucket real de staging no corre dentro de la suite
+normal. El bucket debe existir previamente en Supabase Storage o en el proveedor
+S3-compatible elegido; el backend y los scripts no crean buckets ni cambian sus
+permisos. El endpoint debe copiarse de la configuración S3 del proveedor, sin
+hardcodearlo ni versionarlo.
+
+Definir en la sesión o gestor de secretos:
+
+- `RUN_S3_STORAGE_INTEGRATION_TESTS=true`
+- `APP_STORAGE_PROVIDER=s3`
+- `APP_STORAGE_S3_ENDPOINT`
+- `APP_STORAGE_S3_REGION`
+- `APP_STORAGE_S3_BUCKET`
+- `APP_STORAGE_S3_ACCESS_KEY`
+- `APP_STORAGE_S3_SECRET_KEY`
+- `APP_STORAGE_S3_FORCE_PATH_STYLE`
+- `APP_STORAGE_S3_TEST_PREFIX` opcional; default `integration-tests`
+
+Ejecutar desde la raíz:
+
+```powershell
+.\scripts\storage\validate-s3-storage.ps1
+```
+
+```bash
+bash ./scripts/storage/validate-s3-storage.sh
+```
+
+La prueba sube un texto controlado con una key opaca bajo el prefijo de pruebas,
+valida existencia, descarga, contenido y SHA-256, y elimina el objeto en la
+misma ejecución. No usa archivos de ciudadanos, no guarda binarios en
+PostgreSQL y no imprime credenciales, bucket ni endpoint.
+
+### Newman reproducible
+
+La colección Newman crea datos runtime para validar flujos reales. Si el entorno
+local acumuló fixtures, recrear explícitamente la base local y volver a cargar el
+seed oficial:
+
+```powershell
+.\scripts\reset-local-db.ps1 -ConfirmReset
+$env:APP_NOTIFICATIONS_MODE='MOCK'
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+En otra terminal:
+
+```powershell
 cd postman
-npm install
 npm run test:api:diagnostic
 ```
 
-El script verificará el estado de las aserciones e imprimirá un reporte detallado en consola. Puede cambiar a `npm run test:api:bail` si desea que la ejecución se detenga ante la primera aserción fallida.
+El script bloquea hosts remotos, exige confirmación explícita y no se ejecuta de
+forma automática. Newman usa variables dinámicas y tokens JWT vacíos en el
+environment versionado.
 
----
+### Frontend
 
-## 🚀 Ejecución Local Paso a Paso
-
-### Prerrequisitos de Software
-- **Java SE Development Kit (JDK) 25** (Recomendado: Eclipse Temurin JDK 25)
-- **Node.js v22** (con npm v11.x)
-- **Android Studio** (Koala o superior) con SDK de Android compatible y Emulador
-- **PostgreSQL v16** instalado y corriendo en puerto `5432`
-
----
-
-### Iniciar Base de Datos Local
-1. Cree la base de datos `saip_db` en su instancia local de PostgreSQL.
-2. Ejecute el script de inicialización oficial en su base de datos:
-   ```bash
-   psql -U postgres -d saip_db -f database/postgres/script_saip_db_postgres.sql
-   ```
-
----
-
-### Iniciar Backend (Spring Boot)
-Diríjase a la carpeta del backend y arranque la aplicación (la base de datos se conectará usando credenciales locales por defecto):
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-*La API estará disponible en `http://localhost:8080`. Puede inspeccionar la documentación interactiva en `http://localhost:8080/swagger-ui.html`.*
-
----
-
-### Iniciar Frontend (Angular)
-Abra una nueva terminal, instale las dependencias locales y arranque el servidor de desarrollo de Angular:
-```bash
+```powershell
 cd frontend
 npm install
 npm start
 ```
-*El sitio web estará disponible en `http://localhost:4200`.*
 
----
+Comandos útiles:
 
-### Iniciar App Móvil (Android)
-1. Abra la carpeta `mobile/` en **Android Studio**.
-2. Deje que Gradle sincronice las dependencias descritas en el archivo Version Catalog (`libs.versions.toml`).
-3. Compile y despliegue el flavor de la app deseado (ej. `ciudadanoDebug`) en su terminal o emulador ejecutando:
-   ```bash
-   ./gradlew :app:assembleCiudadanoDebug
-   ```
-
----
-
-### Iniciar Sitio de Documentación (Astro)
-Si desea visualizar el portal de documentación de la plataforma localmente:
-```bash
-cd docs
-npm install
-npm start
+```powershell
+cd frontend
+npm test
+npm run build
+npm run generate:api:live
 ```
-*El sitio estará disponible en `http://localhost:4321`.*
 
----
+### Mobile
 
-## 🧪 Validación y Pipelines de CI/CD
+```powershell
+cd mobile
+.\gradlew.bat assembleDebug
+```
 
-El repositorio implementa flujos de integración continua independientes en GitHub Actions que se ejecutan automáticamente al realizar peticiones de Pull Request hacia la rama `develop` o confirmaciones directas en `main`.
+Comandos útiles:
 
-| Pipeline | Ruta Desencadenadora | Alcance de Validación |
+```powershell
+cd mobile
+.\gradlew.bat clean compileDebugKotlin
+.\gradlew.bat test
+.\gradlew.bat clean compileDebugKotlin test
+```
+
+> Para Firebase Cloud Messaging, colocar el archivo `google-services.json` requerido por el módulo Android correspondiente.
+> Restringir la API key Android preexistente desde Firebase Console por package name y certificado SHA. No editar ni mover `google-services.json` como parte de esta configuración.
+
+### Docs
+
+```powershell
+cd docs
+npm ci
+npm start
+npm run build
+```
+
+Para publicar la documentación con sitemap canónico:
+
+```powershell
+$env:DOCS_SITE_URL='https://docs.misaip.gob.pe'
+cd docs
+npm run build
+```
+
+## Validación y CI
+
+Cada módulo tiene validaciones independientes. Esto reduce acoplamiento y permite que los cambios se revisen por superficie.
+
+| Módulo afectado | Validación local recomendada |
+| --- | --- |
+| `backend/` | `cd backend; .\mvnw.cmd test` |
+| `frontend/` | `cd frontend; npm test; npm run build` |
+| `mobile/` | `cd mobile; .\gradlew.bat clean compileDebugKotlin test` |
+| `docs/` | `cd docs; npm run build` |
+| API contract | Backend corriendo + `.\scripts\sync-openapi.ps1` |
+
+Pipelines de GitHub Actions:
+
+| Workflow | Trigger por paths | Validación |
 | --- | --- | --- |
-| **Backend CI** | `backend/**` | Compilación, tests unitarios en memoria (H2), empaquetado JAR y exportación automática del contrato OpenAPI. |
-| **Frontend CI** | `frontend/**` | Instalación de dependencias con `npm ci`, verificación de compilación estática de TypeScript (`tsc --noEmit`), tests unitarios Angular con Vitest y build productivo de distribución. |
-| **Mobile CI** | `mobile/**` | Validación de firmas del Gradle Wrapper, linting estático, compilación de APKs de prueba de los flavors y ejecución de tests unitarios de Kotlin. |
-| **Docs CI** | `docs/**` | Instalación limpia de dependencias y build estático del sitio Astro / Starlight. |
+| `backend-ci.yml` | `backend/**` | Compile, test, package y export OpenAPI. |
+| `frontend-ci.yml` | `frontend/**` | `npm ci`, TypeScript check, tests y build Angular. |
+| `mobile-ci.yml` | `mobile/**` | Gradle wrapper validation, debug APK y tests. |
+| `docs-ci.yml` | `docs/**` | Build del sitio Astro/Starlight. |
 
----
+```mermaid
+flowchart LR
+    Change["Cambio en PR"]
+    BackendCI["Backend CI"]
+    FrontendCI["Frontend CI"]
+    MobileCI["Mobile CI"]
+    DocsCI["Docs CI"]
+    Review["Revisión técnica"]
+    Develop["develop"]
 
-## 🗺️ Roadmap Técnico y Próximas Mejoras
+    Change --> BackendCI
+    Change --> FrontendCI
+    Change --> MobileCI
+    Change --> DocsCI
+    BackendCI --> Review
+    FrontendCI --> Review
+    MobileCI --> Review
+    DocsCI --> Review
+    Review --> Develop
+```
 
-* **Capa de Datos:** Implementar migraciones incrementales versionadas con Liquibase o Flyway en `backend/` para reemplazar el DDL autogenerado.
-* **Seguridad:** Configurar un pipeline de escaneo de vulnerabilidades estáticas (SAST) y análisis de dependencias (Dependency-Check) para evitar la introducción de secretos al repositorio.
-* **Mobile Offline:** Fortalecer el motor de WorkManager en el cliente móvil para habilitar resincronizaciones automáticas de peticiones de subsanación cuando se recupere la conectividad a Internet.
-* **DevOps:** Integrar generación automática de reportes de cobertura de código (JaCoCo para backend, LCOV para frontend) directamente en las interfaces de GitHub Actions.
+## Documentación y herramientas
 
----
+| Recurso | Descripción |
+| --- | --- |
+| `docs/` | Sitio técnico y funcional con Astro + Starlight. |
+| `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
+| `database/postgres/script_saip_db_postgres.sql` | Schema PostgreSQL oficial y seed local idempotente. |
+| `StorageProvider` | Abstracción backend para mantener binarios fuera de PostgreSQL y del repositorio. |
+| `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
 
-## 📄 Licencia
+## Roadmap técnico sugerido
 
-Este software se distribuye bajo los términos de la licencia **Apache License 2.0**.
+| Área | Próxima mejora |
+| --- | --- |
+| Backend | Incorporar migraciones versionadas y validar el provider S3-compatible contra staging aprovisionado externamente. |
+| Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
+| Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
+| Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |
+| DevOps | Incorporar release automation, coverage reports y quality gates por módulo. |
+
+## Licencia
+
+Este proyecto está licenciado bajo **Apache License 2.0**.
 
 Copyright 2025-2026 Kelly Medalit De La Cruz Lopez y Daniel Angel Leon Salazar.
 
-Consulte el archivo [LICENSE](LICENSE) para obtener detalles específicos sobre los derechos, restricciones y atribuciones del software.
+Consulta el archivo [LICENSE](LICENSE) para los términos completos.
