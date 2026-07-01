@@ -22,6 +22,7 @@ import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PaginaDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
+import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
 import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SolicitudResumenDTO;
@@ -579,6 +580,15 @@ public class SolicitudRestController {
                 .map(IntentoNotificacionDTO::from)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(intentos);
+    }
+
+    @Operation(summary = "Obtener seguimiento de plazo de una solicitud SAIP")
+    @GetMapping("/{id}/plazo-seguimiento")
+    public ResponseEntity<PlazoSeguimientoDTO> obtenerSeguimientoPlazo(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
+        PlazoSeguimientoDTO dto = solicitudService.obtenerSeguimientoPlazo(id);
+        return ResponseEntity.ok(dto);
     }
 
     private Pageable crearPaginacion(int pagina, int tamano, String orden) {
