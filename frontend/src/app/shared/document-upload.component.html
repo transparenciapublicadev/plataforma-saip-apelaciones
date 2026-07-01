@@ -70,9 +70,17 @@
   }
 
   @if (error()) {
-    <p class="rounded-md p-3 text-sm" role="alert" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
-      {{ error() }}
-    </p>
+    <div class="rounded-md p-3 text-sm space-y-1.5 text-left" role="alert" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
+      <p class="font-semibold">{{ error() }}</p>
+      @if (errorDetail()) {
+        <p class="text-xs opacity-90">{{ errorDetail() }}</p>
+      }
+      @if (errorDiagnosticHint()) {
+        <p class="text-xs font-mono border-t pt-1.5 mt-1.5" style="border-color: color-mix(in srgb, var(--destructive) 20%, transparent)">
+          <span class="font-bold">Sugerencia:</span> {{ errorDiagnosticHint() }}
+        </p>
+      }
+    </div>
   }
 
   @if (success()) {
