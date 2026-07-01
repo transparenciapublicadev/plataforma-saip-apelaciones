@@ -8,6 +8,7 @@ import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
+import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
@@ -50,6 +51,7 @@ public class SolicitudService {
     private final EncauzamientoSolicitudRepository encauzamientoRepository;
     private final LiquidacionCostoSolicitudRepository liquidacionRepository;
     private final EntidadRepository entidadRepository;
+    private final PlazoCalculadorService plazoCalculadorService;
 
     public SolicitudService(SolicitudRepository solicitudRepository,
                             ObservacionSolicitudRepository observacionRepository,
@@ -57,7 +59,8 @@ public class SolicitudService {
                             CronogramaEntregaParcialSolicitudRepository cronogramaRepository,
                             EncauzamientoSolicitudRepository encauzamientoRepository,
                             LiquidacionCostoSolicitudRepository liquidacionRepository,
-                            EntidadRepository entidadRepository) {
+                            EntidadRepository entidadRepository,
+                            PlazoCalculadorService plazoCalculadorService) {
         this.solicitudRepository = solicitudRepository;
         this.observacionRepository = observacionRepository;
         this.ampliacionRepository = ampliacionRepository;
@@ -65,6 +68,7 @@ public class SolicitudService {
         this.encauzamientoRepository = encauzamientoRepository;
         this.liquidacionRepository = liquidacionRepository;
         this.entidadRepository = entidadRepository;
+        this.plazoCalculadorService = plazoCalculadorService;
     }
 
     @Transactional(readOnly = true)
@@ -892,6 +896,28 @@ public class SolicitudService {
             return evento;
         }
         return actual + System.lineSeparator() + evento;
+    }
+
+    @Transactional(readOnly = true)
+    public PlazoSeguimientoDTO obtenerSeguimientoPlazo(Long solicitudId) {
+        Solicitud solicitud = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + solicitudId));
+
+        LocalDate fechaRegistro = solicitud.getFechaPresentacion().toLocalDate();
+        LocalDate fechaVencimiento = plazoCalculadorService.calcularFechaVencimiento(fechaRegistro, 10);
+        boolean enSilencioAdministrativo = plazoCalculadorService.verificarExcesoDePlazo(fechaRegistro, 10);
+
+        long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
+        if (diasRestantes < 0) {
+            diasRestantes = 0;
+        }
+
+        return new PlazoSeguimientoDTO(
+                fechaRegistro,
+                fechaVencimiento,
+                diasRestantes,
+                enSilencioAdministrativo
+        );
     }
 }
 
