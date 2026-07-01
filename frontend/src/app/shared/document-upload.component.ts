@@ -8,6 +8,7 @@ import {
   signal,
   viewChild
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   LucideCheckCircle2,
   LucideFileText,
@@ -20,7 +21,8 @@ import {
   DocumentoMetadata,
   DocumentoRelation,
   TipoDocumento,
-  validarDocumento
+  validarDocumento,
+  getDocumentoRelationEntry
 } from '../models/documento.model';
 import { DocumentoService } from '../services/documento.service';
 import { problemDetailsMessage } from '../utils/problem-details.util';
@@ -53,6 +55,8 @@ export class DocumentUploadComponent {
   readonly loading = signal(false);
   readonly dragging = signal(false);
   readonly error = signal('');
+  readonly errorDetail = signal('');
+  readonly errorDiagnosticHint = signal('');
   readonly success = signal('');
 
   onFileSelected(event: Event): void {
@@ -83,6 +87,8 @@ export class DocumentUploadComponent {
   clearFile(): void {
     this.selectedFile.set(null);
     this.error.set('');
+    this.errorDetail.set('');
+    this.errorDiagnosticHint.set('');
     const input = this.fileInput()?.nativeElement;
     if (input) {
       input.value = '';
@@ -98,13 +104,26 @@ export class DocumentUploadComponent {
     const validationError = validarDocumento(file);
     if (validationError) {
       this.error.set(validationError);
+      this.errorDetail.set('');
+      this.errorDiagnosticHint.set('');
       return;
     }
 
     this.loading.set(true);
     this.error.set('');
+    this.errorDetail.set('');
+    this.errorDiagnosticHint.set('');
     this.success.set('');
-    this.documentoService.upload(file, this.tipoDocumento(), this.relation()).subscribe({
+
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('tipoDocumento', this.tipoDocumento());
+
+    const relation = this.relation();
+    const [relationKey, relationId] = getDocumentoRelationEntry(relation);
+    formData.append(relationKey, relationId.toString());
+
+    this.documentoService.upload(formData).subscribe({
       next: (metadata) => {
         this.loading.set(false);
         this.success.set('Documento cargado correctamente.');
@@ -113,7 +132,25 @@ export class DocumentUploadComponent {
       },
       error: (error) => {
         this.loading.set(false);
-        this.error.set(problemDetailsMessage(error, 'No se pudo cargar el documento.'));
+        const msg = problemDetailsMessage(error, 'No se pudo cargar el documento.');
+        let detail = '';
+        let diagnosticHint = '';
+        
+        if (error instanceof HttpErrorResponse) {
+          const body = error.error;
+          if (body && typeof body === 'object') {
+            if (typeof body.detail === 'string' && body.detail.trim()) {
+              detail = body.detail;
+            }
+            if (typeof body.diagnosticHint === 'string' && body.diagnosticHint.trim()) {
+              diagnosticHint = body.diagnosticHint;
+            }
+          }
+        }
+        
+        this.error.set(msg);
+        this.errorDetail.set(detail);
+        this.errorDiagnosticHint.set(diagnosticHint);
       }
     });
   }
@@ -139,6 +176,8 @@ export class DocumentUploadComponent {
     if (validationError) {
       this.selectedFile.set(null);
       this.error.set(validationError);
+      this.errorDetail.set('');
+      this.errorDiagnosticHint.set('');
       const input = this.fileInput()?.nativeElement;
       if (input) {
         input.value = '';
@@ -148,5 +187,7 @@ export class DocumentUploadComponent {
 
     this.selectedFile.set(file);
     this.error.set('');
+    this.errorDetail.set('');
+    this.errorDiagnosticHint.set('');
   }
 }
