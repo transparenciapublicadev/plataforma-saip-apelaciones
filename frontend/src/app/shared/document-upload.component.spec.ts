@@ -41,11 +41,13 @@ describe('DocumentUploadComponent', () => {
     component.onFileSelected({ target: { files: [file], value: file.name } } as unknown as Event);
     component.upload();
 
-    expect(documentoService.upload).toHaveBeenCalledWith(
-      file,
-      'DOCUMENTO_ADJUNTO',
-      { solicitudId: 7 }
-    );
+    expect(documentoService.upload).toHaveBeenCalled();
+    const sentFormData = documentoService.upload.mock.calls[0][0] as FormData;
+    expect(sentFormData).toBeInstanceOf(FormData);
+    expect(sentFormData.get('file')).toEqual(file);
+    expect(sentFormData.get('tipoDocumento')).toBe('DOCUMENTO_ADJUNTO');
+    expect(sentFormData.get('solicitudId')).toBe('7');
+
     expect(component.selectedFile()).toBeNull();
     expect(component.success()).toContain('correctamente');
   });
@@ -60,11 +62,12 @@ describe('DocumentUploadComponent', () => {
     component.onFileSelected({ target: { files: [file], value: file.name } } as unknown as Event);
     component.upload();
 
-    expect(documentoService.upload).toHaveBeenCalledWith(
-      file,
-      'RESPUESTA_ENTIDAD',
-      { respuestaId: 22 }
-    );
+    expect(documentoService.upload).toHaveBeenCalled();
+    const sentFormData = documentoService.upload.mock.calls[0][0] as FormData;
+    expect(sentFormData).toBeInstanceOf(FormData);
+    expect(sentFormData.get('file')).toEqual(file);
+    expect(sentFormData.get('tipoDocumento')).toBe('RESPUESTA_ENTIDAD');
+    expect(sentFormData.get('respuestaId')).toBe('22');
   });
 
   it('shows RFC 9457 detail when upload fails', () => {

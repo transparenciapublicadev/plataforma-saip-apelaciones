@@ -18,16 +18,20 @@ export class DocumentoService {
   private readonly apiUrl = `${environment.apiUrl}/documentos`;
 
   upload(
-    file: File,
-    tipoDocumento: TipoDocumento,
-    relation: DocumentoRelation
+    file: File | FormData,
+    tipoDocumento?: TipoDocumento,
+    relation?: DocumentoRelation
   ): Observable<DocumentoMetadata> {
-    const [relationKey, relationId] = getDocumentoRelationEntry(relation);
+    if (file instanceof FormData) {
+      return this.http.post<DocumentoMetadata>(`${this.apiUrl}/upload`, file);
+    }
+
+    const [relationKey, relationId] = getDocumentoRelationEntry(relation!);
     const formData = new FormData();
     formData.append('file', file, file.name);
 
     const params = new HttpParams()
-      .set('tipoDocumento', tipoDocumento)
+      .set('tipoDocumento', tipoDocumento!)
       .set(relationKey, relationId);
 
     return this.http.post<DocumentoMetadata>(`${this.apiUrl}/upload`, formData, { params });
