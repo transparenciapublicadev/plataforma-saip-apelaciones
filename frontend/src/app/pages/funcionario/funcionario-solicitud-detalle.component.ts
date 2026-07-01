@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { SolicitudService } from '../../services/solicitud.service';
+import { SolicitudService, PlazoSeguimientoDTO } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { EntidadService } from '../../services/entidad.service';
 import {
@@ -50,6 +50,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   private readonly entidadService = inject(EntidadService);
 
   solicitud = signal<Solicitud | null>(null);
+  plazoSeguimiento = signal<PlazoSeguimientoDTO | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
   activeTab = signal<DetailTabId>('solicitud');
@@ -252,6 +253,14 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       next: (data) => {
         this.solicitud.set(data);
         this.activeTab.set(preferredTab || (this.puedeVerRespuesta() ? 'respuesta' : 'solicitud'));
+        
+        if (data && data.id) {
+          this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
+            next: (plazo) => this.plazoSeguimiento.set(plazo),
+            error: () => console.warn('No se pudo cargar el seguimiento de plazo de la solicitud.')
+          });
+        }
+        
         this.loading.set(false);
       },
       error: () => {

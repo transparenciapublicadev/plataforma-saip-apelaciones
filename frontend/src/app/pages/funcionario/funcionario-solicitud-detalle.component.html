@@ -47,6 +47,33 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
+      @if (plazoSeguimiento(); as plazo) {
+        @if (plazo.enSilencioAdministrativo) {
+          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(220,38,38,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--destructive)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <span class="eyebrow" style="color: var(--destructive)">Silencio Administrativo Negativo</span>
+              <p class="text-sm text-foreground/85 mt-1.5">Se ha superado la fecha límite de atención (<span class="font-semibold">{{ plazo.fechaVencimiento | date:'dd/MM/yyyy' }}</span>). La solicitud se encuentra vencida bajo la Ley N° 27806.</p>
+            </div>
+          </div>
+        } @else {
+          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(59,130,246,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid #3b82f6">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: #3b82f6">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div class="flex-grow">
+              <span class="eyebrow" style="color: #3b82f6">Control de Plazo Legal</span>
+              <p class="text-sm text-foreground/85 mt-1.5">
+                Quedan <span class="font-mono font-semibold text-blue-600 dark:text-blue-400">{{ plazo.diasRestantes }}</span> días hábiles para responder a esta solicitud. 
+                Vence el <span class="font-semibold">{{ plazo.fechaVencimiento | date:'dd/MM/yyyy' }}</span>.
+              </p>
+            </div>
+          </div>
+        }
+      }
+
       @if (isUrgente()) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
