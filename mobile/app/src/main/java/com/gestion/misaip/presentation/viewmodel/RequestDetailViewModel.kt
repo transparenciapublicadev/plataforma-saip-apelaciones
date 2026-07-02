@@ -38,6 +38,8 @@ import com.gestion.misaip.core.domain.usecase.apelacion.PresentarSubsanacionUseC
 import com.gestion.misaip.core.domain.usecase.apelacion.ComunicarOmisionElevacionUseCase
 import com.gestion.misaip.core.domain.usecase.apelacion.GetElevacionApelacionUseCase
 import com.gestion.misaip.core.domain.usecase.sync.SincronizarDatosUseCase
+import com.gestion.misaip.core.domain.model.PlazoSeguimiento
+import com.gestion.misaip.core.domain.repository.SolicitudRepository
 import com.gestion.misaip.messaging.NotificationPushHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,6 +94,13 @@ enum class FormularioOperacionFuncionario {
     LIQUIDACION
 }
 
+sealed interface PlazoSeguimientoState {
+    object Idle : PlazoSeguimientoState
+    object Loading : PlazoSeguimientoState
+    data class Success(val plazo: PlazoSeguimiento) : PlazoSeguimientoState
+    data class Error(val message: String, val fallback: PlazoSeguimiento) : PlazoSeguimientoState
+}
+
 sealed class RequestDetailEvent {
     data class ShowMessage(val message: String) : RequestDetailEvent()
     data class RespuestaRegistrada(val respuestaId: String) : RequestDetailEvent()
@@ -119,11 +128,15 @@ class RequestDetailViewModel(
     private val presentarSubsanacionUseCase: PresentarSubsanacionUseCase,
     private val getElevacionApelacionUseCase: GetElevacionApelacionUseCase,
     private val comunicarOmisionElevacionUseCase: ComunicarOmisionElevacionUseCase,
-    private val sincronizarDatosUseCase: SincronizarDatosUseCase
+    private val sincronizarDatosUseCase: SincronizarDatosUseCase,
+    private val solicitudRepository: SolicitudRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RequestDetailUiState())
     val uiState: StateFlow<RequestDetailUiState> = _uiState.asStateFlow()
+
+    private val _plazoSeguimientoState = MutableStateFlow<PlazoSeguimientoState>(PlazoSeguimientoState.Idle)
+    val plazoSeguimientoState: StateFlow<PlazoSeguimientoState> = _plazoSeguimientoState.asStateFlow()
 
     private val _events = MutableSharedFlow<RequestDetailEvent>()
     val events: SharedFlow<RequestDetailEvent> = _events
@@ -204,6 +217,12 @@ class RequestDetailViewModel(
 
             if (solicitud != null) {
                 val elevacion = obtenerElevacion(apelacionRelacionada)
+                
+                // Cargar seguimiento del plazo legal
+                solicitud.id.toLongOrNull()?.let { idLong ->
+                    cargarPlazoSeguimiento(idLong)
+                }
+
                 // Verificar permisos según rol
                 val puedeApelar = tipoUsuario == TipoUsuario.CIUDADANO &&
                     solicitud.puedeSerApelada &&
@@ -702,6 +721,27 @@ class RequestDetailViewModel(
     private fun formatearFecha(timestamp: Long): String {
         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("es-PE"))
         return sdf.format(java.util.Date(timestamp))
+    }
+
+    fun cargarPlazoSeguimiento(solicitudId: Long) {
+        viewModelScope.launch {
+            _plazoSeguimientoState.value = PlazoSeguimientoState.Loading
+            try {
+                val plazo = solicitudRepository.obtenerSeguimientoPlazo(solicitudId)
+                _plazoSeguimientoState.value = PlazoSeguimientoState.Success(plazo)
+            } catch (e: Exception) {
+                val fallback = PlazoSeguimiento(
+                    fechaRegistro = "",
+                    fechaVencimiento = "",
+                    diasRestantes = 0L,
+                    enSilencioAdministrativo = false
+                )
+                _plazoSeguimientoState.value = PlazoSeguimientoState.Error(
+                    message = e.message ?: "Error de red al consultar plazos",
+                    fallback = fallback
+                )
+            }
+        }
     }
 }
 

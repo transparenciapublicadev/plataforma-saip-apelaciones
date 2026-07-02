@@ -2,6 +2,7 @@ package com.gestion.misaip.presentation.di
 
 import com.gestion.misaip.data.CredentialStorage
 import com.gestion.misaip.presentation.viewmodel.*
+import com.gestion.misaip.core.domain.repository.SolicitudRepository
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -146,7 +147,8 @@ val presentationModule = module {
             presentarSubsanacionUseCase = get(),
             getElevacionApelacionUseCase = get(),
             comunicarOmisionElevacionUseCase = get(),
-            sincronizarDatosUseCase = get()
+            sincronizarDatosUseCase = get(),
+            solicitudRepository = get()
         )
     }
 
