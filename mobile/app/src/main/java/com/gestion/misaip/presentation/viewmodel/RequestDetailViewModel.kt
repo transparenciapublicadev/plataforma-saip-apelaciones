@@ -108,6 +108,13 @@ sealed class RequestDetailEvent {
     data class NavigateToAppeal(val expedienteSAIP: String) : RequestDetailEvent()
 }
 
+sealed interface SubsanacionUiState {
+    object Idle : SubsanacionUiState
+    object Loading : SubsanacionUiState
+    object Success : SubsanacionUiState
+    data class Error(val message: String) : SubsanacionUiState
+}
+
 class RequestDetailViewModel(
     private val getUsuarioActualUseCase: GetUsuarioActualUseCase,
     private val getSolicitudPorExpedienteUseCase: GetSolicitudPorExpedienteUseCase,
@@ -129,7 +136,8 @@ class RequestDetailViewModel(
     private val getElevacionApelacionUseCase: GetElevacionApelacionUseCase,
     private val comunicarOmisionElevacionUseCase: ComunicarOmisionElevacionUseCase,
     private val sincronizarDatosUseCase: SincronizarDatosUseCase,
-    private val solicitudRepository: SolicitudRepository
+    private val solicitudRepository: SolicitudRepository,
+    private val contentResolver: android.content.ContentResolver
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RequestDetailUiState())
@@ -137,6 +145,9 @@ class RequestDetailViewModel(
 
     private val _plazoSeguimientoState = MutableStateFlow<PlazoSeguimientoState>(PlazoSeguimientoState.Idle)
     val plazoSeguimientoState: StateFlow<PlazoSeguimientoState> = _plazoSeguimientoState.asStateFlow()
+
+    private val _subsanacionState = MutableStateFlow<SubsanacionUiState>(SubsanacionUiState.Idle)
+    val subsanacionState: StateFlow<SubsanacionUiState> = _subsanacionState.asStateFlow()
 
     private val _events = MutableSharedFlow<RequestDetailEvent>()
     val events: SharedFlow<RequestDetailEvent> = _events
@@ -623,21 +634,53 @@ class RequestDetailViewModel(
     }
 
     fun presentarSubsanacion(textoCorregido: String, fundamentoLegal: String) {
+        ejecutarSubsanacion(textoCorregido, fundamentoLegal, null)
+    }
+
+    fun ejecutarSubsanacion(textoCorregido: String, fundamentoLegal: String, fileUri: android.net.Uri?) {
         viewModelScope.launch {
             // Soportar subsanación desde vista SAIP (apelacionRelacionada) y vista apelación (apelacion)
             val apelacion = _uiState.value.apelacion ?: _uiState.value.apelacionRelacionada ?: return@launch
+            _subsanacionState.value = SubsanacionUiState.Loading
 
             try {
+                var fileBytes: ByteArray? = null
+                var fileName: String? = null
+                var mimeType: String? = null
+
+                if (fileUri != null) {
+                    contentResolver.query(fileUri, null, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex >= 0) {
+                                fileName = cursor.getString(nameIndex)
+                            }
+                        }
+                    }
+                    if (fileName == null) {
+                        fileName = "subsanacion_adjunto.pdf"
+                    }
+                    mimeType = contentResolver.getType(fileUri) ?: "application/pdf"
+
+                    contentResolver.openInputStream(fileUri)?.use { inputStream ->
+                        fileBytes = inputStream.readBytes()
+                    }
+                }
+
                 val result = presentarSubsanacionUseCase(
                     PresentarSubsanacionUseCase.Params(
                         expediente = apelacion.expediente,
                         textoCorregido = textoCorregido,
-                        fundamentoLegalCorregido = fundamentoLegal
+                        fundamentoLegalCorregido = fundamentoLegal,
+                        fileBytes = fileBytes,
+                        fileName = fileName,
+                        mimeType = mimeType
                     )
                 )
 
                 when (result) {
                     is PresentarSubsanacionUseCase.Result.Success -> {
+                        _subsanacionState.value = SubsanacionUiState.Success
                         _uiState.value = _uiState.value.copy(showSubsanacionForm = false)
                         _events.emit(RequestDetailEvent.ShowMessage("Subsanación presentada exitosamente"))
 
@@ -651,10 +694,12 @@ class RequestDetailViewModel(
                         cargarDetalle(_uiState.value.expediente)
                     }
                     is PresentarSubsanacionUseCase.Result.Error -> {
+                        _subsanacionState.value = SubsanacionUiState.Error(result.mensaje)
                         _events.emit(RequestDetailEvent.ShowMessage(result.mensaje))
                     }
                 }
             } catch (e: Exception) {
+                _subsanacionState.value = SubsanacionUiState.Error(e.message ?: "Error al procesar el archivo")
                 _events.emit(RequestDetailEvent.ShowMessage("Error: ${e.message}"))
             }
         }

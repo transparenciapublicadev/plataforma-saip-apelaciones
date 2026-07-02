@@ -22,6 +22,11 @@ import retrofit2.http.Query
  * Servicio Retrofit para apelaciones TTAIP.
  * Endpoints: /api/apelaciones
  */
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.http.Multipart
+import retrofit2.http.Part
+
 interface ApelacionApiService {
 
     @GET("api/apelaciones/paginadas")
@@ -93,9 +98,11 @@ interface ApelacionApiService {
         @Body body: Map<String, String>
     ): ApelacionRestDto
 
+    @Multipart
     @POST("api/apelaciones/{id}/subsanacion")
     suspend fun presentarSubsanacion(
         @Path("id") id: Long,
-        @Body request: SubsanacionRestRequest
+        @Part("fundamentos") fundamentos: RequestBody,
+        @Part archivo: MultipartBody.Part?
     ): ApelacionRestDto
 }
