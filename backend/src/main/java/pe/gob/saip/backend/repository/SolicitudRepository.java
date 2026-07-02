@@ -34,6 +34,8 @@ public interface SolicitudRepository extends JpaRepository<Solicitud, Long> {
 
     long countByEstadoIn(Collection<Solicitud.EstadoSolicitud> estados);
 
+    List<Solicitud> findByEstadoIn(Collection<Solicitud.EstadoSolicitud> estados);
+
     long countByEntidad_IdEntidad(Long entidadId);
 
     @Query("SELECT s FROM Solicitud s WHERE s.fechaLimite < :hoy AND s.estado NOT IN :estadosFinales")
