@@ -213,10 +213,16 @@ class ApelacionRepositoryImpl(
 
     override suspend fun presentarSubsanacion(
         expediente: String,
-        subsanacion: Subsanacion
+        subsanacion: Subsanacion,
+        fileBytes: ByteArray?,
+        fileName: String?,
+        mimeType: String?
     ) {
         guardarOperacionOnline {
-            remoteDataSource.presentarSubsanacion(expediente, subsanacion)
+            val localId = queries.getApelacionByExpediente(expediente).executeAsOneOrNull()?.id?.toLongOrNull()
+            val id = localId ?: remoteDataSource.getApelacionPorExpediente(expediente)?.id?.toLongOrNull()
+            ?: throw IllegalStateException("No se encontró la apelación con expediente $expediente")
+            remoteDataSource.presentarSubsanacion(id, subsanacion.textoCorregido, fileBytes, fileName, mimeType)
         }
     }
 
