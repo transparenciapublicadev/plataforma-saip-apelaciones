@@ -576,4 +576,8 @@ class SolicitudRepositoryImpl(
                 } ?: SolicitudEstadisticas(0, 0, 0, 0, 0)
             }
     }
+
+    override suspend fun obtenerSeguimientoPlazo(id: Long): PlazoSeguimiento {
+        return remoteDataSource.obtenerSeguimientoPlazo(id)
+    }
 }

@@ -4,6 +4,7 @@ import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.domain.model.AmpliacionPlazoSolicitud
 import com.gestion.misaip.core.domain.model.EncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.PlazoSeguimiento
 import com.gestion.misaip.core.domain.model.LiquidacionCostoSolicitud
 import com.gestion.misaip.core.domain.model.ObservacionSolicitud
 import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
@@ -229,5 +230,16 @@ class SolicitudRestDataSource(
 
     private fun String.requireRemoteId(): Long {
         return toLongOrNull() ?: throw NetworkException("La SAIP aún no tiene un ID remoto válido")
+    }
+
+    override suspend fun obtenerSeguimientoPlazo(id: Long): PlazoSeguimiento {
+        return traducirProblemDetails {
+            val response = solicitudApi.obtenerSeguimientoPlazo(id)
+            if (response.isSuccessful) {
+                response.body()?.toDomain() ?: throw NetworkException("Respuesta vacía del servidor")
+            } else {
+                throw NetworkException("Error al consultar el seguimiento de plazo (${response.code()})")
+            }
+        }
     }
 }

@@ -4,6 +4,7 @@ import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.domain.model.AmpliacionPlazoSolicitud
 import com.gestion.misaip.core.domain.model.EncauzamientoSolicitud
+import com.gestion.misaip.core.domain.model.PlazoSeguimiento
 import com.gestion.misaip.core.domain.model.LiquidacionCostoSolicitud
 import com.gestion.misaip.core.domain.model.ObservacionSolicitud
 import com.gestion.misaip.core.domain.model.OperacionesSolicitudFuncionario
@@ -105,6 +106,8 @@ interface SolicitudRemoteDataSource {
      * @return Lista de solicitudes modificadas
      */
     suspend fun getSolicitudesModificadasDesde(desde: Long): List<Solicitud>
+
+    suspend fun obtenerSeguimientoPlazo(id: Long): PlazoSeguimiento
 }
 
 /**
