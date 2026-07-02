@@ -8,6 +8,8 @@ import com.gestion.misaip.core.network.dto.rest.AmpliacionPlazoSolicitudRestDto
 import com.gestion.misaip.core.network.dto.rest.EncauzamientoSolicitudRestDto
 import com.gestion.misaip.core.network.dto.rest.LiquidacionCostoSolicitudRestDto
 import com.gestion.misaip.core.network.dto.rest.ObservacionSolicitudRestDto
+import com.gestion.misaip.core.network.dto.rest.PlazoSeguimientoResponse
+import retrofit2.Response
 import com.gestion.misaip.core.network.dto.rest.ObservarSolicitudRestRequest
 import com.gestion.misaip.core.network.dto.rest.RegistrarAmpliacionPlazoRestRequest
 import com.gestion.misaip.core.network.dto.rest.RegistrarEncauzamientoSolicitudRestRequest
@@ -110,4 +112,9 @@ interface SolicitudApiService {
         @Path("id") id: Long,
         @Body request: RegistrarLiquidacionCostoRestRequest
     ): LiquidacionCostoSolicitudRestDto
+
+    @GET("api/solicitudes/{id}/plazo-seguimiento")
+    suspend fun obtenerSeguimientoPlazo(
+        @Path("id") id: Long
+    ): Response<PlazoSeguimientoResponse>
 }
