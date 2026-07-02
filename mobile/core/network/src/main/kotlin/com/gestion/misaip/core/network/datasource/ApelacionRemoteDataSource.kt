@@ -54,8 +54,11 @@ interface ApelacionRemoteDataSource {
     ): Apelacion
 
     suspend fun presentarSubsanacion(
-        expediente: String,
-        subsanacion: Subsanacion
+        id: Long,
+        fundamentos: String,
+        fileBytes: ByteArray?,
+        fileName: String?,
+        mimeType: String?
     ): Apelacion
 
     suspend fun actualizarApelacion(apelacion: Apelacion)

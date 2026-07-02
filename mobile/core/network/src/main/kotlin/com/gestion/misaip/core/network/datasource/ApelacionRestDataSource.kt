@@ -22,6 +22,9 @@ import com.gestion.misaip.core.network.dto.rest.SubsanacionRestRequest
 import com.gestion.misaip.core.network.dto.rest.extraerMensajeProblemDetails
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Implementación REST del datasource de apelaciones.
@@ -172,14 +175,23 @@ class ApelacionRestDataSource(
     }
 
     override suspend fun presentarSubsanacion(
-        expediente: String,
-        subsanacion: Subsanacion
+        id: Long,
+        fundamentos: String,
+        fileBytes: ByteArray?,
+        fileName: String?,
+        mimeType: String?
     ): Apelacion = traducirProblemDetails {
-        val apelacion = apelacionApi.getByExpediente(expediente)
-        val apelacionId = apelacion.id ?: throw NetworkException("La apelación no tiene ID remoto")
+        val filePart = if (fileBytes != null && fileName != null && mimeType != null) {
+            val requestFile = fileBytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            MultipartBody.Part.createFormData("archivo", fileName, requestFile)
+        } else null
+
+        val fundamentosBody = fundamentos.toRequestBody("text/plain".toMediaTypeOrNull())
+
         apelacionApi.presentarSubsanacion(
-            apelacionId,
-            SubsanacionRestRequest(fundamentos = subsanacion.textoCorregido)
+            id,
+            fundamentosBody,
+            filePart
         ).toDomain()
     }
 
