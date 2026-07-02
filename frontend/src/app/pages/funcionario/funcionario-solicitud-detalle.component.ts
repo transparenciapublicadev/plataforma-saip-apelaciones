@@ -642,7 +642,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   }
 
   getDiasRestantes(): number | null {
-    const value = this.solicitud()?.diasRestantes;
+    const value = this.plazoSeguimiento()?.diasRestantes;
     return typeof value === 'number' ? value : null;
   }
 
