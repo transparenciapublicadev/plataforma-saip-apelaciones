@@ -2,6 +2,7 @@ package com.gestion.misaip.core.domain.repository
 
 import com.gestion.misaip.core.domain.model.Solicitud
 import com.gestion.misaip.core.domain.model.RespuestaEntidad
+import com.gestion.misaip.core.domain.model.PlazoSeguimiento
 import com.gestion.misaip.core.domain.model.Pagina
 import com.gestion.misaip.core.domain.model.AmpliacionPlazoSolicitud
 import com.gestion.misaip.core.domain.model.EncauzamientoSolicitud
@@ -147,6 +148,8 @@ interface SolicitudRepository {
      * @return Estadísticas de solicitudes
      */
     fun getEstadisticas(usuarioId: String): Flow<SolicitudEstadisticas>
+
+    suspend fun obtenerSeguimientoPlazo(id: Long): PlazoSeguimiento
 }
 
 /**
