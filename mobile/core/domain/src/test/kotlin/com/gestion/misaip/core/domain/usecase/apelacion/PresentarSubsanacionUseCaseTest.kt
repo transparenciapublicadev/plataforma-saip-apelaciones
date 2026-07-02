@@ -50,7 +50,7 @@ class PresentarSubsanacionUseCaseTest {
 
     @Test
     fun `retorna success cuando subsanacion es valida`() = runTest {
-        coEvery { apelacionRepository.presentarSubsanacion(any(), any()) } just Runs
+        coEvery { apelacionRepository.presentarSubsanacion(any(), any(), any(), any(), any()) } just Runs
         every { apelacionRepository.getApelacionPorExpediente(any()) } returns flowOf(apelacionBase)
 
         val params = PresentarSubsanacionUseCase.Params(
@@ -59,12 +59,12 @@ class PresentarSubsanacionUseCaseTest {
         )
         val result = useCase(params)
         assertTrue(result is PresentarSubsanacionUseCase.Result.Success)
-        coVerify { apelacionRepository.presentarSubsanacion(eq("01560-2025-JUS/TTAIP"), any()) }
+        coVerify { apelacionRepository.presentarSubsanacion(eq("01560-2025-JUS/TTAIP"), any(), any(), any(), any()) }
     }
 
     @Test
     fun `retorna error cuando repositorio lanza excepcion`() = runTest {
-        coEvery { apelacionRepository.presentarSubsanacion(any(), any()) } throws RuntimeException("Error de red")
+        coEvery { apelacionRepository.presentarSubsanacion(any(), any(), any(), any(), any()) } throws RuntimeException("Error de red")
 
         val params = PresentarSubsanacionUseCase.Params(
             expediente = "01560-2025-JUS/TTAIP",
@@ -77,7 +77,7 @@ class PresentarSubsanacionUseCaseTest {
 
     @Test
     fun `retorna error cuando apelacion actualizada no se puede obtener`() = runTest {
-        coEvery { apelacionRepository.presentarSubsanacion(any(), any()) } just Runs
+        coEvery { apelacionRepository.presentarSubsanacion(any(), any(), any(), any(), any()) } just Runs
         every { apelacionRepository.getApelacionPorExpediente(any()) } returns flowOf(null)
 
         val params = PresentarSubsanacionUseCase.Params(
@@ -92,7 +92,7 @@ class PresentarSubsanacionUseCaseTest {
     @Test
     fun `subsanacion incluye fundamentoLegal y documentos cuando se proveen`() = runTest {
         val subsanacionSlot = slot<Subsanacion>()
-        coEvery { apelacionRepository.presentarSubsanacion(any(), capture(subsanacionSlot)) } just Runs
+        coEvery { apelacionRepository.presentarSubsanacion(any(), capture(subsanacionSlot), any(), any(), any()) } just Runs
         every { apelacionRepository.getApelacionPorExpediente(any()) } returns flowOf(apelacionBase)
 
         val params = PresentarSubsanacionUseCase.Params(

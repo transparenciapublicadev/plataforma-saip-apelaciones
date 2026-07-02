@@ -242,7 +242,10 @@ class PresentarSubsanacionUseCase(
         val expediente: String,
         val textoCorregido: String,
         val fundamentoLegalCorregido: String? = null,
-        val documentos: List<String> = emptyList()
+        val documentos: List<String> = emptyList(),
+        val fileBytes: ByteArray? = null,
+        val fileName: String? = null,
+        val mimeType: String? = null
     )
 
     sealed class Result {
@@ -263,7 +266,13 @@ class PresentarSubsanacionUseCase(
         )
 
         return try {
-            apelacionRepository.presentarSubsanacion(params.expediente, subsanacion)
+            apelacionRepository.presentarSubsanacion(
+                params.expediente,
+                subsanacion,
+                params.fileBytes,
+                params.fileName,
+                params.mimeType
+            )
             val apelacionActualizada = apelacionRepository.getApelacionPorExpediente(params.expediente).first()
             if (apelacionActualizada != null) {
                 Result.Success(apelacionActualizada)

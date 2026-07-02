@@ -117,8 +117,17 @@ interface ApelacionRepository {
      *
      * @param expediente Número de expediente
      * @param subsanacion Datos de la subsanación
+     * @param fileBytes Bytes del archivo adjunto
+     * @param fileName Nombre del archivo adjunto
+     * @param mimeType Tipo MIME del archivo
      */
-    suspend fun presentarSubsanacion(expediente: String, subsanacion: Subsanacion)
+    suspend fun presentarSubsanacion(
+        expediente: String,
+        subsanacion: Subsanacion,
+        fileBytes: ByteArray? = null,
+        fileName: String? = null,
+        mimeType: String? = null
+    )
 
     /**
      * Sincroniza las apelaciones con el servidor remoto.

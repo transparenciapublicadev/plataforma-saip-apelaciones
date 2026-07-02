@@ -148,7 +148,8 @@ val presentationModule = module {
             getElevacionApelacionUseCase = get(),
             comunicarOmisionElevacionUseCase = get(),
             sincronizarDatosUseCase = get(),
-            solicitudRepository = get()
+            solicitudRepository = get(),
+            contentResolver = get<android.content.Context>().contentResolver
         )
     }
 
