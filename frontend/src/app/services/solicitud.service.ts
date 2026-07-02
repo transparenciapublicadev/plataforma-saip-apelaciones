@@ -179,5 +179,16 @@ export class SolicitudService {
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  obtenerSeguimientoPlazo(id: number): Observable<PlazoSeguimientoDTO> {
+    return this.http.get<PlazoSeguimientoDTO>(`${this.apiUrl}/${id}/plazo-seguimiento`);
+  }
+}
+
+export interface PlazoSeguimientoDTO {
+  fechaRegistro: string;
+  fechaVencimiento: string;
+  diasRestantes: number;
+  enSilencioAdministrativo: boolean;
 }
 
