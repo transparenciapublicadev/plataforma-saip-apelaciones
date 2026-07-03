@@ -229,3 +229,44 @@ export interface SolicitudCreate {
 :::tip[API-First]
 Los tipos TypeScript se derivan del OpenAPI spec para mantener consistencia con el contrato del backend. Al cambiar el esquema del backend, se regeneran los tipos automáticamente en el frontend.
 :::
+
+## Saneamiento del Contrato de Tipos
+
+Tras el endurecimiento del contrato OpenAPI en el backend con `@Schema(allowableValues)`, el archivo `types.ts` centraliza la extracción de enums estrictos directamente desde los DTOs auto-generados:
+
+```typescript
+// api/types.ts — Enums indexados desde el OpenAPI spec
+import type { components } from './schema';
+
+export type ApelacionDTO = components['schemas']['ApelacionDTO'];
+export type ResolucionDTO = components['schemas']['ResolucionDTO'];
+
+// Enums extraídos dinámicamente del spec (sin string unions manuales)
+export type EstadoApelacion = NonNullable<ApelacionDTO['estado']>;
+export type CalificacionApelacion = NonNullable<ApelacionDTO['calificacionPrimera']>;
+export type TipoOrigenApelacion = NonNullable<ApelacionDTO['tipoOrigen']>;
+export type TipoDenegatoriaApelacion = NonNullable<ApelacionDTO['tipoDenegatoria']>;
+export type TipoResolucion = NonNullable<ResolucionDTO['tipoResolucion']>;
+export type DecisionResolucion = NonNullable<ResolucionDTO['decision']>;
+```
+
+Los modelos de dominio (`apelacion.model.ts`, `resolucion.model.ts`) importan y re-exportan estos tipos desde `types.ts` en lugar de declarar string unions manuales:
+
+```typescript
+// apelacion.model.ts — importa enums estrictos del contrato
+import type {
+    ApelacionDTO,
+    EstadoApelacion,
+    CalificacionApelacion,
+    TipoOrigenApelacion,
+    TipoDenegatoriaApelacion
+} from '../api/types';
+
+export type { EstadoApelacion, CalificacionApelacion, TipoOrigenApelacion, TipoDenegatoriaApelacion };
+```
+
+| Antes | Después |
+|-------|--------|
+| String unions manuales en cada modelo | `NonNullable<DTO['campo']>` indexado desde el spec |
+| Comentarios `// TODO: Agregar @Schema` | Eliminados — el backend ya exporta enums estrictos |
+| Riesgo de desincronización | Tipo derivado directamente del contrato auto-generado |

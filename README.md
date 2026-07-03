@@ -21,7 +21,9 @@ La plataforma modela el ciclo completo de transparencia pública: el ciudadano s
 - [Estructura del monorepo](#estructura-del-monorepo)
 - [Módulos principales](#módulos-principales)
 - [Modelo de dominio](#modelo-de-dominio)
+- [Infraestructura de datos y persistencia](#infraestructura-de-datos-y-persistencia)
 - [Contrato API y sincronización](#contrato-api-y-sincronización)
+- [Hitos de ingeniería recientes](#hitos-de-ingeniería-recientes)
 - [Seguridad y roles](#seguridad-y-roles)
 - [Gestión de Almacenamiento Seguro (Supabase S3 API)](#gestión-de-almacenamiento-seguro-supabase-s3-api)
 - [Ejecución local](#ejecución-local)
@@ -110,8 +112,10 @@ flowchart TB
 | Runtime | Java 25 |
 | Framework | Spring Boot 4.0.0 |
 | API | Spring Web MVC, REST JSON |
-| Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ |
-| Documentos | Metadatos en PostgreSQL + `StorageProvider` local configurable |
+| Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ (Supabase) |
+| Almacenamiento de objetos | Supabase Storage — API compatible con AWS S3 para gestión de buckets |
+| Documentos | Metadatos en PostgreSQL + `StorageProvider` con providers `LOCAL` y `S3_COMPATIBLE` |
+| Programación de tareas | `@Scheduled` cron para auditoría diaria de plazos legales |
 | Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
 | Validación | Jakarta Bean Validation |
 | Documentación API | springdoc-openapi, Swagger UI |
@@ -384,6 +388,56 @@ Decisiones de resolución final:
 | Conclusión por sustracción de la materia | La entidad entrega información durante el trámite. |
 | Conclusión por desistimiento | El ciudadano desiste del recurso. |
 
+## Infraestructura de datos y persistencia
+
+### PostgreSQL centralizado (Supabase)
+
+Toda la lógica transaccional del sistema persiste en una instancia PostgreSQL 16+ alojada en Supabase. El esquema relacional implementa herencia por tabla compartida mediante `InheritanceType.JOINED` en la jerarquía de usuarios:
+
+```mermaid
+classDiagram
+    class Usuario {
+        +Long id
+        +String nombre
+        +String email
+        +TipoUsuario tipoUsuario
+    }
+    class Ciudadano {
+        +String dni
+        +String telefono
+    }
+    class Funcionario {
+        +Long entidadId
+        +String cargo
+    }
+    class MiembroTTAIP {
+        +String especialidad
+        +Long salaId
+    }
+    class Administrador {
+        +String areaResponsable
+    }
+
+    Usuario <|-- Ciudadano : JOINED
+    Usuario <|-- Funcionario : JOINED
+    Usuario <|-- MiembroTTAIP : JOINED
+    Usuario <|-- Administrador : JOINED
+```
+
+Esta estrategia permite que la tabla base `usuarios` centralice los campos comunes (credenciales, email, tipo, fechas de auditoría) mientras que cada subtipo extiende con sus campos específicos en tablas dedicadas (`ciudadanos`, `funcionarios`, `miembros_ttaip`, `administradores`). Las consultas polimórficas de Spring Data JPA resuelven automáticamente el `JOIN` necesario según el tipo discriminador.
+
+### Almacenamiento de objetos (Supabase Storage)
+
+Los binarios del sistema (PDFs de solicitudes, imágenes de constancias, resoluciones TTAIP y documentos de subsanación) se persisten en Supabase Storage, un servicio de almacenamiento de objetos que opera mediante una API compatible con el protocolo AWS S3. El backend actúa como proxy inverso: los clientes web y mobile nunca se conectan directamente con Supabase. Las credenciales S3 (`access-key`, `secret-key`, `endpoint`, `bucket-name`) se inyectan exclusivamente mediante variables de entorno.
+
+```text
+Cliente (Web/Mobile) → Backend (Spring Boot) → Supabase Storage (S3 API)
+                                ↕
+                         PostgreSQL (metadatos)
+```
+
+La sección [Gestión de Almacenamiento Seguro](#gestión-de-almacenamiento-seguro-supabase-s3-api) documenta en detalle el flujo mediado, la matriz de variables y la configuración defensiva del bucket.
+
 ## Contrato API y sincronización
 
 El backend publica el contrato OpenAPI en `/v3/api-docs`. Ese contrato se sincroniza hacia el frontend y mobile para mantener consistencia entre clientes.
@@ -416,6 +470,40 @@ Sincronización en Linux/macOS:
 ```
 
 Regla operativa: si cambian endpoints, DTOs o modelos de API en `backend/`, sincronizar OpenAPI y validar los consumidores impactados.
+
+Tras el endurecimiento del contrato OpenAPI con `@Schema(allowableValues)` en los DTOs del backend, la regeneración de tipos TypeScript produce enums estrictos en `schema.ts`. Los modelos del frontend (`apelacion.model.ts`, `resolucion.model.ts`) importan estos tipos desde `types.ts`, que los indexa dinámicamente mediante `NonNullable<DTO['campo']>`, eliminando la necesidad de mantener string unions manuales sincronizadas con el backend.
+
+## Hitos de ingeniería recientes
+
+Esta sección documenta las capacidades de ingeniería integradas en la rama base tras las últimas iteraciones de desarrollo.
+
+### Backend — Motor de auditoría de plazos legales
+
+El componente `PlazoAlertaScheduler` implementa una tarea programada con `@Scheduled(cron = "0 0 6 * * ?")` que ejecuta una auditoría diaria de plazos legales a las 06:00 AM. El proceso recupera todas las solicitudes SAIP en estados activos (`RECEPCIONADA`, `EN_REVISION`, `PENDIENTE_INFORMACION`), calcula la fecha de vencimiento legal (10 días hábiles peruanos) y transiciona automáticamente a `VENCIDA` las solicitudes que superaron su plazo. Al detectar un vencimiento, el motor dispara una notificación push al ciudadano informando la habilitación de su derecho a recurso de apelación y encola alertas por correo para los funcionarios de la entidad responsable.
+
+### Backend — Control defensivo contra ataques IDOR
+
+`AutorizacionRecursosService` centraliza la verificación de ownership y acceso a recursos en 26+ métodos dedicados. Antes de que cualquier controlador ejecute una operación sobre una solicitud, respuesta, apelación, expediente TTAIP, elevación o documento, el servicio verifica que el usuario autenticado (extraído de `SecurityContextHolder`) tiene relación legítima con el recurso solicitado. Las verificaciones cubren: ciudadano propietario, funcionario de la entidad asignada, miembro TTAIP con jurisdicción, y administrador con privilegios globales. Cualquier intento de acceso no autorizado resulta en una excepción `AccessDeniedException` con respuesta HTTP 403.
+
+### Backend — Endurecimiento del contrato OpenAPI
+
+Los DTOs y Records expuestos por los controladores REST (`ApelacionDTO`, `ApelacionResumenDTO`, `ApelacionInfoDTO`, `ResolucionDTO`, `DescargoEntidadTtaipDTO`, `CumplimientoResolucionTtaipDTO`, `CrearApelacionExternaRequest`) fueron enriquecidos con anotaciones `@Schema(allowableValues = {...})` de springdoc-openapi. Esto fuerza al generador de especificaciones a exportar los campos de estado, calificación, tipo de origen, tipo de denegatoria, tipo de resolución y decisión como enums estrictos con valores explícitos, en lugar de cadenas genéricas.
+
+### Frontend — Gestión reactiva con Signals nativos
+
+Los componentes de detalle del funcionario utilizan `computed()` de Angular Signals para derivar propiedades reactivas a partir del estado de la solicitud. Por ejemplo, `idApelacion` se calcula como un signal derivado que extrae el ID del expediente TTAIP desde el historial de la solicitud, habilitando la navegación interactiva hacia la vista de apelación sin suscripciones manuales ni pipes asíncronos.
+
+### Frontend — Interconexión de rutas SAIP ↔ TTAIP con SSR
+
+Se registró la ruta `/funcionario/apelaciones/:expediente` en el router de Angular y se configuró como `RenderMode.Client` en las rutas del servidor (`app.routes.server.ts`). Esta decisión previene errores de pre-renderización durante la compilación SSR, ya que la ruta depende de parámetros dinámicos que solo existen en tiempo de ejecución del navegador. El componente de detalle del funcionario incluye `routerLink` interactivos con transiciones visuales que permiten navegar directamente del expediente SAIP al expediente TTAIP cuando la solicitud ha sido apelada.
+
+### Frontend — Saneamiento del contrato TypeScript
+
+El archivo `types.ts` del frontend ahora indexa dinámicamente los tipos de enums desde los DTOs generados por OpenAPI mediante el patrón `NonNullable<DTO['campo']>`, eliminando las declaraciones manuales de string unions y los comentarios `// TODO` que solicitaban endurecimiento del backend. Los tipos `EstadoApelacion`, `CalificacionApelacion`, `TipoOrigenApelacion`, `TipoDenegatoriaApelacion`, `TipoResolucion` y `DecisionResolucion` se derivan directamente del esquema auto-generado.
+
+### Mobile — Transmisión multipart para subsanación binaria
+
+El flujo de subsanación en la app Android fue refactorizado de texto plano a una petición `@Multipart` de Retrofit. El endpoint `POST /api/apelaciones/{id}/subsanacion` ahora transmite los fundamentos como `RequestBody` de tipo `text/plain` y el archivo adjunto (PDF/PNG) como `MultipartBody.Part`. La captura de metadatos del archivo utiliza `ContentResolver` con `OpenableColumns.DISPLAY_NAME` para obtener el nombre real del archivo seleccionado por el ciudadano, y todos los descriptores de flujo (`InputStream`) se cierran de forma hermética mediante el operador `.use` de Kotlin para prevenir fugas de recursos.
 
 ## Seguridad y roles
 

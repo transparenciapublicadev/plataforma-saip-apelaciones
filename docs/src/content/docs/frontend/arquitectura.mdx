@@ -181,3 +181,66 @@ Usuario → Componente (signals) → Service (HttpClient) → Backend REST API
                                                             ↓
 Usuario ← Template (OnPush) ← signal.set() ← Observable ← Response JSON
 ```
+
+## Signals Reactivos para Estado de Dominio
+
+Los componentes de detalle utilizan `computed()` de Angular Signals para derivar propiedades reactivas del estado de negocio sin suscripciones manuales:
+
+```typescript
+export class FuncionarioSolicitudDetalleComponent {
+  // Signal base: solicitud cargada desde el backend
+  solicitud = signal<Solicitud | null>(null);
+
+  // Signal derivado: ID de la apelación TTAIP (si existe)
+  idApelacion = computed(() => {
+    const historial = this.solicitud()?.historialEstados;
+    const eventoApelacion = historial?.find(
+      h => h.estadoNuevo === 'APELADA'
+    );
+    return eventoApelacion?.referenciaExpediente ?? null;
+  });
+
+  // Signal derivado: alerta de silencio administrativo
+  alertaSilencio = computed(() => {
+    const sol = this.solicitud();
+    if (!sol) return false;
+    return sol.semaforo === 'NEGRO' && sol.estado !== 'RESPONDIDA';
+  });
+}
+```
+
+Este patrón ofrece dos ventajas técnicas:
+
+1. **Granularidad en la detección de cambios**: Angular recalcula `computed()` solo cuando las signals de las que depende emiten nuevos valores, optimizando los ciclos de `OnPush`.
+2. **Eliminación de pipes asíncronos**: Las propiedades derivadas se leen sincrónicamente en el template con `idApelacion()` sin necesidad de `| async` ni suscripciones explícitas.
+
+## Rutas Dinámicas y RenderMode.Client
+
+Para habilitar la navegación interactiva entre el expediente SAIP y el expediente TTAIP sin romper la compilación SSR, se registró la ruta `/funcionario/apelaciones/:expediente` y se configuró como `RenderMode.Client` en las rutas del servidor:
+
+```typescript
+// app.routes.server.ts
+export const serverRoutes: ServerRoute[] = [
+  // Rutas que dependen de parámetros dinámicos → RenderMode.Client
+  { path: 'funcionario/apelaciones/:expediente', renderMode: RenderMode.Client },
+  // Rutas pre-renderizables → RenderMode.Prerender
+  { path: '**', renderMode: RenderMode.Prerender },
+];
+```
+
+`RenderMode.Client` indica a Angular que esta ruta debe renderizarse exclusivamente en el navegador, evitando que el pre-renderizador intente resolver parámetros dinámicos (`:expediente`) durante la compilación estática. En el componente de detalle del funcionario, un `routerLink` interactivo permite navegar al expediente TTAIP:
+
+```html
+@if (idApelacion()) {
+  <a [routerLink]="['/funcionario/apelaciones', idApelacion()]"
+     class="inline-flex items-center gap-1 text-blue-600
+            hover:text-blue-800 transition-colors">
+    Ver expediente TTAIP
+    <ng-icon name="heroArrowTopRightOnSquare" size="16" />
+  </a>
+}
+```
+
+:::tip[Compatibilidad SSR]
+`RenderMode.Client` es la solución idiomática de Angular 21 para rutas que dependen de datos del navegador. No afecta al rendimiento de las rutas pre-renderizadas y evita el fallback a errores 404 durante `ng build`.
+:::
