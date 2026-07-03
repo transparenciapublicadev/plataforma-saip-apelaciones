@@ -320,3 +320,114 @@ public class JwtService {
 :::caution[Seguridad]
 En despliegues, el secreto JWT debe obtenerse de la variable de entorno `${JWT_SECRET}` o de un gestor de secretos. El fallback incluido para desarrollo local no es apto para producción.
 :::
+
+## Motor de Auditoría de Plazos — PlazoAlertaScheduler
+
+El componente `PlazoAlertaScheduler` implementa una tarea programada mediante `@Scheduled` de Spring Framework que ejecuta una auditoría diaria de plazos legales SAIP.
+
+```java
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class PlazoAlertaScheduler {
+
+    private final SolicitudRepository solicitudRepository;
+    private final PlazoCalculadorService plazoCalculadorService;
+    private final MotorNotificacionesService motorNotificacionesService;
+
+    @Scheduled(cron = "0 0 6 * * ?")
+    @Transactional
+    public void procesarAuditoriaDePlazos() {
+        // 1. Recuperar solicitudes en estados activos
+        // 2. Calcular fecha de vencimiento (10 días hábiles)
+        // 3. Transicionar a VENCIDA si superó plazo
+        // 4. Disparar notificación push al ciudadano
+        // 5. Encolar alerta por correo a funcionarios
+    }
+}
+```
+
+| Aspecto | Detalle |
+|---------|--------|
+| Expresión cron | `0 0 6 * * ?` — todos los días a las 06:00 AM |
+| Estados evaluados | `RECEPCIONADA`, `EN_REVISION`, `PENDIENTE_INFORMACION` |
+| Cálculo de plazo | `PlazoCalculadorService` con feriados peruanos (BR-SAIP-001) |
+| Transición automática | Estado `VENCIDA` cuando `diasRestantes <= 0` |
+| Notificación ciudadano | Push vía `MotorNotificacionesService` informando habilitación de apelación |
+| Alerta funcionarios | Correo encolado a funcionarios de la entidad responsable |
+
+:::note
+El scheduler opera de forma idempotente: las solicitudes ya transicionadas a `VENCIDA` no se re-procesan porque el filtro inicial solo recupera estados activos.
+:::
+
+## Control de Acceso a Recursos — AutorizacionRecursosService
+
+`AutorizacionRecursosService` es el servicio transversal de autorización de ownership que previene ataques **IDOR** (Insecure Direct Object Reference). Centraliza 26+ métodos de verificación que los controladores invocan antes de ejecutar operaciones sobre recursos protegidos.
+
+```java
+@Service
+@Transactional(readOnly = true)
+public class AutorizacionRecursosService {
+
+    // Verificaciones de ownership por tipo de recurso
+    public void verificarSolicitudAccesible(Long solicitudId) { ... }
+    public void verificarApelacionAccesible(Long apelacionId) { ... }
+    public void verificarExpedienteTtaipAccesible(Long expedienteId) { ... }
+    public void verificarRespuestaAccesible(Long respuestaId) { ... }
+    public void verificarElevacionInstitucional(Long apelacionId) { ... }
+
+    // Verificaciones por rol
+    public void verificarTtaipOAdministrador() { ... }
+    public void verificarAdministrador() { ... }
+    public Usuario obtenerUsuarioActual() { ... }
+}
+```
+
+| Método | Recurso protegido | Roles con acceso |
+|--------|-------------------|------------------|
+| `verificarSolicitudAccesible` | Solicitud SAIP | Ciudadano propietario, Funcionario de entidad, TTAIP, Admin |
+| `verificarApelacionAccesible` | Apelación | Ciudadano apelante, Funcionario de entidad, TTAIP, Admin |
+| `verificarExpedienteTtaipAccesible` | Expediente TTAIP | Ciudadano, TTAIP, Admin |
+| `verificarRespuestaAccesible` | Respuesta de entidad | Ciudadano propietario, Funcionario de entidad, TTAIP, Admin |
+| `verificarFuncionarioPuedeActuar` | Funcionario | Propio funcionario, Admin |
+| `verificarEntidadInstitucional` | Entidad pública | Funcionario de la misma entidad, Admin |
+
+:::caution[Defensa en profundidad]
+Cada método extrae el `Authentication` del `SecurityContextHolder`, resuelve el `Usuario` por email, determina el rol y verifica la relación de ownership con el recurso solicitado. Un acceso no autorizado resulta en `AccessDeniedException` (HTTP 403).
+:::
+
+## Endurecimiento del Contrato OpenAPI
+
+Los DTOs y Records expuestos por los controladores REST fueron enriquecidos con `@Schema(allowableValues)` de springdoc-openapi para exportar enums estrictos:
+
+```java
+public record ApelacionDTO(
+    // ...
+    @Schema(description = "Estado de la apelación",
+            example = "EN_CALIFICACION_1",
+            allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1",
+                "EN_SUBSANACION", "EN_CALIFICACION_2",
+                "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION",
+                "RESUELTO", "TENER_POR_NO_PRESENTADO",
+                "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO",
+                "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE",
+                "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE",
+                "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO",
+                "RESUELTO_NULIDAD_ACTO"})
+    String estado
+) {}
+```
+
+| DTO/Record | Campos endurecidos |
+|------------|-------------------|
+| `ApelacionDTO` | `estado`, `calificacionPrimera`, `calificacionSegunda`, `tipoOrigen`, `tipoDenegatoria` |
+| `ApelacionResumenDTO` | `estado`, `calificacion`, `tipoOrigen` |
+| `ApelacionInfoDTO` | `estado`, `calificacionPrimera`, `calificacionSegunda` |
+| `ResolucionDTO` | `tipoResolucion`, `decision` |
+| `DescargoEntidadTtaipDTO` | `estadoDescargo` |
+| `CumplimientoResolucionTtaipDTO` | `estadoCumplimiento`, `tipoCumplimiento` |
+| `CrearApelacionExternaRequest` | `tipoDenegatoria`, `canalPresentacion` |
+
+:::tip[Beneficio]
+Al exportar `allowableValues` en el spec OpenAPI, el generador de tipos TypeScript (`openapi-typescript`) produce uniones de literales estrictos en lugar de `string` genéricos, eliminando la necesidad de mantener string unions manuales en el frontend.
+:::

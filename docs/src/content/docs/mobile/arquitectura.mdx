@@ -153,3 +153,63 @@ flowchart TB
 | No XML Views | UI en Jetpack Compose. |
 | No múltiples Activities por flujo | Navegación single-Activity con Navigation 3. |
 | No Android en `core/domain` | Mantiene dominio testeable y portable. |
+
+## Transmisión Multipart para Subsanación Binaria
+
+El flujo de subsanación en la app Android transmite tanto los fundamentos textuales como el archivo adjunto (PDF/PNG) en una única petición `@Multipart` de Retrofit:
+
+```kotlin
+// core/network — ApelacionApiService.kt
+interface ApelacionApiService {
+    @Multipart
+    @POST("api/apelaciones/{id}/subsanacion")
+    suspend fun presentarSubsanacion(
+        @Path("id") id: Long,
+        @Part("fundamentos") fundamentos: RequestBody,
+        @Part archivo: MultipartBody.Part?
+    ): ApelacionRestDto
+}
+```
+
+### Captura de Metadatos del Archivo
+
+El nombre real del archivo seleccionado por el ciudadano se obtiene consultando al `ContentResolver` del sistema operativo con `OpenableColumns.DISPLAY_NAME`, lo cual garantiza la captura del nombre original independientemente del proveedor de contenido (galería, explorador de archivos, descargados):
+
+```kotlin
+private fun obtenerNombreArchivo(context: Context, uri: Uri): String {
+    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        cursor.moveToFirst()
+        return cursor.getString(nameIndex)
+    }
+    return "documento_subsanacion"
+}
+```
+
+### Cierre Hermético de Descriptores
+
+Todos los streams de entrada (`InputStream`) obtenidos del `ContentResolver` se cierran de forma determinista mediante el operador `.use` de Kotlin, que garantiza el cierre del recurso incluso si ocurre una excepción durante la lectura:
+
+```kotlin
+val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
+    stream.readBytes()
+} ?: throw IllegalStateException("No se pudo abrir el archivo")
+
+val requestBody = bytes.toRequestBody("application/pdf".toMediaType())
+val filePart = MultipartBody.Part.createFormData(
+    "archivo", nombreArchivo, requestBody
+)
+```
+
+| Aspecto | Implementación |
+|---------|---------------|
+| Anotación Retrofit | `@Multipart` + `@Part` |
+| Fundamentos | `RequestBody` con `MediaType` `text/plain` |
+| Archivo adjunto | `MultipartBody.Part` (nullable para subsanaciones sin adjunto) |
+| Nombre del archivo | `ContentResolver` + `OpenableColumns.DISPLAY_NAME` |
+| Gestión de recursos | `.use` para cierre hermético de `InputStream` y `Cursor` |
+| Tipos soportados | PDF, PNG (validados por el backend en `StorageUploadValidator`) |
+
+:::caution[Validación dual]
+El backend valida tamaño, extensión y tipo MIME del archivo recibido. La app móvil realiza una pre-validación local para mejorar la experiencia del usuario, pero la validación autoritativa reside en el servidor.
+:::
