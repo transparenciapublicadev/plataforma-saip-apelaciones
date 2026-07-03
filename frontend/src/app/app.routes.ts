@@ -84,6 +84,11 @@ export const routes: Routes = [
     canActivate: [tipoUsuarioGuard('FUNCIONARIO')]
   },
   {
+    path: 'funcionario/apelaciones/:expediente',
+    loadComponent: () => import('./pages/ttaip/ttaip-resolucion-detalle.component').then(m => m.TtaipResolucionDetalleComponent),
+    canActivate: [tipoUsuarioGuard('FUNCIONARIO')]
+  },
+  {
     path: 'ttaip',
     loadComponent: () => import('./pages/ttaip/ttaip-dashboard.component').then(m => m.TtaipDashboardComponent),
     canActivate: [tipoUsuarioGuard('TTAIP')]

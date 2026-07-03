@@ -202,6 +202,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
   readonly observaciones = computed<ObservacionSolicitud[]>(() => this.solicitud()?.observaciones || []);
 
+  readonly idApelacion = computed<string>(() => this.solicitud()?.apelacion?.expediente || '');
+
   readonly ampliaciones = computed<AmpliacionPlazoSolicitud[]>(() => this.solicitud()?.ampliacionesPlazo || []);
 
   readonly encauzamientos = computed<EncauzamientoSolicitud[]>(() => this.solicitud()?.encauzamientos || []);
