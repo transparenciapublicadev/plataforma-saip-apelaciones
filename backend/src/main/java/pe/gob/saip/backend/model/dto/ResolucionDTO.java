@@ -9,7 +9,9 @@ import java.util.List;
 public record ResolucionDTO(
     Long id,
     String numeroResolucion,
+    @Schema(description = "Tipo de resolución", example = "RESOLUCION_FINAL", implementation = Resolucion.TipoResolucion.class, allowableValues = {"PRIMERA_CALIFICACION", "SEGUNDA_CALIFICACION", "RESOLUCION_FINAL"})
     String tipoResolucion,
+    @Schema(description = "Decisión o resultado de la resolución", example = "FUNDADO", implementation = Resolucion.DecisionResolucion.class, allowableValues = {"ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE", "ADMITIDO", "TENER_POR_NO_PRESENTADO", "FUNDADO", "FUNDADO_EN_PARTE", "INFUNDADO", "INFUNDADO_EN_PARTE", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "ESTESE_A_LO_RESUELTO", "NULIDAD_DEL_ACTO"})
     String decision,
     String fundamentos,
     String fundamentoLegal,

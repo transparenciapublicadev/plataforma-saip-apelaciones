@@ -17,7 +17,9 @@ public record CumplimientoResolucionTtaipDTO(
         String fechaRequerimientoCumplimiento,
         String fechaLimiteCumplimiento,
         String fechaCumplimiento,
+        @Schema(description = "Estado del cumplimiento", example = "PENDIENTE", implementation = CumplimientoResolucionTtaip.EstadoCumplimiento.class, allowableValues = {"PENDIENTE", "CUMPLIDO", "CUMPLIDO_PARCIAL", "VENCIDO", "OBSERVADO", "CERRADO"})
         String estadoCumplimiento,
+        @Schema(description = "Tipo de cumplimiento", example = "TOTAL", implementation = CumplimientoResolucionTtaip.TipoCumplimiento.class, allowableValues = {"TOTAL", "PARCIAL", "NO_CUMPLE"})
         String tipoCumplimiento,
         String descripcionCumplimiento,
         String evidenciaCumplimiento,
