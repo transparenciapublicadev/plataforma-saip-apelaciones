@@ -1683,6 +1683,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/{id}/plazo-seguimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Obtener seguimiento de plazo de una solicitud SAIP */
+        get: operations["obtenerSeguimientoPlazo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/{id}/notificaciones/intentos": {
         parameters: {
             query?: never;
@@ -2853,7 +2870,12 @@ export interface components {
             /** Format: int64 */
             id?: number;
             expediente?: string;
-            estado?: string;
+            /**
+             * @description Estado de la apelación
+             * @example EN_CALIFICACION_1
+             * @enum {string}
+             */
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             fechaSubsanacion?: string;
@@ -3177,15 +3199,26 @@ export interface components {
             /**
              * @description Estado de la apelación
              * @example EN_CALIFICACION_1
+             * @enum {string}
              */
-            estado?: string;
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             fechaSubsanacion?: string;
             /** Format: int32 */
             diasSubsanacion?: number;
-            calificacionPrimera?: string;
-            calificacionSegunda?: string;
+            /**
+             * @description Calificación de primera instancia
+             * @example ADMITIDO
+             * @enum {string}
+             */
+            calificacionPrimera?: "ADMISIBLE" | "INADMISIBLE" | "IMPROCEDENTE" | "ADMITIDO";
+            /**
+             * @description Calificación de segunda instancia
+             * @example ADMITIDO
+             * @enum {string}
+             */
+            calificacionSegunda?: "ADMISIBLE" | "INADMISIBLE" | "IMPROCEDENTE" | "ADMITIDO";
             /** Format: int64 */
             solicitudId?: number;
             solicitudExpediente?: string;
@@ -3196,14 +3229,24 @@ export interface components {
             /** Format: int64 */
             entidadId?: number;
             entidadNombre?: string;
-            tipoOrigen?: string;
+            /**
+             * @description Tipo de origen de la apelación
+             * @example SAIP_INTERNA
+             * @enum {string}
+             */
+            tipoOrigen?: "SAIP_INTERNA" | "EXTERNA";
             entidadExternaNombre?: string;
             entidadExternaRuc?: string;
             entidadExternaEmail?: string;
             numeroSolicitudExterna?: string;
             fechaPresentacionSolicitudExterna?: string;
             fechaRespuestaEntidad?: string;
-            tipoDenegatoria?: string;
+            /**
+             * @description Tipo de denegatoria de la SAIP
+             * @example EXPRESA
+             * @enum {string}
+             */
+            tipoDenegatoria?: "EXPRESA" | "TACITA";
             resumenSolicitudOriginal?: string;
             resumenRespuestaEntidad?: string;
             referenciaDocumentoSolicitud?: string;
@@ -3261,8 +3304,18 @@ export interface components {
             fechaRequerimientoCumplimiento?: string;
             fechaLimiteCumplimiento?: string;
             fechaCumplimiento?: string;
-            estadoCumplimiento?: string;
-            tipoCumplimiento?: string;
+            /**
+             * @description Estado del cumplimiento
+             * @example PENDIENTE
+             * @enum {string}
+             */
+            estadoCumplimiento?: "PENDIENTE" | "CUMPLIDO" | "CUMPLIDO_PARCIAL" | "VENCIDO" | "OBSERVADO" | "CERRADO";
+            /**
+             * @description Tipo de cumplimiento
+             * @example TOTAL
+             * @enum {string}
+             */
+            tipoCumplimiento?: "TOTAL" | "PARCIAL" | "NO_CUMPLE";
             descripcionCumplimiento?: string;
             evidenciaCumplimiento?: string;
             referenciaDocumento?: string;
@@ -3285,7 +3338,12 @@ export interface components {
             fechaRequerimiento?: string;
             fechaLimiteDescargo?: string;
             fechaPresentacion?: string;
-            estadoDescargo?: string;
+            /**
+             * @description Estado del descargo de la entidad
+             * @example REQUERIDO
+             * @enum {string}
+             */
+            estadoDescargo?: "REQUERIDO" | "PRESENTADO" | "PRESENTADO_EXTEMPORANEO" | "VENCIDO_SIN_PRESENTACION" | "CANCELADO";
             resumenDescargo?: string;
             documentoDescargo?: string;
             responsableEntidad?: string;
@@ -3413,8 +3471,18 @@ export interface components {
             /** Format: int64 */
             id?: number;
             numeroResolucion?: string;
-            tipoResolucion?: string;
-            decision?: string;
+            /**
+             * @description Tipo de resolución
+             * @example RESOLUCION_FINAL
+             * @enum {string}
+             */
+            tipoResolucion?: "PRIMERA_CALIFICACION" | "SEGUNDA_CALIFICACION" | "RESOLUCION_FINAL";
+            /**
+             * @description Decisión o resultado de la resolución
+             * @example FUNDADO
+             * @enum {string}
+             */
+            decision?: "ADMISIBLE" | "INADMISIBLE" | "IMPROCEDENTE" | "ADMITIDO" | "TENER_POR_NO_PRESENTADO" | "FUNDADO" | "FUNDADO_EN_PARTE" | "INFUNDADO" | "INFUNDADO_EN_PARTE" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "ESTESE_A_LO_RESUELTO" | "NULIDAD_DEL_ACTO";
             fundamentos?: string;
             fundamentoLegal?: string;
             observaciones?: string;
@@ -4043,7 +4111,11 @@ export interface components {
             fechaPresentacionSolicitudExterna: string;
             /** Format: date */
             fechaRespuestaEntidad?: string;
-            /** @enum {string} */
+            /**
+             * @description Tipo de denegatoria de la SAIP
+             * @example EXPRESA
+             * @enum {string}
+             */
             tipoDenegatoria: "EXPRESA" | "TACITA";
             resumenSolicitudOriginal: string;
             resumenRespuestaEntidad?: string;
@@ -4150,6 +4222,15 @@ export interface components {
              * @example Entrega digital enviada por casilla electrónica.
              */
             observacion?: string;
+        };
+        PlazoSeguimientoDTO: {
+            /** Format: date */
+            fechaRegistro?: string;
+            /** Format: date */
+            fechaVencimiento?: string;
+            /** Format: int64 */
+            diasRestantes?: number;
+            enSilencioAdministrativo?: boolean;
         };
         /** @description Vista pública y enmascarada del estado de una solicitud SAIP */
         ConsultaPublicaSolicitudDTO: {
@@ -4311,7 +4392,12 @@ export interface components {
             /** Format: int64 */
             id?: number;
             expediente?: string;
-            estado?: string;
+            /**
+             * @description Estado de la apelación
+             * @example EN_CALIFICACION_1
+             * @enum {string}
+             */
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             /** Format: int64 */
@@ -4323,7 +4409,12 @@ export interface components {
             /** Format: int64 */
             entidadId?: number;
             entidadNombre?: string;
-            tipoOrigen?: string;
+            /**
+             * @description Tipo de origen de la apelación
+             * @example SAIP_INTERNA
+             * @enum {string}
+             */
+            tipoOrigen?: "SAIP_INTERNA" | "EXTERNA";
             numeroSolicitudExterna?: string;
         };
         /** @description Página liviana de resultados */
@@ -7131,6 +7222,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"][];
+                };
+            };
+        };
+    };
+    obtenerSeguimientoPlazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID de la solicitud */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlazoSeguimientoDTO"];
                 };
             };
         };
