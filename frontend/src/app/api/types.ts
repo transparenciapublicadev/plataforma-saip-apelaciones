@@ -34,6 +34,12 @@ export type Prioridad = NonNullable<SolicitudDTO['prioridad']>;
 export type SemaforoEstado = NonNullable<SolicitudDTO['semaforo']>;
 export type TipoRespuesta = NonNullable<RespuestaDTO['tipoRespuesta']>;
 export type TipoRespuestaCrear = NonNullable<CrearRespuestaRequest['tipoRespuesta']>;
+export type EstadoApelacion = NonNullable<ApelacionDTO['estado']>;
+export type CalificacionApelacion = NonNullable<ApelacionDTO['calificacionPrimera']>;
+export type TipoOrigenApelacion = NonNullable<ApelacionDTO['tipoOrigen']>;
+export type TipoDenegatoriaApelacion = NonNullable<ApelacionDTO['tipoDenegatoria']>;
+export type TipoResolucion = NonNullable<ResolucionDTO['tipoResolucion']>;
+export type DecisionResolucion = NonNullable<ResolucionDTO['decision']>;
 
 // ── API Paths & Operations (para uso avanzado) ──────────────────────────
 export type { paths, operations } from './schema';
