@@ -542,10 +542,10 @@ Por directivas de ciberseguridad y de diseño defensivo (AppSec), **el Frontend 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Cliente (Web / Mobile)
-    participant API as Backend (Spring Boot)
-    participant DB as PostgreSQL (saip_db)
-    participant S3 as Supabase Storage (S3 API)
+    actor Cliente as "Cliente (Web / Mobile)"
+    participant API as "Backend (Spring Boot)"
+    participant DB as "PostgreSQL (saip_db)"
+    participant S3 as "Supabase Storage (S3 API)"
 
     Note over Cliente, S3: Flujo de Subida (Upload) Mediada
     Cliente->>API: POST /api/documentos/upload (MultipartFile + metadata)
