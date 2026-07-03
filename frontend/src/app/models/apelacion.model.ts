@@ -1,5 +1,12 @@
 // Derivado del contrato OpenAPI — re-generar: npm run generate:api
-import type { ApelacionDTO, CrearApelacionExternaRequest } from '../api/types';
+import type {
+    ApelacionDTO,
+    CrearApelacionExternaRequest,
+    EstadoApelacion,
+    CalificacionApelacion,
+    TipoOrigenApelacion,
+    TipoDenegatoriaApelacion
+} from '../api/types';
 import type { DocumentoMetadata } from './documento.model';
 import type {
     CedulaNotificacion,
@@ -14,35 +21,7 @@ import type {
     SuspensionPlazoTtaip
 } from './resolucion.model';
 
-// Enums tipados del lado cliente (el spec los expone como string)
-// TODO: Agregar @Schema(allowableValues) al backend para generar enums
-export type EstadoApelacion =
-    | 'PENDIENTE_ELEVACION'
-    | 'EN_CALIFICACION_1'
-    | 'EN_SUBSANACION'
-    | 'EN_CALIFICACION_2'
-    | 'NOTIFICACION_SEGUNDA_CALIFICACION'
-    | 'EN_RESOLUCION'
-    | 'RESUELTO'
-    | 'RESUELTO_FUNDADO'
-    | 'RESUELTO_FUNDADO_EN_PARTE'
-    | 'RESUELTO_INFUNDADO'
-    | 'RESUELTO_INFUNDADO_EN_PARTE'
-    | 'RESUELTO_IMPROCEDENTE'
-    | 'RESUELTO_ESTESE_A_LO_RESUELTO'
-    | 'RESUELTO_NULIDAD_ACTO'
-    | 'TENER_POR_NO_PRESENTADO'
-    | 'CONCLUSION_SUSTRACCION_MATERIA'
-    | 'CONCLUSION_DESISTIMIENTO';
-
-export type CalificacionApelacion =
-    | 'ADMISIBLE'
-    | 'INADMISIBLE'
-    | 'IMPROCEDENTE'
-    | 'ADMITIDO';
-
-export type TipoOrigenApelacion = 'SAIP_INTERNA' | 'EXTERNA';
-export type TipoDenegatoriaApelacion = 'EXPRESA' | 'TACITA';
+export type { EstadoApelacion, CalificacionApelacion, TipoOrigenApelacion, TipoDenegatoriaApelacion };
 export type CanalPresentacionApelacion = 'DIRECTA_TTAIP' | 'ANTE_ENTIDAD';
 export type EstadoElevacionApelacion =
     | 'PENDIENTE'
