@@ -544,7 +544,7 @@ sequenceDiagram
     autonumber
     actor Cliente as Cliente (Web / Mobile)
     participant API as Backend (Spring Boot)
-    database DB as PostgreSQL (saip_db)
+    participant DB as PostgreSQL (saip_db)
     participant S3 as Supabase Storage (S3 API)
 
     Note over Cliente, S3: Flujo de Subida (Upload) Mediada
