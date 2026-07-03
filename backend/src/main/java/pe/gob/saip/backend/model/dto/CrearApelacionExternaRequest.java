@@ -19,7 +19,9 @@ public record CrearApelacionExternaRequest(
         @NotBlank @Size(max = 100) String numeroSolicitudExterna,
         @NotNull LocalDate fechaPresentacionSolicitudExterna,
         LocalDate fechaRespuestaEntidad,
-        @NotNull Apelacion.TipoDenegatoria tipoDenegatoria,
+        @NotNull
+        @Schema(description = "Tipo de denegatoria de la SAIP", example = "EXPRESA", implementation = Apelacion.TipoDenegatoria.class, allowableValues = {"EXPRESA", "TACITA"})
+        Apelacion.TipoDenegatoria tipoDenegatoria,
         @NotBlank @Size(max = 5000) String resumenSolicitudOriginal,
         @Size(max = 5000) String resumenRespuestaEntidad,
         @NotBlank @Size(max = 500) String referenciaDocumentoSolicitud,

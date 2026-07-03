@@ -11,13 +11,15 @@ public record ApelacionDTO(
     @Schema(description = "Número de expediente TTAIP", example = "01560-2025-JUS/TTAIP")
     String expediente,
     String fundamentos,
-    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1")
+    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1", implementation = Apelacion.EstadoApelacion.class, allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2", "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION", "RESUELTO", "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO"})
     String estado,
     String resultado,
     String fechaApelacion,
     String fechaSubsanacion,
     Integer diasSubsanacion,
+    @Schema(description = "Calificación de primera instancia", example = "ADMITIDO", implementation = Apelacion.Calificacion.class, allowableValues = {"ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE", "ADMITIDO"})
     String calificacionPrimera,
+    @Schema(description = "Calificación de segunda instancia", example = "ADMITIDO", implementation = Apelacion.Calificacion.class, allowableValues = {"ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE", "ADMITIDO"})
     String calificacionSegunda,
     Long solicitudId,
     String solicitudExpediente,
@@ -26,6 +28,7 @@ public record ApelacionDTO(
     String ciudadanoNombre,
     Long entidadId,
     String entidadNombre,
+    @Schema(description = "Tipo de origen de la apelación", example = "SAIP_INTERNA", implementation = Apelacion.TipoOrigenApelacion.class, allowableValues = {"SAIP_INTERNA", "EXTERNA"})
     String tipoOrigen,
     String entidadExternaNombre,
     String entidadExternaRuc,
@@ -33,6 +36,7 @@ public record ApelacionDTO(
     String numeroSolicitudExterna,
     String fechaPresentacionSolicitudExterna,
     String fechaRespuestaEntidad,
+    @Schema(description = "Tipo de denegatoria de la SAIP", example = "EXPRESA", implementation = Apelacion.TipoDenegatoria.class, allowableValues = {"EXPRESA", "TACITA"})
     String tipoDenegatoria,
     String resumenSolicitudOriginal,
     String resumenRespuestaEntidad,

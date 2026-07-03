@@ -14,6 +14,7 @@ public record DescargoEntidadTtaipDTO(
         String fechaRequerimiento,
         String fechaLimiteDescargo,
         String fechaPresentacion,
+        @Schema(description = "Estado del descargo de la entidad", example = "REQUERIDO", implementation = DescargoEntidadTtaip.EstadoDescargo.class, allowableValues = {"REQUERIDO", "PRESENTADO", "PRESENTADO_EXTEMPORANEO", "VENCIDO_SIN_PRESENTACION", "CANCELADO"})
         String estadoDescargo,
         String resumenDescargo,
         String documentoDescargo,
