@@ -106,3 +106,37 @@ empty JWT values; login requests populate tokens only in memory during a run.
 
 `newman.config.json` keeps a 90-second request timeout for local variance. This
 margin is not a substitute for load testing.
+
+## Nota: Configuración local requerida para Postman Desktop (campos de archivo)
+
+Al ejecutar la colección completa desde la aplicación de escritorio **Postman Desktop** (ya sea mediante el Runner o ejecutando requests individuales), los 3 requests que realizan la subida de archivos dentro de la carpeta **"14. Gestión Documental"**:
+*   `Cargar Documento de Solicitud`
+*   `[EXPECTED_ERROR] Rechazar Upload Sin Relación`
+*   `[EXPECTED_ERROR] Rechazar Upload Multi-Relación`
+
+pueden fallar con el error `Required part 'file' is not present` si el campo de formulario de tipo *File* no tiene un archivo físico real seleccionado desde el disco local.
+
+### ¿Por qué ocurre esto?
+El estándar del formato de exportación de colecciones de Postman (`.json`) solo almacena una referencia al nombre del archivo de la carga (`"src": "dummy-upload.txt"`), pero **no guarda el contenido binario del archivo ni su ruta absoluta**. Por ende, cada desarrollador o evaluador que clone el repositorio debe asociar manualmente un archivo real de su propia máquina en el cliente de escritorio.
+
+### Pasos para solucionarlo (se realiza una única vez por máquina):
+
+1.  **Configurar el Directorio de Trabajo de Postman:**
+    *   Abre **Postman Desktop**.
+    *   Haz clic en el ícono de engranaje (**Settings**) en la parte superior derecha y ve a la pestaña **General**.
+    *   En la sección **Working Directory**, haz clic en **Choose** y selecciona la carpeta de fixtures del repositorio local:
+        *   Ruta recomendada: `postman/fixtures/` dentro de tu clon del repositorio (ejemplo absoluto: `C:\ruta\a\tu\clon\plataforma-saip-apelaciones\postman\fixtures`).
+2.  **Confirmar archivo de prueba:**
+    *   Verifica que dentro del directorio `postman/fixtures/` exista el archivo `dummy-upload.txt`.
+3.  **Vincular el archivo en los Requests:**
+    *   Para cada uno de los 3 requests mencionados arriba, navega a la pestaña **Body** → selecciona la opción **form-data**.
+    *   Busca la fila correspondiente al campo `file` (cuyo tipo está marcado como `File`).
+    *   Pasa el cursor sobre la celda de valor y haz clic en **Select File** para volver a seleccionar el archivo, navegando y seleccionando el archivo `dummy-upload.txt` que reside dentro de tu carpeta `postman/fixtures/`.
+    *   Guarda cada request presionando `Ctrl+S` (o `Cmd+S` en macOS) para preservar la vinculación local.
+
+### Importante: Configuración Local
+Esta vinculación es estrictamente **local** para tu instalación de Postman Desktop (las rutas físicas absolutas no se serializan en el archivo de la colección). Por lo tanto, **NO** debes intentar commitear ni subir estos cambios de vinculación en el archivo JSON de la colección. Cada integrante que clone el repositorio deberá realizar este mapeo en su propia máquina.
+
+### Ejecución Oficial vía Newman (Sin problemas de ruta)
+Ejecutar la colección por consola a través de Newman (`npm run test:api:diagnostic`) **NO** sufre de este problema de desvinculación, ya que Newman resuelve la ruta del fixture de forma programática. Se recomienda utilizar siempre Newman como la fuente oficial y definitiva de validación técnica antes de abrir cualquier Pull Request, reservando Postman Desktop principalmente para exploración y debugging manual durante el desarrollo.
+
