@@ -2,14 +2,14 @@
 # pr-open.ps1 - Create GitHub PR quickly using gh CLI
 # ============================================================
 # Usage:
-#   .\scripts\pr-open.ps1 -Title "🐛 fix(mobile): ..." -Base main
-#   .\scripts\pr-open.ps1 -Title "..." -Base main -BodyFile .\tmp\pr.md
+#   .\scripts\pr-open.ps1 -Title "🐛 fix(mobile): ..." -Base develop
+#   .\scripts\pr-open.ps1 -Title "..." -Base develop -BodyFile .\tmp\pr.md
 # ============================================================
 
 param(
     [Parameter(Mandatory = $true)]
     [string]$Title,
-    [string]$Base = "main",
+    [string]$Base = "develop",
     [string]$BodyFile = ""
 )
 

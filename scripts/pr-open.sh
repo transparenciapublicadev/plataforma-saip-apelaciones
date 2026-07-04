@@ -3,14 +3,14 @@
 # pr-open.sh - Create GitHub PR quickly using gh CLI
 # ============================================================
 # Usage:
-#   ./scripts/pr-open.sh --title "🐛 fix(mobile): ..." --base main
-#   ./scripts/pr-open.sh --title "..." --base main --body-file ./tmp/pr.md
+#   ./scripts/pr-open.sh --title "🐛 fix(mobile): ..." --base develop
+#   ./scripts/pr-open.sh --title "..." --base develop --body-file ./tmp/pr.md
 # ============================================================
 
 set -euo pipefail
 
 TITLE=""
-BASE="main"
+BASE="develop"
 BODY_FILE=""
 
 while [[ $# -gt 0 ]]; do
@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     *)
-      echo "Usage: $0 --title \"...\" [--base main] [--body-file path]"
+      echo "Usage: $0 --title \"...\" [--base develop] [--body-file path]"
       exit 1
       ;;
   esac
