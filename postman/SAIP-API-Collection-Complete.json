@@ -82501,12 +82501,12 @@
                 "type": "text/javascript",
                 "exec": [
                   "const json = pm.response.json();",
-                  "pm.test(\"unauthorized push registration returns RFC 9457 forbidden\", function () {",
-                  "  pm.response.to.have.status(403);",
-                  "  pm.expect(json.type).to.eql(\"urn:saip:problem:forbidden\");",
-                  "  pm.expect(json.title).to.eql(\"Forbidden\");",
-                  "  pm.expect(json.status).to.eql(403);",
-                  "  pm.expect(json.detail).to.eql(\"El usuario autenticado no tiene permisos para ejecutar esta operación.\");",
+                  "pm.test(\"unauthorized push registration returns RFC 9457 unauthorized\", function () {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(json.type).to.eql(\"urn:saip:problem:unauthorized\");",
+                  "  pm.expect(json.title).to.eql(\"Unauthorized\");",
+                  "  pm.expect(json.status).to.eql(401);",
+                  "  pm.expect(json.detail).to.eql(\"Token faltante, inválido o expirado.\");",
                   "});"
                 ]
               }
@@ -82518,6 +82518,90 @@
     {
       "name": "14. Gestión Documental",
       "item": [
+        {
+          "name": "Crear Solicitud para Documentos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ciudadanoId\": {{ciudadanoId}},\n    \"entidadId\": {{targetEntidadId}},\n    \"asunto\": \"Solicitud para Carga de Documentos\",\n    \"descripcion\": \"Solicitud de prueba para verificar la carga y eliminacion de documentos adjuntos.\",\n    \"tipoInformacion\": \"Contrataciones\",\n    \"formatoDigital\": true,\n    \"formatoFisico\": false,\n    \"copiaSimple\": true,\n    \"copiaCertificada\": false,\n    \"consentimientoDatosPersonales\": true,\n    \"canalNotificacion\": \"CASILLA_ELECTRONICA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/solicitudes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "solicitudes"
+              ]
+            },
+            "description": "Crea una solicitud SAIP dedicada específicamente al testeo del ciclo de vida de los documentos (carga y eliminación), evitando conflictos con otras solicitudes eliminadas en la colección.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ciudadanoToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{ciudadanoToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const funcionarioEntidadId = (pm.environment.get(\"funcionarioEntidadId\") || \"\").trim();",
+                  "const entidadId = (pm.environment.get(\"entidadId\") || \"\").trim();",
+                  "const targetEntidadId = funcionarioEntidadId || entidadId || \"1\";",
+                  "pm.variables.set(\"targetEntidadId\", targetEntidadId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"solicitud para documentos is created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json.id).to.exist;",
+                  "});",
+                  "if (json.id) pm.environment.set(\"documentosSolicitudId\", String(json.id));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
         {
           "name": "Cargar Documento de Solicitud",
           "request": {
@@ -82553,7 +82637,7 @@
                 },
                 {
                   "key": "solicitudId",
-                  "value": "101",
+                  "value": "{{documentosSolicitudId}}",
                   "type": "text"
                 }
               ]
@@ -82583,7 +82667,7 @@
                   "  pm.expect(json).to.have.property(\"id\");",
                   "  pm.expect(json.nombreOriginal).to.eql(\"dummy-upload.txt\");",
                   "  pm.expect(json.tipoDocumento).to.eql(\"DOCUMENTO_ADJUNTO\");",
-                  "  pm.expect(json.solicitudId).to.eql(101);",
+                  "  pm.expect(json.solicitudId).to.eql(Number(pm.environment.get(\"documentosSolicitudId\")));",
                   "  pm.environment.set(\"lastDocumentoId\", json.id);",
                   "});"
                 ]
@@ -82648,10 +82732,10 @@
                   "const json = pm.response.json();",
                   "pm.test(\"upload without relation returns RFC 9457 bad request\", function () {",
                   "  pm.response.to.have.status(400);",
-                  "  pm.expect(json.type).to.eql(\"about:blank\");",
+                  "  pm.expect(json.type).to.eql(\"urn:saip:problem:bad-request\");",
                   "  pm.expect(json.title).to.eql(\"Bad request\");",
                   "  pm.expect(json.status).to.eql(400);",
-                  "  pm.expect(json.detail).to.contain(\"Debe especificar exactamente una relación\");",
+                  "  pm.expect(json.detail).to.contain(\"debe asociarse exactamente a un recurso de negocio\");",
                   "});"
                 ]
               }
@@ -82725,10 +82809,10 @@
                   "const json = pm.response.json();",
                   "pm.test(\"upload with multi-relation returns RFC 9457 bad request\", function () {",
                   "  pm.response.to.have.status(400);",
-                  "  pm.expect(json.type).to.eql(\"about:blank\");",
+                  "  pm.expect(json.type).to.eql(\"urn:saip:problem:bad-request\");",
                   "  pm.expect(json.title).to.eql(\"Bad request\");",
                   "  pm.expect(json.status).to.eql(400);",
-                  "  pm.expect(json.detail).to.contain(\"Debe especificar exactamente una relación\");",
+                  "  pm.expect(json.detail).to.contain(\"debe asociarse exactamente a un recurso de negocio\");",
                   "});"
                 ]
               }
@@ -82743,7 +82827,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{ciudadanoToken}}",
+                  "value": "{{adminToken}}",
                   "type": "string"
                 }
               ]
