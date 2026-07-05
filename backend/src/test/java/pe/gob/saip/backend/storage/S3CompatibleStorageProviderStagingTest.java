@@ -31,7 +31,8 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
     "AWS_REGION=us-east-1",
     "SUPABASE_S3_BUCKET_NAME=mock-bucket",
     "SUPABASE_S3_ACCESS_KEY=mock-access-key",
-    "SUPABASE_S3_SECRET_KEY=mock-secret-key"
+    "SUPABASE_S3_SECRET_KEY=mock-secret-key",
+    "spring.flyway.enabled=false"
 })
 @ActiveProfiles("staging")
 class S3CompatibleStorageProviderStagingTest {
