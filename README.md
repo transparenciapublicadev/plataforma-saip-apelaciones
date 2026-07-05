@@ -155,7 +155,7 @@ flowchart TB
 | --- | --- |
 | Docs | Astro 6, Starlight, Mermaid |
 | API collections | Postman collection operativa |
-| Database schema/seed | `database/postgres/script_saip_db_postgres.sql` |
+| Database migrations | Flyway versioned migrations (V1 DDL and V2 local seed in `backend/src/main/resources/db/`) |
 | CI/CD | GitHub Actions por módulo |
 | OpenAPI sync | `scripts/sync-openapi.ps1` y `scripts/sync-openapi.sh` |
 
@@ -599,30 +599,20 @@ Para aislar por completo la infraestructura de almacenamiento y evitar accesos p
 
 Para arrancar el backend Spring Boot localmente apuntando a Supabase y verificar el funcionamiento de las subidas y descargas mediadas:
 
-#### Paso 1: Configurar las variables de entorno en la terminal
-Ejecuta en tu terminal de comandos (reemplazando con tus credenciales de Supabase):
+#### Paso 1: Iniciar el backend con el runner de Staging
+Para automatizar la carga de las variables de entorno definidas en tu archivo `backend/.env` e iniciar la aplicación de forma segura sin exponer credenciales en la terminal:
 
-**PowerShell (Windows):**
-```powershell
-$env:SPRING_PROFILES_ACTIVE="staging"
-$env:APP_STORAGE_PROVIDER="S3_COMPATIBLE"
-$env:SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
-$env:SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
-$env:SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
-$env:SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
-$env:AWS_REGION="us-east-1"
-```
+*   **En Windows (PowerShell):**
+    Ejecuta el script runner provisto en el repositorio (el cual lee automáticamente las variables de `backend/.env` e inicia la aplicación en perfil `staging`):
+    ```powershell
+    .\backend\scripts\run-staging.ps1
+    ```
 
-**Bash (Linux/macOS):**
-```bash
-export SPRING_PROFILES_ACTIVE="staging"
-export APP_STORAGE_PROVIDER="S3_COMPATIBLE"
-export SUPABASE_S3_ENDPOINT="https://<tu-project-id>.supabase.co/storage/v1/s3"
-export SUPABASE_S3_BUCKET_NAME="<tu-bucket>"
-export SUPABASE_S3_ACCESS_KEY="<tu-s3-access-key>"
-export SUPABASE_S3_SECRET_KEY="<tu-s3-secret-key>"
-export AWS_REGION="us-east-1"
-```
+*   **En Linux/macOS:**
+    Puesto que en este momento solo se provee el runner de PowerShell (`.ps1`), para entornos Unix puedes arrancar cargando el archivo `.env` antes del comando de ejecución:
+    ```bash
+    export $(grep -v '^#' backend/.env | xargs) && cd backend && ./mvnw spring-boot:run
+    ```
 
 #### Paso 2: Iniciar el backend Spring Boot
 ```bash
@@ -666,6 +656,43 @@ curl -O -J -L http://localhost:8080/api/documentos/1/download \
 | npm 11.x | Gestión de paquetes web. |
 | Android Studio / SDK | Build y ejecución mobile. |
 | PowerShell o Bash | Scripts de sincronización OpenAPI. |
+
+### Base de datos local (Inicialización)
+
+Antes de iniciar el backend, se debe crear la base de datos PostgreSQL localmente en blanco. Ya no es necesario ejecutar manualmente ningún script SQL complejo; **Flyway** se encarga de crear el esquema de tablas (V1) y poblar los datos semilla de prueba (V2) automáticamente en el primer arranque del servidor.
+
+**Paso 1: Crear la base de datos vacía**
+Ejecuta uno de los siguientes comandos según las herramientas instaladas en tu terminal:
+
+* Usando la herramienta CLI de PostgreSQL:
+  ```bash
+  createdb -U postgres saip_db
+  ```
+* O conectándote directamente mediante `psql`:
+  ```bash
+  psql -U postgres -c "CREATE DATABASE saip_db;"
+  ```
+
+> [!NOTE]
+> El archivo `database/postgres/script_saip_db_postgres.sql` que se usaba anteriormente para inicialización manual se mantiene en el repositorio únicamente para consulta de referencia histórica. El mecanismo oficial activo ahora son las migraciones Flyway ubicadas en `backend/src/main/resources/db/`.
+
+### Configuración de Variables de Entorno (`.env`)
+
+El directorio `backend/` incluye una plantilla `backend/.env.example` para gestionar secretos e integraciones de infraestructura de forma limpia. 
+
+Para habilitar el perfil de `staging` (integración con Supabase S3 y Firebase), copia la plantilla y configúrala localmente:
+```bash
+cp backend/.env.example backend/.env
+```
+*(Nota: Nunca guardes ni subas el archivo `backend/.env` al control de versiones de Git).*
+
+Este archivo incluye la configuración para:
+* **Perfil activo de Spring Boot**: `SPRING_PROFILES_ACTIVE` (define el perfil a ejecutar, ej. `staging`)
+* **Credenciales S3 de Supabase**: `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_BUCKET_NAME`, `SUPABASE_S3_ACCESS_KEY` y `SUPABASE_S3_SECRET_KEY`
+* **Región AWS virtual**: `AWS_REGION`
+
+> [!IMPORTANT]
+> Este paso es **estrictamente opcional** y solo se requiere para ejecutar el perfil `staging` (con integraciones de nube activas). Para el desarrollo local estándar (`default`/`local`), el backend arranca de forma autónoma con almacenamiento local y base de datos local sin necesidad de crear el archivo `.env`.
 
 ### Backend
 
@@ -767,6 +794,13 @@ En otra terminal:
 cd postman
 npm run test:api:diagnostic
 ```
+
+> [!NOTE]
+> Para la correcta ejecución de los tests Newman que involucran subida de archivos
+> (carga de binarios y subsanación), es necesario configurar el **Working Directory**
+> de tu entorno local de Postman. Consulta la guía detallada de configuración de
+> Postman Desktop en el archivo [postman/README.md](postman/README.md) para prevenir
+> errores de tipo `ENOENT`.
 
 El script bloquea hosts remotos, exige confirmación explícita y no se ejecuta de
 forma automática. Newman usa variables dinámicas y tokens JWT vacíos en el
@@ -873,7 +907,7 @@ flowchart LR
 | --- | --- |
 | `docs/` | Sitio técnico y funcional con Astro + Starlight. |
 | `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
-| `database/postgres/script_saip_db_postgres.sql` | Schema PostgreSQL oficial y seed local idempotente. |
+| `backend/src/main/resources/db/` | Directorio de migraciones Flyway (V1 esquema DDL y V2 seed local). El script original `database/postgres/script_saip_db_postgres.sql` se conserva en el repo únicamente para referencia histórica. |
 | `StorageProvider` | Abstracción backend para mantener binarios fuera de PostgreSQL y del repositorio. |
 | `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
 
@@ -881,7 +915,7 @@ flowchart LR
 
 | Área | Próxima mejora |
 | --- | --- |
-| Backend | Incorporar migraciones versionadas y validar el provider S3-compatible contra staging aprovisionado externamente. |
+| Backend | Validar el provider S3-compatible contra staging aprovisionado externamente. |
 | Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
 | Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
 | Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |
