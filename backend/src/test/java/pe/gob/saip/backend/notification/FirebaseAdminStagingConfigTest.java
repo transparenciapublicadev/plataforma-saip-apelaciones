@@ -29,7 +29,8 @@ import java.util.Optional;
     "app.storage.provider=local",
     "app.notifications.push.enabled=true",
     "app.notifications.push.firebase.credentials-json={}",
-    "app.notifications.push.token-encryption-key-base64=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
+    "app.notifications.push.token-encryption-key-base64=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=",
+    "spring.flyway.enabled=false"
 })
 @ActiveProfiles("staging")
 @Transactional
