@@ -1,188 +1,206 @@
 ---
 title: Comenzar
-description: Configuración local, comandos principales y orden recomendado para ejecutar la Plataforma SAIP.
+description: Guía paso a paso "cero a cien" para clonar, configurar e inicializar la plataforma SAIP en modo local (PostgreSQL + Flyway, Angular y Postman/Newman).
 sidebar:
   order: 4
 ---
 
 import { Card, CardGrid, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-## Requisitos
+Esta guía detalla el flujo de inicialización completo para configurar el monorepo en tu entorno local. Sigue los pasos secuencialmente para levantar la base de datos PostgreSQL, ejecutar la migración automatizada con Flyway, sincronizar el contrato OpenAPI e iniciar los clientes web y móvil.
+
+---
+
+## 1. Prerrequisitos
+
+Asegúrate de contar con el siguiente stack de software instalado en tu equipo antes de comenzar:
 
 <CardGrid>
-  <Card title="Backend" icon="setting">
-    JDK 25, Maven Wrapper, PostgreSQL 16+ y cliente `psql`.
+  <Card title="Java 25" icon="seti:java">
+    Runtime y JDK requerido para compilar y ejecutar el **Backend Spring Boot 4**.
   </Card>
-  <Card title="Frontend" icon="laptop">
-    Node compatible con Angular 21, npm 11.6.x y backend disponible para sincronizar OpenAPI.
+  <Card title="Node.js 22 & npm 11.x" icon="seti:javascript">
+    Entorno de ejecución y gestor de paquetes para el **Frontend Angular 21** y la **Documentación Starlight**.
   </Card>
-  <Card title="Mobile" icon="rocket">
-    Android Studio, JDK 17+ para Gradle/AGP, SDK 36 y `google-services.json` solo para FCM.
+  <Card title="PostgreSQL 16+" icon="database">
+    Base de datos transaccional local. Asegúrate de tener el servicio corriendo en el puerto por defecto (`5432`).
   </Card>
-  <Card title="Docs" icon="document">
-    Node/npm para ejecutar Astro 6 + Starlight.
+  <Card title="Android Studio & JDK 17+" icon="rocket">
+    Entorno y JDK para el desarrollo y compilación del **módulo móvil Android (Kotlin)**.
   </Card>
 </CardGrid>
 
-## Orden Recomendado
+---
 
-<Steps>
-1. Levantar PostgreSQL y ejecutar el schema oficial con `run-postgres-schema`.
-2. Ejecutar backend y validar `/v3/api-docs`.
-3. Sincronizar contrato OpenAPI si hubo cambios de API.
-4. Ejecutar frontend Angular.
-5. Ejecutar mobile con el flavor requerido.
-6. Ejecutar docs Starlight y validar que la documentación compile.
-</Steps>
+## 2. Clonar el repositorio
 
-## Backend
+Clona el repositorio monorepo del proyecto utilizando tu cliente de Git:
 
-```powershell
-cd backend
-.\mvnw.cmd test
-.\mvnw.cmd spring-boot:run
+```bash
+git clone https://github.com/transparenciapublicadev/plataforma-saip-apelaciones.git
+cd plataforma-saip-apelaciones
 ```
 
-Variables habituales:
+---
 
-| Variable | Uso |
-| --- | --- |
-| `DB_URL` | JDBC PostgreSQL; default `jdbc:postgresql://localhost:5432/saip_db`. |
-| `DB_USERNAME` | Usuario de base de datos. |
-| `DB_PASSWORD` | Password de base de datos. |
-| `JWT_SECRET` | Secreto HMAC para firmar JWT. |
-| `APP_CORS_ALLOWED_ORIGINS` | Orígenes permitidos para frontend. |
+## 3. Base de datos local (PostgreSQL + Flyway)
 
-Validaciones rápidas:
+La plataforma utiliza **Flyway** para gestionar de forma automatizada el esquema de base de datos y la semilla local. Ya no es necesario ejecutar manualmente scripts SQL.
 
-```powershell
-curl http://localhost:8080/v3/api-docs
-curl http://localhost:8080/swagger-ui.html
-```
+**Paso 1: Instalación de PostgreSQL**
+* Si no lo tienes instalado, descarga e instala la versión correspondiente a tu sistema operativo desde la [Página Oficial de PostgreSQL](https://www.postgresql.org/download/).
 
-## Frontend
+**Paso 2: Crear la base de datos vacía**
+* Desde tu terminal, crea una base de datos PostgreSQL vacía en blanco llamada `saip_db` (usando la contraseña de administrador predeterminada):
+  * **Usando la CLI de PostgreSQL:**
+    ```bash
+    createdb -U postgres saip_db
+    ```
+  * **O directamente mediante `psql`:**
+    ```bash
+    psql -U postgres -c "CREATE DATABASE saip_db;"
+    ```
 
+**Paso 3: Inicialización automática**
+* Al iniciar el backend por primera vez, Flyway detectará la base de datos en blanco y aplicará automáticamente las siguientes migraciones ubicadas en `backend/src/main/resources/db/`:
+  1. `migration/V1__init_schema.sql` (Crea la estructura del esquema de tablas, triggers y funciones).
+  2. `seed/V2__seed_local.sql` (Puebla los catálogos y datos iniciales de prueba local).
+
+:::note[Nota Histórica]
+El archivo legacy `database/postgres/script_saip_db_postgres.sql` que se usaba anteriormente para inicialización manual se mantiene en el repositorio únicamente para consulta de referencia histórica.
+:::
+
+---
+
+## 4. Backend en modo local (sin Supabase)
+
+El modo local por defecto guarda los archivos en el disco local del usuario y no requiere configuraciones en la nube.
+
+**Paso 1: Arrancar el Backend**
+* Desde la raíz del proyecto, ejecuta el comando para iniciar el servidor de desarrollo:
+  * **En Windows (PowerShell):**
+    ```powershell
+    cd backend
+    .\mvnw.cmd spring-boot:run
+    ```
+  * **En Linux/macOS:**
+    ```bash
+    cd backend
+    ./mvnw spring-boot:run
+    ```
+
+**Paso 2: Confirmar levantamiento**
+* El backend levantará en el puerto `8080`. Puedes verificar el estado de la API abriendo las siguientes URLs en tu navegador:
+  * **Swagger UI:** `http://localhost:8080/swagger-ui.html`
+  * **Contrato OpenAPI:** `http://localhost:8080/v3/api-docs`
+
+:::tip[Almacenamiento Local]
+En este modo, los documentos cargados por los usuarios se almacenarán localmente en la ruta `${user.home}/.saip-storage`.
+:::
+
+---
+
+## 5. Backend en modo staging (con Supabase S3) — OPCIONAL
+
+Si deseas probar la integración real de almacenamiento en la nube en lugar de guardar archivos locales en tu disco, sigue estos pasos para configurar e iniciar la aplicación en el perfil `staging` mediante Supabase:
+
+**Paso A: Crear y configurar la infraestructura en Supabase**
+1. Crea una cuenta gratuita en [supabase.com](https://supabase.com/).
+2. Crea un nuevo proyecto (plan gratuito) seleccionando tu región preferida.
+3. Ve a la consola del proyecto, entra a **Storage** y crea un nuevo Bucket llamado `saip-documents` (asegúrate de que la casilla de verificación **Public** esté en **OFF** para que el bucket sea privado).
+
+**Paso B: Obtener las credenciales S3**
+1. En la consola de tu proyecto Supabase, navega a **Project Settings** ➡️ **Storage**.
+2. En la sección **S3 Connection**, copia el **Endpoint** (ej. `https://<tu-project-id>.storage.supabase.co/storage/v1/s3`) y la **Region** (la cual depende del servidor que seleccionaste al crear tu proyecto; puedes verificarla también en *Project Settings* ➡️ *General* ➡️ *Project region*).
+3. En la misma sección, haz clic en **Generate New Access Key** y copia tanto el **Access Key ID** como el **Secret Access Key** generados.
+
+:::tip[Evita errores de conexión]
+Te recomendamos utilizar el botón **Copy** de la consola de Supabase para copiar el Endpoint de la conexión S3. Al ser una URL estructurada, escribirla a mano es altamente propenso a errores de tipeo que causan fallos de conexión difíciles de diagnosticar.
+:::
+
+**Paso C: Configurar el archivo local `.env`**
+1. Copia la plantilla de configuración en el directorio del backend:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+2. Abre `backend/.env` y completa las variables con las credenciales que copiaste:
+   ```env
+   SPRING_PROFILES_ACTIVE=staging
+   SUPABASE_S3_ENDPOINT=https://<tu-project-id>.storage.supabase.co/storage/v1/s3
+   SUPABASE_S3_BUCKET_NAME=saip-documents
+   SUPABASE_S3_ACCESS_KEY=<tu-access-key-id>
+   SUPABASE_S3_SECRET_KEY=<tu-secret-access-key>
+   AWS_REGION=<tu-region>
+   ```
+   *(Nota: Nunca guardes ni subas el archivo `backend/.env` al control de versiones de Git).*
+
+**Paso D: Iniciar en modo Staging**
+* **En Windows (PowerShell):**
+  Ejecuta el script runner provisto para inyectar las variables del archivo `.env` de manera automática:
+  ```powershell
+  .\backend\scripts\run-staging.ps1
+  ```
+* **En Linux/macOS:**
+  Carga las variables de entorno locales de `.env` antes del comando de ejecución:
+  ```bash
+  export $(grep -v '^#' backend/.env | xargs) && cd backend && ./mvnw spring-boot:run
+  ```
+
+---
+
+## 6. Sincronizar el contrato OpenAPI
+
+Si realizas cambios en los controladores, tipos o endpoints del backend, debes actualizar los clientes web y móviles para asegurar la coherencia del contrato REST:
+
+* **En Windows (PowerShell):**
+  ```powershell
+  .\scripts\sync-openapi.ps1
+  ```
+* **En Linux/macOS:**
+  ```bash
+  ./scripts/sync-openapi.sh
+  ```
+
+---
+
+## 7. Frontend Angular
+
+Para levantar la aplicación web pública e interna:
+
+**Paso 1: Instalar dependencias e iniciar**
 ```powershell
 cd frontend
 npm install
-npm test
-npm run build
 npm start
 ```
 
-Sincronizar tipos desde backend activo:
+**Paso 2: Acceder a la plataforma**
+* Abre tu navegador e ingresa a `http://localhost:4200`.
 
+---
+
+## 8. Validar con Postman/Newman
+
+La colección de Postman permite validar la API y los flujos funcionales del sistema de extremo a extremo:
+
+**Paso 1: Ejecutar la suite de diagnóstico con Newman**
 ```powershell
-cd frontend
-npm run generate:api:live
+cd postman
+npm install
+npm run test:api:diagnostic
 ```
 
-La aplicación web corre por defecto en:
-
-```text
-http://localhost:4200
-```
-
-## Mobile
-
-El módulo mobile genera tres APKs independientes por rol.
-
-```powershell
-cd mobile
-.\gradlew.bat :app:compileCiudadanoDebugKotlin
-.\gradlew.bat :app:compileFuncionarioDebugKotlin
-.\gradlew.bat :app:compileTtaipDebugKotlin
-```
-
-Build por flavor:
-
-```powershell
-.\gradlew.bat assembleCiudadanoDebug
-.\gradlew.bat assembleFuncionarioDebug
-.\gradlew.bat assembleTtaipDebug
-```
-
-Configurar backend para emulador o dispositivo:
-
-```properties
-# mobile/gradle.properties o local.properties
-REST_BASE_URL=http://10.0.2.2:8080/
-```
-
-:::caution[Firebase]
-Firebase ya no es backend de autenticación ni de datos. El único servicio conservado es **Firebase Cloud Messaging** para recibir push notifications.
+:::caution[Postman Desktop Working Directory]
+Si decides importar y ejecutar la colección en la aplicación **Postman Desktop** en lugar de usar Newman por terminal, **debes configurar el Working Directory** en los ajustes de Postman apuntando a la ruta local absoluta de la carpeta `postman/fixtures/` en tu clon. De lo contrario, los tests de carga de archivos (Multipart/subsanación) fallarán con un error de tipo `ENOENT` (archivo no encontrado). Consulta la guía detallada de Postman en [postman/README.md](postman/README.md).
 :::
 
-## Documentación Starlight
+---
 
-```powershell
-cd docs
-npm ci
-npm run build
-npm start
-```
+## 9. Checklist final: ¿cómo sé que todo funciona?
 
-La documentación local corre por defecto en:
+Marca los elementos de esta lista para confirmar que tu entorno local está correctamente configurado:
 
-```text
-http://localhost:4321
-```
-
-## Postman
-
-Importar:
-
-- `postman/SAIP-API-Collection-Complete.json`
-- `postman/SAIP-API-Environment-Complete.json`
-
-Flujo recomendado:
-
-<Steps>
-1. Seleccionar environment `SAIP Backend - Environment`.
-2. Ejecutar los logins para poblar tokens por rol.
-3. Ejecutar carpetas por dominio: SAIP, respuestas, apelaciones, TTAIP, reportes.
-4. Revisar ejemplos de éxito y error en la pestaña **Examples** de cada request.
-</Steps>
-
-## Comandos por Módulo
-
-<Tabs>
-  <TabItem label="Backend">
-    ```powershell
-    cd backend
-    .\mvnw.cmd test
-    .\mvnw.cmd spring-boot:run
-    ```
-  </TabItem>
-  <TabItem label="Frontend">
-    ```powershell
-    cd frontend
-    npm test
-    npm run build
-    npm start
-    ```
-  </TabItem>
-  <TabItem label="Mobile">
-    ```powershell
-    cd mobile
-    .\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin :core:domain:test
-    ```
-  </TabItem>
-  <TabItem label="Docs">
-    ```powershell
-    cd docs
-    npm run build
-    npm start
-    ```
-  </TabItem>
-</Tabs>
-
-## Checklist antes de Cerrar Cambios
-
-| Área tocada | Validación mínima |
-| --- | --- |
-| Backend | `cd backend; .\mvnw.cmd test` |
-| Frontend | `cd frontend; npm test; npm run build` |
-| Mobile | `cd mobile; .\gradlew.bat :app:compileCiudadanoDebugKotlin :app:compileFuncionarioDebugKotlin :app:compileTtaipDebugKotlin :core:domain:test` |
-| Docs | `cd docs; npm run build` |
-| API contract | Backend activo + `scripts/sync-openapi.ps1` |
+- [ ] El Backend inicia sin excepciones de JPA/Hibernate y muestra logs de Flyway aplicando las migraciones en el puerto `8080`.
+- [ ] Ejecutar la colección en Newman (`npm run test:api:diagnostic`) finaliza con `0` fallas.
+- [ ] La aplicación web Angular carga en `http://localhost:4200` y permite loguearse usando las credenciales de prueba.
+- [ ] *(Opcional en Staging)* Subir un archivo de prueba (ej. una subsanación) desde la interfaz web registra el documento y lo guarda físicamente dentro de tu bucket de Supabase Storage.
