@@ -16,6 +16,7 @@ import {
   ReferenceSuccessNextStep,
   ReferenceSuccessTone
 } from '../../shared/reference-success-modal.component';
+import { DocumentoService } from '../../services/documento.service';
 
 type SegundaDecision = 'admitido' | 'improcedente';
 type SegundaTab = 'subsanacion' | 'adjuntos';
@@ -39,6 +40,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly segundaCalificacionEstados = new Set<string>(['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION']);
 
   apelacion = signal<Apelacion | null>(null);
@@ -87,11 +89,12 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   }
 
   readonly documentosSubsanacion = computed(() => {
-    return this.apelacion()?.documentosSubsanacion ?? [];
+    // Nota de mantenimiento: limitación conocida si se habilitan múltiples rondas de subsanación
+    return this.apelacion()?.documentos?.filter(doc => doc.tipoDocumento === 'SUBSANACION') ?? [];
   });
 
   readonly documentosOriginales = computed(() => {
-    return this.apelacion()?.documentos ?? [];
+    return this.apelacion()?.documentos?.filter(doc => doc.tipoDocumento !== 'SUBSANACION') ?? [];
   });
 
   ngOnInit(): void {
@@ -121,6 +124,28 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
 
   cambiarTab(tab: SegundaTab): void {
     this.activeTab.set(tab);
+  }
+
+  descargarDocumento(doc: any): void {
+    if (!doc.id) {
+      this.error.set('No se puede descargar un documento sin ID.');
+      return;
+    }
+    this.error.set('');
+    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
+      next: ({ blob, filename }) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        anchor.rel = 'noopener';
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        this.error.set('Error al descargar el documento.');
+      }
+    });
   }
 
   seleccionarDecision(decision: SegundaDecision): void {
