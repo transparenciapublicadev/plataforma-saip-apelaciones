@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
@@ -56,6 +56,17 @@ interface PlazoStatus {
 export class TtaipDashboardComponent implements OnInit {
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  private focusStageFromState: StageKey | null = null;
+
+  constructor() {
+    const navigation = this.router.getCurrentNavigation();
+    const state = navigation?.extras.state as { focusStage?: StageKey } | undefined;
+    if (state?.focusStage) {
+      this.focusStageFromState = state.focusStage;
+    }
+  }
 
   readonly stages: StageMeta[] = [
     {
@@ -279,8 +290,13 @@ export class TtaipDashboardComponent implements OnInit {
 
         this.apelaciones.set(merged);
 
-        const firstWithData = this.stages.find((stage) => this.countByStage(merged, stage.key) > 0) ?? this.stages[0];
-        this.stageKey.set(firstWithData.key);
+        if (this.focusStageFromState) {
+          this.stageKey.set(this.focusStageFromState);
+          this.focusStageFromState = null;
+        } else {
+          const firstWithData = this.stages.find((stage) => this.countByStage(merged, stage.key) > 0) ?? this.stages[0];
+          this.stageKey.set(firstWithData.key);
+        }
         this.loading.set(false);
       },
       error: (err) => {
