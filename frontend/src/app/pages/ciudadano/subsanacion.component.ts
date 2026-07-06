@@ -174,7 +174,8 @@ export class SubsanacionComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
+    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
+    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
     this.loading.set(true);
     this.error.set('');
 
@@ -187,25 +188,34 @@ export class SubsanacionComponent implements OnInit {
               this.apelacion.set(updated ?? ap);
               this.loading.set(false);
               this.mensaje.set('Subsanación enviada correctamente y documento adjunto subido.');
+              
+              // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
+              // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
               this.successModalAbierto.set(true);
+              this.confirmModalAbierto.set(false);
             },
             error: (uploadErr) => {
               this.apelacion.set(updated ?? ap);
               this.loading.set(false);
               // Si la subida falla, advertir al usuario del fallo parcial:
               this.mensaje.set('Subsanación registrada, pero hubo un error al subir el archivo adjunto. Por favor, intente subir el documento nuevamente desde su panel.');
+              
               this.successModalAbierto.set(true);
+              this.confirmModalAbierto.set(false);
             }
           });
         } else {
           this.apelacion.set(updated ?? ap);
           this.loading.set(false);
           this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
+          
           this.successModalAbierto.set(true);
+          this.confirmModalAbierto.set(false);
         }
       },
       error: (err) => {
         this.loading.set(false);
+        this.confirmModalAbierto.set(false);
         this.error.set(err.error?.mensaje || err.error?.message || 'Error al enviar la subsanación');
       }
     });
