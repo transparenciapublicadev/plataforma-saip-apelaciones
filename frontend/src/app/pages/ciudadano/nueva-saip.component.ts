@@ -68,6 +68,44 @@ export class NuevaSaipComponent implements OnInit {
   ngOnInit(): void {
     this.cargarSesionVisual();
     this.cargarEntidades();
+    this.restaurarBorradorSeguro();
+  }
+
+  private restaurarBorradorSeguro(): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    const borradorRaw = localStorage.getItem('saip.borrador');
+    if (!borradorRaw) {
+      return;
+    }
+
+    try {
+      const borrador = JSON.parse(borradorRaw);
+      const sesion = this.authService.obtenerSesion();
+      
+      // Seguridad: verificar que el borrador pertenezca al ciudadano actual en sesión
+      if (borrador && sesion?.ciudadanoId && borrador.ciudadanoId === sesion.ciudadanoId) {
+        this.asunto = borrador.asunto || '';
+        this.descripcion = borrador.descripcion || '';
+        this.entidadId = borrador.entidadId ?? null;
+        this.tipoInformacion = borrador.tipoInformacion || '';
+        this.formatoDigital = borrador.formatoDigital ?? true;
+        this.formatoFisico = borrador.formatoFisico ?? false;
+        this.copiaSimple = borrador.copiaSimple ?? true;
+        this.copiaCertificada = borrador.copiaCertificada ?? false;
+        this.consentimientoDatosPersonales = borrador.consentimientoDatosPersonales ?? false;
+        this.canalNotificacion = borrador.canalNotificacion || 'CASILLA_ELECTRONICA';
+        
+        const fechaMsg = borrador.updatedAt ? new Date(borrador.updatedAt).toLocaleString() : 'fecha desconocida';
+        this.mensaje.set(`Se restauró el borrador guardado el ${fechaMsg}`);
+      } else {
+        // Limpiar silenciosamente si pertenece a otro usuario o no hay sesión
+        localStorage.removeItem('saip.borrador');
+      }
+    } catch (e) {
+      localStorage.removeItem('saip.borrador');
+    }
   }
 
   private cargarSesionVisual(): void {
@@ -155,7 +193,8 @@ export class NuevaSaipComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
+    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
+    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
     this.loading.set(true);
     this.error.set('');
 
@@ -175,6 +214,11 @@ export class NuevaSaipComponent implements OnInit {
 
     this.solicitudService.crear(solicitud).subscribe({
       next: (respuesta) => {
+        // Limpiar el borrador tras creación exitosa
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('saip.borrador');
+        }
+
         const file = this.documentoSeleccionado();
         if (file) {
           // La solicitud se crea en estado inicial RECEPCIONADA, lo cual está permitido para cargas
@@ -183,25 +227,33 @@ export class NuevaSaipComponent implements OnInit {
               this.loading.set(false);
               this.expedienteCreado.set(respuesta.expediente || '');
               this.mensaje.set(`SAIP creada y documento adjunto subido correctamente. Expediente: ${respuesta.expediente}`);
+              
+              // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
+              // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
               this.successModalAbierto.set(true);
+              this.confirmModalAbierto.set(false);
             },
             error: (uploadErr) => {
               this.loading.set(false);
               this.expedienteCreado.set(respuesta.expediente || '');
-              // En caso de error de subida (fallo parcial), la SAIP ya fue creada y el usuario debe saberlo
               this.mensaje.set(`SAIP creada (Expediente: ${respuesta.expediente}), pero hubo un error al subir el documento de sustento.`);
+              
               this.successModalAbierto.set(true);
+              this.confirmModalAbierto.set(false);
             }
           });
         } else {
           this.loading.set(false);
           this.expedienteCreado.set(respuesta.expediente || '');
           this.mensaje.set(`SAIP creada correctamente. Expediente: ${respuesta.expediente}`);
+          
           this.successModalAbierto.set(true);
+          this.confirmModalAbierto.set(false);
         }
       },
       error: (err) => {
         this.loading.set(false);
+        this.confirmModalAbierto.set(false);
         this.error.set(err.error?.mensaje || 'Error al crear la solicitud');
       }
     });

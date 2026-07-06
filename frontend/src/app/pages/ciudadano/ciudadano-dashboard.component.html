@@ -86,7 +86,7 @@
           </div>
         </div>
 
-        @if (apelacionesSubsanacion().length > 0) {
+        @if (apelacionesSubsanacionFiltradas().length > 0) {
           <div class="card border border-[var(--estado-ambar)]/20 bg-[var(--estado-ambar)]/5 p-5 overflow-hidden" data-reveal>
             <div class="h-1 bg-[var(--estado-ambar)] -mx-5 -mt-5 mb-4"></div>
             <div class="flex items-start gap-3 mb-4">
@@ -94,11 +94,11 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 00-3.48 0l-8 14A2 2 0 004 21h16a2 2 0 001.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg>
               </div>
               <div>
-                <h3 class="text-[var(--carbon)] font-semibold mb-0.5">{{ apelacionesSubsanacion().length }} apelacion(es) con subsanacion pendiente</h3>
+                <h3 class="text-[var(--carbon)] font-semibold mb-0.5">{{ apelacionesSubsanacionFiltradas().length }} apelacion(es) con subsanacion pendiente</h3>
                 <p class="text-sm text-[var(--niebla)]">Debe completar la subsanacion dentro del plazo establecido.</p>
               </div>
             </div>
-            @for (apelacion of apelacionesSubsanacion(); track apelacion.id) {
+            @for (apelacion of apelacionesSubsanacionFiltradas(); track apelacion.id) {
               <div class="bg-[var(--nieve)] rounded-xl p-4 mb-2 last:mb-0 border border-[var(--estado-ambar-borde)]">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div class="flex-1">

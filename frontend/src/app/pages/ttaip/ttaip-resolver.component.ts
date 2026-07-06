@@ -17,6 +17,8 @@ import {
   ReferenceSuccessNextStep,
   ReferenceSuccessTone
 } from '../../shared/reference-success-modal.component';
+import { DocumentoService } from '../../services/documento.service';
+import { validarDocumento } from '../../models/documento.model';
 
 type ResolverTab = 'apelacion' | 'adjuntos';
 type CausalAnalisis = 'confirmar' | 'revocar';
@@ -50,6 +52,7 @@ export class TtaipResolverComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly resolucionEstados = new Set<string>(['EN_RESOLUCION']);
 
   apelacion = signal<Apelacion | null>(null);
@@ -59,6 +62,7 @@ export class TtaipResolverComponent implements OnInit {
   mensaje = signal<string>('');
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
+  documentoSeleccionado = signal<File | null>(null);
 
   activeTab = signal<ResolverTab>('apelacion');
   selectedDecision = signal<ResolucionDecision | null>(null);
@@ -304,6 +308,30 @@ export class TtaipResolverComponent implements OnInit {
     this.confirmModalAbierto.set(true);
   }
 
+  seleccionarDocumento(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (file) {
+      const errorMsg = validarDocumento(file);
+      if (errorMsg) {
+        this.error.set(errorMsg);
+        this.documentoSeleccionado.set(null);
+      } else {
+        this.error.set('');
+        this.documentoSeleccionado.set(file);
+      }
+    }
+  }
+
+  getDocumentoTamanoKb(): string {
+    const file = this.documentoSeleccionado();
+    return file ? (file.size / 1024).toFixed(1) : '0.0';
+  }
+
+  removerDocumento(): void {
+    this.documentoSeleccionado.set(null);
+  }
+
   enviarResolucion(): void {
     const currentAppeal = this.apelacion();
     const decision = this.selectedDecision();
@@ -312,7 +340,8 @@ export class TtaipResolverComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
+    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
+    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
     this.loading.set(true);
     this.error.set('');
 
@@ -377,13 +406,40 @@ export class TtaipResolverComponent implements OnInit {
       this.apelacion.set(nextAppeal);
     }
 
-    this.loading.set(false);
-    this.mensaje.set(message);
-    this.successModalAbierto.set(true);
+    const file = this.documentoSeleccionado();
+    const resolucionId = nextAppeal?.resolucion?.id;
+
+    if (file && resolucionId) {
+      this.documentoService.upload(file, 'RESOLUCION_TTAIP', { resolucionId }).subscribe({
+        next: () => {
+          this.loading.set(false);
+          this.mensaje.set(`${message} Documento de resolución subido correctamente.`);
+          
+          // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
+          // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
+          this.successModalAbierto.set(true);
+          this.confirmModalAbierto.set(false);
+        },
+        error: (uploadErr) => {
+          this.loading.set(false);
+          this.mensaje.set(`${message} (Resolución emitida, pero hubo un error al subir el documento adjunto).`);
+          
+          this.successModalAbierto.set(true);
+          this.confirmModalAbierto.set(false);
+        }
+      });
+    } else {
+      this.loading.set(false);
+      this.mensaje.set(message);
+      
+      this.successModalAbierto.set(true);
+      this.confirmModalAbierto.set(false);
+    }
   }
 
   private handleError(err: unknown): void {
     this.loading.set(false);
+    this.confirmModalAbierto.set(false);
     const apiError = err as { error?: { mensaje?: string } };
     this.error.set(apiError.error?.mensaje || 'Error al procesar la resolucion final.');
   }
@@ -403,6 +459,9 @@ export class TtaipResolverComponent implements OnInit {
     summary.push({ label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` });
     if (this.observacionesResolucion.trim()) {
       summary.push({ label: 'Sustento específico', value: `${this.observacionesResolucion.trim().length} caracteres` });
+    }
+    if (this.documentoSeleccionado()) {
+      summary.push({ label: 'Resolución PDF', value: this.documentoSeleccionado()!.name });
     }
     return summary;
   }
@@ -472,13 +531,16 @@ export class TtaipResolverComponent implements OnInit {
   }
 
   resolucionSuccessMetadata(): ReferenceSuccessMeta[] {
-    return [
+    const metadata: ReferenceSuccessMeta[] = [
       { label: 'Fallo', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Causal', value: this.causal() === 'confirmar' ? 'Confirmada' : this.causal() === 'revocar' ? 'Revocada' : '—' },
       { label: 'Mandato', value: this.showOrden() && this.ordenarEntrega ? `Entrega en ${this.plazoDias} días` : 'Sin mandato' },
-      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
-      { label: 'Sustento específico', value: this.observacionesResolucion.trim() ? `${this.observacionesResolucion.trim().length} caracteres` : 'No registrado' }
+      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
     ];
+    if (this.documentoSeleccionado()) {
+      metadata.push({ label: 'Documento subido', value: this.documentoSeleccionado()!.name });
+    }
+    return metadata;
   }
 
   resolucionNextSteps(): ReferenceSuccessNextStep[] {

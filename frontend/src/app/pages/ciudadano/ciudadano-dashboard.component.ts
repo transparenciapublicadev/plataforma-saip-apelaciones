@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
 import { Apelacion } from '../../models/apelacion.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { parseISO } from 'date-fns';
 
 interface DashboardAction {
   eyebrow: string;
@@ -114,6 +115,18 @@ export class CiudadanoDashboardComponent implements OnInit {
   todasSolicitudes = signal<Solicitud[]>([]);
   apelaciones = signal<Apelacion[]>([]);
   apelacionesSubsanacion = signal<Apelacion[]>([]);
+
+  readonly apelacionesSubsanacionFiltradas = computed(() => {
+    const principal = this.solicitudPrincipal();
+    const list = this.apelacionesSubsanacion();
+    
+    // Si hay una solicitud seleccionada y su apelación está en subsanación,
+    // la filtramos de la lista global de alertas superiores para evitar la duplicidad
+    if (principal && (principal.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION') {
+      return list.filter((a) => a.id !== principal.apelacion?.id);
+    }
+    return list;
+  });
 
   loading = signal<boolean>(true);
   error = signal<string>('');
@@ -783,8 +796,19 @@ export class CiudadanoDashboardComponent implements OnInit {
   private parseFecha(valor?: string): Date | null {
     if (!valor) return null;
 
-    const fecha = new Date(valor);
-    if (!Number.isNaN(fecha.getTime())) return fecha;
+    // Si tiene hora (contiene 'T' o ':'), usar constructor nativo
+    if (valor.includes('T') || valor.includes(':')) {
+      const fecha = new Date(valor);
+      if (!Number.isNaN(fecha.getTime())) return fecha;
+    }
+
+    // Para fechas puras (YYYY-MM-DD), parseISO de date-fns las interpreta localmente
+    try {
+      const parsed = parseISO(valor);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    } catch (e) {
+      // Fallback si falla
+    }
 
     const partes = valor.split(/[\/\-]/).map((item) => Number(item));
     if (partes.length !== 3 || partes.some((item) => Number.isNaN(item))) return null;
