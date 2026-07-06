@@ -508,7 +508,7 @@ export class TtaipResolverComponent implements OnInit {
 
   irPanelTtaip(): void {
     this.successModalAbierto.set(false);
-    this.router.navigate(['/ttaip']);
+    this.router.navigate(['/ttaip'], { state: { focusStage: 'resueltos' } });
   }
 
   puedeEmitirResolucion(): boolean {

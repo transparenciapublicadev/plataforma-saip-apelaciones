@@ -62,6 +62,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
     }
 
+    @ExceptionHandler(ConflictoEstadoException.class)
+    public ResponseEntity<ProblemDetail> manejarConflictoEstado(ConflictoEstadoException ex,
+                                                               HttpServletRequest request) {
+        ProblemDetail problem = ApiProblemDetails.create(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                ex.getMessage(),
+                request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ProblemDetail> manejarArgumentoInvalido(IllegalArgumentException ex,
                                                                    HttpServletRequest request) {
