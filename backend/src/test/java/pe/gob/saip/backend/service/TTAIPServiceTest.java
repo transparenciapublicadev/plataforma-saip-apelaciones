@@ -108,6 +108,32 @@ class TTAIPServiceTest {
         verify(expedienteTtaipService, never()).registrarResolucion(any());
     }
 
+    @Test
+    void declararFundado_enResolucion_debeCerrarConDecisionFundadoYPersistir() {
+        Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
+        when(apelacionService.findById(10L)).thenReturn(Optional.of(apelacion));
+        when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(apelacionService.save(apelacion)).thenReturn(apelacion);
+
+        ttaipService.declararFundado(10L, new ResolucionRequest(
+                "Se fundan los extremos del pedido de información.",
+                "Norma de transparencia y Ley 27806.",
+                "Entregar información en 3 días hábiles.",
+                11L,
+                true));
+
+        ArgumentCaptor<Resolucion> resolucionCaptor = ArgumentCaptor.forClass(Resolucion.class);
+        verify(resolucionService).save(resolucionCaptor.capture());
+        Resolucion resolucion = resolucionCaptor.getValue();
+        assertThat(resolucion.getDecision()).isEqualTo(Resolucion.DecisionResolucion.FUNDADO);
+        assertThat(resolucion.getTipoResolucion()).isEqualTo(Resolucion.TipoResolucion.RESOLUCION_FINAL);
+        assertThat(resolucion.getIniciarProcesoDisciplinario()).isTrue();
+        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
+        assertThat(apelacion.getResultado()).isEqualTo("FUNDADO");
+        verify(expedienteTtaipService).registrarResolucion(resolucion);
+    }
+
     private Apelacion crearApelacion(Apelacion.EstadoApelacion estado) {
         Apelacion apelacion = new Apelacion();
         apelacion.setIdApelacion(10L);
