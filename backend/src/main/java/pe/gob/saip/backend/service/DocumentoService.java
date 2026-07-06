@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import pe.gob.saip.backend.config.StorageProperties;
+import pe.gob.saip.backend.exception.ConflictoEstadoException;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.DocumentoDownloadDTO;
 import pe.gob.saip.backend.model.dto.DocumentoMetadataDTO;
@@ -83,6 +84,7 @@ public class DocumentoService {
     @Transactional
     public DocumentoMetadataDTO subir(MultipartFile file, DocumentoUploadRequest request) {
         validarCarga(file, request);
+        validarEstadoEntidadAsociada(request);
 
         Documento documento = new Documento();
         documento.setTipoDocumento(request.tipoDocumento());
@@ -332,6 +334,52 @@ public class DocumentoService {
         if (request == null || request.relationCount() != 1) {
             throw new IllegalArgumentException(
                     "Debe indicar exactamente una relación documental para la consulta");
+        }
+    }
+
+    private void validarEstadoEntidadAsociada(DocumentoUploadRequest request) {
+        if (request.solicitudId() != null) {
+            Solicitud solicitud = buscarSolicitud(request.solicitudId());
+            if (solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA || solicitud.getEstado() == Solicitud.EstadoSolicitud.VENCIDA) {
+                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una solicitud en estado " + solicitud.getEstado());
+            }
+        }
+        if (request.respuestaId() != null) {
+            Respuesta respuesta = buscarRespuesta(request.respuestaId());
+            Solicitud solicitud = respuesta.getSolicitud();
+            if (solicitud != null && (solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA || solicitud.getEstado() == Solicitud.EstadoSolicitud.VENCIDA)) {
+                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una solicitud en estado " + solicitud.getEstado());
+            }
+        }
+        if (request.apelacionId() != null) {
+            Apelacion apelacion = buscarApelacion(request.apelacionId());
+            if (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO"))) {
+                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
+            }
+        }
+        if (request.expedienteTtaipId() != null) {
+            ExpedienteTtaip expediente = buscarExpediente(request.expedienteTtaipId());
+            Apelacion apelacion = expediente.getApelacion();
+            if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
+                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
+            }
+        }
+        if (request.resolucionId() != null) {
+            Resolucion resolucion = buscarResolucion(request.resolucionId());
+            Apelacion apelacion = resolucion.getApelacion();
+            if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
+                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
+            }
+        }
+        if (request.cedulaNotificacionId() != null) {
+            CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            Resolucion resolucion = cedula.getResolucion();
+            if (resolucion != null) {
+                Apelacion apelacion = resolucion.getApelacion();
+                if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
+                    throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
+                }
+            }
         }
     }
 }

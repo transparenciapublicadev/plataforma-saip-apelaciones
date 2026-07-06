@@ -23,10 +23,12 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 
 import pe.gob.saip.backend.config.StorageProperties;
+import pe.gob.saip.backend.exception.ConflictoEstadoException;
 import pe.gob.saip.backend.model.dto.DocumentoDownloadDTO;
 import pe.gob.saip.backend.model.dto.DocumentoMetadataDTO;
 import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
+import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
@@ -329,6 +331,60 @@ class DocumentoServiceTest {
         verify(storageProvider).delete("2026/06/opaque.txt");
         assertThat(documento.getEstado()).isEqualTo(Documento.EstadoDocumento.ELIMINADO);
         verify(documentoRepository).save(documento);
+    }
+
+    @Test
+    void subir_debeLanzarConflictoEstado_cuandoSolicitudEstaRespondida() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "documento.pdf",
+                "application/pdf",
+                "dummy content".getBytes(StandardCharsets.UTF_8));
+        Solicitud solicitud = new Solicitud();
+        solicitud.setIdSolicitud(10L);
+        solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+
+        when(solicitudRepository.findById(10L)).thenReturn(Optional.of(solicitud));
+
+        assertThatThrownBy(() -> service.subir(
+                file,
+                new DocumentoUploadRequest(
+                        Documento.TipoDocumento.DOCUMENTO_ADJUNTO,
+                        10L,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null)))
+                .isInstanceOf(ConflictoEstadoException.class)
+                .hasMessageContaining("No se pueden adjuntar documentos a una solicitud en estado RESPONDIDA");
+    }
+
+    @Test
+    void subir_debeLanzarConflictoEstado_cuandoApelacionEstaResuelta() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "documento.pdf",
+                "application/pdf",
+                "dummy content".getBytes(StandardCharsets.UTF_8));
+        Apelacion apelacion = new Apelacion();
+        apelacion.setIdApelacion(20L);
+        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
+
+        when(apelacionRepository.findById(20L)).thenReturn(Optional.of(apelacion));
+
+        assertThatThrownBy(() -> service.subir(
+                file,
+                new DocumentoUploadRequest(
+                        Documento.TipoDocumento.DOCUMENTO_ADJUNTO,
+                        null,
+                        null,
+                        20L,
+                        null,
+                        null,
+                        null)))
+                .isInstanceOf(ConflictoEstadoException.class)
+                .hasMessageContaining("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
     }
 
     private Documento documentoActivo() {
