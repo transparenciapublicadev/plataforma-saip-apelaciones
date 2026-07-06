@@ -169,7 +169,7 @@
         @if (isCitizenPortal()) {
           <div class="rule-ornament my-4"><span class="text-xs uppercase tracking-widest">o</span></div>
           <button routerLink="/registro" class="btn-ghost-brand w-full justify-center" style="padding: 11px 16px">
-            Crear cuenta como administrado
+            Crear cuenta como Ciudadano
           </button>
         } @else {
           <p class="text-[12px]" style="color: var(--muted-foreground)">Si tienes inconvenientes, contacta a la mesa de ayuda institucional.</p>
@@ -180,7 +180,7 @@
         @if (isCitizenPortal()) {
           <div class="eyebrow mb-3" style="color: var(--gold)">Portal ciudadano</div>
           <p class="text-xs leading-relaxed" style="color: var(--muted-foreground)">
-            Esta entrada publica es solo para ciudadanos administrados. Los accesos de funcionario, TTAIP y administrador se mantienen en URLs internas separadas.
+            Esta entrada publica es solo para ciudadanos. Los accesos de funcionario, TTAIP y administrador se mantienen en URLs internas separadas.
           </p>
         } @else {
           <div class="eyebrow mb-3" style="color: var(--gold)">Portal institucional</div>
