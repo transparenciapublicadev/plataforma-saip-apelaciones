@@ -16,6 +16,7 @@ import {
   ReferenceSuccessNextStep,
   ReferenceSuccessTone
 } from '../../shared/reference-success-modal.component';
+import { DocumentoService } from '../../services/documento.service';
 
 type CalificacionDecision = 'admisible' | 'inadmisible' | 'improcedente';
 type CalificacionTab = 'apelacion' | 'adjuntos';
@@ -39,6 +40,7 @@ export class TtaipCalificarComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly primeraCalificacionEstados = new Set<string>(['EN_CALIFICACION_1']);
 
   apelacion = signal<Apelacion | null>(null);
@@ -132,6 +134,28 @@ export class TtaipCalificarComponent implements OnInit {
 
   cambiarTab(tab: CalificacionTab): void {
     this.activeTab.set(tab);
+  }
+
+  descargarDocumento(doc: any): void {
+    if (!doc.id) {
+      this.error.set('No se puede descargar un documento sin ID.');
+      return;
+    }
+    this.error.set('');
+    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
+      next: ({ blob, filename }) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        anchor.rel = 'noopener';
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        this.error.set('Error al descargar el documento.');
+      }
+    });
   }
 
   seleccionarCalificacion(decision: CalificacionDecision): void {

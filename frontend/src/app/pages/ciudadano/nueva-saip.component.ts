@@ -17,6 +17,8 @@ import {
   ReferenceSuccessModalComponent,
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
+import { DocumentoService } from '../../services/documento.service';
+import { validarDocumento } from '../../models/documento.model';
 
 interface SesionVisual {
   nombre: string;
@@ -35,6 +37,7 @@ export class NuevaSaipComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly entidadService = inject(EntidadService);
   private readonly authService = inject(AuthService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly router = inject(Router);
 
   entidades = signal<Entidad[]>([]);
@@ -60,6 +63,7 @@ export class NuevaSaipComponent implements OnInit {
   copiaCertificada = false;
   consentimientoDatosPersonales = false;
   canalNotificacion: CanalNotificacion = 'CASILLA_ELECTRONICA';
+  documentoSeleccionado = signal<File | null>(null);
 
   ngOnInit(): void {
     this.cargarSesionVisual();
@@ -116,6 +120,30 @@ export class NuevaSaipComponent implements OnInit {
     });
   }
 
+  seleccionarDocumento(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (file) {
+      const errorMsg = validarDocumento(file);
+      if (errorMsg) {
+        this.error.set(errorMsg);
+        this.documentoSeleccionado.set(null);
+      } else {
+        this.error.set('');
+        this.documentoSeleccionado.set(file);
+      }
+    }
+  }
+
+  getDocumentoTamanoKb(): string {
+    const file = this.documentoSeleccionado();
+    return file ? (file.size / 1024).toFixed(1) : '0.0';
+  }
+
+  removerDocumento(): void {
+    this.documentoSeleccionado.set(null);
+  }
+
   crearSolicitud(): void {
     if (!this.validarSolicitud()) {
       return;
@@ -147,10 +175,30 @@ export class NuevaSaipComponent implements OnInit {
 
     this.solicitudService.crear(solicitud).subscribe({
       next: (respuesta) => {
-        this.loading.set(false);
-        this.expedienteCreado.set(respuesta.expediente || '');
-        this.mensaje.set(`SAIP creada correctamente. Expediente: ${respuesta.expediente}`);
-        this.successModalAbierto.set(true);
+        const file = this.documentoSeleccionado();
+        if (file) {
+          // La solicitud se crea en estado inicial RECEPCIONADA, lo cual está permitido para cargas
+          this.documentoService.upload(file, 'SOLICITUD_ORIGINAL', { solicitudId: respuesta.id! }).subscribe({
+            next: () => {
+              this.loading.set(false);
+              this.expedienteCreado.set(respuesta.expediente || '');
+              this.mensaje.set(`SAIP creada y documento adjunto subido correctamente. Expediente: ${respuesta.expediente}`);
+              this.successModalAbierto.set(true);
+            },
+            error: (uploadErr) => {
+              this.loading.set(false);
+              this.expedienteCreado.set(respuesta.expediente || '');
+              // En caso de error de subida (fallo parcial), la SAIP ya fue creada y el usuario debe saberlo
+              this.mensaje.set(`SAIP creada (Expediente: ${respuesta.expediente}), pero hubo un error al subir el documento de sustento.`);
+              this.successModalAbierto.set(true);
+            }
+          });
+        } else {
+          this.loading.set(false);
+          this.expedienteCreado.set(respuesta.expediente || '');
+          this.mensaje.set(`SAIP creada correctamente. Expediente: ${respuesta.expediente}`);
+          this.successModalAbierto.set(true);
+        }
       },
       error: (err) => {
         this.loading.set(false);

@@ -89,7 +89,7 @@
                             <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
                           </div>
                         </div>
-                        <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5">
+                        <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
                         </button>
                       </div>
@@ -149,7 +149,7 @@
                         <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
                       </div>
                     </div>
-                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5">
+                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
                     </button>
                   </div>

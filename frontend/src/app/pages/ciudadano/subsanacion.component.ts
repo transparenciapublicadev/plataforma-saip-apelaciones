@@ -15,6 +15,8 @@ import {
   ReferenceSuccessModalComponent,
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
+import { DocumentoService } from '../../services/documento.service';
+import { Documento } from '../../models/documento.model';
 
 interface ObservacionSubsanacion {
   numero: number;
@@ -33,6 +35,7 @@ export class SubsanacionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
+  private readonly documentoService = inject(DocumentoService);
 
   apelacion = signal<Apelacion | null>(null);
   loading = signal<boolean>(false);
@@ -139,6 +142,28 @@ export class SubsanacionComponent implements OnInit {
     this.confirmModalAbierto.set(true);
   }
 
+  descargarDocumento(doc: any): void {
+    if (!doc.id) {
+      this.error.set('No se puede descargar un documento sin ID.');
+      return;
+    }
+    this.error.set('');
+    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
+      next: ({ blob, filename }) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        anchor.rel = 'noopener';
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        this.error.set('Error al descargar el documento.');
+      }
+    });
+  }
+
   enviarSubsanacion(): void {
     const ap = this.apelacion();
     if (!ap) {
@@ -155,10 +180,29 @@ export class SubsanacionComponent implements OnInit {
 
     this.apelacionService.subsanar(ap.id, this.fundamentosAdicionales).subscribe({
       next: (updated) => {
-        this.apelacion.set(updated ?? ap);
-        this.loading.set(false);
-        this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
-        this.successModalAbierto.set(true);
+        const file = this.documentoSeleccionado();
+        if (file) {
+          this.documentoService.upload(file, 'SUBSANACION', { apelacionId: ap.id }).subscribe({
+            next: () => {
+              this.apelacion.set(updated ?? ap);
+              this.loading.set(false);
+              this.mensaje.set('Subsanación enviada correctamente y documento adjunto subido.');
+              this.successModalAbierto.set(true);
+            },
+            error: (uploadErr) => {
+              this.apelacion.set(updated ?? ap);
+              this.loading.set(false);
+              // Si la subida falla, advertir al usuario del fallo parcial:
+              this.mensaje.set('Subsanación registrada, pero hubo un error al subir el archivo adjunto. Por favor, intente subir el documento nuevamente desde su panel.');
+              this.successModalAbierto.set(true);
+            }
+          });
+        } else {
+          this.apelacion.set(updated ?? ap);
+          this.loading.set(false);
+          this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
+          this.successModalAbierto.set(true);
+        }
       },
       error: (err) => {
         this.loading.set(false);
@@ -205,11 +249,9 @@ export class SubsanacionComponent implements OnInit {
       .map((descripcion, index) => ({ numero: index + 1, descripcion }));
   }
 
-  documentosOriginales(): ReadonlyArray<string> {
+  documentosOriginales(): ReadonlyArray<Documento> {
     const documentos = this.apelacion()?.documentos ?? [];
-    return documentos
-      .map((doc) => doc.nombreArchivo)
-      .filter((nombre): nombre is string => !!nombre);
+    return documentos.filter(doc => doc.tipoDocumento !== 'SUBSANACION');
   }
 
   subsanacionNextSteps(): ReferenceSuccessNextStep[] {
