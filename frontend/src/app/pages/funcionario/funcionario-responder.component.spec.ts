@@ -49,7 +49,7 @@ describe('FuncionarioResponderComponent document flow', () => {
       .compileComponents();
   });
 
-  it('creates the response and then uploads its document using respuestaId', () => {
+  it('creates the response and then uploads its document using respuestaId', async () => {
     const fixture = TestBed.createComponent(FuncionarioResponderComponent);
     const component = fixture.componentInstance;
     const file = new File(['respuesta'], 'respuesta.pdf', { type: 'application/pdf' });
@@ -63,6 +63,7 @@ describe('FuncionarioResponderComponent document flow', () => {
 
     prepareValidResponse(component, file);
     component.enviarRespuesta();
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(documentoService.upload).toHaveBeenCalledWith(
       file,
@@ -73,7 +74,7 @@ describe('FuncionarioResponderComponent document flow', () => {
     expect(component.successModalAbierto()).toBe(true);
   });
 
-  it('reports partial success when the response is saved but its document upload fails', () => {
+  it('reports partial success when the response is saved but its document upload fails', async () => {
     const fixture = TestBed.createComponent(FuncionarioResponderComponent);
     const component = fixture.componentInstance;
     const file = new File(['respuesta'], 'respuesta.pdf', { type: 'application/pdf' });
@@ -91,6 +92,7 @@ describe('FuncionarioResponderComponent document flow', () => {
 
     prepareValidResponse(component, file);
     component.enviarRespuesta();
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(component.solicitud()?.estado).toBe('RESPONDIDA');
     expect(component.documentUploadWarning()).toContain('El archivo no pudo almacenarse.');
@@ -111,6 +113,6 @@ describe('FuncionarioResponderComponent document flow', () => {
     } as Solicitud);
     component.decision.set('entrega_total');
     component.descripcionAceptacion = 'Se entrega la información solicitada.';
-    component.documentosEntrega.set(file);
+    component.documentosEntrega.set([file]);
   }
 });

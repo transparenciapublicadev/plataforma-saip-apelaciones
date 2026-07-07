@@ -19,6 +19,8 @@ import {
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
 import { validarDocumento } from '../../models/documento.model';
+import { firstValueFrom } from 'rxjs';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 
 type ResolverTab = 'apelacion' | 'adjuntos';
 type CausalAnalisis = 'confirmar' | 'revocar';
@@ -62,7 +64,7 @@ export class TtaipResolverComponent implements OnInit {
   mensaje = signal<string>('');
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
-  documentoSeleccionado = signal<File | null>(null);
+  documentosSeleccionados = signal<File[]>([]);
 
   activeTab = signal<ResolverTab>('apelacion');
   selectedDecision = signal<ResolucionDecision | null>(null);
@@ -310,26 +312,37 @@ export class TtaipResolverComponent implements OnInit {
 
   seleccionarDocumento(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    if (file) {
-      const errorMsg = validarDocumento(file);
-      if (errorMsg) {
-        this.error.set(errorMsg);
-        this.documentoSeleccionado.set(null);
+    if (input.files && input.files.length > 0) {
+      const filesToAdd: File[] = [];
+      let lastError = '';
+      for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        const errorMsg = validarDocumento(file);
+        if (errorMsg) {
+          lastError = errorMsg;
+        } else {
+          filesToAdd.push(file);
+        }
+      }
+      if (lastError) {
+        this.error.set(lastError);
       } else {
         this.error.set('');
-        this.documentoSeleccionado.set(file);
+      }
+      if (filesToAdd.length > 0) {
+        this.documentosSeleccionados.update(prev => [...prev, ...filesToAdd]);
       }
     }
+    input.value = '';
   }
 
-  getDocumentoTamanoKb(): string {
-    const file = this.documentoSeleccionado();
-    return file ? (file.size / 1024).toFixed(1) : '0.0';
+  removerDocumento(index: number): void {
+    this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
+    this.error.set('');
   }
 
-  removerDocumento(): void {
-    this.documentoSeleccionado.set(null);
+  formatFileSize(size: number): string {
+    return (size / 1024).toFixed(1);
   }
 
   enviarResolucion(): void {
@@ -352,47 +365,47 @@ export class TtaipResolverComponent implements OnInit {
     const serviceMap: Record<ResolucionDecision, () => void> = {
       fundado: () =>
         this.ttaipService.declararFundado(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA.', updated),
+          next: async (updated) => await this.handleSuccess('Apelacion declarada FUNDADA.', updated),
           error: (err) => this.handleError(err)
         }),
       fundado_en_parte: () =>
         this.ttaipService.declararFundadoEnParte(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada FUNDADA EN PARTE.', updated),
+          next: async (updated) => await this.handleSuccess('Apelacion declarada FUNDADA EN PARTE.', updated),
           error: (err) => this.handleError(err)
         }),
       infundado: () =>
         this.ttaipService.declararInfundado(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA.', updated),
+          next: async (updated) => await this.handleSuccess('Apelacion declarada INFUNDADA.', updated),
           error: (err) => this.handleError(err)
         }),
       infundado_en_parte: () =>
         this.ttaipService.declararInfundadoEnParte(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada INFUNDADA EN PARTE.', updated),
+          next: async (updated) => await this.handleSuccess('Apelacion declarada INFUNDADA EN PARTE.', updated),
           error: (err) => this.handleError(err)
         }),
       improcedente: () =>
         this.ttaipService.declararImprocedente(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
+          next: async (updated) => await this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
           error: (err) => this.handleError(err)
         }),
       sustraccion_materia: () =>
         this.ttaipService.declararSustraccionMateria(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Conclusión por sustraccion de la materia emitida.', updated),
+          next: async (updated) => await this.handleSuccess('Conclusión por sustraccion de la materia emitida.', updated),
           error: (err) => this.handleError(err)
         }),
       desistimiento: () =>
         this.ttaipService.declararDesistimiento(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Conclusión por desistimiento emitida.', updated),
+          next: async (updated) => await this.handleSuccess('Conclusión por desistimiento emitida.', updated),
           error: (err) => this.handleError(err)
         }),
       estese_a_lo_resuelto: () =>
         this.ttaipService.declararEsteseALoResuelto(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Estese a lo resuelto emitido.', updated),
+          next: async (updated) => await this.handleSuccess('Estese a lo resuelto emitido.', updated),
           error: (err) => this.handleError(err)
         }),
       nulidad_del_acto: () =>
         this.ttaipService.declararNulidadDelActo(currentAppeal.id, requestSimple).subscribe({
-          next: (updated) => this.handleSuccess('Nulidad del acto emitida.', updated),
+          next: async (updated) => await this.handleSuccess('Nulidad del acto emitida.', updated),
           error: (err) => this.handleError(err)
         })
     };
@@ -400,38 +413,42 @@ export class TtaipResolverComponent implements OnInit {
     serviceMap[decision]();
   }
 
-  private handleSuccess(message: string, updated?: Apelacion): void {
+  private async handleSuccess(message: string, updated?: Apelacion): Promise<void> {
     const nextAppeal = updated ?? this.apelacion();
     if (nextAppeal) {
       this.apelacion.set(nextAppeal);
     }
 
-    const file = this.documentoSeleccionado();
+    const files = this.documentosSeleccionados();
     const resolucionId = nextAppeal?.resolucion?.id;
 
-    if (file && resolucionId) {
-      this.documentoService.upload(file, 'RESOLUCION_TTAIP', { resolucionId }).subscribe({
-        next: () => {
-          this.loading.set(false);
-          this.mensaje.set(`${message} Documento de resolución subido correctamente.`);
-          
-          // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
-          // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
-          this.successModalAbierto.set(true);
-          this.confirmModalAbierto.set(false);
-        },
-        error: (uploadErr) => {
-          this.loading.set(false);
-          this.mensaje.set(`${message} (Resolución emitida, pero hubo un error al subir el documento adjunto).`);
-          
-          this.successModalAbierto.set(true);
-          this.confirmModalAbierto.set(false);
+    if (files.length > 0 && resolucionId) {
+      let exitos = 0;
+      const errores: string[] = [];
+
+      for (const file of files) {
+        try {
+          await firstValueFrom(
+            this.documentoService.upload(file, 'RESOLUCION_TTAIP', { resolucionId })
+          );
+          exitos++;
+        } catch (uploadErr: any) {
+          const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
+          errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
         }
-      });
+      }
+
+      this.loading.set(false);
+      if (errores.length > 0) {
+        this.mensaje.set(`${message} Se subieron ${exitos} de ${files.length} documentos correctamente. Errores: ${errores.join(' | ')}`);
+      } else {
+        this.mensaje.set(`${message} Todos los documentos de resolución (${files.length}) fueron subidos correctamente.`);
+      }
+      this.successModalAbierto.set(true);
+      this.confirmModalAbierto.set(false);
     } else {
       this.loading.set(false);
       this.mensaje.set(message);
-      
       this.successModalAbierto.set(true);
       this.confirmModalAbierto.set(false);
     }
@@ -460,8 +477,9 @@ export class TtaipResolverComponent implements OnInit {
     if (this.observacionesResolucion.trim()) {
       summary.push({ label: 'Sustento específico', value: `${this.observacionesResolucion.trim().length} caracteres` });
     }
-    if (this.documentoSeleccionado()) {
-      summary.push({ label: 'Resolución PDF', value: this.documentoSeleccionado()!.name });
+    const files = this.documentosSeleccionados();
+    if (files.length > 0) {
+      summary.push({ label: 'Resolución PDF', value: files.map(f => f.name).join(', ') });
     }
     return summary;
   }
@@ -537,8 +555,9 @@ export class TtaipResolverComponent implements OnInit {
       { label: 'Mandato', value: this.showOrden() && this.ordenarEntrega ? `Entrega en ${this.plazoDias} días` : 'Sin mandato' },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
     ];
-    if (this.documentoSeleccionado()) {
-      metadata.push({ label: 'Documento subido', value: this.documentoSeleccionado()!.name });
+    const files = this.documentosSeleccionados();
+    if (files.length > 0) {
+      metadata.push({ label: 'Documentos subidos', value: files.map(f => f.name).join(', ') });
     }
     return metadata;
   }

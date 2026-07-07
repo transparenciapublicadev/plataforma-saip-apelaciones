@@ -232,6 +232,11 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     return solicitudId ? { solicitudId } : null;
   });
 
+  readonly puedeAdjuntarDocumentos = computed<boolean>(() => {
+    const estado = this.solicitud()?.estado;
+    return estado !== 'RESPONDIDA' && estado !== 'VENCIDA' && estado !== 'DENEGADA' && estado !== 'CONCLUIDA';
+  });
+
   readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
     const respuestaId = this.solicitud()?.respuesta?.id;
     return respuestaId ? { respuestaId } : null;

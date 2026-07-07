@@ -90,6 +90,23 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || 'EN_CALIFICACION_1'));
 
+  readonly puedeAdjuntarDocumentos = computed(() => {
+    const estado = this.normalizeKey(this.apelacion()?.estado);
+    const closedStates = [
+      'RESUELTO_FUNDADO',
+      'RESUELTO_INFUNDADO',
+      'CONCLUSION_SUSTRACCION_MATERIA',
+      'TENER_POR_NO_PRESENTADO',
+      'RESUELTO_IMPROCEDENTE',
+      'CONCLUSION_DESISTIMIENTO',
+      'ESTESE_A_LO_RESUELTO',
+      'RESUELTO_ESTESE_A_LO_RESUELTO',
+      'RESUELTO_NULIDAD',
+      'NULIDAD_DEL_ACTO'
+    ];
+    return estado ? !closedStates.includes(estado) : true;
+  });
+
   readonly resultadoNormalizado = computed(() => {
     const raw = this.apelacion()?.resolucion?.decision || this.apelacion()?.resultado;
     return this.normalizeKey(raw);
