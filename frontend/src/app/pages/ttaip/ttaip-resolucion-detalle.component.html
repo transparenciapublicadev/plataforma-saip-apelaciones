@@ -663,12 +663,14 @@
             } @else {
               <div class="p-6 space-y-6 animate-fade-in">
                 @if (documentoRelation(); as relation) {
-                  <app-document-upload
-                    heading="Adjuntar documento a la apelación"
-                    tipoDocumento="DOCUMENTO_ADJUNTO"
-                    [relation]="relation"
-                    (uploaded)="onDocumentoSubido()"
-                  />
+                  @if (puedeAdjuntarDocumentos()) {
+                    <app-document-upload
+                      heading="Adjuntar documento a la apelación"
+                      tipoDocumento="DOCUMENTO_ADJUNTO"
+                      [relation]="relation"
+                      (uploaded)="onDocumentoSubido()"
+                    />
+                  }
                   <app-document-list
                     [relation]="relation"
                     [documents]="apelacion()?.documentosMetadata || apelacion()?.documentos || []"
@@ -677,13 +679,15 @@
                 }
 
                 @if (expedienteDocumentoRelation(); as relation) {
-                  <div class="rule-ornament"></div>
-                  <app-document-upload
-                    heading="Adjuntar documento al expediente TTAIP"
-                    tipoDocumento="EXPEDIENTE_ADMINISTRATIVO"
-                    [relation]="relation"
-                    (uploaded)="onDocumentoSubido()"
-                  />
+                  @if (puedeAdjuntarDocumentos()) {
+                    <div class="rule-ornament"></div>
+                    <app-document-upload
+                      heading="Adjuntar documento al expediente TTAIP"
+                      tipoDocumento="EXPEDIENTE_ADMINISTRATIVO"
+                      [relation]="relation"
+                      (uploaded)="onDocumentoSubido()"
+                    />
+                  }
                   <app-document-list
                     [relation]="relation"
                     [documents]="expedienteTtaip()?.documentos || []"

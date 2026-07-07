@@ -244,12 +244,6 @@
                 @if (respuestaDocumentoRelation(); as relation) {
                   <div data-testid="respuesta-documentos-funcionario" class="space-y-4">
                     <div class="rule-ornament"></div>
-                    <app-document-upload
-                      heading="Adjuntar documento a la respuesta"
-                      tipoDocumento="RESPUESTA_ENTIDAD"
-                      [relation]="relation"
-                      (uploaded)="onDocumentoSubido('respuesta')"
-                    />
                     <app-document-list
                       [relation]="relation"
                       [documents]="sol.respuesta?.documentosMetadata || []"
@@ -826,12 +820,14 @@
         @if (activeTab() === 'adjuntos') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
             @if (solicitudDocumentoRelation(); as relation) {
-              <app-document-upload
-                heading="Adjuntar documento a la solicitud"
-                tipoDocumento="DOCUMENTO_ADJUNTO"
-                [relation]="relation"
-                (uploaded)="onDocumentoSubido()"
-              />
+              @if (puedeAdjuntarDocumentos()) {
+                <app-document-upload
+                  heading="Adjuntar documento a la solicitud"
+                  tipoDocumento="DOCUMENTO_ADJUNTO"
+                  [relation]="relation"
+                  (uploaded)="onDocumentoSubido()"
+                />
+              }
             }
             <app-document-list
               [relation]="solicitudDocumentoRelation()"

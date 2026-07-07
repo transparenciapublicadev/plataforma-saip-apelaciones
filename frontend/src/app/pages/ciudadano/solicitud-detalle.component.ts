@@ -73,6 +73,11 @@ export class SolicitudDetalleComponent implements OnInit {
     return respuestaId ? { respuestaId } : null;
   });
 
+  readonly puedeAdjuntarDocumentos = computed<boolean>(() => {
+    const estado = this.solicitud()?.estado;
+    return estado !== 'RESPONDIDA' && estado !== 'VENCIDA' && estado !== 'DENEGADA' && estado !== 'CONCLUIDA';
+  });
+
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente');
     if (!expediente) {

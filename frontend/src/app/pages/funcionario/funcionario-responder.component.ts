@@ -13,6 +13,7 @@ import {
   validarDocumento
 } from '../../models/documento.model';
 import { DocumentoService } from '../../services/documento.service';
+import { firstValueFrom } from 'rxjs';
 import { DocumentListComponent } from '../../shared/document-list.component';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
@@ -80,8 +81,8 @@ export class FuncionarioResponderComponent implements OnInit {
   causalDenegatoria = '';
   fundamentoLegal = '';
 
-  documentosEntrega = signal<File | null>(null);
-  evidenciaDenegatoria = signal<File | null>(null);
+  documentosEntrega = signal<File[]>([]);
+  evidenciaDenegatoria = signal<File[]>([]);
   readonly documentAccept = DOCUMENTO_ACCEPT;
   readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
     const solicitudId = this.solicitud()?.id;
@@ -122,13 +123,13 @@ export class FuncionarioResponderComponent implements OnInit {
     }
 
     if (currentDecision === 'entrega_total' || currentDecision === 'entrega_parcial') {
-      return this.descripcionAceptacion.trim().length > 0 && !!this.documentosEntrega();
+      return this.descripcionAceptacion.trim().length > 0 && this.documentosEntrega().length > 0;
     }
 
     return this.causalDenegatoria.length > 0
       && this.descripcionDenegacion.trim().length > 0
       && this.fundamentoLegal.trim().length > 0
-      && !!this.evidenciaDenegatoria();
+      && this.evidenciaDenegatoria().length > 0;
   }
 
   ngOnInit(): void {
@@ -175,20 +176,47 @@ export class FuncionarioResponderComponent implements OnInit {
 
   onDocumentosEntregaSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.setSelectedDocument(input, this.documentosEntrega);
+    this.addSelectedFiles(input, this.documentosEntrega);
   }
 
   onEvidenciaSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.setSelectedDocument(input, this.evidenciaDenegatoria);
+    this.addSelectedFiles(input, this.evidenciaDenegatoria);
   }
 
-  removeDocumentosEntrega(): void {
-    this.documentosEntrega.set(null);
+  removeDocumentoEntrega(index: number): void {
+    this.documentosEntrega.update(prev => prev.filter((_, i) => i !== index));
+    this.error.set('');
   }
 
-  removeEvidenciaDenegatoria(): void {
-    this.evidenciaDenegatoria.set(null);
+  removeEvidenciaDenegatoria(index: number): void {
+    this.evidenciaDenegatoria.update(prev => prev.filter((_, i) => i !== index));
+    this.error.set('');
+  }
+
+  private addSelectedFiles(input: HTMLInputElement, target: { update(fn: (val: File[]) => File[]): void }): void {
+    if (input.files && input.files.length > 0) {
+      const filesToAdd: File[] = [];
+      let lastError = '';
+      for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        const errorMsg = validarDocumento(file);
+        if (errorMsg) {
+          lastError = errorMsg;
+        } else {
+          filesToAdd.push(file);
+        }
+      }
+      if (lastError) {
+        this.error.set(lastError);
+      } else {
+        this.error.set('');
+      }
+      if (filesToAdd.length > 0) {
+        target.update(prev => [...prev, ...filesToAdd]);
+      }
+    }
+    input.value = '';
   }
 
   fileSizeLabel(file: File): string {
@@ -220,7 +248,7 @@ export class FuncionarioResponderComponent implements OnInit {
         formatoEntrega: this.formatoEntrega,
         plazoEntrega: this.plazoEntrega
       }).subscribe({
-        next: (respuesta) => this.uploadResponseDocument(
+        next: async (respuesta) => await this.uploadResponseDocuments(
           respuesta,
           this.documentosEntrega(),
           'Respuesta enviada correctamente. El ciudadano fue notificado.',
@@ -240,7 +268,7 @@ export class FuncionarioResponderComponent implements OnInit {
       causalDenegatoria: this.causalDenegatoria,
       fundamentoLegal: this.fundamentoLegal.trim()
     }).subscribe({
-      next: (respuesta) => this.uploadResponseDocument(
+      next: async (respuesta) => await this.uploadResponseDocuments(
         respuesta,
         this.evidenciaDenegatoria(),
         'Denegatoria registrada y notificada al ciudadano.',
@@ -411,7 +439,7 @@ export class FuncionarioResponderComponent implements OnInit {
     return [
       { label: 'Ciudadano', value: sol?.ciudadanoNombre || 'Ciudadano' },
       { label: 'Decisión', value: this.getDecisionTitle() },
-      { label: 'Documentos', value: this.documentosEntrega()?.name || '—' },
+      { label: 'Documentos', value: this.documentosEntrega().map(f => f.name).join(', ') || '—' },
       { label: 'Descripción', value: `${this.descripcionAceptacion.length} caracteres` }
     ];
   }
@@ -450,69 +478,56 @@ export class FuncionarioResponderComponent implements OnInit {
   }
 
   private getDocumentoRespuestaName(): string {
-    return this.decision() === 'denegacion_total'
-      ? this.evidenciaDenegatoria()?.name || ''
-      : this.documentosEntrega()?.name || '';
+    const files = this.decision() === 'denegacion_total'
+      ? this.evidenciaDenegatoria()
+      : this.documentosEntrega();
+    return files.map(f => f.name).join(', ');
   }
 
-  private uploadResponseDocument(
+  private async uploadResponseDocuments(
     respuesta: Respuesta,
-    file: File | null,
+    files: File[],
     successMessage: string,
     nextEstado: EstadoSolicitud
-  ): void {
-    if (!respuesta.id || !file) {
+  ): Promise<void> {
+    if (!respuesta.id || files.length === 0) {
+      this.handleSuccess(successMessage, nextEstado, respuesta);
+      return;
+    }
+
+    let exitos = 0;
+    const errores: string[] = [];
+
+    for (const file of files) {
+      try {
+        await firstValueFrom(
+          this.documentoService.upload(file, 'RESPUESTA_ENTIDAD', { respuestaId: respuesta.id })
+        );
+        exitos++;
+      } catch (uploadErr: any) {
+        const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
+        errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
+      }
+    }
+
+    this.loading.set(false);
+
+    if (errores.length > 0) {
       this.documentUploadWarning.set(
-        'La respuesta fue registrada, pero no se pudo identificar el documento o la respuesta para completar la carga.'
+        `La respuesta fue registrada. Se subieron ${exitos} de ${files.length} documentos correctamente. Errores: ${errores.join(' | ')}`
       );
       this.handleSuccess(
-        'Respuesta registrada con carga documental pendiente.',
+        'Respuesta registrada con carga documental parcial o fallida.',
         nextEstado,
         respuesta
       );
-      return;
+    } else {
+      this.handleSuccess(
+        successMessage,
+        nextEstado,
+        respuesta
+      );
     }
-
-    this.documentoService.upload(
-      file,
-      'RESPUESTA_ENTIDAD',
-      { respuestaId: respuesta.id }
-    ).subscribe({
-      next: () => this.handleSuccess(successMessage, nextEstado, respuesta),
-      error: (error) => {
-        const detail = problemDetailsMessage(error, 'No se pudo cargar el documento de la respuesta.');
-        this.documentUploadWarning.set(
-          `La respuesta fue registrada correctamente, pero el documento no pudo cargarse: ${detail}`
-        );
-        this.handleSuccess(
-          'Respuesta registrada con carga documental pendiente.',
-          nextEstado,
-          respuesta
-        );
-      }
-    });
-  }
-
-  private setSelectedDocument(
-    input: HTMLInputElement,
-    target: { set(value: File | null): void }
-  ): void {
-    const file = input.files?.[0] || null;
-    if (!file) {
-      target.set(null);
-      return;
-    }
-
-    const validationError = validarDocumento(file);
-    if (validationError) {
-      target.set(null);
-      input.value = '';
-      this.error.set(validationError);
-      return;
-    }
-
-    target.set(file);
-    this.error.set('');
   }
 
   private validarRespuesta(): boolean {

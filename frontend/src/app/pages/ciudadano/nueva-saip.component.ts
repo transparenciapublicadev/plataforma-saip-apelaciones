@@ -19,6 +19,8 @@ import {
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
 import { validarDocumento } from '../../models/documento.model';
+import { firstValueFrom } from 'rxjs';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 
 interface SesionVisual {
   nombre: string;
@@ -63,7 +65,7 @@ export class NuevaSaipComponent implements OnInit {
   copiaCertificada = false;
   consentimientoDatosPersonales = false;
   canalNotificacion: CanalNotificacion = 'CASILLA_ELECTRONICA';
-  documentoSeleccionado = signal<File | null>(null);
+  documentosSeleccionados = signal<File[]>([]);
 
   ngOnInit(): void {
     this.cargarSesionVisual();
@@ -160,26 +162,37 @@ export class NuevaSaipComponent implements OnInit {
 
   seleccionarDocumento(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    if (file) {
-      const errorMsg = validarDocumento(file);
-      if (errorMsg) {
-        this.error.set(errorMsg);
-        this.documentoSeleccionado.set(null);
+    if (input.files && input.files.length > 0) {
+      const filesToAdd: File[] = [];
+      let lastError = '';
+      for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        const errorMsg = validarDocumento(file);
+        if (errorMsg) {
+          lastError = errorMsg;
+        } else {
+          filesToAdd.push(file);
+        }
+      }
+      if (lastError) {
+        this.error.set(lastError);
       } else {
         this.error.set('');
-        this.documentoSeleccionado.set(file);
+      }
+      if (filesToAdd.length > 0) {
+        this.documentosSeleccionados.update(prev => [...prev, ...filesToAdd]);
       }
     }
+    input.value = '';
   }
 
-  getDocumentoTamanoKb(): string {
-    const file = this.documentoSeleccionado();
-    return file ? (file.size / 1024).toFixed(1) : '0.0';
+  removerDocumento(index: number): void {
+    this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
+    this.error.set('');
   }
 
-  removerDocumento(): void {
-    this.documentoSeleccionado.set(null);
+  formatFileSize(size: number): string {
+    return (size / 1024).toFixed(1);
   }
 
   crearSolicitud(): void {
@@ -219,29 +232,36 @@ export class NuevaSaipComponent implements OnInit {
           localStorage.removeItem('saip.borrador');
         }
 
-        const file = this.documentoSeleccionado();
-        if (file) {
-          // La solicitud se crea en estado inicial RECEPCIONADA, lo cual está permitido para cargas
-          this.documentoService.upload(file, 'SOLICITUD_ORIGINAL', { solicitudId: respuesta.id! }).subscribe({
-            next: () => {
-              this.loading.set(false);
-              this.expedienteCreado.set(respuesta.expediente || '');
-              this.mensaje.set(`SAIP creada y documento adjunto subido correctamente. Expediente: ${respuesta.expediente}`);
-              
-              // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
-              // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
-              this.successModalAbierto.set(true);
-              this.confirmModalAbierto.set(false);
-            },
-            error: (uploadErr) => {
-              this.loading.set(false);
-              this.expedienteCreado.set(respuesta.expediente || '');
-              this.mensaje.set(`SAIP creada (Expediente: ${respuesta.expediente}), pero hubo un error al subir el documento de sustento.`);
-              
-              this.successModalAbierto.set(true);
-              this.confirmModalAbierto.set(false);
+        const files = this.documentosSeleccionados();
+        if (files.length > 0) {
+          (async () => {
+            let exitos = 0;
+            const errores: string[] = [];
+            
+            for (const file of files) {
+              try {
+                await firstValueFrom(
+                  this.documentoService.upload(file, 'SOLICITUD_ORIGINAL', { solicitudId: respuesta.id! })
+                );
+                exitos++;
+              } catch (uploadErr: any) {
+                const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
+                errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
+              }
             }
-          });
+
+            this.loading.set(false);
+            this.expedienteCreado.set(respuesta.expediente || '');
+            
+            if (errores.length > 0) {
+              this.mensaje.set(`SAIP creada (Expediente: ${respuesta.expediente}), pero hubo errores al subir los documentos: ${errores.join(' | ')}`);
+            } else {
+              this.mensaje.set(`SAIP creada y ${exitos} documentos adjuntos subidos correctamente. Expediente: ${respuesta.expediente}`);
+            }
+
+            this.successModalAbierto.set(true);
+            this.confirmModalAbierto.set(false);
+          })();
         } else {
           this.loading.set(false);
           this.expedienteCreado.set(respuesta.expediente || '');
