@@ -72,148 +72,167 @@
         </div>
       }
 
-      <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.38"
-        data-motion-delay-step="0.055">
-        <div class="space-y-5">
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
-              <span class="eyebrow" style="color: var(--brand-700)">Pendiente de subsanar</span>
-              <h2 class="form-section-title flex items-center gap-2">
-                <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                Observaciones del TTAIP
-              </h2>
-            </div>
-            <div class="p-6 space-y-3">
-              @for (obs of observacionesTtaip(); track obs.numero) {
-                <div class="reference-option-card rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                  <span class="font-display flex-shrink-0" style="font-size: 22px; line-height: 1; color: var(--brand-700); letter-spacing: -0.02em;">0{{ obs.numero }}</span>
-                  <p class="text-sm text-foreground/85 leading-relaxed">{{ obs.descripcion }}</p>
-                </div>
-              } @empty {
-                <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
-                  El backend no registró observaciones detalladas para esta calificación.
-                </div>
-              }
-
-              <div class="rounded-md p-3 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
-                <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M12 16v-4m0-4h.01" /></svg>
-                <p class="text-xs text-foreground/80"><span class="font-semibold">Nota:</span> debe subsanar todas las observaciones para que su apelación sea admitida a trámite.</p>
+      @if (ap.estado !== 'EN_SUBSANACION') {
+        <div class="form-shell p-12 text-center space-y-4 animate-fade-in">
+          <div class="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600" style="background: var(--brand-subtle); color: var(--brand-700)">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          </div>
+          <h2 class="text-lg font-bold text-foreground">Subsanación no habilitada</h2>
+          <p class="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+            Esta apelación se encuentra en estado <span class="font-mono font-semibold">{{ ap.estado }}</span>. 
+            Solo es posible presentar un escrito de subsanación cuando el Tribunal califica la apelación como <span class="font-semibold text-amber-700">INADMISIBLE</span>.
+          </p>
+          <a routerLink="/ciudadano" class="btn-brand inline-flex justify-center mt-2">
+            Volver a mi panel
+          </a>
+        </div>
+      } @else {
+        <div
+          class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          data-motion-stagger
+          data-motion-y="12"
+          data-motion-duration="0.38"
+          data-motion-delay-step="0.055">
+          <div class="space-y-5">
+            <section data-motion-item class="form-shell">
+              <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
+                <span class="eyebrow" style="color: var(--brand-700)">Pendiente de subsanar</span>
+                <h2 class="form-section-title flex items-center gap-2">
+                  <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  Observaciones del TTAIP
+                </h2>
               </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header">
-              <span class="eyebrow">Antecedentes</span>
-              <h2 class="form-section-title">Documentos originales</h2>
-            </div>
-            <div class="p-6 space-y-2">
-              @for (doc of documentosOriginales(); track doc.id) {
-                <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                      <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-                    </div>
-                    <span class="text-sm font-medium">{{ doc.nombreArchivo }}</span>
+              <div class="p-6 space-y-3">
+                @for (obs of observacionesTtaip(); track obs.numero) {
+                  <div class="reference-option-card rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <span class="font-display flex-shrink-0" style="font-size: 22px; line-height: 1; color: var(--brand-700); letter-spacing: -0.02em;">0{{ obs.numero }}</span>
+                    <p class="text-sm text-foreground/85 leading-relaxed">{{ obs.descripcion }}</p>
                   </div>
-                  <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
-                  </button>
-                </div>
-              } @empty {
-                <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
-                  No hay documentos originales registrados por el backend para este expediente.
-                </div>
-              }
-            </div>
-          </section>
-        </div>
+                } @empty {
+                  <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                    El backend no registró observaciones detalladas para esta calificación.
+                  </div>
+                }
 
-        <div class="space-y-5">
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header" style="border-left: 3px solid var(--info)">
-              <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
-              <h2 class="form-section-title">Cómo subsanar</h2>
-            </div>
-            <div class="p-6 space-y-3">
-              @for (paso of pasosSubsanacion; track paso; let i = $index) {
-                <div class="flex items-start gap-3">
-                  <span class="font-mono text-[11px] tracking-widest mt-0.5 flex-shrink-0" style="color: var(--brand-700)">0{{ i + 1 }}</span>
-                  <p class="text-sm text-foreground/85 leading-relaxed">{{ paso }}</p>
+                <div class="rounded-md p-3 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+                  <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M12 16v-4m0-4h.01" /></svg>
+                  <p class="text-xs text-foreground/80"><span class="font-semibold">Nota:</span> debe subsanar todas las observaciones para que su apelación sea admitida a trámite.</p>
                 </div>
-              }
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header">
-              <span class="eyebrow">01 · Correcciones</span>
-              <h2 class="form-section-title">Descripción</h2>
-            </div>
-            <div class="p-6">
-              <div class="field">
-                <label class="field-label">Describa las correcciones realizadas <span class="req">*</span></label>
-                <textarea
-                  [(ngModel)]="fundamentosAdicionales"
-                  name="fundamentosAdicionales"
-                  rows="7"
-                  class="field-input"
-                  style="resize: vertical; min-height: 160px"
-                  placeholder="En atención a las observaciones señaladas, procedo a subsanar:&#10;&#10;1. Se fundamenta la vulneración del artículo 10° de la Ley N° 27806…&#10;2. Se adjunta la respuesta denegatoria de la entidad…&#10;3. Se declara domicilio procesal en…"></textarea>
-                <span class="field-hint font-mono">{{ fundamentosAdicionales.length }} caracteres</span>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header">
-              <span class="eyebrow">02 · Adjuntos</span>
-              <h2 class="form-section-title">Documentos de subsanación</h2>
-            </div>
-            <div class="p-6 space-y-3">
-              <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
-                <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" (change)="seleccionarDocumento($event)" />
-                <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
-                <p class="text-sm text-foreground/85">Adjunte el documento de subsanación (opcional)</p>
-                <p class="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, JPG o PNG</p>
-              </label>
+            <section data-motion-item class="form-shell">
+              <div class="form-section-header">
+                <span class="eyebrow">Antecedentes</span>
+                <h2 class="form-section-title">Documentos originales</h2>
+              </div>
+              <div class="p-6 space-y-2">
+                @for (doc of documentosOriginales(); track doc.id) {
+                  <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="flex items-center gap-3">
+                      <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+                      </div>
+                      <span class="text-sm font-medium">{{ doc.nombreArchivo }}</span>
+                    </div>
+                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
+                    </button>
+                  </div>
+                } @empty {
+                  <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                    No hay documentos originales registrados por el backend para este expediente.
+                  </div>
+                }
+              </div>
+            </section>
+          </div>
 
-              @if (documentoSeleccionado()) {
-                <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                  <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
-                  <span class="text-sm flex-1 font-medium">{{ documentoSeleccionado()!.name }}</span>
-                  <span class="font-mono text-[11px] text-muted-foreground">{{ getDocumentoTamanoKb() }} KB</span>
+          <div class="space-y-5">
+            <section data-motion-item class="form-shell">
+              <div class="form-section-header" style="border-left: 3px solid var(--info)">
+                <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
+                <h2 class="form-section-title">Cómo subsanar</h2>
+              </div>
+              <div class="p-6 space-y-3">
+                @for (paso of pasosSubsanacion; track paso; let i = $index) {
+                  <div class="flex items-start gap-3">
+                    <span class="font-mono text-[11px] tracking-widest mt-0.5 flex-shrink-0" style="color: var(--brand-700)">0{{ i + 1 }}</span>
+                    <p class="text-sm text-foreground/85 leading-relaxed">{{ paso }}</p>
+                  </div>
+                }
+              </div>
+            </section>
+
+            <section data-motion-item class="form-shell">
+              <div class="form-section-header">
+                <span class="eyebrow">01 · Correcciones</span>
+                <h2 class="form-section-title">Descripción</h2>
+              </div>
+              <div class="p-6">
+                <div class="field">
+                  <label class="field-label">Describa las correcciones realizadas <span class="req">*</span></label>
+                  <textarea
+                    [(ngModel)]="fundamentosAdicionales"
+                    name="fundamentosAdicionales"
+                    rows="7"
+                    class="field-input"
+                    style="resize: vertical; min-height: 160px"
+                    placeholder="En atención a las observaciones señaladas, procedo a subsanar:&#10;&#10;1. Se fundamenta la vulneración del artículo 10° de la Ley N° 27806…&#10;2. Se adjunta la respuesta denegatoria de la entidad…&#10;3. Se declara domicilio procesal en…"></textarea>
+                  <span class="field-hint font-mono">{{ fundamentosAdicionales.length }} caracteres</span>
                 </div>
+              </div>
+            </section>
+
+            <section data-motion-item class="form-shell">
+              <div class="form-section-header">
+                <span class="eyebrow">02 · Adjuntos</span>
+                <h2 class="form-section-title">Documentos de subsanación</h2>
+              </div>
+              <div class="p-6 space-y-3">
+                <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
+                  <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" multiple (change)="seleccionarDocumento($event)" />
+                  <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+                  <p class="text-sm text-foreground/85">Adjunte los documentos de subsanación (opcional)</p>
+                  <p class="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, JPG o PNG</p>
+                </label>
+
+                @for (file of documentosSeleccionados(); track file.name; let i = $index) {
+                  <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                    <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
+                    <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
+                    <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
+                      Quitar
+                    </button>
+                  </div>
+                }
+              </div>
+            </section>
+
+            <button
+              data-motion-item
+              type="button"
+              class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              (click)="abrirConfirmacionSubsanacion()"
+              [disabled]="loading() || !fundamentosAdicionales.trim()">
+              @if (loading()) {
+                <span class="inline-flex items-center gap-2">
+                  <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
+                  Enviando...
+                </span>
+              } @else {
+                <span class="inline-flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  Enviar subsanación al TTAIP
+                </span>
               }
-            </div>
-          </section>
+            </button>
 
-          <button
-            data-motion-item
-            type="button"
-            class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-            (click)="abrirConfirmacionSubsanacion()"
-            [disabled]="loading() || !fundamentosAdicionales.trim()">
-            @if (loading()) {
-              <span class="inline-flex items-center gap-2">
-                <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
-                Enviando...
-              </span>
-            } @else {
-              <span class="inline-flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                Enviar subsanación al TTAIP
-              </span>
-            }
-          </button>
-
-          <p class="text-xs text-center text-muted-foreground">Su subsanación será revisada por el TTAIP y pasará a segunda calificación.</p>
+            <p class="text-xs text-center text-muted-foreground">Su subsanación será revisada por el TTAIP y pasará a segunda calificación.</p>
+          </div>
         </div>
-      </div>
+      }
     }
   </div>
 

@@ -30,6 +30,7 @@ import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Documento;
+import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.Usuario;
@@ -386,6 +387,109 @@ class DocumentoServiceTest {
                 .isInstanceOf(ConflictoEstadoException.class)
                 .hasMessageContaining("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
     }
+
+    @Test
+    void subir_debePermitirCarga_cuandoSeAsociaARespuestaDeSolicitudRespondida() {
+        byte[] content = "%PDF-1.4\nprueba".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "respuesta.pdf",
+                "application/pdf",
+                content);
+        Solicitud solicitud = new Solicitud();
+        solicitud.setIdSolicitud(10L);
+        solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(30L);
+        respuesta.setSolicitud(solicitud);
+
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(4L);
+
+        when(autorizacion.obtenerUsuarioActual()).thenReturn(usuario);
+        when(respuestaRepository.findById(30L)).thenReturn(Optional.of(respuesta));
+        when(storageProvider.upload(any())).thenReturn(new StorageUploadResult(
+                new StorageObjectMetadata(
+                        StorageProviderType.LOCAL,
+                        "local",
+                        "2026/06/opaque.pdf",
+                        "respuesta.pdf",
+                        "application/pdf",
+                        content.length,
+                        "a".repeat(64))));
+        when(documentoRepository.save(any())).thenAnswer(invocation -> {
+            Documento doc = invocation.getArgument(0);
+            doc.setIdDocumento(99L);
+            return doc;
+        });
+
+        pe.gob.saip.backend.model.dto.DocumentoMetadataDTO dto = service.subir(
+                file,
+                new DocumentoUploadRequest(
+                        Documento.TipoDocumento.RESPUESTA_ENTIDAD,
+                        null,
+                        30L,
+                        null,
+                        null,
+                        null,
+                        null));
+
+        assertThat(dto).isNotNull();
+        assertThat(dto.nombreOriginal()).isEqualTo("respuesta.pdf");
+    }
+
+    @Test
+    void subir_debePermitirCarga_cuandoSeAsociaAResolucionDeApelacionResuelta() {
+        byte[] content = "%PDF-1.4\nprueba".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "resolucion.pdf",
+                "application/pdf",
+                content);
+        Apelacion apelacion = new Apelacion();
+        apelacion.setIdApelacion(20L);
+        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
+
+        Resolucion resolucion = new Resolucion();
+        resolucion.setIdResolucion(40L);
+        resolucion.setApelacion(apelacion);
+
+        Usuario usuario = new Usuario();
+        usuario.setIdUsuario(4L);
+
+        when(autorizacion.obtenerUsuarioActual()).thenReturn(usuario);
+        when(resolucionRepository.findById(40L)).thenReturn(Optional.of(resolucion));
+        when(storageProvider.upload(any())).thenReturn(new StorageUploadResult(
+                new StorageObjectMetadata(
+                        StorageProviderType.LOCAL,
+                        "local",
+                        "2026/06/opaque.pdf",
+                        "resolucion.pdf",
+                        "application/pdf",
+                        content.length,
+                        "a".repeat(64))));
+        when(documentoRepository.save(any())).thenAnswer(invocation -> {
+            Documento doc = invocation.getArgument(0);
+            doc.setIdDocumento(99L);
+            return doc;
+        });
+
+        pe.gob.saip.backend.model.dto.DocumentoMetadataDTO dto = service.subir(
+                file,
+                new DocumentoUploadRequest(
+                        Documento.TipoDocumento.RESOLUCION_TTAIP,
+                        null,
+                        null,
+                        null,
+                        null,
+                        40L,
+                        null));
+
+        assertThat(dto).isNotNull();
+        assertThat(dto.nombreOriginal()).isEqualTo("resolucion.pdf");
+    }
+
 
     private Documento documentoActivo() {
         Documento documento = new Documento();

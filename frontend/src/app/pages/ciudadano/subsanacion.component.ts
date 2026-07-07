@@ -16,7 +16,9 @@ import {
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
-import { Documento } from '../../models/documento.model';
+import { Documento, validarDocumento } from '../../models/documento.model';
+import { firstValueFrom } from 'rxjs';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 
 interface ObservacionSubsanacion {
   numero: number;
@@ -44,7 +46,7 @@ export class SubsanacionComponent implements OnInit {
   mensaje = signal<string>('');
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
-  documentoSeleccionado = signal<File | null>(null);
+  documentosSeleccionados = signal<File[]>([]);
 
   fundamentosAdicionales = '';
 
@@ -121,17 +123,37 @@ export class SubsanacionComponent implements OnInit {
 
   seleccionarDocumento(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    this.documentoSeleccionado.set(file);
+    if (input.files && input.files.length > 0) {
+      const filesToAdd: File[] = [];
+      let lastError = '';
+      for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        const errorMsg = validarDocumento(file);
+        if (errorMsg) {
+          lastError = errorMsg;
+        } else {
+          filesToAdd.push(file);
+        }
+      }
+      if (lastError) {
+        this.error.set(lastError);
+      } else {
+        this.error.set('');
+      }
+      if (filesToAdd.length > 0) {
+        this.documentosSeleccionados.update(prev => [...prev, ...filesToAdd]);
+      }
+    }
+    input.value = '';
   }
 
-  getDocumentoTamanoKb(): string {
-    const file = this.documentoSeleccionado();
-    if (!file) {
-      return '0.0';
-    }
+  removerDocumento(index: number): void {
+    this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
+    this.error.set('');
+  }
 
-    return (file.size / 1024).toFixed(1);
+  formatFileSize(size: number): string {
+    return (size / 1024).toFixed(1);
   }
 
   abrirConfirmacionSubsanacion(): void {
@@ -174,36 +196,39 @@ export class SubsanacionComponent implements OnInit {
       return;
     }
 
-    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
-    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
     this.loading.set(true);
     this.error.set('');
 
     this.apelacionService.subsanar(ap.id, this.fundamentosAdicionales).subscribe({
-      next: (updated) => {
-        const file = this.documentoSeleccionado();
-        if (file) {
-          this.documentoService.upload(file, 'SUBSANACION', { apelacionId: ap.id }).subscribe({
-            next: () => {
-              this.apelacion.set(updated ?? ap);
-              this.loading.set(false);
-              this.mensaje.set('Subsanación enviada correctamente y documento adjunto subido.');
-              
-              // Parche pragmático: abrir el éxito antes de cerrar la confirmación para evitar parpadeo.
-              // Nota técnica: Se recomienda a futuro implementar un host modal unificado en el roadmap arquitectónico.
-              this.successModalAbierto.set(true);
-              this.confirmModalAbierto.set(false);
-            },
-            error: (uploadErr) => {
-              this.apelacion.set(updated ?? ap);
-              this.loading.set(false);
-              // Si la subida falla, advertir al usuario del fallo parcial:
-              this.mensaje.set('Subsanación registrada, pero hubo un error al subir el archivo adjunto. Por favor, intente subir el documento nuevamente desde su panel.');
-              
-              this.successModalAbierto.set(true);
-              this.confirmModalAbierto.set(false);
+      next: async (updated) => {
+        const files = this.documentosSeleccionados();
+        if (files.length > 0) {
+          let exitos = 0;
+          const errores: string[] = [];
+          
+          for (const file of files) {
+            try {
+              await firstValueFrom(
+                this.documentoService.upload(file, 'SUBSANACION', { apelacionId: ap.id })
+              );
+              exitos++;
+            } catch (uploadErr: any) {
+              const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
+              errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
             }
-          });
+          }
+
+          this.apelacion.set(updated ?? ap);
+          this.loading.set(false);
+
+          if (errores.length > 0) {
+            this.mensaje.set(`Subsanación registrada. Se subieron ${exitos} de ${files.length} documentos correctamente. Errores: ${errores.join(' | ')}`);
+          } else {
+            this.mensaje.set(`Subsanación enviada correctamente y ${exitos} documentos adjuntos subidos.`);
+          }
+          
+          this.successModalAbierto.set(true);
+          this.confirmModalAbierto.set(false);
         } else {
           this.apelacion.set(updated ?? ap);
           this.loading.set(false);
@@ -223,11 +248,13 @@ export class SubsanacionComponent implements OnInit {
 
   subsanacionConfirmSummary(): ReferenceConfirmSummary[] {
     const ap = this.apelacion();
+    const files = this.documentosSeleccionados();
+    const docValue = files.length > 0 ? `${files.length} documento(s) seleccionado(s)` : 'Ninguno';
     return [
       { label: 'Expediente', value: ap?.expediente || '—', mono: true },
       { label: 'Observaciones', value: `${this.observacionesTtaip().length} observaciones del TTAIP` },
       { label: 'Descripción', value: `${this.fundamentosAdicionales.trim().length} caracteres` },
-      { label: 'Documento', value: this.documentoSeleccionado()?.name || '—' }
+      { label: 'Documentos', value: docValue }
     ];
   }
 
@@ -239,9 +266,11 @@ export class SubsanacionComponent implements OnInit {
   }
 
   subsanacionSuccessMetadata(): ReferenceSuccessMeta[] {
+    const files = this.documentosSeleccionados();
+    const docValue = files.length > 0 ? `${files.length} documento(s) subido(s)` : 'Ninguno';
     return [
       { label: 'Observaciones cubiertas', value: `${this.observacionesTtaip().length} de ${this.observacionesTtaip().length}` },
-      { label: 'Documento adjunto', value: this.documentoSeleccionado()?.name || '—' },
+      { label: 'Documentos adjuntos', value: docValue },
       { label: 'Fundamentación', value: `${this.fundamentosAdicionales.length} caracteres` }
     ];
   }
