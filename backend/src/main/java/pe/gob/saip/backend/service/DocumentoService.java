@@ -344,13 +344,6 @@ public class DocumentoService {
                 throw new ConflictoEstadoException("No se pueden adjuntar documentos a una solicitud en estado " + solicitud.getEstado());
             }
         }
-        if (request.respuestaId() != null) {
-            Respuesta respuesta = buscarRespuesta(request.respuestaId());
-            Solicitud solicitud = respuesta.getSolicitud();
-            if (solicitud != null && (solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA || solicitud.getEstado() == Solicitud.EstadoSolicitud.VENCIDA)) {
-                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una solicitud en estado " + solicitud.getEstado());
-            }
-        }
         if (request.apelacionId() != null) {
             Apelacion apelacion = buscarApelacion(request.apelacionId());
             if (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO"))) {
@@ -362,23 +355,6 @@ public class DocumentoService {
             Apelacion apelacion = expediente.getApelacion();
             if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
                 throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
-            }
-        }
-        if (request.resolucionId() != null) {
-            Resolucion resolucion = buscarResolucion(request.resolucionId());
-            Apelacion apelacion = resolucion.getApelacion();
-            if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
-                throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
-            }
-        }
-        if (request.cedulaNotificacionId() != null) {
-            CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
-            Resolucion resolucion = cedula.getResolucion();
-            if (resolucion != null) {
-                Apelacion apelacion = resolucion.getApelacion();
-                if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
-                    throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
-                }
             }
         }
     }
