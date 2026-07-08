@@ -13,7 +13,8 @@ public record ApelacionInfoDTO(
     String fechaApelacion,
     String fechaSubsanacion,
     Integer diasSubsanacion,
-    ElevacionApelacionTtaipDTO elevacion
+    ElevacionApelacionTtaipDTO elevacion,
+    Boolean resuelta
 ) {
     public static ApelacionInfoDTO from(Apelacion a) {
         return new ApelacionInfoDTO(
@@ -24,7 +25,8 @@ public record ApelacionInfoDTO(
             a.getFechaApelacion() != null ? a.getFechaApelacion().toString() : null,
             a.getFechaSubsanacion() != null ? a.getFechaSubsanacion().toString() : null,
             a.getDiasSubsanacion(),
-            a.getElevacion() != null ? ElevacionApelacionTtaipDTO.from(a.getElevacion()) : null
+            a.getElevacion() != null ? ElevacionApelacionTtaipDTO.from(a.getElevacion()) : null,
+            a.isResuelta()
         );
     }
 }

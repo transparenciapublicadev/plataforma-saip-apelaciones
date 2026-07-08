@@ -59,7 +59,8 @@ public record ApelacionDTO(
     List<ResolucionDTO> resoluciones,
     List<DocumentoDTO> documentos,
     @Schema(description = "Metadatos documentales seguros asociados directamente a la apelación")
-    List<DocumentoMetadataDTO> documentosMetadata
+    List<DocumentoMetadataDTO> documentosMetadata,
+    Boolean resuelta
 ) {
     public static ApelacionDTO from(Apelacion a) {
         return new ApelacionDTO(
@@ -102,7 +103,8 @@ public record ApelacionDTO(
             a.getExpedienteTtaip() != null ? ExpedienteTtaipDTO.from(a.getExpedienteTtaip()) : null,
             a.getResoluciones() != null ? a.getResoluciones().stream().map(ResolucionDTO::from).toList() : List.of(),
             DocumentoDTO.fromActive(a.getDocumentos()),
-            DocumentoMetadataDTO.fromActive(a.getDocumentos())
+            DocumentoMetadataDTO.fromActive(a.getDocumentos()),
+            a.isResuelta()
         );
     }
 }
