@@ -232,7 +232,6 @@ export class FuncionarioResponderComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
     this.documentUploadWarning.set('');
@@ -291,10 +290,12 @@ export class FuncionarioResponderComponent implements OnInit {
     this.loading.set(false);
     this.mensaje.set(message);
     this.successModalAbierto.set(true);
+    this.confirmModalAbierto.set(false);
   }
 
   private handleError(err: unknown): void {
     this.loading.set(false);
+    this.confirmModalAbierto.set(false);
     this.error.set(problemDetailsMessage(err, 'Error al enviar respuesta'));
   }
 
