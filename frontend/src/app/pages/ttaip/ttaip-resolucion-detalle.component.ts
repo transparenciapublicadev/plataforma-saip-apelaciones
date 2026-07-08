@@ -93,16 +93,17 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly puedeAdjuntarDocumentos = computed(() => {
     const estado = this.normalizeKey(this.apelacion()?.estado);
     const closedStates = [
-      'RESUELTO_FUNDADO',
-      'RESUELTO_INFUNDADO',
-      'CONCLUSION_SUSTRACCION_MATERIA',
+      'RESUELTO',
       'TENER_POR_NO_PRESENTADO',
-      'RESUELTO_IMPROCEDENTE',
+      'CONCLUSION_SUSTRACCION_MATERIA',
       'CONCLUSION_DESISTIMIENTO',
-      'ESTESE_A_LO_RESUELTO',
+      'RESUELTO_FUNDADO',
+      'RESUELTO_FUNDADO_EN_PARTE',
+      'RESUELTO_INFUNDADO',
+      'RESUELTO_INFUNDADO_EN_PARTE',
+      'RESUELTO_IMPROCEDENTE',
       'RESUELTO_ESTESE_A_LO_RESUELTO',
-      'RESUELTO_NULIDAD',
-      'NULIDAD_DEL_ACTO'
+      'RESUELTO_NULIDAD_ACTO'
     ];
     return estado ? !closedStates.includes(estado) : true;
   });
