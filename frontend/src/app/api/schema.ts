@@ -2882,6 +2882,7 @@ export interface components {
             /** Format: int32 */
             diasSubsanacion?: number;
             elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
+            resuelta?: boolean;
         };
         /** @description Entrega parcial programada dentro de una ampliación de plazo SAIP */
         CronogramaEntregaParcialDTO: {
@@ -3086,6 +3087,8 @@ export interface components {
             ciudadanoId?: number;
             ciudadanoNombre?: string;
             ciudadanoDni?: string;
+            ciudadanoEmail?: string;
+            ciudadanoTelefono?: string;
             /** Format: int64 */
             entidadId?: number;
             entidadNombre?: string;
@@ -3269,6 +3272,7 @@ export interface components {
             documentos?: components["schemas"]["DocumentoDTO"][];
             /** @description Metadatos documentales seguros asociados directamente a la apelación */
             documentosMetadata?: components["schemas"]["DocumentoMetadataDTO"][];
+            resuelta?: boolean;
         };
         /** @description Cédula de notificación emitida para una resolución TTAIP */
         CedulaNotificacionDTO: {

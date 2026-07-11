@@ -807,11 +807,11 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="eyebrow">Correo</div>
-                <div class="text-sm font-mono mt-1">No disponible</div>
+                <div class="text-sm font-mono mt-1">{{ sol.ciudadanoEmail || 'No disponible' }}</div>
               </div>
               <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="eyebrow">Teléfono</div>
-                <div class="text-sm font-mono mt-1">No disponible</div>
+                <div class="text-sm font-mono mt-1">{{ sol.ciudadanoTelefono || 'No disponible' }}</div>
               </div>
             </div>
           </div>

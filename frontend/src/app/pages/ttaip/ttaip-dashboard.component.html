@@ -225,10 +225,10 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12Z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
                       </a>
                     } @else if (activeStage().esperaExterna) {
-                      <span class="hidden md:inline-flex items-center gap-1.5 text-xs text-muted-foreground" style="background: var(--muted); padding: 6px 12px; border-radius: 8px; border: 1px dashed var(--border-strong)">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/></svg>
-                        Esperando ciudadano
-                      </span>
+                      <a [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                        Ver Detalle
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12Z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                      </a>
                     } @else {
                       <a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
                         {{ getActionLabel(item) }}

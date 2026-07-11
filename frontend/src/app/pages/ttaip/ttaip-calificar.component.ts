@@ -187,7 +187,6 @@ export class TtaipCalificarComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
 
@@ -230,10 +229,12 @@ export class TtaipCalificarComponent implements OnInit {
     this.loading.set(false);
     this.mensaje.set(message);
     this.successModalAbierto.set(true);
+    this.confirmModalAbierto.set(false);
   }
 
   private handleError(err: unknown): void {
     this.loading.set(false);
+    this.confirmModalAbierto.set(false);
     const apiError = err as { error?: { mensaje?: string } };
     this.error.set(apiError.error?.mensaje || 'Error al procesar la calificacion.');
   }

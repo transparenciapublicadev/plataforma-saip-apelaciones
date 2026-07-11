@@ -232,7 +232,6 @@ export class FuncionarioResponderComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(false);
     this.loading.set(true);
     this.error.set('');
     this.documentUploadWarning.set('');
@@ -291,10 +290,12 @@ export class FuncionarioResponderComponent implements OnInit {
     this.loading.set(false);
     this.mensaje.set(message);
     this.successModalAbierto.set(true);
+    this.confirmModalAbierto.set(false);
   }
 
   private handleError(err: unknown): void {
     this.loading.set(false);
+    this.confirmModalAbierto.set(false);
     this.error.set(problemDetailsMessage(err, 'Error al enviar respuesta'));
   }
 
@@ -369,11 +370,15 @@ export class FuncionarioResponderComponent implements OnInit {
   respuestaConfirmSummary(): ReferenceConfirmSummary[] {
     const sol = this.solicitud();
     const decision = this.decision();
+    const files = decision === 'denegacion_total' ? this.evidenciaDenegatoria() : this.documentosEntrega();
+    const count = files.length;
+    const countText = count > 0 ? `${count} ${count === 1 ? 'adjunto' : 'adjuntos'}` : 'sin adjuntos';
+    
     const summary: ReferenceConfirmSummary[] = [
       { label: 'Expediente', value: sol?.expediente || '—', mono: true },
       { label: 'Ciudadano', value: sol?.ciudadanoNombre || 'Ciudadano' },
       { label: 'Decisión', value: this.getDecisionTitle() },
-      { label: 'Documentos', value: this.getDocumentoRespuestaName() ? '1 adjunto' : 'sin adjuntos' }
+      { label: 'Documentos', value: countText }
     ];
 
     if (decision === 'denegacion_total') {
