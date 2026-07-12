@@ -128,6 +128,57 @@ public class DocumentoService {
         }
     }
 
+    @Transactional
+    public DocumentoMetadataDTO clonar(Long documentoId, DocumentoUploadRequest request) {
+        validarCargaClonacion(request);
+        validarEstadoEntidadAsociada(request);
+
+        Documento original = buscarActivo(documentoId);
+        verificarAcceso(original);
+
+        Documento copia = new Documento();
+        copia.setTipoDocumento(request.tipoDocumento());
+        copia.setEstado(Documento.EstadoDocumento.ACTIVO);
+        copia.setCreadoPor(autorizacion.obtenerUsuarioActual());
+        asociarRecurso(copia, request);
+
+        StorageProvider provider = providerFor(original.getStorageProvider());
+        StorageDownloadResult download = provider.download(original.getStorageKey(), original.getContentType());
+        StorageUploadResult upload;
+        try (InputStream content = download.content()) {
+            upload = provider.upload(new StorageUploadRequest(
+                    original.getNombreOriginal(),
+                    original.getContentType(),
+                    original.getSizeBytes(),
+                    content));
+        } catch (IOException exception) {
+            throw new StorageException(
+                    StorageException.Reason.IO_ERROR,
+                    "Error al clonar el archivo físico en el almacenamiento",
+                    exception);
+        }
+
+        StorageObjectMetadata metadata = upload.metadata();
+        copia.setNombreOriginal(metadata.originalFilename());
+        copia.setContentType(metadata.contentType());
+        copia.setSizeBytes(metadata.sizeBytes());
+        copia.setHashSha256(metadata.hashSha256());
+        copia.setStorageProvider(metadata.provider());
+        copia.setStorageBucket(metadata.bucket());
+        copia.setStorageKey(metadata.storageKey());
+
+        try {
+            return DocumentoMetadataDTO.from(documentoRepository.save(copia));
+        } catch (RuntimeException exception) {
+            try {
+                provider.delete(metadata.storageKey());
+            } catch (RuntimeException cleanupException) {
+                exception.addSuppressed(cleanupException);
+            }
+            throw exception;
+        }
+    }
+
     @Transactional(readOnly = true)
     public DocumentoMetadataDTO obtenerMetadata(Long documentoId) {
         Documento documento = buscarActivo(documentoId);
@@ -356,6 +407,16 @@ public class DocumentoService {
             if (apelacion != null && (apelacion.isResuelta() || (apelacion.getEstado() != null && apelacion.getEstado().name().startsWith("RESUELTO")))) {
                 throw new ConflictoEstadoException("No se pueden adjuntar documentos a una apelación ya resuelta/cerrada.");
             }
+        }
+    }
+
+    private void validarCargaClonacion(DocumentoUploadRequest request) {
+        if (request == null || request.tipoDocumento() == null) {
+            throw new IllegalArgumentException("El tipo de documento es obligatorio");
+        }
+        if (request.relationCount() != 1) {
+            throw new IllegalArgumentException(
+                    "El documento debe asociarse exactamente a un recurso de negocio");
         }
     }
 }

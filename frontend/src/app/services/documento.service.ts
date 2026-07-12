@@ -63,6 +63,18 @@ export class DocumentoService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  clonar(
+    documentoId: number,
+    tipoDocumento: TipoDocumento,
+    relation: DocumentoRelation
+  ): Observable<DocumentoMetadata> {
+    const [relationKey, relationId] = getDocumentoRelationEntry(relation);
+    const params = new HttpParams()
+      .set('tipoDocumento', tipoDocumento)
+      .set(relationKey, relationId);
+    return this.http.post<DocumentoMetadata>(`${this.apiUrl}/${documentoId}/clonar`, null, { params });
+  }
+
   private extractFilename(response: HttpResponse<Blob>, fallbackFilename: string): string {
     const disposition = response.headers.get('Content-Disposition');
     if (!disposition) {
