@@ -25,7 +25,7 @@ import {
 } from '../../shared/reference-success-modal.component';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { DocumentoService } from '../../services/documento.service';
-import { TipoDocumento, validarDocumento } from '../../models/documento.model';
+import { TipoDocumento, validarDocumento, DocumentoMetadata } from '../../models/documento.model';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 
 interface RequiredAppealDocument {
@@ -65,6 +65,8 @@ export class NuevaApelacionComponent implements OnInit {
 
   modoSeleccion = signal<boolean>(false);
   searchTerm = signal<string>('');
+  doc1Auto = signal<DocumentoMetadata | null>(null);
+  doc2Auto = signal<DocumentoMetadata | null>(null);
   file1 = signal<File | null>(null);
   file2 = signal<File | null>(null);
   file3 = signal<File | null>(null);
@@ -89,7 +91,11 @@ export class NuevaApelacionComponent implements OnInit {
   referenciaCargoPresentacionEntidad = '';
   observacionPresentacionEntidad = '';
 
-  readonly uploadedCount = computed(() => [this.file1(), this.file2(), this.file3()].filter((file) => file !== null).length);
+  readonly hasFile1 = computed(() => !!this.file1() || !!this.doc1Auto());
+  readonly hasFile2 = computed(() => !!this.file2() || !!this.doc2Auto());
+  readonly hasFile3 = computed(() => !!this.file3());
+
+  readonly uploadedCount = computed(() => [this.hasFile1(), this.hasFile2(), this.hasFile3()].filter(Boolean).length);
   readonly allFilesUploaded = computed(() => this.uploadedCount() === 3);
   readonly requiredDocuments = computed<RequiredAppealDocument[]>(() => [
       {
@@ -157,6 +163,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.solicitudService.findByExpediente(expediente).subscribe({
       next: (data) => {
         this.solicitud.set(data);
+        this.inicializarDocumentosAutoCargados(data);
         this.loadingSolicitud.set(false);
       },
       error: () => {
@@ -172,6 +179,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.solicitudService.findById(id).subscribe({
       next: (data) => {
         this.solicitud.set(data);
+        this.inicializarDocumentosAutoCargados(data);
         this.loadingSolicitud.set(false);
       },
       error: () => {
@@ -212,6 +220,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.tipoOrigen.set('SAIP_INTERNA');
     this.canalPresentacion.set('DIRECTA_TTAIP');
     this.solicitud.set(solicitud);
+    this.inicializarDocumentosAutoCargados(solicitud);
     this.modoSeleccion.set(false);
     this.error.set('');
 
@@ -224,6 +233,7 @@ export class NuevaApelacionComponent implements OnInit {
     this.tipoOrigen.set('EXTERNA');
     this.canalPresentacion.set('DIRECTA_TTAIP');
     this.solicitud.set(null);
+    this.inicializarDocumentosAutoCargados(null);
     this.modoSeleccion.set(false);
     this.loadingSolicitud.set(false);
     this.error.set('');
@@ -238,13 +248,37 @@ export class NuevaApelacionComponent implements OnInit {
     this.canalPresentacion.set('DIRECTA_TTAIP');
     this.modoSeleccion.set(true);
     this.fundamentos = '';
-    this.file1.set(null);
-    this.file2.set(null);
-    this.file3.set(null);
+    this.inicializarDocumentosAutoCargados(null);
     this.searchTerm.set('');
     this.error.set('');
     this.mensaje.set('');
     this.resetDatosExternos();
+  }
+
+  private inicializarDocumentosAutoCargados(solicitud: Solicitud | null): void {
+    if (!solicitud) {
+      this.doc1Auto.set(null);
+      this.doc2Auto.set(null);
+      this.file1.set(null);
+      this.file2.set(null);
+      this.file3.set(null);
+      return;
+    }
+
+    // SAIP original
+    const docOriginal = solicitud.documentosMetadata?.find(
+      (d) => d.tipoDocumento === 'SOLICITUD_ORIGINAL'
+    ) || null;
+    this.doc1Auto.set(docOriginal);
+    this.file1.set(null);
+
+    // Respuesta de la entidad
+    const docRespuesta = solicitud.respuesta?.documentosMetadata?.find(
+      (d) => d.tipoDocumento === 'RESPUESTA_ENTIDAD'
+    ) || null;
+    this.doc2Auto.set(docRespuesta);
+    this.file2.set(null);
+    this.file3.set(null);
   }
 
   actualizarBusqueda(value: string): void {
@@ -276,11 +310,107 @@ export class NuevaApelacionComponent implements OnInit {
   removeFile(fileNum: 1 | 2 | 3): void {
     if (fileNum === 1) {
       this.file1.set(null);
+      this.doc1Auto.set(null);
     } else if (fileNum === 2) {
       this.file2.set(null);
+      this.doc2Auto.set(null);
     } else {
       this.file3.set(null);
     }
+  }
+
+  previewFile(fileNum: 1 | 2 | 3): void {
+    if (fileNum === 1) {
+      if (this.file1()) {
+        this.abrirFileLocal(this.file1()!);
+      } else if (this.doc1Auto()) {
+        this.abrirFileRemoto(this.doc1Auto()!);
+      }
+    } else if (fileNum === 2) {
+      if (this.file2()) {
+        this.abrirFileLocal(this.file2()!);
+      } else if (this.doc2Auto()) {
+        this.abrirFileRemoto(this.doc2Auto()!);
+      }
+    } else {
+      if (this.file3()) {
+        this.abrirFileLocal(this.file3()!);
+      }
+    }
+  }
+
+  downloadFile(fileNum: 1 | 2 | 3): void {
+    if (fileNum === 1) {
+      if (this.file1()) {
+        this.descargarFileLocal(this.file1()!);
+      } else if (this.doc1Auto()) {
+        this.descargarFileRemoto(this.doc1Auto()!);
+      }
+    } else if (fileNum === 2) {
+      if (this.file2()) {
+        this.descargarFileLocal(this.file2()!);
+      } else if (this.doc2Auto()) {
+        this.descargarFileRemoto(this.doc2Auto()!);
+      }
+    } else {
+      if (this.file3()) {
+        this.descargarFileLocal(this.file3()!);
+      }
+    }
+  }
+
+  private abrirFileLocal(file: File): void {
+    if (typeof window === 'undefined') return;
+    const objectUrl = URL.createObjectURL(file);
+    window.open(objectUrl, '_blank');
+  }
+
+  private abrirFileRemoto(doc: DocumentoMetadata): void {
+    if (typeof window === 'undefined' || !doc.id) return;
+    this.loading.set(true);
+    this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
+      next: ({ blob }) => {
+        this.loading.set(false);
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(problemDetailsMessage(err, 'No se pudo abrir el documento.'));
+      }
+    });
+  }
+
+  private descargarFileLocal(file: File): void {
+    if (typeof window === 'undefined') return;
+    const objectUrl = URL.createObjectURL(file);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = file.name;
+    anchor.rel = 'noopener';
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  private descargarFileRemoto(doc: DocumentoMetadata): void {
+    if (typeof window === 'undefined' || !doc.id) return;
+    this.loading.set(true);
+    this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
+      next: ({ blob, filename }) => {
+        this.loading.set(false);
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        anchor.rel = 'noopener';
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(problemDetailsMessage(err, 'No se pudo descargar el documento.'));
+      }
+    });
   }
 
   getEstadoBadgeClass(estado: string): string {
@@ -304,7 +434,51 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   fileSizeLabel(file: File): string {
-    return `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    return this.formatBytes(file.size);
+  }
+
+  formatBytes(bytes?: number): string {
+    if (bytes === undefined || bytes === null) return 'N/D';
+    return bytes >= 1024 * 1024
+      ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  hasDocument(fileNum: 1 | 2 | 3): boolean {
+    if (fileNum === 1) return !!this.file1() || !!this.doc1Auto();
+    if (fileNum === 2) return !!this.file2() || !!this.doc2Auto();
+    return !!this.file3();
+  }
+
+  isAutoLoaded(fileNum: 1 | 2 | 3): boolean {
+    if (fileNum === 1) return !!this.doc1Auto();
+    if (fileNum === 2) return !!this.doc2Auto();
+    return false;
+  }
+
+  documentNameFor(fileNum: 1 | 2 | 3): string {
+    if (fileNum === 1) {
+      return this.file1()?.name || this.doc1Auto()?.nombreOriginal || '';
+    }
+    if (fileNum === 2) {
+      return this.file2()?.name || this.doc2Auto()?.nombreOriginal || '';
+    }
+    return this.file3()?.name || '';
+  }
+
+  documentSizeFor(fileNum: 1 | 2 | 3): string {
+    if (fileNum === 1) {
+      if (this.file1()) return this.fileSizeLabel(this.file1()!);
+      if (this.doc1Auto()) return this.formatBytes(this.doc1Auto()?.sizeBytes);
+    }
+    if (fileNum === 2) {
+      if (this.file2()) return this.fileSizeLabel(this.file2()!);
+      if (this.doc2Auto()) return this.formatBytes(this.doc2Auto()?.sizeBytes);
+    }
+    if (fileNum === 3) {
+      if (this.file3()) return this.fileSizeLabel(this.file3()!);
+    }
+    return '';
   }
 
   puedeEnviar(): boolean {
@@ -355,13 +529,13 @@ export class NuevaApelacionComponent implements OnInit {
           resumenRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
             ? this.resumenRespuestaEntidad.trim() || undefined
             : undefined,
-          referenciaDocumentoSolicitud: this.file1()?.name || '',
+          referenciaDocumentoSolicitud: this.file1()?.name || this.doc1Auto()?.nombreOriginal || '',
           referenciaCargoRecepcion: this.referenciaCargoRecepcion.trim() || undefined,
           referenciaRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
-            ? this.file2()?.name || undefined
+            ? this.file2()?.name || this.doc2Auto()?.nombreOriginal || undefined
             : undefined,
           evidenciaSilencioAdministrativo: this.tipoDenegatoriaExterna() === 'TACITA'
-            ? this.file2()?.name || undefined
+            ? this.file2()?.name || this.doc2Auto()?.nombreOriginal || undefined
             : undefined,
           fundamentos: this.fundamentos.trim(),
           observacion: this.observacionExterna.trim() || undefined
@@ -384,17 +558,37 @@ export class NuevaApelacionComponent implements OnInit {
     creacion$.pipe(
       switchMap((resp) => {
         this.expedienteTtaip.set(resp.expediente || '');
-        return forkJoin([
-          this.uploadAppealDocument(resp.id, this.file1()!, 'SOLICITUD_ORIGINAL'),
-          this.uploadAppealDocument(
-            resp.id,
-            this.file2()!,
-            this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
-              ? 'DOCUMENTO_ADJUNTO'
-              : 'RESPUESTA_ENTIDAD'
-          ),
-          this.uploadAppealDocument(resp.id, this.file3()!, 'RECURSO_APELACION')
-        ]).pipe(
+        const tasks = [];
+
+        // Documento 1: SAIP Original (Clonación vs Upload)
+        if (this.doc1Auto()) {
+          tasks.push(this.clonarAppealDocument(resp.id, this.doc1Auto()!.id!, 'SOLICITUD_ORIGINAL'));
+        } else if (this.file1()) {
+          tasks.push(this.uploadAppealDocument(resp.id, this.file1()!, 'SOLICITUD_ORIGINAL'));
+        } else {
+          tasks.push(of(false));
+        }
+
+        // Documento 2: Respuesta / Silencio (Clonación vs Upload)
+        const doc2Tipo = this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
+          ? 'DOCUMENTO_ADJUNTO'
+          : 'RESPUESTA_ENTIDAD';
+        if (this.doc2Auto()) {
+          tasks.push(this.clonarAppealDocument(resp.id, this.doc2Auto()!.id!, doc2Tipo));
+        } else if (this.file2()) {
+          tasks.push(this.uploadAppealDocument(resp.id, this.file2()!, doc2Tipo));
+        } else {
+          tasks.push(of(false));
+        }
+
+        // Documento 3: Recurso Apelación (Upload manual siempre)
+        if (this.file3()) {
+          tasks.push(this.uploadAppealDocument(resp.id, this.file3()!, 'RECURSO_APELACION'));
+        } else {
+          tasks.push(of(false));
+        }
+
+        return forkJoin(tasks).pipe(
           map((results) => ({
             resp,
             uploadedCount: results.filter(Boolean).length
@@ -406,7 +600,9 @@ export class NuevaApelacionComponent implements OnInit {
         this.loading.set(false);
         this.uploadedDocumentsCount.set(uploadedCount);
         this.file1.set(null);
+        this.doc1Auto.set(null);
         this.file2.set(null);
+        this.doc2Auto.set(null);
         this.file3.set(null);
         this.mensaje.set(`Apelación creada correctamente. Expediente: ${resp.expediente}`);
         this.successModalAbierto.set(true);
@@ -633,6 +829,22 @@ export class NuevaApelacionComponent implements OnInit {
     tipoDocumento: TipoDocumento
   ) {
     return this.documentoService.upload(file, tipoDocumento, { apelacionId }).pipe(
+      map(() => true),
+      catchError((error) => {
+        this.documentUploadWarning.set(
+          problemDetailsMessage(error, 'no todos los documentos pudieron cargarse.')
+        );
+        return of(false);
+      })
+    );
+  }
+
+  private clonarAppealDocument(
+    apelacionId: number,
+    documentoId: number,
+    tipoDocumento: TipoDocumento
+  ) {
+    return this.documentoService.clonar(documentoId, tipoDocumento, { apelacionId }).pipe(
       map(() => true),
       catchError((error) => {
         this.documentUploadWarning.set(

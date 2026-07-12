@@ -1011,6 +1011,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documentos/{documentoId}/clonar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clonar físicamente un documento y asociarlo a otro recurso */
+        post: operations["clonar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documentos/upload": {
         parameters: {
             query?: never;
@@ -6228,6 +6245,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EntidadDTO"];
+                };
+            };
+        };
+    };
+    clonar: {
+        parameters: {
+            query: {
+                tipoDocumento: "SOLICITUD_ORIGINAL" | "RESPUESTA_ENTIDAD" | "RECURSO_APELACION" | "RESOLUCION_TTAIP" | "CEDULA_NOTIFICACION" | "EXPEDIENTE_ADMINISTRATIVO" | "INFORME" | "DOCUMENTO_ADJUNTO" | "SUBSANACION" | "OTRO";
+                solicitudId?: number;
+                respuestaId?: number;
+                apelacionId?: number;
+                expedienteTtaipId?: number;
+                resolucionId?: number;
+                cedulaNotificacionId?: number;
+            };
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentoMetadataDTO"];
                 };
             };
         };

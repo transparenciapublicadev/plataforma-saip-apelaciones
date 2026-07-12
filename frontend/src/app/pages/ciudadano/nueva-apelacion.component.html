@@ -323,7 +323,7 @@
         <div class="p-6 md:p-8 space-y-5">
           @for (documento of requiredDocuments(); track documento.n) {
             <div class="relative">
-              @if (fileFor(documento.fileNum)) {
+              @if (hasDocument(documento.fileNum)) {
                 <div class="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--success); box-shadow: var(--shadow-sm)">
                   <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /></svg>
                 </div>
@@ -339,21 +339,35 @@
 
               <div
                 class="reference-upload-zone border-2 border-dashed rounded-lg p-6 text-center transition-all"
-                [class.reference-upload-zone-filled]="!!fileFor(documento.fileNum)"
+                [class.reference-upload-zone-filled]="hasDocument(documento.fileNum)"
                 style="border-color: var(--border); background: var(--card)"
               >
-                @if (fileFor(documento.fileNum); as file) {
+                @if (hasDocument(documento.fileNum)) {
                   <div class="space-y-3">
                     <div class="flex items-center justify-center gap-2">
-                      <svg class="w-6 h-6" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+                      @if (isAutoLoaded(documento.fileNum)) {
+                        <span class="pill pill-low !text-[11px] font-semibold py-0.5 px-2">Auto-cargado</span>
+                      } @else {
+                        <span class="pill pill-medium !text-[11px] font-semibold py-0.5 px-2">Carga manual</span>
+                      }
                       <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path stroke-width="2" d="M14 2v6h6"/></svg>
                     </div>
-                    <p class="font-medium text-foreground truncate">{{ file.name }}</p>
-                    <p class="text-xs text-muted-foreground">{{ fileSizeLabel(file) }}</p>
-                    <button type="button" class="btn-ghost-brand !px-3 !py-1.5 mx-auto" (click)="removeFile(documento.fileNum)">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                      Eliminar
-                    </button>
+                    <p class="font-medium text-foreground truncate max-w-md mx-auto">{{ documentNameFor(documento.fileNum) }}</p>
+                    <p class="text-xs text-muted-foreground">{{ documentSizeFor(documento.fileNum) }}</p>
+                    <div class="flex items-center justify-center gap-2 flex-wrap mt-1">
+                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5" (click)="previewFile(documento.fileNum)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
+                        Previsualizar
+                      </button>
+                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5" (click)="downloadFile(documento.fileNum)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4"/></svg>
+                        Descargar
+                      </button>
+                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5 !text-destructive hover:!bg-destructive-subtle" (click)="removeFile(documento.fileNum)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
                 } @else {
                   <label class="block cursor-pointer">
@@ -366,13 +380,6 @@
                   </label>
                 }
               </div>
-
-              @if (fileFor(documento.fileNum)) {
-                <label class="mt-2 flex items-center gap-2 rounded-md p-3" style="background: var(--info-subtle); border: 1px solid color-mix(in srgb, var(--info) 20%, transparent)">
-                  <input type="checkbox" checked class="h-4 w-4" style="accent-color: var(--brand-700)" />
-                  <span class="text-sm cursor-pointer text-foreground">Confirmo que este es el documento correcto</span>
-                </label>
-              }
             </div>
           }
 
