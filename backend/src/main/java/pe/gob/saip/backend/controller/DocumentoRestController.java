@@ -60,6 +60,28 @@ public class DocumentoRestController {
         return ResponseEntity.status(201).body(documentoService.subir(file, request));
     }
 
+    @PostMapping("/{documentoId}/clonar")
+    @Operation(summary = "Clonar físicamente un documento y asociarlo a otro recurso")
+    public ResponseEntity<DocumentoMetadataDTO> clonar(
+            @PathVariable Long documentoId,
+            @RequestParam Documento.TipoDocumento tipoDocumento,
+            @RequestParam(required = false) Long solicitudId,
+            @RequestParam(required = false) Long respuestaId,
+            @RequestParam(required = false) Long apelacionId,
+            @RequestParam(required = false) Long expedienteTtaipId,
+            @RequestParam(required = false) Long resolucionId,
+            @RequestParam(required = false) Long cedulaNotificacionId) {
+        DocumentoUploadRequest request = new DocumentoUploadRequest(
+                tipoDocumento,
+                solicitudId,
+                respuestaId,
+                apelacionId,
+                expedienteTtaipId,
+                resolucionId,
+                cedulaNotificacionId);
+        return ResponseEntity.status(201).body(documentoService.clonar(documentoId, request));
+    }
+
     @GetMapping
     @Operation(summary = "Listar metadatos documentales seguros por relación de negocio")
     public List<DocumentoMetadataDTO> listar(
