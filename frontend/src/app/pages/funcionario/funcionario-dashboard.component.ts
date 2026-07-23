@@ -36,13 +36,21 @@ interface DistribucionDia {
   color: string;
 }
 
-import { LucideBuilding2 } from '@lucide/angular';
+import {
+  LucideBuilding2, LucideCompass, LucideTrendingUp, LucideShieldAlert,
+  LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
+  LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
+  LucideSend, LucideChevronRight, LucideLayers, LucideTarget
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-funcionario-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
-    LucideBuilding2
+    LucideBuilding2, LucideCompass, LucideTrendingUp, LucideShieldAlert,
+    LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
+    LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
+    LucideSend, LucideChevronRight, LucideLayers, LucideTarget
   ],
   templateUrl: './funcionario-dashboard.component.html',
   styleUrl: './funcionario-dashboard.component.css',
