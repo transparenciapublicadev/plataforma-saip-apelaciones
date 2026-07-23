@@ -14,6 +14,8 @@ import {
 } from '@lucide/angular';
 
 import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
+import { GuidedTourService } from './core/guided-tour/guided-tour.service';
+import { HostListener, effect } from '@angular/core';
 
 @Component({
   selector: 'app-root',
@@ -35,6 +37,7 @@ export class App {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly motionService = inject(UxMotionService);
+  private readonly guidedTourService = inject(GuidedTourService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly mainContent = viewChild<ElementRef<HTMLElement>>('mainContent');
@@ -45,16 +48,25 @@ export class App {
   readonly splashLeaving = signal(false);
 
   constructor() {
+    effect(() => {
+      if (this.guidedTourService.isOpen()) {
+        this.menuAbierto.set(false);
+        this.mobileMenuAbierto.set(false);
+      }
+    });
+
     if (typeof window === 'undefined') {
       this.showSplash.set(false);
+    } else if (sessionStorage.getItem('saip_splash_shown')) {
+      this.showSplash.set(false);
     } else {
-      window.setTimeout(() => {
+      setTimeout(() => {
         this.splashLeaving.set(true);
       }, 1900);
 
-      window.setTimeout(() => {
+      setTimeout(() => {
         this.showSplash.set(false);
-        window.setTimeout(() => {
+        setTimeout(() => {
           this.motionService.animateShell();
           this.motionService.animateRoute(this.mainContent()?.nativeElement ?? null);
         });
