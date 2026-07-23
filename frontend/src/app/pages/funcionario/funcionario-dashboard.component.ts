@@ -36,9 +36,14 @@ interface DistribucionDia {
   color: string;
 }
 
+import { LucideBuilding2 } from '@lucide/angular';
+
 @Component({
   selector: 'app-funcionario-dashboard',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [
+    RouterLink, FormsModule, DatePipe,
+    LucideBuilding2
+  ],
   templateUrl: './funcionario-dashboard.component.html',
   styleUrl: './funcionario-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

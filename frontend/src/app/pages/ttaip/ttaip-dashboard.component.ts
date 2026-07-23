@@ -46,9 +46,14 @@ interface PlazoStatus {
   tone: Tone;
 }
 
+import { LucideScale } from '@lucide/angular';
+
 @Component({
   selector: 'app-ttaip-dashboard',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [
+    RouterLink, FormsModule, DatePipe,
+    LucideScale
+  ],
   templateUrl: './ttaip-dashboard.component.html',
   styleUrl: './ttaip-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
