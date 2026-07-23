@@ -12,8 +12,15 @@
             Panel de <span class="italic" style="color: var(--brand-700)">administración</span>
           </h1>
           <p class="text-muted-foreground mt-1.5 max-w-xl">Gobierno integral del sistema · entidades, usuarios y reportes consolidados.</p>
-          <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap mt-3" title="Ver tutorial guiado">
-            <svg lucideCompass class="w-3.5 h-3.5"></svg> Ver tutorial
+          <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap mt-3 relative inline-flex items-center gap-1.5" title="Ver tutorial guiado">
+            <svg lucideCompass class="w-3.5 h-3.5"></svg>
+            <span>Ver tutorial</span>
+            @if (isFirstVisit) {
+              <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+            }
           </button>
         </div>
       </div>

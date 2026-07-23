@@ -15,9 +15,15 @@
           <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl">{{ resumenActivasTexto() }}</p>
         </div>
         <div class="flex items-center gap-3 self-start md:self-auto">
-          <button type="button" (click)="startTour()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap" title="Ver tutorial guiado">
+          <button type="button" (click)="startTour()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap relative" title="Ver tutorial guiado">
             <svg lucideCompass class="w-4 h-4"></svg>
-            Ver tutorial
+            <span>Ver tutorial</span>
+            @if (isFirstVisit) {
+              <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+            }
           </button>
           @if (tieneApelables()) {
             <a routerLink="/ciudadano/nueva-apelacion" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium">

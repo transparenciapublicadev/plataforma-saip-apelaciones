@@ -571,6 +571,10 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.enfocarSolicitud(solicitudId);
   }
 
+  get isFirstVisit(): boolean {
+    return this.tourService.isFirstVisit('saip_tour_done');
+  }
+
   startTour(): void {
     this.tourService.startTour('saip_tour_done', this.tourSteps());
   }

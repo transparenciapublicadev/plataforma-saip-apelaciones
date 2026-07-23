@@ -276,6 +276,10 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
+  get isFirstVisit(): boolean {
+    return this.tourService.isFirstVisit('saip_tour_admin');
+  }
+
   startTour(): void {
     this.tourService.startTour('saip_tour_admin', this.tourSteps);
   }
