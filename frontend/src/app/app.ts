@@ -10,7 +10,7 @@ import {
   LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
   LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
   LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
-  LucideHome, LucideSearch, LucideHelpCircle,
+  LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu
 } from '@lucide/angular';
 
 @Component({
@@ -21,7 +21,7 @@ import {
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
-    LucideHome, LucideSearch, LucideHelpCircle,
+    LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',

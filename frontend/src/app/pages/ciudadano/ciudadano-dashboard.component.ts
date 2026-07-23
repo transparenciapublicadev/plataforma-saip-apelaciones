@@ -56,9 +56,20 @@ interface GuideStep {
   color: string;
 }
 
+import {
+  LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
+  LucideXCircle, LucideAlertTriangle, LucideChevronRight, LucideChevronDown,
+  LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail, LucideMessageSquare
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-ciudadano-dashboard',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [
+    RouterLink, FormsModule, DatePipe,
+    LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
+    LucideXCircle, LucideAlertTriangle, LucideChevronRight, LucideChevronDown,
+    LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail, LucideMessageSquare
+  ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

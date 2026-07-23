@@ -245,9 +245,9 @@
 
         <button (click)="toggleMobileMenu()" class="w-9 h-9 inline-flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors cursor-pointer" aria-label="Abrir menu de navegacion" aria-controls="mobile-navigation-panel" [attr.aria-expanded]="mobileMenuAbierto()">
           @if (mobileMenuAbierto()) {
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <svg lucideX class="w-5 h-5"></svg>
           } @else {
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            <svg lucideMenu class="w-5 h-5"></svg>
           }
         </button>
       </div>
@@ -275,11 +275,11 @@
                 Mi panel
               </a>
               <a routerLink="/ciudadano/nueva-saip" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+                <svg lucidePlus class="w-4 h-4 text-muted-foreground"></svg>
                 Nueva SAIP
               </a>
               <a routerLink="/ciudadano/nueva-apelacion" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
+                <svg lucideScale class="w-4 h-4 text-muted-foreground"></svg>
                 Apelar
               </a>
             }
@@ -291,13 +291,13 @@
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
+                <svg lucideScale class="w-4 h-4 text-muted-foreground"></svg>
                 Mi panel
               </a>
             }
             @case ('ADMINISTRADOR') {
               <a routerLink="/admin" (click)="toggleMobileMenu()" class="mobile-nav-item">
-                <svg lucideSettings class="w-4 h-4 text-[var(--niebla)]"></svg>
+                <svg lucideSettings class="w-4 h-4 text-muted-foreground"></svg>
                 Mi panel
               </a>
             }
@@ -310,15 +310,15 @@
           </div>
         } @else {
           <a routerLink="/" (click)="toggleMobileMenu()" class="mobile-nav-item">
-            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <svg lucideHome class="w-4 h-4 text-muted-foreground"></svg>
             Inicio
           </a>
           <a routerLink="/consultar" (click)="toggleMobileMenu()" class="mobile-nav-item">
-            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-width="2" d="m20 20-3-3"></path></svg>
+            <svg lucideSearch class="w-4 h-4 text-muted-foreground"></svg>
             Consultar estado
           </a>
           <a routerLink="/ayuda" (click)="toggleMobileMenu()" class="mobile-nav-item">
-            <svg class="w-4 h-4 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"></path><path stroke-width="2" d="M12 17h.01"></path></svg>
+            <svg lucideHelpCircle class="w-4 h-4 text-muted-foreground"></svg>
             Ayuda
           </a>
           <div class="border-t border-[var(--border)] pt-3 mt-3">
@@ -364,7 +364,7 @@
       <div class="md:col-span-4">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.15)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+            <svg lucideScale class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
