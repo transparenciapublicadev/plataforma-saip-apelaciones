@@ -15,7 +15,7 @@
           <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl">{{ resumenActivasTexto() }}</p>
         </div>
         <div class="flex items-center gap-3 self-start md:self-auto">
-          <button type="button" (click)="toggleGuide()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap" title="Ver tutorial guiado">
+          <button type="button" (click)="startTour()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap" title="Ver tutorial guiado">
             <svg lucideCompass class="w-4 h-4"></svg>
             Ver tutorial
           </button>
@@ -25,7 +25,7 @@
               Apelar
             </a>
           }
-          <a routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+          <a data-tour="nueva" routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
             <svg lucidePlus class="w-4 h-4"></svg>
             Pedir informacion
           </a>
@@ -138,7 +138,7 @@
         }
 
         <!-- ── SMART SEARCH ─────────────────────────────────────────── -->
-        <section>
+        <section data-tour="buscar">
           <div class="relative rounded-xl overflow-visible" [style.background]="'var(--card)'" [style.border]="'1px solid ' + (busquedaEnfocada() ? 'var(--brand-300)' : 'var(--border)')" [style.boxShadow]="busquedaEnfocada() ? '0 0 0 4px var(--brand-subtle), var(--shadow-sm)' : 'var(--shadow-sm)'">
             <span class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
             <div class="flex items-center gap-3 px-5 py-4">
@@ -587,7 +587,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
-              <button data-motion-item type="button" (click)="toggleGuide()" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+              <button data-motion-item type="button" (click)="startTour()" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucideHelpCircle class="w-4 h-4 text-brand-700"></svg>
                 </div>

@@ -8,6 +8,8 @@ import { AuthService } from '../../services/auth.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
 import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
+import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
 type BucketKey = 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
 
@@ -60,6 +62,17 @@ export class FuncionarioDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
+  private readonly tourService = inject(GuidedTourService);
+
+  readonly tourSteps: TourStep[] = [
+    { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo (SAN) o vencen hoy.' },
+    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes respondidas dentro de los 10 días hábiles de ley, comparado con el mes anterior.' },
+    { selector: '[data-tour="e-buckets"]', title: 'Bandeja por SLA', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
+    { selector: '[data-tour="e-cola"]', title: 'Cola enfocada', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start', onEnter: () => this.selectBucket('san') },
+    { selector: '[data-tour="e-carga"]', title: 'Distribución de carga', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
+    { selector: '[data-tour="e-batch"]', title: 'Oportunidad de batch', body: 'Temas que se repiten entre las solicitudes pendientes: te conviene preparar respuestas tipo para resolver en lote.' },
+    { selector: '[data-tour="e-norma"]', title: 'Norma aplicable', body: 'Recordatorio de los plazos legales clave (Ley N° 27806) y qué ocurre si vencen: silencio negativo y derecho de apelación.' },
+  ];
 
   private readonly plazoLegal = 10;
 
@@ -257,11 +270,16 @@ export class FuncionarioDashboardComponent implements OnInit {
       this.entidadId.set(sesion.entidadId || 0);
       this.cargarSolicitudes();
       this.cargarElevacionesPendientes();
+      this.tourService.checkAutoStart('saip_tour_funcionario', this.tourSteps);
     }
   }
 
   selectBucket(bucket: BucketKey): void {
     this.selectedBucket.set(bucket);
+  }
+
+  startTour(): void {
+    this.tourService.startTour('saip_tour_funcionario', this.tourSteps);
   }
 
   cargarSolicitudes(): void {
