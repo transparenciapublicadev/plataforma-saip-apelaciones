@@ -4,7 +4,7 @@
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <div class="flex items-start gap-5">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
-          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg lucideShield class="w-7 h-7 text-white"></svg>
         </div>
         <div>
           <span class="eyebrow">Administrador del sistema · SAIP</span>
@@ -36,7 +36,7 @@
         <span class="stat-card-accent" style="background: var(--brand-700)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Total solicitudes</div>
-          <svg class="w-4 h-4" style="color: var(--brand-700); opacity: 0.7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>
+          <svg lucideFileText class="w-4 h-4 text-brand-700 opacity-70"></svg>
         </div>
         <div class="stat-card-value" style="color: var(--brand-700)">{{ totalSolicitudes() }}</div>
         <div class="stat-card-meta inline-flex items-center gap-1"><span>Sistema activo</span></div>
@@ -46,7 +46,7 @@
         <span class="stat-card-accent" style="background: var(--info)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Usuarios activos</div>
-          <svg class="w-4 h-4" style="color: var(--info); opacity: 0.7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <svg lucideUsers class="w-4 h-4 text-info opacity-70"></svg>
         </div>
         <div class="stat-card-value" style="color: var(--info)">{{ totalUsuarios() }}</div>
         <div class="stat-card-meta">+8% vs periodo anterior</div>
@@ -56,7 +56,7 @@
         <span class="stat-card-accent" style="background: var(--gold)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Entidades</div>
-          <svg class="w-4 h-4" style="color: var(--gold); opacity: 0.7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10v11M20 10v11"/></svg>
+          <svg lucideBuilding2 class="w-4 h-4 text-gold opacity-70"></svg>
         </div>
         <div class="stat-card-value" style="color: var(--gold)">{{ totalEntidades() }}</div>
         <div class="stat-card-meta">{{ entidadesActivas() }} activas</div>
@@ -66,7 +66,7 @@
         <span class="stat-card-accent" style="background: var(--success)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Cumplimiento</div>
-          <svg class="w-4 h-4" style="color: var(--success); opacity: 0.7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path stroke-width="2" d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          <svg lucideAward class="w-4 h-4 text-emerald-600 opacity-70"></svg>
         </div>
         <div class="stat-card-value" style="color: var(--success)">{{ tasaCumplimiento() }}%</div>
         <div class="w-full bg-[var(--ceniza-claro)] rounded-full h-1.5 mt-2"><div class="bg-[var(--success)] h-1.5 rounded-full" [style.width]="tasaCumplimiento() + '%'"></div></div>
@@ -82,42 +82,42 @@
     >
       <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">En proceso</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--info)">{{ enProceso() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideClock class="w-4 h-4 text-info"></svg></div>
       </div>
       <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Respondidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--success)">{{ respondidas() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg></div>
       </div>
       <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Vencidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--brand-700)">{{ vencidas() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideAlertTriangle class="w-4 h-4 text-brand-700"></svg></div>
       </div>
       <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
         <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Apelaciones</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--gold)">{{ totalApelaciones() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg class="w-4 h-4" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg></div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideScale class="w-4 h-4 text-gold"></svg></div>
       </div>
     </div>
 
     <div class="form-shell p-1 mb-6" data-reveal>
       <div class="grid grid-cols-5 gap-1">
         <button (click)="cambiarTab('resumen')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'resumen' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg>
+          <svg lucideBarChart class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Resumen</span>
         </button>
         <button (click)="cambiarTab('entidades')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'entidades' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4M4 10v11M20 10v11"/></svg>
+          <svg lucideBuilding2 class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Entidades</span>
         </button>
         <button (click)="cambiarTab('usuarios')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'usuarios' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <svg lucideUsers class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Usuarios</span>
         </button>
         <button (click)="cambiarTab('reportes')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'reportes' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg lucideDownload class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Reportes</span>
         </button>
         <button (click)="cambiarTab('configuracion')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'configuracion' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-width="2" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.02a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.02a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.02a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg lucideSettings class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Config.</span>
         </button>
       </div>

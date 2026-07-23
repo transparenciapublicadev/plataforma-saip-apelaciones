@@ -16,12 +16,12 @@
         <div class="flex items-center gap-2.5">
           @if (tieneApelables()) {
             <a routerLink="/ciudadano/nueva-apelacion" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+              <svg lucideScale class="w-4 h-4"></svg>
               Apelar
             </a>
           }
           <a routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+            <svg lucidePlus class="w-4 h-4"></svg>
             Pedir informacion
           </a>
         </div>
@@ -51,35 +51,35 @@
         >
           <div class="metric-card metric-card-primary" data-reveal data-motion-item>
             <div class="icon-container icon-container-sm icon-container-primary rounded-xl mb-2 w-10 h-10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg lucideFileText class="w-4 h-4"></svg>
             </div>
             <div class="metric-value text-[var(--carbon)]">{{ totalSolicitudes() }}</div>
             <div class="metric-label">Total</div>
           </div>
           <div class="metric-card metric-card-info" data-reveal data-motion-item>
             <div class="icon-container icon-container-sm icon-container-info rounded-xl mb-2 w-10 h-10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg lucideClock class="w-4 h-4"></svg>
             </div>
             <div class="metric-value text-[var(--estado-azul)]">{{ enProceso() }}</div>
             <div class="metric-label">En proceso</div>
           </div>
           <div class="metric-card metric-card-success" data-reveal data-motion-item>
             <div class="icon-container icon-container-sm icon-container-success rounded-xl mb-2 w-10 h-10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg lucideCheckCircle2 class="w-4 h-4"></svg>
             </div>
             <div class="metric-value text-[var(--estado-verde)]">{{ respondidas() }}</div>
             <div class="metric-label">Respondidas</div>
           </div>
           <div class="metric-card metric-card-primary" data-reveal data-motion-item>
             <div class="icon-container icon-container-sm icon-container-primary rounded-xl mb-2 w-10 h-10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg lucideXCircle class="w-4 h-4"></svg>
             </div>
             <div class="metric-value text-[var(--peru-rojo)]">{{ denegadas() }}</div>
             <div class="metric-label">Denegadas</div>
           </div>
           <div class="metric-card metric-card-warning" data-reveal data-motion-item>
             <div class="icon-container icon-container-sm icon-container-warning rounded-xl mb-2 w-10 h-10">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <svg lucideAlertTriangle class="w-4 h-4"></svg>
             </div>
             <div class="metric-value text-[var(--estado-ambar)]">{{ vencidas() }}</div>
             <div class="metric-label">Vencidas</div>
@@ -91,7 +91,7 @@
             <div class="h-1 bg-[var(--estado-ambar)] -mx-5 -mt-5 mb-4"></div>
             <div class="flex items-start gap-3 mb-4">
               <div class="icon-container icon-container-sm icon-container-warning rounded-lg shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 00-3.48 0l-8 14A2 2 0 004 21h16a2 2 0 001.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg>
+                <svg lucideAlertTriangle class="w-4 h-4"></svg>
               </div>
               <div>
                 <h3 class="text-[var(--carbon)] font-semibold mb-0.5">{{ apelacionesSubsanacionFiltradas().length }} apelacion(es) con subsanacion pendiente</h3>
@@ -159,7 +159,7 @@
                       @for (resultado of resultados; track resultado.id) {
                         <button type="button" (mousedown)="$event.preventDefault()" (click)="seleccionarCoincidencia(resultado)" class="w-full px-5 py-3 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] text-left border-t border-[var(--border)] first:border-t-0">
                           <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                            <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
                           </div>
                           <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
@@ -274,7 +274,7 @@
                 </div>
                 <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap">
                   {{ accion.ctaLabel }}
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                  <svg lucideChevronRight class="w-4 h-4"></svg>
                 </a>
               </div>
             </div>
@@ -285,10 +285,10 @@
           <section class="form-shell overflow-hidden">
             <div class="form-section-header flex items-start gap-4">
               <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <svg class="w-4.5 h-4.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l8-4v18"/><path stroke-width="2" d="M19 21V11l-6-4"/></svg>
+                <svg lucideBuilding2 class="w-4.5 h-4.5 text-brand-700"></svg>
               </div>
               <div class="flex-1 min-w-0">
-                <span class="eyebrow flex items-center gap-1.5"><svg class="w-3 h-3" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3 2.8 5.6L21 9.5l-4.5 4.4 1.1 6.1L12 17.1 6.4 20l1.1-6.1L3 9.5l6.2-.9Z"/></svg>Esta viendo esta solicitud</span>
+                <span class="eyebrow flex items-center gap-1.5"><svg lucideStar class="w-3 h-3 text-amber-500"></svg>Esta viendo esta solicitud</span>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
                   <span class="code-chip">{{ principal.expediente }}</span>
                   @if (principal.apelacion?.expediente) {
@@ -317,7 +317,7 @@
                           [style.box-shadow]="timelineDotShadow(step.status)"
                         >
                           @if (step.status === 'done') {
-                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.3" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0"/></svg>
+                            <svg lucideCheckCircle2 class="w-4 h-4 text-white"></svg>
                           } @else if (step.status === 'active') {
                             <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
                           } @else if (step.status === 'skipped') {
@@ -343,7 +343,7 @@
 
               @if (plazoEntidadPrincipal(); as plazo) {
                 <div class="mt-7 rounded-lg p-4 flex items-center gap-4" [style.border-left]="'3px solid ' + plazo.tone" style="background: var(--card); border: 1px solid var(--border)">
-                  <svg class="w-5 h-5 shrink-0" [style.color]="plazo.tone" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"/></svg>
+                  <svg lucideClock class="w-5 h-5 shrink-0" [style.color]="plazo.tone"></svg>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-baseline justify-between gap-2 mb-1.5">
                       <span class="text-sm font-medium">Plazo legal · 10 dias habiles</span>
@@ -380,7 +380,7 @@
                   @if (subsanacion.expediente) {
                     <a [routerLink]="['/ciudadano/subsanacion', subsanacion.expediente]" class="btn-brand !px-5 whitespace-nowrap">
                       Subsanar
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m22 2-7 20-4-9-9-4Z"/><path stroke-width="2" d="M22 2 11 13"/></svg>
+                      <svg lucideSend class="w-4 h-4"></svg>
                     </a>
                   }
                 </div>
@@ -388,12 +388,12 @@
 
               <div class="mt-6 flex items-center gap-3 flex-wrap">
                 <a [routerLink]="['/ciudadano/solicitud', principal.expediente]" class="btn-ghost-brand">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <svg lucideFileText class="w-4 h-4"></svg>
                   Ver expediente completo
                 </a>
                 @if ((principal.estado === 'DENEGADA' || principal.estado === 'VENCIDA') && !principal.apelacion) {
                   <a [routerLink]="['/ciudadano/nueva-apelacion']" [queryParams]="{ solicitudId: principal.id }" class="btn-ghost-brand">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                    <svg lucideScale class="w-4 h-4"></svg>
                     Presentar apelacion
                   </a>
                 }
@@ -442,12 +442,12 @@
                   @if (accionResumenSolicitud(solicitud); as accion) {
                     <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="w-full px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors" [style.background]="accion.toneBg" [style.color]="accion.toneColor" [style.border-top]="'1px solid ' + accion.toneSoft">
                       {{ accion.ctaLabel }}
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                      <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
                     </a>
                   } @else {
                     <a [routerLink]="['/ciudadano/solicitud', solicitud.expediente]" class="w-full px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors" style="background: var(--brand-subtle); color: var(--brand-700); border-top: 1px solid var(--brand-200)">
                       Ver expediente
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                      <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
                     </a>
                   }
                 </div>
@@ -459,10 +459,10 @@
                 <button type="button" (click)="toggleSecundarias()" class="btn-ghost-brand !px-5 inline-flex items-center gap-2">
                   @if (showAllSecundarias()) {
                     Mostrar menos
-                    <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+                    <svg lucideChevronDown class="w-4 h-4 rotate-180"></svg>
                   } @else {
                     Ver {{ solicitudesSecundarias().length - 6 }} expediente{{ (solicitudesSecundarias().length - 6) === 1 ? '' : 's' }} mas
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+                    <svg lucideChevronDown class="w-4 h-4"></svg>
                   }
                 </button>
               </div>
@@ -474,7 +474,7 @@
           <section class="form-shell">
             <button type="button" (click)="toggleHistorico()" class="w-full text-left form-section-header flex items-center gap-3 hover:bg-[color:var(--brand-subtle)] transition-colors">
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: rgba(21,128,61,0.10); border: 1px solid rgba(21,128,61,0.25)">
-                <svg class="w-4 h-4" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0"/></svg>
+                <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
               </div>
               <div class="flex-1">
                 <span class="eyebrow">Mi historial</span>
@@ -482,7 +482,7 @@
                   Solicitudes ya respondidas · <span class="font-mono">{{ historicas().length }}</span>
                 </div>
               </div>
-              <svg class="w-5 h-5 text-[var(--muted-foreground)] transition-transform" [style.transform]="historicoOpen() ? 'rotate(180deg)' : 'none'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+              <svg lucideChevronDown class="w-5 h-5 text-muted-foreground transition-transform" [style.transform]="historicoOpen() ? 'rotate(180deg)' : 'none'"></svg>
             </button>
 
             @if (historicoOpen()) {
@@ -490,7 +490,7 @@
                 @for (solicitud of historicas(); track solicitud.id) {
                   <a data-table-row [routerLink]="['/ciudadano/solicitud', solicitud.expediente]" class="w-full rounded-md p-3 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] text-left" style="background: var(--card); border: 1px solid var(--border)">
                     <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                      <svg class="w-3.5 h-3.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      <svg lucideFileText class="w-3.5 h-3.5 text-brand-700"></svg>
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
@@ -499,7 +499,7 @@
                       </div>
                       <div class="text-sm text-foreground/85 mt-1 truncate">{{ solicitud.entidadNombre }} · {{ solicitud.asunto }}</div>
                     </div>
-                    <svg class="w-4 h-4 text-[var(--muted-foreground)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                    <svg lucideChevronRight class="w-4 h-4 text-muted-foreground shrink-0"></svg>
                   </a>
                 }
               </div>
@@ -510,12 +510,12 @@
         @if (solicitudesActivas().length === 0 && historicas().length === 0) {
           <div class="text-center py-20">
             <div class="w-16 h-16 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg class="w-7 h-7" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg lucideFileText class="w-7 h-7 text-brand-700"></svg>
             </div>
             <h3 class="font-display" style="font-size: 24px; letter-spacing: -0.015em">Aun no ha presentado solicitudes</h3>
             <p class="text-[var(--muted-foreground)] mt-2 mb-6 max-w-md mx-auto">El derecho de acceso a la informacion publica esta garantizado por la Ley N. 27806.</p>
             <a routerLink="/ciudadano/nueva-saip" class="btn-brand !px-6 !py-3 inline-flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+              <svg lucidePlus class="w-4 h-4"></svg>
               Presentar mi primera SAIP
             </a>
           </div>
@@ -526,7 +526,7 @@
           <div class="relative p-5 md:p-7">
             <div class="flex items-start gap-4 mb-5">
               <div class="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style="background: rgba(176,136,66,0.12); border: 1px solid rgba(176,136,66,0.30)">
-                <svg class="w-5 h-5" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 18h.01M12 6v8m0-8a6 6 0 0 0-6 6c0 2.1.6 3.3 2 4.6"/></svg>
+                <svg lucideHelpCircle class="w-5 h-5 text-amber-600"></svg>
               </div>
               <div>
                 <span class="eyebrow" style="color: var(--gold-dark)">Estamos para ayudarle</span>
@@ -546,19 +546,19 @@
             >
               <button data-motion-item type="button" (click)="toggleGuide()" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                  <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 18h.01M12 6v8m0-8a6 6 0 0 0-6 6c0 2.1.6 3.3 2 4.6"/></svg>
+                  <svg lucideHelpCircle class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Preguntas frecuentes</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuestas a dudas comunes.</div>
                 <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
                   Ver guia
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                  <svg lucideChevronRight class="w-3 h-3"></svg>
                 </div>
               </button>
 
               <a data-motion-item href="tel:080012345" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                  <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <svg lucidePhone class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Linea gratuita</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Lun-Vie · 8am-6pm</div>
@@ -567,7 +567,7 @@
 
               <a data-motion-item href="mailto:consultas@ttaip.gob.pe" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                  <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m4 4 8.7 5.8a2 2 0 0 0 2.2 0L23 4"/><rect width="20" height="16" x="2" y="4" rx="2" stroke-width="2"/></svg>
+                  <svg lucideMail class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Correo electronico</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuesta en 24 horas</div>
@@ -576,13 +576,13 @@
 
               <a data-motion-item routerLink="/ayuda" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                  <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <svg lucideMessageSquare class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Centro de ayuda</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Material de orientacion completo</div>
                 <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
                   Abrir ayuda
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                  <svg lucideChevronRight class="w-3 h-3"></svg>
                 </div>
               </a>
             </div>
@@ -593,7 +593,7 @@
   </div>
 
   <a routerLink="/ciudadano/nueva-saip" class="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full text-white flex items-center justify-center transition-all z-50 hover:scale-110 active:scale-95" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.18)" aria-label="Nueva SAIP">
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14M5 12h14"/></svg>
+    <svg lucidePlus class="w-6 h-6"></svg>
   </a>
 </div>
 
