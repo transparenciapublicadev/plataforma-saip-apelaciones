@@ -13,7 +13,9 @@ import {
   LucideUpload, LucideDownload, LucideSend, LucideSave, LucideEye,
   LucideTrash2, LucideX, LucideCheckCircle2, LucideAlertCircle, LucideAlertTriangle,
   LucideXCircle, LucideClock, LucideFileCheck2, LucideArrowLeft, LucideArrowRight,
-  LucidePlus, LucideCheck, LucideInfo
+  LucidePlus, LucideCheck, LucideInfo, LucideCompass, LucideTrendingUp,
+  LucideFlame, LucideCalendar, LucideInbox, LucideLayers, LucideTarget,
+  LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight
 } from '@lucide/angular';
 
 export const appConfig: ApplicationConfig = {
@@ -29,7 +31,9 @@ export const appConfig: ApplicationConfig = {
       LucideUpload, LucideDownload, LucideSend, LucideSave, LucideEye,
       LucideTrash2, LucideX, LucideCheckCircle2, LucideAlertCircle, LucideAlertTriangle,
       LucideXCircle, LucideClock, LucideFileCheck2, LucideArrowLeft, LucideArrowRight,
-      LucidePlus, LucideCheck, LucideInfo
+      LucidePlus, LucideCheck, LucideInfo, LucideCompass, LucideTrendingUp,
+      LucideFlame, LucideCalendar, LucideInbox, LucideLayers, LucideTarget,
+      LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight
     )
   ]
 };
