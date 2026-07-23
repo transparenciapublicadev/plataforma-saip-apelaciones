@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
+import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
+import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
 import { Apelacion } from '../../models/apelacion.model';
@@ -98,6 +100,7 @@ import {
 export class CiudadanoDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly tourService = inject(GuidedTourService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -359,6 +362,23 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly stageRangeFrom = computed(() => this.stageFiltered().length === 0 ? 0 : (this.stageSafePage() - 1) * this.PER_PAGE + 1);
   readonly stageRangeTo = computed(() => Math.min(this.stageSafePage() * this.PER_PAGE, this.stageFiltered().length));
 
+  readonly tourSteps = computed<TourStep[]>(() => {
+    const s: TourStep[] = [
+      { selector: '[data-tour="nueva"]', title: 'Pedir información', body: 'Aquí presenta una nueva solicitud de acceso a la información (SAIP). Es su punto de partida en la 1ª instancia, ante la entidad pública.' },
+      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: en proceso, respondidas, por apelar, en el Tribunal y con fallo final. Toque una etapa para filtrar la lista de abajo.' },
+      { selector: '[data-tour="buscar"]', title: 'Buscador de expedientes', body: 'Localice de inmediato cualquier solicitud o apelación escribiendo el código de expediente, entidad o palabra clave.' },
+    ];
+    if (this.accionPrincipal()) {
+      s.push({ selector: '[data-tour="accion"]', title: 'Lo que debe hacer hoy', body: 'La gestión más urgente de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
+    }
+    if (this.solicitudPrincipal()) {
+      s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'La línea de tiempo del expediente seleccionado y su ubicación actual: "con la entidad" (1ª instancia) o "en el Tribunal" (2ª instancia). Aquí ve la trazabilidad completa.' });
+    }
+    s.push({ selector: '[data-tour="cola"]', title: 'La lista de la etapa', body: 'Todos los expedientes de la etapa seleccionada, ordenados y con su propio buscador. Toque cualquiera para verlo en detalle arriba, sin desplazarse de más.' });
+    s.push({ selector: '[data-tour="ayuda"]', title: '¿Necesita ayuda?', body: 'Canales de orientación gratuitos. Desde aquí también puede volver a ver este tutorial cuando quiera.' });
+    return s;
+  });
+
   readonly ubicacionPrincipal = computed<UbicacionTramite | null>(() => {
     const s = this.solicitudPrincipal();
     if (!s) return null;
@@ -420,6 +440,7 @@ export class CiudadanoDashboardComponent implements OnInit {
         }
 
         this.loading.set(false);
+        this.tourService.checkAutoStart('saip_tour_done', this.tourSteps());
       },
       error: (err) => {
         const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
@@ -540,6 +561,10 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.busqueda = '';
     this.mostrarResultadosBusqueda.set(false);
     this.enfocarSolicitud(solicitudId);
+  }
+
+  startTour(): void {
+    this.tourService.startTour('saip_tour_done', this.tourSteps());
   }
 
   toggleGuide(): void {

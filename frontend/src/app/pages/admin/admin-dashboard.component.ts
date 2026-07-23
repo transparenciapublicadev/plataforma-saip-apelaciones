@@ -8,6 +8,8 @@ import { UsuarioAdmin, UsuarioService } from '../../services/usuario.service';
 import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
 import { Apelacion } from '../../models/apelacion.model';
+import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
+import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
 interface ChartDatum {
   label: string;
@@ -54,6 +56,18 @@ export class AdminDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
   private readonly usuarioService = inject(UsuarioService);
+  private readonly tourService = inject(GuidedTourService);
+
+  readonly tourSteps: TourStep[] = [
+    { selector: '[data-tour="a-kpis"]', title: 'Indicadores principales', body: 'La salud global del sistema de un vistazo: total de solicitudes, usuarios activos, entidades y cumplimiento promedio.' },
+    { selector: '[data-tour="a-status"]', title: 'Estado de las solicitudes', body: 'El desglose por estado: en proceso, respondidas, vencidas y apelaciones en curso.' },
+    { selector: '[data-tour="a-tabs"]', title: 'Áreas de administración', body: 'Navega entre Resumen, Entidades, Usuarios, Reportes y Configuración. Te mostraremos cada una.' },
+    { selector: '[data-tour="a-overview"]', title: 'Resumen operativo', body: 'Ranking de mejor desempeño, entidades con solicitudes vencidas y la actividad reciente del sistema.', align: 'start', onEnter: () => this.cambiarTab('resumen') },
+    { selector: '[data-tour="a-entities"]', title: 'Entidades públicas', body: 'Gestiona las entidades: cargas, cumplimiento y estado. Aquí puedes crear, editar o dar de baja.', align: 'start', onEnter: () => this.cambiarTab('entidades') },
+    { selector: '[data-tour="a-users"]', title: 'Usuarios del sistema', body: 'Administra ciudadanos, funcionarios y personal del Tribunal, con filtros por tipo y actividad.', align: 'start', onEnter: () => this.cambiarTab('usuarios') },
+    { selector: '[data-tour="a-reports"]', title: 'Reportes exportables', body: 'Genera reportes en PDF, Excel o CSV de solicitudes, entidades, usuarios, apelaciones y consolidados.', align: 'start', onEnter: () => this.cambiarTab('reportes') },
+    { selector: '[data-tour="a-settings"]', title: 'Configuración', body: 'Ajusta plazos legales por etapa y las reglas de notificación del sistema.', align: 'start', onEnter: () => this.cambiarTab('configuracion') },
+  ];
 
   loading = signal<boolean>(true);
   loadingUsuarios = signal<boolean>(false);
@@ -158,6 +172,7 @@ export class AdminDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarDatos();
+    this.tourService.checkAutoStart('saip_tour_admin', this.tourSteps);
   }
 
   cargarDatos(): void {
@@ -259,6 +274,10 @@ export class AdminDashboardComponent implements OnInit {
     if (tab === 'solicitudes' && this.solicitudes().length === 0) {
       this.cargarSolicitudes();
     }
+  }
+
+  startTour(): void {
+    this.tourService.startTour('saip_tour_admin', this.tourSteps);
   }
 
   entidadesFiltradas(): Entidad[] {

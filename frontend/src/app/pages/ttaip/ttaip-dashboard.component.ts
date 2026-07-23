@@ -6,6 +6,8 @@ import { forkJoin } from 'rxjs';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { Apelacion } from '../../models/apelacion.model';
+import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
+import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
 type StageKey = 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
 type Priority = 'alta' | 'media' | 'baja';
@@ -72,6 +74,17 @@ export class TtaipDashboardComponent implements OnInit {
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly tourService = inject(GuidedTourService);
+
+  readonly tourSteps: TourStep[] = [
+    { selector: '[data-tour="t-hero"]', title: 'Mesa del Tribunal', body: 'Fecha, total de expedientes en el pipeline y cuántos están en riesgo crítico de incumplir el plazo del Reglamento.' },
+    { selector: '[data-tour="t-tasa"]', title: 'Tasa de fundadas', body: 'Indicador institucional: qué proporción de las resoluciones emitidas dieron la razón al administrado.' },
+    { selector: '[data-tour="t-pipeline"]', title: 'Pipeline del proceso', body: 'El flujo completo de una apelación, etapa por etapa según el Reglamento del Tribunal. Toca una etapa para enfocar su cola.' },
+    { selector: '[data-tour="t-cola"]', title: 'Cola de la etapa', body: 'Los expedientes de la etapa seleccionada, ordenados por plazo restante. Desde aquí calificas, resuelves o consultas cada caso.', align: 'start', onEnter: () => this.selectStage('calificacion1') },
+    { selector: '[data-tour="t-estadistica"]', title: 'Resoluciones del periodo', body: 'Distribución de los fallos emitidos: fundados, infundados e improcedentes.' },
+    { selector: '[data-tour="t-concentracion"]', title: 'Entidades más apeladas', body: 'Dónde se concentran las apelaciones, para identificar patrones de denegación recurrente.' },
+    { selector: '[data-tour="t-disciplinario"]', title: 'Procesos disciplinarios', body: 'Acceso al procedimiento sancionador contra funcionarios que incumplen la ley de transparencia.' },
+  ];
 
   private focusStageFromState: StageKey | null = null;
 
@@ -277,10 +290,15 @@ export class TtaipDashboardComponent implements OnInit {
     }
 
     this.cargarDashboard();
+    this.tourService.checkAutoStart('saip_tour_ttaip', this.tourSteps);
   }
 
   selectStage(stage: StageKey): void {
     this.stageKey.set(stage);
+  }
+
+  startTour(): void {
+    this.tourService.startTour('saip_tour_ttaip', this.tourSteps);
   }
 
   cargarDashboard(): void {
