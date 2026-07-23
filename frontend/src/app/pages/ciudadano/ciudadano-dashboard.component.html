@@ -1,4 +1,5 @@
 <div class="saip-page min-h-screen bg-background">
+  <!-- ── HERO ────────────────────────────────────────────────────────── -->
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute top-0 right-0 w-[480px] h-[480px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
@@ -13,14 +14,18 @@
           </h1>
           <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl">{{ resumenActivasTexto() }}</p>
         </div>
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-3 self-start md:self-auto">
+          <button type="button" (click)="toggleGuide()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap" title="Ver tutorial guiado">
+            <svg lucideCompass class="w-4 h-4"></svg>
+            Ver tutorial
+          </button>
           @if (tieneApelables()) {
             <a routerLink="/ciudadano/nueva-apelacion" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium">
               <svg lucideScale class="w-4 h-4"></svg>
               Apelar
             </a>
           }
-          <a routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold">
+          <a routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
             <svg lucidePlus class="w-4 h-4"></svg>
             Pedir informacion
           </a>
@@ -29,6 +34,7 @@
     </div>
   </div>
 
+  <!-- ── BODY ────────────────────────────────────────────────────────── -->
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
     @if (loading()) {
       <div class="text-center py-16">
@@ -42,50 +48,57 @@
       </div>
     } @else {
       <div class="space-y-8">
-        <div
-          class="grid grid-cols-2 md:grid-cols-5 gap-4"
-          data-motion-stagger
-          data-motion-y="10"
-          data-motion-duration="0.36"
-          data-motion-delay-step="0.045"
-        >
-          <div class="metric-card metric-card-primary" data-reveal data-motion-item>
-            <div class="icon-container icon-container-sm icon-container-primary rounded-xl mb-2 w-10 h-10">
-              <svg lucideFileText class="w-4 h-4"></svg>
-            </div>
-            <div class="metric-value text-[var(--carbon)]">{{ totalSolicitudes() }}</div>
-            <div class="metric-label">Total</div>
-          </div>
-          <div class="metric-card metric-card-info" data-reveal data-motion-item>
-            <div class="icon-container icon-container-sm icon-container-info rounded-xl mb-2 w-10 h-10">
-              <svg lucideClock class="w-4 h-4"></svg>
-            </div>
-            <div class="metric-value text-[var(--estado-azul)]">{{ enProceso() }}</div>
-            <div class="metric-label">En proceso</div>
-          </div>
-          <div class="metric-card metric-card-success" data-reveal data-motion-item>
-            <div class="icon-container icon-container-sm icon-container-success rounded-xl mb-2 w-10 h-10">
-              <svg lucideCheckCircle2 class="w-4 h-4"></svg>
-            </div>
-            <div class="metric-value text-[var(--estado-verde)]">{{ respondidas() }}</div>
-            <div class="metric-label">Respondidas</div>
-          </div>
-          <div class="metric-card metric-card-primary" data-reveal data-motion-item>
-            <div class="icon-container icon-container-sm icon-container-primary rounded-xl mb-2 w-10 h-10">
-              <svg lucideXCircle class="w-4 h-4"></svg>
-            </div>
-            <div class="metric-value text-[var(--peru-rojo)]">{{ denegadas() }}</div>
-            <div class="metric-label">Denegadas</div>
-          </div>
-          <div class="metric-card metric-card-warning" data-reveal data-motion-item>
-            <div class="icon-container icon-container-sm icon-container-warning rounded-xl mb-2 w-10 h-10">
-              <svg lucideAlertTriangle class="w-4 h-4"></svg>
-            </div>
-            <div class="metric-value text-[var(--estado-ambar)]">{{ vencidas() }}</div>
-            <div class="metric-label">Vencidas</div>
-          </div>
-        </div>
 
+        <!-- ── PIPELINE: Mis solicitudes de un vistazo ──────────────── -->
+        <section data-tour="resumen">
+          <div class="flex items-baseline justify-between mb-3">
+            <span class="eyebrow flex items-center gap-2">
+              <svg lucideSparkles class="w-3 h-3" style="color: var(--gold)"></svg>
+              Mis solicitudes de un vistazo
+            </span>
+            <span class="text-xs text-muted-foreground hidden md:inline">Toque una etapa para filtrar la lista</span>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            @for (stage of pipeline(); track stage.key; let last = $last) {
+              <button type="button"
+                (click)="stage.count > 0 && selectStage(stage.key)"
+                [disabled]="stage.count === 0"
+                [attr.aria-pressed]="selectedStageKey() === stage.key"
+                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group disabled:cursor-default enabled:hover:-translate-y-0.5"
+                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="'1px solid ' + (selectedStageKey() === stage.key ? 'var(--brand-700)' : 'var(--border)')"
+                [style.box-shadow]="selectedStageKey() === stage.key ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
+                [style.opacity]="stage.count > 0 ? 1 : 0.6"
+              >
+                @if (selectedStageKey() === stage.key) {
+                  <span class="absolute top-0 left-0 right-0 h-[3px]" [style.background]="stage.color"></span>
+                }
+                @if (!last) {
+                  <span class="hidden lg:flex absolute top-1/2 -right-[10px] -translate-y-1/2 z-10 w-5 h-5 rounded-full items-center justify-center" style="background: var(--background); border: 1px solid var(--border)">
+                    <svg lucideChevronRight class="w-3 h-3 text-muted-foreground"></svg>
+                  </span>
+                }
+                <div class="flex items-start justify-between mb-1.5">
+                  <span class="font-display font-mono text-[11px] tracking-widest" [style.color]="stage.color" style="letter-spacing: 0.05em">{{ stage.num }}</span>
+                  @switch (stage.iconName) {
+                    @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('gavel') { <svg lucideGavel class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('checkCircle') { <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                  }
+                </div>
+                <div class="font-display" style="font-size: 26px; line-height: 1; letter-spacing: -0.025em" [style.color]="stage.count > 0 ? stage.color : 'var(--muted-foreground)'">
+                  {{ padCount(stage.count) }}
+                </div>
+                <div class="text-xs font-semibold mt-1.5" style="color: var(--foreground)">{{ stage.label }}</div>
+                <div class="text-[10px] tracking-wide text-muted-foreground mt-0.5">{{ stage.desc }}</div>
+              </button>
+            }
+          </div>
+        </section>
+
+        <!-- ── SUBSANACIÓN ALERT ────────────────────────────────────── -->
         @if (apelacionesSubsanacionFiltradas().length > 0) {
           <div class="card border border-[var(--estado-ambar)]/20 bg-[var(--estado-ambar)]/5 p-5 overflow-hidden" data-reveal>
             <div class="h-1 bg-[var(--estado-ambar)] -mx-5 -mt-5 mb-4"></div>
@@ -114,7 +127,7 @@
                       <div class="text-[10px] text-[var(--niebla)] uppercase tracking-wider font-medium">dias</div>
                     </div>
                     <a [routerLink]="['/ciudadano/subsanacion', apelacion.expediente]" class="h-9 px-4 rounded-lg inline-flex items-center gap-1.5 bg-[var(--estado-ambar)] hover:bg-[var(--peru-oro-profundo)] text-[var(--carbon)] text-sm font-medium transition-colors">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7Z"/><path stroke-width="2" d="M14 2v4a2 2 0 002 2h4"/></svg>
+                      <svg lucideSend class="w-3.5 h-3.5"></svg>
                       Subsanar
                     </a>
                   </div>
@@ -124,6 +137,7 @@
           </div>
         }
 
+        <!-- ── SMART SEARCH ─────────────────────────────────────────── -->
         <section>
           <div class="relative rounded-xl overflow-visible" [style.background]="'var(--card)'" [style.border]="'1px solid ' + (busquedaEnfocada() ? 'var(--brand-300)' : 'var(--border)')" [style.boxShadow]="busquedaEnfocada() ? '0 0 0 4px var(--brand-subtle), var(--shadow-sm)' : 'var(--shadow-sm)'">
             <span class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
@@ -190,114 +204,120 @@
           }
         </section>
 
-        <section class="form-shell overflow-hidden">
-          <button type="button" (click)="toggleGuide()" class="w-full text-left form-section-header flex items-center gap-3 hover:bg-[color:var(--brand-subtle)] transition-colors">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 18h.01M12 6v8m0-8a6 6 0 0 0-6 6c0 2.1.6 3.3 2 4.6"/></svg>
-            </div>
-            <div class="flex-1">
-              <span class="eyebrow">Bienvenido · Guia rapida</span>
-              <h2 class="font-display mt-0.5" style="font-size: clamp(20px, 2vw, 26px); letter-spacing: -0.02em; line-height: 1.15">
-                Como funciona <span class="italic" style="color: var(--brand-700)">esta plataforma</span>
-              </h2>
-              <p class="text-sm text-[var(--muted-foreground)] mt-1 max-w-2xl">Pedir informacion publica es su derecho. Le explicamos el flujo completo en 4 pasos.</p>
-            </div>
-            <svg class="w-5 h-5 text-[var(--muted-foreground)] transition-transform" [style.transform]="guideOpen() ? 'rotate(180deg)' : 'none'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m6 9 6 6 6-6"/></svg>
-          </button>
 
-          @if (guideOpen()) {
-            <div class="p-6 border-t border-[var(--border)] animate-fade-in">
-              <div
-                class="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-5"
-                data-motion-stagger
-                data-motion-y="8"
-                data-motion-duration="0.32"
-                data-motion-delay-step="0.04"
-              >
-                @for (paso of pasosGuia; track paso.num) {
-                  <div data-motion-item class="rounded-lg p-4 transition-shadow hover:shadow-[var(--shadow-sm)]" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center gap-3 mb-3">
-                      <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0" [style.border]="'1.5px solid ' + paso.color" style="background: var(--card)">
-                        @switch (paso.icon) {
-                          @case ('send') { <svg class="w-5 h-5" [style.color]="paso.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 2 11 13"/><path stroke-width="2" d="m22 2-7 20-4-9-9-4Z"/></svg> }
-                          @case ('building') { <svg class="w-5 h-5" [style.color]="paso.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l8-4v18"/><path stroke-width="2" d="M19 21V11l-6-4"/></svg> }
-                          @case ('scale') { <svg class="w-5 h-5" [style.color]="paso.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg> }
-                          @default { <svg class="w-5 h-5" [style.color]="paso.color" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m14.5 12.5-5 5"/><path stroke-width="2" d="m9.5 17.5-2-2"/><path stroke-width="2" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg> }
-                        }
-                      </div>
-                      <span class="font-display font-mono tracking-widest text-[11px]" [style.color]="paso.color" style="letter-spacing: 0.08em">{{ paso.num }}</span>
-                    </div>
-                    <h3 class="font-display" style="font-size: 16px; letter-spacing: -0.01em; line-height: 1.25">{{ paso.titulo }}</h3>
-                    <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ paso.desc }}</p>
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </section>
-
+        <!-- ── LO QUE DEBE HACER HOY ────────────────────────────────── -->
         @if (accionPrincipal(); as accion) {
-          <div class="flex items-baseline gap-2 mb-3">
-            <span class="eyebrow flex items-center gap-1.5">
-              <svg class="w-3 h-3" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3 2.8 5.6L21 9.5l-4.5 4.4 1.1 6.1L12 17.1 6.4 20l1.1-6.1L3 9.5l6.2-.9Z"/></svg>
-              Lo que debe hacer hoy
-            </span>
-          </div>
-          <section id="lo-que-debe-hacer-hoy" class="rounded-xl overflow-hidden" [class.action-focus-pulse]="accionResaltada()" [style.background]="accion.toneBg" [style.border]="'1px solid ' + accion.toneSoft" data-reveal>
-            <span class="block h-1" [style.background]="'linear-gradient(90deg, ' + accion.toneColor + ', var(--gold))'"></span>
-            <div class="p-6 md:p-7 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-5 md:gap-7 items-center">
-              <div class="w-14 h-14 rounded-lg flex items-center justify-center shrink-0" [style.background]="accion.toneColor" style="box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), var(--shadow-sm)">
-                @switch (accion.icon) {
-                  @case ('alert') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 00-3.48 0l-8 14A2 2 0 004 21h16a2 2 0 001.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg> }
-                  @case ('scale') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg> }
-                  @case ('check') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0"/></svg> }
-                  @case ('clock') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"/></svg> }
-                  @default { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m14.5 12.5-5 5"/><path stroke-width="2" d="m9.5 17.5-2-2"/><path stroke-width="2" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg> }
-                }
-              </div>
-
-              <div class="min-w-0">
-                <span class="eyebrow" [style.color]="accion.toneColor">{{ accion.eyebrow }}</span>
-                <h2 class="font-display mt-1.5" style="font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -0.02em; line-height: 1.15">{{ accion.titulo }}</h2>
-                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <span class="code-chip">{{ accion.expediente }}</span>
-                  <span class="text-xs text-[var(--muted-foreground)]">·</span>
-                  <span class="text-sm text-foreground/85 truncate">{{ accion.entidad }}</span>
-                </div>
-                <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
-              </div>
-
-              <div class="flex items-center gap-5 md:flex-col md:items-end md:gap-3">
-                <div class="text-right md:order-2">
-                  <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
-                  <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
-                </div>
-                <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap">
-                  {{ accion.ctaLabel }}
-                  <svg lucideChevronRight class="w-4 h-4"></svg>
-                </a>
-              </div>
+          <section data-tour="accion" style="scroll-margin-top: 24px">
+            <div class="mb-3">
+              <span class="eyebrow flex items-center gap-1.5">
+                <svg lucideSparkles class="w-3 h-3" style="color: var(--gold)"></svg>
+                Lo que debe hacer hoy
+              </span>
+              <p class="text-xs text-muted-foreground mt-1">La gestion mas urgente entre todas sus solicitudes. Atienda esto primero.</p>
             </div>
+            <section id="lo-que-debe-hacer-hoy" class="relative overflow-hidden rounded-xl" [class.action-focus-pulse]="accionResaltada()" [style.background]="accion.toneBg" [style.border]="'1px solid ' + accion.toneSoft" style="box-shadow: var(--shadow-sm)">
+              <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="'linear-gradient(180deg, ' + accion.toneColor + ', var(--gold))'"></span>
+              <span class="absolute -top-16 -right-16 w-48 h-48 rounded-full opacity-[0.10]" [style.background]="'radial-gradient(circle, ' + accion.toneColor + ', transparent 70%)'"></span>
+              <div class="relative p-6 md:p-7 grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-5 md:gap-7 items-center">
+                <div class="w-14 h-14 rounded-lg flex items-center justify-center shrink-0" [style.background]="accion.toneColor" style="box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), var(--shadow-sm)">
+                  @switch (accion.icon) {
+                    @case ('alert') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 00-3.48 0l-8 14A2 2 0 004 21h16a2 2 0 001.73-3"/><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/></svg> }
+                    @case ('scale') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg> }
+                    @case ('check') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0"/></svg> }
+                    @case ('clock') { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"/></svg> }
+                    @case ('gavel') { <svg lucideGavel class="w-6 h-6 text-white"></svg> }
+                    @default { <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m14.5 12.5-5 5"/><path stroke-width="2" d="m9.5 17.5-2-2"/><path stroke-width="2" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg> }
+                  }
+                </div>
+
+                <div class="min-w-0">
+                  <span class="eyebrow flex items-center gap-2" [style.color]="accion.toneColor">
+                    <svg lucideBell class="w-3 h-3"></svg>
+                    {{ accion.eyebrow }}
+                  </span>
+                  <h2 class="font-display mt-1.5" style="font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -0.02em; line-height: 1.15">{{ accion.titulo }}</h2>
+                  <div class="flex items-center gap-2 mt-2 flex-wrap">
+                    <!-- SAIP chip -->
+                    <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--card); border: 1px solid var(--border)">
+                      <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--muted); color: var(--muted-foreground)">SAIP</span>
+                      <span class="font-mono text-[11px] text-foreground/85">{{ accion.expediente }}</span>
+                    </span>
+                    @if (solicitudPrincipal()?.apelacion?.expediente) {
+                      <!-- TTAIP chip -->
+                      <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
+                        <span class="font-mono text-[11px] text-foreground/85">{{ solicitudPrincipal()?.apelacion?.expediente }}</span>
+                      </span>
+                    }
+                    <span class="text-xs text-[var(--muted-foreground)]">·</span>
+                    <span class="text-sm text-foreground/85 truncate">{{ accion.entidad }}</span>
+                  </div>
+                  <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
+                </div>
+
+                <div class="flex items-center gap-5 md:flex-col md:items-end md:gap-3">
+                  <div class="text-right md:order-2">
+                    <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
+                    <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
+                  </div>
+                  <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap inline-flex items-center gap-2">
+                    {{ accion.ctaLabel }}
+                    <svg lucideArrowRight class="w-4 h-4"></svg>
+                  </a>
+                </div>
+              </div>
+            </section>
           </section>
         }
 
+        <!-- ── ESTÁ VIENDO ESTA SOLICITUD (TIMELINE) ────────────────── -->
         @if (solicitudPrincipal(); as principal) {
-          <section class="form-shell overflow-hidden">
+          <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 96px">
             <div class="form-section-header flex items-start gap-4">
               <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 <svg lucideBuilding2 class="w-4.5 h-4.5 text-brand-700"></svg>
               </div>
               <div class="flex-1 min-w-0">
-                <span class="eyebrow flex items-center gap-1.5"><svg lucideStar class="w-3 h-3 text-amber-500"></svg>Esta viendo esta solicitud</span>
+                <span class="eyebrow flex items-center gap-2">
+                  <svg lucideSparkles class="w-3 h-3" style="color: var(--gold)"></svg>
+                  Esta viendo esta solicitud
+                </span>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <span class="code-chip">{{ principal.expediente }}</span>
+                  <!-- SAIP chip -->
+                  <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--card); border: 1px solid var(--border)">
+                    <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--muted); color: var(--muted-foreground)">SAIP</span>
+                    <span class="font-mono text-[11px] text-foreground/85">{{ principal.expediente }}</span>
+                  </span>
                   @if (principal.apelacion?.expediente) {
-                    <span class="code-chip" style="background: rgba(176,136,66,0.12); border-color: rgba(176,136,66,0.28)">{{ principal.apelacion?.expediente }}</span>
+                    <!-- TTAIP chip -->
+                    <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
+                      <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion?.expediente }}</span>
+                    </span>
                   }
                   <span [class]="'badge ' + getEstadoBadgeClass(principal.estado)">{{ formatoEstado(principal.estado) }}</span>
                 </div>
                 <h3 class="font-display mt-2" style="font-size: 20px; letter-spacing: -0.015em; line-height: 1.25">{{ principal.asunto }}</h3>
                 <p class="text-sm text-[var(--muted-foreground)] mt-0.5">{{ principal.entidadNombre }} · presentada el {{ principal.fechaPresentacion | date:'dd/MM/yyyy' }}</p>
+                <p class="text-xs text-muted-foreground/80 mt-1.5">Seguimiento completo de este expediente. Toque otra solicitud mas abajo para verla aqui.</p>
+
+                <!-- ¿Dónde está ahora? — location chip -->
+                @if (ubicacionPrincipal(); as ubic) {
+                  <div class="mt-3 inline-flex items-center gap-2.5 rounded-lg pl-2.5 pr-3.5 py-2" [style.border-left]="'3px solid ' + ubic.tone" style="background: var(--card); border: 1px solid var(--border)">
+                    @switch (ubic.iconName) {
+                      @case ('gavel') { <svg lucideGavel class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @case ('scale') { <svg lucideScale class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @case ('clock') { <svg lucideClock class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @default { <svg lucideBuilding2 class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                    }
+                    <div class="leading-tight">
+                      <div class="text-[10px] tracking-widest uppercase text-muted-foreground">¿Donde esta ahora?</div>
+                      <div class="text-sm font-semibold" [style.color]="ubic.tone">{{ ubic.label }}</div>
+                    </div>
+                    <span class="text-[11px] text-muted-foreground border-l border-border pl-2.5 ml-1 self-stretch flex items-center">{{ ubic.instancia }}</span>
+                  </div>
+                }
               </div>
             </div>
 
@@ -378,7 +398,7 @@
                     <p class="text-sm text-foreground/85 mt-1">Responda {{ subsanacion.observaciones }} para que su apelacion pase a la siguiente calificacion. Caso contrario, se tendra por no presentada.</p>
                   </div>
                   @if (subsanacion.expediente) {
-                    <a [routerLink]="['/ciudadano/subsanacion', subsanacion.expediente]" class="btn-brand !px-5 whitespace-nowrap">
+                    <a [routerLink]="['/ciudadano/subsanacion', subsanacion.expediente]" class="btn-brand !px-5 whitespace-nowrap inline-flex items-center gap-2">
                       Subsanar
                       <svg lucideSend class="w-4 h-4"></svg>
                     </a>
@@ -387,12 +407,12 @@
               }
 
               <div class="mt-6 flex items-center gap-3 flex-wrap">
-                <a [routerLink]="['/ciudadano/solicitud', principal.expediente]" class="btn-ghost-brand">
+                <a [routerLink]="['/ciudadano/solicitud', principal.expediente]" class="btn-ghost-brand inline-flex items-center gap-2">
                   <svg lucideFileText class="w-4 h-4"></svg>
                   Ver expediente completo
                 </a>
                 @if ((principal.estado === 'DENEGADA' || principal.estado === 'VENCIDA') && !principal.apelacion) {
-                  <a [routerLink]="['/ciudadano/nueva-apelacion']" [queryParams]="{ solicitudId: principal.id }" class="btn-ghost-brand">
+                  <a [routerLink]="['/ciudadano/nueva-apelacion']" [queryParams]="{ solicitudId: principal.id }" class="btn-ghost-brand inline-flex items-center gap-2">
                     <svg lucideScale class="w-4 h-4"></svg>
                     Presentar apelacion
                   </a>
@@ -402,115 +422,142 @@
           </section>
         }
 
-        @if (solicitudesSecundarias().length > 0) {
-          <section>
-            <div class="flex items-baseline justify-between mb-4">
-              <div>
-                <span class="eyebrow">Mis otras solicitudes</span>
-                <h2 class="font-display mt-1" style="font-size: 22px; letter-spacing: -0.015em">
-                  Tiene {{ solicitudesSecundarias().length }} solicitud(es) mas en curso
-                </h2>
+        <!-- ── ETAPA ENFOCADA (STAGE-FILTERED LIST) ─────────────────── -->
+        @if (stageAll().length > 0 || stageFiltered().length > 0) {
+          <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 96px">
+            <div class="form-section-header flex items-center gap-3 flex-wrap">
+              <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                @switch (selectedStageMeta().iconName) {
+                  @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('gavel') { <svg lucideGavel class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('checkCircle') { <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                }
               </div>
-              <span class="text-xs text-[var(--muted-foreground)] hidden md:block">Toque una para verla en detalle arriba</span>
-            </div>
-            <div
-              class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-              data-motion-stagger
-              data-motion-y="8"
-              data-motion-duration="0.32"
-              data-motion-delay-step="0.04"
-            >
-              @for (solicitud of secundariasVisibles(); track solicitud.id) {
-                <div data-motion-item class="rounded-lg overflow-hidden flex flex-col h-full transition-shadow hover:shadow-[var(--shadow-sm)]" style="background: var(--card); border: 1px solid var(--border)">
-                  <button type="button" (click)="seleccionarSolicitud(solicitud.id)" class="text-left p-4 hover:bg-[color:var(--brand-subtle)] transition-colors flex-1">
-                    <div class="flex items-center gap-2 mb-2 flex-wrap">
-                      <span class="code-chip">{{ solicitud.expediente }}</span>
-                      <span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ formatoEstado(solicitud.estado) }}</span>
-                    </div>
-                    <div class="text-sm font-medium text-foreground line-clamp-2 leading-snug">{{ solicitud.asunto }}</div>
-                    <div class="text-xs text-[var(--muted-foreground)] mt-1 truncate">{{ solicitud.entidadNombre }}</div>
-                    @if (accionResumenSolicitud(solicitud); as accion) {
-                      <div class="mt-3 flex items-center gap-2 text-xs" [style.color]="accion.toneColor">
-                        <span class="w-3.5 h-3.5 rounded-full inline-flex items-center justify-center" [style.background]="accion.toneColor">
-                          <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                        </span>
-                        <span class="font-mono font-semibold">{{ accion.metricValue }}</span>
-                        <span class="text-[var(--muted-foreground)]">{{ accion.metricUnit }}</span>
-                      </div>
-                    }
-                  </button>
-                  @if (accionResumenSolicitud(solicitud); as accion) {
-                    <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="w-full px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors" [style.background]="accion.toneBg" [style.color]="accion.toneColor" [style.border-top]="'1px solid ' + accion.toneSoft">
-                      {{ accion.ctaLabel }}
-                      <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
-                    </a>
-                  } @else {
-                    <a [routerLink]="['/ciudadano/solicitud', solicitud.expediente]" class="w-full px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors" style="background: var(--brand-subtle); color: var(--brand-700); border-top: 1px solid var(--brand-200)">
-                      Ver expediente
-                      <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
-                    </a>
+              <div class="flex-1 min-w-[180px]">
+                <span class="eyebrow">Etapa enfocada</span>
+                <div class="font-display" style="font-size: 17px; letter-spacing: -0.01em">
+                  {{ selectedStageMeta().label }} · <span class="font-mono">{{ stageAll().length }}</span>
+                </div>
+                <p class="text-xs text-muted-foreground mt-0.5">{{ selectedStageMeta().desc }}</p>
+              </div>
+              @if (stageAll().length > 0) {
+                <div class="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:w-[440px]" style="background: var(--input-background, var(--card)); border: 1px solid var(--border)">
+                  <svg class="w-4 h-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input [ngModel]="stageSearch()" (ngModelChange)="onStageSearchChange($event)" placeholder="Busque por entidad, tema o N° (ej. SUNAT, salud, 00654)" class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70" />
+                  @if (stageSearch()) {
+                    <button type="button" (click)="clearStageSearch()" class="w-6 h-6 rounded flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors shrink-0">
+                      <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
                   }
                 </div>
               }
             </div>
 
-            @if (solicitudesSecundarias().length > 6) {
-              <div class="mt-5 flex justify-center">
-                <button type="button" (click)="toggleSecundarias()" class="btn-ghost-brand !px-5 inline-flex items-center gap-2">
-                  @if (showAllSecundarias()) {
-                    Mostrar menos
-                    <svg lucideChevronDown class="w-4 h-4 rotate-180"></svg>
-                  } @else {
-                    Ver {{ solicitudesSecundarias().length - 6 }} expediente{{ (solicitudesSecundarias().length - 6) === 1 ? '' : 's' }} mas
-                    <svg lucideChevronDown class="w-4 h-4"></svg>
+            @if (stageFiltered().length === 0) {
+              <div class="p-10 text-center">
+                <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--muted); border: 1px solid var(--border)">
+                  @switch (selectedStageMeta().iconName) {
+                    @case ('hourglass') { <svg lucideHourglass class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('mailCheck') { <svg lucideMailCheck class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('scale') { <svg lucideScale class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('gavel') { <svg lucideGavel class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('checkCircle') { <svg lucideCheckCircle2 class="w-5 h-5 text-muted-foreground"></svg> }
                   }
-                </button>
-              </div>
-            }
-          </section>
-        }
-
-        @if (historicas().length > 0) {
-          <section class="form-shell">
-            <button type="button" (click)="toggleHistorico()" class="w-full text-left form-section-header flex items-center gap-3 hover:bg-[color:var(--brand-subtle)] transition-colors">
-              <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: rgba(21,128,61,0.10); border: 1px solid rgba(21,128,61,0.25)">
-                <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
-              </div>
-              <div class="flex-1">
-                <span class="eyebrow">Mi historial</span>
-                <div class="font-display" style="font-size: 17px; letter-spacing: -0.01em">
-                  Solicitudes ya respondidas · <span class="font-mono">{{ historicas().length }}</span>
                 </div>
+                <p class="text-sm text-muted-foreground">
+                  @if (stageSearch()) {
+                    Ningun expediente de «{{ selectedStageMeta().label }}» coincide con "<span class="font-semibold text-foreground">{{ stageSearch() }}</span>".
+                  } @else {
+                    No tiene solicitudes en la etapa «{{ selectedStageMeta().label }}».
+                  }
+                </p>
               </div>
-              <svg lucideChevronDown class="w-5 h-5 text-muted-foreground transition-transform" [style.transform]="historicoOpen() ? 'rotate(180deg)' : 'none'"></svg>
-            </button>
-
-            @if (historicoOpen()) {
-              <div class="p-4 space-y-2 border-t border-[var(--border)] animate-fade-in">
-                @for (solicitud of historicas(); track solicitud.id) {
-                  <a data-table-row [routerLink]="['/ciudadano/solicitud', solicitud.expediente]" class="w-full rounded-md p-3 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] text-left" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                      <svg lucideFileText class="w-3.5 h-3.5 text-brand-700"></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <span class="code-chip">{{ solicitud.expediente }}</span>
-                        <span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ formatoEstado(solicitud.estado) }}</span>
+            } @else {
+              <div class="p-4 space-y-2">
+                @for (solicitud of stageVisible(); track solicitud.id) {
+                  <div class="w-full rounded-md flex items-stretch gap-1 transition-colors"
+                    [style.background]="solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                    [style.border]="'1px solid ' + (solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-700)' : 'var(--border)')">
+                    <button type="button"
+                      (click)="seleccionarSolicitud(solicitud.id)"
+                      class="flex-1 min-w-0 p-3 flex items-center gap-3 text-left rounded-l-md hover:bg-[color:var(--brand-subtle)] transition-colors">
+                      <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
+                        @switch (selectedStageMeta().iconName) {
+                          @case ('hourglass') { <svg lucideHourglass class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                          @case ('mailCheck') { <svg lucideMailCheck class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                          @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                          @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                          @case ('checkCircle') { <svg lucideCheckCircle2 class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                        }
                       </div>
-                      <div class="text-sm text-foreground/85 mt-1 truncate">{{ solicitud.entidadNombre }} · {{ solicitud.asunto }}</div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <!-- SAIP chip -->
+                          <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--card); border: 1px solid var(--border)">
+                            <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--muted); color: var(--muted-foreground)">SAIP</span>
+                            <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.expediente }}</span>
+                          </span>
+                          @if (solicitud.apelacion?.expediente) {
+                            <!-- TTAIP chip -->
+                            <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                              <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
+                              <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion?.expediente }}</span>
+                            </span>
+                          }
+                          @if (selectedStageKey() === 'resueltas' && solicitud.apelacion?.resultado) {
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded" [style.background]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.10)' : 'var(--brand-subtle)'" [style.color]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'var(--success)' : 'var(--brand-700)'" [style.border]="'1px solid ' + (solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.25)' : 'var(--brand-200)')">
+                              Fallo: {{ formatoEstado(solicitud.apelacion?.resultado) }}
+                            </span>
+                          } @else {
+                            <span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ formatoEstado(solicitud.estado) }}</span>
+                          }
+                          @if (solicitud.id === solicitudPrincipal()?.id) {
+                            <span class="text-[10px] tracking-wide uppercase font-semibold" style="color: var(--brand-700)">Viendo ahora</span>
+                          }
+                        </div>
+                        <div class="text-sm text-foreground/85 mt-1 truncate">{{ solicitud.entidadNombre }} · {{ solicitud.asunto }}</div>
+                      </div>
+                    </button>
+                    <a [routerLink]="['/ciudadano/solicitud', solicitud.expediente]"
+                      title="Ver detalle completo"
+                      class="shrink-0 flex items-center gap-1.5 px-3 my-2 mr-2 rounded-md text-xs font-semibold transition-colors hover:brightness-105"
+                      style="background: var(--brand-subtle); color: var(--brand-700); border: 1px solid var(--brand-200)">
+                      <span class="hidden sm:inline">Ver detalle</span>
+                      <svg lucideArrowRight class="w-4 h-4"></svg>
+                    </a>
+                  </div>
+                }
+
+                <!-- Pagination -->
+                @if (stageTotalPages() > 1) {
+                  <div class="flex items-center justify-between pt-3 mt-2 border-t border-[var(--border)]">
+                    <span class="text-xs text-muted-foreground">
+                      {{ stageRangeFrom() }}–{{ stageRangeTo() }} de {{ stageFiltered().length }}
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button type="button" (click)="goStagePage(stageSafePage() - 1)" [disabled]="stageSafePage() <= 1" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m15 18-6-6 6-6"/></svg>
+                      </button>
+                      <span class="text-xs font-mono px-2">{{ stageSafePage() }} / {{ stageTotalPages() }}</span>
+                      <button type="button" (click)="goStagePage(stageSafePage() + 1)" [disabled]="stageSafePage() >= stageTotalPages()" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
+                      </button>
                     </div>
-                    <svg lucideChevronRight class="w-4 h-4 text-muted-foreground shrink-0"></svg>
-                  </a>
+                  </div>
                 }
               </div>
             }
           </section>
         }
 
+
+        <!-- ── EMPTY STATE ──────────────────────────────────────────── -->
         @if (solicitudesActivas().length === 0 && historicas().length === 0) {
           <div class="text-center py-20">
             <div class="w-16 h-16 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucideFileText class="w-7 h-7 text-brand-700"></svg>
+              <svg lucideInbox class="w-7 h-7 text-brand-700"></svg>
             </div>
             <h3 class="font-display" style="font-size: 24px; letter-spacing: -0.015em">Aun no ha presentado solicitudes</h3>
             <p class="text-[var(--muted-foreground)] mt-2 mb-6 max-w-md mx-auto">El derecho de acceso a la informacion publica esta garantizado por la Ley N. 27806.</p>
@@ -521,8 +568,10 @@
           </div>
         }
 
-        <section class="relative overflow-hidden rounded-xl" style="background: var(--paper); border: 1px solid var(--border)">
+        <!-- ── AYUDA / ORIENTACIÓN ──────────────────────────────────── -->
+        <section data-tour="ayuda" class="relative overflow-hidden rounded-xl" style="background: var(--paper); border: 1px solid var(--border)">
           <span class="absolute bottom-0 left-0 right-0 h-[2px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.4"></span>
+          <span class="absolute -bottom-20 -left-20 w-64 h-64 rounded-full pointer-events-none opacity-[0.05]" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></span>
           <div class="relative p-5 md:p-7">
             <div class="flex items-start gap-4 mb-5">
               <div class="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style="background: rgba(176,136,66,0.12); border: 1px solid rgba(176,136,66,0.30)">
@@ -537,13 +586,7 @@
               </div>
             </div>
 
-            <div
-              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"
-              data-motion-stagger
-              data-motion-y="10"
-              data-motion-duration="0.34"
-              data-motion-delay-step="0.045"
-            >
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
               <button data-motion-item type="button" (click)="toggleGuide()" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucideHelpCircle class="w-4 h-4 text-brand-700"></svg>
@@ -552,7 +595,19 @@
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuestas a dudas comunes.</div>
                 <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
                   Ver guia
-                  <svg lucideChevronRight class="w-3 h-3"></svg>
+                  <svg lucideArrowRight class="w-3 h-3"></svg>
+                </div>
+              </button>
+
+              <button data-motion-item type="button" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
+                  <svg lucideMessageCircle class="w-4 h-4 text-brand-700"></svg>
+                </div>
+                <div class="text-sm font-semibold text-foreground">Asistente en linea</div>
+                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Le orientamos paso a paso.</div>
+                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
+                  Iniciar chat
+                  <svg lucideArrowRight class="w-3 h-3"></svg>
                 </div>
               </button>
 
@@ -571,19 +626,7 @@
                 </div>
                 <div class="text-sm font-semibold text-foreground">Correo electronico</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuesta en 24 horas</div>
-                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">consultas@ttaip.gob.pe</div>
-              </a>
-
-              <a data-motion-item routerLink="/ayuda" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
-                <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                  <svg lucideMessageSquare class="w-4 h-4 text-brand-700"></svg>
-                </div>
-                <div class="text-sm font-semibold text-foreground">Centro de ayuda</div>
-                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Material de orientacion completo</div>
-                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
-                  Abrir ayuda
-                  <svg lucideChevronRight class="w-3 h-3"></svg>
-                </div>
+                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">consultas&#64;ttaip.gob.pe</div>
               </a>
             </div>
           </div>
@@ -592,9 +635,8 @@
     }
   </div>
 
+  <!-- ── FAB MOBILE ──────────────────────────────────────────────────── -->
   <a routerLink="/ciudadano/nueva-saip" class="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full text-white flex items-center justify-center transition-all z-50 hover:scale-110 active:scale-95" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.18)" aria-label="Nueva SAIP">
     <svg lucidePlus class="w-6 h-6"></svg>
   </a>
 </div>
-
-

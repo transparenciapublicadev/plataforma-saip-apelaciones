@@ -56,10 +56,29 @@ interface GuideStep {
   color: string;
 }
 
+interface PipelineStage {
+  key: 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas';
+  num: string;
+  iconName: string;
+  color: string;
+  label: string;
+  desc: string;
+  count: number;
+}
+
+interface UbicacionTramite {
+  label: string;
+  instancia: string;
+  tone: string;
+  iconName: string;
+}
+
 import {
   LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
-  LucideXCircle, LucideAlertTriangle, LucideChevronRight, LucideChevronDown,
-  LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail, LucideMessageSquare
+  LucideAlertTriangle, LucideChevronRight,
+  LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
+  LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle
 } from '@lucide/angular';
 
 @Component({
@@ -67,8 +86,10 @@ import {
   imports: [
     RouterLink, FormsModule, DatePipe,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
-    LucideXCircle, LucideAlertTriangle, LucideChevronRight, LucideChevronDown,
-    LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail, LucideMessageSquare
+    LucideAlertTriangle, LucideChevronRight,
+    LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
+    LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
@@ -162,6 +183,12 @@ export class CiudadanoDashboardComponent implements OnInit {
   selectedSolicitudId = signal<number | null>(null);
   accionResaltada = signal<boolean>(false);
 
+  // Pipeline state
+  selectedStageKey = signal<'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('proceso');
+  stageSearch = signal<string>('');
+  stagePage = signal<number>(1);
+  readonly PER_PAGE = 4;
+
   readonly nombrePila = computed(() => this.nombreUsuario().trim().split(' ')[0] || 'Ciudadano');
 
   readonly solicitudesActivas = computed(() => {
@@ -175,17 +202,22 @@ export class CiudadanoDashboardComponent implements OnInit {
   });
 
   readonly solicitudPrincipal = computed(() => {
-    const activas = [...this.solicitudesActivas()];
-    if (!activas.length) return null;
+    const todas = this.todasSolicitudes();
+    if (!todas.length) return null;
 
     const selectedId = this.selectedSolicitudId();
     if (selectedId !== null) {
-      const selected = activas.find((item) => item.id === selectedId);
+      const selected = todas.find((item) => item.id === selectedId);
       if (selected) return selected;
     }
 
-    activas.sort((a, b) => this.calcularUrgenciaSolicitud(b) - this.calcularUrgenciaSolicitud(a));
-    return activas[0];
+    const activas = [...this.solicitudesActivas()];
+    if (activas.length) {
+      activas.sort((a, b) => this.calcularUrgenciaSolicitud(b) - this.calcularUrgenciaSolicitud(a));
+      return activas[0];
+    }
+
+    return todas[0];
   });
 
   readonly solicitudesSecundarias = computed(() => {
@@ -273,6 +305,72 @@ export class CiudadanoDashboardComponent implements OnInit {
     return this.accionPrincipal() ? `${base}. Le mostramos lo que conviene hacer hoy.` : `${base}.`;
   });
 
+  // ── Pipeline computed properties ──────────────────────────────────────
+  readonly stageBuckets = computed(() => {
+    const all = this.todasSolicitudes();
+    return {
+      proceso: all.filter(s => this.estadosEnProceso.has((s.estado || '').toUpperCase())),
+      respondidas: all.filter(s => {
+        const estado = (s.estado || '').toUpperCase();
+        const esRespondida = estado === 'RESPONDIDA' || estado === 'CON_RESPUESTA' || estado === 'ENTREGADA' || estado === 'ATENDIDA' || estado === 'FINALIZADA' || estado === 'RESUELTA';
+        return esRespondida && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      }),
+      apelar: all.filter(s => {
+        const estado = (s.estado || '').toUpperCase();
+        return (estado === 'DENEGADA' || estado === 'VENCIDA') && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      }),
+      tribunal: all.filter(s => this.tieneApelacionActiva(s)),
+      resueltas: all.filter(s => this.esApelacionResuelta(s)),
+    };
+  });
+
+  readonly pipeline = computed<PipelineStage[]>(() => {
+    const b = this.stageBuckets();
+    return [
+      { key: 'proceso', num: '01', iconName: 'hourglass', color: 'var(--info)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: b.proceso.length },
+      { key: 'respondidas', num: '02', iconName: 'mailCheck', color: 'var(--success)', label: 'Respondida por la entidad', desc: 'La entidad ya entregó su respuesta', count: b.respondidas.length },
+      { key: 'apelar', num: '03', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'Puede apelar al Tribunal', desc: 'Si no está conforme, puede llevar su caso al Tribunal', count: b.apelar.length },
+      { key: 'tribunal', num: '04', iconName: 'gavel', color: 'var(--brand-700)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: b.tribunal.length },
+      { key: 'resueltas', num: '05', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal ya emitió el fallo final', count: b.resueltas.length },
+    ];
+  });
+
+  readonly selectedStageMeta = computed(() => this.pipeline().find(s => s.key === this.selectedStageKey()) ?? this.pipeline()[0]);
+  readonly stageAll = computed(() => this.stageBuckets()[this.selectedStageKey()] ?? []);
+
+  readonly stageFiltered = computed(() => {
+    const all = this.stageAll();
+    const q = this.normalizeText(this.stageSearch().trim());
+    if (!q) return all;
+    const terms = q.split(/\s+/).filter(Boolean);
+    return all.filter(s => {
+      const hay = this.normalizeText([s.expediente || '', s.entidadNombre || '', s.asunto || '', s.apelacion?.expediente || '', this.estadoHumano(s)].join(' '));
+      return terms.every(t => hay.includes(t));
+    });
+  });
+
+  readonly stageTotalPages = computed(() => Math.max(1, Math.ceil(this.stageFiltered().length / this.PER_PAGE)));
+  readonly stageSafePage = computed(() => Math.min(this.stagePage(), this.stageTotalPages()));
+  readonly stageVisible = computed(() => {
+    const filtered = this.stageFiltered();
+    const start = (this.stageSafePage() - 1) * this.PER_PAGE;
+    return filtered.slice(start, start + this.PER_PAGE);
+  });
+  readonly stageRangeFrom = computed(() => this.stageFiltered().length === 0 ? 0 : (this.stageSafePage() - 1) * this.PER_PAGE + 1);
+  readonly stageRangeTo = computed(() => Math.min(this.stageSafePage() * this.PER_PAGE, this.stageFiltered().length));
+
+  readonly ubicacionPrincipal = computed<UbicacionTramite | null>(() => {
+    const s = this.solicitudPrincipal();
+    if (!s) return null;
+    const estado = (s.estado || '').toUpperCase();
+    if (this.esApelacionResuelta(s)) return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
+    if (this.tieneApelacionActiva(s)) return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
+    if (estado === 'RESPONDIDA') return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
+    if (estado === 'DENEGADA') return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
+    if (estado === 'VENCIDA') return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
+    return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
+  });
+
   ngOnInit(): void {
     const sesion = this.authService.obtenerSesion();
     if (sesion) {
@@ -301,6 +399,12 @@ export class CiudadanoDashboardComponent implements OnInit {
       next: (data) => {
         this.todasSolicitudes.set(data);
         this.calcularEstadisticas(data);
+
+        // Auto-select initial pipeline stage
+        const stageOrder: Array<'proceso' | 'apelar' | 'tribunal' | 'respondidas' | 'resueltas'> = ['proceso', 'apelar', 'tribunal', 'respondidas', 'resueltas'];
+        const buckets = this.stageBuckets();
+        const initialStage = stageOrder.find(k => buckets[k].length > 0);
+        if (initialStage) this.selectedStageKey.set(initialStage);
 
         if (data.length > 0) {
           const activeFirst = data.find((solicitud) => {
@@ -367,19 +471,27 @@ export class CiudadanoDashboardComponent implements OnInit {
   private enfocarSolicitud(solicitudId: number): void {
     this.selectedSolicitudId.set(solicitudId);
     this.accionResaltada.set(true);
-    this.scrollAAccionPrincipal();
+    this.scrollToTimelineSection();
     setTimeout(() => this.accionResaltada.set(false), 1800);
   }
 
-  private scrollAAccionPrincipal(): void {
+  private scrollToTimelineSection(): void {
     if (typeof document === 'undefined') return;
 
     setTimeout(() => {
-      document.getElementById('lo-que-debe-hacer-hoy')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }, 60);
+      const element = document.getElementById('seccion-timeline');
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      } else {
+        document.getElementById('lo-que-debe-hacer-hoy')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 50);
   }
 
   coincidenciasBusqueda(): Solicitud[] {
@@ -440,6 +552,53 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   toggleSecundarias(): void {
     this.showAllSecundarias.update((value) => !value);
+  }
+
+  // ── Pipeline methods ────────────────────────────────────────────
+  selectStage(key: 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'): void {
+    this.selectedStageKey.set(key);
+    this.stageSearch.set('');
+    this.stagePage.set(1);
+
+    setTimeout(() => {
+      const element = document.getElementById('seccion-etapa-enfocada');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  }
+
+  goStagePage(page: number): void {
+    this.stagePage.set(Math.max(1, Math.min(page, this.stageTotalPages())));
+    setTimeout(() => document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+  }
+
+  onStageSearchChange(value: string): void {
+    this.stageSearch.set(value);
+    this.stagePage.set(1);
+  }
+
+  clearStageSearch(): void {
+    this.stageSearch.set('');
+    this.stagePage.set(1);
+  }
+
+  padCount(count: number): string {
+    return String(count).padStart(2, '0');
+  }
+
+  esApelacionResuelta(solicitud: Solicitud): boolean {
+    const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
+    return estadoApelacion.startsWith('RESUELTO')
+      || estadoApelacion === 'CONCLUSION_SUSTRACCION_MATERIA'
+      || estadoApelacion === 'CONCLUSION_DESISTIMIENTO'
+      || estadoApelacion === 'TENER_POR_NO_PRESENTADO';
+  }
+
+  private normalizeText(text: string): string {
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
   getEstadoBadgeClass(estado: string): string {
