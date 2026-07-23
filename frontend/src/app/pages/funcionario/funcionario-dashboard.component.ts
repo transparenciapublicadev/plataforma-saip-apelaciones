@@ -278,6 +278,10 @@ export class FuncionarioDashboardComponent implements OnInit {
     this.selectedBucket.set(bucket);
   }
 
+  get isFirstVisit(): boolean {
+    return this.tourService.isFirstVisit('saip_tour_funcionario');
+  }
+
   startTour(): void {
     this.tourService.startTour('saip_tour_funcionario', this.tourSteps);
   }

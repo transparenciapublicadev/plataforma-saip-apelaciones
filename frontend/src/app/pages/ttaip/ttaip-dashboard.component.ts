@@ -297,6 +297,10 @@ export class TtaipDashboardComponent implements OnInit {
     this.stageKey.set(stage);
   }
 
+  get isFirstVisit(): boolean {
+    return this.tourService.isFirstVisit('saip_tour_ttaip');
+  }
+
   startTour(): void {
     this.tourService.startTour('saip_tour_ttaip', this.tourSteps);
   }
