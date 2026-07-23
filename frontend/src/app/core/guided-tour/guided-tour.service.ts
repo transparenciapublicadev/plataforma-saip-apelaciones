@@ -16,6 +16,12 @@ export class GuidedTourService {
     return s[idx] ?? null;
   });
 
+  closeUIOverlays(): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('close-ui-overlays'));
+    }
+  }
+
   checkAutoStart(key: StorageKey, steps: TourStep[], delayMs = 700): void {
     if (typeof window === 'undefined') return;
     try {
@@ -29,6 +35,7 @@ export class GuidedTourService {
 
   startTour(key: StorageKey, steps: TourStep[]): void {
     if (typeof window === 'undefined') return;
+    this.closeUIOverlays();
     this.currentStorageKey.set(key);
     this.steps.set(steps);
     this.activeStepIndex.set(0);

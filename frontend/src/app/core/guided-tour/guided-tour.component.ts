@@ -2,7 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  HostListener,
   OnDestroy,
   OnInit,
   computed,
@@ -306,9 +305,12 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
         this.isDark.set(el.classList.contains('dark'));
       });
       this.mutationObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
+    }
 
+    if (typeof window !== 'undefined') {
       window.addEventListener('scroll', this.onWinScrollOrResize, true);
       window.addEventListener('resize', this.onWinScrollOrResize);
+      window.addEventListener('keydown', this.onKeydown);
     }
   }
 
@@ -318,12 +320,12 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       window.removeEventListener('scroll', this.onWinScrollOrResize, true);
       window.removeEventListener('resize', this.onWinScrollOrResize);
+      window.removeEventListener('keydown', this.onKeydown);
     }
     if (this.rafId) cancelAnimationFrame(this.rafId);
   }
 
-  @HostListener('window:keydown', ['$event'])
-  onKeydown(e: KeyboardEvent): void {
+  private onKeydown = (e: KeyboardEvent): void => {
     if (!this.tourService.isOpen()) return;
     if (e.key === 'Escape') {
       this.tourService.endTour();
@@ -332,7 +334,7 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
     } else if (e.key === 'ArrowLeft') {
       this.tourService.prevStep();
     }
-  }
+  };
 
   private onWinScrollOrResize = (): void => {
     if (this.rafId) return;
@@ -345,7 +347,7 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
 
   private remeasure(): void {
     const step = this.currentStep();
-    if (!step || typeof document === 'undefined') return;
+    if (!step || typeof document === 'undefined' || typeof window === 'undefined') return;
     const el = document.querySelector(step.selector) as HTMLElement | null;
     if (el) {
       this.rect.set(el.getBoundingClientRect());
@@ -379,7 +381,7 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
   }
 
   private waitForAndAttachTarget(step: TourStep): void {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
     this.resizeObserver?.disconnect();
 
     let cancelled = false;
@@ -391,26 +393,30 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
       if (cancelled) return;
       this.scrollToEl(el, step);
 
-      this.rect.set(el.getBoundingClientRect());
-      this.vp.set({ w: window.innerWidth, h: window.innerHeight });
-      this.remeasureCard();
+      if (typeof window !== 'undefined') {
+        this.rect.set(el.getBoundingClientRect());
+        this.vp.set({ w: window.innerWidth, h: window.innerHeight });
+        this.remeasureCard();
+      }
 
-      this.resizeObserver = new ResizeObserver(() => {
-        if (!cancelled) {
-          this.rect.set(el.getBoundingClientRect());
-          this.remeasureCard();
-        }
-      });
-      this.resizeObserver.observe(el);
+      if (typeof ResizeObserver !== 'undefined') {
+        this.resizeObserver = new ResizeObserver(() => {
+          if (!cancelled) {
+            this.rect.set(el.getBoundingClientRect());
+            this.remeasureCard();
+          }
+        });
+        this.resizeObserver.observe(el);
+      }
 
       [80, 180, 350, 600].forEach(ms => {
         timers.push(
-          window.setTimeout(() => {
+          setTimeout(() => {
             if (!cancelled) {
               this.rect.set(el.getBoundingClientRect());
               this.remeasureCard();
             }
-          }, ms)
+          }, ms) as unknown as number
         );
       });
     };
@@ -429,7 +435,7 @@ export class GuidedTourComponent implements OnInit, OnDestroy {
       }
     };
 
-    const kickoff = window.setTimeout(
+    const kickoff = setTimeout(
       () => {
         raf = requestAnimationFrame(waitForEl);
       },

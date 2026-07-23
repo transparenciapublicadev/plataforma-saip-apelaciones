@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -390,6 +390,14 @@ export class CiudadanoDashboardComponent implements OnInit {
     if (estado === 'VENCIDA') return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
     return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
   });
+
+  constructor() {
+    effect(() => {
+      if (this.tourService.isOpen()) {
+        this.mostrarResultadosBusqueda.set(false);
+      }
+    });
+  }
 
   ngOnInit(): void {
     const sesion = this.authService.obtenerSesion();
