@@ -66,7 +66,7 @@
   /* Editorial gold accent */
   --gold: #B08842;
   --gold-soft: #E8D9B5;
-  --gold-dark: #8B6A2F;
+  --gold-dark: #8A6A2F;
 
   --border: #E8DFD2;
   --border-strong: #C9BBA6;
@@ -75,6 +75,12 @@
   --input-background: #FFFFFF;
   --switch-background: #C9BBA6;
   --ring: var(--brand-600);
+
+  --chart-1: var(--brand-600);
+  --chart-2: #B08842;
+  --chart-3: #1D4ED8;
+  --chart-4: #15803D;
+  --chart-5: #6B5D52;
 
   /* Editorial type scale */
   --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
@@ -155,12 +161,12 @@
 }
 
 html.dark {
-  --background: #14100D;
-  --foreground: #F5F1EA;
-  --card: #1C1714;
-  --card-foreground: #F5F1EA;
-  --popover: #1C1714;
-  --popover-foreground: #F5F1EA;
+  --background: #0F1115;
+  --foreground: #F2F4F7;
+  --card: #181A1F;
+  --card-foreground: #F2F4F7;
+  --popover: #1B1E24;
+  --popover-foreground: #F2F4F7;
 
   --brand: #DD5862;
   --brand-foreground: #FFFFFF;
@@ -168,25 +174,25 @@ html.dark {
   --brand-subtle: rgba(221, 88, 98, 0.06);
   --brand-deep: #861823;
 
-  --brand-50: #1B1416;
-  --brand-100: #261A1D;
-  --brand-200: #3A2327;
-  --brand-300: #5A2F35;
-  --brand-400: #B0424C;
+  --brand-50: #191519;
+  --brand-100: #23191E;
+  --brand-200: #3A2228;
+  --brand-300: #5A2E36;
+  --brand-400: #E8737C;
   --brand-500: #DD5862;
-  --brand-600: #C8404A;
-  --brand-700: #A82C36;
-  --brand-800: #6A1A22;
-  --brand-900: #3A0810;
+  --brand-600: #D14A54;
+  --brand-700: #C7414B;
+  --brand-800: #8A2029;
+  --brand-900: #5A121A;
 
   --primary: #DD5862;
-  --primary-foreground: #14100D;
-  --secondary: #2A211B;
-  --secondary-foreground: #F5F1EA;
-  --muted: #221C18;
-  --muted-foreground: #A89A8C;
-  --accent: #2A211B;
-  --accent-foreground: #F5F1EA;
+  --primary-foreground: #0F1115;
+  --secondary: #22252C;
+  --secondary-foreground: #F2F4F7;
+  --muted: #1C1F25;
+  --muted-foreground: #A2A9B4;
+  --accent: #22252C;
+  --accent-foreground: #F2F4F7;
 
   --destructive: #DC2626;
   --destructive-foreground: #FFFFFF;
@@ -196,7 +202,7 @@ html.dark {
 
   --gold: #C8A96E;
   --gold-soft: #D9C18A;
-  --gold-dark: #B8963F;
+  --gold-dark: #B08842;
 
   --success-foreground: #C8E6D6;
   --success-subtle: rgba(94, 154, 120, 0.10);
@@ -205,13 +211,19 @@ html.dark {
   --info-foreground: #C8D4EB;
   --info-subtle: rgba(123, 149, 201, 0.10);
 
-  --border: #2A211B;
-  --border-strong: #3D332A;
-  --border-subtle: #221C18;
-  --input: #2A211B;
-  --input-background: #1C1714;
-  --switch-background: #3D332A;
+  --border: #2A2E36;
+  --border-strong: #3B404A;
+  --border-subtle: #1F232A;
+  --input: #2A2E36;
+  --input-background: #181A1F;
+  --switch-background: #3B404A;
   --ring: #DD5862;
+
+  --chart-1: #DD5862;
+  --chart-2: #C8A96E;
+  --chart-3: #60A5FA;
+  --chart-4: #4ADE80;
+  --chart-5: #A89A8C;
 
   --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.4);
   --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.5);
@@ -220,18 +232,18 @@ html.dark {
   --shadow-xl: 0 24px 48px -12px rgba(0,0,0,0.75);
   --shadow-glow: 0 0 0 4px rgba(221, 88, 98, 0.18);
 
-  --sidebar: #0F0B09;
-  --sidebar-foreground: #F5F1EA;
+  --sidebar: #0B0D10;
+  --sidebar-foreground: #F2F4F7;
   --sidebar-primary: #DD5862;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #221C18;
-  --sidebar-accent-foreground: #F5F1EA;
-  --sidebar-border: #221C18;
+  --sidebar-accent: #1C1F25;
+  --sidebar-accent-foreground: #F2F4F7;
+  --sidebar-border: #1F232A;
   --sidebar-ring: #DD5862;
 
-  --surface-elevated: #1C1714;
-  --surface-sunken: #0F0B09;
-  --surface-paper: #14100D;
+  --surface-elevated: #1B1E24;
+  --surface-sunken: #0B0D10;
+  --surface-paper: #0F1115;
   --paper: var(--surface-paper);
 
   --accent-violet: #A78BFA;
@@ -306,6 +318,11 @@ html.dark {
   --color-brand-deep: var(--brand-deep);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-surface-elevated: var(--surface-elevated);
@@ -1869,33 +1886,19 @@ html.dark .reference-option-card.is-selected {
 .reference-upload-zone {
   position: relative;
   overflow: hidden;
+  background-color: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 0.5rem;
   transition:
     transform 180ms var(--ease-out-expo),
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
+    border-color 180ms ease-in-out,
+    background-color 180ms ease-in-out,
+    box-shadow 180ms ease-in-out;
 }
 
-.reference-upload-zone::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--gold-soft) 35%, transparent), transparent 55%);
-  transition: opacity 180ms ease;
-}
-
-.reference-upload-zone:hover,
-.reference-file-button:hover {
-  transform: translateY(-1px);
+.reference-upload-zone:hover {
   border-color: var(--brand-300) !important;
-  box-shadow: var(--shadow-sm);
-  background: color-mix(in srgb, var(--brand-subtle) 58%, var(--card)) !important;
-}
-
-.reference-upload-zone:hover::before {
-  opacity: 1;
+  background-color: var(--card) !important;
 }
 
 .reference-file-button {
@@ -1904,6 +1907,12 @@ html.dark .reference-option-card.is-selected {
     border-color 180ms ease,
     background 180ms ease,
     box-shadow 180ms ease;
+}
+
+.reference-file-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand-300) !important;
+  box-shadow: var(--shadow-sm);
 }
 
 .reference-progress-card {
