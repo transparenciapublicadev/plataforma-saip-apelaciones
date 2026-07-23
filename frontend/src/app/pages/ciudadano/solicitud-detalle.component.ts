@@ -25,9 +25,14 @@ interface TimelineEvent {
   icon: 'mail' | 'search' | 'check';
 }
 
+import { LucideArrowLeft } from '@lucide/angular';
+
 @Component({
   selector: 'app-solicitud-detalle',
-  imports: [CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent,
+    LucideArrowLeft
+  ],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

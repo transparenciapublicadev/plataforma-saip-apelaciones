@@ -3,7 +3,7 @@
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
     <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14" data-hero>
       <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        <svg lucideArrowLeft class="w-4 h-4"></svg>
         Volver al panel
       </a>
       <div class="eyebrow !text-[color:var(--gold-soft)] mb-3">Formulario · Solicitud de acceso</div>
@@ -43,16 +43,14 @@
 
           <div class="p-5 md:p-6 flex items-start gap-4">
             <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); box-shadow: 0 1px 0 0 color-mix(in srgb, white 18%, transparent) inset;">
-              <svg class="w-5.5 h-5.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
+              <svg lucideShieldAlert class="w-5.5 h-5.5 text-white"></svg>
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="eyebrow" style="color: var(--brand-700);">Identidad verificada · sesión activa</span>
                 <span class="pill" style="background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                  <svg lucideCheckCircle2 class="w-3 h-3"></svg>
                   RENIEC
                 </span>
               </div>
@@ -99,46 +97,24 @@
                 <select id="entidadId" [(ngModel)]="entidadId" name="entidadId" required class="field-input">
                   <option [ngValue]="null">Seleccione la entidad receptora</option>
                   @for (entidad of entidades(); track entidad.id) {
-                    <option [ngValue]="entidad.id">{{ entidad.nombre }} ({{ entidad.acronimo }})</option>
+                    <option [value]="entidad.id">{{ entidad.nombre }}</option>
                   }
                 </select>
               </div>
 
               <div class="field">
                 <label for="asunto" class="field-label">Asunto <span class="req">*</span></label>
-                <input
-                  id="asunto"
-                  type="text"
-                  [(ngModel)]="asunto"
-                  name="asunto"
-                  required
-                  class="field-input"
-                  placeholder="Ej. Solicitud de información sobre presupuesto 2025" />
+                <input id="asunto" type="text" [(ngModel)]="asunto" name="asunto" required placeholder="Ej. Solicitud de presupuesto institucional 2026" class="field-input" />
               </div>
 
               <div class="field">
-                <label for="descripcion" class="field-label">Descripción de la información solicitada <span class="req">*</span></label>
-                <textarea
-                  id="descripcion"
-                  [(ngModel)]="descripcion"
-                  name="descripcion"
-                  required
-                  rows="6"
-                  class="field-input"
-                  style="resize: vertical; min-height: 140px"
-                  placeholder="Describa con claridad y detalle la información que solicita. Incluya periodos, áreas o documentos específicos cuando sea posible…"></textarea>
-                <span class="field-hint">Sea específico: a mayor claridad, mejor respuesta.</span>
+                <label for="descripcion" class="field-label">Información solicitada <span class="req">*</span></label>
+                <textarea id="descripcion" [(ngModel)]="descripcion" name="descripcion" required rows="5" placeholder="Describa de forma precisa la información pública que requiere..." class="field-input"></textarea>
               </div>
 
               <div class="field">
                 <label for="tipoInformacion" class="field-label">Tipo de información</label>
-                <input
-                  id="tipoInformacion"
-                  type="text"
-                  [(ngModel)]="tipoInformacion"
-                  name="tipoInformacion"
-                  class="field-input"
-                  placeholder="Ej. Documentos, estadísticas, informes" />
+                <input id="tipoInformacion" type="text" [(ngModel)]="tipoInformacion" name="tipoInformacion" placeholder="Ej. Documentos, estadísticas, informes" class="field-input" />
               </div>
             </div>
           </section>
@@ -146,52 +122,54 @@
           <section data-motion-item class="form-shell">
             <div class="form-section-header flex items-start justify-between gap-4">
               <div>
-                <span class="eyebrow">02 · Modalidad de entrega</span>
-                <h2 class="form-section-title">Formato de respuesta</h2>
+                <span class="eyebrow">02 · Formato y copia opcional</span>
+                <h2 class="form-section-title">Modalidad de entrega</h2>
               </div>
               <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
                 02
               </span>
             </div>
 
-            <div class="p-6 md:p-8">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoDigital" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoDigital ? '0 0 0 3px var(--brand-50)' : 'none'">
+            <div class="p-6 md:p-8 space-y-5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoDigital" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
                   <input type="checkbox" [(ngModel)]="formatoDigital" name="formatoDigital" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoDigital ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoDigital ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (formatoDigital) {
-                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="m5 13 4 4L19 7" /></svg>
+                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
                     }
                   </span>
                   <div>
-                    <div class="text-sm font-medium text-foreground">Digital (correo electrónico)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Recepción inmediata, formato PDF</div>
+                    <div class="text-sm font-medium text-foreground">Digital (correo / enlace)</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">Recepción en formato PDF</div>
                   </div>
                 </label>
 
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoFisico" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="formatoFisico ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoFisico" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
                   <input type="checkbox" [(ngModel)]="formatoFisico" name="formatoFisico" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoFisico ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoFisico ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (formatoFisico) {
-                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="m5 13 4 4L19 7" /></svg>
+                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
                     }
                   </span>
                   <div>
-                    <div class="text-sm font-medium text-foreground">Físico (recojo en oficina)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Documento impreso original</div>
+                    <div class="text-sm font-medium text-foreground">Físico (copia impresa)</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">Recojo en oficina</div>
                   </div>
                 </label>
+              </div>
 
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaSimple" [style.background]="copiaSimple ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaSimple ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaSimple ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <input type="checkbox" [(ngModel)]="copiaSimple" name="copiaSimple" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaSimple ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaSimple ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (copiaSimple) {
-                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="m5 13 4 4L19 7" /></svg>
+                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
                     }
                   </span>
                   <div>
                     <div class="text-sm font-medium text-foreground">Copia simple</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Sin certificación</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">Sin certificación formal</div>
                   </div>
                 </label>
 
@@ -199,7 +177,7 @@
                   <input type="checkbox" [(ngModel)]="copiaCertificada" name="copiaCertificada" class="sr-only" />
                   <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaCertificada ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaCertificada ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                     @if (copiaCertificada) {
-                      <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="m5 13 4 4L19 7" /></svg>
+                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
                     }
                   </span>
                   <div>
@@ -238,7 +216,7 @@
                 <input type="checkbox" [(ngModel)]="consentimientoDatosPersonales" name="consentimientoDatosPersonales" required class="sr-only" />
                 <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="consentimientoDatosPersonales ? 'var(--brand-600)' : 'var(--card)'" [style.border]="consentimientoDatosPersonales ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
                   @if (consentimientoDatosPersonales) {
-                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="m5 13 4 4L19 7" /></svg>
+                    <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
                   }
                 </span>
                 <div>
@@ -262,14 +240,14 @@
             <div class="p-6 md:p-8 space-y-3">
               <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
                 <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" multiple (change)="seleccionarDocumento($event)" />
-                <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
+                <svg lucideFileText class="w-8 h-8 mx-auto mb-2 text-brand-700"></svg>
                 <p class="text-sm text-foreground/85">Adjunte los documentos de sustento (opcional)</p>
                 <p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT hasta 10 MB</p>
               </label>
 
               @for (file of documentosSeleccionados(); track file.name; let i = $index) {
                 <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                  <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                  <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
                   <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
                   <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
                   <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
@@ -282,7 +260,7 @@
 
           <div data-motion-item class="flex flex-col sm:flex-row gap-3">
             <button type="button" (click)="guardarBorrador()" class="btn-ghost-brand flex-1 justify-center !py-3">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
+              <svg lucideFileText class="w-4 h-4"></svg>
               Guardar borrador
             </button>
 
@@ -294,7 +272,7 @@
                 </span>
               } @else {
                 <span class="inline-flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M22 2 11 13" /><path stroke-width="2" d="M22 2 15 22l-4-9-9-4z" /></svg>
+                  <svg lucideSend class="w-4 h-4"></svg>
                   Presentar solicitud
                 </span>
               }
@@ -330,17 +308,17 @@
               <div>
                 <div class="eyebrow !text-[10px] mb-3" style="color: var(--brand-700);">Información reservada</div>
                 <ul class="space-y-2.5 text-sm">
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Datos personales de terceros</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Secretos comerciales</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Información clasificada como secreta</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Procesos judiciales en curso</li>
+                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Datos personales de terceros</li>
+                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Secretos comerciales</li>
+                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Información clasificada como secreta</li>
+                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Procesos judiciales en curso</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <div data-motion-item class="rounded-lg p-5 flex gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
-            <svg class="w-5 h-5 shrink-0 mt-0.5" style="color: var(--brand-700);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+            <svg lucideInfo class="w-5 h-5 shrink-0 mt-0.5 text-brand-700"></svg>
             <div>
               <div class="eyebrow !text-[10px] mb-1.5" style="color: var(--brand-700);">Plazo legal</div>
               <p class="text-sm text-foreground/85 leading-relaxed">
