@@ -10,6 +10,23 @@ export class GuidedTourService {
   readonly steps = signal<TourStep[]>([]);
   readonly currentStorageKey = signal<StorageKey | null>(null);
 
+  private readonly visitedKeys = signal<Set<string>>(this.initVisitedKeys());
+
+  private initVisitedKeys(): Set<string> {
+    const keys: StorageKey[] = ['saip_tour_done', 'saip_tour_funcionario', 'saip_tour_ttaip', 'saip_tour_admin'];
+    const visited = new Set<string>();
+    if (typeof window !== 'undefined') {
+      keys.forEach(k => {
+        try {
+          if (localStorage.getItem(k)) visited.add(k);
+        } catch {
+          /* noop */
+        }
+      });
+    }
+    return visited;
+  }
+
   readonly currentStep = computed(() => {
     const s = this.steps();
     const idx = this.activeStepIndex();
@@ -22,19 +39,34 @@ export class GuidedTourService {
     }
   }
 
-  checkAutoStart(key: StorageKey, steps: TourStep[], delayMs = 700): void {
-    if (typeof window === 'undefined') return;
-    try {
-      if (!localStorage.getItem(key)) {
-        setTimeout(() => this.startTour(key, steps), delayMs);
+  isFirstVisit(key: StorageKey): boolean {
+    return !this.visitedKeys().has(key);
+  }
+
+  markAsVisited(key: StorageKey): void {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(key, '1');
+      } catch {
+        /* noop */
       }
-    } catch {
-      /* storage unavailable */
     }
+    this.visitedKeys.update(set => {
+      if (set.has(key)) return set;
+      const next = new Set(set);
+      next.add(key);
+      return next;
+    });
+  }
+
+  checkAutoStart(_key: StorageKey, _steps: TourStep[], _delayMs = 700): void {
+    // Non-intrusive strategy: Automatic modal popping on page load is eliminated.
+    // First-visit indicator is displayed on the "Ver tutorial" button instead.
   }
 
   startTour(key: StorageKey, steps: TourStep[]): void {
     if (typeof window === 'undefined') return;
+    this.markAsVisited(key);
     this.closeUIOverlays();
     this.currentStorageKey.set(key);
     this.steps.set(steps);
@@ -73,12 +105,14 @@ export class GuidedTourService {
   endTour(): void {
     this.isOpen.set(false);
     const key = this.currentStorageKey();
-    if (key && typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(key, '1');
-      } catch {
-        /* noop */
-      }
+    if (key) {
+      this.markAsVisited(key);
+    }
+
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
     }
   }
 }
