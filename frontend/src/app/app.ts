@@ -13,11 +13,14 @@ import {
   LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu
 } from '@lucide/angular';
 
+import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
+
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
+    GuidedTourComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
