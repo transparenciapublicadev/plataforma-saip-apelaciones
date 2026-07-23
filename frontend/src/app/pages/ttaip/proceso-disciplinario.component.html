@@ -3,7 +3,7 @@
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
+        <svg lucideArrowLeft class="w-4 h-4"></svg>
         Volver al panel TTAIP
       </a>
 
@@ -29,7 +29,7 @@
     } @else if (!selectedCase()) {
       <div class="form-shell p-12 text-center">
         <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-          <svg class="w-6 h-6" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M5 7h14"/></svg>
+          <svg lucideScale class="w-6 h-6" style="color: var(--brand-700)"></svg>
         </div>
         <h2 class="font-display" style="font-size: 22px">Sin procesos disciplinarios activos</h2>
         <p class="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">El backend no registra resoluciones finales con orden de iniciar proceso disciplinario.</p>
@@ -58,10 +58,10 @@
 
                 <span class="absolute left-0 top-0 w-[26px] h-[26px] rounded-full flex items-center justify-center" [style.background]="timelineBackground(evento.status)" [style.border]="timelineBorder(evento.status)" [style.boxShadow]="timelineShadow(evento.status)">
                   @switch (evento.icon) {
-                    @case ('mail') { <svg class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path stroke-width="2" d="m3 7 9 6 9-6"/></svg> }
-                    @case ('gavel') { <svg class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m14 9-7 7"/><path stroke-width="2" d="m17 6 3 3"/><path stroke-width="2" d="m3 21 6-6"/></svg> }
-                    @case ('scale') { <svg class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M5 7h14"/></svg> }
-                    @default { <svg class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 3h8l5 5v13H7z"/></svg> }
+                    @case ('mail') { <svg lucideMail class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                    @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                    @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                    @default { <svg lucideFileText class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
                   }
                 </span>
 
@@ -90,7 +90,7 @@
           @if (activeTab() === 'resolucion') {
             <div class="p-6 space-y-5 text-sm animate-fade-in">
               <div class="rounded-md p-4 flex items-start gap-3" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
-                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
+                <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
                 <div>
                   <div class="font-display tracking-wider font-semibold">RESOLUCIÓN · {{ item.apelacion.expediente }} · {{ formatDecision(item.resolucion.decision) }}</div>
                   <p class="text-xs text-foreground/80 mt-1">{{ item.resolucion.fundamentos || 'Resolución final registrada por el backend.' }}</p>
@@ -127,7 +127,7 @@
           @if (activeTab() === 'notificacion') {
             <div class="p-6 space-y-5 text-sm animate-fade-in">
               <div class="rounded-md p-4 flex items-start gap-3" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/><path stroke-width="2" d="M8 3v5a4 4 0 0 0 2 3.46L12 13l2-1.54A4 4 0 0 0 16 8V3"/><path stroke-width="2" d="M8 21v-5a4 4 0 0 1 2-3.46L12 11l2 1.54A4 4 0 0 1 16 16v5"/></svg>
+                <svg lucideClock class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)"></svg>
                 <div>
                   <div class="font-display tracking-wider font-semibold" style="color: var(--warning)">PLAZO PARA DESCARGOS</div>
                   <p class="text-xs text-foreground/80 mt-1">Plazo de descargos pendiente de registro por el backend.</p>
@@ -142,7 +142,7 @@
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                   <div class="eyebrow" [style.color]="colorEstadoNotificacion()">Estado</div>
                   <div class="mt-1 inline-flex items-center gap-1.5 text-xs" [style.color]="colorEstadoNotificacion()">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
+                    <svg lucideCheckCircle2 class="w-3.5 h-3.5"></svg>
                     {{ estadoNotificacion() }}
                   </div>
                 </div>
@@ -154,7 +154,7 @@
               </div>
 
               <button type="button" class="btn-ghost-brand w-full justify-center !py-3">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 3h8l5 5v13H7z"/></svg>
+                <svg lucideFileText class="w-4 h-4"></svg>
                 Descargar notificacion
               </button>
             </div>
@@ -164,7 +164,7 @@
             <div class="p-6 space-y-5 animate-fade-in">
               <div class="rounded-lg py-10 text-center reference-upload-zone" style="background: var(--brand-subtle); border: 1px dashed var(--brand-200)">
                 <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
-                  <svg class="w-6 h-6" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 4v16"/><path stroke-width="2" d="M4 12h16"/></svg>
+                  <svg lucideFolderOpen class="w-6 h-6" style="color: var(--brand-700)"></svg>
                 </div>
                 <h3 class="font-display tracking-wide mt-4" style="font-size: 18px">Aun no se han presentado descargos</h3>
                 <p class="text-sm text-muted-foreground mt-1">El backend aún no registra descargos asociados a este proceso.</p>
@@ -184,7 +184,7 @@
                     <p class="text-xs text-muted-foreground mt-1">Evidencias que respalden los descargos.</p>
                   </div>
                   <button type="button" class="btn-brand w-full !py-3 justify-center" disabled>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h14"/><path stroke-width="2" d="m12 5 7 7-7 7"/></svg>
+                    <svg lucideSend class="w-4 h-4"></svg>
                     Presentar descargos
                   </button>
                 </div>
@@ -195,7 +195,7 @@
           @if (activeTab() === 'sancion') {
             <div class="p-12 text-center animate-fade-in">
               <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <svg class="w-7 h-7" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 3h12"/><path stroke-width="2" d="M6 21h12"/><path stroke-width="2" d="M8 3v5a4 4 0 0 0 2 3.46L12 13l2-1.54A4 4 0 0 0 16 8V3"/><path stroke-width="2" d="M8 21v-5a4 4 0 0 1 2-3.46L12 11l2 1.54A4 4 0 0 1 16 16v5"/></svg>
+                <svg lucideClock class="w-7 h-7" style="color: var(--brand-700)"></svg>
               </div>
               <h3 class="font-display tracking-wide mt-4" style="font-size: 20px">Pendiente de evaluacion</h3>
               <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
@@ -207,7 +207,7 @@
 
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)" data-reveal>
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)">
-            <svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+            <svg lucideAlertTriangle class="w-5 h-5" style="color: var(--info)"></svg>
           </div>
 
           <div class="flex-1">

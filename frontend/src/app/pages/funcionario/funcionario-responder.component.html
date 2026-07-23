@@ -11,7 +11,7 @@
       <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
       <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
         <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
+          <svg lucideArrowLeft class="w-4 h-4"></svg>
           Volver al panel
         </a>
         <span class="eyebrow !text-[color:var(--gold-soft)]">Respuesta institucional</span>
@@ -27,7 +27,7 @@
       @if (esUrgente()) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
@@ -40,7 +40,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
+            <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
             <span class="eyebrow">Fecha solicitud</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
@@ -49,7 +49,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--warning)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+            <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
             <span class="eyebrow">Fecha límite</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
@@ -58,7 +58,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" [style.color]="getDiasRestantesColor()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
             <span class="eyebrow">Días restantes</span>
           </div>
           <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
@@ -67,7 +67,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--brand-700)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+            <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
             <span class="eyebrow">Tipo</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
@@ -95,7 +95,7 @@
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
             @if (esSilencioAdministrativoAutomatico()) {
               <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--muted) 18%, transparent); border: 1px solid var(--border); border-left: 3px solid var(--muted-foreground)">
-                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--muted-foreground)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4m0 4h.01m9-4a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
+                <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--muted-foreground)"></svg>
                 <div class="text-sm text-foreground/85">
                   <span class="font-semibold">SILENCIO_ADMINISTRATIVO automático.</span>
                   La solicitud superó el plazo legal y no admite respuesta manual.
@@ -105,14 +105,14 @@
 
             @if (error()) {
               <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0 2-2m-2 2-2-2m2 2 2 2m7-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
+                <svg lucideXCircle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)"></svg>
                 <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
               </div>
             }
 
             @if (mensaje()) {
               <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--success) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
-                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
                 <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
               </div>
             }
@@ -165,7 +165,7 @@
 
                   @if (causalDenegatoria) {
                     <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
-                      <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)"></svg>
                       <div class="text-sm text-foreground/85"><span class="font-semibold">Obligatorio:</span> complete descripción, fundamento legal y evidencia documental.</div>
                     </div>
 
@@ -185,7 +185,7 @@
                         <label class="reference-upload-zone block border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer" style="border-color: var(--border); background: var(--card)">
                           <input type="file" (change)="onEvidenciaSelected($event)" class="hidden" multiple [accept]="documentAccept" />
                           <span class="space-y-2 block">
-                            <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
+                            <svg lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg>
                             <span class="text-sm text-foreground block">Arrastre sus archivos aquí o <span style="color: var(--brand-700)">haga clic para seleccionar</span></span>
                             <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT</span>
                           </span>
@@ -193,7 +193,7 @@
 
                         @for (file of evidenciaDenegatoria(); track file.name; let i = $index) {
                           <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                            <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
                             <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
                             <span class="font-mono text-[11px] text-muted-foreground">{{ fileSizeLabel(file) }}</span>
                             <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removeEvidenciaDenegatoria(i)">
@@ -217,7 +217,7 @@
 
                   @if (decision() === 'entrega_parcial') {
                     <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
-                      <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2" /></svg>
+                      <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
                       <p class="text-sm text-foreground/85">Indique con claridad qué parte de la información se entrega y cuál queda exceptuada.</p>
                     </div>
                   }
@@ -252,7 +252,7 @@
                       <label class="reference-upload-zone block border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer" style="border-color: var(--border); background: var(--card)">
                         <input type="file" (change)="onDocumentosEntregaSelected($event)" class="hidden" multiple [accept]="documentAccept" />
                         <span class="space-y-2 block">
-                          <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
+                          <svg lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg>
                           <span class="text-sm text-foreground block">Arrastre sus archivos aquí o <span style="color: var(--brand-700)">haga clic para seleccionar</span></span>
                           <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT</span>
                         </span>
@@ -260,7 +260,7 @@
 
                       @for (file of documentosEntrega(); track file.name; let i = $index) {
                         <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                          <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
                           <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
                           <span class="font-mono text-[11px] text-muted-foreground">{{ fileSizeLabel(file) }}</span>
                           <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removeDocumentoEntrega(i)">
@@ -275,7 +275,7 @@
 
               @if (decision() && !canSubmit()) {
                 <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
-                  <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                   <p class="text-sm text-foreground/85">
                     @if (decision() === 'denegacion_total') {
                       Complete descripción, fundamento legal y evidencia antes de enviar.
@@ -291,14 +291,14 @@
                   <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   Enviando...
                 } @else {
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  <svg lucideSend class="w-4 h-4"></svg>
                   Enviar respuesta
                 }
               </button>
 
               <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 <div class="flex items-start gap-3">
-                  <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18m-9-9h18" /></svg>
+                  <svg lucidePlus class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                   <div>
                     <span class="eyebrow" style="color: var(--brand-700)">Información normativa</span>
                     <ul class="text-sm text-foreground/80 space-y-1.5 mt-2 list-disc list-inside leading-relaxed">

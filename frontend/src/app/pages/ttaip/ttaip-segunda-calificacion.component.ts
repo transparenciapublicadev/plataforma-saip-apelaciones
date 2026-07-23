@@ -28,9 +28,18 @@ interface SegundaOption {
   accent: string;
 }
 
+import {
+  LucideArrowLeft, LucideCheckCircle2, LucideUpload,
+  LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideCheckCircle2, LucideUpload,
+    LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus
+  ],
   templateUrl: './ttaip-segunda-calificacion.component.html',
   styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
