@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero>
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero data-tour="e-hero">
       <div class="flex items-start gap-5 flex-wrap">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
           <svg lucideBuilding2 class="w-7 h-7 text-white"></svg>
@@ -10,7 +10,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-3">
             <span class="eyebrow">Bandeja del funcionario · {{ nombreEntidad() }}</span>
-            <button type="button" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap" title="Ver tutorial guiado">
+            <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap" title="Ver tutorial guiado">
               <svg lucideCompass class="w-3.5 h-3.5"></svg> Ver tutorial
             </button>
           </div>
@@ -28,7 +28,7 @@
           </p>
         </div>
 
-        <div class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
+        <div data-tour="e-cumplimiento" class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
           <div class="relative" style="width: 70px; height: 70px">
             <svg width="70" height="70" viewBox="0 0 70 70">
               <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" stroke="var(--muted)" stroke-width="6" />
@@ -118,7 +118,7 @@
         </div>
       }
 
-      <div class="mb-6">
+      <div class="mb-6" data-tour="e-buckets">
         <div class="flex items-baseline justify-between mb-3">
           <span class="eyebrow">Bandeja por SLA</span>
           <span class="text-xs text-muted-foreground hidden md:inline">Click una columna para enfocar</span>
@@ -166,7 +166,7 @@
         data-motion-delay-step="0.055"
       >
         <div class="lg:col-span-8">
-          <div class="form-shell" data-motion-item>
+          <div class="form-shell" data-tour="e-cola" data-motion-item>
             <div class="form-section-header flex items-center gap-3">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="bucketActivoMeta().bg" [style.border]="'1px solid ' + bucketActivoMeta().color">
                 @switch (bucketActivoMeta().icon) {
@@ -251,7 +251,7 @@
         </div>
 
         <aside class="lg:col-span-4 space-y-5" data-motion-item>
-          <div class="form-shell">
+          <div class="form-shell" data-tour="e-carga">
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
                 <svg lucideLayers class="w-3 h-3"></svg>
@@ -276,7 +276,7 @@
           </div>
 
           @if (topTemas().length > 0) {
-            <div class="form-shell" data-reveal>
+            <div class="form-shell" data-tour="e-batch" data-reveal>
               <div class="form-section-header">
                 <span class="eyebrow flex items-center gap-2">
                   <svg lucideTarget class="w-3 h-3"></svg>
@@ -303,7 +303,7 @@
             </div>
           }
 
-          <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)" data-reveal>
+          <div class="rounded-lg p-4" data-tour="e-norma" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)" data-reveal>
             <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
             <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
               <li><span class="font-mono font-semibold">10 días hábiles</span> para responder · Ley N° 27806.</li>

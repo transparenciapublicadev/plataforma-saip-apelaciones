@@ -12,6 +12,9 @@
             Panel de <span class="italic" style="color: var(--brand-700)">administración</span>
           </h1>
           <p class="text-muted-foreground mt-1.5 max-w-xl">Gobierno integral del sistema · entidades, usuarios y reportes consolidados.</p>
+          <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap mt-3" title="Ver tutorial guiado">
+            <svg lucideCompass class="w-3.5 h-3.5"></svg> Ver tutorial
+          </button>
         </div>
       </div>
     </div>
@@ -26,6 +29,7 @@
     }
 
     <div
+      data-tour="a-kpis"
       class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
       data-motion-stagger
       data-motion-y="12"
@@ -74,6 +78,7 @@
     </div>
 
     <div
+      data-tour="a-status"
       class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
       data-motion-stagger
       data-motion-y="10"
@@ -98,7 +103,7 @@
       </div>
     </div>
 
-    <div class="form-shell p-1 mb-6" data-reveal>
+    <div class="form-shell p-1 mb-6" data-tour="a-tabs" data-reveal>
       <div class="grid grid-cols-5 gap-1">
         <button (click)="cambiarTab('resumen')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'resumen' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
           <svg lucideBarChart class="w-4 h-4"></svg>
@@ -125,6 +130,7 @@
 
     <div>
       @if (tabActual() === 'resumen') {
+        <div data-tour="a-overview" class="space-y-5">
         <div
           class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 animate-fade-in"
           data-motion-stagger
@@ -221,10 +227,11 @@
             }
           </div>
         </div>
-      }
+      </div>
+    }
 
       @if (tabActual() === 'entidades') {
-        <div class="form-shell overflow-hidden animate-fade-in">
+        <div data-tour="a-entities" class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
               <span class="eyebrow">Gestión</span>
@@ -285,7 +292,7 @@
       }
 
       @if (tabActual() === 'usuarios') {
-        <div class="form-shell overflow-hidden animate-fade-in">
+        <div data-tour="a-users" class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
             <div>
               <span class="eyebrow">Gestión</span>
@@ -355,6 +362,7 @@
       }
 
       @if (tabActual() === 'reportes') {
+        <div data-tour="a-reports" class="space-y-5">
         <div
           class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5 animate-fade-in"
           data-motion-stagger
@@ -374,10 +382,11 @@
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
           <div><span class="eyebrow" style="color: var(--info)">Nota</span><p class="text-sm text-foreground/85 leading-relaxed mt-1">Los reportes usan datos del momento de exportación. PDF para presentación; Excel/CSV para análisis.</p></div>
         </div>
-      }
+      </div>
+    }
 
       @if (tabActual() === 'configuracion') {
-        <div class="form-shell animate-fade-in">
+        <div data-tour="a-settings" class="form-shell animate-fade-in">
           <div class="form-section-header">
             <span class="eyebrow">Sistema</span>
             <div class="form-section-title">Configuración operativa</div>
