@@ -25,9 +25,14 @@ interface ObservacionSubsanacion {
   descripcion: string;
 }
 
+import { LucideArrowLeft, LucideSend } from '@lucide/angular';
+
 @Component({
   selector: 'app-subsanacion',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideSend
+  ],
   templateUrl: './subsanacion.component.html',
   styleUrl: './subsanacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -35,9 +35,14 @@ interface RequiredAppealDocument {
   desc: string;
 }
 
+import { LucideArrowLeft, LucideScale, LucideSend, LucideInfo } from '@lucide/angular';
+
 @Component({
   selector: 'app-nueva-apelacion',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideScale, LucideSend, LucideInfo
+  ],
   templateUrl: './nueva-apelacion.component.html',
   styleUrl: './nueva-apelacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

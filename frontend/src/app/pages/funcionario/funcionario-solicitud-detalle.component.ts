@@ -36,9 +36,13 @@ interface HistorialItem {
   color: 'brand' | 'warning' | 'success' | 'muted' | 'violet';
 }
 
+import { LucideCheckCircle2 } from '@lucide/angular';
+
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
-  imports: [CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent, LucideCheckCircle2
+  ],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

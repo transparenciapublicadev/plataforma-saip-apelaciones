@@ -7,7 +7,7 @@ import { AuthService } from '../../services/auth.service';
 import { RegistroRequest } from '../../models/usuario.model';
 import {
   LucideArrowLeft, LucideShield, LucideUserPlus, LucideCheck,
-  LucideEye, LucideEyeOff, LucideArrowRight,
+  LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
 } from '@lucide/angular';
 
 @Component({
@@ -15,7 +15,7 @@ import {
   imports: [
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideUserPlus, LucideCheck,
-    LucideEye, LucideEyeOff, LucideArrowRight,
+    LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
   ],
   templateUrl: './registro.component.html',
   styleUrl: './registro.component.css',

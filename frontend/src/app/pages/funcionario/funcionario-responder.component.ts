@@ -39,6 +39,12 @@ interface ResponseDecision {
   accent: string;
 }
 
+import {
+  LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
+  LucideFileText, LucideInfo, LucideXCircle, LucideCheckCircle2,
+  LucideUpload, LucideSend, LucidePlus
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-funcionario-responder',
   imports: [
@@ -47,7 +53,10 @@ interface ResponseDecision {
     RouterLink,
     DocumentListComponent,
     ReferenceConfirmModalComponent,
-    ReferenceSuccessModalComponent
+    ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
+    LucideFileText, LucideInfo, LucideXCircle, LucideCheckCircle2,
+    LucideUpload, LucideSend, LucidePlus
   ],
   templateUrl: './funcionario-responder.component.html',
   styleUrl: './funcionario-responder.component.css',

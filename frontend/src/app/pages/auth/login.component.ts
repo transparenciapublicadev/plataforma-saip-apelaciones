@@ -5,7 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { LoginRequest } from '../../models/usuario.model';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
-  LucideScale, LucideEye, LucideEyeOff, LucideArrowRight,
+  LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
 } from '@lucide/angular';
 
 type TipoUsuarioRole = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
@@ -18,7 +18,7 @@ type AccessMode = 'citizen' | 'internal';
   imports: [
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideLogIn,
-    LucideScale, LucideEye, LucideEyeOff, LucideArrowRight,
+    LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'

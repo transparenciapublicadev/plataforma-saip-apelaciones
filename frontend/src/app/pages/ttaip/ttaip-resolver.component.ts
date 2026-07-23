@@ -42,9 +42,20 @@ interface DecisionOption {
   accent: string;
 }
 
+import {
+  LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
+  LucideSend, LucideInfo, LucideUpload,
+  LucideClock, LucideXCircle
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-ttaip-resolver',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
+    LucideSend, LucideInfo, LucideUpload,
+    LucideClock, LucideXCircle
+  ],
   templateUrl: './ttaip-resolver.component.html',
   styleUrl: './ttaip-resolver.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

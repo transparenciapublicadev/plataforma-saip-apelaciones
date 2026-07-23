@@ -29,9 +29,18 @@ interface DisciplinaryCase {
   resolucion: ResolucionConProcesoDisciplinario;
 }
 
+import {
+  LucideArrowLeft, LucideAlertTriangle, LucideCheckCircle2, LucideClock,
+  LucideFileText, LucideMail, LucideGavel, LucideScale, LucideFolderOpen
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-proceso-disciplinario',
-  imports: [CommonModule, RouterLink],
+  imports: [
+    CommonModule, RouterLink,
+    LucideArrowLeft, LucideAlertTriangle, LucideCheckCircle2, LucideClock,
+    LucideFileText, LucideMail, LucideGavel, LucideScale, LucideFolderOpen
+  ],
   templateUrl: './proceso-disciplinario.component.html',
   styleUrl: './proceso-disciplinario.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

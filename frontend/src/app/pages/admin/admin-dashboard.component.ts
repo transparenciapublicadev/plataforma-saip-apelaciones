@@ -31,9 +31,20 @@ interface RecentActivity {
   date: Date;
 }
 
+import {
+  LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
+  LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideScale, LucideBarChart,
+  LucideDownload, LucideSettings
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [FormsModule, DatePipe, DecimalPipe],
+  imports: [
+    FormsModule, DatePipe, DecimalPipe,
+    LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
+    LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideScale, LucideBarChart,
+    LucideDownload, LucideSettings
+  ],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

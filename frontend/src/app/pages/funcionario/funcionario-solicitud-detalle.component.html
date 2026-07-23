@@ -16,7 +16,7 @@
     <div class="relative bg-paper border-b border-border overflow-hidden">
       <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
         <a routerLink="/funcionario" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
+          <svg lucideArrowLeft class="w-4 h-4"></svg>
           Volver al panel
         </a>
 
@@ -38,7 +38,7 @@
 
           @if (puedeResponder()) {
             <a [routerLink]="['/funcionario/responder', sol.expediente]" class="btn-brand !px-5 !py-3">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              <svg lucideSend class="w-4 h-4"></svg>
               Responder solicitud
             </a>
           }
@@ -51,7 +51,7 @@
         @if (plazo.enSilencioAdministrativo) {
           <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(220,38,38,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--destructive)">
             <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <svg lucideShieldAlert class="w-5 h-5 text-white"></svg>
             </div>
             <div>
               <span class="eyebrow" style="color: var(--destructive)">Silencio Administrativo Negativo</span>
@@ -61,7 +61,7 @@
         } @else {
           <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(59,130,246,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid #3b82f6">
             <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: #3b82f6">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <svg lucideClock class="w-5 h-5 text-white"></svg>
             </div>
             <div class="flex-grow">
               <span class="eyebrow" style="color: #3b82f6">Control de Plazo Legal</span>
@@ -77,7 +77,7 @@
       @if (isUrgente()) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
@@ -89,7 +89,7 @@
       @if (observacionPendiente(); as observacion) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M5 19h14L12 5 5 19z" /></svg>
+            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--warning)">Subsanación pendiente</span>
@@ -101,7 +101,7 @@
       @if (ampliacionActiva(); as ampliacion) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(5,150,105,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--success)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--success)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3M4 11h16M6 21h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
+            <svg lucideCalendar class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--success)">Ampliación notificada</span>
@@ -113,7 +113,7 @@
       @if (encauzamientoActivo(); as encauzamiento) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(122,24,34,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--brand-700)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 7h10M7 17h10M17 7l-3-3m3 3-3 3M7 17l3-3m-3 3 3 3" /></svg>
+            <svg lucideInfo class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ getEncauzamientoAlcanceDisplay(encauzamiento.alcance) }}</span>
@@ -125,7 +125,7 @@
       @if (liquidacionActiva(); as liquidacion) {
         <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(180,130,40,0.1), transparent); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 14h6M9 10h6M7 3h10a2 2 0 0 1 2 2v16l-4-2-3 2-3-2-4 2V5a2 2 0 0 1 2-2z" /></svg>
+            <svg lucideFileText class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--gold)">Liquidación {{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
@@ -138,7 +138,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" /></svg>
+            <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
             <span class="eyebrow">Fecha solicitud</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
@@ -147,7 +147,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--warning)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--warning)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>
+            <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
             <span class="eyebrow">Fecha límite</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
@@ -156,7 +156,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" [style.color]="getDiasRestantesColor()" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
             <span class="eyebrow">Días restantes</span>
           </div>
           <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
@@ -165,7 +165,7 @@
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--brand-700)"></span>
           <div class="flex items-center gap-2 mb-2">
-            <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 12a5 5 0 1 0-10 0v7h10v-7zm-5-8a4 4 0 0 0-4 4v4h8V8a4 4 0 0 0-4-4z" /></svg>
+            <svg lucideUser class="w-4 h-4" style="color: var(--brand-700)"></svg>
             <span class="eyebrow">Tipo</span>
           </div>
           <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
@@ -194,7 +194,7 @@
             <div class="p-6 md:p-8 space-y-5 animate-fade-in">
               <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="'var(--brand-subtle)'" [style.border]="'1px solid var(--brand-200)'" [style.border-left]="'3px solid ' + getRespuestaAccentColor()">
                 <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="getRespuestaAccentColor()">
-                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
+                  <svg lucideCheckCircle2 class="w-5 h-5 text-white"></svg>
                 </div>
                 <div class="flex-1">
                   <span class="eyebrow" [style.color]="getRespuestaAccentColor()">Resolución · {{ getTituloRespuesta() }}</span>

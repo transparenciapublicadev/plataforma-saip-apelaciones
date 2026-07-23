@@ -46,9 +46,24 @@ interface PlazoStatus {
   tone: Tone;
 }
 
+import {
+  LucideGavel, LucideCompass, LucideShieldAlert, LucideSparkles,
+  LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
+  LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
+  LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
+  LucideFileText, LucideAlertTriangle, LucideTrendingUp
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-ttaip-dashboard',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [
+    RouterLink, FormsModule, DatePipe,
+    LucideGavel, LucideCompass, LucideShieldAlert, LucideSparkles,
+    LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
+    LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
+    LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
+    LucideFileText, LucideAlertTriangle, LucideTrendingUp
+  ],
   templateUrl: './ttaip-dashboard.component.html',
   styleUrl: './ttaip-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

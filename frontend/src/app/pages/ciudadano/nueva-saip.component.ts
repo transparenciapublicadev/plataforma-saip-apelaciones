@@ -28,9 +28,18 @@ interface SesionVisual {
   email: string;
 }
 
+import {
+  LucideArrowLeft, LucideShieldAlert, LucideCheckCircle2, LucideSend,
+  LucideFileText, LucideXCircle, LucideInfo
+} from '@lucide/angular';
+
 @Component({
   selector: 'app-nueva-saip',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    LucideArrowLeft, LucideShieldAlert, LucideCheckCircle2, LucideSend,
+    LucideFileText, LucideXCircle, LucideInfo
+  ],
   templateUrl: './nueva-saip.component.html',
   styleUrl: './nueva-saip.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
