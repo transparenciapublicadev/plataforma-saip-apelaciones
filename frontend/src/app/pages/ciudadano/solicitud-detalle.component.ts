@@ -25,13 +25,13 @@ interface TimelineEvent {
   icon: 'mail' | 'search' | 'check';
 }
 
-import { LucideArrowLeft } from '@lucide/angular';
+import { LucideArrowLeft, LucideLock } from '@lucide/angular';
 
 @Component({
   selector: 'app-solicitud-detalle',
   imports: [
     CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent,
-    LucideArrowLeft
+    LucideArrowLeft, LucideLock
   ],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
@@ -222,6 +222,16 @@ export class SolicitudDetalleComponent implements OnInit {
     return this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null;
   }
 
+  esSubsanacionObservacionVencida(obs: ObservacionSolicitud | null): boolean {
+    if (!obs || !obs.fechaLimiteSubsanacion) return false;
+    try {
+      const fechaLimite = new Date(obs.fechaLimiteSubsanacion);
+      return new Date().getTime() > fechaLimite.getTime();
+    } catch {
+      return false;
+    }
+  }
+
   ampliaciones(): AmpliacionPlazoSolicitud[] {
     return this.solicitud()?.ampliacionesPlazo || [];
   }
@@ -254,6 +264,10 @@ export class SolicitudDetalleComponent implements OnInit {
     const documento = this.subsanacionDocumentoNombre().trim();
 
     if (!sol || !observacion) {
+      return;
+    }
+    if (this.esSubsanacionObservacionVencida(observacion)) {
+      this.subsanacionError.set('El plazo legal de subsanación ha vencido.');
       return;
     }
     if (!comentario && !documento) {
@@ -476,5 +490,17 @@ export class SolicitudDetalleComponent implements OnInit {
 
   showSubsanarAction(): boolean {
     return this.solicitud()?.apelacion?.estado === 'EN_SUBSANACION';
+  }
+
+  esSubsanacionApelacionVencida(apelacion: any): boolean {
+    if (!apelacion || apelacion.estado !== 'EN_SUBSANACION') return false;
+    const fechaNotif = apelacion.fechaSubsanacion || apelacion.fechaNotificacion || apelacion.fechaApelacion || apelacion.createdAt;
+    if (!fechaNotif) return false;
+
+    const notifDate = new Date(fechaNotif);
+    const hoy = new Date();
+    const diffMs = hoy.getTime() - notifDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays >= 2;
   }
 }

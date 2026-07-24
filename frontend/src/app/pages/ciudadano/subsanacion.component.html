@@ -60,6 +60,19 @@
         </div>
       </div>
 
+      @if (esSubsanacionVencida()) {
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(239,68,68,0.08); border: 1px solid var(--destructive); border-left: 4px solid var(--destructive)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <div class="flex-1">
+            <span class="eyebrow" style="color: var(--destructive)">Subsanación Vencida</span>
+            <p class="text-sm font-semibold text-foreground/90 mt-1">El plazo legal de 2 días hábiles para subsanar ha vencido. No es posible enviar observaciones.</p>
+            <p class="text-xs text-muted-foreground mt-1">La apelación no fue subsanada dentro del plazo legal y se resolverá como <span class="font-semibold">TENER POR NO PRESENTADO</span>.</p>
+          </div>
+        </div>
+      }
+
       @if (error()) {
         <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
           <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
@@ -215,7 +228,7 @@
               type="button"
               class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               (click)="abrirConfirmacionSubsanacion()"
-              [disabled]="loading() || !fundamentosAdicionales.trim()">
+              [disabled]="loading() || esSubsanacionVencida() || !fundamentosAdicionales.trim()">
               @if (loading()) {
                 <span class="inline-flex items-center gap-2">
                   <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>

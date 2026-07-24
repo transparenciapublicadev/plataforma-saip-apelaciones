@@ -106,17 +106,31 @@
       }
 
       @if (observacionPendiente(); as observacion) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M5 19h14L12 5 5 19z" /></svg>
+        @if (esSubsanacionObservacionVencida(observacion)) {
+          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(239,68,68,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--destructive)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
+              <svg lucideLock class="w-5 h-5 text-white"></svg>
+            </div>
+            <div class="flex-1">
+              <span class="eyebrow" style="color: var(--destructive)">Subsanación Vencida</span>
+              <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+                El plazo legal de 2 días hábiles para responder observaciones ha vencido (<span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>).
+              </p>
+            </div>
           </div>
-          <div class="flex-1">
-            <span class="eyebrow" style="color: var(--warning)">Subsanación requerida · 2 días hábiles</span>
-            <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-              La entidad observó su SAIP. Debe subsanar hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>.
-            </p>
+        } @else {
+          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01M5 19h14L12 5 5 19z" /></svg>
+            </div>
+            <div class="flex-1">
+              <span class="eyebrow" style="color: var(--warning)">Subsanación requerida · 2 días hábiles</span>
+              <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+                La entidad observó su SAIP. Debe subsanar hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>.
+              </p>
+            </div>
           </div>
-        </div>
+        }
       }
 
       @if (ampliacionActiva(); as ampliacion) {
@@ -327,40 +341,47 @@
                     <div class="rule-ornament"></div>
 
                     <div class="space-y-3">
-                      <label class="field">
-                        <span class="field-label">Comentario de subsanación</span>
-                        <textarea
-                          class="field-input"
-                          rows="5"
-                          [ngModel]="subsanacionComentario()"
-                          (ngModelChange)="subsanacionComentario.set($event)"
-                          placeholder="Precise o corrija la información observada..."></textarea>
-                      </label>
+                      @if (esSubsanacionObservacionVencida(observacion)) {
+                        <div class="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 font-medium text-xs px-3 py-2.5 rounded-lg inline-flex items-center gap-1.5 w-full justify-center">
+                          <svg lucideLock class="w-4 h-4 text-slate-400"></svg>
+                          <span>Plazo legal de subsanación vencido</span>
+                        </div>
+                      } @else {
+                        <label class="field">
+                          <span class="field-label">Comentario de subsanación</span>
+                          <textarea
+                            class="field-input"
+                            rows="5"
+                            [ngModel]="subsanacionComentario()"
+                            (ngModelChange)="subsanacionComentario.set($event)"
+                            placeholder="Precise o corrija la información observada..."></textarea>
+                        </label>
 
-                      <label class="field">
-                        <span class="field-label">Documento o referencia</span>
-                        <input
-                          class="field-input"
-                          type="text"
-                          [ngModel]="subsanacionDocumentoNombre()"
-                          (ngModelChange)="subsanacionDocumentoNombre.set($event)"
-                          placeholder="Ej. subsanacion-saip.pdf" />
-                      </label>
+                        <label class="field">
+                          <span class="field-label">Documento o referencia</span>
+                          <input
+                            class="field-input"
+                            type="text"
+                            [ngModel]="subsanacionDocumentoNombre()"
+                            (ngModelChange)="subsanacionDocumentoNombre.set($event)"
+                            placeholder="Ej. subsanacion-saip.pdf" />
+                        </label>
 
-                      @if (subsanacionError()) {
-                        <p class="text-sm" style="color: var(--destructive)">{{ subsanacionError() }}</p>
-                      }
-                      @if (subsanacionSuccess()) {
-                        <p class="text-sm" style="color: var(--success)">{{ subsanacionSuccess() }}</p>
-                      }
-
-                      <button type="button" class="btn-brand !px-5 !py-3" [disabled]="subsanacionLoading()" (click)="subsanarObservacion()">
-                        @if (subsanacionLoading()) {
-                          Enviando...
-                        } @else {
-                          Enviar subsanación
+                        @if (subsanacionError()) {
+                          <p class="text-sm" style="color: var(--destructive)">{{ subsanacionError() }}</p>
                         }
-                      </button>
+                        @if (subsanacionSuccess()) {
+                          <p class="text-sm" style="color: var(--success)">{{ subsanacionSuccess() }}</p>
+                        }
+
+                        <button type="button" class="btn-brand !px-5 !py-3" [disabled]="subsanacionLoading()" (click)="subsanarObservacion()">
+                          @if (subsanacionLoading()) {
+                            Enviando...
+                          } @else {
+                            Enviar subsanación
+                          }
+                        </button>
+                      }
                     </div>
                   </div>
                 }
@@ -647,12 +668,26 @@
                     <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
                       <div class="flex items-center gap-3 flex-wrap">
                         <span class="code-chip" style="font-size: 12px">{{ sol.apelacion.expediente }}</span>
-                        <span [class]="getApelacionEstadoClass(sol.apelacion.estado || '')">{{ getEstadoDisplay(sol.apelacion.estado) }}</span>
+                        @if (esSubsanacionApelacionVencida(sol.apelacion)) {
+                          <span class="bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800 font-semibold text-xs px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400"></span>
+                            <span>TENER POR NO PRESENTADO</span>
+                          </span>
+                        } @else {
+                          <span [class]="getApelacionEstadoClass(sol.apelacion.estado || '')">{{ getEstadoDisplay(sol.apelacion.estado) }}</span>
+                        }
                       </div>
                       @if (showSubsanarAction()) {
-                        <a [routerLink]="['/ciudadano/subsanacion', sol.apelacion.expediente]" class="btn-brand !py-2 !px-4 !text-[13px]">
-                          Subsanar ahora
-                        </a>
+                        @if (esSubsanacionApelacionVencida(sol.apelacion)) {
+                          <div class="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 font-medium text-xs px-3.5 py-2 rounded-lg inline-flex items-center gap-2 shadow-xs">
+                            <svg lucideLock class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500"></svg>
+                            <span>Plazo legal de subsanación vencido</span>
+                          </div>
+                        } @else {
+                          <a [routerLink]="['/ciudadano/subsanacion', sol.apelacion.expediente]" class="btn-brand !py-2 !px-4 !text-[13px]">
+                            Subsanar ahora
+                          </a>
+                        }
                       }
                     </div>
 
