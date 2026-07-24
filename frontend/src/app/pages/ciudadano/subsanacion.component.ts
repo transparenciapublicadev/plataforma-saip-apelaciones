@@ -313,9 +313,22 @@ export class SubsanacionComponent implements OnInit {
     this.router.navigate(['/ciudadano']);
   }
 
+  esSubsanacionVencida(): boolean {
+    const ap = this.apelacion();
+    if (!ap || !ap.fechaSubsanacion) return false;
+    const limite = this.getFechaLimite();
+    if (!limite) return false;
+    return new Date().getTime() > limite.getTime();
+  }
+
   private validarSubsanacion(): boolean {
     if (!this.apelacion()) {
       this.error.set('No se encontró la apelación para subsanar.');
+      return false;
+    }
+
+    if (this.esSubsanacionVencida()) {
+      this.error.set('El plazo legal de 2 días hábiles para subsanar ha vencido. No es posible enviar observaciones.');
       return false;
     }
 
