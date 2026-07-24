@@ -46,6 +46,7 @@ interface PlazoEntidadView {
 
 interface SubsanacionView {
   dias: number;
+  vencido: boolean;
   observaciones: string;
   expediente?: string;
 }
@@ -77,10 +78,10 @@ interface UbicacionTramite {
 
 import {
   LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
-  LucideAlertTriangle, LucideChevronRight,
+  LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock
 } from '@lucide/angular';
 
 @Component({
@@ -88,10 +89,10 @@ import {
   imports: [
     RouterLink, FormsModule, DatePipe,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
-    LucideAlertTriangle, LucideChevronRight,
+    LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
@@ -149,19 +150,6 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   todasSolicitudes = signal<Solicitud[]>([]);
   apelaciones = signal<Apelacion[]>([]);
-  apelacionesSubsanacion = signal<Apelacion[]>([]);
-
-  readonly apelacionesSubsanacionFiltradas = computed(() => {
-    const principal = this.solicitudPrincipal();
-    const list = this.apelacionesSubsanacion();
-    
-    // Si hay una solicitud seleccionada y su apelación está en subsanación,
-    // la filtramos de la lista global de alertas superiores para evitar la duplicidad
-    if (principal && (principal.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION') {
-      return list.filter((a) => a.id !== principal.apelacion?.id);
-    }
-    return list;
-  });
 
   loading = signal<boolean>(true);
   error = signal<string>('');
@@ -239,7 +227,16 @@ export class CiudadanoDashboardComponent implements OnInit {
     return this.todasSolicitudes().filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'RESPONDIDA');
   });
 
-  readonly accionPrincipal = computed(() => this.construirAccionPrincipal(this.solicitudPrincipal()));
+  readonly accionPrincipal = computed(() => {
+    const principalAction = this.construirAccionPrincipal(this.solicitudPrincipal());
+    if (principalAction) return principalAction;
+
+    for (const solicitud of this.todasSolicitudes()) {
+      const action = this.construirAccionPrincipal(solicitud);
+      if (action) return action;
+    }
+    return null;
+  });
   readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
   readonly timelineDisplaySteps = computed(() => this.timelinePrincipal().slice(0, 5));
 
@@ -290,8 +287,10 @@ export class CiudadanoDashboardComponent implements OnInit {
     const solicitud = this.solicitudPrincipal();
     if (!solicitud || (solicitud.apelacion?.estado || '').toUpperCase() !== 'EN_SUBSANACION') return null;
 
+    const rawDias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
     return {
-      dias: Math.max(this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud), 0),
+      dias: Math.max(rawDias, 0),
+      vencido: rawDias < 0,
       observaciones: solicitud.apelacion?.resultado || 'observaciones',
       expediente: solicitud.apelacion?.expediente
     };
@@ -466,7 +465,6 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.apelacionService.findByCiudadanoId(ciudadanoId).subscribe({
       next: (data) => {
         this.apelaciones.set(data);
-        this.apelacionesSubsanacion.set(data.filter((apelacion) => apelacion.estado === 'EN_SUBSANACION'));
       },
       error: (err) => {
         console.error('Error al cargar apelaciones:', err);
@@ -596,6 +594,14 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.router.navigate(['/ciudadano/nueva-apelacion'], {
       queryParams: { solicitudId: solicitud.id }
     });
+  }
+
+  esSubsanacionVencida(solicitud: Solicitud | null): boolean {
+    if (!solicitud) return false;
+    if ((solicitud.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION') {
+      return this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud) < 0;
+    }
+    return false;
   }
 
   get isFirstVisit(): boolean {
@@ -729,18 +735,6 @@ export class CiudadanoDashboardComponent implements OnInit {
     return estado.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (value) => value.toUpperCase());
   }
 
-  calcularDiasRestantesSubsanacion(apelacion: Apelacion): number {
-    if (!apelacion.fechaSubsanacion || !apelacion.diasSubsanacion) return 0;
-
-    const fechaSubsanacion = this.parseFecha(apelacion.fechaSubsanacion);
-    if (!fechaSubsanacion) return 0;
-
-    const fechaLimite = new Date(fechaSubsanacion);
-    fechaLimite.setDate(fechaLimite.getDate() + apelacion.diasSubsanacion);
-
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  }
-
   esSilencioAdministrativo(solicitud: Solicitud): boolean {
     return isSilencioAdministrativo(solicitud);
   }
@@ -767,13 +761,17 @@ export class CiudadanoDashboardComponent implements OnInit {
 
     if (estadoApelacion === 'EN_SUBSANACION' && solicitud.apelacion?.expediente) {
       const diasSubsanacion = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
+      if (diasSubsanacion <= 0) {
+        // Expired subsanación cannot be acted upon today -> do not display in "Lo que debe hacer hoy"
+        return null;
+      }
       return {
         eyebrow: 'Tarea urgente - vence pronto',
         titulo: 'Complete los documentos del Tribunal',
-        detalle: 'Su apelacion requiere subsanacion. Si no corrige las observaciones dentro del plazo, su recurso quedara sin efecto.',
-        metricValue: `${Math.max(diasSubsanacion, 0)}`,
-        metricUnit: 'dias habiles',
-        ctaLabel: 'Completar subsanacion',
+        detalle: 'Su apelación requiere subsanación. Si no corrige las observaciones dentro del plazo, su recurso quedará sin efecto.',
+        metricValue: `${diasSubsanacion}`,
+        metricUnit: 'días hábiles',
+        ctaLabel: 'Completar subsanación',
         route: ['/ciudadano/subsanacion', solicitud.apelacion.expediente],
         icon: 'alert',
         toneColor: 'var(--brand-700)',

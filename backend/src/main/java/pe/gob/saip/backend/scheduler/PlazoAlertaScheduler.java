@@ -24,6 +24,8 @@ public class PlazoAlertaScheduler {
     private final SolicitudRepository solicitudRepository;
     private final PlazoCalculadorService plazoCalculadorService;
     private final MotorNotificacionesService motorNotificacionesService;
+    private final pe.gob.saip.backend.service.SolicitudService solicitudService;
+    private final pe.gob.saip.backend.repository.ApelacionRepository apelacionRepository;
 
     /**
      * Tarea programada para ejecutarse todas las mañanas a las 6:00 AM.
@@ -90,5 +92,44 @@ public class PlazoAlertaScheduler {
         }
 
         log.info("Auditoría diaria de plazos legales SAIP finalizada con éxito.");
+    }
+
+    /**
+     * Tarea programada a la 1:00 AM para procesar subsanaciones vencidas
+     * tanto en SAIP (1ª instancia) como en TTAIP Apelaciones (2ª instancia).
+     */
+    @Scheduled(cron = "0 0 1 * * *")
+    @Transactional
+    public void procesarSubsanacionesVencidasDiarias() {
+        log.info("Iniciando procesamiento diario de subsanaciones vencidas...");
+
+        // 1. Procesar observaciones SAIP vencidas
+        try {
+            List<pe.gob.saip.backend.model.entity.ObservacionSolicitud> obsVencidas = solicitudService.procesarObservacionesVencidas();
+            log.info("Se procesaron {} observaciones SAIP vencidas.", obsVencidas.size());
+        } catch (Exception e) {
+            log.error("Error al procesar observaciones SAIP vencidas: {}", e.getMessage(), e);
+        }
+
+        // 2. Procesar subsanaciones TTAIP vencidas -> TENER_POR_NO_PRESENTADO
+        try {
+            List<pe.gob.saip.backend.model.entity.Apelacion> apelacionesSubsanacion = apelacionRepository.findByEstadoOrderByFechaApelacionDesc(pe.gob.saip.backend.model.entity.Apelacion.EstadoApelacion.EN_SUBSANACION);
+            int countTtaip = 0;
+            for (pe.gob.saip.backend.model.entity.Apelacion apelacion : apelacionesSubsanacion) {
+                if (apelacion.getFechaSubsanacion() != null) {
+                    int dias = apelacion.getDiasSubsanacion() != null ? apelacion.getDiasSubsanacion() : 2;
+                    LocalDate limite = pe.gob.saip.backend.util.DiasHabilesUtil.sumarDiasHabiles(apelacion.getFechaSubsanacion(), dias);
+                    if (LocalDate.now().isAfter(limite)) {
+                        apelacion.setEstado(pe.gob.saip.backend.model.entity.Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO);
+                        apelacion.setResultado("TENER_POR_NO_PRESENTADO");
+                        apelacionRepository.save(apelacion);
+                        countTtaip++;
+                    }
+                }
+            }
+            log.info("Se procesaron {} apelaciones TTAIP vencidas a TENER_POR_NO_PRESENTADO.", countTtaip);
+        } catch (Exception e) {
+            log.error("Error al procesar subsanaciones TTAIP vencidas: {}", e.getMessage(), e);
+        }
     }
 }

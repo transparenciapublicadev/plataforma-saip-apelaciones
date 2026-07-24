@@ -371,6 +371,18 @@ public class ApelacionRestController {
             throw new IllegalArgumentException("La apelación no está en estado de espera de subsanación");
         }
 
+        if (apelacion.getFechaSubsanacion() != null) {
+            int diasSubsanacion = apelacion.getDiasSubsanacion() != null ? apelacion.getDiasSubsanacion() : 2;
+            java.time.LocalDate fechaNotificacion = apelacion.getFechaSubsanacion();
+            java.time.LocalDate fechaLimite = pe.gob.saip.backend.util.DiasHabilesUtil.sumarDiasHabiles(fechaNotificacion, diasSubsanacion);
+            if (java.time.LocalDate.now().isAfter(fechaLimite)) {
+                apelacion.setEstado(Apelacion.EstadoApelacion.TENER_POR_NO_PRESENTADO);
+                apelacion.setResultado("TENER_POR_NO_PRESENTADO");
+                apelacionService.save(apelacion);
+                throw new IllegalArgumentException("El plazo de 2 días hábiles para subsanar la apelación ha vencido. Se resuelve como tener por no presentado.");
+            }
+        }
+
         String fundamentosAdicionales = body.get("fundamentosAdicionales");
         if (fundamentosAdicionales == null || fundamentosAdicionales.trim().isEmpty()) {
             throw new IllegalArgumentException("Los fundamentos adicionales son obligatorios");
