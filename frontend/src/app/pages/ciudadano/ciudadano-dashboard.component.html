@@ -424,11 +424,14 @@
                   <svg lucideFileText class="w-4 h-4"></svg>
                   Ver expediente completo
                 </a>
-                @if ((principal.estado === 'DENEGADA' || principal.estado === 'VENCIDA') && !principal.apelacion) {
-                  <a [routerLink]="['/ciudadano/nueva-apelacion']" [queryParams]="{ solicitudId: principal.id }" class="btn-ghost-brand inline-flex items-center gap-2">
+                @if (esSolicitudAtendida(principal)) {
+                  <button type="button"
+                    (click)="apelarSolicitud(principal)"
+                    class="btn-brand inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
+                    title="Impugnar respuesta de la entidad ante el Tribunal de Transparencia">
                     <svg lucideScale class="w-4 h-4"></svg>
-                    Presentar apelacion
-                  </a>
+                    <span>Apelar al Tribunal</span>
+                  </button>
                 }
               </div>
             </div>
