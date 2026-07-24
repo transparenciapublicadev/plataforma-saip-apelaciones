@@ -70,11 +70,17 @@
                 (click)="stage.count > 0 && selectStage(stage.key)"
                 [disabled]="stage.count === 0"
                 [attr.aria-pressed]="selectedStageKey() === stage.key"
-                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group disabled:cursor-default enabled:hover:-translate-y-0.5"
-                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : 'var(--card)'"
+                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group"
+                [class.opacity-50]="stage.count === 0"
+                [class.pointer-events-none]="stage.count === 0"
+                [class.cursor-not-allowed]="stage.count === 0"
+                [class.border-dashed]="stage.count === 0"
+                [class.bg-slate-50\/40]="stage.count === 0"
+                [class.dark:bg-slate-900\/20]="stage.count === 0"
+                [class.hover:-translate-y-0.5]="stage.count > 0"
+                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : (stage.count === 0 ? 'transparent' : 'var(--card)')"
                 [style.border]="'1px solid ' + (selectedStageKey() === stage.key ? 'var(--brand-700)' : 'var(--border)')"
                 [style.box-shadow]="selectedStageKey() === stage.key ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
-                [style.opacity]="stage.count > 0 ? 1 : 0.6"
               >
                 @if (selectedStageKey() === stage.key) {
                   <span class="absolute top-0 left-0 right-0 h-[3px]" [style.background]="stage.color"></span>
@@ -87,6 +93,7 @@
                 <div class="flex items-start justify-between mb-1.5">
                   <span class="font-display font-mono text-[11px] tracking-widest" [style.color]="stage.color" style="letter-spacing: 0.05em">{{ stage.num }}</span>
                   @switch (stage.iconName) {
+                    @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
@@ -417,11 +424,14 @@
                   <svg lucideFileText class="w-4 h-4"></svg>
                   Ver expediente completo
                 </a>
-                @if ((principal.estado === 'DENEGADA' || principal.estado === 'VENCIDA') && !principal.apelacion) {
-                  <a [routerLink]="['/ciudadano/nueva-apelacion']" [queryParams]="{ solicitudId: principal.id }" class="btn-ghost-brand inline-flex items-center gap-2">
+                @if (esSolicitudAtendida(principal)) {
+                  <button type="button"
+                    (click)="apelarSolicitud(principal)"
+                    class="btn-brand inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
+                    title="Impugnar respuesta de la entidad ante el Tribunal de Transparencia">
                     <svg lucideScale class="w-4 h-4"></svg>
-                    Presentar apelacion
-                  </a>
+                    <span>Apelar al Tribunal</span>
+                  </button>
                 }
               </div>
             </div>
@@ -434,6 +444,7 @@
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (selectedStageMeta().iconName) {
+                  @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
@@ -465,6 +476,7 @@
               <div class="p-10 text-center">
                 <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--muted); border: 1px solid var(--border)">
                   @switch (selectedStageMeta().iconName) {
+                    @case ('layers') { <svg lucideLayers class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('scale') { <svg lucideScale class="w-5 h-5 text-muted-foreground"></svg> }
@@ -491,6 +503,7 @@
                       class="flex-1 min-w-0 p-3 flex items-center gap-3 text-left rounded-l-md hover:bg-[color:var(--brand-subtle)] transition-colors">
                       <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
                         @switch (selectedStageMeta().iconName) {
+                          @case ('layers') { <svg lucideLayers class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
                           @case ('hourglass') { <svg lucideHourglass class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
                           @case ('mailCheck') { <svg lucideMailCheck class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
                           @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }

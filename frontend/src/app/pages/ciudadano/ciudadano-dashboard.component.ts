@@ -59,7 +59,7 @@ interface GuideStep {
 }
 
 interface PipelineStage {
-  key: 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas';
+  key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas';
   num: string;
   iconName: string;
   color: string;
@@ -80,7 +80,7 @@ import {
   LucideAlertTriangle, LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers
 } from '@lucide/angular';
 
 @Component({
@@ -91,7 +91,7 @@ import {
     LucideAlertTriangle, LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
@@ -187,7 +187,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   accionResaltada = signal<boolean>(false);
 
   // Pipeline state
-  selectedStageKey = signal<'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('proceso');
+  selectedStageKey = signal<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'>('todas');
   stageSearch = signal<string>('');
   stagePage = signal<number>(1);
   readonly PER_PAGE = 4;
@@ -312,29 +312,29 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly stageBuckets = computed(() => {
     const all = this.todasSolicitudes();
     return {
-      proceso: all.filter(s => this.estadosEnProceso.has((s.estado || '').toUpperCase())),
+      todas: all,
+      proceso: all.filter(s => {
+        const estado = (s.estado || '').toUpperCase();
+        return (this.estadosEnProceso.has(estado) || estado === 'PENDIENTE' || estado === 'EN_TRAMITE' || estado === 'RECEPCIONADA' || estado === 'EN_PROCESO') && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      }),
       respondidas: all.filter(s => {
         const estado = (s.estado || '').toUpperCase();
-        const esRespondida = estado === 'RESPONDIDA' || estado === 'CON_RESPUESTA' || estado === 'ENTREGADA' || estado === 'ATENDIDA' || estado === 'FINALIZADA' || estado === 'RESUELTA';
+        const esRespondida = estado === 'RESPONDIDA' || estado === 'CON_RESPUESTA' || estado === 'ENTREGADA' || estado === 'PUEDE_APELAR' || estado === 'OBSERVADA' || estado === 'ATENDIDA' || estado === 'FINALIZADA' || estado === 'RESUELTA' || estado === 'DENEGADA' || estado === 'VENCIDA';
         return esRespondida && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
       }),
-      apelar: all.filter(s => {
-        const estado = (s.estado || '').toUpperCase();
-        return (estado === 'DENEGADA' || estado === 'VENCIDA') && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
-      }),
-      tribunal: all.filter(s => this.tieneApelacionActiva(s)),
-      resueltas: all.filter(s => this.esApelacionResuelta(s)),
+      tribunal: all.filter(s => this.tieneApelacionActiva(s) || (s.apelacion?.estado && ['EN_REVISION_TTAIP', 'APELADA', 'EN_CALIFICACION', 'SUBSANACION', 'EN_PROCESO_TTAIP', 'PENDIENTE_ELEVACION', 'EN_CALIFICACION_1', 'EN_SUBSANACION', 'EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION', 'EN_RESOLUCION'].includes((s.apelacion.estado).toUpperCase()))),
+      resueltas: all.filter(s => this.esApelacionResuelta(s) || (s.apelacion?.estado && ['RESUELTA_TTAIP', 'FUNDADA', 'INFUNDADA', 'IMPROCEDENTE', 'CONCLUIDA'].includes((s.apelacion.estado).toUpperCase()))),
     };
   });
 
   readonly pipeline = computed<PipelineStage[]>(() => {
     const b = this.stageBuckets();
     return [
-      { key: 'proceso', num: '01', iconName: 'hourglass', color: 'var(--info)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: b.proceso.length },
-      { key: 'respondidas', num: '02', iconName: 'mailCheck', color: 'var(--success)', label: 'Respondida por la entidad', desc: 'La entidad ya entregó su respuesta', count: b.respondidas.length },
-      { key: 'apelar', num: '03', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'Puede apelar al Tribunal', desc: 'Si no está conforme, puede llevar su caso al Tribunal', count: b.apelar.length },
-      { key: 'tribunal', num: '04', iconName: 'gavel', color: 'var(--brand-700)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: b.tribunal.length },
-      { key: 'resueltas', num: '05', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal ya emitió el fallo final', count: b.resueltas.length },
+      { key: 'todas', num: '00', iconName: 'layers', color: 'var(--brand-700)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: b.todas.length },
+      { key: 'proceso', num: '01', iconName: 'hourglass', color: 'var(--info)', label: 'SAIP pendiente de atención', desc: 'La entidad pública aún está dentro del plazo legal', count: b.proceso.length },
+      { key: 'respondidas', num: '02', iconName: 'mailCheck', color: 'var(--success)', label: 'SAIP atendidas', desc: 'La entidad entregó respuesta oficial (revisar o apelar)', count: b.respondidas.length },
+      { key: 'tribunal', num: '03', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'En revisión del Tribunal', desc: 'Su recurso de apelación está en evaluación por el TTAIP', count: b.tribunal.length },
+      { key: 'resueltas', num: '04', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal emitió resolución o fallo final firme', count: b.resueltas.length },
     ];
   });
 
@@ -365,7 +365,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly tourSteps = computed<TourStep[]>(() => {
     const s: TourStep[] = [
       { selector: '[data-tour="nueva"]', title: 'Pedir información', body: 'Aquí presenta una nueva solicitud de acceso a la información (SAIP). Es su punto de partida en la 1ª instancia, ante la entidad pública.' },
-      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: en proceso, respondidas, por apelar, en el Tribunal y con fallo final. Toque una etapa para filtrar la lista de abajo.' },
+      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: Todas, SAIP pendientes, SAIP atendidas, En revisión del Tribunal y Resuelta por el Tribunal. Toque una etapa para filtrar la lista de abajo.' },
       { selector: '[data-tour="buscar"]', title: 'Buscador de expedientes', body: 'Localice de inmediato cualquier solicitud o apelación escribiendo el código de expediente, entidad o palabra clave.' },
     ];
     if (this.accionPrincipal()) {
@@ -429,7 +429,7 @@ export class CiudadanoDashboardComponent implements OnInit {
         this.calcularEstadisticas(data);
 
         // Auto-select initial pipeline stage
-        const stageOrder: Array<'proceso' | 'apelar' | 'tribunal' | 'respondidas' | 'resueltas'> = ['proceso', 'apelar', 'tribunal', 'respondidas', 'resueltas'];
+        const stageOrder: Array<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'> = ['todas', 'proceso', 'respondidas', 'tribunal', 'resueltas'];
         const buckets = this.stageBuckets();
         const initialStage = stageOrder.find(k => buckets[k].length > 0);
         if (initialStage) this.selectedStageKey.set(initialStage);
@@ -571,6 +571,33 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.enfocarSolicitud(solicitudId);
   }
 
+  esSolicitudAtendida(solicitud: Solicitud | null): boolean {
+    if (!solicitud || solicitud.apelacion) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    const estadosAtendidas = new Set([
+      'RESPONDIDA',
+      'CON_RESPUESTA',
+      'ENTREGADA',
+      'DENEGADA',
+      'ENTREGA_PARCIAL',
+      'ENTREGA_TOTAL',
+      'PUEDE_APELAR',
+      'OBSERVADA',
+      'VENCIDA',
+      'ATENDIDA',
+      'FINALIZADA',
+      'RESUELTA'
+    ]);
+    return estadosAtendidas.has(estado);
+  }
+
+  apelarSolicitud(solicitud: Solicitud): void {
+    if (!solicitud) return;
+    this.router.navigate(['/ciudadano/nueva-apelacion'], {
+      queryParams: { solicitudId: solicitud.id }
+    });
+  }
+
   get isFirstVisit(): boolean {
     return this.tourService.isFirstVisit('saip_tour_done');
   }
@@ -592,7 +619,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   // ── Pipeline methods ────────────────────────────────────────────
-  selectStage(key: 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'): void {
+  selectStage(key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'): void {
     this.selectedStageKey.set(key);
     this.stageSearch.set('');
     this.stagePage.set(1);
