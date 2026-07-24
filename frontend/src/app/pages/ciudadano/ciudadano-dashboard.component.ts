@@ -571,6 +571,33 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.enfocarSolicitud(solicitudId);
   }
 
+  esSolicitudAtendida(solicitud: Solicitud | null): boolean {
+    if (!solicitud || solicitud.apelacion) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    const estadosAtendidas = new Set([
+      'RESPONDIDA',
+      'CON_RESPUESTA',
+      'ENTREGADA',
+      'DENEGADA',
+      'ENTREGA_PARCIAL',
+      'ENTREGA_TOTAL',
+      'PUEDE_APELAR',
+      'OBSERVADA',
+      'VENCIDA',
+      'ATENDIDA',
+      'FINALIZADA',
+      'RESUELTA'
+    ]);
+    return estadosAtendidas.has(estado);
+  }
+
+  apelarSolicitud(solicitud: Solicitud): void {
+    if (!solicitud) return;
+    this.router.navigate(['/ciudadano/nueva-apelacion'], {
+      queryParams: { solicitudId: solicitud.id }
+    });
+  }
+
   get isFirstVisit(): boolean {
     return this.tourService.isFirstVisit('saip_tour_done');
   }
