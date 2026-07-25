@@ -5,14 +5,40 @@
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
 
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <span class="eyebrow">Mi espacio ciudadano · Ley de Transparencia</span>
-      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mt-2">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="eyebrow !mb-0">Mi espacio ciudadano · Ley de Transparencia</span>
+        @if (tipoPersona() === 'JURIDICA') {
+          <span class="bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+            <svg lucideBuilding2 class="w-3 h-3"></svg> Persona Jurídica
+          </span>
+        } @else {
+          <span class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+            <svg lucideUser class="w-3 h-3"></svg> Persona Natural
+          </span>
+        }
+      </div>
+
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mt-1">
         <div>
-          <h1 class="font-display" style="font-size: clamp(32px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -0.025em">
-            Buenas tardes,
-            <span class="italic" style="color: var(--brand-700)">{{ nombrePila() }}</span>
+          <h1 class="font-display" style="font-size: clamp(30px, 3.4vw, 44px); line-height: 1.05; letter-spacing: -0.025em">
+            @if (tipoPersona() === 'JURIDICA') {
+              Bienvenido(a), <span class="italic text-brand-700 dark:text-brand-400">{{ razonSocial() || nombreUsuario() }}</span>
+            } @else {
+              Bienvenido(a), <span class="italic text-brand-700 dark:text-brand-400">{{ nombreCompleto() || nombreUsuario() }}</span>
+            }
           </h1>
-          <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl">{{ resumenActivasTexto() }}</p>
+          <div class="mt-2 text-xs font-mono text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
+            @if (tipoPersona() === 'JURIDICA') {
+              @if (ruc()) { <span><strong class="text-foreground font-semibold">RUC:</strong> {{ ruc() }}</span> }
+              @if (representanteNombreCompleto() || representanteDni()) {
+                <span class="opacity-40">·</span>
+                <span><strong class="text-foreground font-semibold">Rep. Legal:</strong> {{ representanteNombreCompleto() || representanteDni() }}</span>
+              }
+            } @else {
+              @if (dni()) { <span><strong class="text-foreground font-semibold">DNI:</strong> {{ dni() }}</span> }
+            }
+          </div>
+          <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl text-sm">{{ resumenActivasTexto() }}</p>
         </div>
         <div class="flex items-center gap-3 self-start md:self-auto">
           <button type="button" (click)="startTour()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap relative" title="Ver tutorial guiado">

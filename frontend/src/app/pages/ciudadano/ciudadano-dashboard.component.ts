@@ -81,7 +81,7 @@ import {
   LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
 } from '@lucide/angular';
 
 @Component({
@@ -92,7 +92,7 @@ import {
     LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
@@ -163,6 +163,14 @@ export class CiudadanoDashboardComponent implements OnInit {
   nombreUsuario = signal<string>('Usuario');
   ciudadanoId = signal<number>(0);
   tieneApelables = signal<boolean>(false);
+
+  tipoPersona = signal<'NATURAL' | 'JURIDICA'>('NATURAL');
+  dni = signal<string>('');
+  ruc = signal<string>('');
+  razonSocial = signal<string>('');
+  representanteDni = signal<string>('');
+  representanteNombreCompleto = signal<string>('');
+  nombreCompleto = signal<string>('');
 
   busqueda = '';
   busquedaEnfocada = signal<boolean>(false);
@@ -401,8 +409,15 @@ export class CiudadanoDashboardComponent implements OnInit {
   ngOnInit(): void {
     const sesion = this.authService.obtenerSesion();
     if (sesion) {
-      this.nombreUsuario.set(sesion.nombre || 'Usuario');
+      this.nombreUsuario.set(sesion.nombreCompleto || sesion.nombre || 'Usuario');
       this.ciudadanoId.set(sesion.ciudadanoId || 0);
+      this.tipoPersona.set(sesion.tipoPersona || 'NATURAL');
+      this.dni.set(sesion.dni || '');
+      this.ruc.set(sesion.ruc || '');
+      this.razonSocial.set(sesion.razonSocial || '');
+      this.representanteDni.set(sesion.representanteDni || '');
+      this.representanteNombreCompleto.set(sesion.representanteNombreCompleto || '');
+      this.nombreCompleto.set(sesion.nombreCompleto || sesion.nombre || '');
       this.cargarDatos();
     }
   }

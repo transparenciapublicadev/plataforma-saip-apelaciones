@@ -9,30 +9,30 @@
           <svg lucideUserPlus class="w-5 h-5 text-white"></svg>
         </div>
         <div>
-          <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
+          <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP & APELACIONES</div>
           <div class="text-[10px] tracking-[0.22em] uppercase opacity-65">Registro de Ciudadano</div>
         </div>
       </div>
 
       <div class="max-w-lg">
-        <div class="eyebrow mb-4" style="color: var(--gold-soft); letter-spacing: 0.32em">Cree su cuenta</div>
+        <div class="eyebrow mb-4" style="color: var(--gold-soft); letter-spacing: 0.32em">Plataforma Única Oficial</div>
         <h1 class="font-display text-balance" style="font-size: clamp(36px, 4vw, 52px); line-height: 1.04; letter-spacing: -0.025em">
-          Acceso a la información,
+          Acceso a la Información Pública,
           <span class="block italic" style="color: var(--gold-soft)">derecho de todos.</span>
         </h1>
         <div class="mt-8 mb-8 h-[1.5px] w-20" style="background: var(--gold-soft)"></div>
         <p class="text-white/75 leading-relaxed" style="font-size: 16px">
-          Cree una cuenta para presentar solicitudes SAIP, dar seguimiento a sus expedientes y apelar ante el Tribunal cuando su derecho sea denegado.
+          Cree su cuenta como Persona Natural o Persona Jurídica para registrar solicitudes SAIP, hacer seguimiento a sus expedientes y apelar ante el Tribunal de Transparencia (TTAIP).
         </p>
       </div>
 
       <div class="flex items-center gap-6 text-xs text-white/55">
         <div class="flex items-center gap-1.5">
           <svg lucideShield class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
-          Ley 29733
+          Ley N.° 29733 & Ley N.° 27806
         </div>
         <div class="opacity-40">·</div>
-        <div>Datos cifrados</div>
+        <div>Domicilio Legal Validado</div>
         <div class="opacity-40">·</div>
         <div>WCAG 2.1 AA</div>
       </div>
@@ -40,28 +40,55 @@
   </div>
 
   <!-- Form panel -->
-  <div class="relative flex items-center justify-center px-6 py-16 lg:py-12 bg-paper">
-    <div class="w-full max-w-md hero-animate">
-      <button (click)="navigateToHome()" class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-8 transition-colors cursor-pointer">
+  <div class="relative flex items-center justify-center px-6 py-12 lg:py-10 bg-paper overflow-y-auto">
+    <div class="w-full max-w-xl hero-animate">
+      <button (click)="navigateToHome()" class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-6 transition-colors cursor-pointer">
         <svg lucideArrowLeft class="w-4 h-4"></svg> Volver al inicio
       </button>
 
-      <div class="mb-7">
-        <span class="eyebrow">Crear cuenta · Ciudadano</span>
-        <h2 class="font-display mt-2" style="font-size: 34px; line-height: 1.1; letter-spacing: -0.02em">Regístrese</h2>
-        <p class="mt-2 text-sm" style="color: var(--muted-foreground)">Complete sus datos en dos breves pasos.</p>
+      <div class="mb-6">
+        <span class="eyebrow">Plataforma SAIP · Registro Único</span>
+        <h2 class="font-display mt-1.5" style="font-size: 32px; line-height: 1.1; letter-spacing: -0.02em">Regístrese en el sistema</h2>
+        <p class="mt-1 text-sm" style="color: var(--muted-foreground)">Complete sus datos en 3 breves pasos.</p>
       </div>
 
-      <!-- Step indicator -->
+      <!-- 3-Step Progress Indicator -->
       <div class="flex items-center gap-2 mb-7">
+        <!-- Step 1 -->
         <div class="flex-1 flex items-center gap-2">
-          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">01</span>
-          <div class="flex-1 h-[3px] rounded-full" [style.background]="currentStep() >= 1 ? 'var(--brand-600)' : 'var(--border)'"></div>
+          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">01</span>
+          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 1 ? 'var(--brand-600)' : 'var(--border)'"></div>
         </div>
+        <!-- Step 2 -->
         <div class="flex-1 flex items-center gap-2">
-          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 2 ? 'var(--brand-700)' : 'var(--muted-foreground)'">02</span>
-          <div class="flex-1 h-[3px] rounded-full" [style.background]="currentStep() >= 2 ? 'var(--brand-600)' : 'var(--border)'"></div>
+          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 2 ? 'var(--brand-700)' : 'var(--muted-foreground)'">02</span>
+          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 2 ? 'var(--brand-600)' : 'var(--border)'"></div>
         </div>
+        <!-- Step 3 -->
+        <div class="flex-1 flex items-center gap-2">
+          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 3 ? 'var(--brand-700)' : 'var(--muted-foreground)'">03</span>
+          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 3 ? 'var(--brand-600)' : 'var(--border)'"></div>
+        </div>
+      </div>
+
+      <!-- Step Labels Header -->
+      <div class="mb-5 pb-3 border-b border-border flex items-center justify-between text-xs font-semibold text-foreground/80">
+        @if (currentStep() === 1) {
+          <span class="inline-flex items-center gap-2 text-brand-700 dark:text-brand-400">
+            <svg lucideUser class="w-4 h-4"></svg> Paso 1: Identificación y Tipo de Persona
+          </span>
+        }
+        @if (currentStep() === 2) {
+          <span class="inline-flex items-center gap-2 text-brand-700 dark:text-brand-400">
+            <svg lucideMapPin class="w-4 h-4"></svg> Paso 2: Domicilio Legal Estructurado
+          </span>
+        }
+        @if (currentStep() === 3) {
+          <span class="inline-flex items-center gap-2 text-brand-700 dark:text-brand-400">
+            <svg lucideLock class="w-4 h-4"></svg> Paso 3: Credenciales & Términos Legales
+          </span>
+        }
+        <span class="font-mono text-muted-foreground text-[11px]">Paso {{ currentStep() }} de 3</span>
       </div>
 
       <!-- Alerts -->
@@ -77,67 +104,338 @@
       }
 
       <form (ngSubmit)="registrar()" class="space-y-5">
-        <!-- Step 1 -->
+        <!-- ── STEP 1: IDENTIFICACIÓN Y TIPO DE PERSONA ────────────────────────── -->
         @if (currentStep() === 1) {
-          <div class="space-y-5">
+          <div class="space-y-5 animate-fade-in">
+            <!-- Segmented Control Toggle -->
             <div class="field">
-              <label class="field-label">DNI <span class="req">*</span></label>
-              <input class="field-input font-mono" placeholder="12345678" maxlength="8"
-                [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" />
-              @if (dni && dni.length === 8) {
-                <span class="field-hint inline-flex items-center gap-1" style="color: var(--success)">
-                  <svg lucideCheck class="w-3 h-3"></svg> DNI válido
-                </span>
-              }
-              @if (dni && dni.length > 0 && dni.length < 8) {
-                <span class="field-hint font-mono">{{ 8 - dni.length }} dígitos restantes</span>
-              }
-            </div>
-
-            <div class="field">
-              <label class="field-label">Nombres <span class="req">*</span></label>
-              <input class="field-input" placeholder="Juan Carlos" [(ngModel)]="nombres" name="nombres" />
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="field">
-                <label class="field-label">Apellido paterno <span class="req">*</span></label>
-                <input class="field-input" placeholder="Pérez" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" />
-              </div>
-              <div class="field">
-                <label class="field-label">Apellido materno <span class="req">*</span></label>
-                <input class="field-input" placeholder="García" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" />
+              <label class="field-label">Tipo de Persona <span class="req">*</span></label>
+              <div class="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <button type="button"
+                  (click)="setTipoPersona('NATURAL')"
+                  [class]="tipoPersona() === 'NATURAL'
+                    ? 'py-2.5 px-3 rounded-lg bg-white dark:bg-slate-900 text-brand-700 dark:text-white font-semibold text-xs shadow-xs inline-flex items-center justify-center gap-2 transition-all'
+                    : 'py-2.5 px-3 rounded-lg text-slate-600 dark:text-slate-400 font-medium text-xs hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-2 transition-all'">
+                  <svg lucideUser class="w-4 h-4"></svg>
+                  <span>Persona Natural</span>
+                </button>
+                <button type="button"
+                  (click)="setTipoPersona('JURIDICA')"
+                  [class]="tipoPersona() === 'JURIDICA'
+                    ? 'py-2.5 px-3 rounded-lg bg-white dark:bg-slate-900 text-brand-700 dark:text-white font-semibold text-xs shadow-xs inline-flex items-center justify-center gap-2 transition-all'
+                    : 'py-2.5 px-3 rounded-lg text-slate-600 dark:text-slate-400 font-medium text-xs hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-2 transition-all'">
+                  <svg lucideBuilding2 class="w-4 h-4"></svg>
+                  <span>Persona Jurídica (RUC)</span>
+                </button>
               </div>
             </div>
 
-            <button type="button" [disabled]="!step1Valid()" (click)="goToStep2()"
-              class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed" style="padding: 11px 16px">
-              Continuar <svg lucideArrowRight class="w-4 h-4"></svg>
+            <!-- Fields for Persona Natural -->
+            @if (tipoPersona() === 'NATURAL') {
+              <div class="field">
+                <label class="field-label">Documento de Identidad (DNI) <span class="req">*</span></label>
+                <input #dniCtrl="ngModel" class="field-input font-mono transition-colors"
+                  [ngClass]="getInputClasses(dniCtrl)"
+                  placeholder="12345678" maxlength="8"
+                  [ngModel]="dni" (ngModelChange)="onDniInput($event)" name="dni" required pattern="^\d{8}$" />
+                @if (dniCtrl.invalid && (dniCtrl.touched || dniCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ El DNI debe contener exactamente 8 dígitos numéricos.
+                  </span>
+                }
+              </div>
+
+              <div class="field">
+                <label class="field-label">Nombres <span class="req">*</span></label>
+                <input #nomCtrl="ngModel" class="field-input transition-colors"
+                  [ngClass]="getInputClasses(nomCtrl)"
+                  placeholder="Juan Carlos" [(ngModel)]="nombres" name="nombres" required pattern="^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\s-]+$" />
+                @if (nomCtrl.invalid && (nomCtrl.touched || nomCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    @if (nomCtrl.errors?.['required']) {
+                      ❌ Este campo es obligatorio.
+                    } @else {
+                      ❌ Solo se permiten letras, tildes y espacios (sin números ni símbolos).
+                    }
+                  </span>
+                }
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="field">
+                  <label class="field-label">Apellido Paterno <span class="req">*</span></label>
+                  <input #patCtrl="ngModel" class="field-input transition-colors"
+                    [ngClass]="getInputClasses(patCtrl)"
+                    placeholder="Pérez" [(ngModel)]="apellidoPaterno" name="apellidoPaterno" required pattern="^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\s-]+$" />
+                  @if (patCtrl.invalid && (patCtrl.touched || patCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      @if (patCtrl.errors?.['required']) {
+                        ❌ Este campo es obligatorio.
+                      } @else {
+                        ❌ Solo se permiten letras, tildes y espacios (sin números ni símbolos).
+                      }
+                    </span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field-label">Apellido Materno <span class="req">*</span></label>
+                  <input #matCtrl="ngModel" class="field-input transition-colors"
+                    [ngClass]="getInputClasses(matCtrl)"
+                    placeholder="García" [(ngModel)]="apellidoMaterno" name="apellidoMaterno" required pattern="^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\s-]+$" />
+                  @if (matCtrl.invalid && (matCtrl.touched || matCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      @if (matCtrl.errors?.['required']) {
+                        ❌ Este campo es obligatorio.
+                      } @else {
+                        ❌ Solo se permiten letras, tildes y espacios (sin números ni símbolos).
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Fields for Persona Jurídica -->
+            @if (tipoPersona() === 'JURIDICA') {
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="field">
+                  <label class="field-label">RUC (11 dígitos) <span class="req">*</span></label>
+                  <input #rucCtrl="ngModel" class="field-input font-mono transition-colors"
+                    [ngClass]="getInputClasses(rucCtrl)"
+                    placeholder="20123456789" maxlength="11"
+                    [ngModel]="ruc" (ngModelChange)="onRucInput($event)" name="ruc" required pattern="^\d{11}$" />
+                  @if (rucCtrl.invalid && (rucCtrl.touched || rucCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      ❌ El RUC debe contener exactamente 11 dígitos numéricos.
+                    </span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field-label">Razón Social <span class="req">*</span></label>
+                  <input #razonCtrl="ngModel" class="field-input transition-colors"
+                    [ngClass]="getInputClasses(razonCtrl)"
+                    placeholder="Constructora del Sur S.A.C." [(ngModel)]="razonSocial" name="razonSocial" required pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.\,-]+$" minlength="3" />
+                  @if (razonCtrl.invalid && (razonCtrl.touched || razonCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      @if (razonCtrl.errors?.['required']) {
+                        ❌ Este campo es obligatorio.
+                      } @else {
+                        ❌ Ingrese una Razón Social válida (mínimo 3 caracteres).
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="field">
+                  <label class="field-label">DNI Representante Legal <span class="req">*</span></label>
+                  <input #repDniCtrl="ngModel" class="field-input font-mono transition-colors"
+                    [ngClass]="getInputClasses(repDniCtrl)"
+                    placeholder="87654321" maxlength="8"
+                    [ngModel]="representanteDni" (ngModelChange)="onRepresentanteDniInput($event)" name="representanteDni" required pattern="^\d{8}$" />
+                  @if (repDniCtrl.invalid && (repDniCtrl.touched || repDniCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      ❌ El DNI debe contener exactamente 8 dígitos numéricos.
+                    </span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field-label">Nombre Representante Legal <span class="req">*</span></label>
+                  <input #repNomCtrl="ngModel" class="field-input transition-colors"
+                    [ngClass]="getInputClasses(repNomCtrl)"
+                    placeholder="María Elena Flores" [(ngModel)]="representanteNombreCompleto" name="representanteNombreCompleto" required pattern="^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\s-]+$" />
+                  @if (repNomCtrl.invalid && (repNomCtrl.touched || repNomCtrl.dirty)) {
+                    <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                      @if (repNomCtrl.errors?.['required']) {
+                        ❌ Este campo es obligatorio.
+                      } @else {
+                        ❌ Solo se permiten letras, tildes y espacios (sin números ni símbolos).
+                      }
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Transversal Contact Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/60">
+              <div class="field">
+                <label class="field-label">Correo Electrónico <span class="req">*</span></label>
+                <input #emailCtrl="ngModel" type="email" class="field-input transition-colors"
+                  [ngClass]="getInputClasses(emailCtrl)"
+                  placeholder="correo@ejemplo.com" [(ngModel)]="email" name="email" required pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$" />
+                @if (emailCtrl.invalid && (emailCtrl.touched || emailCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ Ingrese un correo electrónico válido (ej. usuario@dominio.com).
+                  </span>
+                }
+              </div>
+              <div class="field">
+                <label class="field-label">Teléfono Celular <span class="req">*</span></label>
+                <input #telCtrl="ngModel" type="tel" class="field-input font-mono transition-colors"
+                  [ngClass]="getInputClasses(telCtrl)"
+                  placeholder="987654321" maxlength="9"
+                  [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" required pattern="^\d{9}$" />
+                @if (telCtrl.invalid && (telCtrl.touched || telCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ El teléfono celular debe contener exactamente 9 dígitos numéricos.
+                  </span>
+                }
+              </div>
+            </div>
+
+            <button type="button" [disabled]="!esPasoValido(1)" (click)="goToStep(2)"
+              class="w-full py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+              [ngClass]="{
+                'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(1),
+                'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(1)
+              }">
+              <span>Siguiente: Domicilio Legal</span>
+              <svg lucideArrowRight class="w-4 h-4"></svg>
             </button>
           </div>
         }
 
-        <!-- Step 2 -->
+        <!-- ── STEP 2: DOMICILIO LEGAL ESTRUCTURADO ───────────────────────────── -->
         @if (currentStep() === 2) {
-          <div class="space-y-5">
-            <div class="field">
-              <label class="field-label">Correo electrónico <span class="req">*</span></label>
-              <input type="email" class="field-input" placeholder="correo@ejemplo.com" [(ngModel)]="email" name="email" />
+          <div class="space-y-4 animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="field">
+                <label class="field-label">Departamento <span class="req">*</span></label>
+                <select class="field-input" [(ngModel)]="departamento" name="departamento">
+                  @for (dep of departamentos; track dep) {
+                    <option [value]="dep">{{ dep }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Provincia <span class="req">*</span></label>
+                <input class="field-input" placeholder="LIMA" [(ngModel)]="provincia" name="provincia" />
+              </div>
+              <div class="field">
+                <label class="field-label">Distrito <span class="req">*</span></label>
+                <input class="field-input" placeholder="SAN ISIDRO" [(ngModel)]="distrito" name="distrito" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="field">
+                <label class="field-label">Tipo de Vía <span class="req">*</span></label>
+                <select class="field-input" [(ngModel)]="tipoVia" name="tipoVia">
+                  @for (via of tiposVia; track via) {
+                    <option [value]="via">{{ via }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field md:col-span-2">
+                <label class="field-label">Nombre de Vía <span class="req">*</span></label>
+                <input #viaCtrl="ngModel" class="field-input transition-colors"
+                  [ngClass]="getInputClasses(viaCtrl)"
+                  placeholder="Javier Prado Oeste" [(ngModel)]="nombreVia" name="nombreVia" required pattern=".*[A-Za-zÁÉÍÓÚÜÑáéíóúüñ].*" minlength="2" />
+                @if (viaCtrl.invalid && (viaCtrl.touched || viaCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ Ingrese el nombre de la vía (debe incluir letras).
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- 3-Column Grid Row with Baseline Flexbox Header Alignment -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span>Número, Mz o Lote <span class="text-red-500">*</span></span>
+                </div>
+                <input #numCtrl="ngModel" class="field-input transition-colors"
+                  [ngClass]="getInputClasses(numCtrl)"
+                  placeholder="1230" [(ngModel)]="numero" name="numero" required />
+                @if (numCtrl.invalid && (numCtrl.touched || numCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ Ingrese el número, manzana o lote.
+                  </span>
+                }
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span>Interior / Dpto</span>
+                  <span class="text-[10px] font-normal text-muted-foreground">(OPCIONAL)</span>
+                </div>
+                <input class="field-input" placeholder="Oficina 402" [(ngModel)]="interior" name="interior" />
+              </div>
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span>Código Ubigeo</span>
+                  <span class="text-[10px] font-normal text-muted-foreground">(OPCIONAL)</span>
+                </div>
+                <input #ubigeoCtrl="ngModel" class="field-input font-mono transition-colors"
+                  [ngClass]="getInputClasses(ubigeoCtrl)"
+                  placeholder="150101" maxlength="6"
+                  [ngModel]="ubigeo" (ngModelChange)="onUbigeoInput($event)" name="ubigeo" pattern="^\d{6}$" />
+                @if (ubigeoCtrl.invalid && (ubigeoCtrl.touched || ubigeoCtrl.dirty)) {
+                  <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                    ❌ El Código Ubigeo debe ser de 6 dígitos numéricos.
+                  </span>
+                }
+              </div>
             </div>
 
             <div class="field">
-              <label class="field-label">Teléfono celular <span class="req">*</span></label>
-              <input type="tel" class="field-input font-mono" placeholder="987654321" maxlength="9"
-                [ngModel]="telefono" (ngModelChange)="onTelefonoInput($event)" name="telefono" />
+              <label class="field-label">Urbanización / C.P. <span class="text-xs text-muted-foreground">(Opcional)</span></label>
+              <input class="field-input" placeholder="Orrantia del Mar" [(ngModel)]="urbanizacion" name="urbanizacion" />
             </div>
 
             <div class="field">
-              <label class="field-label">Contraseña <span class="req">*</span></label>
+              <label class="field-label">Referencia de Ubicación <span class="req">*</span></label>
+              <input #refCtrl="ngModel" class="field-input transition-colors"
+                [ngClass]="getInputClasses(refCtrl)"
+                placeholder="A dos cuadras de la Av. Arequipa, frente al parque" [(ngModel)]="referencia" name="referencia" required minlength="3" />
+              @if (refCtrl.invalid && (refCtrl.touched || refCtrl.dirty)) {
+                <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                  ❌ Ingrese una referencia válida (mínimo 3 caracteres).
+                </span>
+              }
+            </div>
+
+            <!-- Legal Notice Callout Box -->
+            <div class="rounded-xl p-4 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-300 text-xs leading-relaxed mt-2">
+              <svg lucideInfo class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"></svg>
+              <div>
+                <span class="font-semibold block mb-0.5">Domicilio Legal con Valor de Notificación:</span>
+                El domicilio será utilizado para su identificación y, cuando corresponda, para efectuar notificaciones personales conforme a la Ley N.° 27444 (TUO LPAG). Mantenga esta información actualizada.
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="button" (click)="goToStep(1)"
+                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:border-slate-700">
+                <svg lucideArrowLeft class="w-4 h-4"></svg> Atrás
+              </button>
+              <button type="button" [disabled]="!esPasoValido(2)" (click)="goToStep(3)"
+                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                [ngClass]="{
+                  'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(2),
+                  'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(2)
+                }">
+                <span>Siguiente: Credenciales</span>
+                <svg lucideArrowRight class="w-4 h-4"></svg>
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- ── STEP 3: CREDENCIALES & TÉRMINOS LEGALES ────────────────────────── -->
+        @if (currentStep() === 3) {
+          <div class="space-y-5 animate-fade-in">
+            <div class="field">
+              <label class="field-label">Contraseña de Acceso <span class="req">*</span></label>
               <div class="relative">
-                <input [type]="showPassword() ? 'text' : 'password'" class="field-input pr-11" placeholder="Mínimo 8 caracteres"
-                  [(ngModel)]="password" name="password" />
+                <input #passCtrl="ngModel" [type]="showPassword() ? 'text' : 'password'" class="field-input pr-11 transition-colors"
+                  [ngClass]="getInputClasses(passCtrl)"
+                  placeholder="Mínimo 8 caracteres"
+                  [(ngModel)]="password" name="password" required />
                 <button type="button" (click)="toggleShowPassword()"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   [attr.aria-label]="showPassword() ? 'Ocultar' : 'Mostrar'">
                   @if (showPassword()) {
                     <svg lucideEyeOff class="w-4 h-4"></svg>
@@ -161,30 +459,47 @@
             </div>
 
             <div class="field">
-              <label class="field-label">Confirmar contraseña <span class="req">*</span></label>
-              <input type="password" class="field-input" placeholder="Repita su contraseña"
-                [(ngModel)]="confirmarPassword" name="confirmarPassword" />
+              <label class="field-label">Confirmar Contraseña <span class="req">*</span></label>
+              <input #confPassCtrl="ngModel" type="password" class="field-input transition-colors"
+                [ngClass]="getInputClasses(confPassCtrl)"
+                placeholder="Repita su contraseña"
+                [(ngModel)]="confirmarPassword" name="confirmarPassword" required />
+              @if (confirmarPassword && password !== confirmarPassword) {
+                <span class="text-red-600 dark:text-red-400 text-xs font-medium inline-flex items-center gap-1 mt-1.5">
+                  ❌ Las contraseñas no coinciden.
+                </span>
+              }
             </div>
 
-            <label class="flex items-start gap-3 p-4 rounded-lg cursor-pointer" style="background: var(--card); border: 1px solid var(--border)">
-              <input type="checkbox" class="mt-0.5" [(ngModel)]="acceptTerms" name="acceptTerms" />
-              <span class="text-sm leading-relaxed" style="color: var(--foreground); opacity: 0.8">
-                Acepto los <span class="font-medium hover:underline" style="color: var(--brand-700)">términos</span> y la
-                <span class="font-medium hover:underline" style="color: var(--brand-700)">política de privacidad</span>.
+            <!-- Terms Acceptance Checkbox -->
+            <label class="flex items-start gap-3 p-4 rounded-xl cursor-pointer bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 hover:border-brand-300 transition-colors">
+              <input type="checkbox" class="mt-1 w-4 h-4 rounded text-brand-700 focus:ring-brand-500" [(ngModel)]="acceptTerms" name="acceptTerms" />
+              <span class="text-xs leading-relaxed text-foreground/80">
+                Declaro haber leído y acepto los
+                <button type="button" (click)="openTerms()" class="font-semibold underline text-brand-700 dark:text-brand-400 hover:text-brand-800">
+                  Términos y Condiciones de uso
+                </button>
+                y la Política de Privacidad y Protección de Datos Personales del Estado Peruano.
               </span>
             </label>
 
-            <div class="flex gap-3">
-              <button type="button" class="btn-ghost-brand flex-1 justify-center" style="padding: 11px 16px" (click)="goToStep1()">
+            <div class="flex gap-3 pt-2">
+              <button type="button" (click)="goToStep(2)"
+                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:border-slate-700">
                 <svg lucideArrowLeft class="w-4 h-4"></svg> Atrás
               </button>
-              <button type="submit" [disabled]="!canSubmitStep2() || loading()"
-                class="btn-brand flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed" style="padding: 11px 16px">
+              <button type="submit" [disabled]="!esPasoValido(3) || loading()"
+                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                [ngClass]="{
+                  'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(3) && !loading(),
+                  'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(3) || loading()
+                }">
                 @if (loading()) {
                   <svg lucideLoaderCircle class="w-5 h-5 animate-spin"></svg>
-                  Registrando...
+                  <span>Registrando...</span>
                 } @else {
-                  <svg lucideUserPlus class="w-4 h-4"></svg> Crear cuenta
+                  <svg lucideUserPlus class="w-4 h-4"></svg>
+                  <span>Crear Cuenta</span>
                 }
               </button>
             </div>
@@ -192,18 +507,95 @@
         }
 
         <div class="rule-ornament my-6"><span class="text-xs uppercase tracking-widest">o</span></div>
-        <button type="button" routerLink="/login" class="btn-ghost-brand w-full justify-center" style="padding: 11px 16px">
+        <button type="button" routerLink="/login" class="btn-ghost-brand w-full justify-center !py-3">
           Ya tengo cuenta · Iniciar sesión
         </button>
       </form>
 
       <!-- Data protection notice -->
-      <div class="mt-7 flex items-center gap-3 px-5 py-4 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
-        <svg lucideShield class="w-4 h-4 flex-shrink-0" style="color: var(--gold)"></svg>
-        <p class="text-xs" style="color: var(--muted-foreground)">
-          <span style="color: var(--foreground)" class="font-medium">Protección de datos.</span> Conforme a la Ley N° 29733 — Protección de Datos Personales.
+      <div class="mt-7 flex items-center gap-3 px-4 py-3 rounded-lg bg-card border border-dashed border-border-strong text-xs text-muted-foreground">
+        <svg lucideShield class="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400"></svg>
+        <p>
+          <span class="font-semibold text-foreground">Protección de Datos Personales.</span> Ley N.° 29733 y D.S. N.° 016-2024-JUS.
         </p>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ── TÉRMINOS Y CONDICIONES DIALOG MODAL ────────────────────────────────────── -->
+@if (showTermsModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/80">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 flex items-center justify-center">
+            <svg lucideFileText class="w-4 h-4"></svg>
+          </div>
+          <div>
+            <h3 class="font-display text-base text-slate-900 dark:text-white">Términos y Condiciones de Uso</h3>
+            <p class="text-xs text-slate-500">Plataforma Oficial SAIP y Apelaciones TTAIP</p>
+          </div>
+        </div>
+        <button (click)="closeTerms()" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <svg lucideX class="w-5 h-5"></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (8 Legal Sections) -->
+      <div class="px-6 py-5 overflow-y-auto space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">1. Finalidad de la cuenta</h4>
+          <p class="text-xs">La cuenta de usuario en la Plataforma SAIP permite a los ciudadanos ejercer su derecho constitucional de Acceso a la Información Pública (Ley N.° 27806) ante todas las entidades obligadas del Estado y presentar recursos de apelación ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP).</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">2. Datos registrados</h4>
+          <p class="text-xs">El ciudadano o representante de Persona Jurídica debe proveer su DNI/CE o RUC, nombres completos, domicilio legal validado y datos de contacto actualizados conforme al TUO de la Ley N.° 27444.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">3. Veracidad de la información</h4>
+          <p class="text-xs">Toda información y documentación adjuntada tiene carácter de Declaración Jurada bajo el principio de presunción de veracidad (Art. 51 TUO Ley N.° 27444). La falsedad o adulteración acarrea responsabilidad administrativa, civil y penal.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">4. Protección de datos personales</h4>
+          <p class="text-xs">Sus datos están protegidos conforme a la Ley N.° 29733 (Ley de Protección de Datos Personales) y el D.S. N.° 016-2024-JUS. El Ministerio de Justicia y Derechos Humanos (MINJUSDH) no compartirá sus datos personales con terceros no autorizados.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">5. Seguridad de la cuenta</h4>
+          <p class="text-xs">El usuario es responsable de mantener la confidencialidad de sus credenciales de acceso. Cualquier trámite o notificación efectuada desde su cuenta registrada se considerará válida y efectuada por el titular.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">6. Notificaciones electrónicas</h4>
+          <p class="text-xs">Las respuestas a las solicitudes SAIP y los actos administrativos del Tribunal (cédulas de notificación, resoluciones) se notificarán válidamente a la casilla electrónica o correo registrado conforme a la Ley N.° 31736.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">7. Conservación de la información</h4>
+          <p class="text-xs">Los expedientes administrativos y resoluciones del TTAIP son archivados digitalmente en cumplimiento con la normativa nacional de archivos públicos y trazabilidad gubernamental.</p>
+        </section>
+
+        <section>
+          <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider text-brand-700 dark:text-brand-400 mb-1">8. Aceptación de condiciones</h4>
+          <p class="text-xs">El registro y uso continuado de esta plataforma implica la aceptación expresa e incondicional de todos los términos descritos en la presente norma de uso del servicio digital.</p>
+        </section>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/80">
+        <button type="button" (click)="closeTerms()" class="btn-ghost-brand !py-2 !px-4 text-xs">
+          Cerrar
+        </button>
+        <button type="button" (click)="acceptTermsFromModal()" class="btn-brand !py-2 !px-4 text-xs inline-flex items-center gap-1.5">
+          <svg lucideCheck class="w-4 h-4"></svg>
+          <span>Aceptar Términos</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

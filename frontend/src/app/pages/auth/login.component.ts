@@ -40,20 +40,20 @@ export class LoginComponent implements OnInit {
   mensaje = signal<string>('');
 
   portalTitle = computed(() => {
-    if (this.accessMode() === 'citizen') return 'Ingreso Ciudadano';
+    if (this.accessMode() === 'citizen') return 'Acceso para Administrados';
     const role = this.requiredRole();
     return `Acceso ${this.getRoleLabel(role)}`;
   });
 
   portalSubtitle = computed(() => {
     if (this.accessMode() === 'citizen') {
-      return 'Portal público para solicitudes SAIP y apelaciones ciudadanas';
+      return 'Portal público para solicitudes SAIP y apelaciones (Persona Natural y Jurídica)';
     }
     return 'Portal institucional para personal autorizado';
   });
 
-  identifierLabel = computed(() => this.isCitizenPortal() ? 'Documento o Correo' : 'Usuario institucional');
-  identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'DNI o correo electrónico' : 'Usuario o correo institucional');
+  identifierLabel = computed(() => this.isCitizenPortal() ? 'Correo electrónico, DNI o RUC' : 'Usuario institucional');
+  identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'correo@ejemplo.com, DNI (8 dígitos) o RUC (11 dígitos)' : 'Usuario o correo institucional');
 
   isCitizenPortal = computed(() => this.accessMode() === 'citizen');
 
