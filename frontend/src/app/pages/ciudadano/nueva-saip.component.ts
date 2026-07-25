@@ -26,6 +26,10 @@ interface SesionVisual {
   nombre: string;
   dni: string;
   email: string;
+  tipoPersona?: 'NATURAL' | 'JURIDICA';
+  ruc?: string;
+  razonSocial?: string;
+  representanteNombreCompleto?: string;
 }
 
 import {
@@ -61,7 +65,8 @@ export class NuevaSaipComponent implements OnInit {
   sesionVisual = signal<SesionVisual>({
     nombre: 'Ciudadano autenticado',
     dni: 'No disponible',
-    email: 'No disponible'
+    email: 'No disponible',
+    tipoPersona: 'NATURAL'
   });
 
   asunto = '';
@@ -122,9 +127,13 @@ export class NuevaSaipComponent implements OnInit {
   private cargarSesionVisual(): void {
     const sesion = this.authService.obtenerSesion();
     this.sesionVisual.set({
-      nombre: sesion?.nombre?.trim() || 'Ciudadano autenticado',
+      nombre: sesion?.nombre?.trim() || sesion?.nombreCompleto?.trim() || 'Ciudadano autenticado',
       dni: sesion?.dni?.trim() || 'No disponible',
-      email: sesion?.email?.trim() || 'No disponible'
+      email: sesion?.email?.trim() || 'No disponible',
+      tipoPersona: sesion?.tipoPersona || 'NATURAL',
+      ruc: sesion?.ruc?.trim() || '',
+      razonSocial: sesion?.razonSocial?.trim() || '',
+      representanteNombreCompleto: sesion?.representanteNombreCompleto?.trim() || ''
     });
   }
 

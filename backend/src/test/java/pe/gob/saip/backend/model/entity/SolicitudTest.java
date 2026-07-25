@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import pe.gob.saip.backend.util.DiasHabilesUtil;
+
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,19 +15,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SolicitudTest {
 
     /**
-     * Avanza días calendario asegurando que el resultado caiga en día hábil (lun-vie).
+     * Avanza días hábiles respetando fines de semana y feriados nacionales del Perú.
      */
     private static LocalDate avanzarDiasHabiles(LocalDate desde, int diasHabiles) {
-        LocalDate fecha = desde;
-        int contados = 0;
-        while (contados < diasHabiles) {
-            fecha = fecha.plusDays(1);
-            DayOfWeek dow = fecha.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
-                contados++;
-            }
-        }
-        return fecha;
+        return DiasHabilesUtil.sumarDiasHabiles(desde, diasHabiles);
     }
 
     private Solicitud crearSolicitud(Solicitud.EstadoSolicitud estado, LocalDate fechaLimite) {

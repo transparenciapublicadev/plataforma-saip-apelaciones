@@ -20,7 +20,13 @@ export interface LoginResponse {
     email?: string;
     tipoUsuario?: string;
     nombre?: string;
+    nombreCompleto?: string;
     dni?: string;
+    tipoPersona?: 'NATURAL' | 'JURIDICA';
+    ruc?: string;
+    razonSocial?: string;
+    representanteDni?: string;
+    representanteNombreCompleto?: string;
     ciudadanoId?: number;
     funcionarioId?: number;
     entidadId?: number;
@@ -30,7 +36,31 @@ export interface LoginResponse {
     redirectUrl?: string;
 }
 
-export type RegistroRequest = RegistroRequestDTO;
+export interface RegistroRequest {
+    email: string;
+    password: string;
+    tipoPersona?: 'NATURAL' | 'JURIDICA';
+    dni?: string;
+    nombres?: string;
+    apellidoPaterno?: string;
+    apellidoMaterno?: string;
+    nombreCompleto?: string;
+    ruc?: string;
+    razonSocial?: string;
+    representanteDni?: string;
+    representanteNombreCompleto?: string;
+    telefono?: string;
+    ubigeo?: string;
+    departamento?: string;
+    provincia?: string;
+    distrito?: string;
+    tipoVia?: string;
+    nombreVia?: string;
+    numero?: string;
+    interior?: string;
+    referencia?: string;
+    direccion?: string;
+}
 
 export interface RegistroResponse {
     success: boolean;
