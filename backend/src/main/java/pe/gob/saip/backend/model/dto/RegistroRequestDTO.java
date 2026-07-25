@@ -20,6 +20,7 @@ public record RegistroRequestDTO(
         TipoPersona tipoPersona,
 
         // Persona Natural
+        @Pattern(regexp = "^(\\d{8})?$", message = "El DNI debe tener 8 dígitos")
         @Schema(description = "DNI de 8 dígitos (Persona Natural)", example = "12345678")
         String dni,
 
@@ -36,12 +37,14 @@ public record RegistroRequestDTO(
         String nombreCompleto,
 
         // Persona Jurídica
+        @Pattern(regexp = "^(\\d{11})?$", message = "El RUC debe tener 11 dígitos")
         @Schema(description = "RUC de 11 dígitos (Persona Jurídica)", example = "20123456789")
         String ruc,
 
         @Schema(description = "Razón Social de la empresa", example = "Constructora del Sur S.A.C.")
         String razonSocial,
 
+        @Pattern(regexp = "^(\\d{8})?$", message = "El DNI del Representante Legal debe tener 8 dígitos")
         @Schema(description = "DNI del Representante Legal", example = "87654321")
         String representanteDni,
 
@@ -53,6 +56,7 @@ public record RegistroRequestDTO(
         @Schema(description = "Número de teléfono", example = "987654321")
         String telefono,
 
+        @Pattern(regexp = "^(\\d{6})?$", message = "El Código Ubigeo debe tener 6 dígitos")
         @Schema(description = "Código de Ubigeo de 6 dígitos", example = "150101")
         String ubigeo,
 
