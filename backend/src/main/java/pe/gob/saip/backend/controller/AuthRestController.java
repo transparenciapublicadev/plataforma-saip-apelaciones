@@ -27,6 +27,7 @@ public class AuthRestController {
 
     private final UsuarioService usuarioService;
     private final CiudadanoService ciudadanoService;
+    private final pe.gob.saip.backend.repository.CiudadanoRepository ciudadanoRepository;
     private final FuncionarioService funcionarioService;
     private final MiembroTTAIPService miembroTTAIPService;
     private final AdministradorService administradorService;
@@ -36,6 +37,7 @@ public class AuthRestController {
 
     public AuthRestController(UsuarioService usuarioService,
                                CiudadanoService ciudadanoService,
+                               pe.gob.saip.backend.repository.CiudadanoRepository ciudadanoRepository,
                                FuncionarioService funcionarioService,
                                MiembroTTAIPService miembroTTAIPService,
                                AdministradorService administradorService,
@@ -44,6 +46,7 @@ public class AuthRestController {
                                AutorizacionRecursosService autorizacionRecursosService) {
         this.usuarioService = usuarioService;
         this.ciudadanoService = ciudadanoService;
+        this.ciudadanoRepository = ciudadanoRepository;
         this.funcionarioService = funcionarioService;
         this.miembroTTAIPService = miembroTTAIPService;
         this.administradorService = administradorService;
@@ -52,7 +55,7 @@ public class AuthRestController {
         this.autorizacionRecursosService = autorizacionRecursosService;
     }
 
-    @Operation(summary = "Iniciar sesión", description = "Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o nombre de usuario como identificador.")
+    @Operation(summary = "Iniciar sesión", description = "Autentica al usuario y retorna un token JWT con datos del perfil según su rol. Acepta email, DNI (8 dígitos) o RUC (11 dígitos) como identificador.")
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO request,
                                    HttpServletRequest servletRequest) {
@@ -90,7 +93,13 @@ public class AuthRestController {
             case CIUDADANO -> {
                 ciudadanoService.findById(usuario.getIdUsuario()).ifPresent(c -> {
                     response.put("nombre", c.getNombreCompleto());
+                    response.put("nombreCompleto", c.getNombreCompleto());
                     response.put("dni", c.getDni());
+                    response.put("tipoPersona", c.getTipoPersona() != null ? c.getTipoPersona().name() : "NATURAL");
+                    response.put("ruc", c.getRuc());
+                    response.put("razonSocial", c.getRazonSocial());
+                    response.put("representanteDni", c.getRepresentanteDni());
+                    response.put("representanteNombreCompleto", c.getRepresentanteNombreCompleto());
                     response.put("ciudadanoId", c.getId());
                 });
                 response.put("redirectUrl", "/ciudadano/dashboard");
@@ -127,7 +136,7 @@ public class AuthRestController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "Registrar ciudadano", description = "Registra un nuevo ciudadano en el sistema con email, DNI y datos personales")
+    @Operation(summary = "Registrar ciudadano", description = "Registra un nuevo ciudadano en el sistema (Persona Natural o Jurídica)")
     @PostMapping("/registro")
     public ResponseEntity<?> registro(@Valid @RequestBody RegistroRequestDTO request,
                                       HttpServletRequest servletRequest) {
@@ -135,8 +144,12 @@ public class AuthRestController {
             return problem(HttpStatus.CONFLICT, "Conflict", "Ya existe un usuario con ese email", servletRequest);
         }
 
-        if (ciudadanoService.obtenerCiudadanoPorDni(request.dni()).isPresent()) {
-            return problem(HttpStatus.CONFLICT, "Conflict", "Ya existe un ciudadano con ese DNI", servletRequest);
+        TipoPersona tipo = request.tipoPersona() != null ? request.tipoPersona() : TipoPersona.NATURAL;
+
+        if (tipo == TipoPersona.NATURAL && request.dni() != null && !request.dni().isBlank()) {
+            if (ciudadanoService.obtenerCiudadanoPorDni(request.dni()).isPresent()) {
+                return problem(HttpStatus.CONFLICT, "Conflict", "Ya existe un ciudadano con ese DNI", servletRequest);
+            }
         }
 
         Ciudadano ciudadano = new Ciudadano();
@@ -144,10 +157,53 @@ public class AuthRestController {
         ciudadano.setPassword(passwordEncoder.encode(request.password()));
         ciudadano.setTipoUsuario(Usuario.TipoUsuario.CIUDADANO);
         ciudadano.setActivo(true);
+        ciudadano.setTipoPersona(tipo);
+
+        // Persona Natural
         ciudadano.setDni(request.dni());
-        ciudadano.setNombreCompleto(request.nombreCompleto());
+        ciudadano.setNombres(request.nombres());
+        ciudadano.setApellidoPaterno(request.apellidoPaterno());
+        ciudadano.setApellidoMaterno(request.apellidoMaterno());
+        
+        String nombreComp = request.nombreCompleto();
+        if ((nombreComp == null || nombreComp.isBlank()) && request.nombres() != null) {
+            StringBuilder sb = new StringBuilder(request.nombres().trim());
+            if (request.apellidoPaterno() != null) sb.append(" ").append(request.apellidoPaterno().trim());
+            if (request.apellidoMaterno() != null) sb.append(" ").append(request.apellidoMaterno().trim());
+            nombreComp = sb.toString().trim();
+        }
+        ciudadano.setNombreCompleto(nombreComp != null && !nombreComp.isBlank() ? nombreComp : (tipo == TipoPersona.JURIDICA ? request.razonSocial() : "Ciudadano"));
+
+        // Persona Jurídica
+        ciudadano.setRuc(request.ruc());
+        ciudadano.setRazonSocial(request.razonSocial());
+        ciudadano.setRepresentanteDni(request.representanteDni());
+        ciudadano.setRepresentanteNombreCompleto(request.representanteNombreCompleto());
+
+        // Contacto y Domicilio Estructurado
         ciudadano.setTelefono(request.telefono());
-        ciudadano.setDireccion(request.direccion());
+        ciudadano.setUbigeo(request.ubigeo());
+        ciudadano.setDepartamento(request.departamento());
+        ciudadano.setProvincia(request.provincia());
+        ciudadano.setDistrito(request.distrito());
+        ciudadano.setTipoVia(request.tipoVia());
+        ciudadano.setNombreVia(request.nombreVia());
+        ciudadano.setNumero(request.numero());
+        ciudadano.setInterior(request.interior());
+        ciudadano.setReferencia(request.referencia());
+
+        String dirStr = request.direccion();
+        if (dirStr == null || dirStr.isBlank()) {
+            StringBuilder sbDir = new StringBuilder();
+            if (request.tipoVia() != null) sbDir.append(request.tipoVia()).append(" ");
+            if (request.nombreVia() != null) sbDir.append(request.nombreVia()).append(" ");
+            if (request.numero() != null) sbDir.append("N° ").append(request.numero()).append(" ");
+            if (request.interior() != null && !request.interior().isBlank()) sbDir.append("Int. ").append(request.interior()).append(" ");
+            if (request.distrito() != null) sbDir.append("- ").append(request.distrito()).append(" ");
+            if (request.departamento() != null) sbDir.append("(").append(request.departamento()).append(")");
+            dirStr = sbDir.toString().trim();
+        }
+        ciudadano.setDireccion(dirStr);
 
         ciudadano = ciudadanoService.guardarCiudadano(ciudadano);
 
@@ -212,6 +268,10 @@ public class AuthRestController {
         }
         if (identificador.matches("\\d{8}")) {
             return ciudadanoService.obtenerCiudadanoPorDni(identificador)
+                    .map(c -> (Usuario) c);
+        }
+        if (identificador.matches("\\d{11}")) {
+            return ciudadanoRepository.findByRuc(identificador)
                     .map(c -> (Usuario) c);
         }
         return usuarioService.obtenerUsuarioPorEmail(identificador);

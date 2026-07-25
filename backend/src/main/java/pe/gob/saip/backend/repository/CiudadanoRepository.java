@@ -12,6 +12,10 @@ import java.util.Optional;
 public interface CiudadanoRepository extends JpaRepository<Ciudadano, Long> {
     Optional<Ciudadano> findByDni(String dni);
 
+    Optional<Ciudadano> findByRuc(String ruc);
+
+    boolean existsByRuc(String ruc);
+
     @Query("select c from Ciudadano c where lower(c.email) = lower(:email)")
     Optional<Ciudadano> findByEmail(@Param("email") String email);
 }
