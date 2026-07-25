@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.Usuario;
+import pe.gob.saip.backend.repository.CiudadanoRepository;
 import pe.gob.saip.backend.security.JwtService;
 import pe.gob.saip.backend.service.*;
 
@@ -35,6 +36,9 @@ class AuthRestControllerTest {
 
     @MockitoBean
     CiudadanoService ciudadanoService;
+
+    @MockitoBean
+    CiudadanoRepository ciudadanoRepository;
 
     @MockitoBean
     FuncionarioService funcionarioService;
