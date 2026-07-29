@@ -100,7 +100,7 @@
               </div>
 
               <p class="text-xs text-muted-foreground mt-3 italic max-w-2xl">
-                Sus datos personales fueron tomados del registro con el que inició sesión. Puede actualizarlos desde su perfil.
+                Sus datos personales (Nombres/Razón Social, Documento, Dirección, Correo y Celular) provienen de su cuenta. Si desea actualizarlos para este y futuros trámites, hágalo desde la sección 'Mi Perfil'.
               </p>
             </div>
           </div>
@@ -130,6 +130,34 @@
               </div>
 
               <div class="field">
+                <label for="materia" class="field-label">TEMA O MATERIA DE LA SOLICITUD</label>
+                <select id="materia" [(ngModel)]="materia" name="materia" class="field-input">
+                  <option value="">Seleccione la materia o tema (Opcional)</option>
+                  <option value="Documentos oficiales y resoluciones">Documentos oficiales y resoluciones</option>
+                  <option value="Estadísticas, reportes y data abierta">Estadísticas, reportes y data abierta</option>
+                  <option value="Informes y memorandos técnicos">Informes y memorandos técnicos</option>
+                  <option value="Presupuesto, ejecuciones y gastos públicos">Presupuesto, ejecuciones y gastos públicos</option>
+                  <option value="Contrataciones, adquisiciones y licitaciones">Contrataciones, adquisiciones y licitaciones</option>
+                  <option value="Personal, planillas y escalas remunerativas">Personal, planillas y escalas remunerativas</option>
+                  <option value="Proyectos, programas y obras públicas">Proyectos, programas y obras públicas</option>
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+
+              @if (materia === 'Otros') {
+                <div class="field">
+                  <label for="materiaOtros" class="field-label">Especifique el tema o materia <span class="req">*</span></label>
+                  <input id="materiaOtros" type="text" [(ngModel)]="materiaOtros" name="materiaOtros" required placeholder="Escriba la materia o tema específico..." class="field-input" />
+                </div>
+              }
+
+              <div class="field">
+                <label for="oficinaDestinataria" class="field-label">OFICINA O UNIDAD ORGÁNICA DESTINATARIA (OPCIONAL)</label>
+                <input id="oficinaDestinataria" type="text" [(ngModel)]="oficinaDestinataria" name="oficinaDestinataria" placeholder="Ej. Oficina de Logística, Dirección de Recursos Humanos..." class="field-input" />
+                <span class="field-hint">Si conoce la oficina específica dentro de la entidad que posee la información, indíquela aquí.</span>
+              </div>
+
+              <div class="field">
                 <label for="asunto" class="field-label">Asunto <span class="req">*</span></label>
                 <input id="asunto" type="text" [(ngModel)]="asunto" name="asunto" required placeholder="Ej. Solicitud de presupuesto institucional 2026" class="field-input" />
               </div>
@@ -137,11 +165,6 @@
               <div class="field">
                 <label for="descripcion" class="field-label">Información solicitada <span class="req">*</span></label>
                 <textarea id="descripcion" [(ngModel)]="descripcion" name="descripcion" required rows="5" placeholder="Describa de forma precisa la información pública que requiere..." class="field-input"></textarea>
-              </div>
-
-              <div class="field">
-                <label for="tipoInformacion" class="field-label">Tipo de información</label>
-                <input id="tipoInformacion" type="text" [(ngModel)]="tipoInformacion" name="tipoInformacion" placeholder="Ej. Documentos, estadísticas, informes" class="field-input" />
               </div>
             </div>
           </section>
@@ -254,14 +277,112 @@
             </div>
           </section>
 
+          <!-- ── DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA) ── -->
           <section data-motion-item class="form-shell">
             <div class="form-section-header flex items-start justify-between gap-4">
               <div>
-                <span class="eyebrow">04 · Sustento opcional</span>
-                <h2 class="form-section-title">Documentos adjuntos</h2>
+                <span class="eyebrow">04 · DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA)</span>
+                <h2 class="form-section-title">Información con fines estrictamente estadísticos y de inclusión social</h2>
               </div>
               <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
                 04
+              </span>
+            </div>
+
+            <div class="p-6 md:p-8 space-y-5">
+              <p class="text-xs text-muted-foreground leading-relaxed">
+                Los siguientes datos son de llenado facultativo y no afectan la admisibilidad ni la respuesta de su solicitud.
+              </p>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="flex flex-col justify-between">
+                  <label for="sexo" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Sexo
+                  </label>
+                  <select id="sexo" [(ngModel)]="sexo" name="sexo" class="field-input">
+                    <option value="">Seleccione (Opcional)</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro</option>
+                    <option value="Prefiero no decir">Prefiero no decir</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col justify-between">
+                  <label for="edad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Edad
+                  </label>
+                  <input id="edad" type="number" [(ngModel)]="edad" name="edad" placeholder="Ej. 35" min="14" max="120" class="field-input" />
+                </div>
+
+                <div class="flex flex-col justify-between">
+                  <label for="discapacidad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Discapacidad
+                  </label>
+                  <select id="discapacidad" [(ngModel)]="discapacidad" name="discapacidad" class="field-input">
+                    <option value="">Seleccione (Opcional)</option>
+                    <option value="No presenta">No presenta</option>
+                    <option value="Física o motora">Física o motora</option>
+                    <option value="Visual">Visual</option>
+                    <option value="Auditiva">Auditiva</option>
+                    <option value="Intelectual">Intelectual</option>
+                    <option value="Psicosocial / Otra">Psicosocial / Otra</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col justify-between">
+                  <label for="lenguaMaterna" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Lengua materna
+                  </label>
+                  <select id="lenguaMaterna" [(ngModel)]="lenguaMaterna" name="lenguaMaterna" class="field-input">
+                    <option value="">Seleccione (Opcional)</option>
+                    <option value="Castellano">Castellano</option>
+                    <option value="Quechua">Quechua</option>
+                    <option value="Aimara">Aimara</option>
+                    <option value="Asháninka">Asháninka</option>
+                    <option value="Awajún">Awajún</option>
+                    <option value="Otra lengua originaria">Otra lengua originaria</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col justify-between">
+                  <label for="etnia" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Autoidentificación étnica
+                  </label>
+                  <select id="etnia" [(ngModel)]="etnia" name="etnia" class="field-input">
+                    <option value="">Seleccione (Opcional)</option>
+                    <option value="Quechua">Quechua</option>
+                    <option value="Mestizo">Mestizo</option>
+                    <option value="Afrodescendiente">Afrodescendiente</option>
+                    <option value="Aimara">Aimara</option>
+                    <option value="Nativo o indígena de la Amazonía">Nativo o indígena de la Amazonía</option>
+                    <option value="Blanco">Blanco</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+
+                <div class="flex flex-col justify-between">
+                  <label for="areaGeografica" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
+                    Área geográfica de procedencia
+                  </label>
+                  <select id="areaGeografica" [(ngModel)]="areaGeografica" name="areaGeografica" class="field-input">
+                    <option value="">Seleccione (Opcional)</option>
+                    <option value="Urbana">Urbana</option>
+                    <option value="Rural">Rural</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section data-motion-item class="form-shell">
+            <div class="form-section-header flex items-start justify-between gap-4">
+              <div>
+                <span class="eyebrow">05 · Sustento opcional</span>
+                <h2 class="form-section-title">Documentos adjuntos</h2>
+              </div>
+              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
+                05
               </span>
             </div>
             <div class="p-6 md:p-8 space-y-3">

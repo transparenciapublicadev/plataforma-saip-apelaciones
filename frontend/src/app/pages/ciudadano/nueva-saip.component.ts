@@ -72,13 +72,27 @@ export class NuevaSaipComponent implements OnInit {
   asunto = '';
   descripcion = '';
   entidadId: number | null = null;
+  materia = '';
+  materiaOtros = '';
+  oficinaDestinataria = '';
   tipoInformacion = '';
+
+  // Formato y notificación
   formatoDigital = true;
   formatoFisico = false;
   copiaSimple = true;
   copiaCertificada = false;
   consentimientoDatosPersonales = false;
   canalNotificacion: CanalNotificacion = 'CASILLA_ELECTRONICA';
+
+  // Datos complementarios opcionales (Ley de Transparencia)
+  sexo = '';
+  edad: number | null = null;
+  discapacidad = '';
+  lenguaMaterna = '';
+  etnia = '';
+  areaGeografica = '';
+
   documentosSeleccionados = signal<File[]>([]);
 
   ngOnInit(): void {
@@ -105,6 +119,9 @@ export class NuevaSaipComponent implements OnInit {
         this.asunto = borrador.asunto || '';
         this.descripcion = borrador.descripcion || '';
         this.entidadId = borrador.entidadId ?? null;
+        this.materia = borrador.materia || '';
+        this.materiaOtros = borrador.materiaOtros || '';
+        this.oficinaDestinataria = borrador.oficinaDestinataria || '';
         this.tipoInformacion = borrador.tipoInformacion || '';
         this.formatoDigital = borrador.formatoDigital ?? true;
         this.formatoFisico = borrador.formatoFisico ?? false;
@@ -112,6 +129,12 @@ export class NuevaSaipComponent implements OnInit {
         this.copiaCertificada = borrador.copiaCertificada ?? false;
         this.consentimientoDatosPersonales = borrador.consentimientoDatosPersonales ?? false;
         this.canalNotificacion = borrador.canalNotificacion || 'CASILLA_ELECTRONICA';
+        this.sexo = borrador.sexo || '';
+        this.edad = borrador.edad ?? null;
+        this.discapacidad = borrador.discapacidad || '';
+        this.lenguaMaterna = borrador.lenguaMaterna || '';
+        this.etnia = borrador.etnia || '';
+        this.areaGeografica = borrador.areaGeografica || '';
         
         const fechaMsg = borrador.updatedAt ? new Date(borrador.updatedAt).toLocaleString() : 'fecha desconocida';
         this.mensaje.set(`Se restauró el borrador guardado el ${fechaMsg}`);
@@ -143,13 +166,22 @@ export class NuevaSaipComponent implements OnInit {
       asunto: this.asunto,
       descripcion: this.descripcion,
       entidadId: this.entidadId,
-      tipoInformacion: this.tipoInformacion,
+      materia: this.materia,
+      materiaOtros: this.materiaOtros,
+      oficinaDestinataria: this.oficinaDestinataria,
+      tipoInformacion: this.materia === 'Otros' ? this.materiaOtros : (this.materia || this.tipoInformacion),
       formatoDigital: this.formatoDigital,
       formatoFisico: this.formatoFisico,
       copiaSimple: this.copiaSimple,
       copiaCertificada: this.copiaCertificada,
       consentimientoDatosPersonales: this.consentimientoDatosPersonales,
       canalNotificacion: this.canalNotificacion,
+      sexo: this.sexo,
+      edad: this.edad,
+      discapacidad: this.discapacidad,
+      lenguaMaterna: this.lenguaMaterna,
+      etnia: this.etnia,
+      areaGeografica: this.areaGeografica,
       ciudadanoId: sesion?.ciudadanoId ?? null,
       updatedAt: new Date().toISOString()
     };
@@ -224,17 +256,16 @@ export class NuevaSaipComponent implements OnInit {
       return;
     }
 
-    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
-    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
     this.loading.set(true);
     this.error.set('');
 
+    const tipoInfoFinal = this.materia === 'Otros' ? this.materiaOtros : (this.materia || this.tipoInformacion);
     const solicitud: SolicitudCreate = {
       asunto: this.asunto,
       descripcion: this.descripcion,
       ciudadanoId: sesion.ciudadanoId,
       entidadId: this.entidadId!,
-      tipoInformacion: this.tipoInformacion,
+      tipoInformacion: tipoInfoFinal,
       formatoDigital: this.formatoDigital,
       formatoFisico: this.formatoFisico,
       copiaSimple: this.copiaSimple,
@@ -245,7 +276,6 @@ export class NuevaSaipComponent implements OnInit {
 
     this.solicitudService.crear(solicitud).subscribe({
       next: (respuesta) => {
-        // Limpiar el borrador tras creación exitosa
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem('saip.borrador');
         }
@@ -298,19 +328,23 @@ export class NuevaSaipComponent implements OnInit {
   }
 
   canSubmit(): boolean {
+    const materiaValida = this.materia !== 'Otros' || !!this.materiaOtros.trim();
     return !!this.asunto.trim()
       && !!this.descripcion.trim()
       && !!this.entidadId
       && !!this.canalNotificacion
+      && materiaValida
       && this.consentimientoDatosPersonales
       && (this.formatoDigital || this.formatoFisico || this.copiaSimple || this.copiaCertificada);
   }
 
   solicitudConfirmSummary(): ReferenceConfirmSummary[] {
+    const materiaDisplay = this.materia === 'Otros' ? `Otros (${this.materiaOtros})` : (this.materia || '—');
     return [
       { label: 'Solicitante', value: this.sesionVisual().nombre || '—' },
       { label: 'DNI', value: this.sesionVisual().dni || '—', mono: true },
       { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() },
+      { label: 'Tema / Materia', value: materiaDisplay },
       { label: 'Asunto', value: this.asunto.trim() || '—' },
       { label: 'Formatos', value: this.getFormatosSeleccionados().join(', ') || '—' },
       { label: 'Notificación', value: this.getCanalNotificacionLabel() }
@@ -374,6 +408,10 @@ export class NuevaSaipComponent implements OnInit {
     }
     if (!this.entidadId) {
       this.error.set('Debe seleccionar una entidad');
+      return false;
+    }
+    if (this.materia === 'Otros' && !this.materiaOtros.trim()) {
+      this.error.set('Debe especificar el tema o materia de la solicitud');
       return false;
     }
     if (!this.formatoDigital && !this.formatoFisico && !this.copiaSimple && !this.copiaCertificada) {
