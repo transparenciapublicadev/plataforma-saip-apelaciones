@@ -274,8 +274,48 @@ export class FuncionarioDashboardComponent implements OnInit {
     }
   }
 
+  readonly paginaActual = signal<number>(1);
+  readonly itemsPorPagina = signal<number>(10);
+  readonly mostrarModalLineaTiempo = signal<boolean>(false);
+  readonly solicitudModalSeleccionada = signal<Solicitud | null>(null);
+
+  readonly totalRegistros = computed(() => this.filtradas().length);
+  readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
+  readonly inicioRegistro = computed(() => this.totalRegistros() === 0 ? 0 : (this.paginaActual() - 1) * this.itemsPorPagina() + 1);
+  readonly finRegistro = computed(() => Math.min(this.paginaActual() * this.itemsPorPagina(), this.totalRegistros()));
+  readonly filtradasVisibles = computed(() => {
+    const start = (this.paginaActual() - 1) * this.itemsPorPagina();
+    return this.filtradas().slice(start, start + this.itemsPorPagina());
+  });
+
   selectBucket(bucket: BucketKey): void {
     this.selectedBucket.set(bucket);
+    this.paginaActual.set(1);
+  }
+
+  abrirModalLineaTiempo(solicitud: Solicitud, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    this.solicitudModalSeleccionada.set(solicitud);
+    this.mostrarModalLineaTiempo.set(true);
+  }
+
+  cerrarModalLineaTiempo(): void {
+    this.mostrarModalLineaTiempo.set(false);
+    this.solicitudModalSeleccionada.set(null);
+  }
+
+  cambiarPagina(pagina: number): void {
+    if (pagina >= 1 && pagina <= this.totalPaginas()) {
+      this.paginaActual.set(pagina);
+    }
+  }
+
+  cambiarItemsPorPagina(items: number): void {
+    this.itemsPorPagina.set(items);
+    this.paginaActual.set(1);
   }
 
   get isFirstVisit(): boolean {

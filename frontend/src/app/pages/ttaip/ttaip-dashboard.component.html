@@ -174,7 +174,20 @@
                 </div>
               </div>
 
-              <div class="relative max-w-[260px] flex-1 hidden md:block">
+              <!-- ── SALA FILTER TABS ── -->
+              <div class="flex items-center gap-1 bg-[var(--paper)] p-1 rounded-lg border border-[var(--border)]">
+                <button type="button" (click)="cambiarSala('TODAS')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'TODAS'" [class.shadow-sm]="salaFiltro() === 'TODAS'" [class.text-brand-700]="salaFiltro() === 'TODAS'" [class.text-muted-foreground]="salaFiltro() !== 'TODAS'">
+                  Todas
+                </button>
+                <button type="button" (click)="cambiarSala('PRIMERA')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'PRIMERA'" [class.shadow-sm]="salaFiltro() === 'PRIMERA'" [class.text-brand-700]="salaFiltro() === 'PRIMERA'" [class.text-muted-foreground]="salaFiltro() !== 'PRIMERA'">
+                  1ra Sala
+                </button>
+                <button type="button" (click)="cambiarSala('SEGUNDA')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'SEGUNDA'" [class.shadow-sm]="salaFiltro() === 'SEGUNDA'" [class.text-brand-700]="salaFiltro() === 'SEGUNDA'" [class.text-muted-foreground]="salaFiltro() !== 'SEGUNDA'">
+                  2da Sala
+                </button>
+              </div>
+
+              <div class="relative max-w-[200px] flex-1 hidden md:block">
                 <svg lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
                 <input class="field-input has-icon-left-sm !pl-9 !py-2 !text-sm" placeholder="Buscar..." [(ngModel)]="searchModel" />
               </div>
@@ -200,7 +213,7 @@
                   <p class="text-sm text-foreground/85 font-medium">Sin expedientes en esta etapa</p>
                 </div>
               } @else {
-                @for (item of filtered(); track item.apelacion.id || item.apelacion.expediente) {
+                @for (item of filteredVisibles(); track item.apelacion.id || item.apelacion.expediente) {
                   <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
@@ -231,24 +244,66 @@
                       </div>
                     }
 
-                    @if (activeStage().isResolved) {
-                      <a [routerLink]="getActionRoute(item)" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
-                        Ver
-                        <svg lucideEye class="w-3.5 h-3.5"></svg>
-                      </a>
-                    } @else if (activeStage().esperaExterna) {
-                      <a [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                        Ver Detalle
-                        <svg lucideEye class="w-3.5 h-3.5"></svg>
-                      </a>
-                    } @else {
-                      <a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                        {{ getActionLabel(item) }}
-                        <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
-                      </a>
-                    }
+                    <div class="flex items-center gap-1.5">
+                      <button type="button"
+                        (click)="abrirModalLineaTiempo(item.apelacion, $event)"
+                        class="btn-ghost-brand !px-2.5 !py-2 !text-[12px] whitespace-nowrap inline-flex items-center gap-1"
+                        title="Ver línea de tiempo interactiva">
+                        <svg lucideLayers class="w-3.5 h-3.5 text-brand-700"></svg>
+                        <span class="hidden sm:inline">Línea de tiempo</span>
+                      </button>
+
+                      @if (activeStage().isResolved) {
+                        <a [routerLink]="getActionRoute(item)" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
+                          Ver
+                          <svg lucideEye class="w-3.5 h-3.5"></svg>
+                        </a>
+                      } @else if (activeStage().esperaExterna) {
+                        <a [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                          Ver Detalle
+                          <svg lucideEye class="w-3.5 h-3.5"></svg>
+                        </a>
+                      } @else {
+                        <a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                          {{ getActionLabel(item) }}
+                          <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+                        </a>
+                      }
+                    </div>
                   </div>
                 }
+              }
+
+              <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
+              @if (totalRegistros() > 0) {
+                <div class="px-4 py-3 border-t border-[var(--border)] bg-[var(--paper)] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div class="text-muted-foreground">
+                    Mostrando <span class="font-semibold text-foreground">{{ inicioRegistro() }}</span> - <span class="font-semibold text-foreground">{{ finRegistro() }}</span> de <span class="font-semibold text-foreground">{{ totalRegistros() }}</span> expedientes TTAIP
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                      <span class="text-muted-foreground">Filas por página:</span>
+                      <select [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)" class="bg-[var(--card)] border border-[var(--border)] rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--brand-600)]">
+                        <option [ngValue]="10">10</option>
+                        <option [ngValue]="20">20</option>
+                        <option [ngValue]="50">50</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button (click)="cambiarPagina(1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Primera página">«</button>
+                      <button (click)="cambiarPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página anterior">‹</button>
+
+                      <span class="px-2 font-medium text-foreground">
+                        Página {{ paginaActual() }} de {{ totalPaginas() }}
+                      </span>
+
+                      <button (click)="cambiarPagina(paginaActual() + 1)" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página siguiente">›</button>
+                      <button (click)="cambiarPagina(totalPaginas())" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Última página">»</button>
+                    </div>
+                  </div>
+                </div>
               }
             </div>
           </div>
@@ -362,5 +417,104 @@
       </div>
     }
   </div>
+
+  <!-- ── MODAL LÍNEA DE TIEMPO INTERACTIVA TTAIP ───────────────────── -->
+  @if (mostrarModalLineaTiempo() && apelacionModalSeleccionada(); as item) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" (click)="cerrarModalLineaTiempo()">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-scale-in" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-[var(--border)] bg-[var(--paper)] flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg lucideScale class="w-5 h-5 text-brand-700"></svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-brand-700 px-2 py-0.5 rounded bg-brand-50 border border-brand-200">
+                  {{ item.expediente }}
+                </span>
+                <span class="badge badge-info">{{ (item.expedienteTtaip && item.expedienteTtaip.sala) ? item.expedienteTtaip.sala.nombre : 'Primera Sala' }}</span>
+              </div>
+              <h3 class="font-display font-medium text-lg text-foreground mt-0.5">Línea de tiempo del expediente TTAIP</h3>
+            </div>
+          </div>
+          <button (click)="cerrarModalLineaTiempo()" class="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Modal Content: Timeline Stepper -->
+        <div class="p-6 max-h-[70vh] overflow-y-auto space-y-6">
+          <div class="bg-[var(--paper)] p-4 rounded-xl border border-[var(--border)] text-xs space-y-1">
+            <div class="text-muted-foreground"><strong class="text-foreground">Impugnante:</strong> {{ item.ciudadanoNombre || 'Ciudadano' }}</div>
+            <div class="text-muted-foreground"><strong class="text-foreground">Entidad Impugnada:</strong> {{ item.entidadNombre }}</div>
+            <div class="text-muted-foreground"><strong class="text-foreground">Petitorio / Fundamento:</strong> {{ item.resumenSolicitudOriginal || item.observacion || 'Apelación por denegatoria de información' }}</div>
+          </div>
+
+          <!-- Vertical Stepper -->
+          <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--border)]">
+            <!-- Step 1: Interposición -->
+            <div class="relative">
+              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full bg-emerald-500 border-4 border-[var(--card)] text-white flex items-center justify-center text-[10px]">✓</span>
+              <div class="text-sm font-semibold text-foreground">Apelación Interpuesta</div>
+              <div class="text-xs text-muted-foreground mt-0.5">{{ item.fechaApelacion | date:'dd/MM/yyyy HH:mm' }} · Ingresada por mesa de partes TTAIP</div>
+            </div>
+
+            <!-- Step 2: Elevación / 1ra Calificación -->
+            <div class="relative">
+              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full border-4 border-[var(--card)] flex items-center justify-center text-[10px]" [class]="item.estado !== 'PENDIENTE_ELEVACION' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'">
+                {{ item.estado !== 'PENDIENTE_ELEVACION' ? '✓' : '•' }}
+              </span>
+              <div class="text-sm font-semibold text-foreground">Primera Calificación (7 días háb.)</div>
+              <div class="text-xs text-muted-foreground mt-0.5">
+                Estado: {{ item.estado }} · Evaluación de requisitos formales de admisibilidad
+              </div>
+            </div>
+
+            <!-- Step 3: Subsanación / 2da Calificación (si aplica) -->
+            @if (item.estado === 'EN_SUBSANACION' || item.estado === 'EN_CALIFICACION_2') {
+              <div class="relative">
+                <span class="absolute -left-6 top-0 w-5 h-5 rounded-full border-4 border-[var(--card)] flex items-center justify-center text-[10px]" [class]="item.estado === 'EN_CALIFICACION_2' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'">
+                  {{ item.estado === 'EN_CALIFICACION_2' ? '✓' : '!' }}
+                </span>
+                <div class="text-sm font-semibold text-foreground">Subsanación & 2da Calificación</div>
+                <div class="text-xs text-muted-foreground mt-0.5">
+                  {{ item.estado === 'EN_CALIFICACION_2' ? 'Observaciones subsanadas por el recurrente' : 'Pendiente de subsanación dentro de los 2 días hábiles' }}
+                </div>
+              </div>
+            }
+
+            <!-- Step 4: Resolución Final TTAIP -->
+            <div class="relative">
+              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full border-4 border-[var(--card)] flex items-center justify-center text-[10px]" [class]="item.resultado ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-500'">
+                {{ item.resultado ? '✓' : '⚖' }}
+              </span>
+              <div class="text-sm font-semibold" [class]="item.resultado ? 'text-foreground' : 'text-muted-foreground'">
+                Resolución Final de la Sala (10 días háb.)
+              </div>
+              <div class="text-xs text-muted-foreground mt-0.5">
+                @if (item.resultado) {
+                  Fallo pronunciado: <strong class="text-foreground">{{ getResultadoLabel(item.resultado) }}</strong> · Cédulas notificadas.
+                } @else {
+                  Voto colegiado en elaboración por la Vocalía ponente.
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-[var(--border)] bg-[var(--paper)] flex items-center justify-end gap-3">
+          <button (click)="cerrarModalLineaTiempo()" class="btn-ghost-brand !px-4 !py-2 !text-xs">
+            Cerrar
+          </button>
+          <a [routerLink]="['/ttaip/resolucion', item.expediente]" (click)="cerrarModalLineaTiempo()" class="btn-brand !px-4 !py-2 !text-xs inline-flex items-center gap-1.5">
+            Ver expediente TTAIP
+            <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  }
 </div>
 
