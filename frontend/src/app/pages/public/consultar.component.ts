@@ -36,6 +36,7 @@ interface ConsultaResultado {
   estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
   diasTranscurridos: number;
   asunto: string;
+  tipoPersona: string;
   timeline: TimelineEvent[];
 }
 
@@ -180,6 +181,7 @@ export class ConsultarComponent {
   }
 
   private toConsultaResultado(data: ConsultaPublicaSolicitud): ConsultaResultado {
+    const isRuc = /(?:RUC|S\.A\.C|E\.I\.R\.L|S\.A|20\d{9})/i.test(data.ciudadano || '');
     return {
       expediente: data.expediente,
       ciudadano: data.ciudadano,
@@ -188,6 +190,7 @@ export class ConsultarComponent {
       estado: data.estado,
       diasTranscurridos: data.diasTranscurridos ?? 0,
       asunto: data.asunto,
+      tipoPersona: isRuc ? 'Persona Jurídica (RUC)' : 'Persona Natural (DNI)',
       timeline: this.buildTimeline(data)
     };
   }

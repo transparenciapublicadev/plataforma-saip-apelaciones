@@ -175,6 +175,9 @@ export class TtaipDashboardComponent implements OnInit {
 
   readonly stageKey = signal<StageKey>('calificacion1');
   readonly search = signal<string>('');
+  readonly salaFiltro = signal<'TODAS' | 'PRIMERA' | 'SEGUNDA'>('TODAS');
+  readonly paginaActual = signal<number>(1);
+  readonly itemsPorPagina = signal<number>(10);
   readonly nombreMiembro = signal<string>('Miembro TTAIP');
 
   readonly fechaHoy = computed(() =>
@@ -212,8 +215,17 @@ export class TtaipDashboardComponent implements OnInit {
   readonly filtered = computed(() => {
     const active = this.activeStage();
     const query = this.search().trim().toLowerCase();
+    const sala = this.salaFiltro();
 
-    const base = this.queueItems().filter((item) => item.stageKey === active.key);
+    let base = this.queueItems().filter((item) => item.stageKey === active.key);
+    
+    if (sala !== 'TODAS') {
+      base = base.filter((item) => {
+        const itemSala = (item.apelacion.expedienteTtaip?.sala?.nombre || '').toUpperCase();
+        return sala === 'PRIMERA' ? (itemSala.includes('1') || itemSala.includes('PRIMERA') || !itemSala) : (itemSala.includes('2') || itemSala.includes('SEGUNDA'));
+      });
+    }
+
     const searched = query
       ? base.filter((item) => this.matchesQuery(item, query))
       : base;
@@ -224,6 +236,36 @@ export class TtaipDashboardComponent implements OnInit {
 
     return [...searched].sort((a, b) => this.plazoStatus(a, active).restantes - this.plazoStatus(b, active).restantes);
   });
+
+  readonly totalRegistros = computed(() => this.filtered().length);
+  readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
+  readonly inicioRegistro = computed(() => this.totalRegistros() === 0 ? 0 : (this.paginaActual() - 1) * this.itemsPorPagina() + 1);
+  readonly finRegistro = computed(() => Math.min(this.paginaActual() * this.itemsPorPagina(), this.totalRegistros()));
+  readonly filteredVisibles = computed(() => {
+    const start = (this.paginaActual() - 1) * this.itemsPorPagina();
+    return this.filtered().slice(start, start + this.itemsPorPagina());
+  });
+
+  cambiarSala(sala: 'TODAS' | 'PRIMERA' | 'SEGUNDA'): void {
+    this.salaFiltro.set(sala);
+    this.paginaActual.set(1);
+  }
+
+  selectStage(stage: StageKey): void {
+    this.stageKey.set(stage);
+    this.paginaActual.set(1);
+  }
+
+  cambiarPagina(pagina: number): void {
+    if (pagina >= 1 && pagina <= this.totalPaginas()) {
+      this.paginaActual.set(pagina);
+    }
+  }
+
+  cambiarItemsPorPagina(items: number): void {
+    this.itemsPorPagina.set(items);
+    this.paginaActual.set(1);
+  }
 
   readonly riesgo = computed(() => {
     const critical: QueueItem[] = [];
@@ -291,10 +333,6 @@ export class TtaipDashboardComponent implements OnInit {
 
     this.cargarDashboard();
     this.tourService.checkAutoStart('saip_tour_ttaip', this.tourSteps);
-  }
-
-  selectStage(stage: StageKey): void {
-    this.stageKey.set(stage);
   }
 
   get isFirstVisit(): boolean {

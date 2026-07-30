@@ -208,7 +208,7 @@
                   <p class="text-xs text-muted-foreground mt-1">Disfrute la calma o explore otra cola arriba.</p>
                 </div>
               } @else {
-                @for (item of filtradas(); track item.solicitud.id) {
+                @for (item of filtradasVisibles(); track item.solicitud.id) {
                   <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item.bucket)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
@@ -239,19 +239,53 @@
                       </div>
                     }
 
-                    @if (canResponder(item.solicitud)) {
-                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                        <svg lucideSend class="w-3.5 h-3.5"></svg>
-                        Responder
-                      </a>
-                    } @else {
-                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
-                        Ver
-                        <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
-                      </a>
-                    }
+                    <div class="flex items-center gap-1.5">
+                      @if (canResponder(item.solicitud)) {
+                        <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                          <svg lucideSend class="w-3.5 h-3.5"></svg>
+                          Responder
+                        </a>
+                      } @else {
+                        <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
+                          Ver
+                          <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
+                        </a>
+                      }
+                    </div>
                   </div>
                 }
+              }
+
+              <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
+              @if (totalRegistros() > 0) {
+                <div class="px-4 py-3 border-t border-[var(--border)] bg-[var(--paper)] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div class="text-muted-foreground">
+                    Mostrando <span class="font-semibold text-foreground">{{ inicioRegistro() }}</span> - <span class="font-semibold text-foreground">{{ finRegistro() }}</span> de <span class="font-semibold text-foreground">{{ totalRegistros() }}</span> expedientes
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                      <span class="text-muted-foreground">Filas por página:</span>
+                      <select [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)" class="bg-[var(--card)] border border-[var(--border)] rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--brand-600)]">
+                        <option [ngValue]="10">10</option>
+                        <option [ngValue]="20">20</option>
+                        <option [ngValue]="50">50</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button (click)="cambiarPagina(1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Primera página">«</button>
+                      <button (click)="cambiarPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página anterior">‹</button>
+
+                      <span class="px-2 font-medium text-foreground">
+                        Página {{ paginaActual() }} de {{ totalPaginas() }}
+                      </span>
+
+                      <button (click)="cambiarPagina(paginaActual() + 1)" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página siguiente">›</button>
+                      <button (click)="cambiarPagina(totalPaginas())" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Última página">»</button>
+                    </div>
+                  </div>
+                </div>
               }
             </div>
           </div>

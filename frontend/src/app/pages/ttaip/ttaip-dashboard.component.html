@@ -174,7 +174,20 @@
                 </div>
               </div>
 
-              <div class="relative max-w-[260px] flex-1 hidden md:block">
+              <!-- ── SALA FILTER TABS ── -->
+              <div class="flex items-center gap-1 bg-[var(--paper)] p-1 rounded-lg border border-[var(--border)]">
+                <button type="button" (click)="cambiarSala('TODAS')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'TODAS'" [class.shadow-sm]="salaFiltro() === 'TODAS'" [class.text-brand-700]="salaFiltro() === 'TODAS'" [class.text-muted-foreground]="salaFiltro() !== 'TODAS'">
+                  Todas
+                </button>
+                <button type="button" (click)="cambiarSala('PRIMERA')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'PRIMERA'" [class.shadow-sm]="salaFiltro() === 'PRIMERA'" [class.text-brand-700]="salaFiltro() === 'PRIMERA'" [class.text-muted-foreground]="salaFiltro() !== 'PRIMERA'">
+                  1ra Sala
+                </button>
+                <button type="button" (click)="cambiarSala('SEGUNDA')" class="px-2.5 py-1 text-xs font-medium rounded-md transition-colors" [class.bg-[var(--card)]]="salaFiltro() === 'SEGUNDA'" [class.shadow-sm]="salaFiltro() === 'SEGUNDA'" [class.text-brand-700]="salaFiltro() === 'SEGUNDA'" [class.text-muted-foreground]="salaFiltro() !== 'SEGUNDA'">
+                  2da Sala
+                </button>
+              </div>
+
+              <div class="relative max-w-[200px] flex-1 hidden md:block">
                 <svg lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
                 <input class="field-input has-icon-left-sm !pl-9 !py-2 !text-sm" placeholder="Buscar..." [(ngModel)]="searchModel" />
               </div>
@@ -200,7 +213,7 @@
                   <p class="text-sm text-foreground/85 font-medium">Sin expedientes en esta etapa</p>
                 </div>
               } @else {
-                @for (item of filtered(); track item.apelacion.id || item.apelacion.expediente) {
+                @for (item of filteredVisibles(); track item.apelacion.id || item.apelacion.expediente) {
                   <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
@@ -231,24 +244,58 @@
                       </div>
                     }
 
-                    @if (activeStage().isResolved) {
-                      <a [routerLink]="getActionRoute(item)" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
-                        Ver
-                        <svg lucideEye class="w-3.5 h-3.5"></svg>
-                      </a>
-                    } @else if (activeStage().esperaExterna) {
-                      <a [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                        Ver Detalle
-                        <svg lucideEye class="w-3.5 h-3.5"></svg>
-                      </a>
-                    } @else {
-                      <a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                        {{ getActionLabel(item) }}
-                        <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
-                      </a>
-                    }
+                    <div class="flex items-center gap-1.5">
+                      @if (activeStage().isResolved) {
+                        <a [routerLink]="getActionRoute(item)" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
+                          Ver
+                          <svg lucideEye class="w-3.5 h-3.5"></svg>
+                        </a>
+                      } @else if (activeStage().esperaExterna) {
+                        <a [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                          Ver Detalle
+                          <svg lucideEye class="w-3.5 h-3.5"></svg>
+                        </a>
+                      } @else {
+                        <a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
+                          {{ getActionLabel(item) }}
+                          <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+                        </a>
+                      }
+                    </div>
                   </div>
                 }
+              }
+
+              <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
+              @if (totalRegistros() > 0) {
+                <div class="px-4 py-3 border-t border-[var(--border)] bg-[var(--paper)] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div class="text-muted-foreground">
+                    Mostrando <span class="font-semibold text-foreground">{{ inicioRegistro() }}</span> - <span class="font-semibold text-foreground">{{ finRegistro() }}</span> de <span class="font-semibold text-foreground">{{ totalRegistros() }}</span> expedientes TTAIP
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                      <span class="text-muted-foreground">Filas por página:</span>
+                      <select [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)" class="bg-[var(--card)] border border-[var(--border)] rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--brand-600)]">
+                        <option [ngValue]="10">10</option>
+                        <option [ngValue]="20">20</option>
+                        <option [ngValue]="50">50</option>
+                      </select>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button (click)="cambiarPagina(1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Primera página">«</button>
+                      <button (click)="cambiarPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página anterior">‹</button>
+
+                      <span class="px-2 font-medium text-foreground">
+                        Página {{ paginaActual() }} de {{ totalPaginas() }}
+                      </span>
+
+                      <button (click)="cambiarPagina(paginaActual() + 1)" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página siguiente">›</button>
+                      <button (click)="cambiarPagina(totalPaginas())" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Última página">»</button>
+                    </div>
+                  </div>
+                </div>
               }
             </div>
           </div>
