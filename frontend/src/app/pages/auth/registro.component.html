@@ -56,18 +56,18 @@
       <div class="flex items-center gap-2 mb-7">
         <!-- Step 1 -->
         <div class="flex-1 flex items-center gap-2">
-          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">01</span>
-          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 1 ? 'var(--brand-600)' : 'var(--border)'"></div>
+          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">01</span>
+          <div class="flex-1 h-[3px] rounded-full transition-colors" [style.background]="currentStep() >= 1 ? 'var(--brand-600)' : 'var(--border)'"></div>
         </div>
         <!-- Step 2 -->
         <div class="flex-1 flex items-center gap-2">
-          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 2 ? 'var(--brand-700)' : 'var(--muted-foreground)'">02</span>
-          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 2 ? 'var(--brand-600)' : 'var(--border)'"></div>
+          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 2 ? 'var(--brand-700)' : 'var(--muted-foreground)'">02</span>
+          <div class="flex-1 h-[3px] rounded-full transition-colors" [style.background]="currentStep() >= 2 ? 'var(--brand-600)' : 'var(--border)'"></div>
         </div>
         <!-- Step 3 -->
         <div class="flex-1 flex items-center gap-2">
-          <span class="font-mono text-[11px] font-bold tracking-widest" [style.color]="currentStep() >= 3 ? 'var(--brand-700)' : 'var(--muted-foreground)'">03</span>
-          <div class="flex-1 h-[4px] rounded-full transition-colors" [style.background]="currentStep() >= 3 ? 'var(--brand-600)' : 'var(--border)'"></div>
+          <span class="font-mono text-[11px] tracking-widest" [style.color]="currentStep() >= 3 ? 'var(--brand-700)' : 'var(--muted-foreground)'">03</span>
+          <div class="flex-1 h-[3px] rounded-full transition-colors" [style.background]="currentStep() >= 3 ? 'var(--brand-600)' : 'var(--border)'"></div>
         </div>
       </div>
 
@@ -110,22 +110,30 @@
             <!-- Segmented Control Toggle -->
             <div class="field">
               <label class="field-label">Tipo de Persona <span class="req">*</span></label>
-              <div class="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <div class="grid grid-cols-2 gap-2">
                 <button type="button"
                   (click)="setTipoPersona('NATURAL')"
-                  [class]="tipoPersona() === 'NATURAL'
-                    ? 'py-2.5 px-3 rounded-lg bg-white dark:bg-slate-900 text-brand-700 dark:text-white font-semibold text-xs shadow-xs inline-flex items-center justify-center gap-2 transition-all'
-                    : 'py-2.5 px-3 rounded-lg text-slate-600 dark:text-slate-400 font-medium text-xs hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-2 transition-all'">
-                  <svg lucideUser class="w-4 h-4"></svg>
-                  <span>Persona Natural</span>
+                  class="text-left rounded-lg p-3 transition-all cursor-pointer"
+                  [style.background]="tipoPersona() === 'NATURAL' ? 'var(--card)' : 'transparent'"
+                  [style.border]="tipoPersona() === 'NATURAL' ? '1px solid var(--brand-300)' : '1px solid var(--border)'"
+                  [style.boxShadow]="tipoPersona() === 'NATURAL' ? '0 0 0 3px var(--brand-50)' : 'none'">
+                  <div class="text-sm font-medium flex items-center gap-2">
+                    <svg lucideUser class="w-4 h-4 text-brand-700 dark:text-brand-400"></svg>
+                    <span>Persona Natural</span>
+                  </div>
+                  <div class="text-[11px] mt-0.5 text-muted-foreground">Ciudadano · DNI</div>
                 </button>
                 <button type="button"
                   (click)="setTipoPersona('JURIDICA')"
-                  [class]="tipoPersona() === 'JURIDICA'
-                    ? 'py-2.5 px-3 rounded-lg bg-white dark:bg-slate-900 text-brand-700 dark:text-white font-semibold text-xs shadow-xs inline-flex items-center justify-center gap-2 transition-all'
-                    : 'py-2.5 px-3 rounded-lg text-slate-600 dark:text-slate-400 font-medium text-xs hover:text-slate-900 dark:hover:text-white inline-flex items-center justify-center gap-2 transition-all'">
-                  <svg lucideBuilding2 class="w-4 h-4"></svg>
-                  <span>Persona Jurídica (RUC)</span>
+                  class="text-left rounded-lg p-3 transition-all cursor-pointer"
+                  [style.background]="tipoPersona() === 'JURIDICA' ? 'var(--card)' : 'transparent'"
+                  [style.border]="tipoPersona() === 'JURIDICA' ? '1px solid var(--brand-300)' : '1px solid var(--border)'"
+                  [style.boxShadow]="tipoPersona() === 'JURIDICA' ? '0 0 0 3px var(--brand-50)' : 'none'">
+                  <div class="text-sm font-medium flex items-center gap-2">
+                    <svg lucideBuilding2 class="w-4 h-4 text-brand-700 dark:text-brand-400"></svg>
+                    <span>Persona Jurídica (RUC)</span>
+                  </div>
+                  <div class="text-[11px] mt-0.5 text-muted-foreground">Empresa · RUC</div>
                 </button>
               </div>
             </div>
@@ -286,11 +294,7 @@
             </div>
 
             <button type="button" [disabled]="!esPasoValido(1)" (click)="goToStep(2)"
-              class="w-full py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-              [ngClass]="{
-                'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(1),
-                'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(1)
-              }">
+              class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
               <span>Siguiente: Domicilio Legal</span>
               <svg lucideArrowRight class="w-4 h-4"></svg>
             </button>
@@ -408,15 +412,11 @@
 
             <div class="flex gap-3 pt-2">
               <button type="button" (click)="goToStep(1)"
-                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:border-slate-700">
+                class="btn-ghost-brand flex-1 justify-center !py-3">
                 <svg lucideArrowLeft class="w-4 h-4"></svg> Atrás
               </button>
               <button type="button" [disabled]="!esPasoValido(2)" (click)="goToStep(3)"
-                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                [ngClass]="{
-                  'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(2),
-                  'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(2)
-                }">
+                class="btn-brand flex-1 !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                 <span>Siguiente: Credenciales</span>
                 <svg lucideArrowRight class="w-4 h-4"></svg>
               </button>
@@ -485,15 +485,11 @@
 
             <div class="flex gap-3 pt-2">
               <button type="button" (click)="goToStep(2)"
-                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:border-slate-700">
+                class="btn-ghost-brand flex-1 justify-center !py-3">
                 <svg lucideArrowLeft class="w-4 h-4"></svg> Atrás
               </button>
               <button type="submit" [disabled]="!esPasoValido(3) || loading()"
-                class="flex-1 py-3 px-5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                [ngClass]="{
-                  'bg-[#8B1D24] hover:bg-[#6f171d] text-white shadow-md active:scale-[0.99] dark:bg-[#a3222a] dark:hover:bg-[#8B1D24]': esPasoValido(3) && !loading(),
-                  'bg-slate-200 text-slate-500 border border-slate-300/80 cursor-not-allowed opacity-70 dark:bg-slate-800/80 dark:text-slate-400 dark:border-slate-700/80': !esPasoValido(3) || loading()
-                }">
+                class="btn-brand flex-1 !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                 @if (loading()) {
                   <svg lucideLoaderCircle class="w-5 h-5 animate-spin"></svg>
                   <span>Registrando...</span>
