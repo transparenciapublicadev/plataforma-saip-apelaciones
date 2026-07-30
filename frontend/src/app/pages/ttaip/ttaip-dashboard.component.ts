@@ -178,8 +178,6 @@ export class TtaipDashboardComponent implements OnInit {
   readonly salaFiltro = signal<'TODAS' | 'PRIMERA' | 'SEGUNDA'>('TODAS');
   readonly paginaActual = signal<number>(1);
   readonly itemsPorPagina = signal<number>(10);
-  readonly mostrarModalLineaTiempo = signal<boolean>(false);
-  readonly apelacionModalSeleccionada = signal<Apelacion | null>(null);
   readonly nombreMiembro = signal<string>('Miembro TTAIP');
 
   readonly fechaHoy = computed(() =>
@@ -256,20 +254,6 @@ export class TtaipDashboardComponent implements OnInit {
   selectStage(stage: StageKey): void {
     this.stageKey.set(stage);
     this.paginaActual.set(1);
-  }
-
-  abrirModalLineaTiempo(apelacion: Apelacion, event?: Event): void {
-    if (event) {
-      event.stopPropagation();
-      event.preventDefault();
-    }
-    this.apelacionModalSeleccionada.set(apelacion);
-    this.mostrarModalLineaTiempo.set(true);
-  }
-
-  cerrarModalLineaTiempo(): void {
-    this.mostrarModalLineaTiempo.set(false);
-    this.apelacionModalSeleccionada.set(null);
   }
 
   cambiarPagina(pagina: number): void {

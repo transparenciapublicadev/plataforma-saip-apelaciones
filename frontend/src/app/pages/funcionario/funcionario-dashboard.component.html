@@ -240,13 +240,6 @@
                     }
 
                     <div class="flex items-center gap-1.5">
-                      <button type="button"
-                        (click)="abrirModalLineaTiempo(item.solicitud, $event)"
-                        class="btn-ghost-brand !px-2.5 !py-2 !text-[12px] whitespace-nowrap inline-flex items-center gap-1"
-                        title="Ver línea de tiempo interactiva">
-                        <svg lucideLayers class="w-3.5 h-3.5 text-brand-700"></svg>
-                        <span class="hidden sm:inline">Línea de tiempo</span>
-                      </button>
                       @if (canResponder(item.solicitud)) {
                         <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
                           <svg lucideSend class="w-3.5 h-3.5"></svg>
@@ -363,101 +356,4 @@
       </div>
     }
   </div>
-
-  <!-- ── MODAL LÍNEA DE TIEMPO INTERACTIVA ────────────────────────── -->
-  @if (mostrarModalLineaTiempo() && solicitudModalSeleccionada(); as sel) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" (click)="cerrarModalLineaTiempo()">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden animate-scale-in" (click)="$event.stopPropagation()">
-        <!-- Modal Header -->
-        <div class="px-6 py-4 border-b border-[var(--border)] bg-[var(--paper)] flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucideLayers class="w-5 h-5 text-brand-700"></svg>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono font-bold uppercase tracking-wider text-brand-700 px-2 py-0.5 rounded bg-brand-50 border border-brand-200">
-                  {{ sel.expediente }}
-                </span>
-                <span [class]="'badge ' + getEstadoBadgeClass(sel.estado)">{{ getEstadoDisplay(sel) }}</span>
-              </div>
-              <h3 class="font-display font-medium text-lg text-foreground mt-0.5">Línea de tiempo del expediente</h3>
-            </div>
-          </div>
-          <button (click)="cerrarModalLineaTiempo()" class="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <!-- Modal Content: Timeline Stepper -->
-        <div class="p-6 max-h-[70vh] overflow-y-auto space-y-6">
-          <div class="bg-[var(--paper)] p-4 rounded-xl border border-[var(--border)] text-xs space-y-1">
-            <div class="text-muted-foreground"><strong class="text-foreground">Asunto:</strong> {{ sel.asunto }}</div>
-            <div class="text-muted-foreground"><strong class="text-foreground">Ciudadano:</strong> {{ sel.ciudadanoNombre }}</div>
-            <div class="text-muted-foreground"><strong class="text-foreground">Entidad:</strong> {{ sel.entidadNombre }}</div>
-          </div>
-
-          <!-- Vertical Stepper -->
-          <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[var(--border)]">
-            <!-- Step 1: Presentación -->
-            <div class="relative">
-              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full bg-emerald-500 border-4 border-[var(--card)] text-white flex items-center justify-center text-[10px]">✓</span>
-              <div class="text-sm font-semibold text-foreground">Solicitud Presentada</div>
-              <div class="text-xs text-muted-foreground mt-0.5">{{ sel.fechaPresentacion | date:'dd/MM/yyyy HH:mm' }} · Ingresada por mesa de partes digital</div>
-            </div>
-
-            <!-- Step 2: Evaluación / Plazo -->
-            <div class="relative">
-              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full border-4 border-[var(--card)] flex items-center justify-center text-[10px]" [class]="sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'">
-                {{ sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA' ? '✓' : '•' }}
-              </span>
-              <div class="text-sm font-semibold text-foreground">Evaluación & Plazo Legal</div>
-              <div class="text-xs text-muted-foreground mt-0.5">
-                Plazo límite: {{ sel.fechaLimite | date:'dd/MM/yyyy' }} · {{ sel.diasRestantes !== undefined ? sel.diasRestantes + ' días hábiles restantes' : 'En plazo' }}
-              </div>
-            </div>
-
-            <!-- Step 3: Respuesta Entidad -->
-            <div class="relative">
-              <span class="absolute -left-6 top-0 w-5 h-5 rounded-full border-4 border-[var(--card)] flex items-center justify-center text-[10px]" [class]="sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA' ? 'bg-emerald-500 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-500'">
-                {{ sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA' ? '✓' : '' }}
-              </span>
-              <div class="text-sm font-semibold" [class]="sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA' ? 'text-foreground' : 'text-muted-foreground'">
-                Respuesta de la Entidad
-              </div>
-              <div class="text-xs text-muted-foreground mt-0.5">
-                @if (sel.estado === 'RESPONDIDA' || sel.estado === 'CONCLUIDA') {
-                  Respuesta emitida y notificada formalmente al administrado.
-                } @else {
-                  Pendiente de respuesta por la entidad pública.
-                }
-              </div>
-            </div>
-
-            <!-- Step 4: Instancia TTAIP (si aplica) -->
-            @if (sel.apelacion?.expediente) {
-              <div class="relative">
-                <span class="absolute -left-6 top-0 w-5 h-5 rounded-full bg-brand-700 border-4 border-[var(--card)] text-white flex items-center justify-center text-[10px]">⚖</span>
-                <div class="text-sm font-semibold text-brand-700">Recurso de Apelación en TTAIP</div>
-                <div class="text-xs text-muted-foreground mt-0.5">
-                  Expediente TTAIP: <strong class="font-mono text-foreground">{{ sel.apelacion?.expediente }}</strong> · Estado: {{ sel.apelacion?.estado }}
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="px-6 py-4 border-t border-[var(--border)] bg-[var(--paper)] flex items-center justify-end gap-3">
-          <button (click)="cerrarModalLineaTiempo()" class="btn-ghost-brand !px-4 !py-2 !text-xs">
-            Cerrar
-          </button>
-          <a [routerLink]="['/funcionario/solicitud', sel.expediente]" (click)="cerrarModalLineaTiempo()" class="btn-brand !px-4 !py-2 !text-xs inline-flex items-center gap-1.5">
-            Ver expediente completo
-            <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
-          </a>
-        </div>
-      </div>
-    </div>
-  }
 </div>
