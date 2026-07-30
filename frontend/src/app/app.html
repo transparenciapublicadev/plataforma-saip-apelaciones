@@ -321,8 +321,12 @@
             <svg lucideHelpCircle class="w-4 h-4 text-muted-foreground"></svg>
             Ayuda
           </a>
-          <div class="border-t border-[var(--border)] pt-3 mt-3">
-            <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-brand w-full" style="height: 44px">
+          <div class="border-t border-[var(--border)] pt-3 mt-3 space-y-2">
+            <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-brand w-full justify-center" style="height: 44px">
+              <svg lucidePlus class="w-4 h-4"></svg>
+              Pedir información
+            </a>
+            <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-ghost-brand w-full justify-center" style="height: 44px">
               Iniciar sesión
             </a>
           </div>
