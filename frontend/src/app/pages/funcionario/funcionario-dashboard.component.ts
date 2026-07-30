@@ -276,8 +276,6 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   readonly paginaActual = signal<number>(1);
   readonly itemsPorPagina = signal<number>(10);
-  readonly mostrarModalLineaTiempo = signal<boolean>(false);
-  readonly solicitudModalSeleccionada = signal<Solicitud | null>(null);
 
   readonly totalRegistros = computed(() => this.filtradas().length);
   readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
@@ -291,20 +289,6 @@ export class FuncionarioDashboardComponent implements OnInit {
   selectBucket(bucket: BucketKey): void {
     this.selectedBucket.set(bucket);
     this.paginaActual.set(1);
-  }
-
-  abrirModalLineaTiempo(solicitud: Solicitud, event?: Event): void {
-    if (event) {
-      event.stopPropagation();
-      event.preventDefault();
-    }
-    this.solicitudModalSeleccionada.set(solicitud);
-    this.mostrarModalLineaTiempo.set(true);
-  }
-
-  cerrarModalLineaTiempo(): void {
-    this.mostrarModalLineaTiempo.set(false);
-    this.solicitudModalSeleccionada.set(null);
   }
 
   cambiarPagina(pagina: number): void {
