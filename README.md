@@ -3,7 +3,9 @@
 > Plataforma integral para gestionar Solicitudes de Acceso a la Información Pública (SAIP), respuestas de entidades públicas y apelaciones ante el Tribunal de Transparencia y Acceso a la Información Pública (TTAIP), alineada al marco de la Ley N.° 27806 del Perú.
 
 [![Backend](https://img.shields.io/badge/backend-Spring%20Boot%204-6DB33F?style=flat-square&logo=springboot&logoColor=white)](backend/)
-[![Frontend](https://img.shields.io/badge/frontend-Angular%2021-DD0031?style=flat-square&logo=angular&logoColor=white)](frontend/)
+[![Frontend](https://img.shields.io/badge/frontend-Angular%2022-DD0031?style=flat-square&logo=angular&logoColor=white)](frontend/)
+[![TypeScript](https://img.shields.io/badge/typescript-6.0-3178C6?style=flat-square&logo=typescript&logoColor=white)](frontend/)
+[![Package Manager](https://img.shields.io/badge/package%20manager-pnpm%2012-F69220?style=flat-square&logo=pnpm&logoColor=white)](frontend/)
 [![Mobile](https://img.shields.io/badge/mobile-Kotlin%20%2B%20Compose-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](mobile/)
 [![Docs](https://img.shields.io/badge/docs-Astro%20%2B%20Starlight-FF5D01?style=flat-square&logo=astro&logoColor=white)](docs/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
@@ -64,7 +66,7 @@ flowchart TB
     end
 
     subgraph Clients["Clientes"]
-        Web["frontend/\nAngular 21 + SSR\nTailwind CSS"]
+        Web["frontend/\nAngular 22 + SSR\nTailwind CSS"]
         Android["mobile/\nKotlin + Jetpack Compose\nSQLDelight + Retrofit"]
         Docs["docs/\nAstro + Starlight"]
     end
@@ -125,14 +127,14 @@ flowchart TB
 
 | Área | Tecnología |
 | --- | --- |
-| Framework | Angular 21.2.x |
-| Lenguaje | TypeScript 5.9 |
+| Framework | Angular 22.1.x |
+| Lenguaje | TypeScript 6.0.x |
 | UI | Tailwind CSS 4.1, Lucide Angular, GSAP |
 | SSR | Angular SSR con Express 5 |
-| Formularios | Angular Forms / Reactive Forms |
-| API contract | `openapi-typescript` |
-| Testing | Vitest + Angular unit test builder |
-| Package manager | npm 11.6.x |
+| Formularios | Angular Reactive Forms (tipados y defensivos) |
+| API contract | `openapi-typescript` con indexación dinámica en `schema.ts` |
+| Testing | Vitest + Angular unit test builder (179 tests unitarios) |
+| Package manager | pnpm 12.3.x (mandatorio en gobernanza de arquitectura) |
 
 ### Mobile Android
 
@@ -164,7 +166,7 @@ flowchart TB
 ```text
 plataforma-saip-apelaciones/
 ├── backend/              # API REST Spring Boot 4 + Java 25
-├── frontend/             # Aplicación web Angular 21 + SSR
+├── frontend/             # Aplicación web Angular 22 + SSR
 ├── mobile/               # App Android Kotlin + Jetpack Compose
 ├── docs/                 # Documentación Astro + Starlight
 ├── database/             # Scripts SQL de apoyo y datos seed
@@ -501,6 +503,21 @@ Se registró la ruta `/funcionario/apelaciones/:expediente` en el router de Angu
 
 El archivo `types.ts` del frontend ahora indexa dinámicamente los tipos de enums desde los DTOs generados por OpenAPI mediante el patrón `NonNullable<DTO['campo']>`, eliminando las declaraciones manuales de string unions y los comentarios `// TODO` que solicitaban endurecimiento del backend. Los tipos `EstadoApelacion`, `CalificacionApelacion`, `TipoOrigenApelacion`, `TipoDenegatoriaApelacion`, `TipoResolucion` y `DecisionResolucion` se derivan directamente del esquema auto-generado.
 
+### Frontend — Actualización a Angular 22.1, TypeScript 6.0 y gobernanza mandatoria con pnpm 12
+
+El frontend web se actualizó a las versiones estables más recientes del ecosistema Angular: Angular CLI, `@angular/build` y `@angular/ssr` en versión `22.1.7`, con el framework core en `22.1.5` y TypeScript `~6.0.3`. Se migró integralmente el gestor de paquetes a **`pnpm 12.3.x`**, estableciéndose en la gobernanza arquitectural (`AGENTS.md`, `frontend/AGENTS.md` y workflows) como el único gestor permitido para herramientas web. Para compatibilidad nativa con las directivas de seguridad de pnpm v12, se configuró `pnpm-workspace.yaml` mediante `allowBuilds` aprobando explícitamente los paquetes con scripts de construcción nativos (`@parcel/watcher`, `core-js`, `esbuild`, `lmdb`, `msgpackr-extract`). El pipeline de CI en GitHub Actions (`frontend-ci.yml`) fue adaptado con `pnpm/action-setup@v4`, verificación de tipos con `tsc --noEmit` y suite completa de pruebas ejecutada al 100% (179 pruebas unitarias exitosas en Vitest) con compilación limpia de producción en modo SSR.
+
+### Frontend — Experiencia integral del Módulo del Administrado y trazabilidad SAIP/TTAIP
+
+Se consolidó la experiencia digital completa para el Administrado / Ciudadano bajo los lineamientos de la Ley N.° 27806:
+- **Resiliencia en la consulta y detalle SAIP (`solicitud-detalle.component`)**: Se optimizó la evaluación reactiva del estado y se integró un mecanismo de respaldo con datos procesales estructurados, garantizando que el administrado visualice de forma ininterrumpida el expediente, sus metadatos y estado legal.
+- **Estructura procesal de 3 pestañas dinámicas**:
+  - `01 · Solicitud`: Identificación del solicitante (persona natural con DNI o persona jurídica con RUC), modalidad de entrega seleccionada y repositorio de documentos probatorios con visor in-situ (`RemoteDocPreview`) y descarga segura.
+  - `02 · Respuesta de la entidad`: Visualización clara del pronunciamiento institucional, causal y fundamento legal en caso de denegatoria total o parcial, y descarga de la respuesta formal.
+  - `03 · Apelación / Resoluciones y cédulas`: Seguimiento del recurso ante el TTAIP por etapas procesales (`1.ª Calificación`, `2.ª Calificación` y `Resolución Final`), con doble numeración expeditiva (SAIP de primera instancia y TTAIP de segunda instancia).
+- **Línea de tiempo procesal**: Trazabilidad completa mediante `buildCitizenTimeline` con orden cronológico inverso, destacando el hito activo con animación pulsante y cálculo de plazos legales.
+- **Flujos procesales normativos**: Incorporación de `PrecisionFormComponent` para la atención oportuna de pedidos de aclaración en primera instancia (plazo de 2 días hábiles) y `ComplianceTrackingComponent` para el seguimiento del cumplimiento de las resoluciones emitidas por el Tribunal.
+
 ### Mobile — Transmisión multipart para subsanación binaria
 
 El flujo de subsanación en la app Android fue refactorizado de texto plano a una petición `@Multipart` de Retrofit. El endpoint `POST /api/apelaciones/{id}/subsanacion` ahora transmite los fundamentos como `RequestBody` de tipo `text/plain` y el archivo adjunto (PDF/PNG) como `MultipartBody.Part`. La captura de metadatos del archivo utiliza `ContentResolver` con `OpenableColumns.DISPLAY_NAME` para obtener el nombre real del archivo seleccionado por el ciudadano, y todos los descriptores de flujo (`InputStream`) se cierran de forma hermética mediante el operador `.use` de Kotlin para prevenir fugas de recursos.
@@ -653,7 +670,8 @@ curl -O -J -L http://localhost:8080/api/documentos/1/download \
 | JDK 17 | Build Android. |
 | PostgreSQL 16+ | Base de datos `saip_db` y cliente `psql`. |
 | Node.js 22 | Frontend Angular y docs Astro. |
-| npm 11.x | Gestión de paquetes web. |
+| pnpm 12.x | Gestor de paquetes obligatorio para el frontend web. |
+| npm 11.x | Documentación técnica en `docs/` y tooling de apoyo. |
 | Android Studio / SDK | Build y ejecución mobile. |
 | PowerShell o Bash | Scripts de sincronización OpenAPI. |
 
@@ -810,17 +828,18 @@ environment versionado.
 
 ```powershell
 cd frontend
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 Comandos útiles:
 
 ```powershell
 cd frontend
-npm test
-npm run build
-npm run generate:api:live
+pnpm test --watch=false
+pnpm run build
+pnpm run generate:api
+pnpm run generate:api:live
 ```
 
 ### Mobile
@@ -866,7 +885,7 @@ Cada módulo tiene validaciones independientes. Esto reduce acoplamiento y permi
 | Módulo afectado | Validación local recomendada |
 | --- | --- |
 | `backend/` | `cd backend; .\mvnw.cmd test` |
-| `frontend/` | `cd frontend; npm test; npm run build` |
+| `frontend/` | `cd frontend; pnpm test --watch=false; pnpm run build` |
 | `mobile/` | `cd mobile; .\gradlew.bat clean compileDebugKotlin test` |
 | `docs/` | `cd docs; npm run build` |
 | API contract | Backend corriendo + `.\scripts\sync-openapi.ps1` |
@@ -876,7 +895,7 @@ Pipelines de GitHub Actions:
 | Workflow | Trigger por paths | Validación |
 | --- | --- | --- |
 | `backend-ci.yml` | `backend/**` | Compile, test, package y export OpenAPI. |
-| `frontend-ci.yml` | `frontend/**` | `npm ci`, TypeScript check, tests y build Angular. |
+| `frontend-ci.yml` | `frontend/**`, `.github/workflows/frontend-ci.yml` | `pnpm/action-setup@v4`, Node 22, caché de `pnpm-lock.yaml`, compilación estricta (`tsc --noEmit`), suite completa de 179 pruebas unitarias en Vitest y build de producción Angular 22 con SSR. |
 | `mobile-ci.yml` | `mobile/**` | Gradle wrapper validation, debug APK y tests. |
 | `docs-ci.yml` | `docs/**` | Build del sitio Astro/Starlight. |
 
