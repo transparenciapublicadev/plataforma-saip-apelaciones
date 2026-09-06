@@ -54,7 +54,7 @@ if (Test-Path (Join-Path $frontendDir "package.json")) {
     Write-Host "Regenerando tipos TypeScript..."
     Push-Location $frontendDir
     try {
-        npm run generate:api 2>$null
+        pnpm run generate:api 2>$null
         Write-Host "Tipos TypeScript regenerados" -ForegroundColor Green
     } catch {
         Write-Host "WARN: No se pudieron regenerar los tipos" -ForegroundColor Yellow
