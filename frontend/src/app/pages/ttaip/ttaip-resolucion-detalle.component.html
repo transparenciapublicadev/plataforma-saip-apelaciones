@@ -9,11 +9,9 @@
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <span class="code-chip">{{ expedienteDisplay() }}</span>
         @if (resultadoMeta(); as meta) {
-          <span class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium tracking-wider" [style.background]="'var(--card)'" [style.border]="'1px solid ' + meta.accent" [style.color]="meta.accent">
-            {{ meta.label }}
-          </span>
+          <app-status-badge [status]="meta.label"></app-status-badge>
         }
-        <span class="pill"><span class="dot"></span>{{ estadoLabel() }}</span>
+        <app-status-badge [status]="estadoLabel()"></app-status-badge>
       </div>
 
       <span class="eyebrow">Tribunal · Detalle de apelacion</span>

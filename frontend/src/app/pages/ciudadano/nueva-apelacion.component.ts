@@ -36,12 +36,13 @@ interface RequiredAppealDocument {
 }
 
 import { LucideArrowLeft, LucideScale, LucideSend, LucideInfo } from '@lucide/angular';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
 @Component({
   selector: 'app-nueva-apelacion',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    LucideArrowLeft, LucideScale, LucideSend, LucideInfo
+    LucideArrowLeft, LucideScale, LucideSend, LucideInfo, StatusBadgeComponent
   ],
   templateUrl: './nueva-apelacion.component.html',
   styleUrl: './nueva-apelacion.component.css',

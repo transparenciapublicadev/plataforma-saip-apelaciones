@@ -60,7 +60,7 @@ interface GuideStep {
 }
 
 interface PipelineStage {
-  key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas';
+  key: 'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas';
   num: string;
   iconName: string;
   color: string;
@@ -81,18 +81,23 @@ import {
   LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser,
+  LucideAlertTriangle, LucideSearch, LucideX
 } from '@lucide/angular';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
 
 @Component({
   selector: 'app-ciudadano-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
+    StatusBadgeComponent, PaginationComponent,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
     LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser,
+    LucideAlertTriangle, LucideSearch, LucideX
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
@@ -183,7 +188,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   accionResaltada = signal<boolean>(false);
 
   // Pipeline state
-  selectedStageKey = signal<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'>('todas');
+  selectedStageKey = signal<'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('todas');
   stageSearch = signal<string>('');
   stagePage = signal<number>(1);
   readonly PER_PAGE = 4;
@@ -315,22 +320,62 @@ export class CiudadanoDashboardComponent implements OnInit {
     return this.accionPrincipal() ? `${base}. Le mostramos lo que conviene hacer hoy.` : `${base}.`;
   });
 
+  esSegundaInstancia(s: Solicitud): boolean {
+    return !!s.apelacion?.expediente || !!s.apelacion?.resultado || !!s.apelacion?.estado;
+  }
+
+  requiereSubsanacionTTAIP(s: Solicitud): boolean {
+    return !!s.apelacion?.expediente && (s.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION' && s.apelacion?.diasSubsanacion !== undefined;
+  }
+
+  requiereAccion(s: Solicitud): boolean {
+    const estado = (s.estado || '').toUpperCase();
+    return estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
+  }
+
   // ── Pipeline computed properties ──────────────────────────────────────
   readonly stageBuckets = computed(() => {
     const all = this.todasSolicitudes();
+    const ranked = [...all].sort((a, b) => {
+      const msA = a.fechaPresentacion ? new Date(a.fechaPresentacion).getTime() : 0;
+      const msB = b.fechaPresentacion ? new Date(b.fechaPresentacion).getTime() : 0;
+      return msB - msA;
+    });
+
+    const activos = ranked.filter(s =>
+      !this.esApelacionResuelta(s) &&
+      (this.estadosEnProceso.has((s.estado || '').toUpperCase())
+        || (s.estado || '').toUpperCase() === 'RECEPCIONADA'
+        || (s.estado || '').toUpperCase() === 'EN_PROCESO'
+        || (s.estado || '').toUpperCase() === 'EN_REVISION'
+        || (s.estado || '').toUpperCase() === 'PENDIENTE_INFORMACION'
+        || this.tieneApelacionActiva(s)
+        || (s.estado || '').toUpperCase() === 'DENEGADA'
+        || (s.estado || '').toUpperCase() === 'VENCIDA'
+        || (s.estado || '').toUpperCase() === 'EN_PRECISION'
+        || (s.estado || '').toUpperCase() === 'POR_RECOGER'
+        || (s.estado || '').toUpperCase() === 'ENCAUZADA'
+        || (s.estado || '').toUpperCase() === 'OBSERVADA')
+    );
+
+    const historicos1 = ranked.filter(s => (s.estado || '').toUpperCase() === 'RESPONDIDA' && !s.apelacion?.expediente);
+    const historicos2 = ranked.filter(s => this.esApelacionResuelta(s));
+
     return {
-      todas: all,
-      proceso: all.filter(s => {
-        const estado = (s.estado || '').toUpperCase();
-        return (this.estadosEnProceso.has(estado) || estado === 'PENDIENTE' || estado === 'EN_TRAMITE' || estado === 'RECEPCIONADA' || estado === 'EN_PROCESO') && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      todas: ranked,
+      accion: activos.filter(s => this.requiereAccion(s)),
+      proceso: activos.filter(s => {
+        const st = (s.estado || '').toUpperCase();
+        return (st === 'RECEPCIONADA' || st === 'EN_PROCESO' || st === 'EN_REVISION' || st === 'PENDIENTE_INFORMACION' || st === 'ENCAUZADA')
+          && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
       }),
-      respondidas: all.filter(s => {
-        const estado = (s.estado || '').toUpperCase();
-        const esRespondida = estado === 'RESPONDIDA' || estado === 'CON_RESPUESTA' || estado === 'ENTREGADA' || estado === 'PUEDE_APELAR' || estado === 'OBSERVADA' || estado === 'ATENDIDA' || estado === 'FINALIZADA' || estado === 'RESUELTA' || estado === 'DENEGADA' || estado === 'VENCIDA';
-        return esRespondida && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      respondidas: historicos1,
+      apelar: activos.filter(s => {
+        const st = (s.estado || '').toUpperCase();
+        return (st === 'DENEGADA' || st === 'VENCIDA') && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
       }),
-      tribunal: all.filter(s => this.tieneApelacionActiva(s) || (s.apelacion?.estado && ['EN_REVISION_TTAIP', 'APELADA', 'EN_CALIFICACION', 'SUBSANACION', 'EN_PROCESO_TTAIP', 'PENDIENTE_ELEVACION', 'EN_CALIFICACION_1', 'EN_SUBSANACION', 'EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION', 'EN_RESOLUCION'].includes((s.apelacion.estado).toUpperCase()))),
-      resueltas: all.filter(s => this.esApelacionResuelta(s) || (s.apelacion?.estado && ['RESUELTA_TTAIP', 'FUNDADA', 'INFUNDADA', 'IMPROCEDENTE', 'CONCLUIDA'].includes((s.apelacion.estado).toUpperCase()))),
+      tribunal: activos.filter(s => this.tieneApelacionActiva(s) && !this.requiereSubsanacionTTAIP(s)),
+      resueltas: historicos2,
     };
   });
 
@@ -338,10 +383,12 @@ export class CiudadanoDashboardComponent implements OnInit {
     const b = this.stageBuckets();
     return [
       { key: 'todas', num: '00', iconName: 'layers', color: 'var(--brand-700)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: b.todas.length },
-      { key: 'proceso', num: '01', iconName: 'hourglass', color: 'var(--info)', label: 'SAIP pendiente de atención', desc: 'La entidad pública aún está dentro del plazo legal', count: b.proceso.length },
-      { key: 'respondidas', num: '02', iconName: 'mailCheck', color: 'var(--success)', label: 'SAIP atendidas', desc: 'La entidad entregó respuesta oficial (revisar o apelar)', count: b.respondidas.length },
-      { key: 'tribunal', num: '03', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'En revisión del Tribunal', desc: 'Su recurso de apelación está en evaluación por el TTAIP', count: b.tribunal.length },
-      { key: 'resueltas', num: '04', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal emitió resolución o fallo final firme', count: b.resueltas.length },
+      { key: 'accion', num: '01', iconName: 'alertTriangle', color: 'var(--brand-600)', label: 'Requieren su acción', desc: 'Subsane ante la entidad (1ª) o el Tribunal (2ª), o recoja su información', count: b.accion.length },
+      { key: 'proceso', num: '02', iconName: 'hourglass', color: 'var(--info)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: b.proceso.length },
+      { key: 'respondidas', num: '03', iconName: 'mailCheck', color: 'var(--success)', label: 'Respondida por la entidad', desc: 'La entidad ya entregó su respuesta', count: b.respondidas.length },
+      { key: 'apelar', num: '04', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'Puede apelar al Tribunal', desc: 'Si no está conforme con la respuesta, puede llevar su caso al Tribunal', count: b.apelar.length },
+      { key: 'tribunal', num: '05', iconName: 'gavel', color: 'var(--brand-700)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: b.tribunal.length },
+      { key: 'resueltas', num: '06', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal ya emitió el fallo final', count: b.resueltas.length },
     ];
   });
 
@@ -354,7 +401,14 @@ export class CiudadanoDashboardComponent implements OnInit {
     if (!q) return all;
     const terms = q.split(/\s+/).filter(Boolean);
     return all.filter(s => {
-      const hay = this.normalizeText([s.expediente || '', s.entidadNombre || '', s.asunto || '', s.apelacion?.expediente || '', this.estadoHumano(s)].join(' '));
+      const hay = this.normalizeText([
+        s.expediente || '',
+        s.entidadNombre || '',
+        s.asunto || '',
+        s.apelacion?.expediente || '',
+        this.estadoInsignia(s),
+        this.estadoHumano(s)
+      ].join(' '));
       return terms.every(t => hay.includes(t));
     });
   });
@@ -369,11 +423,81 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly stageRangeFrom = computed(() => this.stageFiltered().length === 0 ? 0 : (this.stageSafePage() - 1) * this.PER_PAGE + 1);
   readonly stageRangeTo = computed(() => Math.min(this.stageSafePage() * this.PER_PAGE, this.stageFiltered().length));
 
+  // ── Buscador Global ───────────────────────────────────────────────────
+  globalQuery = signal<string>('');
+  globalIdx = signal<number>(0);
+
+  readonly globalTerms = computed(() => {
+    const q = this.normalizeText(this.globalQuery().trim());
+    return q.split(/\s+/).filter(Boolean);
+  });
+
+  readonly globalOpen = computed(() => this.globalTerms().length > 0);
+
+  readonly globalResults = computed<Solicitud[]>(() => {
+    const terms = this.globalTerms();
+    if (!terms.length) return [];
+    const all = this.todasSolicitudes();
+    return all.filter(s => {
+      const hay = this.normalizeText([
+        s.expediente || '',
+        s.apelacion?.expediente || '',
+        s.entidadNombre || '',
+        s.asunto || '',
+        s.estado || '',
+        this.estadoInsignia(s),
+        s.apelacion?.estado || '',
+        s.apelacion?.resultado || '',
+        this.esSegundaInstancia(s) ? '2a segunda instancia ttaip tribunal apelacion' : '1a primera instancia entidad'
+      ].join(' '));
+      return terms.every(t => hay.includes(t));
+    });
+  });
+
+  onGlobalSearchChange(val: string): void {
+    this.globalQuery.set(val);
+    this.globalIdx.set(0);
+  }
+
+  clearGlobalSearch(): void {
+    this.globalQuery.set('');
+    this.globalIdx.set(0);
+  }
+
+  abrirExpediente(s: Solicitud): void {
+    this.clearGlobalSearch();
+    if (s.expediente) {
+      this.router.navigate(['/ciudadano/solicitud', s.expediente]);
+    } else {
+      this.enfocarSolicitud(s.id);
+    }
+  }
+
+  onGlobalKeyDown(ev: KeyboardEvent): void {
+    if (ev.key === 'Escape') {
+      this.clearGlobalSearch();
+      return;
+    }
+    const results = this.globalResults();
+    if (!results.length) return;
+
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      this.globalIdx.update(i => (i + 1) % results.length);
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      this.globalIdx.update(i => (i - 1 + results.length) % results.length);
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      const current = results[Math.min(this.globalIdx(), results.length - 1)];
+      if (current) this.abrirExpediente(current);
+    }
+  }
+
   readonly tourSteps = computed<TourStep[]>(() => {
     const s: TourStep[] = [
       { selector: '[data-tour="nueva"]', title: 'Pedir información', body: 'Aquí presenta una nueva solicitud de acceso a la información (SAIP). Es su punto de partida en la 1ª instancia, ante la entidad pública.' },
-      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: Todas, SAIP pendientes, SAIP atendidas, En revisión del Tribunal y Resuelta por el Tribunal. Toque una etapa para filtrar la lista de abajo.' },
-      { selector: '[data-tour="buscar"]', title: 'Buscador de expedientes', body: 'Localice de inmediato cualquier solicitud o apelación escribiendo el código de expediente, entidad o palabra clave.' },
+      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: en proceso, respondidas, por apelar, en el Tribunal y con fallo final. Toque una etapa para filtrar la lista de abajo.' },
     ];
     if (this.accionPrincipal()) {
       s.push({ selector: '[data-tour="accion"]', title: 'Lo que debe hacer hoy', body: 'La gestión más urgente de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
@@ -443,10 +567,11 @@ export class CiudadanoDashboardComponent implements OnInit {
         this.calcularEstadisticas(data);
 
         // Auto-select initial pipeline stage
-        const stageOrder: Array<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'> = ['todas', 'proceso', 'respondidas', 'tribunal', 'resueltas'];
+        const stageOrder: Array<'accion' | 'proceso' | 'apelar' | 'tribunal' | 'respondidas' | 'resueltas' | 'todas'> =
+          ['accion', 'proceso', 'apelar', 'tribunal', 'respondidas', 'resueltas', 'todas'];
         const buckets = this.stageBuckets();
-        const initialStage = stageOrder.find(k => buckets[k].length > 0);
-        if (initialStage) this.selectedStageKey.set(initialStage);
+        const initialStage = stageOrder.find(k => buckets[k].length > 0) || 'todas';
+        this.selectedStageKey.set(initialStage);
 
         if (data.length > 0) {
           const activeFirst = data.find((solicitud) => {
@@ -640,7 +765,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   // ── Pipeline methods ────────────────────────────────────────────
-  selectStage(key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'): void {
+  selectStage(key: 'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'): void {
     this.selectedStageKey.set(key);
     this.stageSearch.set('');
     this.stagePage.set(1);
@@ -650,9 +775,123 @@ export class CiudadanoDashboardComponent implements OnInit {
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
-        document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelector('[data-tour="cola"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 50);
+  }
+
+  onPrimary(s: Solicitud): void {
+    const esResueltas = this.selectedStageKey() === 'resueltas';
+    const esRespondidas = this.selectedStageKey() === 'respondidas';
+    if (esResueltas || esRespondidas) {
+      if (s.expediente) {
+        this.router.navigate(['/ciudadano/solicitud', s.expediente]);
+      } else {
+        this.enfocarSolicitud(s.id);
+      }
+    } else {
+      this.enfocarSolicitud(s.id);
+    }
+  }
+
+  estadoInsignia(s: Solicitud): string {
+    if (this.esSegundaInstancia(s)) {
+      if (s.apelacion?.resultado || (s.apelacion?.estado || '').startsWith('RESUELT')) {
+        return s.apelacion?.resultado || 'Resuelto';
+      }
+      if (s.apelacion?.estado) {
+        if (s.apelacion.estado === 'EN_SUBSANACION') return 'En subsanación';
+        if (s.apelacion.estado === 'EN_CALIFICACION_1') return 'En 1ra Calificación';
+        if (s.apelacion.estado === 'EN_CALIFICACION_2') return 'En 2da Calificación';
+        if (s.apelacion.estado === 'EN_RESOLUCION') return 'En Resolución Final';
+        return this.formatoEstado(s.apelacion.estado);
+      }
+      return 'En 1ra Calificación';
+    }
+    const estado = (s.estado || '').toUpperCase();
+    if (estado === 'EN_PRECISION') return 'En Precisión';
+    if (estado === 'POR_RECOGER') return 'Por Recoger';
+    if (estado === 'ENCAUZADA') return 'Encauzada';
+    return this.formatoEstado(s.estado);
+  }
+
+  ubicacionTramite(s: Solicitud): UbicacionTramite {
+    const estadoApelacion = (s.apelacion?.estado || '').toUpperCase();
+    if (this.esApelacionResuelta(s)) {
+      return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
+    }
+    if (this.tieneApelacionActiva(s) || s.apelacion?.expediente) {
+      return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
+    }
+    const estado = (s.estado || '').toUpperCase();
+    if (estado === 'EN_PRECISION') {
+      return { label: 'Debe precisar su solicitud', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'alertTriangle' };
+    }
+    if (estado === 'POR_RECOGER') {
+      return { label: 'Lista para recoger en la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'mailCheck' };
+    }
+    if (estado === 'ENCAUZADA') {
+      return { label: 'Encauzada a la entidad competente', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'scale' };
+    }
+    if (estado === 'RESPONDIDA') {
+      return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
+    }
+    if (estado === 'DENEGADA') {
+      return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
+    }
+    if (estado === 'VENCIDA') {
+      return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
+    }
+    return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
+  }
+
+  filaUrgencia(s: Solicitud): { value: string | number; unit: string; tone: string } | null {
+    const estado = (s.estado || '').toUpperCase();
+    const estadoApelacion = (s.apelacion?.estado || '').toUpperCase();
+
+    // 1ª instancia - precisión ante la entidad
+    if (estado === 'EN_PRECISION') {
+      return { value: '2', unit: 'días háb. para precisar', tone: 'var(--brand-700)' };
+    }
+    // Subsanación ante el Tribunal (2ª instancia)
+    if (estadoApelacion === 'EN_SUBSANACION' && s.apelacion) {
+      const dias = Math.max(0, this.calcularDiasRestantesSubsanacionDesdeSolicitud(s));
+      return { value: dias, unit: dias === 1 ? 'día háb. para subsanar' : 'días háb. para subsanar', tone: 'var(--brand-700)' };
+    }
+    // Recojo de información física
+    if (estado === 'POR_RECOGER') {
+      return { value: 'Recojo', unit: 'información lista para recoger', tone: 'var(--gold-dark)' };
+    }
+    // Plazo para interponer apelación
+    if ((estado === 'DENEGADA' || estado === 'VENCIDA') && !this.tieneApelacionActiva(s)) {
+      const d = this.calcularDiasParaApelar(s);
+      if (d > 0) {
+        return { value: d, unit: d === 1 ? 'día para apelar' : 'días para apelar', tone: 'var(--gold-dark)' };
+      }
+    }
+    // 2ª instancia - el Tribunal tramitando la apelación
+    if (this.tieneApelacionActiva(s)) {
+      if (estadoApelacion === 'EN_RESOLUCION') {
+        return { value: '10', unit: 'días háb. para la resolución final', tone: 'var(--info)' };
+      }
+      if (estadoApelacion === 'EN_CALIFICACION_2') {
+        return { value: '7', unit: 'días háb. · 2da calificación', tone: 'var(--info)' };
+      }
+      if (estadoApelacion === 'EN_CALIFICACION_1' || estadoApelacion === 'PENDIENTE_ELEVACION') {
+        return { value: '7', unit: 'días háb. · 1ra calificación', tone: 'var(--info)' };
+      }
+    }
+    // 1ª instancia - recepcionada
+    if (estado === 'RECEPCIONADA') {
+      return { value: 'Recepcionada', unit: 'en revisión de requisitos', tone: 'var(--info)' };
+    }
+    // 1ª instancia - en proceso
+    if (this.estadosEnProceso.has(estado)) {
+      const restantes = Math.max(0, this.diasRestantesParaEntidad(s));
+      const tone = restantes <= 1 ? 'var(--brand-700)' : restantes <= 3 ? 'var(--warning)' : 'var(--success)';
+      return { value: restantes, unit: restantes === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda', tone };
+    }
+    return null;
   }
 
   goStagePage(page: number): void {

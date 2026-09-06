@@ -9,7 +9,10 @@ import { Apelacion } from '../../models/apelacion.model';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
-type StageKey = 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
+
+type StageKey = 'todos' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
 type Priority = 'alta' | 'media' | 'baja';
 type Tone = 'critical' | 'warn' | 'ok' | 'done';
 
@@ -31,7 +34,7 @@ interface StageMeta {
 
 interface QueueItem {
   apelacion: Apelacion;
-  stageKey: StageKey;
+  stageKey: Exclude<StageKey, 'todos'>;
   ciudadano: string;
   iniciales: string;
   entidad: string;
@@ -60,6 +63,7 @@ import {
   selector: 'app-ttaip-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
+    StatusBadgeComponent, PaginationComponent,
     LucideGavel, LucideCompass, LucideShieldAlert, LucideSparkles,
     LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
     LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
@@ -97,6 +101,19 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   readonly stages: StageMeta[] = [
+    {
+      key: 'todos',
+      num: '00',
+      label: 'Todos los expedientes',
+      shortLabel: 'Todos',
+      plazoDias: 0,
+      plazoLabel: 'Todo el pipeline',
+      norma: 'Vista general',
+      color: 'var(--brand-700)',
+      bg: 'var(--brand-subtle)',
+      icon: 'layers',
+      actionLabel: null
+    },
     {
       key: 'calificacion1',
       num: '01',
@@ -196,6 +213,7 @@ export class TtaipDashboardComponent implements OnInit {
 
   readonly counts = computed<Record<StageKey, number>>(() => {
     const base: Record<StageKey, number> = {
+      todos: this.queueItems().length,
       calificacion1: 0,
       subsanacion: 0,
       calificacion2: 0,
@@ -217,7 +235,7 @@ export class TtaipDashboardComponent implements OnInit {
     const query = this.search().trim().toLowerCase();
     const sala = this.salaFiltro();
 
-    let base = this.queueItems().filter((item) => item.stageKey === active.key);
+    let base = active.key === 'todos' ? this.queueItems() : this.queueItems().filter((item) => item.stageKey === active.key);
     
     if (sala !== 'TODAS') {
       base = base.filter((item) => {
@@ -500,7 +518,7 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   private stageRank(estado: string): number {
-    const ranks: Record<StageKey, number> = {
+    const ranks: Record<Exclude<StageKey, 'todos'>, number> = {
       calificacion1: 1,
       subsanacion: 2,
       calificacion2: 3,
@@ -531,7 +549,7 @@ export class TtaipDashboardComponent implements OnInit {
     const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
     const entidad = (apelacion.entidadNombre || 'Entidad pública').trim();
     const descripcion = (apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Recurso en trámite').trim();
-    const stageKey = this.mapEstadoToStage(apelacion.estado) ?? 'calificacion1';
+    const stageKey: Exclude<StageKey, 'todos'> = this.mapEstadoToStage(apelacion.estado) ?? 'calificacion1';
     const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
     const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);
 
@@ -549,7 +567,7 @@ export class TtaipDashboardComponent implements OnInit {
     };
   }
 
-  private mapEstadoToStage(estadoRaw: string): StageKey | null {
+  private mapEstadoToStage(estadoRaw: string): Exclude<StageKey, 'todos'> | null {
     const estado = this.normalizeDecision(estadoRaw);
 
     if (estado === 'PENDIENTE_ELEVACION') return null;
@@ -561,7 +579,7 @@ export class TtaipDashboardComponent implements OnInit {
     return 'resueltos';
   }
 
-  private estimateDiasEtapa(apelacion: Apelacion, stage: StageKey): number {
+  private estimateDiasEtapa(apelacion: Apelacion, stage: Exclude<StageKey, 'todos'>): number {
     if (stage === 'subsanacion' && apelacion.fechaSubsanacion) {
       return this.diasDesde(apelacion.fechaSubsanacion);
     }
@@ -582,7 +600,7 @@ export class TtaipDashboardComponent implements OnInit {
     return Math.floor(diff / (1000 * 60 * 60 * 24));
   }
 
-  private estimatePriority(stage: StageKey, diasHabilesEnEtapa: number): Priority {
+  private estimatePriority(stage: Exclude<StageKey, 'todos'>, diasHabilesEnEtapa: number): Priority {
     const stageMeta = this.stageFromKey(stage);
     if (stageMeta.isResolved) return 'baja';
 

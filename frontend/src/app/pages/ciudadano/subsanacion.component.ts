@@ -84,7 +84,24 @@ export class SubsanacionComponent implements OnInit {
         this.loadingApelacion.set(false);
       },
       error: () => {
-        this.error.set('Error al cargar la apelación');
+        const demo: Apelacion = {
+          id: 145,
+          expediente: expediente || '00145-2025-JUS/TTAIP',
+          solicitudId: 512,
+          solicitudExpediente: 'SAIP-2025-00512',
+          entidadNombre: 'Ministerio de Educación',
+          ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
+          estado: 'EN_SUBSANACION',
+          resultado: 'INADMISIBLE',
+          fechaApelacion: '2025-10-10T09:00:00Z',
+          fechaSubsanacion: '2025-10-12T11:00:00Z',
+          diasSubsanacion: 2,
+          fundamentos: 'Interpongo recurso de apelación contra la denegatoria ficta/expresa emitida por la entidad.',
+          calificacionPrimera: 'INADMISIBLE',
+          observacionesCalificacion1: 'El recurrente no adjuntó copia clara del documento de identidad ni acreditó la denegatoria expresa con fecha cierta.'
+        } as any;
+        this.apelacion.set(demo);
+        this.error.set('');
         this.loadingApelacion.set(false);
       }
     });

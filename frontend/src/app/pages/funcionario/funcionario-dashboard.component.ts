@@ -11,7 +11,10 @@ import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/sil
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
-type BucketKey = 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
+
+type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
 
 interface BucketMeta {
   key: BucketKey;
@@ -24,7 +27,7 @@ interface BucketMeta {
 
 interface QueueItem {
   solicitud: Solicitud;
-  bucket: BucketKey;
+  bucket: Exclude<BucketKey, 'todas'>;
   diasRestantes: number;
   iniciales: string;
   prioridad: 'alta' | 'media' | 'baja';
@@ -49,6 +52,7 @@ import {
   selector: 'app-funcionario-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
+    StatusBadgeComponent, PaginationComponent,
     LucideBuilding2, LucideCompass, LucideTrendingUp, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
@@ -77,6 +81,14 @@ export class FuncionarioDashboardComponent implements OnInit {
   private readonly plazoLegal = 10;
 
   readonly buckets: BucketMeta[] = [
+    {
+      key: 'todas',
+      label: 'Todas las solicitudes',
+      eyebrow: 'Vista general · sin filtro de plazo',
+      icon: 'inbox',
+      color: 'var(--brand-700)',
+      bg: 'var(--brand-subtle)'
+    },
     {
       key: 'san',
       label: 'Vencidas (SAN)',
@@ -148,6 +160,7 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   readonly counts = computed<Record<BucketKey, number>>(() => {
     const base: Record<BucketKey, number> = {
+      todas: this.queueItems().length,
       san: 0,
       hoy: 0,
       semana: 0,
@@ -195,7 +208,9 @@ export class FuncionarioDashboardComponent implements OnInit {
     const bucket = this.selectedBucket();
     const query = this.busqueda().trim().toLowerCase();
 
-    const list = this.queueItems().filter((item) => item.bucket === bucket);
+    const list = bucket === 'todas'
+      ? this.queueItems()
+      : this.queueItems().filter((item) => item.bucket === bucket);
 
     const byQuery = query
       ? list.filter((item) => {
@@ -460,7 +475,7 @@ export class FuncionarioDashboardComponent implements OnInit {
     return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA';
   }
 
-  private obtenerBucket(solicitud: Solicitud, diasRestantes: number): BucketKey {
+  private obtenerBucket(solicitud: Solicitud, diasRestantes: number): Exclude<BucketKey, 'todas'> {
     const estado = (solicitud.estado || '').toUpperCase();
 
     if (this.isSolicitudTerminal(estado)) {

@@ -25,7 +25,7 @@
             <span class="eyebrow">Bandeja institucional · Detalle</span>
             <div class="flex items-center gap-3 mt-2 flex-wrap">
               <span class="code-chip" style="font-size: 13px">{{ sol.expediente }}</span>
-              <span [class]="getEstadoBadgeClass(sol.estado)">{{ getEstadoDisplay(sol.estado) }}</span>
+              <app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge>
               @if (sol.prioridad) {
                 <span class="pill" [style.background]="sol.prioridad === 'ALTA' ? 'rgba(200,16,46,0.1)' : (sol.prioridad === 'MEDIA' ? 'rgba(217,119,6,0.1)' : 'rgba(5,150,105,0.1)')" [style.color]="sol.prioridad === 'ALTA' ? 'var(--brand-700)' : (sol.prioridad === 'MEDIA' ? 'var(--warning)' : 'var(--success)')">
                   <span class="dot"></span>

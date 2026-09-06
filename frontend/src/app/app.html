@@ -118,7 +118,14 @@
             }
           }
 
+          <a routerLink="/ayuda" routerLinkActive="active" class="nav-link-desktop">
+            <svg lucideHelpCircle class="w-4 h-4 opacity-70"></svg>
+            Ayuda
+          </a>
+
           <div class="w-px h-5 bg-border mx-2"></div>
+
+          <app-notification-bell [userType]="tipoUsuario()"></app-notification-bell>
 
           <button
             type="button"
@@ -230,6 +237,10 @@
 
       <!-- Mobile actions -->
       <div class="md:hidden flex items-center gap-1.5">
+        @if (isLoggedIn()) {
+          <app-notification-bell [userType]="tipoUsuario()"></app-notification-bell>
+        }
+
         <button
           type="button"
           (click)="toggleTheme()"

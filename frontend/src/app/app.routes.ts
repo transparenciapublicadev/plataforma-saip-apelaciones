@@ -69,6 +69,21 @@ export const routes: Routes = [
     canActivate: [tipoUsuarioGuard('CIUDADANO')]
   },
   {
+    path: 'ciudadano/precision/:expediente',
+    loadComponent: () => import('./pages/ciudadano/precision-form.component').then(m => m.PrecisionFormComponent),
+    canActivate: [tipoUsuarioGuard('CIUDADANO')]
+  },
+  {
+    path: 'precision-form/:expediente',
+    loadComponent: () => import('./pages/ciudadano/precision-form.component').then(m => m.PrecisionFormComponent),
+    canActivate: [tipoUsuarioGuard('CIUDADANO')]
+  },
+  {
+    path: 'precision-form',
+    loadComponent: () => import('./pages/ciudadano/precision-form.component').then(m => m.PrecisionFormComponent),
+    canActivate: [tipoUsuarioGuard('CIUDADANO')]
+  },
+  {
     path: 'funcionario',
     loadComponent: () => import('./pages/funcionario/funcionario-dashboard.component').then(m => m.FuncionarioDashboardComponent),
     canActivate: [tipoUsuarioGuard('FUNCIONARIO')]
@@ -122,6 +137,20 @@ export const routes: Routes = [
     path: 'ttaip/procesos-disciplinarios',
     loadComponent: () => import('./pages/ttaip/proceso-disciplinario.component').then(m => m.ProcesoDisciplinarioComponent),
     canActivate: [tipoUsuarioGuard('TTAIP')]
+  },
+  {
+    path: 'ttaip/cumplimiento',
+    loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent),
+    canActivate: [tipoUsuarioGuard('TTAIP')]
+  },
+  {
+    path: 'ttaip/compliance',
+    loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent),
+    canActivate: [tipoUsuarioGuard('TTAIP')]
+  },
+  {
+    path: 'compliance',
+    loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent)
   },
   {
     path: 'admin',

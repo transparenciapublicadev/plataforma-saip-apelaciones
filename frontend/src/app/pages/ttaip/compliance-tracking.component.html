@@ -1,0 +1,285 @@
+<div class="min-h-screen bg-background">
+  <!-- Hero / Encabezado institucional con gradiente TTAIP -->
+  <div class="relative bg-brand-gradient text-white overflow-hidden">
+    <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
+        <svg lucideArrowLeft class="w-4 h-4"></svg>
+        Volver al panel TTAIP
+      </a>
+      <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Seguimiento</span>
+      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em;">
+        Cumplimiento de <span class="italic" style="color: var(--gold-soft)">resoluciones</span>
+      </h1>
+      <p class="text-white/75 mt-2 text-sm">
+        Las resoluciones FUNDADAS abren un seguimiento: la entidad tiene 7 días hábiles para acatar lo ordenado.
+      </p>
+    </div>
+    <div class="brand-divider"></div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
+
+    <!-- Indicadores / KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+      <!-- Pendientes -->
+      <div class="rounded-lg p-4 flex items-center gap-3 bg-card border border-border">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
+          <svg lucideClock class="w-5 h-5" style="color: var(--warning)"></svg>
+        </div>
+        <div>
+          <div class="font-display text-2xl leading-none" style="color: var(--warning)">
+            {{ resumen().pendientes }}
+          </div>
+          <div class="eyebrow mt-1">Pendientes</div>
+        </div>
+      </div>
+
+      <!-- Vencidos -->
+      <div
+        class="rounded-lg p-4 flex items-center gap-3 transition-colors"
+        [style.background]="resumen().vencidos > 0 ? 'var(--brand-subtle)' : 'var(--card)'"
+        [style.border]="resumen().vencidos > 0 ? '1px solid var(--brand-200)' : '1px solid var(--border)'">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
+          <svg lucideAlertTriangle class="w-5 h-5" style="color: var(--brand-700)"></svg>
+        </div>
+        <div>
+          <div class="font-display text-2xl leading-none" style="color: var(--brand-700)">
+            {{ resumen().vencidos }}
+          </div>
+          <div class="eyebrow mt-1">Vencidos</div>
+        </div>
+      </div>
+
+      <!-- Cumplidos / Cerrados -->
+      <div class="rounded-lg p-4 flex items-center gap-3 bg-card border border-border">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
+          <svg lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
+        </div>
+        <div>
+          <div class="font-display text-2xl leading-none" style="color: var(--success)">
+            {{ resumen().cumplidos }}
+          </div>
+          <div class="eyebrow mt-1">Cumplidos / cerrados</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado de Carga -->
+    @if (cargando()) {
+      <div class="form-shell p-12 text-center text-sm text-muted-foreground">
+        Cargando el seguimiento de cumplimiento…
+      </div>
+    } @else if (!sel()) {
+      <!-- Estado Vacío -->
+      <div class="form-shell p-12 text-center">
+        <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+          <svg lucideInbox class="w-7 h-7" style="color: var(--brand-700)"></svg>
+        </div>
+        <h3 class="font-display tracking-wide mt-4 text-xl">Sin seguimientos abiertos</h3>
+        <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+          Cuando el Tribunal declare FUNDADA una apelación, aquí aparecerá el seguimiento del
+          cumplimiento por parte de la entidad.
+        </p>
+      </div>
+    } @else {
+      <!-- Rejilla Master-Detail: Listado Izquierda | Detalle Derecha -->
+      <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
+
+        <!-- LISTADO IZQUIERDO: Resoluciones Fundadas -->
+        <aside class="form-shell h-fit lg:sticky lg:top-28">
+          <div class="form-section-header">
+            <span class="eyebrow">{{ items().length }} seguimiento{{ items().length === 1 ? '' : 's' }}</span>
+            <h2 class="form-section-title">Resoluciones fundadas</h2>
+          </div>
+          <div class="p-3 space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar">
+            @for (item of items(); track item.id) {
+              <button
+                type="button"
+                (click)="seleccionarItem(item.id)"
+                class="w-full text-left rounded-md p-3 transition-colors cursor-pointer"
+                [style.background]="item.id === sel()?.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="'1px solid ' + (item.id === sel()?.id ? 'var(--brand-200)' : 'var(--border)')">
+
+                <div class="flex items-center justify-between gap-2">
+                  <div class="font-mono text-[11px]" style="color: var(--brand-700)">
+                    {{ item.expedienteTTAIP }}
+                  </div>
+                  <!-- Badge de Estado -->
+                  <app-status-badge [status]="estadoLabels[item.estado]"></app-status-badge>
+                </div>
+
+                <div class="text-sm font-medium mt-1 truncate">{{ item.entidad }}</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Vence: {{ item.fechaLimite || '—' }}</div>
+              </button>
+            }
+          </div>
+        </aside>
+
+        <!-- DETALLE DERECHO: Expediente, Cumplimiento y Acciones -->
+        @if (sel(); as itemActual) {
+          <div class="space-y-6">
+
+            <!-- Ficha del Expediente -->
+            <div class="form-shell p-6 space-y-5 text-sm">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <span class="eyebrow" style="color: var(--brand-700)">Expediente TTAIP</span>
+                  <div class="font-mono text-sm mt-0.5 font-semibold">{{ itemActual.expedienteTTAIP }}</div>
+                </div>
+
+                <!-- Badge de Estado -->
+                <app-status-badge [status]="estadoLabels[itemActual.estado]"></app-status-badge>
+              </div>
+
+              <!-- Banner de Decisión Colegiada -->
+              <div class="rounded-md p-4 flex items-start gap-3" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
+                <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
+                <div>
+                  <div class="font-display tracking-wider font-semibold">
+                    RESOLUCIÓN {{ (itemActual.resultado || 'FUNDADA') | uppercase }}
+                  </div>
+                  <p class="text-xs text-foreground/80 mt-1 leading-relaxed">
+                    Se ordenó a <span class="font-medium">{{ itemActual.entidad }}</span> entregar la información del expediente
+                    <span class="font-mono">{{ itemActual.expedienteSAIP }}</span> dentro de 7 días hábiles.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Metadatos del Trámite -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="eyebrow">Entidad obligada</div>
+                  <div class="mt-1 text-sm text-foreground">{{ itemActual.entidad }}</div>
+                </div>
+
+                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="eyebrow">Expediente SAIP</div>
+                  <div class="mt-1 font-mono text-[13px] text-foreground">{{ itemActual.expedienteSAIP }}</div>
+                </div>
+
+                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="eyebrow">Fecha de resolución</div>
+                  <div class="mt-1 font-mono text-[13px] text-foreground">{{ itemActual.fechaResolucion || '—' }}</div>
+                </div>
+
+                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="eyebrow">Plazo de cumplimiento</div>
+                  <div
+                    class="mt-1 font-mono text-[13px]"
+                    [style.color]="itemActual.estado === 'vencido' ? 'var(--brand-700)' : 'var(--foreground)'">
+                    {{ itemActual.fechaLimite || '—' }}
+                  </div>
+                </div>
+
+                @if (itemActual.fechaCumplimiento) {
+                  <div class="rounded-md p-3 sm:col-span-2" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="eyebrow">Fecha de cumplimiento</div>
+                    <div class="mt-1 font-mono text-[13px]" style="color: var(--success)">
+                      {{ itemActual.fechaCumplimiento }}
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Observaciones del Tribunal -->
+              @if (itemActual.observaciones) {
+                <div>
+                  <span class="eyebrow">Observaciones del Tribunal</span>
+                  <div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
+                    <p class="leading-relaxed text-sm whitespace-pre-line text-foreground/85">{{ itemActual.observaciones }}</p>
+                  </div>
+                </div>
+              }
+
+              <!-- Botón de Resolución -->
+              <button
+                type="button"
+                (click)="verResolucion(itemActual.expedienteTTAIP)"
+                class="btn-ghost-brand w-full justify-center !py-2.5 flex items-center gap-2 cursor-pointer">
+                <svg lucideEye class="w-4 h-4"></svg>
+                Ver la resolución
+              </button>
+            </div>
+
+            <!-- Acciones del Tribunal (si el seguimiento no está cerrado) -->
+            @if (itemActual.estado !== 'cerrado') {
+              <div class="form-shell p-6 space-y-4">
+                <div>
+                  <span class="eyebrow" style="color: var(--brand-700)">Actualizar el seguimiento</span>
+                  <p class="text-xs text-muted-foreground mt-1">
+                    Registre el resultado de la verificación de cumplimiento.
+                  </p>
+                </div>
+
+                <div class="field">
+                  <label class="field-label">Observaciones (opcional)</label>
+                  <textarea
+                    class="field-input"
+                    rows="3"
+                    style="resize: vertical;"
+                    placeholder="Ej. la entidad entregó la información de forma incompleta…"
+                    [ngModel]="observacionesInput()"
+                    (ngModelChange)="observacionesInput.set($event)">
+                  </textarea>
+                </div>
+
+                <!-- Botonera de Acciones -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  @for (accion of acciones; track accion.estado) {
+                    <button
+                      type="button"
+                      (click)="actualizarEstado(accion.estado)"
+                      class="rounded-md p-3.5 text-sm text-left flex items-center gap-2.5 transition-colors cursor-pointer hover:bg-[color:var(--brand-subtle)]"
+                      style="background: var(--card); border: 1px solid var(--border);"
+                      [style.borderLeft]="'3px solid ' + accion.tone">
+
+                      @switch (accion.iconName) {
+                        @case ('check-circle-2') {
+                          <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                        }
+                        @case ('alert-triangle') {
+                          <svg lucideAlertTriangle class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                        }
+                        @case ('refresh-cw') {
+                          <svg lucideRefreshCw class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                        }
+                        @case ('shield-check') {
+                          <svg lucideShieldCheck class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                        }
+                      }
+                      <span class="font-medium">{{ accion.label }}</span>
+                    </button>
+                  }
+                </div>
+
+                <!-- Alerta Legal Normativa (Art. 4° Ley N.° 27806) -->
+                <div class="rounded-md p-3.5 flex items-start gap-2.5 text-xs" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                  <svg lucideXCircle class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
+                  <span class="text-foreground/80 leading-relaxed">
+                    Si el plazo vence sin cumplimiento, el sistema abre automáticamente un proceso
+                    disciplinario contra el funcionario responsable (art. 4° de la Ley N° 27806).
+                  </span>
+                </div>
+              </div>
+            }
+
+          </div>
+        }
+
+      </div>
+    }
+
+  </div>
+
+  <!-- Toast Notificación Flotante -->
+  @if (toastMensaje(); as msg) {
+    <div class="fixed bottom-6 right-6 z-50 animate-fade-in-up">
+      <div class="rounded-lg shadow-lg px-4 py-3 bg-[var(--brand-800)] text-white text-sm flex items-center gap-2.5 border border-white/10">
+        <svg lucideCheckCircle2 class="w-4 h-4 text-green-400 flex-shrink-0"></svg>
+        <span>{{ msg }}</span>
+      </div>
+    </div>
+  }
+</div>

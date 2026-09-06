@@ -16,13 +16,14 @@ import {
 import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
 import { GuidedTourService } from './core/guided-tour/guided-tour.service';
 import { HostListener, effect } from '@angular/core';
+import { NotificationBellComponent } from './shared/notification-bell.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    GuidedTourComponent,
+    GuidedTourComponent, NotificationBellComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
