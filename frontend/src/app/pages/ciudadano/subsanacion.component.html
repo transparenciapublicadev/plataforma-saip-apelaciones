@@ -148,9 +148,14 @@
                       </div>
                       <span class="text-sm font-medium">{{ doc.nombreArchivo }}</span>
                     </div>
-                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                      <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="previsualizarDocumento(doc)" aria-label="Ver documento" title="Ver documento">
+                        <svg lucideEye class="w-4 h-4"></svg>
+                      </button>
+                      <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento" title="Descargar documento">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
+                      </button>
+                    </div>
                   </div>
                 } @empty {
                   <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
@@ -215,6 +220,9 @@
                     <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
                     <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
                     <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
+                    <button type="button" class="btn-ghost-brand !px-2 !py-1 !text-xs inline-flex items-center gap-1" (click)="previsualizarArchivoLocal(file)" title="Ver documento">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" stroke-width="2" /></svg> Ver
+                    </button>
                     <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
                       Quitar
                     </button>
@@ -282,4 +290,10 @@
     (close)="irPanelCiudadano()"
     (primary)="irPanelCiudadano()">
   </app-reference-success-modal>
+
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </div>

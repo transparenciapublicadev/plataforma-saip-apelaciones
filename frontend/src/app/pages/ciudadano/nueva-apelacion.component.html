@@ -491,5 +491,11 @@
     (primary)="irPanelCiudadano()"
     (secondary)="verSolicitudOrigen()">
   </app-reference-success-modal>
+
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </div>
 

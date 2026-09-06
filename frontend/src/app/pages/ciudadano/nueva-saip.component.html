@@ -398,6 +398,9 @@
                   <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
                   <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
                   <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
+                  <button type="button" class="btn-ghost-brand !px-2 !py-1 !text-xs inline-flex items-center gap-1" (click)="previsualizarDocumento(file)" title="Ver documento">
+                    <svg lucideEye class="w-3.5 h-3.5"></svg> Ver
+                  </button>
                   <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
                     Quitar
                   </button>
@@ -517,4 +520,10 @@
     (primary)="irPanelCiudadano()"
     (secondary)="verSolicitudCreada()">
   </app-reference-success-modal>
+
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </div>

@@ -79,4 +79,16 @@ describe('DocumentListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('respuesta.pdf');
     expect(fixture.nativeElement.textContent).toContain('application/pdf');
   });
+
+  it('opens preview modal when clicking the preview button', () => {
+    const previewButton = fixture.nativeElement.querySelector(
+      'button[aria-label="Ver documento"]'
+    ) as HTMLButtonElement;
+    expect(previewButton).toBeTruthy();
+
+    previewButton.click();
+    expect(documentoService.download).toHaveBeenCalledWith(9, 'solicitud.pdf');
+    expect(fixture.componentInstance.isPreviewOpen()).toBe(true);
+    expect(fixture.componentInstance.previewTarget()?.nombre).toBe('solicitud.pdf');
+  });
 });

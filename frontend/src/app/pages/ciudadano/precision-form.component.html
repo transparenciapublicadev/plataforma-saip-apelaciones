@@ -333,74 +333,9 @@
     (primary)="irAlPanel()">
   </app-reference-success-modal>
 
-  <!-- Visor In-Situ de Documentos (PDF / Imagen) -->
-  @if (previewModalAbierto()) {
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs"
-      (click)="cerrarPreview()">
-      <div
-        class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col bg-card border border-border shadow-xl max-h-[86vh]"
-        (click)="$event.stopPropagation()">
-
-        <!-- Header del Visor -->
-        <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-border">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <svg lucideFileText class="w-4 h-4 flex-shrink-0" style="color: var(--brand-700)"></svg>
-            <span class="text-sm font-medium truncate">{{ previewDocNombre() }}</span>
-          </div>
-
-          <div class="flex items-center gap-2">
-            @if (previewDocUrl()) {
-              <a
-                [href]="previewDocUrl()"
-                [download]="previewDocNombre()"
-                class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted border border-border"
-                title="Descargar">
-                <svg lucideDownload class="w-4 h-4"></svg>
-              </a>
-            }
-            <button
-              type="button"
-              (click)="cerrarPreview()"
-              class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted border border-border"
-              title="Cerrar">
-              <svg lucideX class="w-4 h-4"></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Contenido del Visor -->
-        <div class="flex-1 overflow-auto bg-muted">
-          @if (previewCargando()) {
-            <div class="p-10 flex flex-col items-center justify-center text-center min-h-[50vh]">
-              <svg lucideLoader2 class="w-8 h-8 animate-spin" style="color: var(--brand-700)"></svg>
-              <p class="text-sm text-muted-foreground mt-3">Cargando documento…</p>
-            </div>
-          } @else if (previewDocUrl() && previewDocEsPdf()) {
-            <iframe
-              [src]="previewDocUrl() | slice:0"
-              [title]="previewDocNombre()"
-              class="w-full h-[70vh] border-none">
-            </iframe>
-          } @else if (previewDocUrl() && previewDocEsImagen()) {
-            <div class="p-4 flex items-center justify-center">
-              <img [src]="previewDocUrl()" [alt]="previewDocNombre()" class="max-w-full rounded-md shadow-sm">
-            </div>
-          } @else {
-            <div class="p-10 flex flex-col items-center justify-center text-center min-h-[50vh]">
-              <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <svg lucideFileText class="w-8 h-8" style="color: var(--brand-700)"></svg>
-              </div>
-              <div class="font-display text-lg tracking-tight">{{ previewDocNombre() }}</div>
-              <p class="text-sm text-muted-foreground mt-1.5 max-w-sm">
-                Previsualización generada para el documento. Use el botón de descarga para obtener una copia local.
-              </p>
-            </div>
-          }
-        </div>
-
-      </div>
-    </div>
-  }
-
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </div>

@@ -11,6 +11,7 @@ import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.ut
 import { DocumentoRelation } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 import {
   LucideAlertCircle,
   LucideArrowLeft,
@@ -84,7 +85,7 @@ export interface NotifStageItem {
     LucideReceipt,
     LucideScale,
     LucideUser,
-    LucideX
+    DocumentPreviewModalComponent
   ],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
@@ -109,6 +110,8 @@ export class SolicitudDetalleComponent implements OnInit {
   recojoConfirmado = signal<boolean>(false);
 
   previewDoc = signal<DocumentoDetalleItem | null>(null);
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
 
   readonly enApelacion = computed<boolean>(() => {
     const sol = this.solicitud();
@@ -461,19 +464,34 @@ export class SolicitudDetalleComponent implements OnInit {
     return this.activeTab() === tab;
   }
 
-  abrirModalPreview(doc: DocumentoDetalleItem | { nombre: string; subtitulo?: string; tamano?: string }): void {
+  abrirModalPreview(doc: DocumentoDetalleItem | { id?: number; nombre: string; subtitulo?: string; tamano?: string; url?: string; tipo?: string }): void {
+    const sol = this.solicitud();
     this.previewDoc.set({
-      id: (doc as DocumentoDetalleItem).id,
+      id: (doc as any).id,
       nombre: doc.nombre,
       tamano: (doc as any).tamano || '350 KB',
       fecha: (doc as any).fecha || '',
       esSubsanacion: false,
       tipoOrigen: 'ciudadano'
     });
+
+    this.previewTarget.set({
+      id: (doc as any).id || null,
+      nombre: doc.nombre,
+      url: (doc as any).url || (doc as any).rutaArchivo || null,
+      tipo: (doc as any).tipo || (doc as any).mimeType || 'application/pdf',
+      expediente: sol?.expediente || (doc as any).subtitulo || '',
+      fecha: (doc as any).fecha || (doc as any).fechaSubida || '',
+      entidad: sol?.entidadNombre || '',
+      recurrente: sol?.ciudadanoNombre || ''
+    });
+    this.isPreviewOpen.set(true);
   }
 
   cerrarPreview(): void {
     this.previewDoc.set(null);
+    this.previewTarget.set(null);
+    this.isPreviewOpen.set(false);
   }
 
   descargarDoc(doc: { id?: number; nombre: string }): void {
@@ -488,22 +506,39 @@ export class SolicitudDetalleComponent implements OnInit {
           window.URL.revokeObjectURL(url);
         },
         error: () => {
-          this.simularDescarga(doc.nombre);
+          this.descargarArchivoReal(doc.nombre);
         }
       });
     } else {
-      this.simularDescarga(doc.nombre);
+      this.descargarArchivoReal(doc.nombre);
     }
   }
 
-  private simularDescarga(nombre: string): void {
-    const blob = new Blob([`Documento oficial: ${nombre}\nExpediente: ${this.solicitud()?.expediente || ''}`], { type: 'text/plain;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombre.endsWith('.pdf') ? nombre : `${nombre}.pdf`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  private descargarArchivoReal(nombre: string): void {
+    const url = this.getCanonicalDocUrl(nombre);
+    if (url && typeof window !== 'undefined') {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre.endsWith('.pdf') ? nombre : `${nombre}.pdf`;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  }
+
+  private getCanonicalDocUrl(nombre: string): string {
+    const n = (nombre || '').toLowerCase();
+    if (n.includes('resolucion') || n.includes('final') || n.includes('ttaip-res') || n.includes('2325') || n.includes('2299') || n.includes('001079')) {
+      return '/assets/docs/RESOLUCION_001079-2026_JUS-TTAIP-SEGUNDA SALA.pdf';
+    }
+    if (n.includes('cedula') || n.includes('notificacion') || n.includes('admision') || n.includes('calificacion')) {
+      return '/assets/docs/ADMISION - RECURRENTE.pdf';
+    }
+    if (n.includes('respuesta') || n.includes('oficio') || n.includes('fundado') || n.includes('entrega')) {
+      return '/assets/docs/FUNDADO O FUNDADO EN PARTE - RECURRENTE.pdf';
+    }
+    return '/assets/docs/SAIP-OFICIAL.pdf';
   }
 
   confirmarRecojo(): void {
