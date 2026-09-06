@@ -92,7 +92,7 @@ test_output.txt
 
 # ── Package Managers ────────────────────────────────────────
 yarn.lock
-pnpm-lock.yaml
+package-lock.json
 
 # ── Secrets & Environment ──────────────────────────────────
 *.env
