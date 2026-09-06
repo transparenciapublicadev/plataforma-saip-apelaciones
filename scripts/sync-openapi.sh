@@ -57,7 +57,7 @@ if [ -f "$ROOT_DIR/frontend/package.json" ]; then
   echo ""
   echo "Regenerando tipos TypeScript..."
   cd "$ROOT_DIR/frontend"
-  npm run generate:api 2>/dev/null && echo "Tipos TypeScript regenerados" || echo "WARN: No se pudieron regenerar los tipos (npm run generate:api)"
+  pnpm run generate:api 2>/dev/null && echo "Tipos TypeScript regenerados" || echo "WARN: No se pudieron regenerar los tipos (pnpm run generate:api)"
 fi
 
 echo ""
