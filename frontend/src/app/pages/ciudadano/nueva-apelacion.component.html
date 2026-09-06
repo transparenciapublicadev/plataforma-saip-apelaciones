@@ -113,7 +113,7 @@
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-2 flex-wrap">
                       <span class="code-chip">{{ sol.expediente }}</span>
-                      <span [class]="getEstadoBadgeClass(sol.estado)">{{ getEstadoDisplay(sol.estado) }}</span>
+                      <app-status-badge [status]="sol.estado"></app-status-badge>
                     </div>
                     <p class="text-sm text-foreground/85">{{ sol.asunto }}</p>
                     <div class="flex items-center gap-4 text-xs text-muted-foreground mt-1.5">

@@ -104,7 +104,7 @@
         </div>
 
         <div
-          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2"
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
           data-motion-stagger
           data-motion-y="8"
           data-motion-duration="0.32"
@@ -222,7 +222,7 @@
                         <span class="code-chip">{{ item.apelacion.expediente }}</span>
                         <span [class]="getPriorityClass(item.prioridad)">{{ item.prioridad.toUpperCase() }}</span>
                         @if (activeStage().isResolved && item.resultado) {
-                          <span [class]="'badge ' + getResultadoBadgeClass(item.resultado)">{{ getResultadoLabel(item.resultado) }}</span>
+                          <app-status-badge [status]="getResultadoLabel(item.resultado)"></app-status-badge>
                         }
                       </div>
 
@@ -268,33 +268,15 @@
 
               <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
               @if (totalRegistros() > 0) {
-                <div class="px-4 py-3 border-t border-[var(--border)] bg-[var(--paper)] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div class="text-muted-foreground">
-                    Mostrando <span class="font-semibold text-foreground">{{ inicioRegistro() }}</span> - <span class="font-semibold text-foreground">{{ finRegistro() }}</span> de <span class="font-semibold text-foreground">{{ totalRegistros() }}</span> expedientes TTAIP
-                  </div>
-
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                      <span class="text-muted-foreground">Filas por página:</span>
-                      <select [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)" class="bg-[var(--card)] border border-[var(--border)] rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--brand-600)]">
-                        <option [ngValue]="10">10</option>
-                        <option [ngValue]="20">20</option>
-                        <option [ngValue]="50">50</option>
-                      </select>
-                    </div>
-
-                    <div class="flex items-center gap-1">
-                      <button (click)="cambiarPagina(1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Primera página">«</button>
-                      <button (click)="cambiarPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página anterior">‹</button>
-
-                      <span class="px-2 font-medium text-foreground">
-                        Página {{ paginaActual() }} de {{ totalPaginas() }}
-                      </span>
-
-                      <button (click)="cambiarPagina(paginaActual() + 1)" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página siguiente">›</button>
-                      <button (click)="cambiarPagina(totalPaginas())" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Última página">»</button>
-                    </div>
-                  </div>
+                <div class="pt-2">
+                  <app-pagination
+                    [page]="paginaActual()"
+                    [totalPages]="totalPaginas()"
+                    [total]="totalRegistros()"
+                    [rangeFrom]="inicioRegistro()"
+                    [rangeTo]="finRegistro()"
+                    (goTo)="cambiarPagina($event)"
+                  ></app-pagination>
                 </div>
               }
             </div>

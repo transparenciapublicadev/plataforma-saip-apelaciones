@@ -112,7 +112,7 @@
           <div class="p-6 md:p-7 space-y-4">
             <div class="flex items-center gap-3">
               <span class="eyebrow">Estado</span>
-              <span [class]="estadoBadgeClass(data.estado)">{{ estadoEtiqueta(data.estado) }}</span>
+              <app-status-badge [status]="estadoEtiqueta(data.estado)"></app-status-badge>
             </div>
 
             <div class="grid md:grid-cols-2 gap-3">
@@ -153,52 +153,11 @@
             <span class="eyebrow">Historial</span>
             <div class="form-section-title flex items-center gap-2">
               <svg lucideClock class="w-5 h-5" style="color: var(--brand-700)"></svg>
-              Trazabilidad del tramite
+              Trazabilidad del trámite
             </div>
           </div>
           <div class="p-6 md:p-7">
-            <div class="reference-timeline">
-              @for (item of data.timeline; track item.title + item.date; let isLast = $last) {
-                <article class="reference-timeline-item">
-                  @if (!isLast) {
-                    <span [class]="timelineLineClass(item.status)" aria-hidden="true"></span>
-                  }
-                  <div [class]="timelineIconShellClass(item)">
-                    @switch (item.icon) {
-                      @case ('mail') {
-                        <svg lucideMail class="w-5 h-5"></svg>
-                      }
-                      @case ('search') {
-                        <svg lucideSearch class="w-5 h-5"></svg>
-                      }
-                      @case ('filecheck') {
-                        <svg lucideFileCheck class="w-5 h-5"></svg>
-                      }
-                      @case ('gavel') {
-                        <svg lucideGavel class="w-5 h-5"></svg>
-                      }
-                      @case ('scale') {
-                        <svg lucideScale class="w-5 h-5"></svg>
-                      }
-                      @default {
-                        <svg lucideCheckCircle2 class="w-5 h-5"></svg>
-                      }
-                    }
-                  </div>
-                  <div class="flex-1 pb-6">
-                    <div [class]="timelineCardClass(item.status)">
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="flex-1">
-                          <h4 class="text-sm font-medium" [class.text-muted-foreground]="item.status === 'pending'">{{ item.title }}</h4>
-                          <p class="text-sm mt-1" [class.reference-timeline-pending-copy]="item.status === 'pending'">{{ item.description }}</p>
-                        </div>
-                        <span [class]="timelineDateClass(item.status)">{{ item.date }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              }
-            </div>
+            <app-timeline [events]="data.timeline"></app-timeline>
           </div>
         </section>
 

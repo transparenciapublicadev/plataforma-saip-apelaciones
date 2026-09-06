@@ -1,0 +1,406 @@
+<div class="min-h-screen bg-background">
+  <!-- Hero / Encabezado institucional -->
+  <div class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+        <svg lucideArrowLeft class="w-4 h-4"></svg>
+        Volver al panel
+      </a>
+
+      <span class="eyebrow">Subsanación de requisitos · 1ª instancia (entidad)</span>
+      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.4vw, 42px); line-height: 1.05; letter-spacing: -0.02em;">
+        Subsane su <span class="italic" style="color: var(--brand-700)">solicitud</span>
+      </h1>
+      <p class="text-muted-foreground mt-2 font-mono text-sm">Expediente SAIP · {{ expediente() }}</p>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6">
+
+    <!-- Alerta de Plazo Legal (2 días hábiles) -->
+    <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+      <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+        <svg lucideClock class="w-5 h-5 text-white"></svg>
+      </div>
+      <div class="flex-1">
+        <span class="eyebrow" style="color: var(--warning)">Plazo · 2 días hábiles</span>
+        <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
+          La entidad <span class="font-semibold">observó</span> su solicitud. Tiene <span class="font-mono font-semibold">2 días hábiles</span> desde la notificación para subsanar. Si subsana correctamente, su solicitud pasa a <span class="font-semibold">EN TRÁMITE</span> y comienzan los 10 días hábiles de atención. Si no subsana, se <span class="font-semibold">archiva</span>.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="eyebrow">Notificación</div>
+            <div class="font-mono text-sm mt-1">{{ fechaNotificacion() || '—' }}</div>
+          </div>
+          <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="eyebrow" style="color: var(--warning)">Fecha límite</div>
+            <div class="font-mono text-sm mt-1" style="color: var(--warning)">{{ fechaLimite() || '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejilla en 2 Columnas: Izquierda (Observación & Antecedentes) | Derecha (Subsanación) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- COLUMNA IZQUIERDA — Observación de la entidad y Documentos -->
+      <div class="space-y-5">
+
+        <!-- Observación de la Entidad -->
+        <section class="form-shell">
+          <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
+            <span class="eyebrow" style="color: var(--brand-700)">Pendiente de subsanar</span>
+            <h2 class="form-section-title flex items-center gap-2">
+              <svg lucideAlertCircle class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              Observación de la entidad
+            </h2>
+          </div>
+          <div class="p-6 space-y-3">
+            @if (!observacion()) {
+              <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                La entidad aún no ha registrado la observación de este expediente.
+              </div>
+            } @else {
+              <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg lucideBuilding2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+                <p class="text-sm text-foreground/85 leading-relaxed">{{ observacion() }}</p>
+              </div>
+            }
+
+            <div class="rounded-md p-3 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+              <svg lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--info)"></svg>
+              <p class="text-xs text-foreground/80">
+                <span class="font-semibold">Nota:</span> subsane la observación para que su solicitud sea admitida a trámite. La causa más común es que el pedido no sea concreto y preciso.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Documentos del Expediente (Antecedentes) -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">Antecedentes</span>
+            <h2 class="form-section-title">Documentos del expediente</h2>
+          </div>
+          <div class="p-6 space-y-5">
+            @if (gruposDocs().length === 0) {
+              <div class="rounded-md p-3 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                No hay documentos cargados en el expediente.
+              </div>
+            } @else {
+              @for (grupo of gruposDocs(); track grupo.kind) {
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="eyebrow">{{ grupo.label }}</span>
+                    <span class="text-[11px] px-1.5 py-0.5 rounded-md font-mono" style="background: var(--brand-subtle); color: var(--brand-700)">
+                      {{ grupo.docs.length }}
+                    </span>
+                  </div>
+
+                  <div class="space-y-2">
+                    @for (doc of grupo.docs; track doc.nombre) {
+                      <div class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                        <div class="flex items-center gap-3 min-w-0 pr-2">
+                          <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                            <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+                          </div>
+                          <div class="min-w-0">
+                            <span class="text-sm font-medium truncate block">{{ doc.nombre }}</span>
+                            <div class="font-mono text-[11px] text-muted-foreground">
+                              {{ doc.fecha || '—' }} · {{ doc.tamano || '—' }}
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Botones de Acción (Ver / Descargar) -->
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            (click)="abrirDoc(doc, false)"
+                            class="btn-ghost-brand !px-2.5 !py-1.5 !text-[12px] flex items-center gap-1"
+                            title="Ver documento">
+                            <svg lucideEye class="w-3.5 h-3.5"></svg>
+                          </button>
+                          <button
+                            type="button"
+                            (click)="abrirDoc(doc, true)"
+                            class="btn-ghost-brand !px-2.5 !py-1.5 !text-[12px] flex items-center gap-1"
+                            title="Descargar documento">
+                            <svg lucideDownload class="w-3.5 h-3.5"></svg>
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </section>
+
+      </div>
+
+      <!-- COLUMNA DERECHA — Formulario de Subsanación -->
+      <div class="space-y-5">
+
+        <!-- Guía Editorial -->
+        <section class="form-shell">
+          <div class="form-section-header" style="border-left: 3px solid var(--info)">
+            <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
+            <h2 class="form-section-title">Cómo subsanar</h2>
+          </div>
+          <div class="p-6 space-y-3">
+            @for (paso of pasosGuia; track $index) {
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-[11px] tracking-widest mt-0.5 flex-shrink-0" style="color: var(--brand-700)">
+                  0{{ $index + 1 }}
+                </span>
+                <p class="text-sm text-foreground/85 leading-relaxed">{{ paso }}</p>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- 01 · Correcciones / Descripción -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">01 · Correcciones</span>
+            <h2 class="form-section-title">Descripción</h2>
+          </div>
+          <div class="p-6">
+            <div class="field">
+              <label class="field-label">
+                Describa cómo subsana la observación <span class="req">*</span>
+              </label>
+              <textarea
+                class="field-input"
+                rows="7"
+                style="resize: vertical; min-height: 160px;"
+                placeholder="En atención a la observación de la entidad, preciso mi solicitud:&#10;&#10;1. Especifico que solicito los documentos correspondientes al periodo…&#10;2. Detallo el área/dependencia que posee la información…&#10;3. Adjunto el documento que precisa mi pedido…"
+                [ngModel]="respuesta()"
+                (ngModelChange)="respuesta.set($event)">
+              </textarea>
+              <span class="field-hint font-mono">{{ respuesta().length }} caracteres</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 02 · Adjuntos / Documento de Subsanación -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">02 · Adjuntos</span>
+            <h2 class="form-section-title">Documento de subsanación</h2>
+          </div>
+          <div class="p-6 space-y-4">
+            <label class="field-label">
+              Documento de subsanación <span class="req">*</span>
+            </label>
+            <p class="text-sm text-muted-foreground -mt-1">
+              Archivo único PDF/DOC/imagen que subsana la observación.
+            </p>
+
+            <!-- Zona Drag & Drop -->
+            <div
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+              (click)="!archivoSeleccionado() && fileInput.click()"
+              class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
+              [ngClass]="{
+                'border-[var(--brand-700)] bg-[color:var(--brand-subtle)]': isDragging(),
+                'border-border hover:border-[var(--brand-700)] bg-card': !isDragging() && !archivoSeleccionado(),
+                'border-green-500/40 bg-[color:rgba(21,128,61,0.06)] cursor-default': !!archivoSeleccionado()
+              }">
+
+              @if (!archivoSeleccionado()) {
+                <div class="space-y-2">
+                  <svg lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg>
+                  <p class="text-sm">
+                    Arrastra tu archivo aquí o <span class="text-[var(--brand-700)] font-semibold">haz clic para seleccionar</span>
+                  </p>
+                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG, DOC o ZIP (máx. 10MB)</p>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <svg lucideCheckCircle2 class="w-6 h-6 text-green-600"></svg>
+                    <svg lucideFileText class="w-6 h-6 text-muted-foreground"></svg>
+                  </div>
+                  <p class="font-medium text-foreground text-sm">{{ archivoSeleccionado()!.name }}</p>
+                  <p class="text-xs font-mono text-muted-foreground">
+                    {{ (archivoSeleccionado()!.size / 1024 / 1024).toFixed(2) }} MB
+                  </p>
+
+                  <div class="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); abrirPreviewArchivoLocal()"
+                      class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5">
+                      <svg lucideEye class="w-3.5 h-3.5"></svg>
+                      Previsualizar
+                    </button>
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); removerArchivo()"
+                      class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5 text-red-600 hover:text-red-700">
+                      <svg lucideX class="w-3.5 h-3.5"></svg>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <input
+                #fileInput
+                type="file"
+                class="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.zip,.doc,.docx"
+                (change)="onFileSelected($event)">
+            </div>
+
+            <!-- Confirmación visual de archivo adjunto -->
+            @if (archivoSeleccionado(); as doc) {
+              <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
+                <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" style="color: var(--success)"></svg>
+                <span class="text-sm flex-1 font-medium truncate">{{ doc.name }}</span>
+                <span class="font-mono text-[11px] text-muted-foreground flex-shrink-0">
+                  {{ (doc.size / 1024).toFixed(1) }} KB
+                </span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Botón de Envío -->
+        <button
+          type="button"
+          class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          (click)="abrirConfirmacion()"
+          [disabled]="!respuesta().trim() || !archivoSeleccionado() || loadingEnvio()">
+          @if (loadingEnvio()) {
+            <svg lucideLoader2 class="w-4 h-4 animate-spin"></svg>
+            <span>Enviando subsanación...</span>
+          } @else {
+            <svg lucideSend class="w-4 h-4"></svg>
+            <span>Enviar subsanación a la entidad</span>
+          }
+        </button>
+
+        <p class="text-xs text-center text-muted-foreground">
+          La entidad validará su subsanación y reanudará el cómputo del plazo de atención.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Modal de Confirmación -->
+  <app-reference-confirm-modal
+    [open]="confirmModalAbierto()"
+    [submitting]="loadingEnvio()"
+    title="Confirme la subsanación"
+    titleLead="Confirme"
+    titleEmphasis="la subsanación"
+    eyebrow="Revisión final · Subsanación de requisitos"
+    description="Verifique que las correcciones respondan a la observación de la entidad antes de enviar."
+    [summary]="subsanacionConfirmSummary()"
+    [warning]="subsanacionWarning"
+    confirmLabel="Enviar a la entidad"
+    (close)="confirmModalAbierto.set(false)"
+    (confirm)="confirmarEnvio()">
+  </app-reference-confirm-modal>
+
+  <!-- Modal de Éxito -->
+  <app-reference-success-modal
+    [open]="successModalAbierto()"
+    variant="subsanacion-enviada"
+    tone="success"
+    eyebrow="Subsanación enviada"
+    title="Subsanación enviada a la entidad"
+    description="Su escrito de subsanación fue cargado al expediente. La entidad validará la subsanación y reanudará el trámite de su solicitud."
+    [expediente]="expediente()"
+    [expedienteHint]="'Subsanación recibida el ' + fechaHoy + ' · dentro del plazo legal'"
+    [plazoDias]="10"
+    plazoTipo="hábiles"
+    plazoDescripcion="Al validarse la subsanación, su solicitud pasa a EN TRÁMITE y comienzan los 10 días hábiles de atención."
+    [metadata]="subsanacionSuccessMetadata()"
+    [nextSteps]="subsanacionNextSteps"
+    primaryLabel="Ir a mi panel"
+    (close)="irAlPanel()"
+    (primary)="irAlPanel()">
+  </app-reference-success-modal>
+
+  <!-- Visor In-Situ de Documentos (PDF / Imagen) -->
+  @if (previewModalAbierto()) {
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs"
+      (click)="cerrarPreview()">
+      <div
+        class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col bg-card border border-border shadow-xl max-h-[86vh]"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header del Visor -->
+        <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-border">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <svg lucideFileText class="w-4 h-4 flex-shrink-0" style="color: var(--brand-700)"></svg>
+            <span class="text-sm font-medium truncate">{{ previewDocNombre() }}</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            @if (previewDocUrl()) {
+              <a
+                [href]="previewDocUrl()"
+                [download]="previewDocNombre()"
+                class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted border border-border"
+                title="Descargar">
+                <svg lucideDownload class="w-4 h-4"></svg>
+              </a>
+            }
+            <button
+              type="button"
+              (click)="cerrarPreview()"
+              class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted border border-border"
+              title="Cerrar">
+              <svg lucideX class="w-4 h-4"></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenido del Visor -->
+        <div class="flex-1 overflow-auto bg-muted">
+          @if (previewCargando()) {
+            <div class="p-10 flex flex-col items-center justify-center text-center min-h-[50vh]">
+              <svg lucideLoader2 class="w-8 h-8 animate-spin" style="color: var(--brand-700)"></svg>
+              <p class="text-sm text-muted-foreground mt-3">Cargando documento…</p>
+            </div>
+          } @else if (previewDocUrl() && previewDocEsPdf()) {
+            <iframe
+              [src]="previewDocUrl() | slice:0"
+              [title]="previewDocNombre()"
+              class="w-full h-[70vh] border-none">
+            </iframe>
+          } @else if (previewDocUrl() && previewDocEsImagen()) {
+            <div class="p-4 flex items-center justify-center">
+              <img [src]="previewDocUrl()" [alt]="previewDocNombre()" class="max-w-full rounded-md shadow-sm">
+            </div>
+          } @else {
+            <div class="p-10 flex flex-col items-center justify-center text-center min-h-[50vh]">
+              <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg lucideFileText class="w-8 h-8" style="color: var(--brand-700)"></svg>
+              </div>
+              <div class="font-display text-lg tracking-tight">{{ previewDocNombre() }}</div>
+              <p class="text-sm text-muted-foreground mt-1.5 max-w-sm">
+                Previsualización generada para el documento. Use el botón de descarga para obtener una copia local.
+              </p>
+            </div>
+          }
+        </div>
+
+      </div>
+    </div>
+  }
+
+</div>

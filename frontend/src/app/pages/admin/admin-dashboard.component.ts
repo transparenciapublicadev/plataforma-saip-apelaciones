@@ -33,6 +33,8 @@ interface RecentActivity {
   date: Date;
 }
 
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
 import {
   LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
   LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideScale, LucideBarChart,
@@ -43,6 +45,7 @@ import {
   selector: 'app-admin-dashboard',
   imports: [
     FormsModule, DatePipe, DecimalPipe,
+    StatusBadgeComponent, PaginationComponent,
     LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
     LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideScale, LucideBarChart,
     LucideDownload, LucideSettings
@@ -108,11 +111,17 @@ export class AdminDashboardComponent implements OnInit {
   modalUsuarioAbierto = signal<boolean>(false);
   entidadEditando = signal<boolean>(false);
 
-  busquedaEntidad = '';
-  busquedaUsuario = '';
-  busquedaSolicitud = '';
-  filtroTipoUsuario = '';
-  filtroEstadoSolicitud = '';
+  busquedaEntidad = signal<string>('');
+  busquedaUsuario = signal<string>('');
+  busquedaSolicitud = signal<string>('');
+  filtroTipoUsuario = signal<string>('');
+  filtroEstadoSolicitud = signal<string>('');
+
+  paginaEntidades = signal<number>(1);
+  pageSizeEntidades = signal<number>(8);
+
+  paginaUsuarios = signal<number>(1);
+  pageSizeUsuarios = signal<number>(8);
 
   nuevaEntidad: Partial<Entidad> = {
     nombre: '',
@@ -284,42 +293,80 @@ export class AdminDashboardComponent implements OnInit {
     this.tourService.startTour('saip_tour_admin', this.tourSteps);
   }
 
-  entidadesFiltradas(): Entidad[] {
+  readonly entidadesFiltradas = computed<Entidad[]>(() => {
     let resultado = this.entidades();
-    if (this.busquedaEntidad) {
-      const busqueda = this.busquedaEntidad.toLowerCase();
+    const busqueda = this.busquedaEntidad().trim().toLowerCase();
+    if (busqueda) {
       resultado = resultado.filter(e =>
-        e.nombre.toLowerCase().includes(busqueda) ||
-        e.acronimo.toLowerCase().includes(busqueda)
+        (e.nombre || '').toLowerCase().includes(busqueda) ||
+        (e.acronimo || '').toLowerCase().includes(busqueda)
       );
     }
     return resultado;
-  }
+  });
 
-  usuariosFiltrados(): UsuarioAdmin[] {
+  readonly totalEntidadesFiltradas = computed(() => this.entidadesFiltradas().length);
+  readonly totalPagesEntidades = computed(() => Math.ceil(this.totalEntidadesFiltradas() / this.pageSizeEntidades()) || 1);
+  readonly rangeFromEntidades = computed(() => this.totalEntidadesFiltradas() === 0 ? 0 : (this.paginaEntidades() - 1) * this.pageSizeEntidades() + 1);
+  readonly rangeToEntidades = computed(() => Math.min(this.paginaEntidades() * this.pageSizeEntidades(), this.totalEntidadesFiltradas()));
+  readonly entidadesPaginadas = computed(() => {
+    const start = (this.paginaEntidades() - 1) * this.pageSizeEntidades();
+    return this.entidadesFiltradas().slice(start, start + this.pageSizeEntidades());
+  });
+
+  readonly usuariosFiltrados = computed<UsuarioAdmin[]>(() => {
     let resultado = this.usuarios();
-    if (this.busquedaUsuario) {
-      const busqueda = this.busquedaUsuario.toLowerCase();
-      resultado = resultado.filter(u => u.email.toLowerCase().includes(busqueda));
-    }
-    if (this.filtroTipoUsuario) {
-      resultado = resultado.filter(u => u.tipoUsuario === this.filtroTipoUsuario);
-    }
-    return resultado;
-  }
-
-  solicitudesFiltradas(): Solicitud[] {
-    let resultado = this.solicitudes();
-    if (this.busquedaSolicitud) {
-      const busqueda = this.busquedaSolicitud.toLowerCase();
-      resultado = resultado.filter(s =>
-        s.expediente.toLowerCase().includes(busqueda)
+    const busqueda = this.busquedaUsuario().trim().toLowerCase();
+    const tipo = this.filtroTipoUsuario();
+    if (busqueda) {
+      resultado = resultado.filter(u =>
+        (u.email || '').toLowerCase().includes(busqueda) ||
+        (u.nombre || '').toLowerCase().includes(busqueda)
       );
     }
-    if (this.filtroEstadoSolicitud) {
-      resultado = resultado.filter(s => s.estado === this.filtroEstadoSolicitud);
+    if (tipo && tipo !== 'todos') {
+      resultado = resultado.filter(u => u.tipoUsuario === tipo);
     }
     return resultado;
+  });
+
+  readonly totalUsuariosFiltrados = computed(() => this.usuariosFiltrados().length);
+  readonly totalPagesUsuarios = computed(() => Math.ceil(this.totalUsuariosFiltrados() / this.pageSizeUsuarios()) || 1);
+  readonly rangeFromUsuarios = computed(() => this.totalUsuariosFiltrados() === 0 ? 0 : (this.paginaUsuarios() - 1) * this.pageSizeUsuarios() + 1);
+  readonly rangeToUsuarios = computed(() => Math.min(this.paginaUsuarios() * this.pageSizeUsuarios(), this.totalUsuariosFiltrados()));
+  readonly usuariosPaginados = computed(() => {
+    const start = (this.paginaUsuarios() - 1) * this.pageSizeUsuarios();
+    return this.usuariosFiltrados().slice(start, start + this.pageSizeUsuarios());
+  });
+
+  readonly solicitudesFiltradas = computed<Solicitud[]>(() => {
+    let resultado = this.solicitudes();
+    const busqueda = this.busquedaSolicitud().trim().toLowerCase();
+    const estado = this.filtroEstadoSolicitud();
+    if (busqueda) {
+      resultado = resultado.filter(s =>
+        (s.expediente || '').toLowerCase().includes(busqueda)
+      );
+    }
+    if (estado) {
+      resultado = resultado.filter(s => s.estado === estado);
+    }
+    return resultado;
+  });
+
+  onBusquedaEntidadChange(term: string): void {
+    this.busquedaEntidad.set(term);
+    this.paginaEntidades.set(1);
+  }
+
+  onBusquedaUsuarioChange(term: string): void {
+    this.busquedaUsuario.set(term);
+    this.paginaUsuarios.set(1);
+  }
+
+  onFiltroTipoUsuarioChange(tipo: string): void {
+    this.filtroTipoUsuario.set(tipo);
+    this.paginaUsuarios.set(1);
   }
 
   topEntidades(): Entidad[] {

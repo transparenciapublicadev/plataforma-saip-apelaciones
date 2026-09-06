@@ -36,12 +36,14 @@ interface HistorialItem {
   color: 'brand' | 'warning' | 'success' | 'muted' | 'violet';
 }
 
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { LucideCheckCircle2 } from '@lucide/angular';
 
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent, LucideCheckCircle2
+    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent,
+    StatusBadgeComponent, LucideCheckCircle2
   ],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',

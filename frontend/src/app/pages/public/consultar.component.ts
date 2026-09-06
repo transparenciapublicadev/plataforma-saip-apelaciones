@@ -20,6 +20,9 @@ import {
 } from '@lucide/angular';
 import { ConsultaPublicaSolicitud, SolicitudService } from '../../services/solicitud.service';
 
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { TimelineComponent } from '../../shared/timeline.component';
+
 interface TimelineEvent {
   title: string;
   description: string;
@@ -53,14 +56,12 @@ interface ConsultaResultado {
     LucideCheckCircle2,
     LucideClock,
     LucideEye,
-    LucideFileCheck,
     LucideFileText,
-    LucideGavel,
-    LucideMail,
-    LucideScale,
     LucideSearch,
     LucideShield,
     LucideXCircle,
+    StatusBadgeComponent,
+    TimelineComponent,
   ],
   templateUrl: './consultar.component.html',
 })
@@ -127,25 +128,6 @@ export class ConsultarComponent {
     return 'Archivada';
   }
 
-  estadoBadgeClass(estado: ConsultaResultado['estado']): string {
-    if (estado === 'EN_PROCESO') {
-      return 'badge bg-[var(--estado-azul-suave)] text-[var(--estado-azul)] border border-[var(--estado-azul-borde)]';
-    }
-    if (estado === 'RESPONDIDA') {
-      return 'badge bg-[var(--estado-verde-suave)] text-[var(--estado-verde)] border border-[var(--estado-verde-borde)]';
-    }
-    if (estado === 'APELADA') {
-      return 'badge bg-[var(--accent-violet-soft)] text-[var(--accent-violet)] border border-[var(--accent-violet-border)]';
-    }
-    if (estado === 'DENEGADA') {
-      return 'badge bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)] border border-[var(--estado-rojo-borde)]';
-    }
-    if (estado === 'VENCIDA') {
-      return 'badge bg-[var(--humo)] text-white border border-[var(--humo)]';
-    }
-    return 'badge bg-[var(--muted)] text-[var(--niebla)] border border-[var(--ceniza-claro)]';
-  }
-
   statusIconColor(estado: ConsultaResultado['estado']): string {
     if (estado === 'EN_PROCESO') {
       return 'var(--info)';
@@ -160,24 +142,6 @@ export class ConsultarComponent {
       return 'var(--brand-700)';
     }
     return 'var(--muted-foreground)';
-  }
-
-  timelineIconShellClass(item: TimelineEvent): string {
-    return `reference-timeline-icon ${item.status} icon-${item.icon}`;
-  }
-
-  timelineCardClass(status: TimelineEvent['status']): string {
-    return `reference-timeline-card ${status}`;
-  }
-
-  timelineDateClass(status: TimelineEvent['status']): string {
-    return `reference-timeline-date ${status}`;
-  }
-
-  timelineLineClass(status: TimelineEvent['status']): string {
-    return status === 'completed'
-      ? 'reference-timeline-line completed'
-      : 'reference-timeline-line';
   }
 
   private toConsultaResultado(data: ConsultaPublicaSolicitud): ConsultaResultado {

@@ -90,23 +90,17 @@
             </span>
             <span class="text-xs text-muted-foreground hidden md:inline">Toque una etapa para filtrar la lista</span>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             @for (stage of pipeline(); track stage.key; let last = $last) {
               <button type="button"
                 (click)="stage.count > 0 && selectStage(stage.key)"
                 [disabled]="stage.count === 0"
                 [attr.aria-pressed]="selectedStageKey() === stage.key"
-                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group"
-                [class.opacity-50]="stage.count === 0"
-                [class.pointer-events-none]="stage.count === 0"
-                [class.cursor-not-allowed]="stage.count === 0"
-                [class.border-dashed]="stage.count === 0"
-                [class.bg-slate-50\/40]="stage.count === 0"
-                [class.dark:bg-slate-900\/20]="stage.count === 0"
-                [class.hover:-translate-y-0.5]="stage.count > 0"
-                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : (stage.count === 0 ? 'transparent' : 'var(--card)')"
+                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group disabled:cursor-default enabled:hover:-translate-y-0.5"
+                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : 'var(--card)'"
                 [style.border]="'1px solid ' + (selectedStageKey() === stage.key ? 'var(--brand-700)' : 'var(--border)')"
                 [style.box-shadow]="selectedStageKey() === stage.key ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
+                [style.opacity]="stage.count > 0 ? 1 : 0.6"
               >
                 @if (selectedStageKey() === stage.key) {
                   <span class="absolute top-0 left-0 right-0 h-[3px]" [style.background]="stage.color"></span>
@@ -120,6 +114,7 @@
                   <span class="font-display font-mono text-[11px] tracking-widest" [style.color]="stage.color" style="letter-spacing: 0.05em">{{ stage.num }}</span>
                   @switch (stage.iconName) {
                     @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('alertTriangle') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
@@ -135,73 +130,108 @@
               </button>
             }
           </div>
-        </section>
 
-        <!-- ── SMART SEARCH ─────────────────────────────────────────── -->
-        <section data-tour="buscar">
-          <div class="relative rounded-xl overflow-visible" [style.background]="'var(--card)'" [style.border]="'1px solid ' + (busquedaEnfocada() ? 'var(--brand-300)' : 'var(--border)')" [style.boxShadow]="busquedaEnfocada() ? '0 0 0 4px var(--brand-subtle), var(--shadow-sm)' : 'var(--shadow-sm)'">
-            <span class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
-            <div class="flex items-center gap-3 px-5 py-4">
-              <svg class="w-5 h-5 shrink-0" [style.color]="busquedaEnfocada() ? 'var(--brand-700)' : 'var(--muted-foreground)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <div class="flex-1 min-w-0">
-                <span class="eyebrow block" [style.color]="busquedaEnfocada() ? 'var(--brand-700)' : ''">Buscar mi expediente</span>
-                <input type="text" [(ngModel)]="busqueda" (focus)="onSearchFocus()" (blur)="onSearchBlur()" (input)="onSearchInput()" placeholder="Escriba la entidad, el tema o el numero (ej: SUNAT, educacion, SAIP-2025...)" class="w-full bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/70 mt-0.5" style="font-size: 15px" />
+          <!-- BUSCADOR GLOBAL — independiente del filtro de etapa -->
+          <div class="relative mt-3">
+            <div
+              class="rounded-xl flex items-center gap-3 px-4 py-3.5 transition-shadow"
+              [style.background]="'var(--card)'"
+              [style.border]="'1px solid ' + (globalOpen() ? 'var(--brand-700)' : 'var(--border)')"
+              style="border-left: 3px solid var(--brand-700)"
+              [style.box-shadow]="globalOpen() ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
+              [style.border-bottom-left-radius]="globalOpen() ? '0' : undefined"
+              [style.border-bottom-right-radius]="globalOpen() ? '0' : undefined"
+            >
+              <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg lucideSearch class="w-4 h-4" style="color: var(--brand-700)"></svg>
               </div>
-              @if (busqueda.trim()) {
-                <button (click)="limpiarBusqueda()" class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors shrink-0" type="button">
-                  <svg class="w-4 h-4 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
+              <div class="flex-1 min-w-0">
+                <span class="eyebrow block">Buscar mi expediente</span>
+                <input
+                  type="text"
+                  [value]="globalQuery()"
+                  (input)="onGlobalSearchChange($any($event.target).value)"
+                  (keydown)="onGlobalKeyDown($event)"
+                  placeholder="Escriba la entidad, el tema o el número (ej: SUNAT, educación, SAIP-2025…)"
+                  class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70 mt-0.5"
+                  aria-label="Buscar entre todas mis solicitudes"
+                  [attr.aria-expanded]="globalOpen()"
+                  role="combobox"
+                  aria-controls="buscador-global-resultados"
+                />
+              </div>
+              @if (globalOpen()) {
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="code-chip hidden sm:inline-flex" style="font-size: 11px">
+                    {{ globalResults().length }} resultado{{ globalResults().length === 1 ? '' : 's' }}
+                  </span>
+                  <button
+                    type="button"
+                    (click)="clearGlobalSearch()"
+                    aria-label="Limpiar búsqueda"
+                    class="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-[color:var(--muted)] transition-colors"
+                  >
+                    <svg lucideX class="w-4 h-4"></svg>
+                  </button>
+                </div>
+              } @else {
+                <span class="code-chip shrink-0 hidden sm:inline-flex" style="font-size: 11px">
+                  {{ todasSolicitudes().length }} en total
+                </span>
               }
-              <span class="hidden md:inline-flex items-center gap-1 text-[10px] font-mono tracking-wider text-[var(--muted-foreground)] border border-[var(--border)] rounded px-1.5 py-0.5">
-                {{ busqueda.trim() ? coincidenciasBusqueda().length + ' resultado(s)' : todasSolicitudes().length + ' en total' }}
-              </span>
             </div>
 
-            @if (mostrarResultadosBusqueda() && busqueda.trim()) {
-              <div class="absolute left-0 right-0 top-full mt-2 rounded-xl overflow-hidden z-30" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)">
-                @if (coincidenciasBusqueda(); as resultados) {
-                  @if (resultados.length === 0) {
-                    <div class="p-6 text-center">
-                      <div class="w-10 h-10 mx-auto rounded-full flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                        <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            @if (globalOpen()) {
+              <div
+                id="buscador-global-resultados"
+                role="listbox"
+                class="absolute left-0 right-0 top-full z-30 rounded-b-xl overflow-hidden max-h-[340px] overflow-y-auto"
+                style="background: var(--card); border: 1px solid var(--brand-700); border-top: none; box-shadow: var(--shadow-lg, var(--shadow-md))"
+              >
+                @if (globalResults().length === 0) {
+                  <div class="px-4 py-8 text-center">
+                    <svg lucideInbox class="w-6 h-6 mx-auto text-muted-foreground mb-2"></svg>
+                    <p class="text-sm text-muted-foreground">
+                      Ningún expediente coincide con «<span class="font-semibold text-foreground">{{ globalQuery() }}</span>».
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1">Pruebe con el nombre de la entidad o el número de expediente.</p>
+                  </div>
+                } @else {
+                  @for (solicitud of globalResults(); track solicitud.id; let idx = $index) {
+                    <button
+                      type="button"
+                      role="option"
+                      [attr.aria-selected]="idx === globalIdx()"
+                      (mouseenter)="globalIdx.set(idx)"
+                      (click)="abrirExpediente(solicitud)"
+                      class="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-t border-[var(--border)] first:border-t-0"
+                      [style.background]="idx === globalIdx() ? 'var(--brand-subtle)' : 'transparent'"
+                    >
+                      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
                       </div>
-                      <p class="text-sm text-foreground/85">No encontramos expedientes con "<span class="font-semibold">{{ busqueda }}</span>"</p>
-                      <p class="text-xs text-[var(--muted-foreground)] mt-1">Pruebe con otra entidad, numero o tema.</p>
-                    </div>
-                  } @else {
-                    <div class="max-h-[360px] overflow-y-auto custom-scrollbar">
-                      @for (resultado of resultados; track resultado.id) {
-                        <button type="button" (mousedown)="$event.preventDefault()" (click)="seleccionarCoincidencia(resultado)" class="w-full px-5 py-3 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] text-left border-t border-[var(--border)] first:border-t-0">
-                          <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                            <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                          </div>
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                              <span class="code-chip">{{ resultado.expediente }}</span>
-                              <span [class]="'badge ' + getEstadoBadgeClass(resultado.estado)">{{ formatoEstado(resultado.estado) }}</span>
-                            </div>
-                            <div class="text-sm text-foreground/85 mt-1 truncate">{{ resultado.entidadNombre }} · {{ resultado.asunto }}</div>
-                          </div>
-                          <svg class="w-4 h-4 text-[var(--muted-foreground)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
-                        </button>
-                      }
-                    </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="code-chip" style="font-size: 11px">{{ solicitud.expediente }}</span>
+                          <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
+                          @if (solicitud.apelacion?.expediente) {
+                            <span class="code-chip code-chip-alt" style="font-size: 11px">{{ solicitud.apelacion?.expediente }}</span>
+                          }
+                        </div>
+                        <div class="text-sm text-foreground mt-1 truncate" [title]="solicitud.entidadNombre + ' · ' + solicitud.asunto">
+                          <span class="font-semibold">{{ solicitud.entidadNombre }}</span> · {{ solicitud.asunto }}
+                        </div>
+                      </div>
+                      <svg lucideChevronRight class="w-4 h-4 text-muted-foreground shrink-0"></svg>
+                    </button>
                   }
+                  <div class="px-4 py-2 text-[11px] text-muted-foreground flex items-center gap-3" style="background: var(--muted); border-top: 1px solid var(--border)">
+                    <span>↑ ↓ para moverse</span><span>Enter para abrir</span><span>Esc para cerrar</span>
+                  </div>
                 }
               </div>
             }
           </div>
-
-          @if (!busqueda.trim()) {
-            <div class="flex items-center gap-2 mt-3 flex-wrap">
-              <span class="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">Filtros rapidos:</span>
-              @for (filtro of filtrosRapidos; track filtro) {
-                <button type="button" (click)="aplicarFiltroRapido(filtro)" class="text-xs px-3 py-1 rounded-full transition-colors hover:bg-[color:var(--brand-subtle)] hover:text-[color:var(--brand-700)]" style="background: var(--card); border: 1px solid var(--border)">
-                  {{ filtro }}
-                </button>
-              }
-            </div>
-          }
         </section>
 
 
@@ -506,6 +536,7 @@
                 <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--muted); border: 1px solid var(--border)">
                   @switch (selectedStageMeta().iconName) {
                     @case ('layers') { <svg lucideLayers class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('alertTriangle') { <svg lucideAlertTriangle class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('scale') { <svg lucideScale class="w-5 h-5 text-muted-foreground"></svg> }
@@ -524,22 +555,36 @@
             } @else {
               <div class="p-4 space-y-2">
                 @for (solicitud of stageVisible(); track solicitud.id) {
+                  @let esResueltas = selectedStageKey() === 'resueltas';
+                  @let esRespondidas = selectedStageKey() === 'respondidas';
+                  @let navega = esResueltas || esRespondidas;
+                  @let isActive = !navega && solicitud.id === solicitudPrincipal()?.id;
+                  @let ubic = ubicacionTramite(solicitud);
+                  @let urg = filaUrgencia(solicitud);
+
                   <div class="w-full rounded-md flex items-stretch gap-1 transition-colors"
-                    [style.background]="solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                    [style.border]="'1px solid ' + (solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-700)' : 'var(--border)')">
+                    [style.background]="isActive ? 'var(--brand-subtle)' : 'var(--card)'"
+                    [style.border]="'1px solid ' + (isActive ? 'var(--brand-700)' : 'var(--border)')">
                     <button type="button"
-                      (click)="seleccionarSolicitud(solicitud.id)"
+                      (click)="onPrimary(solicitud)"
                       class="flex-1 min-w-0 p-3 flex items-center gap-3 text-left rounded-l-md hover:bg-[color:var(--brand-subtle)] transition-colors">
-                      <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                        @switch (selectedStageMeta().iconName) {
-                          @case ('layers') { <svg lucideLayers class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('hourglass') { <svg lucideHourglass class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('mailCheck') { <svg lucideMailCheck class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('checkCircle') { <svg lucideCheckCircle2 class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                      <!-- InstanciaTag -->
+                      <div class="flex flex-col items-center justify-center rounded-md shrink-0 w-11 py-1.5"
+                        [style.background]="esSegundaInstancia(solicitud) ? 'var(--brand-subtle)' : 'var(--info-subtle, rgba(29,78,216,0.08))'"
+                        [style.border]="'1px solid ' + (esSegundaInstancia(solicitud) ? 'var(--brand-200)' : 'rgba(29,78,216,0.25)')"
+                        [title]="esSegundaInstancia(solicitud) ? 'Segunda instancia · apelación ante el Tribunal (TTAIP)' : 'Primera instancia · ante la entidad pública'">
+                        @if (esSegundaInstancia(solicitud)) {
+                          <svg lucideGavel class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg>
+                        } @else {
+                          <svg lucideBuilding2 class="w-3.5 h-3.5" style="color: var(--info)"></svg>
                         }
+                        <span class="font-display leading-none mt-0.5" [style.color]="esSegundaInstancia(solicitud) ? 'var(--brand-700)' : 'var(--info)'" style="font-size: 14px; letter-spacing: -0.01em">
+                          {{ esSegundaInstancia(solicitud) ? '2ª' : '1ª' }}
+                        </span>
+                        <span class="text-[8px] tracking-wide uppercase text-muted-foreground leading-none mt-0.5">inst.</span>
                       </div>
+
+                      <!-- Información central -->
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                           <!-- SAIP chip -->
@@ -554,20 +599,44 @@
                               <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion?.expediente }}</span>
                             </span>
                           }
-                          @if (selectedStageKey() === 'resueltas' && solicitud.apelacion?.resultado) {
-                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded" [style.background]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.10)' : 'var(--brand-subtle)'" [style.color]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'var(--success)' : 'var(--brand-700)'" [style.border]="'1px solid ' + (solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.25)' : 'var(--brand-200)')">
-                              Fallo: {{ formatoEstado(solicitud.apelacion?.resultado) }}
+                          @if (esResueltas && solicitud.apelacion?.resultado) {
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold">
+                              <span class="text-[10px] tracking-wide uppercase text-muted-foreground">Fallo:</span>
+                              <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
                             </span>
                           } @else {
-                            <span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ formatoEstado(solicitud.estado) }}</span>
+                            <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
                           }
-                          @if (solicitud.id === solicitudPrincipal()?.id) {
+                          @if (isActive) {
                             <span class="text-[10px] tracking-wide uppercase font-semibold" style="color: var(--brand-700)">Viendo ahora</span>
                           }
                         </div>
                         <div class="text-sm text-foreground/85 mt-1 truncate">{{ solicitud.entidadNombre }} · {{ solicitud.asunto }}</div>
+
+                        <!-- ¿Dónde está ahora? — ubicación e instancia del trámite -->
+                        <div class="flex items-center gap-1.5 mt-1 min-w-0">
+                          @switch (ubic.iconName) {
+                            @case ('gavel') { <svg lucideGavel class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('scale') { <svg lucideScale class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('alertTriangle') { <svg lucideAlertTriangle class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('mailCheck') { <svg lucideMailCheck class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('clock') { <svg lucideClock class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @default { <svg lucideBuilding2 class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                          }
+                          <span class="text-[11px] font-medium truncate" [style.color]="ubic.tone">{{ ubic.label }}</span>
+                          <span class="text-[11px] text-muted-foreground shrink-0 border-l border-border pl-1.5">{{ ubic.instancia }}</span>
+                        </div>
                       </div>
+
+                      <!-- Métrica de urgencia -->
+                      @if (urg) {
+                        <div class="hidden sm:flex flex-col items-end shrink-0 pl-2 w-[104px]">
+                          <span class="font-display leading-none" [style.color]="urg.tone" style="font-size: 22px; letter-spacing: -0.02em">{{ urg.value }}</span>
+                          <span class="text-[9px] tracking-wide uppercase text-muted-foreground mt-1 text-right leading-tight">{{ urg.unit }}</span>
+                        </div>
+                      }
                     </button>
+                    <!-- Botón directo al detalle completo del expediente -->
                     <a [routerLink]="['/ciudadano/solicitud', solicitud.expediente]"
                       title="Ver detalle completo"
                       class="shrink-0 flex items-center gap-1.5 px-3 my-2 mr-2 rounded-md text-xs font-semibold transition-colors hover:brightness-105"
@@ -579,22 +648,14 @@
                 }
 
                 <!-- Pagination -->
-                @if (stageTotalPages() > 1) {
-                  <div class="flex items-center justify-between pt-3 mt-2 border-t border-[var(--border)]">
-                    <span class="text-xs text-muted-foreground">
-                      {{ stageRangeFrom() }}–{{ stageRangeTo() }} de {{ stageFiltered().length }}
-                    </span>
-                    <div class="flex items-center gap-1">
-                      <button type="button" (click)="goStagePage(stageSafePage() - 1)" [disabled]="stageSafePage() <= 1" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m15 18-6-6 6-6"/></svg>
-                      </button>
-                      <span class="text-xs font-mono px-2">{{ stageSafePage() }} / {{ stageTotalPages() }}</span>
-                      <button type="button" (click)="goStagePage(stageSafePage() + 1)" [disabled]="stageSafePage() >= stageTotalPages()" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                }
+                <app-pagination
+                  [page]="stageSafePage()"
+                  [totalPages]="stageTotalPages()"
+                  [total]="stageFiltered().length"
+                  [rangeFrom]="stageRangeFrom()"
+                  [rangeTo]="stageRangeTo()"
+                  (goTo)="goStagePage($event)">
+                </app-pagination>
               </div>
             }
           </section>

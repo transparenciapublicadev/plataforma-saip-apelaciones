@@ -55,6 +55,18 @@ export const serverRoutes: ServerRoute[] = [
     path: 'ciudadano/subsanacion/:expediente',
     renderMode: RenderMode.Client
   },
+  {
+    path: 'ciudadano/precision/:expediente',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'precision-form/:expediente',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'precision-form',
+    renderMode: RenderMode.Client
+  },
   // Funcionario routes (auth-protected)
   {
     path: 'funcionario',
@@ -99,6 +111,18 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'ttaip/procesos-disciplinarios',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'ttaip/cumplimiento',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'ttaip/compliance',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'compliance',
     renderMode: RenderMode.Client
   },
   // Admin routes (auth-protected)

@@ -27,9 +27,11 @@ interface ResultadoMeta {
   accent: string;
 }
 
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent],
+  imports: [CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent],
   templateUrl: './ttaip-resolucion-detalle.component.html',
   styleUrl: './ttaip-resolucion-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
