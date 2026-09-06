@@ -22,16 +22,27 @@
           <p class="truncate text-sm font-medium text-foreground">{{ file.name }}</p>
           <p class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }}</p>
         </div>
-        <button
-          type="button"
-          class="btn-ghost-brand !h-9 !w-9 !p-0"
-          aria-label="Quitar archivo seleccionado"
-          title="Quitar archivo"
-          [disabled]="loading()"
-          (click)="clearFile()"
-        >
-          <svg lucideX class="h-4 w-4"></svg>
-        </button>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            class="btn-ghost-brand !h-9 !w-9 !p-0"
+            aria-label="Previsualizar archivo"
+            title="Previsualizar archivo"
+            (click)="previewSelectedFile()"
+          >
+            <svg lucideEye class="h-4 w-4"></svg>
+          </button>
+          <button
+            type="button"
+            class="btn-ghost-brand !h-9 !w-9 !p-0"
+            aria-label="Quitar archivo seleccionado"
+            title="Quitar archivo"
+            [disabled]="loading()"
+            (click)="clearFile()"
+          >
+            <svg lucideX class="h-4 w-4"></svg>
+          </button>
+        </div>
       </div>
     } @else {
       <label class="block cursor-pointer" [class.pointer-events-none]="isDisabled()">
@@ -89,5 +100,11 @@
       {{ success() }}
     </p>
   }
+
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </section>
 }

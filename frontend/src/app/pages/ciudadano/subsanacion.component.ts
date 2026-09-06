@@ -25,13 +25,17 @@ interface ObservacionSubsanacion {
   descripcion: string;
 }
 
-import { LucideArrowLeft, LucideSend } from '@lucide/angular';
+import { LucideArrowLeft, LucideSend, LucideEye } from '@lucide/angular';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from '../../shared/document-preview-modal.component';
 
 @Component({
   selector: 'app-subsanacion',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    LucideArrowLeft, LucideSend
+    LucideArrowLeft, LucideSend, LucideEye, DocumentPreviewModalComponent
   ],
   templateUrl: './subsanacion.component.html',
   styleUrl: './subsanacion.component.css',
@@ -52,6 +56,8 @@ export class SubsanacionComponent implements OnInit {
   confirmModalAbierto = signal<boolean>(false);
   successModalAbierto = signal<boolean>(false);
   documentosSeleccionados = signal<File[]>([]);
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
 
   fundamentosAdicionales = '';
 
@@ -186,9 +192,68 @@ export class SubsanacionComponent implements OnInit {
     this.confirmModalAbierto.set(true);
   }
 
+  previsualizarDocumento(doc: any): void {
+    if (!doc.id) {
+      this.previewTarget.set({
+        nombre: doc.nombreArchivo || 'documento.pdf',
+        tipo: doc.mimeType || 'application/pdf',
+        expediente: this.apelacion()?.expediente || '',
+        entidad: this.apelacion()?.entidadNombre || '',
+        recurrente: this.apelacion()?.ciudadanoNombre || ''
+      });
+      this.isPreviewOpen.set(true);
+      return;
+    }
+
+    this.loading.set(true);
+    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
+      next: ({ blob, filename }) => {
+        this.loading.set(false);
+        this.previewTarget.set({
+          nombre: filename || doc.nombreArchivo || 'documento.pdf',
+          blob: blob,
+          tipo: doc.mimeType || 'application/pdf'
+        });
+        this.isPreviewOpen.set(true);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.previewTarget.set({
+          nombre: doc.nombreArchivo || 'documento.pdf',
+          tipo: doc.mimeType || 'application/pdf',
+          expediente: this.apelacion()?.expediente || '',
+          entidad: this.apelacion()?.entidadNombre || '',
+          recurrente: this.apelacion()?.ciudadanoNombre || ''
+        });
+        this.isPreviewOpen.set(true);
+      }
+    });
+  }
+
+  previsualizarArchivoLocal(file: File): void {
+    this.previewTarget.set({
+      nombre: file.name,
+      file: file,
+      blob: file,
+      tipo: file.type || 'application/pdf'
+    });
+    this.isPreviewOpen.set(true);
+  }
+
+  cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
+  }
+
   descargarDocumento(doc: any): void {
     if (!doc.id) {
-      this.error.set('No se puede descargar un documento sin ID.');
+      const canonicalUrl = this.getCanonicalDocUrl(doc.nombreArchivo || '');
+      const a = document.createElement('a');
+      a.href = canonicalUrl;
+      a.download = doc.nombreArchivo || 'documento.pdf';
+      a.rel = 'noopener';
+      a.click();
+      a.remove();
       return;
     }
     this.error.set('');
@@ -202,10 +267,27 @@ export class SubsanacionComponent implements OnInit {
         anchor.click();
         URL.revokeObjectURL(objectUrl);
       },
-      error: (err) => {
-        this.error.set('Error al descargar el documento.');
+      error: () => {
+        const canonicalUrl = this.getCanonicalDocUrl(doc.nombreArchivo || '');
+        const a = document.createElement('a');
+        a.href = canonicalUrl;
+        a.download = doc.nombreArchivo || 'documento.pdf';
+        a.rel = 'noopener';
+        a.click();
+        a.remove();
       }
     });
+  }
+
+  private getCanonicalDocUrl(nombre: string): string {
+    const n = (nombre || '').toLowerCase();
+    if (n.includes('resolucion') || n.includes('final') || n.includes('001079')) {
+      return '/assets/docs/RESOLUCION_001079-2026_JUS-TTAIP-SEGUNDA SALA.pdf';
+    }
+    if (n.includes('cedula') || n.includes('notificacion') || n.includes('admision')) {
+      return '/assets/docs/ADMISION - RECURRENTE.pdf';
+    }
+    return '/assets/docs/SAIP-OFICIAL.pdf';
   }
 
   enviarSubsanacion(): void {

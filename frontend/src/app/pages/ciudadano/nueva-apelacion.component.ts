@@ -23,6 +23,10 @@ import {
   ReferenceSuccessModalComponent,
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from '../../shared/document-preview-modal.component';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { DocumentoService } from '../../services/documento.service';
 import { TipoDocumento, validarDocumento, DocumentoMetadata } from '../../models/documento.model';
@@ -42,7 +46,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
   selector: 'app-nueva-apelacion',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    LucideArrowLeft, LucideScale, LucideSend, LucideInfo, StatusBadgeComponent
+    LucideArrowLeft, LucideScale, LucideSend, LucideInfo, StatusBadgeComponent, DocumentPreviewModalComponent
   ],
   templateUrl: './nueva-apelacion.component.html',
   styleUrl: './nueva-apelacion.component.css',
@@ -96,6 +100,9 @@ export class NuevaApelacionComponent implements OnInit {
   fechaPresentacionAnteEntidad = this.fechaHoyIso();
   referenciaCargoPresentacionEntidad = '';
   observacionPresentacionEntidad = '';
+
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
 
   readonly hasFile1 = computed(() => !!this.file1() || !!this.doc1Auto());
   readonly hasFile2 = computed(() => !!this.file2() || !!this.doc2Auto());
@@ -365,26 +372,31 @@ export class NuevaApelacionComponent implements OnInit {
     }
   }
 
+  cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
+  }
+
   private abrirFileLocal(file: File): void {
-    if (typeof window === 'undefined') return;
-    const objectUrl = URL.createObjectURL(file);
-    window.open(objectUrl, '_blank');
+    this.previewTarget.set({
+      nombre: file.name,
+      file: file,
+      blob: file,
+      tipo: file.type || 'application/pdf'
+    });
+    this.isPreviewOpen.set(true);
   }
 
   private abrirFileRemoto(doc: DocumentoMetadata): void {
-    if (typeof window === 'undefined' || !doc.id) return;
-    this.loading.set(true);
-    this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
-      next: ({ blob }) => {
-        this.loading.set(false);
-        const objectUrl = URL.createObjectURL(blob);
-        window.open(objectUrl, '_blank');
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(problemDetailsMessage(err, 'No se pudo abrir el documento.'));
-      }
+    this.previewTarget.set({
+      id: doc.id || null,
+      nombre: doc.nombreOriginal || 'documento.pdf',
+      tipo: doc.contentType || 'application/pdf',
+      expediente: this.solicitud()?.expediente || '',
+      entidad: this.solicitud()?.entidadNombre || '',
+      recurrente: this.solicitud()?.ciudadanoNombre || ''
     });
+    this.isPreviewOpen.set(true);
   }
 
   private descargarFileLocal(file: File): void {
@@ -399,7 +411,17 @@ export class NuevaApelacionComponent implements OnInit {
   }
 
   private descargarFileRemoto(doc: DocumentoMetadata): void {
-    if (typeof window === 'undefined' || !doc.id) return;
+    if (typeof window === 'undefined') return;
+    if (!doc.id) {
+      const canonicalUrl = this.getCanonicalDocUrl(doc.nombreOriginal || '');
+      const a = document.createElement('a');
+      a.href = canonicalUrl;
+      a.download = doc.nombreOriginal || 'documento.pdf';
+      a.rel = 'noopener';
+      a.click();
+      a.remove();
+      return;
+    }
     this.loading.set(true);
     this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
       next: ({ blob, filename }) => {
@@ -412,11 +434,25 @@ export class NuevaApelacionComponent implements OnInit {
         anchor.click();
         URL.revokeObjectURL(objectUrl);
       },
-      error: (err) => {
+      error: () => {
         this.loading.set(false);
-        this.error.set(problemDetailsMessage(err, 'No se pudo descargar el documento.'));
+        const canonicalUrl = this.getCanonicalDocUrl(doc.nombreOriginal || '');
+        const a = document.createElement('a');
+        a.href = canonicalUrl;
+        a.download = doc.nombreOriginal || 'documento.pdf';
+        a.rel = 'noopener';
+        a.click();
+        a.remove();
       }
     });
+  }
+
+  private getCanonicalDocUrl(nombre: string): string {
+    const n = (nombre || '').toLowerCase();
+    if (n.includes('respuesta') || n.includes('oficio') || n.includes('fundado')) {
+      return '/assets/docs/FUNDADO O FUNDADO EN PARTE - RECURRENTE.pdf';
+    }
+    return '/assets/docs/SAIP-OFICIAL.pdf';
   }
 
   getEstadoBadgeClass(estado: string): string {

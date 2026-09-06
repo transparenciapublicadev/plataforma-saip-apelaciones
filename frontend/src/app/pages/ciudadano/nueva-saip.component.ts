@@ -34,15 +34,19 @@ interface SesionVisual {
 
 import {
   LucideArrowLeft, LucideShieldAlert, LucideCheckCircle2, LucideSend,
-  LucideFileText, LucideXCircle, LucideInfo
+  LucideFileText, LucideXCircle, LucideInfo, LucideEye
 } from '@lucide/angular';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from '../../shared/document-preview-modal.component';
 
 @Component({
   selector: 'app-nueva-saip',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     LucideArrowLeft, LucideShieldAlert, LucideCheckCircle2, LucideSend,
-    LucideFileText, LucideXCircle, LucideInfo
+    LucideFileText, LucideXCircle, LucideInfo, LucideEye, DocumentPreviewModalComponent
   ],
   templateUrl: './nueva-saip.component.html',
   styleUrl: './nueva-saip.component.css',
@@ -239,6 +243,23 @@ export class NuevaSaipComponent implements OnInit {
   removerDocumento(index: number): void {
     this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
     this.error.set('');
+  }
+
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
+
+  previsualizarDocumento(file: File): void {
+    this.previewTarget.set({
+      nombre: file.name,
+      blob: file,
+      tipo: file.type || 'application/pdf'
+    });
+    this.isPreviewOpen.set(true);
+  }
+
+  cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
   }
 
   formatFileSize(size: number): string {

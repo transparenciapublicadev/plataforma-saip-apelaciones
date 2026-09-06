@@ -653,37 +653,9 @@
   </div>
 
   <!-- Modal de Previsualización RemoteDocPreview -->
-  @if (previewDoc(); as doc) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.55)" (click)="cerrarPreview()">
-      <div class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.35); max-height: 90vh" (click)="$event.stopPropagation()">
-        <div class="flex items-center justify-between gap-3 px-5 py-3.5 border-b" style="border-color: var(--border)">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <svg lucideFileText class="w-4 h-4 flex-shrink-0" style="color: var(--brand-700)"></svg>
-            <span class="text-sm font-medium truncate">{{ doc.nombre }}</span>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button type="button" (click)="descargarDoc(doc)" class="btn-ghost-brand !px-3 !py-2 !text-[13px] inline-flex items-center gap-1.5" title="Descargar PDF">
-              <svg lucideDownload class="w-4 h-4"></svg> Descargar
-            </button>
-            <button type="button" (click)="cerrarPreview()" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--muted)]" style="border: 1px solid var(--border)">
-              <svg lucideX class="w-4 h-4"></svg>
-            </button>
-          </div>
-        </div>
-        <div class="p-6 overflow-y-auto min-h-[340px] flex flex-col items-center justify-center text-center bg-muted/10">
-          <div class="w-16 h-16 rounded-xl flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-            <svg lucideFileText class="w-8 h-8" style="color: var(--brand-700)"></svg>
-          </div>
-          <h4 class="text-base font-semibold text-foreground mb-1">{{ doc.nombre }}</h4>
-          <p class="text-xs text-muted-foreground font-mono mb-4">{{ doc.tamano }} · Registrado en el expediente</p>
-          <p class="text-xs text-muted-foreground max-w-md mb-6">
-            Documento oficial correspondiente al trámite de acceso a la información pública bajo la Ley N° 27806.
-          </p>
-          <button type="button" (click)="descargarDoc(doc)" class="btn-brand !px-5 !py-2.5 !text-sm inline-flex items-center gap-2">
-            <svg lucideDownload class="w-4 h-4"></svg> Descargar archivo
-          </button>
-        </div>
-      </div>
-    </div>
-  }
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
 </div>

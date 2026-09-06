@@ -11,6 +11,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   LucideCheckCircle2,
+  LucideEye,
   LucideFileText,
   LucideLoaderCircle,
   LucideUpload,
@@ -26,15 +27,21 @@ import {
 } from '../models/documento.model';
 import { DocumentoService } from '../services/documento.service';
 import { problemDetailsMessage } from '../utils/problem-details.util';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from './document-preview-modal.component';
 
 @Component({
   selector: 'app-document-upload',
   imports: [
     LucideCheckCircle2,
+    LucideEye,
     LucideFileText,
     LucideLoaderCircle,
     LucideUpload,
-    LucideX
+    LucideX,
+    DocumentPreviewModalComponent
   ],
   templateUrl: './document-upload.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,12 +59,31 @@ export class DocumentUploadComponent {
 
   readonly accept = DOCUMENTO_ACCEPT;
   readonly selectedFile = signal<File | null>(null);
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly isPreviewOpen = signal(false);
   readonly loading = signal(false);
   readonly dragging = signal(false);
   readonly error = signal('');
   readonly errorDetail = signal('');
   readonly errorDiagnosticHint = signal('');
   readonly success = signal('');
+
+  previewSelectedFile(): void {
+    const file = this.selectedFile();
+    if (!file) return;
+    this.previewTarget.set({
+      nombre: file.name,
+      file: file,
+      blob: file,
+      tipo: file.type || 'application/pdf'
+    });
+    this.isPreviewOpen.set(true);
+  }
+
+  cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
+  }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;

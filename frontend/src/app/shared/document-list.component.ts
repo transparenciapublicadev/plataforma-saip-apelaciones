@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import {
   LucideDownload,
+  LucideEye,
   LucideFileText,
   LucideLoaderCircle,
   LucideTrash2
@@ -22,15 +23,21 @@ import {
 } from '../models/documento.model';
 import { DocumentoService } from '../services/documento.service';
 import { problemDetailsMessage } from '../utils/problem-details.util';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from './document-preview-modal.component';
 
 @Component({
   selector: 'app-document-list',
   imports: [
     CommonModule,
     LucideDownload,
+    LucideEye,
     LucideFileText,
     LucideLoaderCircle,
-    LucideTrash2
+    LucideTrash2,
+    DocumentPreviewModalComponent
   ],
   templateUrl: './document-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,6 +55,9 @@ export class DocumentListComponent {
   readonly relatedDocuments = signal<DocumentoMetadata[] | null>(null);
   readonly loadingDocuments = signal(false);
   readonly downloadingId = signal<number | null>(null);
+  readonly previewingId = signal<number | null>(null);
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly isPreviewOpen = signal(false);
   readonly deletingId = signal<number | null>(null);
   readonly error = signal('');
   readonly displayedDocuments = computed<readonly DocumentoListItem[]>(
@@ -84,6 +94,50 @@ export class DocumentListComponent {
         this.error.set(problemDetailsMessage(error, 'No se pudo descargar el documento.'));
       }
     });
+  }
+
+  preview(documento: DocumentoListItem): void {
+    const nombre = this.documentName(documento);
+    const tipo = this.documentType(documento);
+
+    if (!documento.id) {
+      this.previewTarget.set({
+        nombre,
+        tipo,
+        fecha: this.documentDate(documento) || ''
+      });
+      this.isPreviewOpen.set(true);
+      return;
+    }
+
+    this.previewingId.set(documento.id);
+    this.documentoService.download(documento.id, nombre).subscribe({
+      next: ({ blob, filename }) => {
+        this.previewingId.set(null);
+        this.previewTarget.set({
+          id: documento.id,
+          nombre: filename || nombre,
+          blob,
+          tipo
+        });
+        this.isPreviewOpen.set(true);
+      },
+      error: () => {
+        this.previewingId.set(null);
+        this.previewTarget.set({
+          id: documento.id,
+          nombre,
+          tipo,
+          fecha: this.documentDate(documento) || ''
+        });
+        this.isPreviewOpen.set(true);
+      }
+    });
+  }
+
+  cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
   }
 
   delete(documento: DocumentoListItem): void {

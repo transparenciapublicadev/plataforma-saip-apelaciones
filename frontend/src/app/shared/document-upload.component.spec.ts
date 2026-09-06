@@ -82,4 +82,19 @@ describe('DocumentUploadComponent', () => {
 
     expect(component.error()).toBe('El archivo contiene una extensión no permitida.');
   });
+
+  it('opens preview modal when clicking preview on selected file', () => {
+    const file = new File(['contenido'], 'solicitud.pdf', { type: 'application/pdf' });
+    component.onFileSelected({ target: { files: [file], value: file.name } } as unknown as Event);
+    fixture.detectChanges();
+
+    const previewButton = fixture.nativeElement.querySelector(
+      'button[aria-label="Previsualizar archivo"]'
+    ) as HTMLButtonElement;
+    expect(previewButton).toBeTruthy();
+
+    previewButton.click();
+    expect(component.isPreviewOpen()).toBe(true);
+    expect(component.previewTarget()?.nombre).toBe('solicitud.pdf');
+  });
 });

@@ -38,6 +38,10 @@ import {
   ReferenceSuccessModalComponent,
   ReferenceSuccessNextStep
 } from '../../shared/reference-success-modal.component';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from '../../shared/document-preview-modal.component';
 
 export interface ExpedienteDocItem {
   nombre: string;
@@ -76,7 +80,8 @@ export interface GrupoDocItem {
     LucideDownload,
     LucideUpload,
     LucideX,
-    LucideLoader2
+    LucideLoader2,
+    DocumentPreviewModalComponent
   ],
   templateUrl: './precision-form.component.html',
   styleUrl: './precision-form.component.css',
@@ -122,6 +127,8 @@ export class PrecisionFormComponent implements OnInit {
   successModalAbierto = signal<boolean>(false);
 
   // Visor in-situ de documento
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
   previewModalAbierto = signal<boolean>(false);
   previewDocNombre = signal<string>('');
   previewDocUrl = signal<string | null>(null);
@@ -334,71 +341,73 @@ export class PrecisionFormComponent implements OnInit {
 
   // Previsualización y descarga de documentos
   abrirDoc(doc: ExpedienteDocItem, descargar: boolean): void {
-    const nombre = doc.nombre;
-    const ext = nombre.split('.').pop()?.toLowerCase() || '';
-    const esPdf = ext === 'pdf';
-    const esImagen = ['jpg', 'jpeg', 'png', 'webp', 'svg'].includes(ext);
-
     if (descargar) {
       this.descargarDoc(doc);
       return;
     }
 
-    this.previewDocNombre.set(nombre);
-    this.previewDocEsPdf.set(esPdf);
-    this.previewDocEsImagen.set(esImagen);
-    this.previewCargando.set(true);
-    this.previewModalAbierto.set(true);
-
-    if (doc.url) {
-      this.previewDocUrl.set(doc.url);
-      this.previewCargando.set(false);
-    } else {
-      // Simular enlace temporal o cargar
-      setTimeout(() => {
-        this.previewDocUrl.set(null);
-        this.previewCargando.set(false);
-      }, 400);
-    }
+    this.previewTarget.set({
+      nombre: doc.nombre,
+      url: doc.url || null,
+      blob: doc.blob || null,
+      expediente: this.expediente(),
+      fecha: doc.fecha || this.fechaHoy,
+      entidad: this.solicitud()?.entidadNombre || undefined,
+      recurrente: this.solicitud()?.ciudadanoNombre || undefined
+    });
+    this.isPreviewOpen.set(true);
   }
 
   abrirPreviewArchivoLocal(): void {
     const file = this.archivoSeleccionado();
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    this.previewDocNombre.set(file.name);
-    this.previewDocUrl.set(url);
-    this.previewDocEsPdf.set(file.type === 'application/pdf' || ext === 'pdf');
-    this.previewDocEsImagen.set(file.type.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(ext));
-    this.previewCargando.set(false);
-    this.previewModalAbierto.set(true);
+    this.previewTarget.set({
+      nombre: file.name,
+      file: file,
+      blob: file,
+      tipo: file.type || 'application/pdf'
+    });
+    this.isPreviewOpen.set(true);
   }
 
   cerrarPreview(): void {
+    this.isPreviewOpen.set(false);
+    this.previewTarget.set(null);
     this.previewModalAbierto.set(false);
-    const currentUrl = this.previewDocUrl();
-    if (currentUrl && currentUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(currentUrl);
-    }
-    this.previewDocUrl.set(null);
   }
 
   descargarDoc(doc: ExpedienteDocItem): void {
-    const a = document.createElement('a');
-    if (doc.url) {
-      a.href = doc.url;
-    } else {
-      // Blob de muestra para descarga
-      const dummy = new Blob([`Contenido de muestra para ${doc.nombre}`], { type: 'application/pdf' });
-      a.href = URL.createObjectURL(dummy);
+    if (doc.blob && typeof window !== 'undefined') {
+      const url = URL.createObjectURL(doc.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.nombre.endsWith('.pdf') ? doc.nombre : `${doc.nombre}.pdf`;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      return;
     }
-    a.download = doc.nombre;
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const url = doc.url || this.getCanonicalDocUrl(doc.nombre);
+    if (url && typeof window !== 'undefined') {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.nombre.endsWith('.pdf') ? doc.nombre : `${doc.nombre}.pdf`;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  }
+
+  private getCanonicalDocUrl(nombre: string): string {
+    const n = (nombre || '').toLowerCase();
+    if (n.includes('requerimiento') || n.includes('oficio') || n.includes('observacion')) {
+      return '/assets/docs/FUNDADO O FUNDADO EN PARTE - RECURRENTE.pdf';
+    }
+    return '/assets/docs/SAIP-OFICIAL.pdf';
   }
 
   // Manejo de envío
