@@ -104,11 +104,6 @@
   visibility: visible;
 }
 
-.saip-shell-suspended {
-  opacity: 0;
-  pointer-events: none;
-}
-
 @keyframes navUnderlineIn {
   from {
     opacity: 0;

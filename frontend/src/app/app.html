@@ -42,7 +42,7 @@
 }
 
 <!-- Header — Editorial v3 -->
-<header class="saip-header fixed top-0 left-0 right-0 z-50" [class.saip-shell-suspended]="showSplash()" data-animate>
+<header class="saip-header fixed top-0 left-0 right-0 z-50" data-animate>
   <!-- Top institutional bar -->
   <div data-inst-bar class="saip-institutional-bar">
     <div class="saip-institutional-bar-line"></div>
@@ -348,11 +348,11 @@
 </header>
 
 <!-- Main Content -->
-<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" [class.saip-shell-suspended]="showSplash()" tabindex="-1">
+<main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" tabindex="-1">
   <router-outlet></router-outlet>
 </main>
 
-<footer class="saip-footer relative overflow-hidden" [class.saip-shell-suspended]="showSplash()">
+<footer class="saip-footer relative overflow-hidden">
   <!-- Top brand accent -->
   <div class="brand-divider"></div>
   <div class="absolute inset-0 bg-paper opacity-[0.04] pointer-events-none"></div>

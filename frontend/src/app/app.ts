@@ -45,7 +45,7 @@ export class App {
 
   readonly menuAbierto = signal(false);
   readonly mobileMenuAbierto = signal(false);
-  readonly showSplash = signal(true);
+  readonly showSplash = signal(false);
   readonly splashLeaving = signal(false);
 
   constructor() {
@@ -56,22 +56,27 @@ export class App {
       }
     });
 
-    if (typeof window === 'undefined') {
-      this.showSplash.set(false);
-    } else if (sessionStorage.getItem('saip_splash_shown')) {
-      this.showSplash.set(false);
-    } else {
+    if (typeof window !== 'undefined' && this.isLandingRoute() && !sessionStorage.getItem('saip_splash_shown')) {
+      this.showSplash.set(true);
       setTimeout(() => {
         this.splashLeaving.set(true);
       }, 1900);
 
       setTimeout(() => {
         this.showSplash.set(false);
+        try {
+          sessionStorage.setItem('saip_splash_shown', 'true');
+        } catch {}
         setTimeout(() => {
           this.motionService.animateShell();
           this.motionService.animateRoute(this.mainContent()?.nativeElement ?? null);
         });
       }, 2400);
+    } else {
+      setTimeout(() => {
+        this.motionService.animateShell();
+        this.motionService.animateRoute(this.mainContent()?.nativeElement ?? null);
+      });
     }
 
     this.router.events
