@@ -1,2 +1,70 @@
-/* Estilos adicionales para nueva SAIP */
+/* ================================================================
+   FileUploadZone Styles (Exact match to design-reference)
+   ================================================================ */
+
+.file-upload-zone {
+  display: block;
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  user-select: none;
+}
+
+/* Efecto hover interactivo idéntico a design-reference */
+.file-upload-zone:hover {
+  border-color: var(--brand-600) !important;
+  background: color-mix(in srgb, var(--brand-50) 50%, var(--card)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 10%, transparent);
+}
+
+.file-upload-zone:hover .upload-action-link {
+  color: var(--brand-600) !important;
+  text-decoration: underline;
+}
+
+/* Estado activo cuando se arrastra un archivo encima */
+.file-upload-zone.is-dragging {
+  border-color: var(--brand-600) !important;
+  background: color-mix(in srgb, var(--brand-100) 70%, var(--card)) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-600) 18%, transparent);
+  transform: scale(1.008);
+}
+
+/* Estado cuando ya existe un archivo cargado */
+.file-upload-zone.has-file {
+  cursor: default;
+  background: color-mix(in srgb, var(--success) 8%, var(--card)) !important;
+  border: 1.5px solid color-mix(in srgb, var(--success) 35%, transparent) !important;
+  box-shadow: none;
+}
+
+.file-upload-zone.has-file:hover {
+  border-color: color-mix(in srgb, var(--success) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--success) 10%, var(--card)) !important;
+  box-shadow: none;
+}
+
+input[type="file"].sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Estado de advertencia o error en archivo adjuntado */
+.file-upload-zone.has-error {
+  border-color: #EF4444 !important;
+  background: color-mix(in srgb, #EF4444 5%, var(--card)) !important;
+}
+
 
