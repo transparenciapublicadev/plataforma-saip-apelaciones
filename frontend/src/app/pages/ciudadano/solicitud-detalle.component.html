@@ -472,7 +472,7 @@
                     <div>
                       <span class="eyebrow">Contenido de la respuesta</span>
                       <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
-                        {{ sol.respuesta?.contenido }}
+                        {{ sol.respuesta.contenido }}
                       </div>
                     </div>
                   }
@@ -492,7 +492,7 @@
                         <svg lucideUser class="w-4 h-4 mt-0.5" style="color: var(--brand-700)"></svg>
                         <div>
                           <div class="font-medium">{{ sol.entidadNombre }}</div>
-                          <div class="text-xs text-muted-foreground">{{ sol.respuesta?.funcionarioNombre ? (sol.respuesta?.funcionarioNombre + ' · ') : '' }}Unidad de Transparencia y Acceso a la Información Pública</div>
+                          <div class="text-xs text-muted-foreground">{{ sol.respuesta?.funcionarioNombre ? (sol.respuesta.funcionarioNombre + ' · ') : '' }}Unidad de Transparencia y Acceso a la Información Pública</div>
                         </div>
                       </div>
                     </div>

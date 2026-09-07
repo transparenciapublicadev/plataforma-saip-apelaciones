@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LoginRequest } from '../../models/usuario.model';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
   LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
@@ -38,6 +39,12 @@ export class LoginComponent implements OnInit {
   loading = signal<boolean>(false);
   error = signal<string>('');
   mensaje = signal<string>('');
+
+  fillDemo(id: string, pass: string): void {
+    this.email = id;
+    this.password = pass;
+    this.error.set('');
+  }
 
   portalTitle = computed(() => {
     if (this.accessMode() === 'citizen') return 'Acceso para Administrados';
@@ -123,7 +130,7 @@ export class LoginComponent implements OnInit {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err.error?.mensaje || 'Error de conexión');
+        this.error.set(problemDetailsMessage(err, 'Usuario o contraseña incorrectos.'));
       }
     });
   }

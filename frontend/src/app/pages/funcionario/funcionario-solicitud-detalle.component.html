@@ -220,7 +220,7 @@
                   <div>
                     <span class="eyebrow">Contenido de respuesta</span>
                     <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap" style="background: var(--card); border: 1px solid var(--border)">
-                      {{ sol.respuesta?.contenido }}
+                      {{ sol.respuesta.contenido }}
                     </div>
                   </div>
                 }
@@ -228,7 +228,7 @@
                 @if (sol.respuesta?.causalDenegatoria) {
                   <div>
                     <span class="eyebrow">Causal</span>
-                    <p class="text-sm font-semibold mt-2">{{ sol.respuesta?.causalDenegatoria }}</p>
+                    <p class="text-sm font-semibold mt-2">{{ sol.respuesta.causalDenegatoria }}</p>
                   </div>
                 }
 
@@ -236,7 +236,7 @@
                   <div>
                     <span class="eyebrow">Fundamento legal</span>
                     <div class="mt-2 rounded-md p-4 text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap" style="background: var(--card); border: 1px solid var(--border)">
-                      {{ sol.respuesta?.fundamentoLegal }}
+                      {{ sol.respuesta.fundamentoLegal }}
                     </div>
                   </div>
                 }
@@ -890,7 +890,7 @@
                   <a [routerLink]="['/funcionario/apelaciones', idApelacion()]"
                      class="inline-flex items-center gap-1.5 font-mono font-semibold hover:text-[var(--brand-800)] hover:underline transition-all group"
                      style="color: var(--brand-700)">
-                    <span>{{ sol.apelacion?.expediente }}</span>
+                    <span>{{ sol.apelacion.expediente }}</span>
                     <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
                     </svg>
@@ -899,11 +899,11 @@
               </div>
               <div>
                 <span class="eyebrow">Fecha de presentación</span>
-                <p class="text-sm mt-1.5">{{ sol.apelacion?.fechaApelacion | date:'dd/MM/yyyy' }}</p>
+                <p class="text-sm mt-1.5">{{ sol.apelacion.fechaApelacion | date:'dd/MM/yyyy' }}</p>
               </div>
               <div>
                 <span class="eyebrow">Estado</span>
-                <p class="mt-1.5"><span [class]="getApelacionEstadoClass(sol.apelacion?.estado || '')">{{ getEstadoDisplay(sol.apelacion?.estado) }}</span></p>
+                <p class="mt-1.5"><span [class]="getApelacionEstadoClass(sol.apelacion.estado || '')">{{ getEstadoDisplay(sol.apelacion.estado) }}</span></p>
               </div>
             </div>
           </div>
