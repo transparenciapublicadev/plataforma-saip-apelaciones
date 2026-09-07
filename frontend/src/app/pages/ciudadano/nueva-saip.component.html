@@ -1,7 +1,8 @@
 <div class="min-h-screen bg-background">
+  <!-- Editorial hero -->
   <div class="relative bg-brand-gradient text-white overflow-hidden">
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14" data-hero>
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14">
       <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
         <svg lucideArrowLeft class="w-4 h-4"></svg>
         Volver al panel
@@ -20,425 +21,648 @@
 
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-12">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div
-        class="lg:col-span-8 space-y-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.4"
-        data-motion-delay-step="0.055">
+      <!-- Formulario principal -->
+      <div class="lg:col-span-8 space-y-8">
+        <!-- Alertas de estado -->
         @if (error()) {
-          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--brand-700) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-700) 24%, transparent);">
+          <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--brand-700) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-700) 24%, transparent);">
             <p class="text-sm" style="color: var(--brand-700);">{{ error() }}</p>
           </div>
         }
 
         @if (mensaje()) {
-          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);">
+          <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);">
             <p class="text-sm" style="color: var(--success);">{{ mensaje() }}</p>
           </div>
         }
 
-        <section data-motion-item class="relative overflow-hidden rounded-xl" style="background: linear-gradient(135deg, var(--brand-subtle), color-mix(in srgb, var(--gold-soft) 28%, var(--card))); border: 1px solid var(--brand-200); box-shadow: 0 1px 0 0 color-mix(in srgb, var(--brand-700) 6%, transparent);">
-          <span aria-hidden class="absolute inset-x-0 top-0 h-px" style="background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);"></span>
+        <!-- Identidad confirmada — datos tomados de la sesión autenticada -->
+        <section
+          class="relative overflow-hidden rounded-xl"
+          style="background: linear-gradient(135deg, var(--brand-subtle), color-mix(in srgb, var(--gold-soft) 28%, var(--card))); border: 1px solid var(--brand-200); box-shadow: 0 1px 0 0 color-mix(in srgb, var(--brand-700) 6%, transparent);"
+        >
+          <!-- hilo dorado superior -->
+          <span aria-hidden="true" class="absolute inset-x-0 top-0 h-px" style="background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);"></span>
 
           <div class="p-5 md:p-6 flex items-start gap-4">
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); box-shadow: 0 1px 0 0 color-mix(in srgb, white 18%, transparent) inset;">
-              <svg lucideShieldAlert class="w-5.5 h-5.5 text-white"></svg>
+            <div
+              class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+              style="background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); box-shadow: 0 1px 0 0 color-mix(in srgb, white 18%, transparent) inset;"
+            >
+              <svg lucideShieldCheck class="w-5.5 h-5.5 text-white"></svg>
             </div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="eyebrow" style="color: var(--brand-700);">Identidad verificada · sesión activa</span>
-                @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                  <span class="pill" style="background: color-mix(in srgb, #2563eb 12%, transparent); color: #2563eb;">
-                    <svg lucideCheckCircle2 class="w-3 h-3"></svg>
-                    SUNAT
-                  </span>
-                } @else {
-                  <span class="pill" style="background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);">
-                    <svg lucideCheckCircle2 class="w-3 h-3"></svg>
-                    RENIEC
-                  </span>
-                }
+                <span class="pill" style="background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);">
+                  <svg lucideBadgeCheck class="w-3 h-3"></svg> {{ esEmpresa() ? 'SUNAT' : 'RENIEC' }}
+                </span>
               </div>
 
               <h3 class="font-display mt-1.5" style="font-size: 20px; letter-spacing: -0.01em; line-height: 1.15;">
-                @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                  {{ sesionVisual().razonSocial || sesionVisual().nombre }}
-                } @else {
-                  {{ sesionVisual().nombre }}
-                }
+                {{ sesionVisual().nombre }}
               </h3>
 
-              @if (sesionVisual().tipoPersona === 'JURIDICA' && sesionVisual().representanteNombreCompleto) {
-                <p class="text-xs text-muted-foreground mt-0.5 font-medium">
-                  Rep. Legal: {{ sesionVisual().representanteNombreCompleto }}
-                </p>
-              }
-
-              <div class="flex flex-wrap items-center gap-x-8 gap-y-2 mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    @if (sesionVisual().tipoPersona === 'JURIDICA') { RUC } @else { DNI }
-                  </span>
-                  <span class="font-mono text-xs font-medium text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700/60">
-                    @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                      {{ sesionVisual().ruc || sesionVisual().dni }}
-                    } @else {
-                      {{ sesionVisual().dni }}
-                    }
-                  </span>
+              <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px]">
+                <div class="rounded-md px-3.5 py-2.5 min-w-0" style="background: var(--card); border: 1px solid var(--border);">
+                  <dt class="text-[11px] uppercase tracking-wide text-muted-foreground">{{ docLabel() }}</dt>
+                  <dd class="font-mono text-foreground/90 mt-0.5 truncate">{{ docNumero() }}</dd>
                 </div>
-                <div class="flex items-center gap-2 flex-1 min-w-0">
-                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    Correo electrónico
-                  </span>
-                  <span class="font-mono text-xs font-medium text-slate-900 dark:text-slate-200 break-all sm:break-normal">
-                    {{ sesionVisual().email }}
-                  </span>
+                <div class="rounded-md px-3.5 py-2.5 min-w-0" style="background: var(--card); border: 1px solid var(--border);">
+                  <dt class="text-[11px] uppercase tracking-wide text-muted-foreground">Correo electrónico</dt>
+                  <dd class="font-mono text-foreground/90 mt-0.5 truncate">{{ sesionVisual().email }}</dd>
                 </div>
-              </div>
+              </dl>
 
               <p class="text-xs text-muted-foreground mt-3 italic max-w-2xl">
-                Sus datos personales (Nombres/Razón Social, Documento, Dirección, Correo y Celular) provienen de su cuenta. Si desea actualizarlos para este y futuros trámites, hágalo desde la sección 'Mi Perfil'.
+                Sus datos personales (nombres, correo, domicilio y celular) fueron tomados
+                del registro con el que creó su cuenta. Si desea modificar alguno,
+                hágalo desde su <span class="not-italic font-medium text-foreground/80">perfil</span>:
+                esa actualización quedará guardada y se usará por defecto en sus próximos trámites.
               </p>
             </div>
           </div>
         </section>
 
-        <form (ngSubmit)="abrirConfirmacionSolicitud()" class="space-y-6">
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">01 · Entidad e información requerida</span>
-                <h2 class="form-section-title">Datos de la solicitud</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                01
-              </span>
+        <!-- SECTION 01: Datos de la solicitud -->
+        <section class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">01 · Entidad e información requerida</span>
+              <h2 class="form-section-title">Datos de la solicitud</h2>
             </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="field">
-                <label for="entidadId" class="field-label">Entidad pública <span class="req">*</span></label>
-                <select id="entidadId" [(ngModel)]="entidadId" name="entidadId" required class="field-input">
-                  <option [ngValue]="null">Seleccione la entidad receptora</option>
-                  @for (entidad of entidades(); track entidad.id) {
-                    <option [value]="entidad.id">{{ entidad.nombre }}</option>
-                  }
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="materia" class="field-label">TEMA O MATERIA DE LA SOLICITUD</label>
-                <select id="materia" [(ngModel)]="materia" name="materia" class="field-input">
-                  <option value="">Seleccione la materia o tema (Opcional)</option>
-                  <option value="Documentos oficiales y resoluciones">Documentos oficiales y resoluciones</option>
-                  <option value="Estadísticas, reportes y data abierta">Estadísticas, reportes y data abierta</option>
-                  <option value="Informes y memorandos técnicos">Informes y memorandos técnicos</option>
-                  <option value="Presupuesto, ejecuciones y gastos públicos">Presupuesto, ejecuciones y gastos públicos</option>
-                  <option value="Contrataciones, adquisiciones y licitaciones">Contrataciones, adquisiciones y licitaciones</option>
-                  <option value="Personal, planillas y escalas remunerativas">Personal, planillas y escalas remunerativas</option>
-                  <option value="Proyectos, programas y obras públicas">Proyectos, programas y obras públicas</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-
-              @if (materia === 'Otros') {
-                <div class="field">
-                  <label for="materiaOtros" class="field-label">Especifique el tema o materia <span class="req">*</span></label>
-                  <input id="materiaOtros" type="text" [(ngModel)]="materiaOtros" name="materiaOtros" required placeholder="Escriba la materia o tema específico..." class="field-input" />
-                </div>
-              }
-
-              <div class="field">
-                <label for="oficinaDestinataria" class="field-label">OFICINA O UNIDAD ORGÁNICA DESTINATARIA (OPCIONAL)</label>
-                <input id="oficinaDestinataria" type="text" [(ngModel)]="oficinaDestinataria" name="oficinaDestinataria" placeholder="Ej. Oficina de Logística, Dirección de Recursos Humanos..." class="field-input" />
-                <span class="field-hint">Si conoce la oficina específica dentro de la entidad que posee la información, indíquela aquí.</span>
-              </div>
-
-              <div class="field">
-                <label for="asunto" class="field-label">Asunto <span class="req">*</span></label>
-                <input id="asunto" type="text" [(ngModel)]="asunto" name="asunto" required placeholder="Ej. Solicitud de presupuesto institucional 2026" class="field-input" />
-              </div>
-
-              <div class="field">
-                <label for="descripcion" class="field-label">Información solicitada <span class="req">*</span></label>
-                <textarea id="descripcion" [(ngModel)]="descripcion" name="descripcion" required rows="5" placeholder="Describa de forma precisa la información pública que requiere..." class="field-input"></textarea>
-              </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">02 · Formato y copia opcional</span>
-                <h2 class="form-section-title">Modalidad de entrega</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                02
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoDigital" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
-                  <input type="checkbox" [(ngModel)]="formatoDigital" name="formatoDigital" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoDigital ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoDigital ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (formatoDigital) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Digital (correo / enlace)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Recepción en formato PDF</div>
-                  </div>
-                </label>
-
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoFisico" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
-                  <input type="checkbox" [(ngModel)]="formatoFisico" name="formatoFisico" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoFisico ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoFisico ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (formatoFisico) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Físico (copia impresa)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Recojo en oficina</div>
-                  </div>
-                </label>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaSimple" [style.background]="copiaSimple ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaSimple ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaSimple ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <input type="checkbox" [(ngModel)]="copiaSimple" name="copiaSimple" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaSimple ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaSimple ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (copiaSimple) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Copia simple</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Sin certificación formal</div>
-                  </div>
-                </label>
-
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaCertificada" [style.background]="copiaCertificada ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaCertificada ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaCertificada ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <input type="checkbox" [(ngModel)]="copiaCertificada" name="copiaCertificada" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaCertificada ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaCertificada ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (copiaCertificada) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Copia certificada</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Con sello y firma</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">03 · Notificación y datos personales</span>
-                <h2 class="form-section-title">Canal formal elegido</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                03
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="field">
-                <label for="canalNotificacion" class="field-label">Canal de notificación <span class="req">*</span></label>
-                <select id="canalNotificacion" [(ngModel)]="canalNotificacion" name="canalNotificacion" required class="field-input">
-                  <option value="CASILLA_ELECTRONICA">Casilla electrónica</option>
-                  <option value="CORREO_ELECTRONICO">Correo electrónico</option>
-                  <option value="PLATAFORMA">Plataforma</option>
-                  <option value="FISICA">Notificación física</option>
-                </select>
-                <span class="field-hint">Este canal será usado como medio principal salvo excepción legal o reproceso justificado.</span>
-              </div>
-
-              <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="consentimientoDatosPersonales" [style.background]="consentimientoDatosPersonales ? 'var(--brand-50)' : 'var(--card)'" [style.border]="consentimientoDatosPersonales ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="consentimientoDatosPersonales ? '0 0 0 3px var(--brand-50)' : 'none'">
-                <input type="checkbox" [(ngModel)]="consentimientoDatosPersonales" name="consentimientoDatosPersonales" required class="sr-only" />
-                <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="consentimientoDatosPersonales ? 'var(--brand-600)' : 'var(--card)'" [style.border]="consentimientoDatosPersonales ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                  @if (consentimientoDatosPersonales) {
-                    <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                  }
-                </span>
-                <div>
-                  <div class="text-sm font-medium text-foreground">Acepto el tratamiento de datos personales</div>
-                  <div class="text-xs text-muted-foreground mt-0.5">Autorizo el uso de mis datos para registrar, tramitar, notificar y dar seguimiento a esta SAIP.</div>
-                </div>
-              </label>
-            </div>
-          </section>
-
-          <!-- ── DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA) ── -->
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">04 · DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA)</span>
-                <h2 class="form-section-title">Información con fines estrictamente estadísticos y de inclusión social</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                04
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <p class="text-xs text-muted-foreground leading-relaxed">
-                Los siguientes datos son de llenado facultativo y no afectan la admisibilidad ni la respuesta de su solicitud.
-              </p>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="flex flex-col justify-between">
-                  <label for="sexo" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Sexo
-                  </label>
-                  <select id="sexo" [(ngModel)]="sexo" name="sexo" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Otro">Otro</option>
-                    <option value="Prefiero no decir">Prefiero no decir</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="edad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Edad
-                  </label>
-                  <input id="edad" type="number" [(ngModel)]="edad" name="edad" placeholder="Ej. 35" min="14" max="120" class="field-input" />
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="discapacidad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Discapacidad
-                  </label>
-                  <select id="discapacidad" [(ngModel)]="discapacidad" name="discapacidad" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="No presenta">No presenta</option>
-                    <option value="Física o motora">Física o motora</option>
-                    <option value="Visual">Visual</option>
-                    <option value="Auditiva">Auditiva</option>
-                    <option value="Intelectual">Intelectual</option>
-                    <option value="Psicosocial / Otra">Psicosocial / Otra</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="lenguaMaterna" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Lengua materna
-                  </label>
-                  <select id="lenguaMaterna" [(ngModel)]="lenguaMaterna" name="lenguaMaterna" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Castellano">Castellano</option>
-                    <option value="Quechua">Quechua</option>
-                    <option value="Aimara">Aimara</option>
-                    <option value="Asháninka">Asháninka</option>
-                    <option value="Awajún">Awajún</option>
-                    <option value="Otra lengua originaria">Otra lengua originaria</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="etnia" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Autoidentificación étnica
-                  </label>
-                  <select id="etnia" [(ngModel)]="etnia" name="etnia" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Quechua">Quechua</option>
-                    <option value="Mestizo">Mestizo</option>
-                    <option value="Afrodescendiente">Afrodescendiente</option>
-                    <option value="Aimara">Aimara</option>
-                    <option value="Nativo o indígena de la Amazonía">Nativo o indígena de la Amazonía</option>
-                    <option value="Blanco">Blanco</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="areaGeografica" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Área geográfica de procedencia
-                  </label>
-                  <select id="areaGeografica" [(ngModel)]="areaGeografica" name="areaGeografica" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Urbana">Urbana</option>
-                    <option value="Rural">Rural</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">05 · Sustento opcional</span>
-                <h2 class="form-section-title">Documentos adjuntos</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                05
-              </span>
-            </div>
-            <div class="p-6 md:p-8 space-y-3">
-              <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
-                <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" multiple (change)="seleccionarDocumento($event)" />
-                <svg lucideFileText class="w-8 h-8 mx-auto mb-2 text-brand-700"></svg>
-                <p class="text-sm text-foreground/85">Adjunte los documentos de sustento (opcional)</p>
-                <p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT hasta 10 MB</p>
-              </label>
-
-              @for (file of documentosSeleccionados(); track file.name; let i = $index) {
-                <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                  <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
-                  <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
-                  <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
-                  <button type="button" class="btn-ghost-brand !px-2 !py-1 !text-xs inline-flex items-center gap-1" (click)="previsualizarDocumento(file)" title="Ver documento">
-                    <svg lucideEye class="w-3.5 h-3.5"></svg> Ver
-                  </button>
-                  <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
-                    Quitar
-                  </button>
-                </div>
-              }
-            </div>
-          </section>
-
-          <div data-motion-item class="flex flex-col sm:flex-row gap-3">
-            <button type="button" (click)="guardarBorrador()" class="btn-ghost-brand flex-1 justify-center !py-3">
-              <svg lucideFileText class="w-4 h-4"></svg>
-              Guardar borrador
-            </button>
-
-            <button type="submit" [disabled]="loading() || !canSubmit()" class="btn-brand flex-1 !py-3 justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-              @if (loading()) {
-                <span class="inline-flex items-center gap-2">
-                  <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
-                  Enviando...
-                </span>
-              } @else {
-                <span class="inline-flex items-center gap-2">
-                  <svg lucideSend class="w-4 h-4"></svg>
-                  Presentar solicitud
-                </span>
-              }
-            </button>
+            <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
+              01
+            </span>
           </div>
-        </form>
+
+          <div class="p-6 md:p-8 space-y-5">
+            <div class="field relative">
+              <label for="entidadSelect" class="field-label">Entidad pública <span class="req">*</span></label>
+              <app-reference-combobox
+                id="entidadSelect"
+                [options]="entidadOptions()"
+                [(value)]="entidadId"
+                (valueChange)="onEntidadChange($event)"
+                placeholder="Seleccione la entidad receptora"
+                searchPlaceholder="Buscar por nombre o sigla (ej. MINEDU, PCM, SUNAT)..."
+                [searchable]="true"
+                [required]="true"
+              ></app-reference-combobox>
+            </div>
+
+            <div class="field relative">
+              <label for="temaSelect" class="field-label">Tema o materia de la solicitud <span class="text-muted-foreground font-normal">(opcional)</span></label>
+              <app-reference-combobox
+                id="temaSelect"
+                [options]="temaOptions"
+                [(value)]="tema"
+                (valueChange)="onTemaChange($event)"
+                placeholder="Seleccione el tema o materia"
+                [searchable]="false"
+              ></app-reference-combobox>
+              @if (tema === 'Otros') {
+                <input
+                  class="field-input mt-2"
+                  placeholder="Escriba el tema o materia de su solicitud"
+                  [(ngModel)]="temaOtro"
+                  name="temaOtro"
+                />
+              }
+              <span class="field-hint">Ayuda a clasificar su pedido. Puede omitirlo (Ley N° 27806).</span>
+            </div>
+
+            <div class="field">
+              <label for="oficinaDestinatariaInput" class="field-label">Oficina o unidad orgánica destinataria <span class="text-muted-foreground font-normal">(opcional)</span></label>
+              <input
+                id="oficinaDestinatariaInput"
+                class="field-input"
+                placeholder="Ej. Oficina General de Administración"
+                [(ngModel)]="oficinaDestinataria"
+                name="oficinaDestinataria"
+              />
+              <span class="field-hint">Si conoce el área específica dentro de la entidad, indíquela. Es un dato libre y opcional.</span>
+            </div>
+
+            <div class="field">
+              <label for="asuntoInput" class="field-label">Asunto <span class="req">*</span></label>
+              <input
+                id="asuntoInput"
+                class="field-input"
+                placeholder="Ej. Solicitud de información sobre presupuesto 2025"
+                [(ngModel)]="asunto"
+                name="asunto"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="descripcionTextarea" class="field-label">Descripción de la información solicitada <span class="req">*</span></label>
+              <textarea
+                id="descripcionTextarea"
+                class="field-input"
+                rows="6"
+                style="resize: vertical; min-height: 140px;"
+                placeholder="Describa con claridad y detalle la información que solicita. Incluya periodos, áreas o documentos específicos cuando sea posible…"
+                [(ngModel)]="descripcion"
+                name="descripcion"
+                required
+              ></textarea>
+              <span class="field-hint">Sea específico: a mayor claridad, mejor respuesta.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 02: Modalidad de entrega -->
+        <section class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">02 · Forma de entrega de la información</span>
+              <h2 class="form-section-title">Modalidad de entrega</h2>
+            </div>
+            <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
+              02
+            </span>
+          </div>
+
+          <div class="p-6 md:p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              @for (item of formatos; track item.key) {
+                <label
+                  class="cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3"
+                  [style.background]="formatoRespuesta[item.key] ? 'var(--brand-50)' : 'var(--card)'"
+                  [style.border]="'1px solid ' + (formatoRespuesta[item.key] ? 'var(--brand-300)' : 'var(--border)')"
+                  [style.box-shadow]="formatoRespuesta[item.key] ? '0 0 0 3px var(--brand-50)' : 'none'"
+                >
+                  <input
+                    type="checkbox"
+                    class="sr-only"
+                    [(ngModel)]="formatoRespuesta[item.key]"
+                    [name]="'formato_' + item.key"
+                  />
+                  <span
+                    class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5"
+                    style="width: 20px; height: 20px; transition: all 140ms;"
+                    [style.background]="formatoRespuesta[item.key] ? 'var(--brand-600)' : 'var(--card)'"
+                    [style.border]="'1.5px solid ' + (formatoRespuesta[item.key] ? 'var(--brand-600)' : 'var(--border-strong)')"
+                  >
+                    @if (formatoRespuesta[item.key]) {
+                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white" strokeWidth="3"></svg>
+                    }
+                  </span>
+                  <div>
+                    <div class="text-sm font-medium text-foreground">{{ item.label }}</div>
+                    <div class="text-xs text-muted-foreground mt-0.5">{{ item.desc }}</div>
+                  </div>
+                </label>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 03: Medio de notificación -->
+        <section class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">03 · Cómo desea ser notificado</span>
+              <h2 class="form-section-title">Medio de notificación</h2>
+            </div>
+            <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
+              03
+            </span>
+          </div>
+
+          <div class="p-6 md:p-8 space-y-4">
+            <p class="text-sm text-muted-foreground">
+              Todas las notificaciones de este trámite quedan registradas en su panel de la plataforma.
+              Elija además un medio formal de notificación:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              @for (item of mediosNotificacion; track item.key) {
+                <button
+                  type="button"
+                  (click)="seleccionarMedioNotificacion(item.key)"
+                  class="text-left rounded-lg p-4 transition-all"
+                  [style.background]="medioNotificacion === item.key ? 'var(--brand-50)' : 'var(--card)'"
+                  [style.border]="'1px solid ' + (medioNotificacion === item.key ? 'var(--brand-300)' : 'var(--border)')"
+                  [style.box-shadow]="medioNotificacion === item.key ? '0 0 0 3px var(--brand-50)' : 'none'"
+                >
+                  <div class="text-sm font-medium text-foreground">{{ item.label }}</div>
+                  <div class="text-xs text-muted-foreground mt-0.5">{{ item.desc }}</div>
+                </button>
+              }
+            </div>
+
+            <!-- CORREO ELECTRÓNICO (Consentimiento legal) -->
+            @if (medioNotificacion === 'correo') {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
+                <label class="flex items-start gap-2.5 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="aceptaCorreo"
+                    name="aceptaCorreo"
+                    class="mt-0.5 rounded border-border"
+                  />
+                  <span class="text-foreground/85">
+                    Acepto que todo acto administrativo derivado del presente procedimiento se me notifique en el
+                    correo electrónico (e-mail) consignado en el presente formulario
+                    (<span class="font-mono font-medium">{{ correoMask() }}</span>), conforme al T.U.O. de la Ley N° 27444,
+                    numeral 20.1.2 del artículo 20.
+                  </span>
+                </label>
+              </div>
+            }
+
+            <!-- NOTIFICACIÓN FÍSICA (Compromiso de pago TUPA) -->
+            @if (medioNotificacion === 'fisica') {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
+                <label class="flex items-start gap-2.5 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="aceptaFisica"
+                    name="aceptaFisica"
+                    class="mt-0.5 rounded border-border"
+                  />
+                  <span class="text-foreground/85 uppercase font-medium">
+                    Me comprometo a realizar el pago correspondiente por las reproducciones solicitadas (según TUPA de la entidad).
+                  </span>
+                </label>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- SECTION 04: Archivos del trámite -->
+        <section class="form-shell">
+          <div class="form-section-header flex items-start justify-between gap-4">
+            <div>
+              <span class="eyebrow">04 · Archivo principal y anexos</span>
+              <h2 class="form-section-title">Archivos del trámite</h2>
+            </div>
+            <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
+              04
+            </span>
+          </div>
+
+          <div class="p-6 md:p-8 space-y-6">
+            <!-- Archivo principal (opcional) -->
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="eyebrow" style="color: var(--brand-700);">Archivo principal</span>
+                <span class="text-xs text-muted-foreground">(opcional)</span>
+              </div>
+
+              <div class="space-y-2">
+                <label class="flex items-center gap-2 text-sm font-medium text-foreground">
+                  Adjuntar archivo principal
+                </label>
+                <p class="text-sm text-muted-foreground">Un archivo PDF, JPG o PNG hasta 10 MB</p>
+
+                @if (!adjunto()) {
+                  <label
+                    for="principalFileInput"
+                    class="file-upload-zone"
+                    [class.is-dragging]="isDraggingPrincipal()"
+                    [class.has-error]="!!fileWarningPrincipal()"
+                    (dragover)="onDragOverPrincipal($event)"
+                    (dragleave)="onDragLeavePrincipal($event)"
+                    (drop)="onPrincipalDrop($event)"
+                  >
+                    <div class="space-y-2">
+                      <svg lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg>
+                      <p class="text-sm">
+                        Arrastra tu archivo aquí o <span class="text-primary font-medium upload-action-link">haz clic para seleccionar</span>
+                      </p>
+                      <p class="text-xs text-muted-foreground">
+                        PDF, JPG o PNG (máx. 10MB)
+                      </p>
+                    </div>
+                  </label>
+                } @else {
+                  <div class="file-upload-zone has-file">
+                    <div class="space-y-3">
+                      <div class="flex items-center justify-center gap-2">
+                        <svg lucideCheckCircle2 class="w-6 h-6 text-[#10B981]"></svg>
+                        <svg lucideFileText class="w-6 h-6 text-muted-foreground"></svg>
+                      </div>
+                      <p class="font-medium text-foreground text-sm">{{ adjunto()?.name }}</p>
+                      <p class="text-xs text-muted-foreground">
+                        {{ formatFileSizeMB(adjunto()?.size || 0) }} MB
+                      </p>
+                      <div class="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5"
+                          (click)="previsualizarArchivo(adjunto()!)"
+                        >
+                          <svg lucideEye class="w-4 h-4"></svg>
+                          Previsualizar
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5 text-red-600 hover:text-red-700"
+                          (click)="removePrincipal()"
+                        >
+                          <svg lucideX class="w-4 h-4"></svg>
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <input
+                  id="principalFileInput"
+                  type="file"
+                  class="sr-only"
+                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  (change)="onPrincipalSelect($event)"
+                />
+
+                @if (fileWarningPrincipal()) {
+                  <div
+                    class="mt-2.5 rounded-lg p-3.5 flex items-start justify-between gap-3 text-xs leading-relaxed"
+                    style="background: color-mix(in srgb, var(--brand-50) 85%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-500) 45%, transparent); color: var(--foreground);"
+                  >
+                    <div class="flex items-start gap-2.5 min-w-0">
+                      <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background: var(--brand-500); color: white;">
+                        <svg lucideAlertTriangle class="w-3 h-3 stroke-[2.5]"></svg>
+                      </div>
+                      <div>
+                        <span class="font-semibold block mb-0.5" style="color: var(--brand-700);">Atención con el archivo</span>
+                        <span class="text-foreground/85">{{ fileWarningPrincipal() }}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="fileWarningPrincipal.set(null)"
+                      class="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
+                      title="Cerrar aviso"
+                    >
+                      <svg lucideX class="w-3.5 h-3.5"></svg>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="rule-ornament"></div>
+
+            <!-- Anexos (opcional · hasta 2 archivos o un .zip) -->
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="eyebrow" style="color: var(--brand-700);">Anexos</span>
+                <span class="text-xs text-muted-foreground">(opcional · hasta 2 archivos o un .zip)</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Anexo 1 -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 text-sm font-medium text-foreground">Anexo 1</label>
+                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG o ZIP hasta 10 MB</p>
+
+                  @if (!anexo1()) {
+                    <label
+                      for="anexo1FileInput"
+                      class="file-upload-zone"
+                      [class.is-dragging]="isDraggingAnexo1()"
+                      [class.has-error]="!!fileWarningAnexo1()"
+                      (dragover)="onDragOverAnexo1($event)"
+                      (dragleave)="onDragLeaveAnexo1($event)"
+                      (drop)="onAnexo1Drop($event)"
+                    >
+                      <div class="space-y-2">
+                        <svg lucideUpload class="w-7 h-7 mx-auto text-muted-foreground"></svg>
+                        <p class="text-xs">
+                          Arrastra o <span class="text-primary font-medium upload-action-link">selecciona</span>
+                        </p>
+                        <p class="text-[11px] text-muted-foreground">PDF, JPG, PNG o ZIP (máx. 10MB)</p>
+                      </div>
+                    </label>
+                  } @else {
+                    <div class="file-upload-zone has-file">
+                      <div class="space-y-2">
+                        <div class="flex items-center justify-center gap-1.5">
+                          <svg lucideCheckCircle2 class="w-5 h-5 text-[#10B981]"></svg>
+                          <svg lucideFileText class="w-5 h-5 text-muted-foreground"></svg>
+                        </div>
+                        <p class="font-medium text-xs truncate max-w-[190px] mx-auto text-foreground">{{ anexo1()?.name }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ formatFileSizeMB(anexo1()?.size || 0) }} MB</p>
+                        <div class="flex items-center justify-center gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            class="btn-outline !py-1 !px-2.5 !text-xs inline-flex items-center gap-1"
+                            (click)="previsualizarArchivo(anexo1()!)"
+                          >
+                            <svg lucideEye class="w-3.5 h-3.5"></svg> Previsualizar
+                          </button>
+                          <button
+                            type="button"
+                            class="btn-outline !py-1 !px-2.5 !text-xs inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                            (click)="removeAnexo1()"
+                          >
+                            <svg lucideX class="w-3.5 h-3.5"></svg> Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <input
+                    id="anexo1FileInput"
+                    type="file"
+                    class="sr-only"
+                    accept=".pdf,.jpg,.jpeg,.png,.zip,application/pdf,image/jpeg,image/png,application/zip"
+                    (change)="onAnexo1Select($event)"
+                  />
+
+                  @if (fileWarningAnexo1()) {
+                    <div
+                      class="mt-2.5 rounded-lg p-3 flex items-start justify-between gap-2.5 text-xs leading-relaxed"
+                      style="background: color-mix(in srgb, var(--brand-50) 85%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-500) 45%, transparent); color: var(--foreground);"
+                    >
+                      <div class="flex items-start gap-2 min-w-0">
+                        <div class="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background: var(--brand-500); color: white;">
+                          <svg lucideAlertTriangle class="w-2.5 h-2.5 stroke-[2.5]"></svg>
+                        </div>
+                        <div>
+                          <span class="font-semibold block text-[11px]" style="color: var(--brand-700);">Atención</span>
+                          <span class="text-foreground/85 text-[11px]">{{ fileWarningAnexo1() }}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        (click)="fileWarningAnexo1.set(null)"
+                        class="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
+                        title="Cerrar aviso"
+                      >
+                        <svg lucideX class="w-3 h-3"></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+
+                <!-- Anexo 2 -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 text-sm font-medium text-foreground">Anexo 2</label>
+                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG o ZIP hasta 10 MB</p>
+
+                  @if (!anexo2()) {
+                    <label
+                      for="anexo2FileInput"
+                      class="file-upload-zone"
+                      [class.is-dragging]="isDraggingAnexo2()"
+                      [class.has-error]="!!fileWarningAnexo2()"
+                      (dragover)="onDragOverAnexo2($event)"
+                      (dragleave)="onDragLeaveAnexo2($event)"
+                      (drop)="onAnexo2Drop($event)"
+                    >
+                      <div class="space-y-2">
+                        <svg lucideUpload class="w-7 h-7 mx-auto text-muted-foreground"></svg>
+                        <p class="text-xs">
+                          Arrastra o <span class="text-primary font-medium upload-action-link">selecciona</span>
+                        </p>
+                        <p class="text-[11px] text-muted-foreground">PDF, JPG, PNG o ZIP (máx. 10MB)</p>
+                      </div>
+                    </label>
+                  } @else {
+                    <div class="file-upload-zone has-file">
+                      <div class="space-y-2">
+                        <div class="flex items-center justify-center gap-1.5">
+                          <svg lucideCheckCircle2 class="w-5 h-5 text-[#10B981]"></svg>
+                          <svg lucideFileText class="w-5 h-5 text-muted-foreground"></svg>
+                        </div>
+                        <p class="font-medium text-xs truncate max-w-[190px] mx-auto text-foreground">{{ anexo2()?.name }}</p>
+                        <p class="text-[11px] text-muted-foreground">{{ formatFileSizeMB(anexo2()?.size || 0) }} MB</p>
+                        <div class="flex items-center justify-center gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            class="btn-outline !py-1 !px-2.5 !text-xs inline-flex items-center gap-1"
+                            (click)="previsualizarArchivo(anexo2()!)"
+                          >
+                            <svg lucideEye class="w-3.5 h-3.5"></svg> Previsualizar
+                          </button>
+                          <button
+                            type="button"
+                            class="btn-outline !py-1 !px-2.5 !text-xs inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                            (click)="removeAnexo2()"
+                          >
+                            <svg lucideX class="w-3.5 h-3.5"></svg> Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <input
+                    id="anexo2FileInput"
+                    type="file"
+                    class="sr-only"
+                    accept=".pdf,.jpg,.jpeg,.png,.zip,application/pdf,image/jpeg,image/png,application/zip"
+                    (change)="onAnexo2Select($event)"
+                  />
+
+                  @if (fileWarningAnexo2()) {
+                    <div
+                      class="mt-2.5 rounded-lg p-3 flex items-start justify-between gap-2.5 text-xs leading-relaxed"
+                      style="background: color-mix(in srgb, var(--brand-50) 85%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-500) 45%, transparent); color: var(--foreground);"
+                    >
+                      <div class="flex items-start gap-2 min-w-0">
+                        <div class="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style="background: var(--brand-500); color: white;">
+                          <svg lucideAlertTriangle class="w-2.5 h-2.5 stroke-[2.5]"></svg>
+                        </div>
+                        <div>
+                          <span class="font-semibold block text-[11px]" style="color: var(--brand-700);">Atención</span>
+                          <span class="text-foreground/85 text-[11px]">{{ fileWarningAnexo2() }}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        (click)="fileWarningAnexo2.set(null)"
+                        class="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
+                        title="Cerrar aviso"
+                      >
+                        <svg lucideX class="w-3 h-3"></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <p class="text-xs text-muted-foreground mt-3 italic">
+                Si tiene varios documentos, puede comprimirlos en un solo archivo .zip y subirlo como anexo.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Disposiciones complementarias (según Ley N° 27806) -->
+        <div class="rounded-lg p-5" style="background: var(--muted); border: 1px solid var(--border);">
+          <div class="eyebrow !text-[10px] mb-2.5" style="color: var(--brand-700);">Disposiciones complementarias · Notas</div>
+          <ol class="list-decimal pl-5 space-y-2 text-xs text-muted-foreground leading-relaxed">
+            <li>
+              La entrega de los documentos solicitados se hará a la persona o representante de la empresa que
+              solicitó la información. De no poder concurrir éste, la misma podrá ser entregada a un tercero que
+              deberá contar con carta poder simple.
+            </li>
+            <li>
+              Cuando el/la solicitante incumple con cancelar el costo de reproducción, o el pedido cancelado no
+              se apersona a la entidad a recoger la información solicitada, dentro del plazo de treinta (30) días
+              calendario contados a partir del día siguiente de la notificación de la liquidación o puesta a su
+              disposición, su solicitud es archivada.
+            </li>
+            <li>
+              Tomar en consideración que la solicitud de información no implica la obligación de las entidades de
+              la Administración Pública de crear o producir información con la que no cuente o no tenga obligación
+              de contar al momento de efectuarse el pedido; tampoco permite que los solicitantes exijan a las
+              entidades que efectúen evaluaciones o análisis de la información que posean, en conformidad con lo
+              señalado en el artículo 13° del T.U.O. de la Ley N° 27806, aprobado mediante el Decreto Supremo
+              N° 021-2019-JUS.
+            </li>
+          </ol>
+        </div>
+
+        <!-- Acciones del formulario -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            (click)="handleSubmit(true)"
+            class="btn-ghost-brand flex-1 justify-center !py-3"
+          >
+            <svg lucideSave class="w-4 h-4"></svg>
+            Guardar borrador
+          </button>
+          <button
+            type="button"
+            (click)="handleSubmit(false)"
+            [disabled]="loading() || !canSubmit()"
+            class="btn-brand flex-1 !py-3 justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            @if (loading()) {
+              <span class="inline-flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
+                Enviando…
+              </span>
+            } @else {
+              <span class="inline-flex items-center gap-2">
+                <svg lucideSend class="w-4 h-4"></svg>
+                Presentar solicitud
+              </span>
+            }
+          </button>
+        </div>
       </div>
 
-      <aside class="lg:col-span-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.36" data-motion-delay-step="0.05">
+      <!-- Sidebar editorial -->
+      <aside class="lg:col-span-4">
         <div class="sticky top-28 space-y-5">
-          <div data-motion-item class="form-shell">
+          <div class="form-shell">
             <div class="form-section-header">
               <span class="eyebrow">Guía rápida</span>
               <h3 class="form-section-title flex items-center gap-2">
-                <svg class="w-5 h-5" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                <svg lucideHelpCircle class="w-5 h-5" style="color: var(--brand-600);"></svg>
                 ¿Qué puedo solicitar?
               </h3>
             </div>
@@ -446,35 +670,65 @@
               <div class="mb-5">
                 <div class="eyebrow !text-[10px] mb-3" style="color: var(--success);">Información permitida</div>
                 <ul class="space-y-2.5 text-sm">
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Presupuestos y gastos públicos</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Contratos y licitaciones</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Remuneraciones de funcionarios</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Proyectos y programas en ejecución</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Estadísticas oficiales</li>
+                  <li class="flex items-start gap-2.5 text-foreground/85">
+                    <svg lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success);"></svg>
+                    Presupuestos y gastos públicos
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/85">
+                    <svg lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success);"></svg>
+                    Contratos y licitaciones
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/85">
+                    <svg lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success);"></svg>
+                    Remuneraciones de funcionarios
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/85">
+                    <svg lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success);"></svg>
+                    Proyectos y programas en ejecución
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/85">
+                    <svg lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success);"></svg>
+                    Estadísticas oficiales
+                  </li>
                 </ul>
               </div>
 
               <div class="rule-ornament my-4"></div>
 
               <div>
-                <div class="eyebrow !text-[10px] mb-3" style="color: var(--brand-700);">Información reservada</div>
+                <div class="eyebrow !text-[10px] mb-3" style="color: var(--brand-700);">Información clasificada</div>
                 <ul class="space-y-2.5 text-sm">
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Datos personales de terceros</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Secretos comerciales</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Información clasificada como secreta</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Procesos judiciales en curso</li>
+                  <li class="flex items-start gap-2.5 text-foreground/80">
+                    <svg lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-600);"></svg>
+                    Datos personales de terceros
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/80">
+                    <svg lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-600);"></svg>
+                    Secretos comerciales
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/80">
+                    <svg lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-600);"></svg>
+                    Procesos judiciales en curso
+                  </li>
+                  <li class="flex items-start gap-2.5 text-foreground/80">
+                    <svg lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-600);"></svg>
+                    Otros: Información clasificada como secreta, reservada o confidencial, según lo estipula el Texto Único Ordenado de la Ley N° 27806 (Ley de Transparencia y Acceso a la Información Pública)
+                  </li>
                 </ul>
               </div>
             </div>
           </div>
 
-          <div data-motion-item class="rounded-lg p-5 flex gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
-            <svg lucideInfo class="w-5 h-5 shrink-0 mt-0.5 text-brand-700"></svg>
+          <div
+            class="rounded-lg p-5 flex gap-3"
+            style="background: var(--brand-subtle); border: 1px solid var(--brand-200);"
+          >
+            <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700);"></svg>
             <div>
               <div class="eyebrow !text-[10px] mb-1.5" style="color: var(--brand-700);">Plazo legal</div>
               <p class="text-sm text-foreground/85 leading-relaxed">
                 La entidad cuenta con <span class="font-mono font-semibold">10 días hábiles</span> para responder.
-                Si el pedido es amplio, puede ampliar el plazo con informe y cronograma notificados hasta el día 4 de atención
+                Puede extenderse hasta <span class="font-mono font-semibold">5 días</span> con justificación previa
                 (Ley N° 27806).
               </p>
             </div>
@@ -484,6 +738,7 @@
     </div>
   </div>
 
+  <!-- Modal de confirmación final -->
   <app-reference-confirm-modal
     [open]="confirmModalAbierto()"
     [submitting]="loading()"
@@ -495,22 +750,24 @@
     [summary]="solicitudConfirmSummary()"
     [warning]="solicitudWarning()"
     confirmLabel="Confirmar y enviar"
+    cancelLabel="Volver a revisar"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="crearSolicitud()">
   </app-reference-confirm-modal>
 
+  <!-- Modal de éxito: SAIP presentada -->
   <app-reference-success-modal
     [open]="successModalAbierto()"
     variant="saip-creada"
     tone="success"
-    eyebrow="Solicitud recibida"
-    title="SAIP presentada correctamente"
+    eyebrow="Solicitud presentada"
+    title="Tu SAIP fue registrada"
     [description]="'Su solicitud fue recibida por ' + getEntidadSeleccionadaNombre() + '. La entidad cuenta con un plazo legal para emitir respuesta.'"
     [expediente]="expedienteCreado()"
-    [expedienteHint]="'Generado hoy · Notificaciones a ' + sesionVisual().email"
+    [expedienteHint]="'Generado el ' + fechaHoy() + ' · Notificaciones a ' + sesionVisual().email"
     [plazoDias]="10"
     plazoTipo="hábiles"
-    plazoDescripcion="La entidad debe responder dentro de este plazo. Si el pedido es amplio, puede notificar una ampliación con informe y cronograma hasta el día 4 de atención."
+    plazoDescripcion="La entidad debe responder dentro de este plazo. Puede ampliarse 5 días con justificación."
     plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública"
     [metadata]="solicitudSuccessMetadata()"
     [nextSteps]="solicitudNextSteps()"
@@ -521,6 +778,26 @@
     (secondary)="verSolicitudCreada()">
   </app-reference-success-modal>
 
+  <!-- Modal de éxito: Borrador guardado -->
+  <app-reference-success-modal
+    [open]="draftModalAbierto()"
+    variant="generic"
+    tone="gold"
+    eyebrow="Borrador guardado"
+    title="Tu progreso está a salvo"
+    description="Su solicitud quedó almacenada en su navegador y podrá retomarla cuando lo desee. Aún no ha sido enviada a la entidad."
+    [nextSteps]="[
+      { label: 'Complete los campos faltantes cuando le sea conveniente.' },
+      { label: 'Envíe la solicitud para activar el plazo legal de respuesta.' }
+    ]"
+    primaryLabel="Continuar editando"
+    secondaryLabel="Ir a mi panel"
+    (close)="draftModalAbierto.set(false)"
+    (primary)="draftModalAbierto.set(false)"
+    (secondary)="irPanelCiudadano()">
+  </app-reference-success-modal>
+
+  <!-- Visor in-page de documentos -->
   <app-document-preview-modal
     [doc]="previewTarget()"
     [open]="isPreviewOpen()"
