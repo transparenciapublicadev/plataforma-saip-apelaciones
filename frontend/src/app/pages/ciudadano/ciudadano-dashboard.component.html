@@ -215,7 +215,7 @@
                           <span class="code-chip" style="font-size: 11px">{{ solicitud.expediente }}</span>
                           <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
                           @if (solicitud.apelacion?.expediente) {
-                            <span class="code-chip code-chip-alt" style="font-size: 11px">{{ solicitud.apelacion?.expediente }}</span>
+                            <span class="code-chip code-chip-alt" style="font-size: 11px">{{ solicitud.apelacion.expediente }}</span>
                           }
                         </div>
                         <div class="text-sm text-foreground mt-1 truncate" [title]="solicitud.entidadNombre + ' · ' + solicitud.asunto">
@@ -339,7 +339,7 @@
                     <!-- TTAIP chip -->
                     <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
-                      <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion?.expediente }}</span>
+                      <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion.expediente }}</span>
                     </span>
                   }
                   <span [class]="'badge ' + getEstadoBadgeClass(principal.estado)">{{ formatoEstado(principal.estado) }}</span>
@@ -596,7 +596,7 @@
                             <!-- TTAIP chip -->
                             <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                               <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
-                              <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion?.expediente }}</span>
+                              <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion.expediente }}</span>
                             </span>
                           }
                           @if (esResueltas && solicitud.apelacion?.resultado) {

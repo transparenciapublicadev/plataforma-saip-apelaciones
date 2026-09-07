@@ -52,13 +52,13 @@
   <!-- === Form panel (right) === -->
   <div class="relative flex items-center justify-center px-6 py-16 lg:py-12 bg-paper">
     <div class="w-full max-w-md hero-animate">
-      <button
-        (click)="navigateToHome()"
+      <a
+        routerLink="/"
         class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-8 transition-colors cursor-pointer"
       >
         <svg lucideArrowLeft class="w-4 h-4"></svg>
         Volver al inicio
-      </button>
+      </a>
 
       <div class="mb-8">
         <span class="eyebrow">Iniciar sesión</span>
@@ -88,6 +88,66 @@
           {{ mensaje() }}
         </div>
       }
+
+      <!-- Acceso rápido demo (Credenciales de prueba) -->
+      <div class="rounded-lg px-3.5 py-3 mb-5" style="background: var(--muted); border: 1px solid var(--border)">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
+          Acceso rápido demo
+        </div>
+        <div class="flex flex-wrap gap-2">
+          @if (isCitizenPortal()) {
+            <button
+              type="button"
+              (click)="fillDemo('70000001', 'Saip2026*')"
+              class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+              style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+            >
+              Ciudadano (DNI 70000001)
+            </button>
+            <button
+              type="button"
+              (click)="fillDemo('ciudadano01@gmail.com', 'Saip2026*')"
+              class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+              style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+            >
+              Ciudadano (Correo)
+            </button>
+          } @else {
+            @switch (requiredRole()) {
+              @case ('FUNCIONARIO') {
+                <button
+                  type="button"
+                  (click)="fillDemo('func.minedu@minedu.gob.pe', 'Saip2026*')"
+                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                >
+                  Funcionario MINEDU
+                </button>
+              }
+              @case ('TTAIP') {
+                <button
+                  type="button"
+                  (click)="fillDemo('tvalverde@minjus.gob.pe', 'Saip2026*')"
+                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                >
+                  Vocal TTAIP
+                </button>
+              }
+              @case ('ADMINISTRADOR') {
+                <button
+                  type="button"
+                  (click)="fillDemo('admin@saip.gob.pe', 'Saip2026*')"
+                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                >
+                  Administrador
+                </button>
+              }
+            }
+          }
+        </div>
+      </div>
 
       <!-- Form -->
       <form (ngSubmit)="login()" class="space-y-5">
@@ -121,7 +181,7 @@
             <button
               type="button"
               (click)="togglePasswordVisibility()"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
               [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
             >
               @if (showPassword()) {
@@ -140,7 +200,7 @@
           </label>
           <button
             type="button"
-            class="text-sm font-medium hover:underline"
+            class="text-sm font-medium hover:underline cursor-pointer"
             style="color: var(--brand-700)"
           >
             ¿Olvidó su contraseña?
@@ -150,7 +210,7 @@
         <button
           type="submit"
           [disabled]="loading()"
-          class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           style="height: 48px; font-size: 15px"
         >
           @if (loading()) {
@@ -168,25 +228,39 @@
       <div class="mt-6 pt-5 border-t border-[var(--border)] text-center">
         @if (isCitizenPortal()) {
           <div class="rule-ornament my-4"><span class="text-xs uppercase tracking-widest">o</span></div>
-          <button routerLink="/registro" class="btn-ghost-brand w-full justify-center" style="padding: 11px 16px">
+          <a routerLink="/registro" class="btn-ghost-brand w-full justify-center text-center inline-flex items-center" style="padding: 11px 16px">
             Crear cuenta (Ciudadano / Empresa)
-          </button>
+          </a>
         } @else {
           <p class="text-[12px]" style="color: var(--muted-foreground)">Si tienes inconvenientes, contacta a la mesa de ayuda institucional.</p>
         }
       </div>
 
-      <div class="mt-10 p-5 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
+      <div class="mt-8 p-5 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
         @if (isCitizenPortal()) {
-          <div class="eyebrow mb-3" style="color: var(--gold)">Portal del administrado</div>
-          <p class="text-xs leading-relaxed" style="color: var(--muted-foreground)">
-            Esta entrada pública es para ciudadanos (persona natural) y empresas (persona jurídica). Los accesos de funcionario, TTAIP y administración se mantienen en URLs separadas.
+          <div class="eyebrow mb-2" style="color: var(--gold)">Portal del administrado</div>
+          <p class="text-xs leading-relaxed mb-3" style="color: var(--muted-foreground)">
+            Esta entrada pública es para ciudadanos (persona natural) y empresas (persona jurídica).
           </p>
+          <div class="pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
+            <span>¿Acceso institucional?</span>
+            <div class="mt-1.5 flex flex-wrap gap-2 font-medium">
+              <a routerLink="/acceso-funcionario" class="hover:underline" style="color: var(--brand-700)">Funcionario</a>
+              <span>·</span>
+              <a routerLink="/acceso-ttaip" class="hover:underline" style="color: var(--brand-700)">Personal TTAIP</a>
+              <span>·</span>
+              <a routerLink="/acceso-admin" class="hover:underline" style="color: var(--brand-700)">Administración</a>
+            </div>
+          </div>
         } @else {
-          <div class="eyebrow mb-3" style="color: var(--gold)">Portal institucional</div>
-          <p class="text-xs leading-relaxed" style="color: var(--muted-foreground)">
+          <div class="eyebrow mb-2" style="color: var(--gold)">Portal institucional</div>
+          <p class="text-xs leading-relaxed mb-3" style="color: var(--muted-foreground)">
             Acceso reservado para personal autorizado. Si tienes inconvenientes, contacta a la mesa de ayuda institucional.
           </p>
+          <div class="pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
+            <span>¿Es ciudadano o empresa?</span>
+            <a routerLink="/login" class="font-medium hover:underline ml-1.5" style="color: var(--brand-700)">Ir a portal público</a>
+          </div>
         }
       </div>
     </div>
