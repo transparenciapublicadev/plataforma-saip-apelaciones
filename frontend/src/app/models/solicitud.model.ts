@@ -10,7 +10,9 @@ import type {
 export type EstadoSolicitud = _EstadoSolicitud;
 export type Prioridad = _Prioridad;
 export type SemaforoEstado = _SemaforoEstado;
-export type ApelacionInfo = Required<ApelacionInfoDTO>;
+export type ApelacionInfo = Required<Omit<ApelacionInfoDTO, 'plazoSubsanacion'>> & {
+    plazoSubsanacion?: ApelacionInfoDTO['plazoSubsanacion'];
+};
 export type CanalNotificacion = 'CORREO_ELECTRONICO' | 'CASILLA_ELECTRONICA' | 'PLATAFORMA' | 'FISICA';
 export type EstadoObservacionSolicitud = 'PENDIENTE_SUBSANACION' | 'SUBSANADA' | 'NO_SUBSANADA' | 'ARCHIVADA';
 export type ObservacionSolicitud = Required<ObservacionSolicitudDTO>;
@@ -89,7 +91,7 @@ export interface LiquidacionCostoSolicitud {
 
 export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 'documentos' | 'documentosMetadata' | 'observaciones' | 'ampliacionesPlazo' | 'encauzamientos' | 'liquidacionesCosto'>> & {
     respuesta?: Required<RespuestaDTO> | null;
-    apelacion?: Required<ApelacionInfoDTO> | null;
+    apelacion?: ApelacionInfo | null;
     documentos: Required<DocumentoDTO>[];
     documentosMetadata: Required<DocumentoMetadataDTO>[];
     observaciones: ObservacionSolicitud[];

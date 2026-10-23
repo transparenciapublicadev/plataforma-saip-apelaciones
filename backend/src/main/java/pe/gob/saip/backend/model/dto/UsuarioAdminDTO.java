@@ -14,16 +14,22 @@ public record UsuarioAdminDTO(
         String tipoUsuario,
         String fechaRegistro,
         Boolean activo,
-        String nombre
+        String nombre,
+        Long entidadId
 ) {
     public static UsuarioAdminDTO from(Usuario usuario) {
+        Long entidadId = null;
+        if (usuario instanceof Funcionario funcionario && funcionario.getEntidad() != null) {
+            entidadId = funcionario.getEntidad().getId();
+        }
         return new UsuarioAdminDTO(
                 usuario.getIdUsuario(),
                 usuario.getEmail(),
                 usuario.getTipoUsuario() != null ? usuario.getTipoUsuario().name() : null,
                 usuario.getFechaRegistro() != null ? usuario.getFechaRegistro().toString() : null,
                 usuario.getActivo(),
-                nombre(usuario)
+                nombre(usuario),
+                entidadId
         );
     }
 

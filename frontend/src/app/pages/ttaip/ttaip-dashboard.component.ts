@@ -41,12 +41,13 @@ interface QueueItem {
   materia: string;
   descripcion: string;
   diasHabilesEnEtapa: number;
+  diasSuspendidos: number;
   prioridad: Priority;
   resultado: string | null;
 }
 
 interface PlazoStatus {
-  restantes: number;
+  restantes: number | null;
   pct: number;
   tone: Tone;
 }
@@ -56,7 +57,8 @@ import {
   LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
   LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
   LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
-  LucideFileText, LucideAlertTriangle, LucideTrendingUp
+  LucideFileText, LucideAlertTriangle, LucideTrendingUp,
+  LucidePauseCircle, LucideShieldCheck
 } from '@lucide/angular';
 
 @Component({
@@ -68,7 +70,8 @@ import {
     LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
     LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
     LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
-    LucideFileText, LucideAlertTriangle, LucideTrendingUp
+    LucideFileText, LucideAlertTriangle, LucideTrendingUp,
+    LucidePauseCircle, LucideShieldCheck
   ],
   templateUrl: './ttaip-dashboard.component.html',
   styleUrl: './ttaip-dashboard.component.css',
@@ -252,7 +255,7 @@ export class TtaipDashboardComponent implements OnInit {
       return searched;
     }
 
-    return [...searched].sort((a, b) => this.plazoStatus(a, active).restantes - this.plazoStatus(b, active).restantes);
+    return [...searched].sort((a, b) => (this.plazoStatus(a, active).restantes ?? Infinity) - (this.plazoStatus(b, active).restantes ?? Infinity));
   });
 
   readonly totalRegistros = computed(() => this.filtered().length);
@@ -290,7 +293,8 @@ export class TtaipDashboardComponent implements OnInit {
     for (const item of this.queueItems()) {
       const stage = this.stageFromKey(item.stageKey);
       if (stage.isResolved || stage.esperaExterna) continue;
-      if (this.plazoStatus(item, stage).restantes <= 1) {
+      const restantes = this.plazoStatus(item, stage).restantes;
+      if (restantes !== null && restantes <= 1) {
         critical.push(item);
       }
     }
@@ -458,8 +462,9 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   getDiasValor(item: QueueItem): string {
+    if (item.stageKey === 'subsanacion' && item.apelacion.plazoSubsanacion?.estado === 'VENCIDO') return 'Vencido';
     const status = this.plazoStatus(item, this.stageFromKey(item.stageKey));
-    return `${status.restantes}d`;
+    return status.restantes === null ? 'Pendiente' : `${status.restantes}d`;
   }
 
   getProgressWidth(item: QueueItem): number {
@@ -551,7 +556,13 @@ export class TtaipDashboardComponent implements OnInit {
     const descripcion = (apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Recurso en trámite').trim();
     const stageKey: Exclude<StageKey, 'todos'> = this.mapEstadoToStage(apelacion.estado) ?? 'calificacion1';
     const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
-    const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);
+    const plazo = apelacion.plazoSubsanacion;
+    const restantes = plazo?.estado === 'PENDIENTE_INICIO' ? null : plazo?.diasHabilesRestantes;
+    const prioridad = stageKey === 'subsanacion'
+      ? restantes == null ? 'baja' : restantes <= 1 ? 'alta' : restantes <= 3 ? 'media' : 'baja'
+      : this.estimatePriority(stageKey, diasHabilesEnEtapa);
+    const suspensiones = apelacion.expedienteTtaip?.suspensionesPlazo || [];
+    const diasSuspendidos = suspensiones.reduce((acc, s) => acc + (s.diasSuspendidos || 0), 0);
 
     return {
       apelacion,
@@ -562,6 +573,7 @@ export class TtaipDashboardComponent implements OnInit {
       materia: this.inferirMateria(descripcion),
       descripcion,
       diasHabilesEnEtapa,
+      diasSuspendidos,
       prioridad,
       resultado: this.extractResultado(apelacion)
     };
@@ -580,8 +592,9 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   private estimateDiasEtapa(apelacion: Apelacion, stage: Exclude<StageKey, 'todos'>): number {
-    if (stage === 'subsanacion' && apelacion.fechaSubsanacion) {
-      return this.diasDesde(apelacion.fechaSubsanacion);
+    if (stage === 'subsanacion') {
+      const plazo = apelacion.plazoSubsanacion;
+      return !plazo || plazo.diasHabilesRestantes == null ? 0 : Math.max(0, (plazo.diasHabiles ?? 2) - plazo.diasHabilesRestantes);
     }
 
     return this.diasDesde(apelacion.fechaApelacion);
@@ -656,6 +669,13 @@ export class TtaipDashboardComponent implements OnInit {
   }
 
   private plazoStatus(item: QueueItem, stage: StageMeta): PlazoStatus {
+    if (item.stageKey === 'subsanacion') {
+      const plazo = item.apelacion.plazoSubsanacion;
+      const restantes = plazo?.diasHabilesRestantes;
+      if (!plazo || plazo.estado === 'PENDIENTE_INICIO' || restantes == null) return { restantes: null, pct: 0, tone: 'ok' };
+      const pct = Math.max(0, Math.min(100, ((plazo.diasHabiles ?? 2) - restantes) / (plazo.diasHabiles ?? 2) * 100));
+      return { restantes, pct, tone: restantes <= 1 ? 'critical' : restantes <= 2 ? 'warn' : 'ok' };
+    }
     if (stage.isResolved) {
       return { restantes: 0, pct: 100, tone: 'done' };
     }
@@ -672,6 +692,10 @@ export class TtaipDashboardComponent implements OnInit {
     }
 
     return { restantes, pct, tone: 'ok' };
+  }
+
+  getStageMeta(key: StageKey): StageMeta {
+    return this.stageFromKey(key);
   }
 
   private stageFromKey(key: StageKey): StageMeta {

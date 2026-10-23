@@ -18,15 +18,22 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
+    public UserDetails loadUserByUsername(String subject) throws UsernameNotFoundException {
+        final Long usuarioId;
+        try {
+            usuarioId = IdentidadUsuario.usuarioId(subject);
+        } catch (IllegalArgumentException invalidIdentity) {
+            throw new UsernameNotFoundException("Usuario no encontrado");
+        }
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
-        return User.builder()
-                .username(usuario.getEmail())
+        UserDetails cuenta = User.builder()
+                .username(IdentidadUsuario.subject(usuario.getIdUsuario()))
                 .password(usuario.getPassword())
                 .roles(usuario.getTipoUsuario().name())
-                .disabled(!usuario.getActivo())
+                .disabled(!Boolean.TRUE.equals(usuario.getActivo()))
                 .build();
+        return new UsuarioAutenticado(cuenta, usuario.getVersionAutenticacion());
     }
 }

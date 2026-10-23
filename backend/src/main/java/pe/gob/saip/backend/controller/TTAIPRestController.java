@@ -2,6 +2,10 @@ package pe.gob.saip.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +35,6 @@ import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.service.TTAIPService;
 import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
-import pe.gob.saip.backend.model.entity.IntentoNotificacion;
 import pe.gob.saip.backend.service.MotorNotificacionesService;
 import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import java.util.stream.Collectors;
@@ -99,7 +102,11 @@ public class TTAIPRestController {
         return ResponseEntity.ok(ttaipService.listarResueltas());
     }
 
-    @Operation(summary = "Admitir apelación", description = "Primera calificación: admite la apelación y solicita descargos a la entidad")
+    @Operation(summary = "Admitir apelación", description = "Primera o segunda admisión según el estado y las actuaciones persistidas. La resolución final requiere ambas notificaciones eficaces acreditadas.")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/calificacion/{apelacionId}/admitir")
     public ResponseEntity<ApelacionDTO> admitirApelacion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -108,6 +115,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Requerir subsanación", description = "Primera calificación: solicita al ciudadano subsanar la apelación en 2 días hábiles")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/calificacion/{apelacionId}/subsanar")
     public ResponseEntity<ApelacionDTO> requerirSubsanacion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -116,6 +127,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Inadmitir o rechazar apelación")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping({"/calificacion/{apelacionId}/inadmitir", "/calificacion/{apelacionId}/rechazar"})
     public ResponseEntity<ApelacionDTO> inadmitirApelacion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -124,6 +139,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar apelación fundada", description = "Resolución final a favor del ciudadano")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping({"/resolucion/{apelacionId}/fundado", "/resolucion/{apelacionId}/fundada"})
     public ResponseEntity<ApelacionDTO> declararFundado(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -132,6 +151,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar apelación infundada", description = "Resolución final: confirma la denegación de la entidad")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping({"/resolucion/{apelacionId}/infundado", "/resolucion/{apelacionId}/infundada"})
     public ResponseEntity<ApelacionDTO> declararInfundado(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -140,6 +163,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar apelación fundada en parte", description = "Resolución final: amparo parcial del recurso")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/fundado-en-parte")
     public ResponseEntity<ApelacionDTO> declararFundadoEnParte(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -148,6 +175,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar apelación infundada en parte", description = "Resolución final: desestimación parcial del recurso")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/infundado-en-parte")
     public ResponseEntity<ApelacionDTO> declararInfundadoEnParte(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -156,6 +187,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar improcedente en resolución final", description = "Resolución final: no cumple requisitos formales o de fondo")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/improcedente")
     public ResponseEntity<ApelacionDTO> declararImprocedenteFinal(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -164,6 +199,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Conclusión por sustracción de la materia", description = "La entidad entrega la información durante el trámite de apelación")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/sustraccion-materia")
     public ResponseEntity<ApelacionDTO> declararConclusionSustraccion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -172,6 +211,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Conclusión por desistimiento", description = "El ciudadano desiste voluntariamente del recurso")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/desistimiento")
     public ResponseEntity<ApelacionDTO> declararConclusionDesistimiento(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -183,6 +226,10 @@ public class TTAIPRestController {
             summary = "Declarar estese a lo resuelto",
             description = "Resolución final: existe pronunciamiento previo aplicable al mismo asunto o pedido reiterado"
     )
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/estese-a-lo-resuelto")
     public ResponseEntity<ApelacionDTO> declararEsteseALoResuelto(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -194,6 +241,10 @@ public class TTAIPRestController {
             summary = "Declarar nulidad del acto",
             description = "Resolución final: invalida la respuesta o procedimiento por vicios graves"
     )
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/resolucion/{apelacionId}/nulidad-acto")
     public ResponseEntity<ApelacionDTO> declararNulidadDelActo(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -202,6 +253,10 @@ public class TTAIPRestController {
     }
 
     @Operation(summary = "Declarar tener por no presentado", description = "El ciudadano no subsanó en plazo de 2 días hábiles tras inadmisible")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación registrada y estado persistido", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado o actuación requerida incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/calificacion/{apelacionId}/no-presentado")
     public ResponseEntity<ApelacionDTO> declararTenerPorNoPresentado(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId,
@@ -209,7 +264,11 @@ public class TTAIPRestController {
         return ResponseEntity.ok(ttaipService.declararTenerPorNoPresentado(apelacionId, request));
     }
 
-    @Operation(summary = "Notificar segunda calificación al ciudadano", description = "Registra la notificación de la resolución de segunda calificación. Inicia el plazo de resolución final.")
+    @Operation(summary = "Confirmar notificación eficaz de segunda calificación", description = "Avanza a EN_RESOLUCION solo con segunda admisión y recepción de subsanación registradas, y notificaciones eficaces acreditadas para recurrente y entidad de esa resolución. No envía ni fabrica evidencia. Repetir en EN_RESOLUCION no duplica actuaciones. La fecha base del plazo de resolución queda pendiente de definición de dominio.")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Estado persistido, o repetición del avance ya confirmado", content=@Content(schema=@Schema(implementation=ApelacionDTO.class))),
+        @ApiResponse(responseCode="409", description="Estado, actuación o notificación eficaz requerida ausente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/{apelacionId}/notificar-segunda-calificacion")
     public ResponseEntity<ApelacionDTO> notificarSegundaCalificacion(
             @Parameter(description = "ID de la apelación") @PathVariable Long apelacionId) {
@@ -435,8 +494,7 @@ public class TTAIPRestController {
             @Parameter(description = "ID del expediente TTAIP") @PathVariable Long expedienteId,
             @Parameter(description = "ID de la notificación") @PathVariable Long notificacionId,
             @Valid @RequestBody EnviarNotificacionRequest request) {
-        IntentoNotificacion intento = motorNotificacionesService.enviarNotificacionTtaip(expedienteId, notificacionId, request);
-        return ResponseEntity.status(201).body(IntentoNotificacionDTO.from(intento));
+        return ResponseEntity.status(201).body(ttaipService.enviarNotificacion(expedienteId, notificacionId, request));
     }
 
     @Operation(summary = "Listar intentos de notificación de una notificación TTAIP")

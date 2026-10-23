@@ -23,15 +23,18 @@ public class FuncionarioRestController {
     private final EntidadService entidadService;
     private final PasswordEncoder passwordEncoder;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final UsuarioService usuarioService;
 
     public FuncionarioRestController(FuncionarioService funcionarioService,
                                       EntidadService entidadService,
                                       PasswordEncoder passwordEncoder,
-                                      AutorizacionRecursosService autorizacionRecursosService) {
+                                      AutorizacionRecursosService autorizacionRecursosService,
+                                      UsuarioService usuarioService) {
         this.funcionarioService = funcionarioService;
         this.entidadService = entidadService;
         this.passwordEncoder = passwordEncoder;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.usuarioService = usuarioService;
     }
 
     @Operation(summary = "Listar todos los funcionarios")
@@ -128,9 +131,7 @@ public class FuncionarioRestController {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario no encontrado con ID: " + id));
 
         Boolean activo = body.get("activo");
-        funcionario.setActivo(activo);
-
-        funcionario = funcionarioService.guardarFuncionario(funcionario);
+        funcionario = (Funcionario) usuarioService.cambiarEstado(id, activo);
 
         return ResponseEntity.ok(FuncionarioDTO.from(funcionario));
     }

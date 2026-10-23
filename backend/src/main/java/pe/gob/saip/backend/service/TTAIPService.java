@@ -2,7 +2,8 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
@@ -43,15 +44,21 @@ public class TTAIPService {
     private final ResolucionService resolucionService;
     private final MiembroTTAIPService miembroTTAIPService;
     private final ExpedienteTtaipService expedienteTtaipService;
+    private final TransicionesApelacionTtaipService transiciones;
+    private final MotorNotificacionesService motorNotificacionesService;
 
     public TTAIPService(ApelacionService apelacionService,
                         ResolucionService resolucionService,
                         MiembroTTAIPService miembroTTAIPService,
-                        ExpedienteTtaipService expedienteTtaipService) {
+                        ExpedienteTtaipService expedienteTtaipService,
+                        TransicionesApelacionTtaipService transiciones,
+                        MotorNotificacionesService motorNotificacionesService) {
         this.apelacionService = apelacionService;
         this.resolucionService = resolucionService;
         this.miembroTTAIPService = miembroTTAIPService;
         this.expedienteTtaipService = expedienteTtaipService;
+        this.transiciones = transiciones;
+        this.motorNotificacionesService = motorNotificacionesService;
     }
 
     // ============================================================
@@ -341,6 +348,12 @@ public class TTAIPService {
     @Transactional
     public ApelacionDTO declararTenerPorNoPresentado(Long apelacionId, CalificacionRequest request) {
         Apelacion apelacion = buscarApelacion(apelacionId);
+        pe.gob.saip.backend.model.dto.PlazoSubsanacionTtaipDTO plazo =
+                pe.gob.saip.backend.model.dto.PlazoSubsanacionTtaipDTO.from(apelacion);
+        if (plazo == null || !"VENCIDO".equals(plazo.estado())) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "No existe un plazo de subsanación iniciado por notificación eficaz y vencido");
+        }
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 Resolucion.TipoResolucion.PRIMERA_CALIFICACION,
@@ -359,14 +372,25 @@ public class TTAIPService {
     @Transactional
     public ApelacionDTO notificarSegundaCalificacion(Long apelacionId) {
         Apelacion apelacion = buscarApelacion(apelacionId);
+        transiciones.validarAvanceSegunda(apelacion);
+        if (apelacion.getEstado() == Apelacion.EstadoApelacion.EN_RESOLUCION) {
+            return ApelacionDTO.from(apelacion);
+        }
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
     @Transactional
+    public IntentoNotificacionDTO enviarNotificacion(Long expedienteId, Long notificacionId, EnviarNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        return IntentoNotificacionDTO.from(motorNotificacionesService.enviarNotificacionTtaip(expedienteId, notificacionId, request));
+    }
+
+    @Transactional
     public ReprocesoNotificacionDTO reprocesarNotificacionFallida(ReprocesarNotificacionRequest request) {
         CedulaNotificacion.DestinatarioNotificacion destinatario = parseDestinatario(request.destinatario());
+        transiciones.bloquearReproceso(request.numeroCedulaOriginal(), destinatario);
         return ReprocesoNotificacionDTO.from(expedienteTtaipService.reprocesarNotificacionFallida(
                 request.numeroCedulaOriginal(),
                 destinatario,
@@ -392,6 +416,7 @@ public class TTAIPService {
     public NotificacionTtaipDTO registrarConstanciaEnvio(Long expedienteId,
                                                          Long notificacionId,
                                                          RegistrarConstanciaEnvioNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarConstanciaEnvio(expedienteId, notificacionId, request));
     }
@@ -400,6 +425,7 @@ public class TTAIPService {
     public NotificacionTtaipDTO registrarAcuseAutomatico(Long expedienteId,
                                                          Long notificacionId,
                                                          RegistrarAcuseAutomaticoNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarAcuseAutomatico(expedienteId, notificacionId, request));
     }
@@ -408,12 +434,14 @@ public class TTAIPService {
     public NotificacionTtaipDTO validarNotificacionManualmente(Long expedienteId,
                                                                Long notificacionId,
                                                                ValidarNotificacionManualRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.validarNotificacionManualmente(expedienteId, notificacionId, request));
     }
 
     @Transactional
     public DescargoEntidadTtaipDTO requerirDescargos(Long expedienteId, RequerirDescargoEntidadRequest request) {
+        transiciones.bloquearExpedienteAccesible(expedienteId);
         return DescargoEntidadTtaipDTO.from(expedienteTtaipService.requerirDescargos(expedienteId, request));
     }
 
@@ -434,6 +462,7 @@ public class TTAIPService {
     public DescargoEntidadTtaipDTO presentarDescargo(Long expedienteId,
                                                      Long descargoId,
                                                      PresentarDescargoEntidadRequest request) {
+        transiciones.bloquearExpedienteAccesible(expedienteId);
         return DescargoEntidadTtaipDTO.from(expedienteTtaipService.presentarDescargo(expedienteId, descargoId, request));
     }
 
@@ -532,8 +561,7 @@ public class TTAIPService {
     // ============================================================
 
     private Apelacion buscarApelacion(Long apelacionId) {
-        return apelacionService.findById(apelacionId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + apelacionId));
+        return transiciones.bloquear(apelacionId);
     }
 
     private ApelacionDTO declararDecisionFinalEspecial(Long apelacionId,
@@ -561,11 +589,11 @@ public class TTAIPService {
 
     private void validarPuedeResolverFinal(Apelacion apelacion) {
         if (apelacion.isResuelta()) {
-            throw new IllegalArgumentException(
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
                     "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
         }
         if (apelacion.getEstado() != Apelacion.EstadoApelacion.EN_RESOLUCION) {
-            throw new IllegalArgumentException(
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
                     "La apelación debe estar en estado EN_RESOLUCION para emitir resolución final. Estado actual: "
                             + apelacion.getEstado());
         }
@@ -590,6 +618,7 @@ public class TTAIPService {
                                        Resolucion.DecisionResolucion decision,
                                        String fundamentos,
                                        Long miembroId) {
+        transiciones.validarActuacion(apelacion, tipo, decision);
         Resolucion resolucion = new Resolucion();
         resolucion.setApelacion(apelacion);
         resolucion.setTipoResolucion(tipo);

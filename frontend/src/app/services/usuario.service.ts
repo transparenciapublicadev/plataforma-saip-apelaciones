@@ -10,12 +10,23 @@ export interface UsuarioAdmin {
   fechaRegistro: string;
   activo: boolean;
   nombre: string;
+  entidadId?: number;
 }
 
 export interface CrearUsuarioAdmin {
   email: string;
   password: string;
   tipoUsuario: UsuarioAdmin['tipoUsuario'];
+  nombre?: string;
+  entidadId?: number;
+}
+
+export interface ActualizarUsuarioAdmin {
+  email?: string;
+  nombre?: string;
+  tipoUsuario?: UsuarioAdmin['tipoUsuario'];
+  activo?: boolean;
+  entidadId?: number;
 }
 
 @Injectable({
@@ -31,6 +42,10 @@ export class UsuarioService {
 
   crear(usuario: CrearUsuarioAdmin): Observable<UsuarioAdmin> {
     return this.http.post<UsuarioAdmin>(this.apiUrl, usuario);
+  }
+
+  actualizar(id: number, usuario: ActualizarUsuarioAdmin): Observable<UsuarioAdmin> {
+    return this.http.put<UsuarioAdmin>(`${this.apiUrl}/${id}`, usuario);
   }
 
   cambiarEstado(id: number, activo: boolean): Observable<UsuarioAdmin> {

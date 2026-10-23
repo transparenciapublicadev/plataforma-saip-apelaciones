@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 public record CrearUsuarioAdminRequest(
         @NotBlank @Email String email,
         @NotBlank @Size(min = 8, max = 72) String password,
-        @NotBlank @Pattern(regexp = "CIUDADANO|FUNCIONARIO|TTAIP|ADMINISTRADOR") String tipoUsuario
+        @NotBlank @Pattern(regexp = "CIUDADANO|FUNCIONARIO|TTAIP|ADMINISTRADOR") String tipoUsuario,
+        String nombre,
+        Long entidadId
 ) {
 }

@@ -42,35 +42,56 @@
       data-motion-duration="0.4"
       data-motion-delay-step="0.06"
     >
-      <aside class="form-shell h-fit lg:sticky lg:top-28" data-motion-item>
-        <div class="form-section-header">
-          <span class="eyebrow">Etapas</span>
-          <h2 class="form-section-title">Proceso</h2>
+      <aside class="space-y-6 h-fit lg:sticky lg:top-28" data-motion-item>
+        <div class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">{{ cases().length }} proceso{{ cases().length === 1 ? '' : 's' }}</span>
+            <h2 class="form-section-title">Expedientes</h2>
+          </div>
+          <div class="p-3 space-y-2 max-h-[260px] overflow-y-auto">
+            @for (c of cases(); track c.apelacion.id || c.apelacion.expediente) {
+              <button type="button" (click)="selectCase(c)"
+                class="w-full text-left rounded-md p-3 transition-colors"
+                [style.background]="isCaseSelected(c) ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="'1px solid ' + (isCaseSelected(c) ? 'var(--brand-200)' : 'var(--border)')">
+                <div class="font-mono text-[11px]" style="color: var(--brand-700)">{{ c.apelacion.expediente }}</div>
+                <div class="text-xs font-medium truncate mt-0.5">{{ c.resolucion.miembroTTAIPNombre || 'Funcionario responsable' }}</div>
+                <div class="text-[11px] text-muted-foreground truncate">{{ c.apelacion.entidadNombre || 'Entidad pública' }}</div>
+              </button>
+            }
+          </div>
         </div>
 
-        <div class="p-6">
-          <ol class="relative">
-            @for (evento of timeline(); track evento.title; let i = $index) {
-              <li class="relative pl-8 pb-6 last:pb-0" data-table-row>
-                @if (i < timeline().length - 1) {
-                  <span class="absolute left-[12px] top-6 bottom-0 border-l border-dashed" style="border-color: var(--brand-200)"></span>
-                }
+        <div class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">Etapas</span>
+            <h2 class="form-section-title">Proceso</h2>
+          </div>
 
-                <span class="absolute left-0 top-0 w-[26px] h-[26px] rounded-full flex items-center justify-center" [style.background]="timelineBackground(evento.status)" [style.border]="timelineBorder(evento.status)" [style.boxShadow]="timelineShadow(evento.status)">
-                  @switch (evento.icon) {
-                    @case ('mail') { <svg lucideMail class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @default { <svg lucideFileText class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+          <div class="p-6">
+            <ol class="relative">
+              @for (evento of timeline(); track evento.title; let i = $index) {
+                <li class="relative pl-8 pb-6 last:pb-0" data-table-row>
+                  @if (i < timeline().length - 1) {
+                    <span class="absolute left-[12px] top-6 bottom-0 border-l border-dashed" style="border-color: var(--brand-200)"></span>
                   }
-                </span>
 
-                <div class="font-display text-sm font-semibold tracking-wide leading-tight">{{ evento.title }}</div>
-                <div class="font-mono text-[11px] mt-0.5" [style.color]="timelineColor(evento.status)">{{ evento.date }}</div>
-                <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ evento.desc }}</p>
-              </li>
-            }
-          </ol>
+                  <span class="absolute left-0 top-0 w-[26px] h-[26px] rounded-full flex items-center justify-center" [style.background]="timelineBackground(evento.status)" [style.border]="timelineBorder(evento.status)" [style.boxShadow]="timelineShadow(evento.status)">
+                    @switch (evento.icon) {
+                      @case ('mail') { <svg lucideMail class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                      @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                      @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                      @default { <svg lucideFileText class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
+                    }
+                  </span>
+
+                  <div class="font-display text-sm font-semibold tracking-wide leading-tight">{{ evento.title }}</div>
+                  <div class="font-mono text-[11px] mt-0.5" [style.color]="timelineColor(evento.status)">{{ evento.date }}</div>
+                  <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ evento.desc }}</p>
+                </li>
+              }
+            </ol>
+          </div>
         </div>
       </aside>
 

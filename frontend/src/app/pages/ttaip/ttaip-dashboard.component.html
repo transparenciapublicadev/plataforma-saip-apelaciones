@@ -198,7 +198,7 @@
                 <div class="rounded-md p-3 flex items-start gap-3" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.30); border-left: 3px solid var(--gold-dark)">
                   <svg lucideHourglass class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
                   <p class="text-xs text-foreground/85 leading-relaxed">
-                    <span class="font-semibold">Espera externa.</span> El Tribunal aguarda los documentos del administrado. Sin acción del Secretario Técnico salvo notificación de vencimiento.
+                    <span class="font-semibold">Espera externa.</span> El plazo del administrado solo inicia al acreditar la notificación eficaz del requerimiento. Sin esa evidencia permanece pendiente de inicio.
                   </p>
                 </div>
               </div>
@@ -221,6 +221,22 @@
                       <div class="flex items-center gap-2 flex-wrap">
                         <span class="code-chip">{{ item.apelacion.expediente }}</span>
                         <span [class]="getPriorityClass(item.prioridad)">{{ item.prioridad.toUpperCase() }}</span>
+                        @if (activeStage().key === 'todos') {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold" [style.background]="getStageMeta(item.stageKey).bg" [style.color]="getStageMeta(item.stageKey).color">
+                            {{ getStageMeta(item.stageKey).shortLabel }}
+                          </span>
+                        }
+                        @if (item.stageKey === 'subsanacion') {
+                          <span class="pill" style="background: rgba(176,136,66,0.12); color: var(--gold-dark); border-color: rgba(176,136,66,0.3)">
+                            {{ getDiasValor(item) === 'Pendiente' ? 'Pendiente de notificación eficaz' : getDiasValor(item) === 'Vencido' ? 'Plazo vencido' : 'Esperando administrado' }}
+                          </span>
+                        }
+                        @if (item.diasSuspendidos > 0) {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium" style="background: rgba(245, 158, 11, 0.12); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.3)">
+                            <svg lucidePauseCircle class="w-3 h-3"></svg>
+                            suspendido {{ item.diasSuspendidos }}d
+                          </span>
+                        }
                         @if (activeStage().isResolved && item.resultado) {
                           <app-status-badge [status]="getResultadoLabel(item.resultado)"></app-status-badge>
                         }
@@ -376,6 +392,17 @@
               <div class="text-[10px] text-muted-foreground mt-1">cerradas</div>
             </div>
           </div>
+
+          <a routerLink="/ttaip/cumplimiento" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--success)" data-reveal>
+            <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(5,150,105,0.12)">
+              <svg lucideShieldCheck class="w-4 h-4" style="color: var(--success)"></svg>
+            </div>
+            <div class="flex-1 text-left">
+              <span class="eyebrow" style="color: var(--success)">Supervisión</span>
+              <div class="text-sm font-medium">Seguimiento de cumplimiento</div>
+            </div>
+            <svg lucideArrowRight class="w-4 h-4 text-muted-foreground"></svg>
+          </a>
 
           <a data-tour="t-disciplinario" routerLink="/ttaip/procesos-disciplinarios" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--gold-dark)" data-reveal>
             <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(176,136,66,0.12)">

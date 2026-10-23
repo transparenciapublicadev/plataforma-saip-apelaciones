@@ -11,10 +11,13 @@ public record ApelacionInfoDTO(
     String estado,
     String resultado,
     String fechaApelacion,
+    @Schema(description="Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos", deprecated=true)
     String fechaSubsanacion,
     Integer diasSubsanacion,
     ElevacionApelacionTtaipDTO elevacion,
-    Boolean resuelta
+    Boolean resuelta,
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    PlazoSubsanacionTtaipDTO plazoSubsanacion
 ) {
     public static ApelacionInfoDTO from(Apelacion a) {
         return new ApelacionInfoDTO(
@@ -26,7 +29,8 @@ public record ApelacionInfoDTO(
             a.getFechaSubsanacion() != null ? a.getFechaSubsanacion().toString() : null,
             a.getDiasSubsanacion(),
             a.getElevacion() != null ? ElevacionApelacionTtaipDTO.from(a.getElevacion()) : null,
-            a.isResuelta()
+            a.isResuelta(),
+            PlazoSubsanacionTtaipDTO.from(a)
         );
     }
 }

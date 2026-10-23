@@ -18,6 +18,7 @@ import pe.gob.saip.backend.model.dto.EstadoPushNotificacionesDTO;
 import pe.gob.saip.backend.model.dto.RegistrarDispositivoPushRequest;
 import pe.gob.saip.backend.model.dto.RevocarDispositivoPushActualRequest;
 import pe.gob.saip.backend.service.DispositivoNotificacionPushService;
+import pe.gob.saip.backend.security.IdentidadUsuario;
 
 @RestController
 @RequestMapping("/api/notificaciones/push")
@@ -39,8 +40,8 @@ public class DispositivoNotificacionPushRestController {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.security.access.AccessDeniedException("Se requiere autenticación para operar dispositivos push");
         }
-        String email = authentication.getName();
-        return ResponseEntity.status(HttpStatus.CREATED).body(dispositivoService.registrar(request, email));
+        IdentidadUsuario.usuarioId(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dispositivoService.registrar(request));
     }
 
     @Operation(summary = "Listar los dispositivos push del usuario autenticado sin exponer tokens")

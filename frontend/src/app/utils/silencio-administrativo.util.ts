@@ -40,7 +40,7 @@ export function canSendManualResponse(context: SolicitudSilencioContext | null |
   }
 
   const estado = (context.estado ?? '').toUpperCase();
-  if (estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA') {
+  if (estado !== 'RECEPCIONADA' && estado !== 'EN_REVISION') {
     return false;
   }
 

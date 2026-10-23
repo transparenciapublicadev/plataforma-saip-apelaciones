@@ -18,14 +18,26 @@ import {
 import { Entidad } from '../../models/entidad.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { DocumentoRelation } from '../../models/documento.model';
-import { DocumentListComponent } from '../../shared/document-list.component';
+import { DocumentoService } from '../../services/documento.service';
 import { DocumentUploadComponent } from '../../shared/document-upload.component';
+import {
+  DocumentPreviewModalComponent,
+  DocumentPreviewTarget
+} from '../../shared/document-preview-modal.component';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'ciudadano' | 'adjuntos' | 'historial';
+type DetailTabId = 'respuesta' | 'solicitud' | 'ciudadano' | 'adjuntos' | 'notificaciones' | 'historial' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion';
 
 interface DetailTab {
   id: DetailTabId;
   label: string;
+}
+
+export interface DocRowItem {
+  id?: number | null;
+  raw: any;
+  nombre: string;
+  tipo: string;
+  tamano: string;
 }
 
 interface HistorialItem {
@@ -37,13 +49,21 @@ interface HistorialItem {
 }
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
-import { LucideCheckCircle2 } from '@lucide/angular';
+import {
+  LucideArrowLeft, LucideSend, LucideClock,
+  LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
+  LucideScale, LucideChevronRight, LucideEye, LucideDownload
+} from '@lucide/angular';
 
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent,
-    StatusBadgeComponent, LucideCheckCircle2
+    CommonModule, FormsModule, RouterLink, DocumentUploadComponent,
+    DocumentPreviewModalComponent,
+    StatusBadgeComponent,
+    LucideArrowLeft, LucideSend, LucideClock,
+    LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
+    LucideScale, LucideChevronRight, LucideEye, LucideDownload
   ],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
@@ -52,6 +72,7 @@ import { LucideCheckCircle2 } from '@lucide/angular';
 export class FuncionarioSolicitudDetalleComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
   private readonly entidadService = inject(EntidadService);
 
@@ -60,6 +81,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   loading = signal<boolean>(true);
   error = signal<string>('');
   activeTab = signal<DetailTabId>('solicitud');
+  solicitudesPrevias = signal<Solicitud[]>([]);
   observacionMotivo = signal<string>('');
   observacionLoading = signal<boolean>(false);
   observacionError = signal<string>('');
@@ -91,21 +113,187 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   liquidacionSuccess = signal<string>('');
   liquidacionUpdateLoading = signal<boolean>(false);
 
-  readonly tabs = computed<DetailTab[]>(() => {
-    const base: DetailTab[] = [
-      { id: 'solicitud', label: 'Solicitud' },
-      { id: 'observacion', label: 'Observación' },
-      { id: 'encauzamiento', label: 'Encauzamiento' },
-      { id: 'liquidacion', label: 'Liquidación' },
-      { id: 'ampliacion', label: 'Ampliación' },
-      { id: 'ciudadano', label: 'Ciudadano' },
-      { id: 'adjuntos', label: 'Adjuntos' },
-      { id: 'historial', label: 'Historial' }
-    ];
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
 
-    if (this.puedeVerRespuesta()) {
-      return [{ id: 'respuesta', label: 'Respuesta' }, ...base];
+  esAnexo(nombre: string): boolean {
+    return /^\s*anexo/i.test(nombre);
+  }
+
+  limpiarNombre(nombre: string): string {
+    return nombre.replace(/^\s*(principal|anexo\s*\d*)\s*[—-]\s*/i, '').trim();
+  }
+
+  etiquetaAnexo(nombre: string): string {
+    const match = nombre.match(/^\s*anexo\s*(\d+)/i);
+    return match ? `Anexo ${match[1]}` : 'Anexo';
+  }
+
+  readonly todosDocumentosAdministrado = computed(() => {
+    const sol = this.solicitud();
+    if (!sol) return [];
+    return (sol.documentosMetadata && sol.documentosMetadata.length > 0)
+      ? sol.documentosMetadata
+      : (sol.documentos || []);
+  });
+
+  private mapToDocRow(d: any): DocRowItem {
+    const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || 'Documento';
+    const tipo = d.tipoDocumento || d.tipoArchivo || d.tipo || 'PDF';
+    return {
+      id: d.id,
+      raw: d,
+      nombre,
+      tipo,
+      tamano: this.tamanoDoc(d)
+    };
+  }
+
+  readonly grupoPrincipales = computed<DocRowItem[]>(() => {
+    return this.todosDocumentosAdministrado()
+      .filter((d: any) => {
+        const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
+        const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
+        return tipo !== 'SUBSANACION' && !this.esAnexo(nombre);
+      })
+      .map(d => this.mapToDocRow(d));
+  });
+
+  readonly grupoAnexos = computed<DocRowItem[]>(() => {
+    return this.todosDocumentosAdministrado()
+      .filter((d: any) => {
+        const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
+        const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
+        return tipo !== 'SUBSANACION' && this.esAnexo(nombre);
+      })
+      .map(d => this.mapToDocRow(d));
+  });
+
+  readonly grupoSubsanaciones = computed<DocRowItem[]>(() => {
+    return this.todosDocumentosAdministrado()
+      .filter((d: any) => {
+        const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
+        const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
+        return tipo === 'SUBSANACION' || /subsanaci[oó]n/i.test(nombre);
+      })
+      .map(d => this.mapToDocRow(d));
+  });
+
+  readonly documentosRespuestaEntidad = computed<DocRowItem[]>(() => {
+    const sol = this.solicitud();
+    const docs = sol?.respuesta?.documentosMetadata || [];
+    return docs.map(d => this.mapToDocRow(d));
+  });
+
+  readonly formatoEntrega = computed<string>(() => {
+    const liq = this.liquidacionActiva();
+    if (liq) {
+      return `Física · recojo en ${liq.observacion || 'Sede institucional'}`;
     }
+    const sol = this.solicitud();
+    if (sol?.formatoFisico || sol?.copiaSimple || sol?.copiaCertificada) {
+      return 'Física · recojo en sede';
+    }
+    return 'Digital (plataforma)';
+  });
+
+  readonly plazoEntrega = computed<string>(() => {
+    const liq = this.liquidacionActiva();
+    if (liq) {
+      return `Hasta el ${liq.fechaNotificacion || 'plazo indicado'}`;
+    }
+    return 'Inmediato';
+  });
+
+  readonly funcionarioResponsable = computed<string>(() => {
+    const sol = this.solicitud();
+    return sol?.respuesta?.funcionarioNombre || sol?.entidadNombre || 'Funcionario responsable';
+  });
+
+  readonly esRespuestaAceptada = computed<boolean>(() => {
+    const sol = this.solicitud();
+    const tipo = sol?.respuesta?.tipoRespuesta;
+    return tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL' || sol?.estado === 'RESPONDIDA';
+  });
+
+  abrirDocPreview(doc: any): void {
+    const d = doc.raw || doc;
+    const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    this.previewTarget.set({
+      id: d.id,
+      nombre,
+      tipo: doc.tipo || d.tipoDocumento || d.tipoArchivo || d.tipo || 'application/pdf',
+      expediente: this.solicitud()?.expediente,
+      url: d.url || d.ruta
+    });
+  }
+
+  descargarDoc(doc: any): void {
+    const d = doc.raw || doc;
+    const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    if (d.id) {
+      this.documentoService.download(d.id, nombre).subscribe({
+        next: ({ blob }) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = nombre;
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      });
+    } else if (doc.url) {
+      window.open(doc.url, '_blank');
+    }
+  }
+
+  tamanoDoc(doc: any): string {
+    const bytes = doc.tamanoBytes || doc.sizeBytes || doc.tamanio || doc.size || doc.tamano;
+    if (typeof bytes === 'number' && bytes > 0) {
+      if (bytes >= 1024 * 1024) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+      return `${Math.round(bytes / 1024)} KB`;
+    }
+    return typeof doc.tamano === 'string' ? doc.tamano : 'PDF';
+  }
+
+  readonly formatosSolicitados = computed(() => {
+    const desc = this.solicitud()?.descripcion || '';
+    const formatos: string[] = [];
+    if (/correo|email|digital/i.test(desc)) formatos.push('Copia digital (correo)');
+    if (/simple|copia simple/i.test(desc)) formatos.push('Copia simple');
+    if (/certificad/i.test(desc)) formatos.push('Copia certificada');
+    if (/cd|dvd|magn[ée]tic|usb/i.test(desc)) formatos.push('Soporte magnético');
+    if (formatos.length === 0) formatos.push('Copia digital (plataforma)');
+    return formatos;
+  });
+
+  readonly yaRespondida = computed<boolean>(() => {
+    const sol = this.solicitud();
+    if (!sol) return false;
+    const est = (sol.estado || '').toUpperCase();
+    return !!sol.respuesta?.fechaRespuesta || ['RESPONDIDA', 'ENCAUZADA', 'POR_RECOGER', 'DENEGADA', 'CONCLUIDA', 'ARCHIVADA'].includes(est);
+  });
+
+  readonly tabs = computed<DetailTab[]>(() => {
+    const base: DetailTab[] = [];
+    if (this.yaRespondida()) {
+      base.push({ id: 'respuesta', label: 'Respuesta' });
+    }
+    base.push(
+      { id: 'solicitud', label: 'Solicitud' },
+      { id: 'ciudadano', label: 'Administrado' },
+      { id: 'adjuntos', label: 'Documentos del administrado' }
+    );
+
+    if (this.solicitud()?.apelacion) {
+      base.push({ id: 'notificaciones', label: 'Resoluciones y cédulas' });
+    }
+
+    base.push({ id: 'historial', label: 'Historial' });
 
     return base;
   });
@@ -273,6 +461,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
             error: () => console.warn('No se pudo cargar el seguimiento de plazo de la solicitud.')
           });
         }
+
+        if (data && data.ciudadanoId) {
+          this.cargarSolicitudesPrevias(data.ciudadanoId, data.expediente);
+        }
         
         this.loading.set(false);
       },
@@ -281,6 +473,35 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  cargarSolicitudesPrevias(ciudadanoId: number, currentExpediente?: string): void {
+    this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
+      next: (previas) => {
+        this.solicitudesPrevias.set(previas.filter(p => p.expediente !== currentExpediente).slice(0, 5));
+      },
+      error: () => {}
+    });
+  }
+
+  getResultadoLabel(): string {
+    const tipo = this.getTipoRespuestaDisplay();
+    if (tipo === 'DENEGACION_TOTAL') return 'Denegada';
+    if (tipo === 'ENTREGA_PARCIAL') return 'Entrega parcial';
+    if (tipo === 'ENTREGA_TOTAL') return 'Entrega total';
+    if (tipo === 'SILENCIO_ADMINISTRATIVO') return 'Silencio administrativo';
+    return 'Atendida';
+  }
+
+  getResultadoColor(): string {
+    const tipo = this.getTipoRespuestaDisplay();
+    if (tipo === 'DENEGACION_TOTAL' || tipo === 'SILENCIO_ADMINISTRATIVO') return 'var(--brand-700)';
+    return 'var(--success)';
+  }
+
+  getIniciales(nombre?: string): string {
+    if (!nombre) return 'CI';
+    return nombre.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase() || '').join('') || 'CI';
   }
 
   onDocumentoSubido(preferredTab: DetailTabId = 'adjuntos'): void {
@@ -301,7 +522,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     }
 
     return canSendManualResponse(sol)
-      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION' || sol.estado === 'PENDIENTE_INFORMACION');
+      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION');
   }
 
   puedeVerRespuesta(): boolean {

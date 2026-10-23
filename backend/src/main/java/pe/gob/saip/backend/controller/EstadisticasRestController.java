@@ -5,10 +5,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pe.gob.saip.backend.model.dto.ActividadRecienteDTO;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,19 +26,22 @@ public class EstadisticasRestController {
     private final CiudadanoService ciudadanoService;
     private final FuncionarioService funcionarioService;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final UsuarioService usuarioService;
 
     public EstadisticasRestController(SolicitudService solicitudService,
                                        ApelacionService apelacionService,
                                        EntidadService entidadService,
                                        CiudadanoService ciudadanoService,
                                        FuncionarioService funcionarioService,
-                                       AutorizacionRecursosService autorizacionRecursosService) {
+                                       AutorizacionRecursosService autorizacionRecursosService,
+                                       UsuarioService usuarioService) {
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.entidadService = entidadService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.usuarioService = usuarioService;
     }
 
     @Operation(summary = "Estadísticas generales del sistema", description = "Totales de solicitudes, apelaciones, entidades, ciudadanos y funcionarios")
@@ -61,6 +66,21 @@ public class EstadisticasRestController {
                 .filter(s -> Solicitud.EstadoSolicitud.VENCIDA.equals(s.getEstado()))
                 .count());
 
+        List<Solicitud> respondidas = solicitudes.stream()
+                .filter(s -> s.getRespuesta() != null && s.getFechaPresentacion() != null
+                        && s.getRespuesta().getFechaRespuesta() != null)
+                .collect(Collectors.toList());
+        if (!respondidas.isEmpty()) {
+            double promedioHoras = respondidas.stream()
+                    .mapToLong(s -> Math.max(0, ChronoUnit.HOURS.between(s.getFechaPresentacion(),
+                            s.getRespuesta().getFechaRespuesta())))
+                    .average()
+                    .orElse(0);
+            stats.put("tiempoPromedioRespuestaDias", Math.round((promedioHoras / 24.0) * 10.0) / 10.0);
+        } else {
+            stats.put("tiempoPromedioRespuestaDias", 0.0);
+        }
+
         List<Apelacion> apelaciones = apelacionService.findAll();
         stats.put("totalApelaciones", apelaciones.size());
         stats.put("apelacionesPendientes", apelaciones.stream()
@@ -74,6 +94,7 @@ public class EstadisticasRestController {
         stats.put("totalEntidades", entidadService.findAll().size());
         stats.put("totalCiudadanos", ciudadanoService.obtenerTodosLosCiudadanos().size());
         stats.put("totalFuncionarios", funcionarioService.obtenerTodosLosFuncionarios().size());
+        stats.put("totalUsuarios", usuarioService.obtenerTodosLosUsuarios().size());
 
         return ResponseEntity.ok(stats);
     }
@@ -243,5 +264,86 @@ public class EstadisticasRestController {
         }
 
         return ResponseEntity.ok(tendencias);
+    }
+
+    @Operation(summary = "Actividad reciente del sistema", description = "Últimos eventos unificados de solicitudes y apelaciones")
+    @GetMapping("/actividad-reciente")
+    public ResponseEntity<List<ActividadRecienteDTO>> obtenerActividadReciente(
+            @Parameter(description = "Número máximo de eventos") @RequestParam(defaultValue = "10") int limite) {
+
+        List<ActividadRecienteDTO> eventos = new ArrayList<>();
+
+        List<Solicitud> solicitudes = solicitudService.obtenerTodasLasSolicitudes();
+        for (Solicitud s : solicitudes) {
+            String ent = s.getEntidad() != null ? s.getEntidad().getNombre() : "Entidad";
+            String exp = s.getExpediente() != null ? s.getExpediente() : "SAIP";
+
+            if (s.getFechaPresentacion() != null) {
+                String dot = "var(--info)";
+                String label = "Solicitud SAIP registrada";
+                if (Solicitud.EstadoSolicitud.VENCIDA.equals(s.getEstado())) {
+                    dot = "var(--brand-700)";
+                    label = "Solicitud vencida detectada";
+                } else if (Solicitud.EstadoSolicitud.RESPONDIDA.equals(s.getEstado()) || Solicitud.EstadoSolicitud.CONCLUIDA.equals(s.getEstado())) {
+                    dot = "var(--success)";
+                    label = "Solicitud respondida";
+                }
+                long ts = s.getFechaPresentacion().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                eventos.add(new ActividadRecienteDTO(
+                        dot,
+                        label,
+                        String.format("%s · %s · %s", exp, ent, s.getFechaPresentacion().toLocalDate().toString()),
+                        s.getFechaPresentacion(),
+                        ts
+                ));
+            }
+
+            if (s.getRespuesta() != null && s.getRespuesta().getFechaRespuesta() != null) {
+                long ts = s.getRespuesta().getFechaRespuesta().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                eventos.add(new ActividadRecienteDTO(
+                        "var(--success)",
+                        "Solicitud respondida",
+                        String.format("%s · %s · %s", exp, ent, s.getRespuesta().getFechaRespuesta().toLocalDate().toString()),
+                        s.getRespuesta().getFechaRespuesta(),
+                        ts
+                ));
+            }
+        }
+
+        List<Apelacion> apelaciones = apelacionService.findAll();
+        for (Apelacion a : apelaciones) {
+            String ent = a.getEntidadNombreEfectivo() != null ? a.getEntidadNombreEfectivo() : "Tribunal";
+            String exp = a.getExpediente() != null ? a.getExpediente() : "TTAIP";
+
+            if (a.getFechaApelacion() != null) {
+                boolean resuelta = a.isResuelta();
+                long ts = a.getFechaApelacion().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                eventos.add(new ActividadRecienteDTO(
+                        resuelta ? "var(--gold-dark)" : "var(--brand-500)",
+                        resuelta ? "Resolución TTAIP emitida" : "Apelación en trámite",
+                        String.format("%s · %s · %s", exp, ent, a.getFechaApelacion().toLocalDate().toString()),
+                        a.getFechaApelacion(),
+                        ts
+                ));
+            }
+
+            if (a.getResolucion() != null && a.getResolucion().getFechaResolucion() != null) {
+                long ts = a.getResolucion().getFechaResolucion().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                eventos.add(new ActividadRecienteDTO(
+                        "var(--gold-dark)",
+                        "Resolución TTAIP emitida",
+                        String.format("%s · %s · %s", exp, ent, a.getResolucion().getFechaResolucion().toLocalDate().toString()),
+                        a.getResolucion().getFechaResolucion(),
+                        ts
+                ));
+            }
+        }
+
+        List<ActividadRecienteDTO> resultado = eventos.stream()
+                .sorted(Comparator.comparing(ActividadRecienteDTO::fecha, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(limite)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(resultado);
     }
 }

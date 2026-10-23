@@ -219,8 +219,43 @@
               </div>
               <div class="p-6 space-y-4">
                 <div class="field">
-                  <label class="field-label">Observaciones <span class="req">*</span></label>
-                  <textarea [(ngModel)]="observaciones" [disabled]="!puedeCalificar() || loading()" class="field-input" rows="4" style="resize: vertical; min-height: 120px" placeholder="Indique con precision que debe subsanar el ciudadano..."></textarea>
+                  <label class="field-label">Observaciones formales <span class="req">*</span></label>
+                  <p class="text-xs text-muted-foreground mb-2">Detalle cada observación en un ítem separado para facilitar la subsanación por parte del recurrente.</p>
+                  <div class="space-y-2">
+                    @for (obs of observacionesList(); track $index) {
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono text-xs text-muted-foreground w-5 text-right">{{ $index + 1 }}.</span>
+                        <input
+                          type="text"
+                          [value]="obs"
+                          (input)="setObs($index, $any($event.target).value)"
+                          [disabled]="!puedeCalificar() || loading()"
+                          class="field-input flex-1"
+                          placeholder="Descripción de la observación formal..."
+                        />
+                        @if (observacionesList().length > 1) {
+                          <button
+                            type="button"
+                            (click)="removeObs($index)"
+                            [disabled]="!puedeCalificar() || loading()"
+                            class="p-2 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10 transition-colors"
+                            aria-label="Eliminar observación"
+                          >
+                            <svg lucideTrash2 class="w-4 h-4"></svg>
+                          </button>
+                        }
+                      </div>
+                    }
+                    <button
+                      type="button"
+                      (click)="addObs()"
+                      [disabled]="!puedeCalificar() || loading()"
+                      class="btn-ghost-brand text-xs !py-1.5 !px-3 inline-flex items-center gap-1.5 mt-2"
+                    >
+                      <svg lucidePlus class="w-3.5 h-3.5"></svg>
+                      Agregar observación
+                    </button>
+                  </div>
                 </div>
 
                 <div class="field">
@@ -245,38 +280,33 @@
             </div>
           </section>
 
-          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" (click)="togglePreview()">
+          <app-official-docs-section
+            [expediente]="ap.expediente"
+            stage="primera"
+            [decision]="selectedDecision()"
+            [ctx]="docCtx()">
+          </app-official-docs-section>
+
+          <button type="button" class="btn-ghost-brand w-full justify-center !py-3 inline-flex items-center gap-2" (click)="togglePreview()">
             @if (showPreview()) {
-              Ocultar
+              <svg lucideEyeOff class="w-4 h-4"></svg>
+              Ocultar borrador
             } @else {
-              Previsualizar
+              <svg lucideEye class="w-4 h-4"></svg>
+              Ver borradores de resolución y cédulas
             }
-            PDF de calificacion
           </button>
 
           @if (showPreview()) {
-            <div class="form-shell animate-fade-in">
-              <div class="p-7 font-serif text-sm" style="background: var(--paper)">
-                <div class="text-center mb-6">
-                  <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-3" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18m-9-9h18" /></svg>
-                  </div>
-                  <div class="font-display tracking-wide" style="font-size: 13px; letter-spacing: 0.06em;">TRIBUNAL DE TRANSPARENCIA Y ACCESO A LA INFORMACION PUBLICA</div>
-                  <div class="rule-ornament my-3"><span class="text-[10px] tracking-widest">·</span></div>
-                  <div class="font-display" style="font-size: 16px;">CALIFICACION N° {{ ap.expediente }}-C1</div>
-                </div>
-
-                <div class="space-y-4 text-justify">
-                  <section><span class="eyebrow">Expediente</span><p class="font-mono mt-1">{{ ap.expediente }}</p></section>
-                  <section><span class="eyebrow">Vistos</span><p class="mt-1">El recurso de apelacion interpuesto por {{ ap.ciudadanoNombre }}.</p></section>
-                  <section><span class="eyebrow">Considerandos</span><p class="mt-1 whitespace-pre-line">{{ fundamentos || '[Fundamentos de la calificacion...]' }}</p></section>
-                  <section>
-                    <span class="eyebrow">Se resuelve</span>
-                    <p class="mt-1">Declarar <span class="font-semibold">{{ getEstadoDisplay(selectedDecision() || '') }}</span> el recurso de apelacion.</p>
-                  </section>
-                </div>
-              </div>
-            </div>
+            <app-official-preview
+              stage="primera"
+              [decision]="selectedDecision()"
+              [vistos]="'El recurso de apelación interpuesto por ' + ap.ciudadanoNombre + ' contra la denegatoria de la entidad ' + ap.entidadNombre + '.'"
+              [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'"
+              [seResuelve]="'Declarar ' + getEstadoDisplay(selectedDecision() || '') + ' el recurso de apelación interpuesto por ' + ap.ciudadanoNombre + '.'"
+              [cedulaVariant]="cedulaVariant()"
+              [ctx]="docCtx()">
+            </app-official-preview>
           }
 
           <button type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
@@ -309,7 +339,7 @@
     description="Revise la calificación y los fundamentos antes de notificar a las partes. Esta resolución quedará registrada en el expediente."
     [summary]="calificacionConfirmSummary()"
     [warning]="calificacionWarning()"
-    confirmLabel="Emitir resolución"
+    confirmLabel="Registrar calificación"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="enviarCalificacion()">
   </app-reference-confirm-modal>
@@ -318,12 +348,12 @@
     [open]="successModalAbierto()"
     variant="calificacion-1ra"
     [tone]="calificacionSuccessTone()"
-    eyebrow="1ra calificación emitida"
+    eyebrow="1ra calificación registrada"
     [title]="calificacionSuccessTitle()"
-    [description]="calificacionSuccessDescription()"
+    description="Actuación devuelta por el servidor. No acredita firma digital ni emisión de un archivo oficial. Consulte sus documentos y la eficacia de la notificación en el expediente."
     [expediente]="apelacion()?.expediente || ''"
-    [expedienteHint]="'Calificación N° ' + (apelacion()?.expediente || '—') + '-C1'"
-    [plazoDias]="calificacionPlazoDias()"
+    [expedienteHint]="apelacion()?.resolucionPrimeraCalificacion?.numeroResolucion || 'Sin numeración registrada'"
+    [plazoDias]="null"
     plazoTipo="hábiles"
     [plazoDescripcion]="calificacionPlazoDescripcion()"
     plazoNorma="Reglamento TTAIP"

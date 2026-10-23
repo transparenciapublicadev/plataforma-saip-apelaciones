@@ -237,6 +237,7 @@ export interface RegistrarAcuseAutomaticoNotificacionPayload {
 }
 
 export interface ValidarNotificacionManualPayload {
+    fechaEficacia?: string | null;
     fechaValidacionManual?: string | null;
     responsableValidacion: string;
     observacionValidacion: string;

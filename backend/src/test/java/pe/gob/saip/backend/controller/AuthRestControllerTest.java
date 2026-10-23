@@ -53,6 +53,9 @@ class AuthRestControllerTest {
     JwtService jwtService;
 
     @MockitoBean
+    SesionJwtService sesionJwtService;
+
+    @MockitoBean
     PasswordEncoder passwordEncoder;
 
     @MockitoBean
@@ -83,7 +86,7 @@ class AuthRestControllerTest {
         when(usuarioService.obtenerUsuarioPorEmail("ciudadano@test.com")).thenReturn(Optional.of(ciudadano));
         when(ciudadanoService.findById(1L)).thenReturn(Optional.of(ciudadano));
         when(passwordEncoder.matches("pass123", "$2a$12$hashedpassword")).thenReturn(true);
-        when(jwtService.generateToken(anyString(), anyString(), any())).thenReturn("test.jwt.token");
+        when(jwtService.generateToken(any(), anyString(), anyLong())).thenReturn("test.jwt.token");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

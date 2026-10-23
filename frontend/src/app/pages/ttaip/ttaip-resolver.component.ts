@@ -22,6 +22,10 @@ import { validarDocumento } from '../../models/documento.model';
 import { firstValueFrom } from 'rxjs';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 
+import { OfficialDocsSectionComponent } from './shared/official-docs-section.component';
+import { OfficialPreviewComponent } from './shared/official-preview.component';
+import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
+
 type ResolverTab = 'apelacion' | 'adjuntos';
 type CausalAnalisis = 'confirmar' | 'revocar';
 type ResolucionDecision =
@@ -33,7 +37,8 @@ type ResolucionDecision =
   | 'sustraccion_materia'
   | 'desistimiento'
   | 'estese_a_lo_resuelto'
-  | 'nulidad_del_acto';
+  | 'nulidad_del_acto'
+  | 'no_presentado';
 
 interface DecisionOption {
   id: ResolucionDecision;
@@ -45,16 +50,17 @@ interface DecisionOption {
 import {
   LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
   LucideSend, LucideInfo, LucideUpload,
-  LucideClock, LucideXCircle
+  LucideClock, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff
 } from '@lucide/angular';
 
 @Component({
   selector: 'app-ttaip-resolver',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    OfficialDocsSectionComponent, OfficialPreviewComponent,
     LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
     LucideSend, LucideInfo, LucideUpload,
-    LucideClock, LucideXCircle
+    LucideClock, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff
   ],
   templateUrl: './ttaip-resolver.component.html',
   styleUrl: './ttaip-resolver.component.css',
@@ -87,6 +93,24 @@ export class TtaipResolverComponent implements OnInit {
   ordenarEntrega = false;
   plazoDias = '10';
   iniciarProcesoDisciplinario = false;
+  momentoVicio = '';
+  actuacionOrdenada = '';
+
+  readonly docCtx = computed<Partial<DocContext>>(() => {
+    const ap = this.apelacion();
+    return {
+      expediente: ap?.expediente || '',
+      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
+      entidad: ap?.entidadNombre || 'No registrada',
+      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
+      direccionEntidad: '—',
+      sumilla: ap?.solicitudAsunto || ap?.resumenSolicitudOriginal || ap?.fundamentos || 'No registrada',
+    };
+  });
+
+  readonly cedulaVariant = computed<CedulaVariant>(() => {
+    return cedulaVariantForStage('final', this.selectedDecision() || undefined);
+  });
 
   readonly tabs: ReadonlyArray<{ id: ResolverTab; label: string }> = [
     { id: 'apelacion', label: 'Apelacion' },
@@ -162,6 +186,12 @@ export class TtaipResolverComponent implements OnInit {
       label: 'NULIDAD DEL ACTO',
       description: 'Se invalida la respuesta o procedimiento por vicios graves',
       accent: 'var(--warning)'
+    },
+    {
+      id: 'no_presentado',
+      label: 'TENER POR NO PRESENTADO',
+      description: 'No se subsanó en plazo · el recurso se tiene por no presentado',
+      accent: 'var(--muted-foreground)'
     }
   ];
 
@@ -175,10 +205,18 @@ export class TtaipResolverComponent implements OnInit {
     return decision === 'fundado' || decision === 'fundado_en_parte';
   });
 
+  readonly showNulidad = computed<boolean>(() => {
+    return this.selectedDecision() === 'nulidad_del_acto';
+  });
+
   canSubmit(): boolean {
-    return this.puedeEmitirResolucion()
-      && !!this.selectedDecision()
-      && this.fundamentos.trim().length > 0;
+    if (!this.puedeEmitirResolucion() || !this.selectedDecision() || !this.fundamentos.trim()) {
+      return false;
+    }
+    if (this.selectedDecision() === 'nulidad_del_acto') {
+      return this.momentoVicio.trim().length > 0 && this.actuacionOrdenada.trim().length > 0;
+    }
+    return true;
   }
 
   readonly documentosAdjuntos = computed(() => {
@@ -265,7 +303,8 @@ export class TtaipResolverComponent implements OnInit {
       sustraccion_materia: 'CONCLUSION POR SUSTRACCION DE LA MATERIA',
       desistimiento: 'CONCLUSION POR DESISTIMIENTO',
       estese_a_lo_resuelto: 'ESTESE A LO RESUELTO',
-      nulidad_del_acto: 'NULIDAD DEL ACTO'
+      nulidad_del_acto: 'NULIDAD DEL ACTO',
+      no_presentado: 'TENER POR NO PRESENTADO'
     };
 
     if (!decision) {
@@ -294,7 +333,9 @@ export class TtaipResolverComponent implements OnInit {
       estese_a_lo_resuelto:
         'Existe pronunciamiento previo aplicable al mismo asunto, pedido reiterado o caso sustancialmente equivalente.',
       nulidad_del_acto:
-        'Se invalida la respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.'
+        'Se invalida la respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.',
+      no_presentado:
+        'El recurso no fue subsanado dentro del plazo legal; se tiene por no presentado y el expediente queda archivado.'
     };
 
     return summaries[decision];
@@ -306,7 +347,12 @@ export class TtaipResolverComponent implements OnInit {
       iniciarProcesoDisciplinario: includeDisciplinary ? this.iniciarProcesoDisciplinario : undefined
     };
 
-    if (this.observacionesResolucion.trim()) {
+    if (this.selectedDecision() === 'nulidad_del_acto' && this.momentoVicio.trim()) {
+      const nulidadDetalle = `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}`;
+      request.observaciones = this.observacionesResolucion.trim()
+        ? `${this.observacionesResolucion.trim()} | ${nulidadDetalle}`
+        : nulidadDetalle;
+    } else if (this.observacionesResolucion.trim()) {
       request.observaciones = this.observacionesResolucion.trim();
     }
 
@@ -418,6 +464,13 @@ export class TtaipResolverComponent implements OnInit {
         this.ttaipService.declararNulidadDelActo(currentAppeal.id, requestSimple).subscribe({
           next: async (updated) => await this.handleSuccess('Nulidad del acto emitida.', updated),
           error: (err) => this.handleError(err)
+        }),
+      no_presentado: () =>
+        this.ttaipService.declararNoPresentado(currentAppeal.id, {
+          fundamentos: this.fundamentos.trim()
+        }).subscribe({
+          next: async (updated) => await this.handleSuccess('Recurso declarado TENIDO POR NO PRESENTADO.', updated),
+          error: (err) => this.handleError(err)
         })
     };
 
@@ -425,10 +478,16 @@ export class TtaipResolverComponent implements OnInit {
   }
 
   private async handleSuccess(message: string, updated?: Apelacion): Promise<void> {
-    const nextAppeal = updated ?? this.apelacion();
-    if (nextAppeal) {
-      this.apelacion.set(nextAppeal);
+    const current = this.apelacion();
+    if (!updated?.id || updated.id !== current?.id || updated.expediente !== current?.expediente) {
+      this.loading.set(false);
+      this.successModalAbierto.set(false);
+      this.confirmModalAbierto.set(false);
+      this.error.set('No se recibió una confirmación verificable del recurso; consulte el expediente antes de repetir la operación.');
+      return;
     }
+    const nextAppeal = updated;
+    this.apelacion.set(nextAppeal);
 
     const files = this.documentosSeleccionados();
     const resolucionId = nextAppeal?.resolucion?.id;
@@ -459,7 +518,9 @@ export class TtaipResolverComponent implements OnInit {
       this.confirmModalAbierto.set(false);
     } else {
       this.loading.set(false);
-      this.mensaje.set(message);
+      this.mensaje.set(files.length > 0
+        ? `${message} Los archivos seleccionados no se subieron: falta el identificador de resolución. Consulte el expediente.`
+        : message);
       this.successModalAbierto.set(true);
       this.confirmModalAbierto.set(false);
     }
@@ -546,6 +607,9 @@ export class TtaipResolverComponent implements OnInit {
     if (decision === 'nulidad_del_acto') {
       return 'Se declara la nulidad por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.';
     }
+    if (decision === 'no_presentado') {
+      return 'El recurso no fue subsanado dentro del plazo legal; se tiene por no presentado y el expediente queda archivado.';
+    }
     return 'Se concluye por desistimiento expreso del ciudadano.';
   }
 
@@ -563,12 +627,12 @@ export class TtaipResolverComponent implements OnInit {
     const metadata: ReferenceSuccessMeta[] = [
       { label: 'Fallo', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Causal', value: this.causal() === 'confirmar' ? 'Confirmada' : this.causal() === 'revocar' ? 'Revocada' : '—' },
-      { label: 'Mandato', value: this.showOrden() && this.ordenarEntrega ? `Entrega en ${this.plazoDias} días` : 'Sin mandato' },
+      { label: 'Mandato y plazo', value: 'Consultar el acto registrado' },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
     ];
     const files = this.documentosSeleccionados();
     if (files.length > 0) {
-      metadata.push({ label: 'Documentos subidos', value: files.map(f => f.name).join(', ') });
+      metadata.push({ label: 'Archivos seleccionados (verificar recepción)', value: files.map(f => f.name).join(', ') });
     }
     return metadata;
   }
@@ -581,7 +645,7 @@ export class TtaipResolverComponent implements OnInit {
     if (this.showOrden() && this.ordenarEntrega) {
       steps.push({
         label: 'La entidad debe cumplir el mandato de entrega.',
-        hint: `${this.plazoDias} días hábiles`
+        hint: 'Consultar el mandato y su notificación en el expediente.'
       });
     }
 
@@ -627,6 +691,11 @@ export class TtaipResolverComponent implements OnInit {
 
     if (!decision) {
       this.error.set('Debe seleccionar una decision final.');
+      return false;
+    }
+
+    if (decision === 'nulidad_del_acto' && (!this.momentoVicio.trim() || !this.actuacionOrdenada.trim())) {
+      this.error.set('Indique el momento del vicio al que se retrotrae y la actuación ordenada.');
       return false;
     }
 

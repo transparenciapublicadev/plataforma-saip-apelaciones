@@ -15,6 +15,7 @@ import pe.gob.saip.backend.service.ApelacionService;
 import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import pe.gob.saip.backend.service.CiudadanoService;
 import pe.gob.saip.backend.service.SolicitudService;
+import pe.gob.saip.backend.service.UsuarioService;
 
 import java.util.List;
 import java.util.Map;
@@ -30,17 +31,20 @@ public class CiudadanoRestController {
     private final ApelacionService apelacionService;
     private final PasswordEncoder passwordEncoder;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final UsuarioService usuarioService;
 
     public CiudadanoRestController(CiudadanoService ciudadanoService,
                                     SolicitudService solicitudService,
                                     ApelacionService apelacionService,
                                     PasswordEncoder passwordEncoder,
-                                    AutorizacionRecursosService autorizacionRecursosService) {
+                                    AutorizacionRecursosService autorizacionRecursosService,
+                                    UsuarioService usuarioService) {
         this.ciudadanoService = ciudadanoService;
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.passwordEncoder = passwordEncoder;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.usuarioService = usuarioService;
     }
 
     @Operation(summary = "Listar todos los ciudadanos")
@@ -152,9 +156,7 @@ public class CiudadanoRestController {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
 
         Boolean activo = body.get("activo");
-        ciudadano.setActivo(activo);
-
-        ciudadano = ciudadanoService.guardarCiudadano(ciudadano);
+        ciudadano = (Ciudadano) usuarioService.cambiarEstado(id, activo);
 
         return ResponseEntity.ok(CiudadanoDTO.from(ciudadano));
     }

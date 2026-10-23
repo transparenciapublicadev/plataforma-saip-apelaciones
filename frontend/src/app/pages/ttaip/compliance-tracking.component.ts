@@ -1,51 +1,40 @@
 import {
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  computed,
-  inject,
-  signal
+  ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { forkJoin, map, of, Subscription, switchMap, throwError, timeout } from 'rxjs';
 import {
-  LucideAlertTriangle,
-  LucideArrowLeft,
-  LucideCheckCircle2,
-  LucideClock,
-  LucideEye,
-  LucideInbox,
-  LucideRefreshCw,
-  LucideShieldCheck,
-  LucideXCircle
+  LucideAlertTriangle, LucideArrowLeft, LucideCheckCircle2, LucideClock, LucideEye,
+  LucideInbox, LucideRefreshCw, LucideShieldCheck, LucideXCircle
 } from '@lucide/angular';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { Apelacion } from '../../models/apelacion.model';
+import { CumplimientoResolucionTtaip } from '../../models/resolucion.model';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 
-export type EstadoCumplimiento =
-  | 'pendiente'
-  | 'cumplido'
-  | 'vencido'
-  | 'observado'
-  | 'reiterado'
-  | 'cerrado';
+export type EstadoCumplimiento = 'pendiente' | 'cumplido' | 'cumplido_parcial' |
+  'vencido' | 'observado' | 'reiterado' | 'cerrado' | 'incompleto';
 
 export interface CumplimientoItem {
   id: string;
   expedienteTTAIP: string;
-  expedienteSAIP: string;
+  expedienteSAIP?: string | null;
   entidad: string;
-  fechaResolucion?: string;
-  fechaLimite?: string;
-  fechaCumplimiento?: string;
+  fechaResolucion?: string | null;
+  fechaLimite?: string | null;
+  fechaCumplimiento?: string | null;
   estado: EstadoCumplimiento;
-  resultado?: string;
-  observaciones?: string;
+  resultado?: string | null;
+  observaciones?: string | null;
+  apelacionId: number;
+  registro: CumplimientoResolucionTtaip;
 }
 
-export interface AccionTribunal {
+interface AccionTribunal {
   estado: EstadoCumplimiento;
   label: string;
   iconName: string;
@@ -55,21 +44,9 @@ export interface AccionTribunal {
 @Component({
   selector: 'app-compliance-tracking',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterLink,
-    StatusBadgeComponent,
-    LucideArrowLeft,
-    LucideClock,
-    LucideCheckCircle2,
-    LucideAlertTriangle,
-    LucideInbox,
-    LucideShieldCheck,
-    LucideRefreshCw,
-    LucideXCircle,
-    LucideEye
-  ],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, LucideArrowLeft,
+    LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideInbox, LucideShieldCheck,
+    LucideRefreshCw, LucideXCircle, LucideEye],
   templateUrl: './compliance-tracking.component.html',
   styleUrl: './compliance-tracking.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -78,190 +55,226 @@ export class ComplianceTrackingComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly ttaipService = inject(TtaipService);
   private readonly authService = inject(AuthService);
+  private consulta?: Subscription;
+  private operacion?: Subscription;
+  private generacion = 0;
+  private sesion = this.authService.getToken();
+  private temporizador?: ReturnType<typeof setTimeout>;
 
   readonly acciones: AccionTribunal[] = [
-    { estado: 'cumplido',  label: 'Marcar como cumplido',   iconName: 'check-circle-2', tone: 'var(--success)' },
+    { estado: 'cumplido', label: 'Marcar como cumplido', iconName: 'check-circle-2', tone: 'var(--success)' },
     { estado: 'observado', label: 'Observar el cumplimiento', iconName: 'alert-triangle', tone: 'var(--warning)' },
-    { estado: 'reiterado', label: 'Reiterar a la entidad',    iconName: 'refresh-cw',    tone: 'var(--info)' },
-    { estado: 'cerrado',   label: 'Cerrar el seguimiento',    iconName: 'shield-check',  tone: 'var(--brand-700)' }
+    { estado: 'reiterado', label: 'Reiterar a la entidad', iconName: 'refresh-cw', tone: 'var(--info)' },
+    { estado: 'cerrado', label: 'Cerrar el seguimiento', iconName: 'shield-check', tone: 'var(--brand-700)' }
   ];
-
   readonly estadoLabels: Record<EstadoCumplimiento, string> = {
-    pendiente: 'Pendiente',
-    cumplido: 'Cumplido',
-    vencido: 'Vencido',
-    observado: 'Observado',
-    reiterado: 'Reiterado',
-    cerrado: 'Cerrado'
+    pendiente: 'Pendiente', cumplido: 'Cumplido', cumplido_parcial: 'Cumplido parcial',
+    vencido: 'Vencido', observado: 'Observado', reiterado: 'Reiterado', cerrado: 'Cerrado',
+    incompleto: 'Estado no informado'
   };
+  readonly items = signal<CumplimientoItem[]>([]);
+  readonly cargando = signal(true);
+  readonly estadoConsulta = signal<EstadoConsulta>('cargando');
+  readonly mensajeConsulta = signal('');
+  readonly reintentable = signal(false);
+  readonly informacionIncompleta = signal(false);
+  readonly enviando = signal(false);
+  readonly requiereVerificacion = signal(false);
+  readonly mensajeAccion = signal('');
+  readonly selId = signal<string | null>(null);
+  readonly observacionesInput = signal('');
+  readonly toastMensaje = signal<string | null>(null);
+  readonly sel = computed(() => this.items().find(i => i.id === this.selId()) ?? null);
+  readonly resumen = computed(() => ({
+    pendientes: this.items().filter(i => i.estado === 'pendiente' || i.estado === 'observado').length,
+    vencidos: this.items().filter(i => i.estado === 'vencido').length,
+    cumplidos: this.items().filter(i => i.estado === 'cumplido' || i.estado === 'cerrado').length
+  }));
 
-  // Estados reactivos
-  items = signal<CumplimientoItem[]>([]);
-  cargando = signal<boolean>(true);
-  selId = signal<string | null>(null);
-  observacionesInput = signal<string>('');
-  toastMensaje = signal<string | null>(null);
-
-  // Elemento seleccionado computado
-  sel = computed<CumplimientoItem | null>(() => {
-    const list = this.items();
-    const id = this.selId();
-    if (!list.length) return null;
-    return list.find(i => i.id === id) ?? list[0];
-  });
-
-  // Indicadores computados
-  resumen = computed(() => {
-    const list = this.items();
-    return {
-      pendientes: list.filter(i => i.estado === 'pendiente' || i.estado === 'observado' || i.estado === 'reiterado').length,
-      vencidos: list.filter(i => i.estado === 'vencido').length,
-      cumplidos: list.filter(i => i.estado === 'cumplido' || i.estado === 'cerrado').length
-    };
-  });
-
-  ngOnInit(): void {
-    this.authService.obtenerSesion();
-    this.cargarSeguimientos();
+  constructor() {
+    effect(() => {
+      this.authService.cambiosSesion();
+      untracked(() => {
+        const actual = this.authService.getToken();
+        if (actual !== this.sesion) {
+          this.sesion = actual;
+          this.cargarSeguimientos();
+        }
+      });
+    });
+    inject(DestroyRef).onDestroy(() => {
+      ++this.generacion;
+      this.consulta?.unsubscribe();
+      this.operacion?.unsubscribe();
+      clearTimeout(this.temporizador);
+    });
   }
 
+  ngOnInit(): void { this.cargarSeguimientos(); }
+
   cargarSeguimientos(): void {
+    const generacion = ++this.generacion;
+    const token = this.authService.getToken();
+    this.consulta?.unsubscribe();
+    this.operacion?.unsubscribe();
+    clearTimeout(this.temporizador);
+    this.items.set([]);
+    this.selId.set(null);
+    this.observacionesInput.set('');
+    this.toastMensaje.set(null);
+    this.mensajeAccion.set('');
+    this.enviando.set(false);
     this.cargando.set(true);
-
-    // Intentar cargar apelaciones resueltas con resultado fundado
-    this.ttaipService.getResueltas().subscribe({
-      next: (apelaciones) => {
-        const mapped: CumplimientoItem[] = apelaciones
-          .filter(a => (a.resolucion && (a.resolucion.decision === 'FUNDADO' || a.resolucion.decision === 'FUNDADO_EN_PARTE')) || /fundad/i.test(a.resultado || ''))
-          .map((a, idx) => ({
-            id: String(a.id || idx + 1),
-            expedienteTTAIP: a.expediente || `0012${idx}-2026-JUS/TTAIP`,
-            expedienteSAIP: a.solicitudExpediente || `SAIP-2026-000${10 + idx}`,
-            entidad: a.entidadNombre || 'Ministerio de Educación - MINEDU',
-            fechaResolucion: a.resolucion?.fechaResolucion ? a.resolucion.fechaResolucion.slice(0, 10) : '28/08/2026',
-            fechaLimite: this.calcularFechaLimite7Dias(a.resolucion?.fechaResolucion),
-            estado: (idx === 1 ? 'vencido' : idx === 2 ? 'cumplido' : 'pendiente') as EstadoCumplimiento,
-            resultado: a.resolucion?.decision || a.resultado || 'FUNDADA',
-            observaciones: a.resolucion?.observaciones || 'Se ordenó a la entidad la entrega de los informes y anexos requeridos por el administrado.'
-          }));
-
-        if (mapped.length > 0) {
-          this.items.set(mapped);
-          this.selId.set(mapped[0].id);
-        } else {
-          this.cargarMocksDemo();
-        }
+    this.estadoConsulta.set('cargando');
+    this.mensajeConsulta.set('');
+    this.informacionIncompleta.set(false);
+    if (!token || !this.esTribunal()) {
+      this.fallarConsulta({ estado: token ? 'autorizacion' : 'autenticacion', reintentable: false,
+        mensaje: token ? 'No tiene permiso para consultar el seguimiento TTAIP.' : 'Inicie sesión para consultar el seguimiento.' });
+      return;
+    }
+    // The resolved-appeals query supplies actual aggregate IDs, never follow-up states.
+    this.consulta = this.ttaipService.getResueltas().pipe(switchMap(apelaciones => {
+      if (!Array.isArray(apelaciones)) return throwError(() => new Error('Respuesta incompleta'));
+      const expedientes = new Map<number, Apelacion>();
+      for (const apelacion of apelaciones) {
+        const id = apelacion.expedienteTtaip?.id;
+        if (id && apelacion.id) expedientes.set(id, apelacion);
+        else this.informacionIncompleta.set(true);
+      }
+      const consultas = [...expedientes].map(([expedienteId, apelacion]) =>
+        this.ttaipService.listarCumplimientos(expedienteId).pipe(map(registros => {
+          if (!Array.isArray(registros)) throw new Error('Respuesta incompleta');
+          return registros.map(registro => this.mapear(registro, apelacion, expedienteId));
+        })));
+      return consultas.length ? forkJoin(consultas).pipe(map(listas => listas.flat())) : of([]);
+    }), timeout(15_000)).subscribe({
+      next: items => {
+        if (!this.vigente(generacion, token)) return;
+        this.items.set(items);
+        this.selId.set(items[0]?.id ?? null);
         this.cargando.set(false);
+        this.estadoConsulta.set(items.length ? 'disponible' : 'vacio');
+        this.requiereVerificacion.set(false);
       },
-      error: () => {
-        this.cargarMocksDemo();
-        this.cargando.set(false);
+      error: error => {
+        if (this.vigente(generacion, token)) this.fallarConsulta(falloConsulta(error, 'los seguimientos de cumplimiento'));
       }
     });
   }
 
-  private cargarMocksDemo(): void {
-    const demoItems: CumplimientoItem[] = [
-      {
-        id: '1',
-        expedienteTTAIP: '00124-2026-JUS/TTAIP',
-        expedienteSAIP: 'SAIP-2026-00012',
-        entidad: 'Ministerio de Educación - MINEDU',
-        fechaResolucion: '28/08/2026',
-        fechaLimite: '08/09/2026',
-        estado: 'pendiente',
-        resultado: 'FUNDADA',
-        observaciones: 'Se ordenó a la entidad la entrega completa del informe técnico de contrataciones periodo 2025-2026 en copia simple gratuita.'
-      },
-      {
-        id: '2',
-        expedienteTTAIP: '00098-2026-JUS/TTAIP',
-        expedienteSAIP: 'SAIP-2026-00004',
-        entidad: 'Municipalidad Metropolitana de Lima',
-        fechaResolucion: '15/08/2026',
-        fechaLimite: '26/08/2026',
-        estado: 'vencido',
-        resultado: 'FUNDADA EN PARTE',
-        observaciones: 'Venció el plazo legal de 7 días hábiles sin que la entidad acredite el traslado de la documentación ordenada al administrado.'
-      },
-      {
-        id: '3',
-        expedienteTTAIP: '00085-2026-JUS/TTAIP',
-        expedienteSAIP: 'SAIP-2026-00002',
-        entidad: 'Superintendencia Nacional de Salud - SUSALUD',
-        fechaResolucion: '10/08/2026',
-        fechaLimite: '21/08/2026',
-        fechaCumplimiento: '19/08/2026',
-        estado: 'cumplido',
-        resultado: 'FUNDADA',
-        observaciones: 'La entidad remitió con Oficio N.° 0422-2026-SUSALUD la constancia de notificación y acuse de recepción firmada por el recurrente.'
-      },
-      {
-        id: '4',
-        expedienteTTAIP: '00072-2026-JUS/TTAIP',
-        expedienteSAIP: 'SAIP-2026-00001',
-        entidad: 'Seguro Social de Salud - EsSalud',
-        fechaResolucion: '02/08/2026',
-        fechaLimite: '13/08/2026',
-        estado: 'reiterado',
-        resultado: 'FUNDADA',
-        observaciones: 'Se emitió cédula de reiteración con apercibimiento de inicio de procedimiento disciplinario sancionador al funcionario responsable.'
-      }
-    ];
-
-    this.items.set(demoItems);
-    this.selId.set(demoItems[0].id);
+  private mapear(registro: CumplimientoResolucionTtaip, apelacion: Apelacion, expedienteId: number): CumplimientoItem {
+    if (!registro.id || registro.expedienteTtaipId !== expedienteId || registro.apelacionId !== apelacion.id)
+      throw new Error('Identificación del recurso incompleta o inconsistente');
+    const estados: Record<string, EstadoCumplimiento> = { PENDIENTE: 'pendiente', CUMPLIDO: 'cumplido',
+      CUMPLIDO_PARCIAL: 'cumplido_parcial', VENCIDO: 'vencido', OBSERVADO: 'observado', CERRADO: 'cerrado' };
+    const estado = estados[registro.estadoCumplimiento ?? ''] ?? 'incompleto';
+    if (estado === 'incompleto' || !registro.entidadNombre || !registro.numeroExpediente || !registro.resolucionId)
+      this.informacionIncompleta.set(true);
+    const resolucion = apelacion.expedienteTtaip?.resoluciones?.find(r => r.id === registro.resolucionId);
+    return { id: String(registro.id), expedienteTTAIP: registro.numeroExpediente ?? 'Número no informado',
+      expedienteSAIP: apelacion.solicitudExpediente, entidad: registro.entidadNombre ?? 'Entidad no informada',
+      fechaResolucion: resolucion?.fechaResolucion, fechaLimite: registro.fechaLimiteCumplimiento,
+      fechaCumplimiento: registro.fechaCumplimiento, estado, resultado: registro.decisionResolucion,
+      observaciones: registro.observacion, apelacionId: apelacion.id, registro };
   }
 
-  private calcularFechaLimite7Dias(fechaBaseIso?: string | null): string {
-    const base = fechaBaseIso ? new Date(fechaBaseIso) : new Date();
-    let added = 0;
-    const cur = new Date(base);
-    while (added < 7) {
-      cur.setDate(cur.getDate() + 1);
-      const dow = cur.getDay();
-      if (dow !== 0 && dow !== 6) added++;
-    }
-    return cur.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  private vigente(generacion: number, token: string | null): boolean {
+    return generacion === this.generacion && token === this.authService.getToken();
+  }
+  private esTribunal(): boolean {
+    return ['TTAIP', 'ADMINISTRADOR'].includes(this.authService.getTipoUsuario() ?? '');
+  }
+  private fallarConsulta(fallo: ReturnType<typeof falloConsulta>): void {
+    this.items.set([]);
+    this.selId.set(null);
+    this.cargando.set(false);
+    this.estadoConsulta.set(fallo.estado);
+    this.mensajeConsulta.set(fallo.mensaje);
+    this.reintentable.set(fallo.reintentable);
   }
 
   seleccionarItem(id: string): void {
+    if (this.selId() === id) return;
+    ++this.generacion;
+    this.operacion?.unsubscribe();
+    if (this.enviando()) this.requiereVerificacion.set(true);
+    this.enviando.set(false);
     this.selId.set(id);
     this.observacionesInput.set('');
+    this.mensajeAccion.set('');
+    this.toastMensaje.set(null);
   }
 
-  actualizarEstado(nuevoEstado: EstadoCumplimiento): void {
+  motivoNoDisponible(estado: EstadoCumplimiento): string | null {
+    if (estado === 'cumplido') return 'El cumplimiento lo comunica la entidad con evidencia; el Tribunal no puede imponerlo.';
+    if (estado === 'reiterado') return 'No hay un comando de reiteración disponible. La emisión documental está pendiente.';
     const actual = this.sel();
-    if (!actual) return;
-
-    const obs = this.observacionesInput().trim();
-    const hoyStr = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-    this.items.update(list =>
-      list.map(item => {
-        if (item.id === actual.id) {
-          return {
-            ...item,
-            estado: nuevoEstado,
-            fechaCumplimiento: nuevoEstado === 'cumplido' ? hoyStr : item.fechaCumplimiento,
-            observaciones: obs
-              ? `${item.observaciones ? item.observaciones + '\n\n' : ''}[${hoyStr} - ${this.estadoLabels[nuevoEstado]}]: ${obs}`
-              : item.observaciones
-          };
-        }
-        return item;
-      })
-    );
-
-    this.observacionesInput.set('');
-    this.mostrarToast(`Seguimiento actualizado: ${this.estadoLabels[nuevoEstado]}`);
+    if (!actual || !this.esTribunal() || !this.authService.getToken()) return 'La operación requiere una sesión TTAIP o administrador.';
+    if (this.requiereVerificacion()) return 'Recargue los seguimientos para comprobar el resultado anterior antes de operar.';
+    if (this.enviando()) return 'Hay una operación en curso.';
+    if (actual.estado === 'cerrado') return 'El seguimiento ya está cerrado.';
+    if (actual.estado === 'incompleto' || !actual.registro.resolucionId) return 'Faltan datos del seguimiento para realizar esta operación.';
+    if (estado !== 'observado' && estado !== 'cerrado') return 'No hay un comando disponible para este estado.';
+    return null;
   }
 
-  mostrarToast(msg: string): void {
-    this.toastMensaje.set(msg);
-    setTimeout(() => {
-      this.toastMensaje.set(null);
-    }, 3500);
+  actualizarEstado(estado: EstadoCumplimiento): void {
+    if (this.motivoNoDisponible(estado)) return;
+    const actual = this.sel()!;
+    const observacion = this.observacionesInput().trim();
+    if ((estado === 'observado' && !observacion) || observacion.length > 2000) {
+      this.mensajeAccion.set('Para observar, escriba un motivo. El texto no puede exceder 2000 caracteres.');
+      return;
+    }
+    const { id, expedienteTtaipId } = actual.registro;
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    this.enviando.set(true);
+    this.toastMensaje.set(null);
+    this.mensajeAccion.set('');
+    let comandoConfirmado = false;
+    const comando = estado === 'observado'
+      ? this.ttaipService.observarCumplimiento(expedienteTtaipId!, id!, { observacion })
+      : this.ttaipService.cerrarCumplimiento(expedienteTtaipId!, id!, { observacion: observacion || null });
+    this.operacion = comando.pipe(switchMap(respuesta => {
+      comandoConfirmado = true;
+      if (respuesta.id !== id || respuesta.expedienteTtaipId !== expedienteTtaipId ||
+          respuesta.estadoCumplimiento !== estado.toUpperCase()) throw new Error('Respuesta sin confirmar');
+      return this.ttaipService.listarCumplimientos(expedienteTtaipId!).pipe(map(registros => {
+        const recuperado = registros.find(r => r.id === id);
+        if (!recuperado || recuperado.expedienteTtaipId !== expedienteTtaipId ||
+            recuperado.apelacionId !== actual.apelacionId || recuperado.estadoCumplimiento !== respuesta.estadoCumplimiento ||
+            recuperado.observacion !== respuesta.observacion) throw new Error('Resultado sin comprobar');
+        return recuperado;
+      }));
+    }), timeout(15_000)).subscribe({
+      next: recuperado => {
+        if (!this.vigente(generacion, token) || this.selId() !== actual.id) return;
+        this.items.update(items => items.map(item => item.id === actual.id ? { ...item, registro: recuperado,
+          estado, fechaLimite: recuperado.fechaLimiteCumplimiento, fechaCumplimiento: recuperado.fechaCumplimiento,
+          observaciones: recuperado.observacion } : item));
+        this.enviando.set(false);
+        this.observacionesInput.set('');
+        this.mostrarToast('Actuación registrada y recuperada del servidor.');
+      },
+      error: error => {
+        if (!this.vigente(generacion, token) || this.selId() !== actual.id) return;
+        this.enviando.set(false);
+        const fallo = falloConsulta(error, 'la actuación de cumplimiento');
+        const incierto = comandoConfirmado || !['validacion', 'autenticacion', 'autorizacion', 'inexistente'].includes(fallo.estado);
+        this.requiereVerificacion.set(incierto);
+        this.mensajeAccion.set(incierto
+          ? 'No se pudo comprobar el resultado. Recargue los seguimientos antes de repetir la operación.'
+          : fallo.mensaje.replace('consultar', 'registrar'));
+      }
+    });
+  }
+
+  private mostrarToast(mensaje: string): void {
+    this.toastMensaje.set(mensaje);
+    clearTimeout(this.temporizador);
+    this.temporizador = setTimeout(() => this.toastMensaje.set(null), 3500);
   }
 
   // Token styling para StatusBadge (idéntico a StatusBadge.tsx de design-reference)

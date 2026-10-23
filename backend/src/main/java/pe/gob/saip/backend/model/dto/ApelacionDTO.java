@@ -15,6 +15,7 @@ public record ApelacionDTO(
     String estado,
     String resultado,
     String fechaApelacion,
+    @Schema(description="Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos", deprecated=true)
     String fechaSubsanacion,
     Integer diasSubsanacion,
     @Schema(description = "Calificación de primera instancia", example = "ADMITIDO", implementation = Apelacion.Calificacion.class, allowableValues = {"ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE", "ADMITIDO"})
@@ -60,7 +61,9 @@ public record ApelacionDTO(
     List<DocumentoDTO> documentos,
     @Schema(description = "Metadatos documentales seguros asociados directamente a la apelación")
     List<DocumentoMetadataDTO> documentosMetadata,
-    Boolean resuelta
+    Boolean resuelta,
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    PlazoSubsanacionTtaipDTO plazoSubsanacion
 ) {
     public static ApelacionDTO from(Apelacion a) {
         return new ApelacionDTO(
@@ -104,7 +107,8 @@ public record ApelacionDTO(
             a.getResoluciones() != null ? a.getResoluciones().stream().map(ResolucionDTO::from).toList() : List.of(),
             DocumentoDTO.fromActive(a.getDocumentos()),
             DocumentoMetadataDTO.fromActive(a.getDocumentos()),
-            a.isResuelta()
+            a.isResuelta(),
+            PlazoSubsanacionTtaipDTO.from(a)
         );
     }
 }

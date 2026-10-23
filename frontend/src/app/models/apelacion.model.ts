@@ -50,7 +50,8 @@ export interface ElevacionApelacionTtaip {
     trazabilidad?: string | null;
 }
 
-export type Apelacion = Required<ApelacionDTO> & {
+export type Apelacion = Required<Omit<ApelacionDTO, 'plazoSubsanacion'>> & {
+    plazoSubsanacion?: ApelacionDTO['plazoSubsanacion'];
     tipoOrigen?: TipoOrigenApelacion | string | null;
     entidadExternaNombre?: string | null;
     entidadExternaRuc?: string | null;

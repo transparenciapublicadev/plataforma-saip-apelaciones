@@ -170,11 +170,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/entidades")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/entidades")).hasRole("ADMINISTRADOR")
 
                         .requestMatchers(HttpMethod.GET, "/api/estadisticas/entidad/*").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/estadisticas")).hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(resourceMatchers("/api/reportes")).hasAnyRole("TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, resourceMatchers("/api/configuracion")).authenticated()
+                        .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/configuracion")).hasRole("ADMINISTRADOR")
 
                         .anyRequest().authenticated()
                 )

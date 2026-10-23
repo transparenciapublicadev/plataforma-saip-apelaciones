@@ -48,7 +48,7 @@
             <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
             <div class="flex items-center gap-1 text-xs mt-0.5" style="color: var(--muted-foreground)">
               <svg lucideTrendingUp class="w-3 h-3"></svg>
-              Calculado con datos actuales del backend
+              {{ respondidas() }} de {{ cerradas() }} atendidas a tiempo
             </div>
           </div>
         </div>
@@ -65,46 +65,6 @@
         <button (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
-      @if (elevacionesPendientes().length > 0) {
-        <section class="form-shell mb-6" data-reveal>
-          <div class="form-section-header flex items-center justify-between gap-4">
-            <div>
-              <span class="eyebrow">Elevación de apelaciones · 2 días hábiles</span>
-              <h2 class="form-section-title mt-1">Recursos pendientes de remisión al TTAIP</h2>
-            </div>
-            <span class="code-chip">{{ elevacionesPendientes().length }}</span>
-          </div>
-          <div class="p-4 space-y-3">
-            @for (elevacion of elevacionesPendientes(); track elevacion.id) {
-              <article class="rounded-lg p-4 grid grid-cols-1 lg:grid-cols-[1fr_260px_auto] gap-3 items-center" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="code-chip">{{ elevacion.expedienteReservado }}</span>
-                    <span class="badge badge-warning">{{ elevacion.estadoElevacion.replaceAll('_', ' ') }}</span>
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-1.5">
-                    Cargo: <span class="font-mono">{{ elevacion.referenciaCargoPresentacion }}</span> · límite:
-                    <span class="font-mono font-semibold">{{ elevacion.fechaLimiteElevacion | date:'dd/MM/yyyy' }}</span>
-                  </p>
-                </div>
-                <input
-                  class="field-input !py-2 !text-sm"
-                  [(ngModel)]="referenciasElevacion[elevacion.apelacionId]"
-                  [name]="'referenciaElevacion-' + elevacion.apelacionId"
-                  placeholder="Referencia del expediente elevado" />
-                <button
-                  type="button"
-                  class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap"
-                  [disabled]="elevacionEnProceso() === elevacion.apelacionId"
-                  (click)="elevarApelacion(elevacion)">
-                  {{ elevacionEnProceso() === elevacion.apelacionId ? 'Elevando...' : 'Elevar al TTAIP' }}
-                </button>
-              </article>
-            }
-          </div>
-        </section>
-      }
-
       @if (counts().san > 0) {
         <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
@@ -174,7 +134,7 @@
       >
         <div class="lg:col-span-8">
           <div class="form-shell" data-tour="e-cola" data-motion-item>
-            <div class="form-section-header flex items-center gap-3">
+            <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="bucketActivoMeta().bg" [style.border]="'1px solid ' + bucketActivoMeta().color">
                 @switch (bucketActivoMeta().icon) {
                   @case ('alert') { <svg lucideAlertTriangle class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
@@ -192,20 +152,20 @@
                 </div>
               </div>
 
-              <div class="relative max-w-[260px] flex-1 hidden md:block">
+              <div class="relative w-full md:w-[300px] md:flex-shrink-0">
                 <svg lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
-                <input class="field-input has-icon-left-sm !pl-9 !py-2 !text-sm" placeholder="Buscar..." [(ngModel)]="busquedaModel" />
+                <input class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar administrado, asunto o N°…" [(ngModel)]="busquedaModel" />
               </div>
             </div>
 
-            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar">
+            <div class="p-3 md:p-4 space-y-2">
               @if (filtradas().length === 0) {
                 <div class="text-center py-12">
                   <div class="w-12 h-12 mx-auto mb-3 rounded-lg flex items-center justify-center" style="background: var(--brand-subtle)">
                     <svg lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
                   </div>
-                  <p class="text-sm text-foreground/85 font-medium">Sin solicitudes en esta bandeja</p>
-                  <p class="text-xs text-muted-foreground mt-1">Disfrute la calma o explore otra cola arriba.</p>
+                  <p class="text-sm text-foreground/85 font-medium">{{ busqueda().trim() ? 'Sin resultados para su búsqueda' : 'Sin solicitudes en esta bandeja' }}</p>
+                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Disfrute la calma o explore otra cola arriba.' }}</p>
                 </div>
               } @else {
                 @for (item of filtradasVisibles(); track item.solicitud.id) {
@@ -226,32 +186,24 @@
                       </div>
                     </div>
 
-                    @if (item.bucket !== 'respondidas') {
-                      <div class="hidden md:flex flex-col items-end gap-1.5 min-w-[110px]">
-                        <div class="text-right">
-                          <div class="font-display" [style.color]="getDiasColor(item.bucket)" style="font-size: 22px; line-height: 1; letter-spacing: -0.02em">
-                            {{ getDiasValor(item) }}
-                          </div>
-                          <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">
-                            {{ item.bucket === 'san' ? 'en SAN' : 'restantes' }}
-                          </div>
-                        </div>
-                      </div>
-                    }
-
-                    <div class="flex items-center gap-1.5">
-                      @if (canResponder(item.solicitud)) {
-                        <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                          <svg lucideSend class="w-3.5 h-3.5"></svg>
-                          Responder
-                        </a>
-                      } @else {
-                        <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
-                          Ver
-                          <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
-                        </a>
-                      }
+                    <!-- Columna derecha uniforme (etiqueta + valor) -->
+                    <div class="hidden md:flex flex-col items-end justify-center text-right w-[132px] flex-shrink-0">
+                      <span class="text-[10px] tracking-wide uppercase text-muted-foreground truncate max-w-full">{{ getMetaLabel(item) }}</span>
+                      <span class="font-display mt-0.5 truncate max-w-full" [style.color]="getDiasColor(item.bucket)" style="font-size: 17px; line-height: 1.15; letter-spacing: -0.015em">{{ getMetaValue(item) }}</span>
                     </div>
+
+                    <!-- Acción -->
+                    @if (isItemRespondida(item) || item.solicitud.estado === 'PENDIENTE_INFORMACION') {
+                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] w-[116px] justify-center flex-shrink-0">
+                        Ver detalle
+                        <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
+                      </a>
+                    } @else {
+                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] w-[116px] justify-center flex-shrink-0">
+                        <svg lucideSend class="w-3.5 h-3.5"></svg>
+                        Responder
+                      </a>
+                    }
                   </div>
                 }
               }

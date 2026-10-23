@@ -25,6 +25,12 @@ public record ValidarNotificacionManualRequest(
 
         @Size(max = 500, message = "La referencia de evidencia no puede exceder 500 caracteres")
         @Schema(description = "Referencia documental alternativa de evidencia")
-        String referenciaEvidencia
+        String referenciaEvidencia,
+
+        @Schema(types={"string","null"}, format="date-time", description="Fecha eficaz acreditada por el sustento, distinta de la fecha de validación. Opcional: sin ella no se inicia el plazo de subsanación TTAIP.")
+        LocalDateTime fechaEficacia
 ) {
+    public ValidarNotificacionManualRequest(LocalDateTime fecha, String responsable, String observacion, String evidencia, String referencia) {
+        this(fecha, responsable, observacion, evidencia, referencia, null);
+    }
 }

@@ -86,9 +86,9 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarSolicitudInstitucionalAllowsFuncionarioFromSameEntidad() {
-        authenticate("funcionario@example.test", "ROLE_FUNCIONARIO");
+        authenticate("saip:user:v1:10", "ROLE_FUNCIONARIO");
         Entidad entidad = entidad(10L);
-        when(funcionarioRepository.findByEmail("funcionario@example.test"))
+        when(funcionarioRepository.findById(10L))
                 .thenReturn(Optional.of(funcionario(entidad)));
         when(solicitudRepository.findById(5L)).thenReturn(Optional.of(solicitud(entidad)));
 
@@ -98,8 +98,8 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarSolicitudInstitucionalRejectsFuncionarioFromOtherEntidad() {
-        authenticate("funcionario@example.test", "ROLE_FUNCIONARIO");
-        when(funcionarioRepository.findByEmail("funcionario@example.test"))
+        authenticate("saip:user:v1:10", "ROLE_FUNCIONARIO");
+        when(funcionarioRepository.findById(10L))
                 .thenReturn(Optional.of(funcionario(entidad(10L))));
         when(solicitudRepository.findById(5L)).thenReturn(Optional.of(solicitud(entidad(20L))));
 
@@ -109,7 +109,7 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarSolicitudInstitucionalAllowsAdministradorWithoutOwnershipLookup() {
-        authenticate("admin@example.test", "ROLE_ADMINISTRADOR");
+        authenticate("saip:user:v1:99", "ROLE_ADMINISTRADOR");
 
         assertThatCode(() -> service.verificarSolicitudInstitucional(5L))
                 .doesNotThrowAnyException();
@@ -118,8 +118,8 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarUsuarioActualOAdministradorRejectsDifferentCitizenProfile() {
-        authenticate("citizen@example.test", "ROLE_CIUDADANO");
-        when(usuarioRepository.findByEmail("citizen@example.test"))
+        authenticate("saip:user:v1:1", "ROLE_CIUDADANO");
+        when(usuarioRepository.findById(1L))
                 .thenReturn(Optional.of(usuario(1L)));
 
         assertThatThrownBy(() -> service.verificarUsuarioActualOAdministrador(2L))
@@ -128,8 +128,8 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarSolicitudAccesibleAllowsCitizenOwner() {
-        authenticate("citizen@example.test", "ROLE_CIUDADANO");
-        when(ciudadanoRepository.findByEmail("citizen@example.test"))
+        authenticate("saip:user:v1:1", "ROLE_CIUDADANO");
+        when(ciudadanoRepository.findById(1L))
                 .thenReturn(Optional.of(ciudadano(1L)));
         when(solicitudRepository.findById(5L))
                 .thenReturn(Optional.of(solicitud(entidad(10L), ciudadano(1L))));
@@ -140,8 +140,8 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarSolicitudAccesibleRejectsCitizenFromOtherOwner() {
-        authenticate("citizen@example.test", "ROLE_CIUDADANO");
-        when(ciudadanoRepository.findByEmail("citizen@example.test"))
+        authenticate("saip:user:v1:1", "ROLE_CIUDADANO");
+        when(ciudadanoRepository.findById(1L))
                 .thenReturn(Optional.of(ciudadano(1L)));
         when(solicitudRepository.findById(5L))
                 .thenReturn(Optional.of(solicitud(entidad(10L), ciudadano(2L))));
@@ -152,13 +152,13 @@ class AutorizacionRecursosServiceTest {
 
     @Test
     void verificarTrazabilidadEncauzamientoAccesibleAllowsOriginEntityAfterTotalRedirect() {
-        authenticate("funcionario@example.test", "ROLE_FUNCIONARIO");
+        authenticate("saip:user:v1:10", "ROLE_FUNCIONARIO");
         Entidad origen = entidad(10L);
         Entidad destino = entidad(20L);
         EncauzamientoSolicitud encauzamiento = new EncauzamientoSolicitud();
         encauzamiento.setEntidadOrigen(origen);
         encauzamiento.setEntidadDestino(destino);
-        when(funcionarioRepository.findByEmail("funcionario@example.test"))
+        when(funcionarioRepository.findById(10L))
                 .thenReturn(Optional.of(funcionario(origen)));
         when(solicitudRepository.findById(5L))
                 .thenReturn(Optional.of(solicitud(destino)));

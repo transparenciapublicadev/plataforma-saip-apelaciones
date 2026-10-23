@@ -5,9 +5,14 @@ import java.io.InputStream;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import pe.gob.saip.backend.config.StorageProperties;
@@ -41,6 +46,8 @@ import pe.gob.saip.backend.storage.StorageUploadResult;
 
 @Service
 public class DocumentoService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentoService.class);
 
     private final DocumentoRepository documentoRepository;
     private final SolicitudRepository solicitudRepository;
@@ -94,12 +101,15 @@ public class DocumentoService {
 
         StorageProvider provider = providerFor(activeProvider);
         StorageUploadResult upload;
+        AtomicBoolean cleanupAttempted;
         try (InputStream content = file.getInputStream()) {
             upload = provider.upload(new StorageUploadRequest(
                     file.getOriginalFilename(),
                     file.getContentType(),
                     file.getSize(),
                     content));
+            // Register before closing the stream: closing may also fail after a successful upload.
+            cleanupAttempted = compensarEnRollback(provider, upload.metadata().storageKey());
         } catch (IOException exception) {
             throw new StorageException(
                     StorageException.Reason.IO_ERROR,
@@ -119,10 +129,12 @@ public class DocumentoService {
         try {
             return DocumentoMetadataDTO.from(documentoRepository.save(documento));
         } catch (RuntimeException exception) {
-            try {
-                provider.delete(metadata.storageKey());
-            } catch (RuntimeException cleanupException) {
-                exception.addSuppressed(cleanupException);
+            if (cleanupAttempted.compareAndSet(false, true)) {
+                try {
+                    provider.delete(metadata.storageKey());
+                } catch (RuntimeException cleanupException) {
+                    exception.addSuppressed(cleanupException);
+                }
             }
             throw exception;
         }
@@ -184,6 +196,39 @@ public class DocumentoService {
         Documento documento = buscarActivo(documentoId);
         verificarAcceso(documento);
         return DocumentoMetadataDTO.from(documento);
+    }
+
+    /** Confirms an authorized document still exists before acknowledging a precision. */
+    @Transactional(readOnly = true)
+    public DocumentoMetadataDTO obtenerMetadataDisponible(Long documentoId) {
+        Documento documento = buscarActivo(documentoId);
+        verificarAcceso(documento);
+        if (!providerFor(documento.getStorageProvider()).exists(documento.getStorageKey())) {
+            throw new StorageException(StorageException.Reason.IO_ERROR,
+                    "No se pudo verificar el archivo recibido; vuelva a consultar la recepción");
+        }
+        return DocumentoMetadataDTO.from(documento);
+    }
+
+    private AtomicBoolean compensarEnRollback(StorageProvider provider, String storageKey) {
+        AtomicBoolean cleanupAttempted = new AtomicBoolean();
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    // Unknown outcomes must be reconciled; deleting could destroy a committed upload.
+                    if (status == STATUS_ROLLED_BACK && cleanupAttempted.compareAndSet(false, true)) {
+                        try {
+                            provider.delete(storageKey);
+                        } catch (RuntimeException exception) {
+                            LOGGER.error("No fue posible compensar un archivo tras rollback documental", exception);
+                        }
+                    }
+                }
+            });
+        }
+        return cleanupAttempted;
     }
 
     @Transactional(readOnly = true)

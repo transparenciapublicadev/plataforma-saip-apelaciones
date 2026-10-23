@@ -203,7 +203,11 @@
                   [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
                   <div class="flex items-center gap-3">
                     <span class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')">
-                      <svg lucideCheckCircle2 class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
+                      @if (option.id === 'admitido') {
+                        <svg lucideCheckCircle2 class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
+                      } @else {
+                        <svg lucideXCircle class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
+                      }
                     </span>
                     <div class="flex-1">
                       <div class="font-display text-sm font-semibold tracking-wider">{{ option.label }}</div>
@@ -225,6 +229,9 @@
                 @if (selected.id === 'improcedente') {
                   La subsanacion no cumple los requisitos legales. El proceso se archiva.
                 }
+                @if (selected.id === 'no_presentado') {
+                  El administrado no subsano dentro del plazo legal de 2 dias habiles. El recurso se tiene por no presentado y el expediente se archiva (Art. 34.3).
+                }
               </p>
             </div>
           }
@@ -243,38 +250,33 @@
             </div>
           </section>
 
-          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" (click)="togglePreview()">
+          <app-official-docs-section
+            [expediente]="ap.expediente"
+            stage="segunda"
+            [decision]="selectedDecision()"
+            [ctx]="docCtx()">
+          </app-official-docs-section>
+
+          <button type="button" class="btn-ghost-brand w-full justify-center !py-3 inline-flex items-center gap-2" (click)="togglePreview()">
             @if (showPreview()) {
-              Ocultar
+              <svg lucideEyeOff class="w-4 h-4"></svg>
+              Ocultar borrador
             } @else {
-              Previsualizar
+              <svg lucideEye class="w-4 h-4"></svg>
+              Ver borradores de resolución y cédulas
             }
-            PDF de 2da calificacion
           </button>
 
           @if (showPreview()) {
-            <div class="form-shell animate-fade-in">
-              <div class="p-7 font-serif text-sm" style="background: var(--paper)">
-                <div class="text-center mb-6">
-                  <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-3" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-                    <svg lucidePlus class="w-7 h-7 text-white"></svg>
-                  </div>
-                  <div class="font-display tracking-wide" style="font-size: 13px; letter-spacing: 0.06em;">TRIBUNAL DE TRANSPARENCIA Y ACCESO A LA INFORMACION PUBLICA</div>
-                  <div class="rule-ornament my-3"><span class="text-[10px] tracking-widest">·</span></div>
-                  <div class="font-display" style="font-size: 16px;">2DA CALIFICACION N° {{ ap.expediente }}-C2</div>
-                </div>
-
-                <div class="space-y-4 text-justify">
-                  <section><span class="eyebrow">Expediente</span><p class="font-mono mt-1">{{ ap.expediente }}</p></section>
-                  <section><span class="eyebrow">Vistos</span><p class="mt-1">La subsanacion presentada por {{ ap.ciudadanoNombre }}.</p></section>
-                  <section><span class="eyebrow">Considerandos</span><p class="mt-1 whitespace-pre-line">{{ fundamentos || '[Fundamentos de la verificacion...]' }}</p></section>
-                  <section>
-                    <span class="eyebrow">Se resuelve</span>
-                    <p class="mt-1">Declarar <span class="font-semibold">{{ getDecisionLabel(selectedDecision()) }}</span> el recurso de apelacion.</p>
-                  </section>
-                </div>
-              </div>
-            </div>
+            <app-official-preview
+              stage="segunda"
+              [decision]="selectedDecision()"
+              [vistos]="'El recurso de apelación interpuesto por ' + ap.ciudadanoNombre + ' y el escrito de subsanación presentado.'"
+              [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'"
+              [seResuelve]="'Declarar ' + getDecisionLabel(selectedDecision()) + ' el recurso de apelación interpuesto por ' + ap.ciudadanoNombre + '.'"
+              [cedulaVariant]="cedulaVariant()"
+              [ctx]="docCtx()">
+            </app-official-preview>
           }
 
           <button type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
@@ -307,7 +309,7 @@
     description="Verifique el resultado de la subsanación antes de emitir la resolución."
     [summary]="segundaConfirmSummary()"
     [warning]="segundaWarning()"
-    confirmLabel="Emitir resolución"
+    confirmLabel="Registrar calificación"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="enviarCalificacion()">
   </app-reference-confirm-modal>
@@ -316,12 +318,12 @@
     [open]="successModalAbierto()"
     variant="calificacion-2da"
     [tone]="segundaSuccessTone()"
-    eyebrow="2da calificación emitida"
+    eyebrow="2da calificación registrada"
     [title]="segundaSuccessTitle()"
-    [description]="segundaSuccessDescription()"
+    description="Actuación devuelta por el servidor. No acredita firma digital ni emisión de un archivo oficial. Consulte sus documentos y la eficacia de la notificación en el expediente."
     [expediente]="apelacion()?.expediente || ''"
-    [expedienteHint]="'2da Calificación N° ' + (apelacion()?.expediente || '—') + '-C2'"
-    [plazoDias]="segundaPlazoDias()"
+    [expedienteHint]="apelacion()?.resolucionSegundaCalificacion?.numeroResolucion || 'Sin numeración registrada'"
+    [plazoDias]="null"
     plazoTipo="hábiles"
     [plazoDescripcion]="segundaPlazoDescripcion()"
     plazoNorma="Reglamento TTAIP"

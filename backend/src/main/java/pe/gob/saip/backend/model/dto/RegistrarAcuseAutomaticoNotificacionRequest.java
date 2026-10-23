@@ -20,7 +20,7 @@ public record RegistrarAcuseAutomaticoNotificacionRequest(
         @Schema(description = "Contenido, resumen o código del acuse automático")
         String acuseAutomatico,
 
-        @Schema(description = "Fecha y hora del acuse. Si se omite, se usa la fecha actual.", example = "2026-05-25T10:15:00")
+        @Schema(types={"string","null"}, format="date-time", description = "Fecha y hora acreditada del acuse. Si se omite, se registra la fecha operativa actual, pero no se inicia el plazo de subsanación TTAIP.", example = "2026-05-25T10:15:00")
         LocalDateTime fechaAcuse,
 
         @Schema(description = "Resultado funcional de la notificación")

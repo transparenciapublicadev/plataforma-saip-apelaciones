@@ -1,6 +1,11 @@
 package pe.gob.saip.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -231,42 +236,11 @@ public class SolicitudRestController {
         return ResponseEntity.status(201).body(SolicitudDTO.from(solicitud));
     }
 
-    @Operation(summary = "Actualizar solicitud SAIP")
+    @Operation(summary = "Actualizar solicitud SAIP", description = "Edita asunto, descripción, tipo, consentimiento, canal y prioridad. Ignora estado, fechas y actuaciones; estas requieren su comando específico.")
     @PutMapping("/{id}")
     public ResponseEntity<SolicitudDTO> actualizar(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody SolicitudDTO solicitudDTO) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-
-        if (solicitudDTO.asunto() != null) {
-            solicitud.setAsunto(solicitudDTO.asunto());
-        }
-        if (solicitudDTO.descripcion() != null) {
-            solicitud.setDescripcion(solicitudDTO.descripcion());
-        }
-        if (solicitudDTO.tipoInformacion() != null) {
-            solicitud.setTipoInformacion(solicitudDTO.tipoInformacion());
-        }
-        if (solicitudDTO.consentimientoDatosPersonales() != null) {
-            if (!Boolean.TRUE.equals(solicitudDTO.consentimientoDatosPersonales())) {
-                throw new IllegalArgumentException("El consentimiento de tratamiento de datos personales no puede retirarse desde este endpoint");
-            }
-            solicitud.setConsentimientoDatosPersonales(true);
-        }
-        if (solicitudDTO.canalNotificacion() != null) {
-            solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
-        }
-        if (solicitudDTO.prioridad() != null) {
-            try {
-                solicitud.setPrioridad(Solicitud.Prioridad.valueOf(solicitudDTO.prioridad().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(
-                        "Prioridad no válida: " + solicitudDTO.prioridad()
-                        + ". Valores permitidos: BAJA, NORMAL, MEDIA, ALTA, URGENTE");
-            }
-        }
-
-        solicitud = solicitudService.save(solicitud);
+        Solicitud solicitud = solicitudService.actualizarDatos(id, solicitudDTO);
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }
@@ -297,8 +271,14 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Subsanar observación SAIP",
-            description = "Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión."
+            description = "Registra comentario textual del ciudadano sobre una observación pendiente del expediente, dentro de plazo y sin respuesta. Los campos documentales no vacíos se rechazan (400); para archivos use la recepción multipart idempotente de precisiones."
     )
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=ObservacionSolicitudDTO.class))),
+        @ApiResponse(responseCode="400", description="Metadatos documentales sin bytes o comentario ausente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="409", description="Actuación incompatible con el estado actual", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="422", description="Observación no pendiente o plazo vencido", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/{id}/observaciones/{observacionId}/subsanar")
     public ResponseEntity<ObservacionSolicitudDTO> subsanarSolicitud(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -310,7 +290,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Procesar observaciones SAIP vencidas",
-            description = "Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA."
+            description = "Revalida observaciones pendientes vencidas bajo bloqueo. Solo cierra como CONCLUIDA solicitudes PENDIENTE_INFORMACION sin respuesta; no sobrescribe recepciones o estados posteriores."
     )
     @PostMapping("/observaciones/vencidas/procesar")
     public ResponseEntity<List<ObservacionSolicitudDTO>> procesarObservacionesVencidas() {
@@ -442,6 +422,11 @@ public class SolicitudRestController {
     }
 
     @Operation(summary = "Actualizar pago o recojo de liquidación SAIP")
+
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=LiquidacionCostoSolicitudDTO.class))),
+        @ApiResponse(responseCode="409", description="Solicitud incompatible, ya respondida o con observación pendiente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PatchMapping("/{id}/liquidaciones/{liquidacionId}")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> actualizarLiquidacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -479,21 +464,16 @@ public class SolicitudRestController {
         }
     }
 
-    @Operation(summary = "Cambiar estado de solicitud")
+    @Operation(summary = "Cambiar estado de solicitud", description = "Solo permite RECEPCIONADA a EN_REVISION sin respuesta ni observación pendiente, o consultar el mismo estado sin nueva actuación. Los demás cambios requieren su comando específico (409).")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=SolicitudDTO.class))),
+        @ApiResponse(responseCode="409", description="La transición exige una actuación o es incompatible con el expediente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="422", description="Valor de estado ausente o no reconocido", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PatchMapping("/{id}/estado")
     public ResponseEntity<SolicitudDTO> cambiarEstado(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody Map<String, String> body) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-
-        String nuevoEstado = body.get("estado");
-        try {
-            solicitud.setEstado(Solicitud.EstadoSolicitud.valueOf(nuevoEstado.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Estado no válido: " + nuevoEstado);
-        }
-
-        solicitud = solicitudService.save(solicitud);
+        Solicitud solicitud = solicitudService.cambiarEstado(id, body.get("estado"));
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }

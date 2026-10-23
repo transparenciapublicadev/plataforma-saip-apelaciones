@@ -1,6 +1,8 @@
 package pe.gob.saip.backend.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -68,8 +70,15 @@ class SolicitudServiceTest {
     @Mock
     PlazoCalculadorService plazoCalculadorService;
 
+    @Mock AutorizacionRecursosService autorizacion;
+    @Mock EntityManager entityManager;
     @InjectMocks
     SolicitudService solicitudService;
+
+    @BeforeEach void bloqueos() {
+        lenient().when(solicitudRepository.findByIdForUpdate(anyLong()))
+            .thenAnswer(inv -> solicitudRepository.findById(inv.getArgument(0)));
+    }
 
     private Solicitud crearSolicitud(Long id, String expediente, Solicitud.EstadoSolicitud estado) {
         Solicitud s = new Solicitud();
@@ -77,6 +86,7 @@ class SolicitudServiceTest {
         s.setExpediente(expediente);
         s.setAsunto("Solicitud de prueba");
         s.setDescripcion("Descripción de prueba");
+        Ciudadano ciudadano = new Ciudadano(); ciudadano.setIdUsuario(9L); s.setCiudadano(ciudadano);
         s.setEstado(estado);
         s.setFechaPresentacion(LocalDateTime.now());
         s.setFechaLimite(LocalDate.now().plusDays(10));
@@ -239,6 +249,8 @@ class SolicitudServiceTest {
     @Test
     void detectarSilencioAdministrativo_debeMarcarComoVencidas() {
         var solicitud = crearSolicitud(1L, "SAIP-2025-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaLimite(LocalDate.now().minusDays(1));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(solicitudRepository.findVencidas(any(LocalDate.class), anyList())).thenReturn(List.of(solicitud));
         when(solicitudRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -301,7 +313,7 @@ class SolicitudServiceTest {
         observacion.setTrazabilidad("Observación registrada");
 
         when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
-        when(observacionRepository.findById(20L)).thenReturn(Optional.of(observacion));
+        when(observacionRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(observacion));
         when(observacionRepository.save(observacion)).thenReturn(observacion);
 
         ObservacionSolicitud resultado = solicitudService.subsanarSolicitud(
@@ -325,6 +337,8 @@ class SolicitudServiceTest {
         observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
         observacion.setFechaLimiteSubsanacion(LocalDate.now().minusDays(1));
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(observacionRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(observacion));
         when(observacionRepository.findByEstadoAndFechaLimiteSubsanacionBefore(
                 eq(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION),
                 any(LocalDate.class)))
@@ -679,6 +693,7 @@ class SolicitudServiceTest {
         liquidacion.setMonto(BigDecimal.ONE);
         liquidacion.setTrazabilidad("Liquidación notificada");
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(liquidacionRepository.findById(70L)).thenReturn(Optional.of(liquidacion));
         when(liquidacionRepository.save(liquidacion)).thenReturn(liquidacion);
 
@@ -704,6 +719,8 @@ class SolicitudServiceTest {
         liquidacion.setFechaLimiteRecojo(LocalDate.now().minusDays(1));
         liquidacion.setTrazabilidad("Liquidación notificada");
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(liquidacion.getId())).thenReturn(Optional.of(liquidacion));
         when(liquidacionRepository.findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(anyList(), any(LocalDate.class)))
                 .thenReturn(List.of(liquidacion));
         when(liquidacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
@@ -730,7 +747,7 @@ class SolicitudServiceTest {
         entrega.setFechaProgramada(LocalDate.now().plusDays(5));
         entrega.setEstado(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
 
-        when(solicitudRepository.existsById(1L)).thenReturn(true);
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(ampliacionRepository.findById(50L)).thenReturn(Optional.of(ampliacion));
         when(cronogramaRepository.findById(80L)).thenReturn(Optional.of(entrega));
         when(cronogramaRepository.save(entrega)).thenReturn(entrega);

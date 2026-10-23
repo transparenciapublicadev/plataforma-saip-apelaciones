@@ -17,6 +17,10 @@ import {
   ReferenceSuccessTone
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
+import { OfficialDocsSectionComponent } from './shared/official-docs-section.component';
+import { OfficialPreviewComponent } from './shared/official-preview.component';
+import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
+import { LucideEye, LucideEyeOff, LucideTrash2, LucidePlus } from '@lucide/angular';
 
 type CalificacionDecision = 'admisible' | 'inadmisible' | 'improcedente';
 type CalificacionTab = 'apelacion' | 'adjuntos';
@@ -30,7 +34,19 @@ interface CalificacionOption {
 
 @Component({
   selector: 'app-ttaip-calificar',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    ReferenceConfirmModalComponent,
+    ReferenceSuccessModalComponent,
+    OfficialDocsSectionComponent,
+    OfficialPreviewComponent,
+    LucideEye,
+    LucideEyeOff,
+    LucideTrash2,
+    LucidePlus,
+  ],
   templateUrl: './ttaip-calificar.component.html',
   styleUrl: './ttaip-calificar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -57,7 +73,24 @@ export class TtaipCalificarComponent implements OnInit {
 
   fundamentos = '';
   observaciones = '';
+  observacionesList = signal<string[]>(['']);
   diasSubsanacion = 2;
+
+  readonly docCtx = computed<Partial<DocContext>>(() => {
+    const ap = this.apelacion();
+    return {
+      expediente: ap?.expediente || '',
+      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
+      entidad: ap?.entidadNombre || 'No registrada',
+      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
+      direccionEntidad: '—',
+      sumilla: ap?.solicitudAsunto || (ap as any)?.resumenSolicitudOriginal || (ap as any)?.fundamentos || 'No registrada',
+    };
+  });
+
+  readonly cedulaVariant = computed<CedulaVariant>(() => {
+    return cedulaVariantForStage('primera', this.selectedDecision() || undefined);
+  });
 
   readonly tabs: ReadonlyArray<{ id: CalificacionTab; label: string }> = [
     { id: 'apelacion', label: 'Apelacion' },
@@ -90,21 +123,34 @@ export class TtaipCalificarComponent implements OnInit {
     return this.options.find((option) => option.id === current);
   });
 
+  setObs(index: number, val: string): void {
+    this.observacionesList.update((list) => list.map((item, i) => (i === index ? val : item)));
+  }
+
+  addObs(): void {
+    this.observacionesList.update((list) => [...list, '']);
+  }
+
+  removeObs(index: number): void {
+    this.observacionesList.update((list) => (list.length <= 1 ? list : list.filter((_, i) => i !== index)));
+  }
+
   canSubmit(): boolean {
     if (!this.puedeCalificar()) {
       return false;
     }
 
     const decision = this.selectedDecision();
-    if (!decision || !this.fundamentos.trim()) {
+    if (!decision) {
       return false;
     }
 
     if (decision === 'inadmisible') {
-      return this.observaciones.trim().length > 0;
+      const obsLimpias = this.observacionesList().map((o) => o.trim()).filter(Boolean);
+      return obsLimpias.length > 0;
     }
 
-    return true;
+    return this.fundamentos.trim().length > 0;
   }
 
   ngOnInit(): void {
@@ -201,9 +247,11 @@ export class TtaipCalificarComponent implements OnInit {
     }
 
     if (decision === 'inadmisible') {
+      const obsLimpias = this.observacionesList().map((o) => o.trim()).filter(Boolean);
+      const valorObs = obsLimpias.join('\n');
       this.ttaipService.requerirSubsanacion(currentAppeal.id, {
-        fundamentos: this.fundamentos.trim(),
-        observaciones: this.observaciones.trim(),
+        fundamentos: this.fundamentos.trim() || valorObs,
+        observaciones: valorObs,
         diasSubsanacion: this.diasSubsanacion
       }).subscribe({
         next: (updated) => this.handleSuccess('Apelacion declarada INADMISIBLE.', updated),
@@ -221,10 +269,16 @@ export class TtaipCalificarComponent implements OnInit {
   }
 
   private handleSuccess(message: string, updated?: Apelacion): void {
-    const nextAppeal = updated ?? this.apelacion();
-    if (nextAppeal) {
-      this.apelacion.set(nextAppeal);
+    const current = this.apelacion();
+    if (!updated?.id || updated.id !== current?.id || updated.expediente !== current?.expediente) {
+      this.loading.set(false);
+      this.successModalAbierto.set(false);
+      this.confirmModalAbierto.set(false);
+      this.error.set('No se recibió una confirmación verificable del recurso; consulte el expediente antes de repetir la operación.');
+      return;
     }
+    const nextAppeal = updated;
+    this.apelacion.set(nextAppeal);
 
     this.loading.set(false);
     this.mensaje.set(message);
@@ -388,13 +442,14 @@ export class TtaipCalificarComponent implements OnInit {
       return false;
     }
 
-    if (!this.fundamentos.trim()) {
+    if (decision === 'inadmisible') {
+      const obsLimpias = this.observacionesList().map((o) => o.trim()).filter(Boolean);
+      if (obsLimpias.length === 0) {
+        this.error.set('Debe ingresar al menos una observación para subsanar.');
+        return false;
+      }
+    } else if (!this.fundamentos.trim()) {
       this.error.set('Los fundamentos son obligatorios.');
-      return false;
-    }
-
-    if (decision === 'inadmisible' && !this.observaciones.trim()) {
-      this.error.set('Las observaciones son obligatorias para una decision inadmisible.');
       return false;
     }
 

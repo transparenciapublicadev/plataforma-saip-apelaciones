@@ -118,4 +118,29 @@ describe('TtaipDashboardComponent stage selection', () => {
 
     expect(component.activeStage().key).toBe('calificacion1');
   });
+  it('mantiene pendiente el reloj sin usar la creación ni marcar urgencia', () => {
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+      { provide: TtaipService, useValue: mockTtaipService }, { provide: AuthService, useValue: mockAuthService }] });
+    const fixture = TestBed.createComponent(TtaipDashboardComponent); const c = fixture.componentInstance;
+    const ap = createMockApelacion(3, 'EN_SUBSANACION'); ap.fechaSubsanacion = '2000-01-01'; ap.diasSubsanacion = 2;
+    ap.plazoSubsanacion = { requerimientoId: 71, estado: 'PENDIENTE_INICIO', diasHabiles: 2 };
+    c.apelaciones.set([ap]); c.stageKey.set('subsanacion'); c.loading.set(false);
+    const item = c.queueItems()[0];
+    expect(c.getDiasValor(item)).toBe('Pendiente'); expect(item.prioridad).toBe('baja');
+    expect(c.getProgressWidth(item)).toBe(0);
+  });
+
+  it('muestra los días hábiles recibidos del backend para el requerimiento eficaz', () => {
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+      { provide: TtaipService, useValue: mockTtaipService }, { provide: AuthService, useValue: mockAuthService }] });
+    const c = TestBed.createComponent(TtaipDashboardComponent).componentInstance;
+    const ap = createMockApelacion(3, 'EN_SUBSANACION'); ap.fechaSubsanacion = '2000-01-01';
+    ap.plazoSubsanacion = { requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2, diasHabilesRestantes: 2,
+      fechaEficacia: '2026-10-22T09:00:00', fechaLimite: '2026-10-26' };
+    c.apelaciones.set([ap]); expect(c.getDiasValor(c.queueItems()[0])).toBe('2d');
+    expect(c.getProgressWidth(c.queueItems()[0])).toBe(0);
+    c.apelaciones.set([{ ...ap, plazoSubsanacion: { ...ap.plazoSubsanacion!, estado: 'VENCIDO', diasHabilesRestantes: 0 } }]);
+    expect(c.getDiasValor(c.queueItems()[0])).toBe('Vencido');
+  });
+
 });

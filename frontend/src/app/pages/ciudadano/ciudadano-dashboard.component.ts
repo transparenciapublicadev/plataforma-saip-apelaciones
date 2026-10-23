@@ -45,7 +45,8 @@ interface PlazoEntidadView {
 }
 
 interface SubsanacionView {
-  dias: number;
+  dias: number | null;
+  pendiente: boolean;
   vencido: boolean;
   observaciones: string;
   expediente?: string;
@@ -302,8 +303,9 @@ export class CiudadanoDashboardComponent implements OnInit {
 
     const rawDias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
     return {
-      dias: Math.max(rawDias, 0),
-      vencido: rawDias < 0,
+      dias: rawDias === null ? null : Math.max(rawDias, 0),
+      pendiente: rawDias === null,
+      vencido: solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO',
       observaciones: solicitud.apelacion?.resultado || 'observaciones',
       expediente: solicitud.apelacion?.expediente
     };
@@ -739,7 +741,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   esSubsanacionVencida(solicitud: Solicitud | null): boolean {
     if (!solicitud) return false;
     if ((solicitud.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION') {
-      return this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud) < 0;
+      return solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO';
     }
     return false;
   }
@@ -855,7 +857,10 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
     // Subsanación ante el Tribunal (2ª instancia)
     if (estadoApelacion === 'EN_SUBSANACION' && s.apelacion) {
-      const dias = Math.max(0, this.calcularDiasRestantesSubsanacionDesdeSolicitud(s));
+      if (s.apelacion.plazoSubsanacion?.estado === 'VENCIDO') return { value: 'Vencido', unit: 'plazo de subsanación', tone: 'var(--destructive)' };
+      const restantes = this.calcularDiasRestantesSubsanacionDesdeSolicitud(s);
+      if (restantes === null) return { value: 'Pendiente', unit: 'notificación eficaz', tone: 'var(--muted-foreground)' };
+      const dias = Math.max(0, restantes);
       return { value: dias, unit: dias === 1 ? 'día háb. para subsanar' : 'días háb. para subsanar', tone: 'var(--brand-700)' };
     }
     // Recojo de información física
@@ -1015,16 +1020,16 @@ export class CiudadanoDashboardComponent implements OnInit {
 
     if (estadoApelacion === 'EN_SUBSANACION' && solicitud.apelacion?.expediente) {
       const diasSubsanacion = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
-      if (diasSubsanacion <= 0) {
+      if (solicitud.apelacion.plazoSubsanacion?.estado === 'VENCIDO') {
         // Expired subsanación cannot be acted upon today -> do not display in "Lo que debe hacer hoy"
         return null;
       }
       return {
-        eyebrow: 'Tarea urgente - vence pronto',
+        eyebrow: diasSubsanacion === null ? 'Plazo pendiente de inicio' : 'Tarea urgente - vence pronto',
         titulo: 'Complete los documentos del Tribunal',
         detalle: 'Su apelación requiere subsanación. Si no corrige las observaciones dentro del plazo, su recurso quedará sin efecto.',
-        metricValue: `${diasSubsanacion}`,
-        metricUnit: 'días hábiles',
+        metricValue: diasSubsanacion === null ? 'Pendiente' : `${diasSubsanacion}`,
+        metricUnit: diasSubsanacion === null ? 'notificación eficaz' : 'días hábiles',
         ctaLabel: 'Completar subsanación',
         route: ['/ciudadano/subsanacion', solicitud.apelacion.expediente],
         icon: 'alert',
@@ -1207,7 +1212,8 @@ export class CiudadanoDashboardComponent implements OnInit {
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
     if (estadoApelacion === 'EN_SUBSANACION') {
-      return 100 + Math.max(0, 5 - this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud));
+      const dias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
+      return dias === null ? 85 : 100 + Math.max(0, 5 - dias);
     }
 
     if (this.estadosApelacionActivos.has(estadoApelacion)) return 85;
@@ -1257,16 +1263,9 @@ export class CiudadanoDashboardComponent implements OnInit {
     return Math.ceil((fechaCaducidad.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   }
 
-  private calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud: Solicitud): number {
-    if (!solicitud.apelacion?.fechaSubsanacion || !solicitud.apelacion?.diasSubsanacion) return 0;
-
-    const fechaSubsanacion = this.parseFecha(solicitud.apelacion.fechaSubsanacion);
-    if (!fechaSubsanacion) return 0;
-
-    const fechaLimite = new Date(fechaSubsanacion);
-    fechaLimite.setDate(fechaLimite.getDate() + solicitud.apelacion.diasSubsanacion);
-
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  private calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud: Solicitud): number | null {
+    const plazo = solicitud.apelacion?.plazoSubsanacion;
+    return !plazo || plazo.estado === 'PENDIENTE_INICIO' ? null : plazo.diasHabilesRestantes ?? null;
   }
 
   private formatDate(valor?: string): string | undefined {

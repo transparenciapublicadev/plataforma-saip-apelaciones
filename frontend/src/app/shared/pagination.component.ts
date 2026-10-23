@@ -15,7 +15,7 @@ export type PageItem = number | 'gap';
   standalone: true,
   imports: [CommonModule, LucideChevronRight],
   template: `
-    @if (totalPages() > 1) {
+    @if (total() > 0) {
       <div class="pt-3 mt-1 flex items-center justify-between gap-3 flex-wrap border-t border-border">
         <span class="text-xs text-muted-foreground pt-3">
           Mostrando <span class="font-mono font-semibold text-foreground">{{ rangeFrom() }}–{{ rangeTo() }}</span> de <span class="font-mono font-semibold text-foreground">{{ total() }}</span>
