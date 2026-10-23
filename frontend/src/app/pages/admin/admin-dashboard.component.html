@@ -501,37 +501,14 @@
 
     @if (modalUsuarioAbierto()) {
       <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="modal-panel w-full max-w-md">
+        <div class="modal-panel w-full max-w-md max-h-[90vh] overflow-y-auto">
           <div class="p-6 border-b border-[var(--border)] flex items-center justify-between">
             <h3 class="font-display text-xl text-[var(--foreground)]">Nuevo Usuario</h3>
             <button (click)="cerrarModalUsuario()" class="btn-icon hover:bg-[var(--nieve)] transition-colors">
               <svg class="w-5 h-5 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <form (ngSubmit)="crearUsuario()" class="p-6 space-y-4">
-            <div>
-              <label class="field-label">Email <span class="req">*</span></label>
-              <input type="email" [(ngModel)]="nuevoUsuario.email" name="email" required class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Contraseña <span class="req">*</span></label>
-              <input type="password" [(ngModel)]="nuevoUsuario.password" name="password" required class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Tipo de Usuario <span class="req">*</span></label>
-              <select [(ngModel)]="nuevoUsuario.tipoUsuario" name="tipoUsuario" required class="field-input">
-                <option value="">Seleccionar tipo</option>
-                <option value="CIUDADANO">Ciudadano</option>
-                <option value="FUNCIONARIO">Funcionario</option>
-                <option value="TTAIP">TTAIP</option>
-                <option value="ADMINISTRADOR">Administrador</option>
-              </select>
-            </div>
-            <div class="flex gap-3 pt-2">
-              <button type="submit" class="btn-brand flex-1">Crear Usuario</button>
-              <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand">Cancelar</button>
-            </div>
-          </form>
+          <app-admin-user-create-form [entidades]="entidades()" (created)="usuarioCreado($event)" (cancelled)="cerrarModalUsuario()" />
         </div>
       </div>
     }

@@ -1,3 +1,4 @@
+import { AdminUserCreateFormComponent } from './admin-user-create-form.component';
 import { Component, ChangeDetectionStrategy, OnInit, computed, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -44,7 +45,7 @@ import {
 @Component({
   selector: 'app-admin-dashboard',
   imports: [
-    FormsModule, DatePipe, DecimalPipe,
+    AdminUserCreateFormComponent, FormsModule, DatePipe, DecimalPipe,
     StatusBadgeComponent, PaginationComponent,
     LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
     LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideScale, LucideBarChart,
@@ -130,12 +131,6 @@ export class AdminDashboardComponent implements OnInit {
     telefono: '',
     email: '',
     descripcion: ''
-  };
-
-  nuevoUsuario = {
-    email: '',
-    password: '',
-    tipoUsuario: ''
   };
 
   readonly donutCircumference = 2 * Math.PI * 42;
@@ -493,7 +488,6 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   abrirModalUsuario(): void {
-    this.nuevoUsuario = { email: '', password: '', tipoUsuario: '' };
     this.modalUsuarioAbierto.set(true);
   }
 
@@ -501,24 +495,10 @@ export class AdminDashboardComponent implements OnInit {
     this.modalUsuarioAbierto.set(false);
   }
 
-  crearUsuario(): void {
-    if (!this.nuevoUsuario.email || !this.nuevoUsuario.password || !this.nuevoUsuario.tipoUsuario) {
-      this.error.set('Todos los campos son obligatorios');
-      return;
-    }
-
-    this.usuarioService.crear({
-      email: this.nuevoUsuario.email,
-      password: this.nuevoUsuario.password,
-      tipoUsuario: this.nuevoUsuario.tipoUsuario as UsuarioAdmin['tipoUsuario']
-    }).subscribe({
-      next: () => {
-        this.mostrarMensaje('Usuario creado correctamente');
-        this.cerrarModalUsuario();
-        this.cargarUsuarios();
-      },
-      error: (err) => this.error.set(err.error?.mensaje || 'Error al crear usuario')
-    });
+  usuarioCreado(_created: UsuarioAdmin): void {
+    this.mostrarMensaje('Usuario creado correctamente');
+    this.cerrarModalUsuario();
+    this.cargarUsuarios();
   }
 
   cambiarEstadoUsuario(usuario: UsuarioAdmin): void {
