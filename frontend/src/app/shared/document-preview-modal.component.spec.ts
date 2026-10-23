@@ -1,81 +1,98 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { of, Subject, throwError } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentPreviewModalComponent } from './document-preview-modal.component';
+import { DocumentoService } from '../services/documento.service';
+import { DocumentoDescarga } from '../models/documento.model';
 
-describe('DocumentPreviewModalComponent', () => {
-  let component: DocumentPreviewModalComponent;
-  let fixture: ComponentFixture<DocumentPreviewModalComponent>;
-  let createObjectUrlSpy: ReturnType<typeof vi.spyOn>;
-  let revokeObjectUrlSpy: ReturnType<typeof vi.spyOn>;
-
+describe('DocumentPreviewModalComponent — archivo real', () => {
+  const documentos = { download: vi.fn() };
   beforeEach(async () => {
-    createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-doc-url');
-    revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-
+    vi.resetAllMocks();
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:real');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     await TestBed.configureTestingModule({
       imports: [DocumentPreviewModalComponent],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting()
-      ]
+      providers: [{ provide: DocumentoService, useValue: documentos }],
     }).compileComponents();
+  });
+  afterEach(() => vi.restoreAllMocks());
+  function abrir(doc: { id?: number; nombre: string; url?: string; file?: File }) {
+    const f = TestBed.createComponent(DocumentPreviewModalComponent);
+    f.componentRef.setInput('doc', doc);
+    f.componentRef.setInput('open', true);
+    f.detectChanges();
+    return f;
+  }
 
-    fixture = TestBed.createComponent(DocumentPreviewModalComponent);
-    component = fixture.componentInstance;
+  it('un error de backend no habilita la vista previa ni descarga de un sustituto', () => {
+    documentos.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+    const f = TestBed.createComponent(DocumentPreviewModalComponent);
+    f.componentRef.setInput('doc', { id: 88, nombre: 'Resolucion.pdf' });
+    f.componentRef.setInput('open', true);
+    f.detectChanges();
+    expect(f.componentInstance.rawUrl()).toBeNull();
+    expect(f.componentInstance.error()).toBeTruthy();
   });
 
-  afterEach(() => {
-    createObjectUrlSpy.mockRestore();
-    revokeObjectUrlSpy.mockRestore();
+  it.each([400, 401, 403, 404, 500, 0])('el error %s no habilita descarga ni utiliza URL alternativa', status => {
+    documentos.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));
+    const f = abrir({ id: 88, nombre: 'Resolucion.pdf', url: '/assets/docs/SAIP-OFICIAL.pdf' });
+    expect(f.componentInstance.rawUrl()).toBeNull();
+    expect(f.componentInstance.safeUrl()).toBeNull();
+    expect(f.componentInstance.error()).toBeTruthy();
+    expect(document.body.querySelector('iframe')).toBeNull();
+    f.componentInstance.descargar();
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
-  it('should create the component', () => {
-    expect(component).toBeTruthy();
+  it('sin ID, URL explícita ni bytes no infiere un PDF por su nombre', () => {
+    const f = abrir({ nombre: 'Solicitud-SAIP-2026-00023.pdf' });
+    expect(f.componentInstance.rawUrl()).toBeNull();
+    expect(f.componentInstance.error()).toContain('no dispone');
+    expect(documentos.download).not.toHaveBeenCalled();
   });
 
-  it('should load canonical official PDF document when opened', () => {
-    fixture.componentRef.setInput('doc', {
-      nombre: 'Resolucion-TTAIP-001079.pdf',
-      tipo: 'application/pdf',
-      expediente: '00024-2026-JUS/TTAIP',
-    });
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    expect(component.isPdf()).toBe(true);
-    expect(component.rawUrl()).toBe('/assets/docs/RESOLUCION_001079-2026_JUS-TTAIP-SEGUNDA SALA.pdf');
-    expect(component.safeUrl()).toBeTruthy();
+  it('reintenta contra el ID real y libera los bytes al cerrar', () => {
+    documentos.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
+    const f = abrir({ id: 88, nombre: 'real.pdf' });
+    const blob = new Blob(['%PDF-real'], { type: 'application/pdf' });
+    documentos.download.mockReturnValue(of({ blob, filename: 'real.pdf' }));
+    f.componentInstance.reintentar(); f.detectChanges();
+    expect(documentos.download).toHaveBeenLastCalledWith(88, 'real.pdf');
+    expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+    expect(f.componentInstance.error()).toBeNull();
+    f.componentInstance.onClose();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:real');
+    expect(f.componentInstance.rawUrl()).toBeNull();
   });
 
-  it('should load user File or Blob when provided', () => {
-    const mockFile = new File(['dummy content'], 'mi-archivo.pdf', { type: 'application/pdf' });
-    fixture.componentRef.setInput('doc', {
-      nombre: 'mi-archivo.pdf',
-      file: mockFile,
-      tipo: 'application/pdf'
-    });
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    expect(component.isPdf()).toBe(true);
-    expect(component.rawUrl()).toBe('blob:mock-doc-url');
-    expect(component.safeUrl()).toBeTruthy();
+  it('cambiar documento cancela la consulta anterior sin reutilizar sus bytes', () => {
+    const anterior = new Subject<DocumentoDescarga>();
+    documentos.download.mockReturnValue(anterior);
+    const f = abrir({ id: 88, nombre: 'anterior.pdf' });
+    documentos.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    f.componentRef.setInput('doc', { id: 89, nombre: 'nuevo.pdf' }); f.detectChanges();
+    anterior.next({ blob: new Blob(['old']), filename: 'anterior.pdf' });
+    expect(f.componentInstance.rawUrl()).toBeNull();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(f.componentInstance.error()).toContain('No se encontró');
   });
 
-  it('should emit close event when onClose is called', () => {
-    const closeSpy = vi.spyOn(component.close, 'emit');
-    component.onClose();
-    expect(closeSpy).toHaveBeenCalled();
+  it('conserva la plantilla oficial con nombre y URL explícitos', () => {
+    const f = abrir({ nombre: 'Plantilla oficial SAIP.pdf', url: '/assets/docs/SAIP-OFICIAL.pdf' });
+    expect(documentos.download).not.toHaveBeenCalled();
+    expect(f.componentInstance.rawUrl()).toBe('/assets/docs/SAIP-OFICIAL.pdf');
+    expect(document.body.textContent).toContain('Plantilla oficial');
   });
 
-  it('should handle Escape key press to close modal', () => {
-    const closeSpy = vi.spyOn(component.close, 'emit');
-    fixture.componentRef.setInput('open', true);
-    fixture.detectChanges();
-
-    component.onEscape();
-    expect(closeSpy).toHaveBeenCalled();
+  it('conserva la vista previa del archivo local seleccionado', () => {
+    const file = new File(['local'], 'adjunto-local.pdf', { type: 'application/pdf' });
+    abrir({ nombre: file.name, file });
+    expect(documentos.download).not.toHaveBeenCalled();
+    expect(URL.createObjectURL).toHaveBeenCalledWith(file);
   });
 });

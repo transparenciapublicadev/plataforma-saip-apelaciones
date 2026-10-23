@@ -52,10 +52,15 @@ export class DocumentoService {
       observe: 'response',
       responseType: 'blob'
     }).pipe(
-      map((response) => ({
-        blob: response.body ?? new Blob(),
-        filename: this.extractFilename(response, fallbackFilename)
-      }))
+      map((response) => {
+        if (!response.body || response.body.size === 0) {
+          throw new Error('El servidor no devolvió el contenido del documento.');
+        }
+        return {
+          blob: response.body,
+          filename: this.extractFilename(response, fallbackFilename)
+        };
+      })
     );
   }
 
