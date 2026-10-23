@@ -47,129 +47,140 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      @if (plazoSeguimiento(); as plazo) {
-        @if (plazo.enSilencioAdministrativo) {
-          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(220,38,38,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--destructive)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
-              <svg lucideShieldAlert class="w-5 h-5 text-white"></svg>
-            </div>
-            <div>
-              <span class="eyebrow" style="color: var(--destructive)">Silencio Administrativo Negativo</span>
-              <p class="text-sm text-foreground/85 mt-1.5">Se ha superado la fecha límite de atención (<span class="font-semibold">{{ plazo.fechaVencimiento | date:'dd/MM/yyyy' }}</span>). La solicitud se encuentra vencida bajo la Ley N° 27806.</p>
-            </div>
-          </div>
-        } @else {
-          <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(59,130,246,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid #3b82f6">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: #3b82f6">
-              <svg lucideClock class="w-5 h-5 text-white"></svg>
-            </div>
-            <div class="flex-grow">
-              <span class="eyebrow" style="color: #3b82f6">Control de Plazo Legal</span>
-              <p class="text-sm text-foreground/85 mt-1.5">
-                Quedan <span class="font-mono font-semibold text-blue-600 dark:text-blue-400">{{ plazo.diasRestantes }}</span> días hábiles para responder a esta solicitud. 
-                Vence el <span class="font-semibold">{{ plazo.fechaVencimiento | date:'dd/MM/yyyy' }}</span>.
-              </p>
-            </div>
-          </div>
-        }
-      }
-
-      @if (isUrgente()) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
-          </div>
-          <div>
-            <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Quedan solo <span class="font-mono font-semibold">{{ getDiasRestantes() }}</span> días hábiles para responder.</p>
-          </div>
-        </div>
-      }
-
       @if (observacionPendiente(); as observacion) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
+            <svg lucideClock class="w-5 h-5 text-white"></svg>
           </div>
-          <div>
-            <span class="eyebrow" style="color: var(--warning)">Subsanación pendiente</span>
-            <p class="text-sm text-foreground/85 mt-1.5">El ciudadano debe subsanar hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>.</p>
-          </div>
-        </div>
-      }
-
-      @if (ampliacionActiva(); as ampliacion) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(5,150,105,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--success)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--success)">
-            <svg lucideCalendar class="w-5 h-5 text-white"></svg>
-          </div>
-          <div>
-            <span class="eyebrow" style="color: var(--success)">Ampliación notificada</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Nuevo plazo de atención hasta el <span class="font-mono font-semibold">{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</span> con {{ ampliacion.cronograma.length }} entrega(s) parcial(es).</p>
+          <div class="flex-1">
+            @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
+              <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
+              <p class="text-sm text-foreground/85 mt-1.5">Se solicitó al administrado precisar su solicitud (plazo hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>). Si no responde, el expediente se archivará automáticamente.</p>
+              <p class="text-sm text-foreground/70 mt-2 leading-relaxed">{{ observacion.motivoObservacion }}</p>
+            } @else {
+              <span class="eyebrow" style="color: var(--warning)">Información inconsistente · recepción pendiente de verificar</span>
+              <p class="text-sm text-foreground/85 mt-1.5" role="status">La observación sigue pendiente en el servidor. La evaluación manual no está disponible: cambiar su estado no acredita una subsanación ni un archivo. Recargue el expediente y verifique su recepción.</p>
+              <div class="mt-2 rounded-md p-3 text-sm text-foreground/80" style="background: var(--card); border: 1px solid var(--border)">
+                <span class="font-semibold">Dato registrado:</span> {{ observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Sin detalle' }}
+              </div>
+            }
           </div>
         </div>
       }
 
       @if (encauzamientoActivo(); as encauzamiento) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(122,24,34,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--brand-700)">
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-            <svg lucideInfo class="w-5 h-5 text-white"></svg>
+            <svg lucideScale class="w-5 h-5 text-white"></svg>
           </div>
           <div>
-            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ getEncauzamientoAlcanceDisplay(encauzamiento.alcance) }}</span>
-            <p class="text-sm text-foreground/85 mt-1.5">{{ encauzamiento.entidadOrigenNombre }} derivó hacia <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span> el {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}.</p>
+            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Derivada a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. {{ encauzamiento.motivoEncauzamiento }}</p>
+            @if (encauzamiento.observacionSustento) {
+              <p class="text-sm text-foreground/70 mt-1.5"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
+            }
           </div>
         </div>
       }
 
       @if (liquidacionActiva(); as liquidacion) {
-        <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(180,130,40,0.1), transparent); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold)">
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
             <svg lucideFileText class="w-5 h-5 text-white"></svg>
           </div>
           <div>
-            <span class="eyebrow" style="color: var(--gold)">Liquidación {{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Cupón <span class="font-mono font-semibold">{{ liquidacion.codigoLiquidacion }}</span> notificado. Recojo físico hasta el <span class="font-mono font-semibold">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span>.</p>
+            <span class="eyebrow" style="color: var(--gold-dark)">Cupón de pago enviado · entrega física</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Monto <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span> · {{ liquidacion.concepto }}. El administrado tiene hasta el <span class="font-mono font-semibold">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span> (30 días calendario) para recoger.</p>
           </div>
         </div>
       }
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
-        <div class="stat-card" data-motion-item>
-          <span class="stat-card-bar" style="background: var(--info)"></span>
-          <div class="flex items-center gap-2 mb-2">
-            <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
-            <span class="eyebrow">Fecha solicitud</span>
+      @if (isUrgente()) {
+        <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
           </div>
-          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+          <div>
+            <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Quedan solo <span class="font-mono font-semibold">{{ getDiasRestantes() }} días hábiles</span> para responder.</p>
+          </div>
         </div>
+      }
 
-        <div class="stat-card" data-motion-item>
-          <span class="stat-card-bar" style="background: var(--warning)"></span>
-          <div class="flex items-center gap-2 mb-2">
-            <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
-            <span class="eyebrow">Fecha límite</span>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        @if (yaRespondida()) {
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--info)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
+              <span class="eyebrow">Fecha solicitud</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
           </div>
-          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
-        </div>
 
-        <div class="stat-card" data-motion-item>
-          <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
-          <div class="flex items-center gap-2 mb-2">
-            <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
-            <span class="eyebrow">Días restantes</span>
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--success)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideCheckCircle2 class="w-4 h-4" style="color: var(--success)"></svg>
+              <span class="eyebrow">Fecha de respuesta</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--success)">{{ (sol.respuesta?.fechaRespuesta || sol.fechaLimite) | date:'dd/MM/yyyy' }}</div>
           </div>
-          <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
-        </div>
 
-        <div class="stat-card" data-motion-item>
-          <span class="stat-card-bar" style="background: var(--brand-700)"></span>
-          <div class="flex items-center gap-2 mb-2">
-            <svg lucideUser class="w-4 h-4" style="color: var(--brand-700)"></svg>
-            <span class="eyebrow">Tipo</span>
+          <div class="stat-card">
+            <span class="stat-card-bar" [style.background]="getResultadoColor()"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideScale class="w-4 h-4" [style.color]="getResultadoColor()"></svg>
+              <span class="eyebrow">Resultado</span>
+            </div>
+            <div class="font-display" [style.color]="getResultadoColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getResultadoLabel() }}</div>
           </div>
-          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
-        </div>
+
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--brand-700)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+              <span class="eyebrow">Tipo</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
+          </div>
+        } @else {
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--info)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
+              <span class="eyebrow">Fecha solicitud</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--warning)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
+              <span class="eyebrow">Fecha límite</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
+              <span class="eyebrow">Días restantes</span>
+            </div>
+            <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
+          </div>
+
+          <div class="stat-card">
+            <span class="stat-card-bar" style="background: var(--brand-700)"></span>
+            <div class="flex items-center gap-2 mb-2">
+              <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+              <span class="eyebrow">Tipo</span>
+            </div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
+          </div>
+        }
       </div>
 
       <div class="form-shell" data-reveal>
@@ -192,20 +203,26 @@
         @if (activeTab() === 'respuesta') {
           @if (puedeVerRespuesta()) {
             <div class="p-6 md:p-8 space-y-5 animate-fade-in">
-              <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="'var(--brand-subtle)'" [style.border]="'1px solid var(--brand-200)'" [style.border-left]="'3px solid ' + getRespuestaAccentColor()">
-                <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="getRespuestaAccentColor()">
-                  <svg lucideCheckCircle2 class="w-5 h-5 text-white"></svg>
+              <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="'var(--brand-subtle)'" [style.border]="'1px solid var(--brand-200)'" [style.border-left]="'3px solid ' + (esRespuestaAceptada() ? 'var(--success)' : 'var(--brand-700)')">
+                <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="esRespuestaAceptada() ? 'var(--success)' : 'var(--brand-700)'">
+                  @if (esRespuestaAceptada()) {
+                    <svg lucideCheckCircle2 class="w-5 h-5 text-white"></svg>
+                  } @else {
+                    <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
+                  }
                 </div>
                 <div class="flex-1">
-                  <span class="eyebrow" [style.color]="getRespuestaAccentColor()">Resolución · {{ getTituloRespuesta() }}</span>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <span class="eyebrow" [style.color]="esRespuestaAceptada() ? 'var(--success)' : 'var(--brand-700)'">
+                    Resolución · {{ esRespuestaAceptada() ? 'Aceptada' : 'Denegada' }}
+                  </span>
+                  <div class="grid grid-cols-2 gap-4 mt-2">
                     <div>
                       <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Fecha</div>
                       <div class="text-sm font-mono">{{ (sol.respuesta?.fechaRespuesta || sol.fechaLimite) | date:'dd/MM/yyyy' }}</div>
                     </div>
                     <div>
-                      <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Tipo</div>
-                      <div class="text-sm">{{ getTipoRespuestaDisplay() }}</div>
+                      <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Funcionario</div>
+                      <div class="text-sm">{{ funcionarioResponsable() }}</div>
                     </div>
                   </div>
                 </div>
@@ -215,42 +232,74 @@
                 <div class="rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
                   La solicitud excedió el plazo legal de 10 días hábiles sin respuesta registrada. El sistema aplicó SILENCIO_ADMINISTRATIVO de forma automática.
                 </div>
+              } @else if (esRespuestaAceptada()) {
+                <div>
+                  <span class="eyebrow">Descripción</span>
+                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
+                    {{ sol.respuesta?.contenido || (sol.respuesta?.tipoRespuesta === 'ENTREGA_PARCIAL' ? 'La entidad entregó parcialmente la información solicitada.' : 'La entidad entregó la totalidad de la información solicitada.') }}
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="eyebrow">Formato de entrega</div>
+                    <div class="text-sm font-medium mt-1.5">{{ formatoEntrega() }}</div>
+                  </div>
+                  <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="eyebrow">Plazo de entrega</div>
+                    <div class="text-sm font-medium mt-1.5">{{ plazoEntrega() }}</div>
+                  </div>
+                </div>
+                <div>
+                  <span class="eyebrow">Documentos entregados</span>
+                  <div class="space-y-2 mt-2">
+                    @if (documentosRespuestaEntidad().length === 0) {
+                      <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                        La entidad no adjuntó documentos a su respuesta.
+                      </div>
+                    } @else {
+                      @for (d of documentosRespuestaEntidad(); track d.id || d.nombre) {
+                        <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.08)">
+                              <svg lucideFileText class="w-5 h-5" style="color: var(--success)"></svg>
+                            </div>
+                            <div>
+                              <div class="text-sm font-medium">{{ d.nombre }}</div>
+                              <div class="font-mono text-[11px] text-muted-foreground">{{ d.tipo }} · {{ d.tamano }}</div>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
+                              <svg lucideEye class="w-4 h-4"></svg>
+                              <span>Ver</span>
+                            </button>
+                            <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
+                              <svg lucideDownload class="w-4 h-4"></svg>
+                              <span>Descargar</span>
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
               } @else {
-                @if (sol.respuesta?.contenido) {
-                  <div>
-                    <span class="eyebrow">Contenido de respuesta</span>
-                    <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed whitespace-pre-wrap" style="background: var(--card); border: 1px solid var(--border)">
-                      {{ sol.respuesta.contenido }}
-                    </div>
+                <div>
+                  <span class="eyebrow">Causal</span>
+                  <p class="text-sm font-semibold mt-2">{{ sol.respuesta?.causalDenegatoria || 'Excepción legal al acceso a la información' }}</p>
+                </div>
+                <div>
+                  <span class="eyebrow">Descripción</span>
+                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
+                    {{ sol.respuesta?.contenido || 'La información solicitada se encuentra protegida bajo causal de excepción.' }}
                   </div>
-                }
-
-                @if (sol.respuesta?.causalDenegatoria) {
-                  <div>
-                    <span class="eyebrow">Causal</span>
-                    <p class="text-sm font-semibold mt-2">{{ sol.respuesta.causalDenegatoria }}</p>
+                </div>
+                <div>
+                  <span class="eyebrow">Fundamento legal</span>
+                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/80 leading-relaxed whitespace-pre-line" style="background: var(--card); border: 1px solid var(--border)">
+                    {{ sol.respuesta?.fundamentoLegal || 'Art. 15°, 16° o 17° del TUO de la Ley N° 27806.' }}
                   </div>
-                }
-
-                @if (sol.respuesta?.fundamentoLegal) {
-                  <div>
-                    <span class="eyebrow">Fundamento legal</span>
-                    <div class="mt-2 rounded-md p-4 text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap" style="background: var(--card); border: 1px solid var(--border)">
-                      {{ sol.respuesta.fundamentoLegal }}
-                    </div>
-                  </div>
-                }
-
-                @if (respuestaDocumentoRelation(); as relation) {
-                  <div data-testid="respuesta-documentos-funcionario" class="space-y-4">
-                    <div class="rule-ornament"></div>
-                    <app-document-list
-                      [relation]="relation"
-                      [documents]="sol.respuesta?.documentosMetadata || []"
-                      emptyMessage="La respuesta no tiene documentos adjuntos."
-                    />
-                  </div>
-                }
+                </div>
               }
             </div>
           } @else {
@@ -277,8 +326,20 @@
                 <div class="mt-1.5 text-sm">{{ sol.tipoInformacion || 'General' }}</div>
               </div>
               <div>
+                <span class="eyebrow">Modalidad de entrega solicitada</span>
+                @if (formatosSolicitados().length > 0) {
+                  <div class="flex flex-wrap gap-1.5 mt-1">
+                    @for (fmt of formatosSolicitados(); track fmt) {
+                      <span class="text-[11px] px-2 py-1 rounded-md" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); color: var(--brand-700)">{{ fmt }}</span>
+                    }
+                  </div>
+                } @else {
+                  <div class="mt-1.5 text-sm text-muted-foreground">No especificada por el administrado</div>
+                }
+              </div>
+              <div>
                 <span class="eyebrow">Estado actual</span>
-                <div class="mt-1.5 text-sm"><span [class]="getEstadoBadgeClass(sol.estado)">{{ getEstadoDisplay(sol.estado) }}</span></div>
+                <div class="mt-1.5 text-sm"><app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge></div>
               </div>
             </div>
             <div class="rule-ornament"></div>
@@ -295,508 +356,11 @@
           </div>
         }
 
-        @if (activeTab() === 'observacion') {
-          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (puedeObservar()) {
-              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
-                <span class="eyebrow" style="color: var(--brand-700)">Revisión inicial · 2 días hábiles</span>
-                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Observar SAIP</h3>
-                <p class="text-sm text-foreground/80 mt-2">Use esta acción solo si faltan requisitos mínimos como identificación, pedido concreto o constancia equivalente.</p>
-                <div class="mt-4 space-y-3">
-                  <textarea
-                    class="field-input"
-                    rows="5"
-                    [ngModel]="observacionMotivo()"
-                    (ngModelChange)="observacionMotivo.set($event)"
-                    placeholder="Describa con precisión qué debe subsanar el ciudadano..."></textarea>
-                  @if (observacionError()) {
-                    <p class="text-sm" style="color: var(--destructive)">{{ observacionError() }}</p>
-                  }
-                  @if (observacionSuccess()) {
-                    <p class="text-sm" style="color: var(--success)">{{ observacionSuccess() }}</p>
-                  }
-                  <button type="button" class="btn-brand !px-5 !py-3" [disabled]="observacionLoading()" (click)="registrarObservacion()">
-                    @if (observacionLoading()) {
-                      Registrando...
-                    } @else {
-                      Registrar observación
-                    }
-                  </button>
-                </div>
-              </div>
-            } @else if (observacionPendiente()) {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow" style="color: var(--warning)">Observación activa</span>
-                <p class="text-sm text-foreground/85 mt-2">Ya existe una observación pendiente. Espere la subsanación ciudadana o el vencimiento del plazo.</p>
-              </div>
-            } @else {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow">Sin observación disponible</span>
-                <p class="text-sm text-muted-foreground mt-2">La solicitud no está en un estado válido para registrar una observación inicial.</p>
-              </div>
-            }
-
-            <div>
-              <span class="eyebrow">Historial de observaciones</span>
-              <div class="mt-3 space-y-3">
-                @for (observacion of observaciones(); track observacion.id) {
-                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                      <span [class]="observacion.estado === 'SUBSANADA' ? 'pill pill-low' : (observacion.estado === 'NO_SUBSANADA' ? 'pill pill-high' : 'pill pill-medium')">{{ getObservacionEstadoDisplay(observacion.estado) }}</span>
-                      <span class="font-mono text-[11px] text-muted-foreground">{{ observacion.fechaObservacion | date:'dd/MM/yyyy' }}</span>
-                    </div>
-                    <p class="text-sm text-foreground/85 mt-3 whitespace-pre-wrap">{{ observacion.motivoObservacion }}</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-                      <div>
-                        <span class="eyebrow">Límite de subsanación</span>
-                        <p class="font-mono mt-1">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Subsanado</span>
-                        <p class="font-mono mt-1">{{ observacion.fechaSubsanacion ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : 'Pendiente' }}</p>
-                      </div>
-                    </div>
-                    @if (observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre) {
-                      <div class="mt-4 rounded-md p-3 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <div class="font-medium">Subsanación ciudadana</div>
-                        <p class="mt-1 text-foreground/80 whitespace-pre-wrap">{{ observacion.comentarioSubsanacion || 'Documento adjunto' }}</p>
-                        @if (observacion.documentoSubsanacionNombre) {
-                          <p class="font-mono text-xs text-muted-foreground mt-1">{{ observacion.documentoSubsanacionNombre }}</p>
-                        }
-                      </div>
-                    }
-                  </div>
-                } @empty {
-                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
-                    <p class="text-sm text-muted-foreground">No se han registrado observaciones para esta SAIP.</p>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        @if (activeTab() === 'encauzamiento') {
-          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (puedeEncauzar()) {
-              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
-                <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento · 2 días hábiles</span>
-                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Derivar competencia</h3>
-                <p class="text-sm text-foreground/80 mt-2">Use esta acción cuando la entidad no sea competente para todo el pedido o para una parte de la información solicitada.</p>
-
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label class="field">
-                    <span class="field-label">Entidad destino</span>
-                    <select class="field-input" [ngModel]="encauzamientoEntidadDestinoId()" (ngModelChange)="encauzamientoEntidadDestinoId.set($event)">
-                      <option [ngValue]="null">Seleccione la entidad competente</option>
-                      @for (entidad of entidadesActivas(); track entidad.id) {
-                        <option [ngValue]="entidad.id" [disabled]="entidad.id === sol.entidadId">
-                          {{ entidad.acronimo || entidad.nombre }} · {{ entidad.nombre }}
-                        </option>
-                      }
-                    </select>
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Alcance</span>
-                    <select class="field-input" [ngModel]="encauzamientoAlcance()" (ngModelChange)="setEncauzamientoAlcance($event)">
-                      <option value="TOTAL">Total</option>
-                      <option value="PARCIAL">Parcial</option>
-                    </select>
-                  </label>
-
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Motivo de encauzamiento</span>
-                    <textarea
-                      class="field-input"
-                      rows="4"
-                      [ngModel]="encauzamientoMotivo()"
-                      (ngModelChange)="encauzamientoMotivo.set($event)"
-                      placeholder="Explique por qué la entidad destino es competente..."></textarea>
-                  </label>
-
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Sustento u observación</span>
-                    <textarea
-                      class="field-input"
-                      rows="3"
-                      [ngModel]="encauzamientoSustento()"
-                      (ngModelChange)="encauzamientoSustento.set($event)"
-                      placeholder="Detalle la parte derivada si el encauzamiento es parcial..."></textarea>
-                  </label>
-                </div>
-
-                @if (encauzamientoError()) {
-                  <p class="text-sm mt-4" style="color: var(--destructive)">{{ encauzamientoError() }}</p>
-                }
-                @if (encauzamientoSuccess()) {
-                  <p class="text-sm mt-4" style="color: var(--success)">{{ encauzamientoSuccess() }}</p>
-                }
-
-                <button type="button" class="btn-brand !px-5 !py-3 mt-5" [disabled]="encauzamientoLoading()" (click)="registrarEncauzamiento()">
-                  @if (encauzamientoLoading()) {
-                    Registrando...
-                  } @else {
-                    Registrar encauzamiento
-                  }
-                </button>
-              </div>
-            } @else if (encauzamientoActivo()) {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento activo</span>
-                <p class="text-sm text-foreground/85 mt-2">La solicitud ya tiene una derivación activa. No se permite duplicar el encauzamiento sin cerrar el anterior.</p>
-              </div>
-            } @else {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow">Sin encauzamiento disponible</span>
-                <p class="text-sm text-muted-foreground mt-2">La solicitud no está en un estado válido para registrar encauzamiento.</p>
-              </div>
-            }
-
-            <div>
-              <span class="eyebrow">Historial de encauzamientos</span>
-              <div class="mt-3 space-y-3">
-                @for (encauzamiento of encauzamientos(); track encauzamiento.id) {
-                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                      <span [class]="getEncauzamientoEstadoClass(encauzamiento.estadoEncauzamiento)">{{ getEncauzamientoEstadoDisplay(encauzamiento.estadoEncauzamiento) }}</span>
-                      <span class="font-mono text-[11px] text-muted-foreground">{{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
-                      <div>
-                        <span class="eyebrow">Origen</span>
-                        <p class="mt-1">{{ encauzamiento.entidadOrigenNombre }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Destino</span>
-                        <p class="mt-1">{{ encauzamiento.entidadDestinoNombre }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Alcance</span>
-                        <p class="mt-1">{{ getEncauzamientoAlcanceDisplay(encauzamiento.alcance) }}</p>
-                      </div>
-                    </div>
-                    <p class="text-sm text-foreground/85 mt-4 whitespace-pre-wrap">{{ encauzamiento.motivoEncauzamiento }}</p>
-                    @if (encauzamiento.observacionSustento || encauzamiento.trazabilidad) {
-                      <div class="mt-4 rounded-md p-3 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <div class="font-medium">Trazabilidad</div>
-                        <p class="mt-1 text-foreground/80 whitespace-pre-wrap">{{ encauzamiento.observacionSustento || encauzamiento.trazabilidad }}</p>
-                      </div>
-                    }
-                  </div>
-                } @empty {
-                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
-                    <p class="text-sm text-muted-foreground">No se han registrado encauzamientos para esta SAIP.</p>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        @if (activeTab() === 'liquidacion') {
-          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (puedeLiquidar()) {
-              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
-                <span class="eyebrow" style="color: var(--gold)">Liquidación · día 9 máximo</span>
-                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Emitir cupón de pago</h3>
-                <p class="text-sm text-foreground/80 mt-2">Use esta acción cuando la entrega física requiera costos de reproducción. El recojo queda disponible por 30 días hábiles desde la notificación.</p>
-
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label class="field">
-                    <span class="field-label">Código o número de cupón</span>
-                    <input class="field-input" type="text" [ngModel]="liquidacionCodigo()" (ngModelChange)="liquidacionCodigo.set($event)" placeholder="Opcional; el sistema puede generarlo" />
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Monto</span>
-                    <input class="field-input" type="number" min="0" step="0.01" [ngModel]="liquidacionMonto()" (ngModelChange)="liquidacionMonto.set($event)" placeholder="0.00" />
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Moneda</span>
-                    <input class="field-input" type="text" maxlength="3" [ngModel]="liquidacionMoneda()" (ngModelChange)="liquidacionMoneda.set($event)" placeholder="PEN" />
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Fecha de notificación</span>
-                    <input class="field-input" type="date" [ngModel]="liquidacionFechaNotificacion()" (ngModelChange)="liquidacionFechaNotificacion.set($event)" />
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Medio de notificación</span>
-                    <select class="field-input" [ngModel]="liquidacionMedioNotificacion()" (ngModelChange)="liquidacionMedioNotificacion.set($event)">
-                      <option value="CASILLA_ELECTRONICA">Casilla electrónica</option>
-                      <option value="CORREO_ELECTRONICO">Correo electrónico</option>
-                      <option value="PLATAFORMA">Plataforma</option>
-                      <option value="FISICA">Física</option>
-                    </select>
-                  </label>
-
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Concepto</span>
-                    <textarea class="field-input" rows="4" [ngModel]="liquidacionConcepto()" (ngModelChange)="liquidacionConcepto.set($event)" placeholder="Detalle de copias, folios, certificación u otros costos de reproducción..."></textarea>
-                  </label>
-
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Observación</span>
-                    <textarea class="field-input" rows="3" [ngModel]="liquidacionObservacion()" (ngModelChange)="liquidacionObservacion.set($event)" placeholder="Indicaciones de recojo o coordinación física..."></textarea>
-                  </label>
-                </div>
-
-                @if (liquidacionError()) {
-                  <p class="text-sm mt-4" style="color: var(--destructive)">{{ liquidacionError() }}</p>
-                }
-                @if (liquidacionSuccess()) {
-                  <p class="text-sm mt-4" style="color: var(--success)">{{ liquidacionSuccess() }}</p>
-                }
-
-                <button type="button" class="btn-brand !px-5 !py-3 mt-5" [disabled]="liquidacionLoading()" (click)="emitirLiquidacion()">
-                  @if (liquidacionLoading()) {
-                    Emitiendo...
-                  } @else {
-                    Emitir liquidación
-                  }
-                </button>
-              </div>
-            } @else if (liquidacionActiva()) {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow" style="color: var(--gold)">Liquidación activa</span>
-                <p class="text-sm text-foreground/85 mt-2">La solicitud ya tiene un cupón activo. Marque pago, recojo o cierre antes de emitir uno nuevo.</p>
-              </div>
-            } @else {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow">Sin liquidación disponible</span>
-                <p class="text-sm text-muted-foreground mt-2">Solo se puede emitir cupón si la SAIP está en revisión y contempla entrega física, copia simple o copia certificada.</p>
-              </div>
-            }
-
-            <div>
-              <span class="eyebrow">Historial de liquidaciones</span>
-              <div class="mt-3 space-y-3">
-                @for (liquidacion of liquidaciones(); track liquidacion.id) {
-                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                      <div class="flex items-center gap-2 flex-wrap">
-                        <span [class]="getLiquidacionEstadoClass(liquidacion.estadoLiquidacion)">{{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
-                        <span class="code-chip" style="font-size: 11px">{{ liquidacion.codigoLiquidacion }}</span>
-                      </div>
-                      <span class="font-mono text-[11px] text-muted-foreground">{{ liquidacion.fechaNotificacion | date:'dd/MM/yyyy' }}</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 text-sm">
-                      <div>
-                        <span class="eyebrow">Monto</span>
-                        <p class="font-mono mt-1">{{ liquidacion.moneda }} {{ liquidacion.monto }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Medio</span>
-                        <p class="mt-1">{{ getEstadoDisplay(liquidacion.medioNotificacion) }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Recojo hasta</span>
-                        <p class="font-mono mt-1">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Responsable</span>
-                        <p class="mt-1">{{ liquidacion.responsable || 'Entidad pública' }}</p>
-                      </div>
-                    </div>
-
-                    <p class="text-sm text-foreground/85 mt-4 whitespace-pre-wrap">{{ liquidacion.concepto }}</p>
-                    @if (liquidacion.observacion || liquidacion.trazabilidad) {
-                      <div class="mt-4 rounded-md p-3 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <div class="font-medium">Trazabilidad</div>
-                        <p class="mt-1 text-foreground/80 whitespace-pre-wrap">{{ liquidacion.observacion || liquidacion.trazabilidad }}</p>
-                      </div>
-                    }
-
-                    @if (liquidacion.estadoLiquidacion === 'EMITIDA' || liquidacion.estadoLiquidacion === 'NOTIFICADA' || liquidacion.estadoLiquidacion === 'PAGADA') {
-                      <div class="mt-4 flex flex-wrap gap-3">
-                        @if (liquidacion.estadoLiquidacion === 'EMITIDA' || liquidacion.estadoLiquidacion === 'NOTIFICADA') {
-                          <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'PAGADA')">
-                            Marcar pagado
-                          </button>
-                        }
-                        <button type="button" class="btn-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'RECOGIDA')">
-                          Marcar recogido
-                        </button>
-                        <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" [disabled]="liquidacionUpdateLoading()" (click)="actualizarLiquidacion(liquidacion, 'CANCELADA')">
-                          Cancelar
-                        </button>
-                      </div>
-                    }
-                  </div>
-                } @empty {
-                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
-                    <p class="text-sm text-muted-foreground">No se han emitido liquidaciones o cupones para esta SAIP.</p>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
-        @if (activeTab() === 'ampliacion') {
-          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (puedeAmpliar()) {
-              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--success)">
-                <span class="eyebrow" style="color: var(--success)">Ampliación de plazo · día 4 máximo</span>
-                <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Registrar ampliación</h3>
-                <p class="text-sm text-foreground/80 mt-2">Use esta acción para pedidos voluminosos. Debe existir informe y cronograma de entregas parciales; cada entrega no puede exceder 30 días respecto de la anterior.</p>
-
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Motivo de ampliación</span>
-                    <textarea
-                      class="field-input"
-                      rows="3"
-                      [ngModel]="ampliacionMotivo()"
-                      (ngModelChange)="ampliacionMotivo.set($event)"
-                      placeholder="Explique por qué el pedido requiere ampliación de plazo..."></textarea>
-                  </label>
-
-                  <label class="field md:col-span-2">
-                    <span class="field-label">Informe de ampliación</span>
-                    <textarea
-                      class="field-input"
-                      rows="4"
-                      [ngModel]="ampliacionInforme()"
-                      (ngModelChange)="ampliacionInforme.set($event)"
-                      placeholder="Informe formal con sustento y cronograma de entregas parciales..."></textarea>
-                  </label>
-
-                  <label class="field">
-                    <span class="field-label">Fecha de notificación</span>
-                    <input
-                      class="field-input"
-                      type="date"
-                      [ngModel]="ampliacionFechaNotificacion()"
-                      (ngModelChange)="ampliacionFechaNotificacion.set($event)" />
-                  </label>
-                </div>
-
-                <div class="rule-ornament"></div>
-
-                <div class="space-y-3">
-                  <div class="flex items-center justify-between gap-3">
-                    <span class="eyebrow">Cronograma de entregas parciales</span>
-                    <button type="button" class="btn-ghost-brand !px-3 !py-2 !text-xs" (click)="agregarEntregaCronograma()">
-                      Agregar entrega
-                    </button>
-                  </div>
-
-                  @for (entrega of ampliacionCronograma(); track $index) {
-                    <div class="rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-3" style="background: var(--card); border: 1px solid var(--border)">
-                      <label class="field md:col-span-2">
-                        <span class="field-label">N.°</span>
-                        <input class="field-input" type="number" min="1" [ngModel]="entrega.numeroEntrega" (ngModelChange)="actualizarEntregaCronograma($index, 'numeroEntrega', $event)" />
-                      </label>
-                      <label class="field md:col-span-5">
-                        <span class="field-label">Descripción</span>
-                        <input class="field-input" type="text" [ngModel]="entrega.descripcion" (ngModelChange)="actualizarEntregaCronograma($index, 'descripcion', $event)" placeholder="Bloque documental a entregar" />
-                      </label>
-                      <label class="field md:col-span-3">
-                        <span class="field-label">Fecha programada</span>
-                        <input class="field-input" type="date" [ngModel]="entrega.fechaProgramada" (ngModelChange)="actualizarEntregaCronograma($index, 'fechaProgramada', $event)" />
-                      </label>
-                      <div class="md:col-span-2 flex items-end">
-                        <button type="button" class="btn-ghost-brand !px-3 !py-3 w-full" [disabled]="ampliacionCronograma().length <= 1" (click)="removerEntregaCronograma($index)">
-                          Quitar
-                        </button>
-                      </div>
-                      <label class="field md:col-span-12">
-                        <span class="field-label">Observación</span>
-                        <input class="field-input" type="text" [ngModel]="entrega.observacion" (ngModelChange)="actualizarEntregaCronograma($index, 'observacion', $event)" placeholder="Observación opcional de esta entrega" />
-                      </label>
-                    </div>
-                  }
-                </div>
-
-                @if (ampliacionError()) {
-                  <p class="text-sm mt-4" style="color: var(--destructive)">{{ ampliacionError() }}</p>
-                }
-                @if (ampliacionSuccess()) {
-                  <p class="text-sm mt-4" style="color: var(--success)">{{ ampliacionSuccess() }}</p>
-                }
-
-                <button type="button" class="btn-brand !px-5 !py-3 mt-5" [disabled]="ampliacionLoading()" (click)="registrarAmpliacion()">
-                  @if (ampliacionLoading()) {
-                    Registrando...
-                  } @else {
-                    Registrar ampliación
-                  }
-                </button>
-              </div>
-            } @else if (ampliacionActiva()) {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow" style="color: var(--success)">Ampliación activa</span>
-                <p class="text-sm text-foreground/85 mt-2">La solicitud ya tiene una ampliación vigente. No se permite registrar otra ampliación activa para la misma SAIP.</p>
-              </div>
-            } @else {
-              <div class="rounded-lg p-5" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow">Sin ampliación disponible</span>
-                <p class="text-sm text-muted-foreground mt-2">La solicitud no está en un estado válido para registrar ampliación de plazo.</p>
-              </div>
-            }
-
-            <div>
-              <span class="eyebrow">Historial de ampliaciones</span>
-              <div class="mt-3 space-y-3">
-                @for (ampliacion of ampliaciones(); track ampliacion.id) {
-                  <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                      <span [class]="ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'pill pill-low' : (ampliacion.estadoAmpliacion === 'VENCIDA' ? 'pill pill-high' : 'pill pill-medium')">{{ getAmpliacionEstadoDisplay(ampliacion.estadoAmpliacion) }}</span>
-                      <span class="font-mono text-[11px] text-muted-foreground">{{ ampliacion.fechaNotificacionAmpliacion | date:'dd/MM/yyyy' }}</span>
-                    </div>
-                    <p class="text-sm text-foreground/85 mt-3 whitespace-pre-wrap">{{ ampliacion.motivoAmpliacion }}</p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
-                      <div>
-                        <span class="eyebrow">Plazo original</span>
-                        <p class="font-mono mt-1">{{ ampliacion.fechaLimiteOriginal | date:'dd/MM/yyyy' }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Plazo ampliado</span>
-                        <p class="font-mono mt-1">{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</p>
-                      </div>
-                      <div>
-                        <span class="eyebrow">Responsable</span>
-                        <p class="mt-1">{{ ampliacion.responsable || 'Entidad pública' }}</p>
-                      </div>
-                    </div>
-                    <div class="mt-4 space-y-2">
-                      @for (entrega of ampliacion.cronograma; track entrega.id || entrega.numeroEntrega) {
-                        <div class="rounded-md p-3 flex items-center justify-between gap-3 flex-wrap" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                          <div>
-                            <span class="eyebrow">Entrega {{ entrega.numeroEntrega }}</span>
-                            <p class="text-sm mt-1">{{ entrega.descripcion }}</p>
-                            @if (entrega.observacion) {
-                              <p class="text-xs text-muted-foreground mt-1">{{ entrega.observacion }}</p>
-                            }
-                          </div>
-                          <div class="text-right">
-                            <span [class]="getEntregaEstadoClass(entrega.estado)">{{ getEstadoDisplay(entrega.estado) }}</span>
-                            <p class="font-mono text-xs text-muted-foreground mt-1">{{ entrega.fechaProgramada | date:'dd/MM/yyyy' }}</p>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                } @empty {
-                  <div class="p-8 text-center rounded-lg" style="background: var(--card); border: 1px solid var(--border)">
-                    <p class="text-sm text-muted-foreground">No se han registrado ampliaciones para esta SAIP.</p>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-
         @if (activeTab() === 'ciudadano') {
           <div class="p-6 md:p-8 space-y-5 animate-fade-in">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-base font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-                {{ getInitials(sol.ciudadanoNombre) }}
+                {{ getIniciales(sol.ciudadanoNombre) }}
               </div>
               <div>
                 <div class="text-sm font-medium">{{ sol.ciudadanoNombre || 'Ciudadano' }}</div>
@@ -814,6 +378,27 @@
                 <div class="text-sm font-mono mt-1">{{ sol.ciudadanoTelefono || 'No disponible' }}</div>
               </div>
             </div>
+
+            <div>
+              <span class="eyebrow">Solicitudes previas</span>
+              <div class="space-y-2 mt-2">
+                @if (solicitudesPrevias().length === 0) {
+                  <p class="text-xs text-muted-foreground">Este administrado no tiene otras solicitudes ante la entidad.</p>
+                } @else {
+                  @for (p of solicitudesPrevias(); track p.expediente) {
+                    <a [routerLink]="['/funcionario/solicitud', p.expediente]"
+                       class="w-full rounded-md p-3 flex items-center justify-between text-left transition-colors hover:bg-[color:var(--muted)] block"
+                       style="background: var(--card); border: 1px solid var(--border)">
+                      <div>
+                        <span class="code-chip" style="font-size: 11px">{{ p.expediente }}</span>
+                        <p class="text-xs text-muted-foreground mt-1">{{ p.asunto }}</p>
+                      </div>
+                      <app-status-badge [status]="getEstadoDisplay(p.estado)"></app-status-badge>
+                    </a>
+                  }
+                }
+              </div>
+            </div>
           </div>
         }
 
@@ -829,11 +414,157 @@
                 />
               }
             }
-            <app-document-list
-              [relation]="solicitudDocumentoRelation()"
-              [documents]="sol.documentosMetadata || sol.documentos || []"
-              emptyMessage="No hay documentos adjuntos para esta solicitud."
-            />
+
+            @if (todosDocumentosAdministrado().length === 0) {
+              <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                El administrado no adjuntó documentos a este expediente.
+              </div>
+            }
+
+            <!-- Grupo 1 · Solicitud del administrado (documento SAIP + anexos) -->
+            @if (grupoPrincipales().length > 0 || grupoAnexos().length > 0) {
+              <div>
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="eyebrow" style="color: var(--brand-700)">Solicitud del administrado</span>
+                  <span class="text-[11px] text-muted-foreground">{{ grupoPrincipales().length + grupoAnexos().length }} documento(s)</span>
+                </div>
+                <div class="space-y-2">
+                  @for (d of grupoPrincipales(); track d.id || d.nombre) {
+                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                          <svg lucideFileText class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                        </div>
+                        <div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style="background: var(--brand-subtle); color: var(--brand-700)">
+                              Documento SAIP
+                            </span>
+                            <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
+                          </div>
+                          <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
+                            {{ d.tipo }} · {{ d.tamano }}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
+                          <svg lucideEye class="w-4 h-4"></svg>
+                          <span>Ver</span>
+                        </button>
+                        <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
+                          <svg lucideDownload class="w-4 h-4"></svg>
+                          <span>Descargar</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+
+                  @if (grupoAnexos().length > 0) {
+                    <div class="space-y-2 pt-1">
+                      <div class="text-[10px] uppercase tracking-widest text-muted-foreground" style="margin-left: 20px">Anexos de la solicitud</div>
+                      @for (d of grupoAnexos(); track d.id || d.nombre) {
+                        <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border); margin-left: 20px">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: color-mix(in srgb, var(--info) 10%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent)">
+                              <svg lucideFileText class="w-5 h-5" style="color: var(--info)"></svg>
+                            </div>
+                            <div>
+                              <div class="flex items-center gap-2">
+                                <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style="background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info)">
+                                  {{ etiquetaAnexo(d.nombre) }}
+                                </span>
+                                <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
+                              </div>
+                              <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
+                                {{ d.tipo }} · {{ d.tamano }}
+                              </div>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2 flex-shrink-0">
+                            <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
+                              <svg lucideEye class="w-4 h-4"></svg>
+                              <span>Ver</span>
+                            </button>
+                            <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
+                              <svg lucideDownload class="w-4 h-4"></svg>
+                              <span>Descargar</span>
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Grupo 2 · Subsanaciones presentadas posteriormente -->
+            @if (grupoSubsanaciones().length > 0) {
+              <div>
+                <div class="flex items-center justify-between mb-2.5">
+                  <span class="eyebrow" style="color: var(--warning)">Subsanaciones presentadas</span>
+                  <span class="text-[11px] text-muted-foreground">{{ grupoSubsanaciones().length }} documento(s)</span>
+                </div>
+                <div class="space-y-2">
+                  @for (d of grupoSubsanaciones(); track d.id || d.nombre) {
+                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: color-mix(in srgb, var(--warning) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent)">
+                          <svg lucideFileText class="w-5 h-5" style="color: var(--warning)"></svg>
+                        </div>
+                        <div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style="background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning)">
+                              Subsanación
+                            </span>
+                            <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
+                          </div>
+                          <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
+                            {{ d.tipo }} · {{ d.tamano }}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
+                          <svg lucideEye class="w-4 h-4"></svg>
+                          <span>Ver</span>
+                        </button>
+                        <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
+                          <svg lucideDownload class="w-4 h-4"></svg>
+                          <span>Descargar</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab() === 'notificaciones') {
+          <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
+              <svg lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+              <p class="text-sm text-foreground/85 leading-relaxed">
+                El <span class="font-semibold">Tribunal (TTAIP)</span> notificó a la entidad las siguientes actuaciones dentro del expediente de apelación {{ sol.apelacion?.expediente || '' }}. Cada cédula es idéntica al documento oficial firmado.
+              </p>
+            </div>
+
+            @if (sol.apelacion) {
+              <div class="rounded-md p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                <div>
+                  <div class="eyebrow">Expediente TTAIP</div>
+                  <div class="font-mono font-bold text-base mt-1" style="color: var(--brand-700)">{{ sol.apelacion.expediente }}</div>
+                  <div class="text-xs text-muted-foreground mt-1">Fecha apelación: {{ sol.apelacion.fechaApelacion | date:'dd/MM/yyyy' }}</div>
+                </div>
+                <a [routerLink]="['/funcionario/apelaciones', sol.apelacion.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-xs inline-flex items-center gap-1.5">
+                  <span>Ver expediente en Tribunal</span>
+                  <svg lucideChevronRight class="w-4 h-4"></svg>
+                </a>
+              </div>
+            }
           </div>
         }
 
@@ -867,48 +598,12 @@
           </div>
         }
       </div>
-
-      @if (sol.apelacion?.expediente) {
-        <div class="form-shell" data-reveal>
-          <div class="form-section-header">
-            <span class="eyebrow">TTAIP</span>
-            <h3 class="form-section-title flex items-center gap-2">
-              <svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /></svg>
-              Apelación ante el TTAIP
-            </h3>
-          </div>
-
-          <div class="p-6 space-y-4">
-            <div class="rounded-md p-4" style="background: var(--info-subtle); border: 1px solid var(--info)">
-              <p class="text-sm" style="color: var(--info)">El ciudadano ha interpuesto una apelación y el Tribunal está revisando el caso.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <span class="eyebrow">Expediente TTAIP</span>
-                <p class="mt-1.5">
-                  <a [routerLink]="['/funcionario/apelaciones', idApelacion()]"
-                     class="inline-flex items-center gap-1.5 font-mono font-semibold hover:text-[var(--brand-800)] hover:underline transition-all group"
-                     style="color: var(--brand-700)">
-                    <span>{{ sol.apelacion.expediente }}</span>
-                    <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
-                    </svg>
-                  </a>
-                </p>
-              </div>
-              <div>
-                <span class="eyebrow">Fecha de presentación</span>
-                <p class="text-sm mt-1.5">{{ sol.apelacion.fechaApelacion | date:'dd/MM/yyyy' }}</p>
-              </div>
-              <div>
-                <span class="eyebrow">Estado</span>
-                <p class="mt-1.5"><span [class]="getApelacionEstadoClass(sol.apelacion.estado || '')">{{ getEstadoDisplay(sol.apelacion.estado) }}</span></p>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
     </div>
   }
+
+  <app-document-preview-modal
+    [open]="previewTarget() !== null"
+    [doc]="previewTarget()"
+    (close)="previewTarget.set(null)">
+  </app-document-preview-modal>
 </div>

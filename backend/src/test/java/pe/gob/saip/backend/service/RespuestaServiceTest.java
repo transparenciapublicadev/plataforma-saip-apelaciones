@@ -33,6 +33,8 @@ class RespuestaServiceTest {
     @Mock
     FuncionarioService funcionarioService;
 
+    @Mock AutorizacionRecursosService autorizacion;
+
     @InjectMocks
     RespuestaService respuestaService;
 
@@ -53,7 +55,7 @@ class RespuestaServiceTest {
     @Test
     void crearRespuesta_conSilencioAdministrativo_manual_debeFallar() {
         Solicitud solicitud = crearSolicitudSinRespuesta();
-        when(solicitudService.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(solicitudService.bloquearSolicitudInstitucional(1L)).thenReturn(solicitud);
         when(funcionarioService.obtenerFuncionarioPorId(10L)).thenReturn(Optional.of(crearFuncionario()));
 
         CrearRespuestaRequest request = new CrearRespuestaRequest(
@@ -79,7 +81,7 @@ class RespuestaServiceTest {
         Solicitud solicitud = crearSolicitudSinRespuesta();
         Funcionario funcionario = crearFuncionario();
 
-        when(solicitudService.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(solicitudService.bloquearSolicitudInstitucional(1L)).thenReturn(solicitud);
         when(funcionarioService.obtenerFuncionarioPorId(10L)).thenReturn(Optional.of(funcionario));
         when(respuestaRepository.save(any(Respuesta.class))).thenAnswer(inv -> inv.getArgument(0));
         when(solicitudService.save(any(Solicitud.class))).thenAnswer(inv -> inv.getArgument(0));

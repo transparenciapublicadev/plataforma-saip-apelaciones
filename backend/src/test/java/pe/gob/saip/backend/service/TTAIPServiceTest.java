@@ -35,13 +35,19 @@ class TTAIPServiceTest {
     @Mock
     ExpedienteTtaipService expedienteTtaipService;
 
+    @Mock
+    TransicionesApelacionTtaipService transiciones;
+
+    @Mock
+    MotorNotificacionesService motorNotificacionesService;
+
     @InjectMocks
     TTAIPService ttaipService;
 
     @Test
     void declararEsteseALoResuelto_enResolucion_debeCerrarConDecisionEspecial() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
-        when(apelacionService.findById(10L)).thenReturn(Optional.of(apelacion));
+        when(transiciones.bloquear(10L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(apelacionService.save(apelacion)).thenReturn(apelacion);
@@ -68,7 +74,7 @@ class TTAIPServiceTest {
     @Test
     void declararNulidadDelActo_enResolucion_debeCerrarConDecisionEspecial() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
-        when(apelacionService.findById(11L)).thenReturn(Optional.of(apelacion));
+        when(transiciones.bloquear(11L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(apelacionService.save(apelacion)).thenReturn(apelacion);
@@ -93,7 +99,7 @@ class TTAIPServiceTest {
     @Test
     void declararEsteseALoResuelto_enEstadoCerrado_debeRechazarReglaNegocio() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
-        when(apelacionService.findById(12L)).thenReturn(Optional.of(apelacion));
+        when(transiciones.bloquear(12L)).thenReturn(apelacion);
 
         assertThatThrownBy(() -> ttaipService.declararEsteseALoResuelto(12L, new ResolucionRequest(
                 "Referencia a pronunciamiento previo.",
@@ -101,7 +107,7 @@ class TTAIPServiceTest {
                 null,
                 null,
                 null)))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(pe.gob.saip.backend.exception.ConflictoEstadoException.class)
                 .hasMessageContaining("ya está resuelta");
 
         verify(resolucionService, never()).save(any());
@@ -111,7 +117,7 @@ class TTAIPServiceTest {
     @Test
     void declararFundado_enResolucion_debeCerrarConDecisionFundadoYPersistir() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
-        when(apelacionService.findById(10L)).thenReturn(Optional.of(apelacion));
+        when(transiciones.bloquear(10L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(apelacionService.save(apelacion)).thenReturn(apelacion);

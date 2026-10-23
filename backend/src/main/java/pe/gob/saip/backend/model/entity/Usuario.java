@@ -7,6 +7,11 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -41,8 +46,17 @@ public class Usuario {
     @Column(name = "fecha_registro", nullable = false)
     private LocalDateTime fechaRegistro;
 
-    @Column(nullable = false)
+    // State changes must use the atomic repository operation, never a stale entity merge.
+    @Column(nullable = false, updatable = false)
     private Boolean activo;
+
+    /** Server-owned authentication generation; profile/admin payloads cannot write it. */
+    @JsonIgnore
+    @Schema(hidden = true)
+    @Setter(AccessLevel.NONE)
+    @ColumnDefault("0")
+    @Column(name = "version_autenticacion", nullable = false, insertable = false, updatable = false)
+    private Long versionAutenticacion = 0L;
 
     @PrePersist
     protected void onCreate() {

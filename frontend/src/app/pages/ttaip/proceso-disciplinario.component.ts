@@ -67,7 +67,25 @@ export class ProcesoDisciplinarioComponent implements OnInit {
     'Multa administrativa (0.5 a 2 UIT)'
   ];
 
-  readonly selectedCase = computed(() => this.cases()[0] ?? null);
+  readonly selectedCaseId = signal<number | string | null>(null);
+
+  readonly selectedCase = computed(() => {
+    const list = this.cases();
+    if (list.length === 0) return null;
+    const selId = this.selectedCaseId();
+    if (selId === null) return list[0];
+    return list.find((c) => (c.apelacion.id ?? c.apelacion.expediente) === selId) ?? list[0];
+  });
+
+  selectCase(c: DisciplinaryCase): void {
+    this.selectedCaseId.set(c.apelacion.id ?? c.apelacion.expediente ?? null);
+  }
+
+  isCaseSelected(c: DisciplinaryCase): boolean {
+    const current = this.selectedCase();
+    if (!current) return false;
+    return (c.apelacion.id ?? c.apelacion.expediente) === (current.apelacion.id ?? current.apelacion.expediente);
+  }
 
   readonly timeline = computed<TimelineEvent[]>(() => {
     const item = this.selectedCase();
@@ -129,9 +147,13 @@ export class ProcesoDisciplinarioComponent implements OnInit {
 
     this.ttaipService.getResueltas().subscribe({
       next: (apelaciones) => {
-        this.cases.set(apelaciones
+        const list = apelaciones
           .map((apelacion) => ({ apelacion, resolucion: apelacion.resolucion as ResolucionConProcesoDisciplinario | undefined }))
-          .filter((item): item is DisciplinaryCase => !!item.resolucion?.iniciarProcesoDisciplinario));
+          .filter((item): item is DisciplinaryCase => !!item.resolucion?.iniciarProcesoDisciplinario);
+        this.cases.set(list);
+        if (list.length > 0 && this.selectedCaseId() === null) {
+          this.selectedCaseId.set(list[0].apelacion.id ?? list[0].apelacion.expediente ?? null);
+        }
         this.loading.set(false);
       },
       error: (err) => {

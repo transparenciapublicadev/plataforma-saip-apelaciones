@@ -159,12 +159,33 @@ describe('ApelacionService', () => {
     req.flush({});
   });
 
-  it('should PATCH cambiar estado', () => {
-    service.cambiarEstado(2, 'EN_SUBSANACION').subscribe();
+  it('propaga 409 del cambio genérico sin fabricar una actuación', () => {
+    let exito = false;
+    let errorStatus = 0;
+    service.cambiarEstado(2, 'EN_SUBSANACION').subscribe({
+      next: () => { exito = true; },
+      error: error => { errorStatus = error.status; },
+    });
     const req = httpMock.expectOne(`${apiUrl}/2/estado`);
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ estado: 'EN_SUBSANACION' });
-    req.flush({});
+    req.flush({ detail: 'Utilice el comando de requerimiento de subsanación' }, { status: 409, statusText: 'Conflict' });
+    expect(exito).toBe(false);
+    expect(errorStatus).toBe(409);
+  });
+
+  it('conserva ruta y respuesta para repetir el estado persistido', () => {
+    service.cambiarEstado(2, 'EN_CALIFICACION_1').subscribe(res => expect(res.estado).toBe('EN_CALIFICACION_1'));
+    httpMock.expectOne(`${apiUrl}/2/estado`).flush({ id: 2, estado: 'EN_CALIFICACION_1' });
+  });
+
+  it('propaga el rechazo de PUT sin devolver datos actualizados ficticios', () => {
+    let exito = false;
+    service.actualizar(2, { estado: 'EN_RESOLUCION' } as any).subscribe({
+      next: () => { exito = true; }, error: error => expect(error.status).toBe(409),
+    });
+    httpMock.expectOne(`${apiUrl}/2`).flush({}, { status: 409, statusText: 'Conflict' });
+    expect(exito).toBe(false);
   });
 
   it('should POST subsanar apelacion', () => {

@@ -18,7 +18,16 @@ import {
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
 
-type SegundaDecision = 'admitido' | 'improcedente';
+import { OfficialDocsSectionComponent } from './shared/official-docs-section.component';
+import { OfficialPreviewComponent } from './shared/official-preview.component';
+import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
+import {
+  LucideArrowLeft, LucideCheckCircle2, LucideUpload,
+  LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus,
+  LucideEye, LucideEyeOff
+} from '@lucide/angular';
+
+type SegundaDecision = 'admitido' | 'improcedente' | 'no_presentado';
 type SegundaTab = 'subsanacion' | 'adjuntos';
 
 interface SegundaOption {
@@ -28,17 +37,14 @@ interface SegundaOption {
   accent: string;
 }
 
-import {
-  LucideArrowLeft, LucideCheckCircle2, LucideUpload,
-  LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus
-} from '@lucide/angular';
-
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    OfficialDocsSectionComponent, OfficialPreviewComponent,
     LucideArrowLeft, LucideCheckCircle2, LucideUpload,
-    LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus
+    LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend,
+    LucideEye, LucideEyeOff
   ],
   templateUrl: './ttaip-segunda-calificacion.component.html',
   styleUrl: './ttaip-segunda-calificacion.component.css',
@@ -66,6 +72,22 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
 
   fundamentos = '';
 
+  readonly docCtx = computed<Partial<DocContext>>(() => {
+    const ap = this.apelacion();
+    return {
+      expediente: ap?.expediente || '',
+      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
+      entidad: ap?.entidadNombre || 'No registrada',
+      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
+      direccionEntidad: '—',
+      sumilla: ap?.solicitudAsunto || ap?.resumenSolicitudOriginal || ap?.fundamentos || 'No registrada',
+    };
+  });
+
+  readonly cedulaVariant = computed<CedulaVariant>(() => {
+    return cedulaVariantForStage('segunda', this.selectedDecision() || undefined);
+  });
+
   readonly tabs: ReadonlyArray<{ id: SegundaTab; label: string }> = [
     { id: 'subsanacion', label: 'Subsanacion' },
     { id: 'adjuntos', label: 'Adjuntos' }
@@ -74,15 +96,21 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   readonly options: ReadonlyArray<SegundaOption> = [
     {
       id: 'admitido',
-      label: 'ADMITIDO A TRAMITE',
-      description: 'Subsanacion aprobada y paso a Resolucion Final',
+      label: 'ADMITIDO A TRÁMITE',
+      description: 'Subsanación aprobada · pasa a Resolución Final',
       accent: 'var(--success)'
     },
     {
       id: 'improcedente',
       label: 'IMPROCEDENTE',
-      description: 'Subsanacion insuficiente y archivo del proceso',
+      description: 'Subsanación insuficiente · proceso archivado',
       accent: 'var(--muted-foreground)'
+    },
+    {
+      id: 'no_presentado',
+      label: 'TENER POR NO PRESENTADO',
+      description: 'No subsanó en el plazo de 2 días hábiles',
+      accent: 'var(--warning)'
     }
   ];
 
@@ -207,11 +235,15 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
 
   getDecisionLabel(decision: string | null): string {
     if (!decision) {
-      return '[DECISION]';
+      return '[DECISIÓN]';
     }
 
     if (decision === 'admitido') {
-      return 'ADMITIDO A TRAMITE';
+      return 'ADMITIDO A TRÁMITE';
+    }
+
+    if (decision === 'no_presentado') {
+      return 'TENER POR NO PRESENTADO';
     }
 
     return 'IMPROCEDENTE';
@@ -240,7 +272,17 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
       this.ttaipService.admitirApelacion(currentAppeal.id, {
         fundamentos: this.fundamentos.trim()
       }).subscribe({
-        next: (updated) => this.handleSuccess('Apelacion declarada ADMITIDA A TRAMITE.', updated),
+        next: (updated) => this.handleSuccess('Apelación declarada ADMITIDA A TRÁMITE.', updated),
+        error: (err) => this.handleError(err)
+      });
+      return;
+    }
+
+    if (decision === 'no_presentado') {
+      this.ttaipService.declararNoPresentado(currentAppeal.id, {
+        fundamentos: this.fundamentos.trim()
+      }).subscribe({
+        next: (updated) => this.handleSuccess('Recurso declarado TENIDO POR NO PRESENTADO.', updated),
         error: (err) => this.handleError(err)
       });
       return;
@@ -249,16 +291,22 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
     this.ttaipService.inadmitirApelacion(currentAppeal.id, {
       fundamentos: this.fundamentos.trim()
     }).subscribe({
-      next: (updated) => this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
+      next: (updated) => this.handleSuccess('Apelación declarada IMPROCEDENTE.', updated),
       error: (err) => this.handleError(err)
     });
   }
 
   private handleSuccess(message: string, updated?: Apelacion): void {
-    const nextAppeal = updated ?? this.apelacion();
-    if (nextAppeal) {
-      this.apelacion.set(nextAppeal);
+    const current = this.apelacion();
+    if (!updated?.id || updated.id !== current?.id || updated.expediente !== current?.expediente) {
+      this.loading.set(false);
+      this.successModalAbierto.set(false);
+      this.confirmModalAbierto.set(false);
+      this.error.set('No se recibió una confirmación verificable del recurso; consulte el expediente antes de repetir la operación.');
+      return;
     }
+    const nextAppeal = updated;
+    this.apelacion.set(nextAppeal);
 
     this.loading.set(false);
     this.mensaje.set(message);
@@ -286,24 +334,35 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   segundaWarning(): ReferenceConfirmWarning {
     return {
       label: 'Decisión final',
-      detail: 'Si declara improcedente, el expediente quedará archivado. Si admite a trámite, pasa a Resolución Final.'
+      detail: this.selectedDecision() === 'admitido'
+        ? 'El expediente pasará a etapa de Resolución Final.'
+        : 'El recurso quedará archivado definitivamente conforme al Art. 34.3 del TUO de la Ley N.° 27806.'
     };
   }
 
   segundaSuccessTone(): ReferenceSuccessTone {
-    return this.selectedDecision() === 'admitido' ? 'success' : 'brand';
+    const d = this.selectedDecision();
+    if (d === 'admitido') return 'success';
+    if (d === 'no_presentado') return 'warning';
+    return 'brand';
   }
 
   segundaSuccessTitle(): string {
-    return this.selectedDecision() === 'admitido'
-      ? 'Subsanación ADMITIDA A TRÁMITE'
-      : 'Recurso declarado IMPROCEDENTE';
+    const d = this.selectedDecision();
+    if (d === 'admitido') return 'Subsanación ADMITIDA A TRÁMITE';
+    if (d === 'no_presentado') return 'Recurso TENIDO POR NO PRESENTADO';
+    return 'Recurso declarado IMPROCEDENTE';
   }
 
   segundaSuccessDescription(): string {
-    return this.selectedDecision() === 'admitido'
-      ? 'La subsanación cumple los requisitos. El expediente avanza a Resolución Final donde el Tribunal se pronunciará sobre el fondo.'
-      : 'La subsanación resulta insuficiente. El proceso queda archivado y se notifica al ciudadano.';
+    const d = this.selectedDecision();
+    if (d === 'admitido') {
+      return 'La subsanación cumple los requisitos. El expediente avanza a Resolución Final donde el Tribunal se pronunciará sobre el fondo.';
+    }
+    if (d === 'no_presentado') {
+      return 'El administrado no subsanó dentro del plazo de 2 días hábiles. El recurso se tiene por no presentado y el expediente se archiva.';
+    }
+    return 'La subsanación resulta insuficiente. El proceso queda archivado y se notifica al ciudadano.';
   }
 
   segundaPlazoDias(): number | null {
@@ -319,7 +378,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
     const docsCount = this.documentosSubsanacion().length;
     return [
-      { label: 'Decisión', value: this.selectedDecision() === 'admitido' ? 'ADMITIDO A TRÁMITE' : 'IMPROCEDENTE' },
+      { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Docs revisados', value: `${docsCount} archivos` },
       { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
       { label: 'Secretaría', value: 'TTAIP' }
@@ -327,14 +386,20 @@ export class TtaipSegundaCalificacionComponent implements OnInit {
   }
 
   segundaNextSteps(): ReferenceSuccessNextStep[] {
-    if (this.selectedDecision() === 'admitido') {
+    const d = this.selectedDecision();
+    if (d === 'admitido') {
       return [
         { label: 'Notificación al ciudadano y a la entidad emplazada.' },
         { label: 'El expediente avanza a Resolución Final.', hint: '10 días hábiles' },
         { label: 'La sala emitirá fallo: FUNDADO o INFUNDADO.' }
       ];
     }
-
+    if (d === 'no_presentado') {
+      return [
+        { label: 'Se notifica al recurrente que el recurso se tiene por no presentado.' },
+        { label: 'El expediente queda archivado conforme a ley.' }
+      ];
+    }
     return [
       { label: 'Se notifica al ciudadano la improcedencia.' },
       { label: 'El expediente queda archivado.' }

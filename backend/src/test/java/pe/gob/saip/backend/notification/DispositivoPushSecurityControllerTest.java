@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,11 +44,16 @@ class DispositivoPushSecurityControllerTest {
         SecurityContextHolder.clearContext();
     }
 
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void registrarTokenVinculaAlUsuarioAutenticadoYNoPermiteSpoofing() throws Exception {
-        // Simular usuario autenticado "victima@example.test"
+        // El principal usa exclusivamente la identidad persistente autenticada.
         SecurityContextHolder.getContext().setAuthentication(
-                new TestingAuthenticationToken("victima@example.test", null, "ROLE_CIUDADANO"));
+                new TestingAuthenticationToken("saip:user:v1:10", null, "ROLE_CIUDADANO"));
 
         String requestBody = """
                 {
@@ -75,8 +81,8 @@ class DispositivoPushSecurityControllerTest {
                 null
         );
 
-        // Se verifica que al registrar, el controlador llame al servicio pasando explícitamente "victima@example.test"
-        when(dispositivoService.registrar(any(RegistrarDispositivoPushRequest.class), eq("victima@example.test")))
+        // El DTO no aporta identidad y el servicio obtiene al actor del contexto.
+        when(dispositivoService.registrar(any(RegistrarDispositivoPushRequest.class)))
                 .thenReturn(expectedDto);
 
         mockMvc.perform(post("/api/notificaciones/push/tokens")
@@ -85,7 +91,7 @@ class DispositivoPushSecurityControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L));
 
-        verify(dispositivoService, times(1)).registrar(any(RegistrarDispositivoPushRequest.class), eq("victima@example.test"));
+        verify(dispositivoService, times(1)).registrar(any(RegistrarDispositivoPushRequest.class));
     }
 
     @Test

@@ -1,4 +1,8 @@
-import { Component, ChangeDetectionStrategy, OnInit, computed, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, computed, effect, untracked, signal, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
+import { Apelacion } from '../../models/apelacion.model';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -8,7 +12,7 @@ import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
-import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentoRelation, DocumentoListItem } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
@@ -40,6 +44,7 @@ export interface RequestTabItem {
 
 export interface DocumentoDetalleItem {
   id?: number;
+  contentType?: string;
   nombre: string;
   tamano: string;
   fecha: string;
@@ -53,6 +58,8 @@ export interface NotifStageItem {
   label: string;
   resultado: string;
   docs: {
+    id?: number;
+    contentType?: string;
     tipo: 'resolucion' | 'cedula';
     titulo: string;
     subtitulo: string;
@@ -91,7 +98,7 @@ export interface NotifStageItem {
   styleUrl: './solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SolicitudDetalleComponent implements OnInit {
+export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
@@ -124,12 +131,12 @@ export class SolicitudDetalleComponent implements OnInit {
 
   readonly estadoTTAIPLabel = computed<string>(() => {
     const est = this.solicitud()?.apelacion?.estado;
-    return est ? this.getEstadoDisplay(est) : 'En trámite';
+    return est ? this.getEstadoDisplay(est) : 'Sin estado registrado';
   });
 
   readonly estadoBadge = computed<string>(() => {
     const sol = this.solicitud();
-    if (!sol) return 'En Proceso';
+    if (!sol) return 'Sin estado registrado';
     if (this.enApelacion()) {
       const res = sol.apelacion?.resultado;
       const est = sol.apelacion?.estado;
@@ -206,214 +213,59 @@ export class SolicitudDetalleComponent implements OnInit {
 
   readonly misDocumentos = computed<DocumentoDetalleItem[]>(() => {
     const sol = this.solicitud();
-    if (!sol) return [];
-    const items: DocumentoDetalleItem[] = [];
-
-    if (sol.documentosMetadata && sol.documentosMetadata.length > 0) {
-      for (const d of sol.documentosMetadata) {
-        items.push({
-          id: d.id,
-          nombre: (d as any).nombreOriginal || (d as any).nombreArchivo || 'documento-adjunto.pdf',
-          tamano: this.formatBytes((d as any).tamanoBytes || (d as any).sizeBytes || (d as any).tamanio || 0),
-          fecha: this.formatTimelineDate((d as any).createdAt || (d as any).fechaCreacion || (d as any).fechaSubida || sol.fechaPresentacion),
-          esSubsanacion: false,
-          tipoOrigen: 'ciudadano'
-        });
-      }
-    } else if (sol.documentos && sol.documentos.length > 0) {
-      for (const d of sol.documentos) {
-        items.push({
-          id: d.id,
-          nombre: (d as any).nombreArchivo || (d as any).nombreOriginal || 'documento-adjunto.pdf',
-          tamano: this.formatBytes((d as any).tamanoBytes || (d as any).sizeBytes || (d as any).tamanio || 0),
-          fecha: this.formatTimelineDate((d as any).createdAt || (d as any).fechaCreacion || (d as any).fechaSubida || sol.fechaPresentacion),
-          esSubsanacion: false,
-          tipoOrigen: 'ciudadano'
-        });
-      }
-    }
-
-    for (const obs of this.observaciones()) {
-      if (obs.estado === 'SUBSANADA' && (obs.documentoSubsanacionNombre || obs.comentarioSubsanacion)) {
-        items.push({
-          nombre: obs.documentoSubsanacionNombre || 'subsanacion-observacion.pdf',
-          tamano: '240 KB',
-          fecha: this.formatTimelineDate(obs.fechaSubsanacion || obs.fechaObservacion),
-          esSubsanacion: true,
-          tipoOrigen: 'subsanacion'
-        });
-      }
-    }
-
-    if (items.length === 0) {
-      items.push({
-        nombre: `Solicitud_${sol.expediente}.pdf`,
-        tamano: '142 KB',
-        fecha: this.formatTimelineDate(sol.fechaPresentacion),
-        esSubsanacion: false,
-        tipoOrigen: 'ciudadano'
-      });
-      items.push({
-        nombre: `DNI_Solicitante_${sol.ciudadanoDni || '45678912'}.pdf`,
-        tamano: '98 KB',
-        fecha: this.formatTimelineDate(sol.fechaPresentacion),
-        esSubsanacion: false,
-        tipoOrigen: 'ciudadano'
-      });
-    }
-
-    return items;
+    return sol ? this.mapDocumentos(sol.documentosMetadata?.length ? sol.documentosMetadata : sol.documentos ?? [], 'ciudadano') : [];
   });
 
   readonly gruposMisDocumentos = computed(() => {
     const docs = this.misDocumentos();
-    const solDocs = docs.filter(d => !d.esSubsanacion);
-    const subDocs = docs.filter(d => d.esSubsanacion);
-    const grupos = [];
-    if (solDocs.length > 0) {
-      grupos.push({ key: 'sol', title: 'Adjuntos de la solicitud', docs: solDocs });
-    }
-    if (subDocs.length > 0) {
-      grupos.push({ key: 'sub', title: 'Subsanaciones presentadas', docs: subDocs });
-    }
-    return grupos;
+    return [
+      { key: 'sol', title: 'Adjuntos de la solicitud', docs: docs.filter(d => !d.esSubsanacion) },
+      { key: 'sub', title: 'Subsanaciones presentadas', docs: docs.filter(d => d.esSubsanacion) }
+    ].filter(grupo => grupo.docs.length > 0);
   });
 
   readonly adjuntosRespuesta = computed<DocumentoDetalleItem[]>(() => {
-    const sol = this.solicitud();
-    if (!sol?.respuesta) return [];
-    const items: DocumentoDetalleItem[] = [];
-
-    const metadatas = (sol.respuesta as any).documentosMetadata || [];
-    for (const d of metadatas) {
-      items.push({
-        id: d.id,
-        nombre: (d as any).nombreOriginal || (d as any).nombreArchivo || 'respuesta-adjunto.pdf',
-        tamano: this.formatBytes((d as any).tamanoBytes || (d as any).sizeBytes || (d as any).tamanio || 0),
-        fecha: this.formatTimelineDate((d as any).createdAt || (d as any).fechaCreacion || (d as any).fechaSubida || sol.respuesta.fechaRespuesta),
-        esSubsanacion: false,
-        tipoOrigen: 'entidad'
-      });
-    }
-
-    if (items.length === 0) {
-      items.push({
-        nombre: `Oficio-Respuesta-${sol.expediente}.pdf`,
-        tamano: '380 KB',
-        fecha: this.formatTimelineDate(sol.respuesta.fechaRespuesta),
-        esSubsanacion: false,
-        tipoOrigen: 'entidad'
-      });
-      if (sol.respuesta.tipoRespuesta === 'ENTREGA_TOTAL' || sol.respuesta.tipoRespuesta === 'ENTREGA_PARCIAL') {
-        items.push({
-          nombre: `Informacion-Publica-${sol.expediente}.pdf`,
-          tamano: '1.4 MB',
-          fecha: this.formatTimelineDate(sol.respuesta.fechaRespuesta),
-          esSubsanacion: false,
-          tipoOrigen: 'entidad'
-        });
-      }
-    }
-
-    return items;
+    const respuesta = this.solicitud()?.respuesta;
+    return respuesta ? this.mapDocumentos(respuesta.documentosMetadata?.length ? respuesta.documentosMetadata : respuesta.documentos ?? [], 'entidad') : [];
   });
 
+  // La SAIP contiene solo el resumen de la apelación. Los archivos y sus IDs
+  // se consultan en el detalle autorizado, nunca se deducen a partir del estado.
   readonly notifStages = computed<NotifStageItem[]>(() => {
-    const sol = this.solicitud();
-    if (!this.enApelacion() || !sol?.apelacion) return [];
-    const apelacion = sol.apelacion;
-    const stages: NotifStageItem[] = [];
-    const exp = apelacion.expediente || sol.expediente;
-
-    const cal1 = (apelacion as any).calificacionPrimera?.resultado
-      || (apelacion.estado === 'EN_SUBSANACION' ? 'INADMISIBLE'
-      : (apelacion.estado !== 'PENDIENTE_ELEVACION' && apelacion.estado !== 'EN_CALIFICACION_1') ? 'ADMISIBLE'
-      : (sol as any).calificacionPrimera?.resultado || null);
-
-    if (cal1) {
-      stages.push({
-        stage: 'primera',
-        num: '01',
-        label: '1.ª Calificación',
-        resultado: cal1,
-        docs: [
-          {
-            tipo: 'resolucion',
-            titulo: 'Resolución · 1.ª Calificación',
-            subtitulo: `Resolución N.° ${exp}-CAL1`,
-            tamano: '380 KB',
-            fecha: this.formatTimelineDate(apelacion.fechaApelacion),
-            nombre: `Resolucion-1ra-Calificacion-${exp}.pdf`
-          },
-          {
-            tipo: 'cedula',
-            titulo: 'Cédula de notificación · 1.ª Calificación',
-            subtitulo: `Cédula N.° ${exp}-CED1 · al administrado`,
-            tamano: '210 KB',
-            fecha: this.formatTimelineDate(apelacion.fechaApelacion),
-            nombre: `Cedula-1ra-Calificacion-${exp}.pdf`
-          }
-        ]
-      });
-    }
-
-    if (apelacion.estado === 'EN_RESOLUCION' || this.isApelacionResuelta()) {
-      stages.push({
-        stage: 'segunda',
-        num: '02',
-        label: '2.ª Calificación',
-        resultado: 'ADMITIDO A TRÁMITE',
-        docs: [
-          {
-            tipo: 'resolucion',
-            titulo: 'Resolución · 2.ª Calificación',
-            subtitulo: `Resolución N.° ${exp}-CAL2`,
-            tamano: '410 KB',
-            fecha: this.formatTimelineDate(apelacion.fechaApelacion),
-            nombre: `Resolucion-2da-Calificacion-${exp}.pdf`
-          },
-          {
-            tipo: 'cedula',
-            titulo: 'Cédula de notificación · 2.ª Calificación',
-            subtitulo: `Cédula N.° ${exp}-CED2 · al administrado`,
-            tamano: '220 KB',
-            fecha: this.formatTimelineDate(apelacion.fechaApelacion),
-            nombre: `Cedula-2da-Calificacion-${exp}.pdf`
-          }
-        ]
-      });
-    }
-
-    if (this.isApelacionResuelta()) {
-      const resFinal = apelacion.resultado || 'RESUELTO';
-      stages.push({
-        stage: 'final',
-        num: '03',
-        label: 'Resolución Final',
-        resultado: this.getEstadoDisplay(resFinal),
-        docs: [
-          {
-            tipo: 'resolucion',
-            titulo: 'Resolución Final · TTAIP',
-            subtitulo: `Resolución N.° ${exp}-RES`,
-            tamano: '840 KB',
-            fecha: this.formatTimelineDate(sol.respuesta?.fechaRespuesta || apelacion.fechaApelacion),
-            nombre: `Resolucion-Final-${exp}.pdf`
-          },
-          {
-            tipo: 'cedula',
-            titulo: 'Cédula de notificación · Resolución Final',
-            subtitulo: `Cédula N.° ${exp}-CED-FIN · al administrado`,
-            tamano: '230 KB',
-            fecha: this.formatTimelineDate(sol.respuesta?.fechaRespuesta || apelacion.fechaApelacion),
-            nombre: `Cedula-Notificacion-Final-${exp}.pdf`
-          }
-        ]
-      });
-    }
-
-    return stages;
+    const ap = this.apelacionDetalle();
+    if (!ap) return [];
+    const resoluciones = [...(ap.resoluciones ?? []), ap.resolucionPrimeraCalificacion,
+      ap.resolucionSegundaCalificacion, ap.resolucion].filter(r => !!r);
+    const vistos = new Set<number>();
+    return resoluciones.filter(r => {
+      if (!r.id || vistos.has(r.id)) return false;
+      vistos.add(r.id);
+      return true;
+    }).map(r => ({
+      stage: String(r.id), num: r.numeroResolucion || '—',
+      label: this.getEstadoDisplay(r.tipoResolucion), resultado: this.getEstadoDisplay(r.decision),
+      docs: [
+        ...this.mapDocumentos(r.documentos ?? [], 'resolucion').map(doc => ({ ...doc,
+          tipo: 'resolucion' as const, titulo: doc.nombre, subtitulo: r.numeroResolucion || 'Resolución registrada' })),
+        ...(r.cedulas ?? []).flatMap(cedula => this.mapDocumentos(cedula.documentos ?? [], 'resolucion').map(doc => ({ ...doc,
+          tipo: 'cedula' as const, titulo: doc.nombre, subtitulo: cedula.numeroCedula || 'Cédula registrada' })))
+      ]
+    }));
   });
+
+  private mapDocumentos(documentos: ReadonlyArray<DocumentoListItem>, origen: DocumentoDetalleItem['tipoOrigen']): DocumentoDetalleItem[] {
+    return documentos.map(doc => {
+      const metadata = 'nombreOriginal' in doc ? doc : null;
+      const legacy = 'nombreArchivo' in doc ? doc : null;
+      return {
+        id: doc.id, nombre: metadata?.nombreOriginal || legacy?.nombreArchivo || 'Documento sin nombre',
+        contentType: metadata?.contentType || legacy?.tipoArchivo,
+        tamano: this.formatBytes(metadata?.sizeBytes ?? legacy?.tamanio),
+        fecha: this.formatTimelineDate(metadata?.fechaCreacion || legacy?.fechaSubida),
+        esSubsanacion: doc.tipoDocumento === 'SUBSANACION', tipoOrigen: origen
+      };
+    });
+  }
 
   readonly timelineEvents = computed<TimelineEvent[]>(() => {
     const sol = this.solicitud();
@@ -421,32 +273,147 @@ export class SolicitudDetalleComponent implements OnInit {
     return this.timelineDisplayOrder(this.buildCitizenTimeline(sol));
   });
 
+  readonly estadoConsulta = signal<EstadoConsulta>('cargando');
+  readonly puedeReintentarConsulta = signal(false);
+  readonly documentoError = signal('');
+  readonly apelacionDetalle = signal<Apelacion | null>(null);
+  readonly loadingApelacion = signal(false);
+  readonly errorApelacion = signal('');
+  readonly reintentarApelacion = signal(false);
+  private readonly destroyRef = inject(DestroyRef);
+  private consultas = new Subscription();
+  private descargas = new Subscription();
+  private generacion = 0;
+  private expedienteActual: string | null = null;
+  private tokenActual = this.authService.getToken();
+
+  constructor() {
+    effect(() => {
+      this.authService.cambiosSesion();
+      untracked(() => {
+        const token = this.authService.getToken();
+        if (token !== this.tokenActual) {
+          this.tokenActual = token;
+          if (this.expedienteActual !== null) this.cargarSolicitud(this.expedienteActual);
+        }
+      });
+    });
+  }
+
   ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibió el expediente de la solicitud.');
-      this.loading.set(false);
-      return;
-    }
-    this.cargarSolicitud(expediente);
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.cargarSolicitud(params.get('expediente') || '');
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.generacion++;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
   }
 
   cargarSolicitud(expediente: string): void {
-    this.loading.set(true);
+    this.expedienteActual = expediente;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
+    this.consultas = new Subscription();
+    this.descargas = new Subscription();
+    const generacion = ++this.generacion;
+    const token = this.authService.getToken();
+    this.solicitud.set(null);
+    this.apelacionDetalle.set(null);
+    this.loadingApelacion.set(false);
+    this.errorApelacion.set('');
+    this.documentoError.set('');
+    this.cerrarPreview();
+    this.activeTab.set('solicitud');
+    this.recojoConfirmado.set(false);
+    this.subsanacionComentario.set('');
+    this.subsanacionDocumentoNombre.set('');
+    this.subsanacionError.set('');
+    this.subsanacionSuccess.set('');
+    this.subsanacionLoading.set(false);
     this.error.set('');
-    this.solicitudService.findByExpediente(expediente).subscribe({
+    this.puedeReintentarConsulta.set(false);
+    this.loading.set(false);
+    if (!expediente.trim()) {
+      this.estadoConsulta.set('validacion');
+      this.error.set('No se recibió el identificador de la solicitud.');
+      return;
+    }
+    if (!token) {
+      this.estadoConsulta.set('autenticacion');
+      this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
+      return;
+    }
+    this.loading.set(true);
+    this.estadoConsulta.set('cargando');
+    this.consultas.add(this.solicitudService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        this.solicitud.set(this.enrichSolicitud(data));
+        if (!this.esConsultaActual(generacion, token)) return;
         this.loading.set(false);
+        if (!data) {
+          this.estadoConsulta.set('vacio');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
+        if (!data.id || data.expediente !== expediente) {
+          this.estadoConsulta.set('error');
+          this.error.set('El servidor devolvió una solicitud que no corresponde al recurso consultado.');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
+        this.solicitud.set(data);
+        this.estadoConsulta.set('disponible');
+        this.cargarDocumentosTribunal();
       },
-      error: () => {
-        // Fallback a los datos canónicos de design-reference
-        const mock = this.getMockSolicitud(expediente);
-        this.solicitud.set(mock);
-        this.error.set('');
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        const fallo = falloConsulta(error, 'la solicitud');
+        this.estadoConsulta.set(fallo.estado);
+        this.error.set(fallo.mensaje);
+        this.puedeReintentarConsulta.set(fallo.reintentable);
         this.loading.set(false);
       }
-    });
+    }));
+  }
+
+  reintentarConsulta(): void {
+    if (this.expedienteActual !== null) this.cargarSolicitud(this.expedienteActual);
+  }
+
+  cargarDocumentosTribunal(): void {
+    const id = this.solicitud()?.apelacion?.id;
+    if (!id) return;
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    this.apelacionDetalle.set(null);
+    this.errorApelacion.set('');
+    this.loadingApelacion.set(true);
+    this.reintentarApelacion.set(false);
+    this.consultas.add(this.apelacionService.findById(id).subscribe({
+      next: data => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loadingApelacion.set(false);
+        if (!data || data.id !== id) {
+          this.errorApelacion.set('El servidor no devolvió el detalle documental de esta apelación.');
+          this.reintentarApelacion.set(true);
+          return;
+        }
+        this.apelacionDetalle.set(data);
+      },
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        const fallo = falloConsulta(error, 'los documentos del Tribunal');
+        this.errorApelacion.set(fallo.mensaje);
+        this.reintentarApelacion.set(fallo.reintentable);
+        this.loadingApelacion.set(false);
+      }
+    }));
+  }
+
+  private esConsultaActual(generacion: number, token: string | null): boolean {
+    return generacion === this.generacion && token === this.authService.getToken();
   }
 
   onDocumentoSubido(): void {
@@ -464,27 +431,14 @@ export class SolicitudDetalleComponent implements OnInit {
     return this.activeTab() === tab;
   }
 
-  abrirModalPreview(doc: DocumentoDetalleItem | { id?: number; nombre: string; subtitulo?: string; tamano?: string; url?: string; tipo?: string }): void {
-    const sol = this.solicitud();
-    this.previewDoc.set({
-      id: (doc as any).id,
-      nombre: doc.nombre,
-      tamano: (doc as any).tamano || '350 KB',
-      fecha: (doc as any).fecha || '',
-      esSubsanacion: false,
-      tipoOrigen: 'ciudadano'
-    });
-
-    this.previewTarget.set({
-      id: (doc as any).id || null,
-      nombre: doc.nombre,
-      url: (doc as any).url || (doc as any).rutaArchivo || null,
-      tipo: (doc as any).tipo || (doc as any).mimeType || 'application/pdf',
-      expediente: sol?.expediente || (doc as any).subtitulo || '',
-      fecha: (doc as any).fecha || (doc as any).fechaSubida || '',
-      entidad: sol?.entidadNombre || '',
-      recurrente: sol?.ciudadanoNombre || ''
-    });
+  abrirModalPreview(doc: { id?: number; nombre: string; contentType?: string }): void {
+    this.documentoError.set('');
+    this.cerrarPreview();
+    if (!doc.id || !this.solicitud()) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
+      return;
+    }
+    this.previewTarget.set({ id: doc.id, nombre: doc.nombre, tipo: doc.contentType });
     this.isPreviewOpen.set(true);
   }
 
@@ -495,50 +449,27 @@ export class SolicitudDetalleComponent implements OnInit {
   }
 
   descargarDoc(doc: { id?: number; nombre: string }): void {
-    if (doc.id) {
-      this.documentoService.download(doc.id, doc.nombre).subscribe({
-        next: ({ blob, filename }) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = filename || doc.nombre;
-          a.click();
-          window.URL.revokeObjectURL(url);
-        },
-        error: () => {
-          this.descargarArchivoReal(doc.nombre);
-        }
-      });
-    } else {
-      this.descargarArchivoReal(doc.nombre);
+    this.documentoError.set('');
+    if (!doc.id || !this.solicitud()) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
+      return;
     }
-  }
-
-  private descargarArchivoReal(nombre: string): void {
-    const url = this.getCanonicalDocUrl(nombre);
-    if (url && typeof window !== 'undefined') {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombre.endsWith('.pdf') ? nombre : `${nombre}.pdf`;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
-  }
-
-  private getCanonicalDocUrl(nombre: string): string {
-    const n = (nombre || '').toLowerCase();
-    if (n.includes('resolucion') || n.includes('final') || n.includes('ttaip-res') || n.includes('2325') || n.includes('2299') || n.includes('001079')) {
-      return '/assets/docs/RESOLUCION_001079-2026_JUS-TTAIP-SEGUNDA SALA.pdf';
-    }
-    if (n.includes('cedula') || n.includes('notificacion') || n.includes('admision') || n.includes('calificacion')) {
-      return '/assets/docs/ADMISION - RECURRENTE.pdf';
-    }
-    if (n.includes('respuesta') || n.includes('oficio') || n.includes('fundado') || n.includes('entrega')) {
-      return '/assets/docs/FUNDADO O FUNDADO EN PARTE - RECURRENTE.pdf';
-    }
-    return '/assets/docs/SAIP-OFICIAL.pdf';
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    this.descargas.add(this.documentoService.download(doc.id, doc.nombre).subscribe({
+      next: ({ blob, filename }) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || doc.nombre;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (error: unknown) => {
+        if (this.esConsultaActual(generacion, token)) this.documentoError.set(falloConsulta(error, 'el documento').mensaje);
+      }
+    }));
   }
 
   confirmarRecojo(): void {
@@ -567,12 +498,15 @@ export class SolicitudDetalleComponent implements OnInit {
     this.subsanacionError.set('');
     this.subsanacionSuccess.set('');
 
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
     this.solicitudService.subsanar(sol.id, observacion.id, {
       comentarioSubsanacion: comentario || undefined,
       documentoSubsanacionNombre: documento || undefined,
       responsable: this.getSolicitanteNombre()
     }).subscribe({
       next: () => {
+        if (!this.esConsultaActual(generacion, token)) return;
         this.subsanacionComentario.set('');
         this.subsanacionDocumentoNombre.set('');
         this.subsanacionSuccess.set('Subsanación enviada. La solicitud volvió a revisión de la entidad.');
@@ -580,6 +514,7 @@ export class SolicitudDetalleComponent implements OnInit {
         this.cargarSolicitud(sol.expediente);
       },
       error: (error) => {
+        if (!this.esConsultaActual(generacion, token)) return;
         this.subsanacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la subsanación.');
         this.subsanacionLoading.set(false);
       }
@@ -587,7 +522,7 @@ export class SolicitudDetalleComponent implements OnInit {
   }
 
   getEstadoDisplay(value: string | undefined): string {
-    if (!value) return 'En Proceso';
+    if (!value) return 'Sin estado registrado';
     const upper = value.toUpperCase();
     if (upper === 'PENDIENTE_ELEVACION') return 'En 1ra Calificación';
     if (upper === 'EN_CALIFICACION_1') return 'En 1ra Calificación';
@@ -655,7 +590,7 @@ export class SolicitudDetalleComponent implements OnInit {
 
   getSolicitanteNombre(): string {
     const sol = this.solicitud();
-    return sol?.ciudadanoNombre || this.authService.obtenerSesion()?.nombreCompleto || this.authService.obtenerSesion()?.nombre || 'Juan Carlos Pérez Mendoza';
+    return sol?.ciudadanoNombre || 'No registrado';
   }
 
   getSolicitanteIniciales(): string {
@@ -665,15 +600,15 @@ export class SolicitudDetalleComponent implements OnInit {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join('');
-    return base || 'JC';
+    return base || '—';
   }
 
   getSolicitanteDni(): string {
-    return this.solicitud()?.ciudadanoDni || this.authService.obtenerSesion()?.dni || '45678912';
+    return this.solicitud()?.ciudadanoDni || 'No registrado';
   }
 
   getSolicitanteEmail(): string {
-    return this.authService.obtenerSesion()?.email || 'juan.perez@gmail.com';
+    return this.solicitud()?.ciudadanoEmail || 'No registrado';
   }
 
   esEmpresa(): boolean {
@@ -688,7 +623,7 @@ export class SolicitudDetalleComponent implements OnInit {
   formatosSeleccionados(): string[] {
     const sol = this.solicitud();
     if (!sol) {
-      return ['Digital'];
+      return [];
     }
 
     const selected: string[] = [];
@@ -696,7 +631,7 @@ export class SolicitudDetalleComponent implements OnInit {
     if (sol.formatoFisico) selected.push('Físico');
     if (sol.copiaSimple) selected.push('Copia simple');
     if (sol.copiaCertificada) selected.push('Copia certificada');
-    return selected.length > 0 ? selected : ['Digital'];
+    return selected;
   }
 
   puedeApelar(): boolean {
@@ -727,8 +662,9 @@ export class SolicitudDetalleComponent implements OnInit {
     }
   }
 
-  private formatBytes(bytes: number): string {
-    if (!bytes || bytes <= 0) return '142 KB';
+  private formatBytes(bytes?: number): string {
+    if (bytes === undefined || bytes === null) return 'Tamaño no registrado';
+    if (bytes === 0) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -972,652 +908,4 @@ export class SolicitudDetalleComponent implements OnInit {
     return steps.slice(0, cut + 1).reverse();
   }
 
-  // ── Canonical Mock Data & Enrichment ──────────────────────────────────────
-  enrichSolicitud(sol: Solicitud): Solicitud {
-    if (!sol.documentos || sol.documentos.length === 0) {
-      sol.documentos = [
-        {
-          id: 1,
-          solicitudId: sol.id,
-          nombreArchivo: `Solicitud_${sol.expediente}.pdf`,
-          rutaArchivo: `/docs/${sol.expediente}/solicitud.pdf`,
-          mimeType: 'application/pdf',
-          tamanioBytes: 145000,
-          tipoDocumento: 'SOLICITUD',
-          fechaSubida: sol.fechaPresentacion
-        } as any,
-        {
-          id: 2,
-          solicitudId: sol.id,
-          nombreArchivo: `DNI_Solicitante_${sol.ciudadanoDni || '45678912'}.pdf`,
-          rutaArchivo: `/docs/${sol.expediente}/dni.pdf`,
-          mimeType: 'application/pdf',
-          tamanioBytes: 98000,
-          tipoDocumento: 'IDENTIFICACION',
-          fechaSubida: sol.fechaPresentacion
-        } as any
-      ];
-    }
-    return sol;
-  }
-
-  private getMockSolicitud(expediente: string): Solicitud {
-    const expClean = expediente.trim();
-    if (MOCK_CANONICAL_SOLICITUDES[expClean]) {
-      return MOCK_CANONICAL_SOLICITUDES[expClean] as Solicitud;
-    }
-
-    // Check by TTAIP number
-    for (const item of Object.values(MOCK_CANONICAL_SOLICITUDES)) {
-      if ((item as any).apelacion?.expediente === expClean) {
-        return item as Solicitud;
-      }
-    }
-
-    // Default synthesis
-    return {
-      id: 512,
-      expediente: expClean,
-      entidadId: 1,
-      entidadNombre: 'Ministerio de Educación',
-      entidadAcronimo: 'MINEDU',
-      ciudadanoId: 1,
-      ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-      ciudadanoDni: '45678912',
-      asunto: 'Convenios universitarios suscritos en 2024',
-      descripcion: 'Solicito copia digital de todos los convenios marco y específicos suscritos durante el año fiscal 2024, incluyendo sus adendas y presupuestos asignados.',
-      estado: 'APELADA' as any,
-      fechaPresentacion: '2025-09-25T10:00:00Z',
-      fechaLimite: '2025-10-09T18:00:00Z',
-      formatoDigital: true,
-      formatoFisico: false,
-      copiaSimple: true,
-      copiaCertificada: false,
-      tipoInformacion: 'Información institucional',
-      canalNotificacion: 'CORREO_ELECTRONICO',
-      prioridad: 'MEDIA',
-      semaforo: 'VERDE',
-      diasRestantes: 0,
-      documentos: [],
-      documentosMetadata: [],
-      observaciones: [],
-      ampliacionesPlazo: [],
-      encauzamientos: [],
-      liquidacionesCosto: [],
-      respuesta: {
-        id: 1,
-        solicitudId: 512,
-        tipoRespuesta: 'DENEGACION_TOTAL',
-        causalDenegatoria: 'Denegatoria total · Información en proceso de deliberación',
-        fundamentoLegal: 'La entidad denegó el acceso a la información solicitada conforme al artículo 17 inciso 1 del TUO de la Ley N° 27806.',
-        contenido: 'Se comunica que la información solicitada se encuentra en proceso de revisión técnica y legal interna.',
-        fechaRespuesta: '2025-10-08T15:30:00Z',
-        funcionarioNombre: 'Dr. Roberto Sánchez',
-        decision: 'denegar'
-      } as any,
-      apelacion: {
-        id: 145,
-        expediente: '00145-2025-JUS/TTAIP',
-        solicitudId: 512,
-        solicitudExpediente: expClean,
-        entidadNombre: 'Ministerio de Educación',
-        ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-        estado: 'EN_SUBSANACION',
-        resultado: 'INADMISIBLE',
-        fechaApelacion: '2025-10-10T09:00:00Z',
-        fechaSubsanacion: '2025-10-12T11:00:00Z',
-        diasSubsanacion: 2,
-        fundamentos: 'Interpongo recurso de apelación contra la denegatoria emitida por la entidad.',
-        calificacionPrimera: 'INADMISIBLE',
-        calificacionSegunda: null,
-        tipoOrigen: 'SAIP_INTERNA',
-        observaciones: ['El recurrente no adjuntó copia clara del documento de identidad ni acreditó la denegatoria expresa con fecha cierta.']
-      } as any
-    } as any;
-  }
 }
-
-const MOCK_CANONICAL_SOLICITUDES: Record<string, any> = {
-  'SAIP-2025-00512': {
-    id: 512,
-    expediente: 'SAIP-2025-00512',
-    entidadId: 1,
-    entidadNombre: 'Ministerio de Educación',
-    entidadAcronimo: 'MINEDU',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Convenios universitarios suscritos en 2024',
-    descripcion: 'Solicito copia digital de todos los convenios marco y específicos suscritos entre el Ministerio de Educación y universidades públicas y privadas durante el año fiscal 2024, incluyendo sus adendas y presupuestos asignados.',
-    estado: 'APELADA' as any,
-    fechaPresentacion: '2025-09-25T10:00:00Z',
-    fechaLimite: '2025-10-09T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Convenios y acuerdos interinstitucionales',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'MEDIA',
-    semaforo: 'ROJO',
-    diasRestantes: 0,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 101,
-        solicitudId: 512,
-        nombreArchivo: 'Solicitud-SAIP-2025-00512.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00512/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 142000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-09-25T10:00:00Z'
-      } as any,
-      {
-        id: 102,
-        solicitudId: 512,
-        nombreArchivo: 'DNI-Juan-Perez.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00512/dni.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 98000,
-        tipoDocumento: 'IDENTIFICACION',
-        fechaSubida: '2025-09-25T10:00:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: [],
-    respuesta: {
-      id: 501,
-      solicitudId: 512,
-      tipoRespuesta: 'DENEGACION_TOTAL',
-      causalDenegatoria: 'Denegatoria total · Información en proceso de deliberación',
-      fundamentoLegal: 'La entidad denegó el acceso a la información solicitada conforme al artículo 17 inciso 1 del TUO de la Ley N° 27806, por tratarse de información que contiene opiniones previas a la decisión final.',
-      contenido: 'Se comunica que la información solicitada se encuentra en proceso de revisión técnica y legal interna, por lo que no es posible atender favorablemente su pedido en esta etapa.',
-      fechaRespuesta: '2025-10-08T15:30:00Z',
-      funcionarioNombre: 'Dr. Roberto Sánchez',
-      decision: 'denegar'
-    } as any,
-    apelacion: {
-      id: 145,
-      expediente: '00145-2025-JUS/TTAIP',
-      solicitudId: 512,
-      solicitudExpediente: 'SAIP-2025-00512',
-      entidadNombre: 'Ministerio de Educación',
-      ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-      estado: 'EN_SUBSANACION',
-      resultado: 'INADMISIBLE',
-      fechaApelacion: '2025-10-10T09:00:00Z',
-      fechaSubsanacion: '2025-10-12T11:00:00Z',
-      diasSubsanacion: 2,
-      fundamentos: 'Interpongo recurso de apelación contra la denegatoria emitida por la entidad, por cuanto la causal invocada no resulta aplicable a convenios ya suscritos y perfeccionados.',
-      calificacionPrimera: 'INADMISIBLE',
-      calificacionSegunda: null,
-      tipoOrigen: 'SAIP_INTERNA',
-      observaciones: ['El recurrente no adjuntó copia clara del documento de identidad ni acreditó la denegatoria expresa con fecha cierta.']
-    } as any
-  },
-
-  'SAIP-2025-00654': {
-    id: 654,
-    expediente: 'SAIP-2025-00654',
-    entidadId: 9,
-    entidadNombre: 'SUNAT',
-    entidadAcronimo: 'SUNAT',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Fiscalizaciones a empresas estatales',
-    descripcion: 'Solicito el número de fiscalizaciones tributarias concluidas a empresas con participación estatal durante los periodos 2023 y 2024, desagregadas por sector económico y monto total determinado.',
-    estado: 'VENCIDA' as any,
-    fechaPresentacion: '2025-09-15T08:30:00Z',
-    fechaLimite: '2025-09-29T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: false,
-    copiaCertificada: false,
-    tipoInformacion: 'Fiscalización y auditoría tributaria',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'ALTA',
-    semaforo: 'ROJO',
-    diasRestantes: 0,
-    estaVencida: true,
-    documentos: [
-      {
-        id: 201,
-        solicitudId: 654,
-        nombreArchivo: 'Solicitud-SAIP-2025-00654.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00654/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 135000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-09-15T08:30:00Z'
-      } as any,
-      {
-        id: 202,
-        solicitudId: 654,
-        nombreArchivo: 'DNI-Juan-Perez.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00654/dni.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 98000,
-        tipoDocumento: 'IDENTIFICACION',
-        fechaSubida: '2025-09-15T08:30:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: []
-  },
-
-  'SAIP-2025-00701': {
-    id: 701,
-    expediente: 'SAIP-2025-00701',
-    entidadId: 10,
-    entidadNombre: 'OSCE',
-    entidadAcronimo: 'OSCE',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Procesos de selección observados 2025',
-    descripcion: 'Solicito el listado de procesos de selección de bienes y servicios con observaciones formales durante el primer semestre de 2025, incluyendo motivos y estado actual.',
-    estado: 'DENEGADA' as any,
-    fechaPresentacion: '2025-09-20T11:15:00Z',
-    fechaLimite: '2025-10-04T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Contrataciones públicas',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'MEDIA',
-    semaforo: 'ROJO',
-    diasRestantes: 0,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 301,
-        solicitudId: 701,
-        nombreArchivo: 'Solicitud-SAIP-2025-00701.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00701/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 138000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-09-20T11:15:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: [],
-    respuesta: {
-      id: 702,
-      solicitudId: 701,
-      tipoRespuesta: 'DENEGACION_TOTAL',
-      causalDenegatoria: 'Denegatoria total',
-      fundamentoLegal: 'Denegada por tratarse de información en proceso bajo competencia de fiscalización (Art. 17 inc. 2 Ley N° 27806).',
-      contenido: 'No es posible atender el pedido en tanto las acciones de supervisión se encuentran en trámite ante el Tribunal de Contrataciones del Estado.',
-      fechaRespuesta: '2025-10-03T16:00:00Z',
-      funcionarioNombre: 'Lic. Mariana Torres',
-      decision: 'denegar'
-    } as any
-  },
-
-  'SAIP-2025-00847': {
-    id: 847,
-    expediente: 'SAIP-2025-00847',
-    entidadId: 2,
-    entidadNombre: 'Ministerio de Salud',
-    entidadAcronimo: 'MINSA',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Presupuesto 2025 — programas oncológicos',
-    descripcion: 'Solicito el detalle del presupuesto institucional modificado asignado a los programas oncológicos nacionales para el año fiscal 2025, especificando partidas de medicamentos de alto costo.',
-    estado: 'EN_REVISION' as any,
-    fechaPresentacion: '2025-10-15T14:20:00Z',
-    fechaLimite: '2025-10-29T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: false,
-    copiaCertificada: true,
-    tipoInformacion: 'Presupuesto institucional',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'ALTA',
-    semaforo: 'VERDE',
-    diasRestantes: 7,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 401,
-        solicitudId: 847,
-        nombreArchivo: 'Solicitud-SAIP-2025-00847.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00847/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 156000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-10-15T14:20:00Z'
-      } as any,
-      {
-        id: 402,
-        solicitudId: 847,
-        nombreArchivo: 'DNI-Juan-Perez.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00847/dni.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 98000,
-        tipoDocumento: 'IDENTIFICACION',
-        fechaSubida: '2025-10-15T14:20:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: []
-  },
-
-  'SAIP-2025-00834': {
-    id: 834,
-    expediente: 'SAIP-2025-00834',
-    entidadId: 8,
-    entidadNombre: 'Municipalidad de San Isidro',
-    entidadAcronimo: 'MSI',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Contratos de obra menor 2024',
-    descripcion: 'Solicito copia de las órdenes de servicio y contratos de obra menor ejecutados en el distrito durante el segundo semestre de 2024.',
-    estado: 'EN_REVISION' as any,
-    fechaPresentacion: '2025-10-10T09:45:00Z',
-    fechaLimite: '2025-10-24T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Obras públicas distritales',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'MEDIA',
-    semaforo: 'AMBAR',
-    diasRestantes: 2,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 501,
-        solicitudId: 834,
-        nombreArchivo: 'Solicitud-SAIP-2025-00834.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00834/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 140000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-10-10T09:45:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [
-      {
-        id: 1,
-        solicitudId: 834,
-        expediente: 'SAIP-2025-00834',
-        motivoAmpliacion: 'Excepcional dispersión y volumen de los antecedentes contractuales en las distintas subgerencias distritales.',
-        informeAmpliacion: 'Informe Técnico N.° 045-2025-MSI/OAIP',
-        fechaSolicitudAmpliacion: '2025-10-12T10:00:00Z',
-        fechaNotificacionAmpliacion: '2025-10-12T17:00:00Z',
-        fechaLimiteOriginal: '2025-10-24',
-        fechaLimiteAmpliada: '2025-10-31',
-        estadoAmpliacion: 'NOTIFICADA',
-        cronograma: []
-      }
-    ],
-    encauzamientos: [],
-    liquidacionesCosto: []
-  },
-
-  'SAIP-2025-00723': {
-    id: 723,
-    expediente: 'SAIP-2025-00723',
-    entidadId: 3,
-    entidadNombre: 'Municipalidad de Lima',
-    entidadAcronimo: 'MML',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Planilla de funcionarios Q3',
-    descripcion: 'Solicito la planilla consolidada de funcionarios y directivos contratados bajo régimen CAP y CAS del tercer trimestre de 2025.',
-    estado: 'RESPONDIDA' as any,
-    fechaPresentacion: '2025-10-02T10:30:00Z',
-    fechaLimite: '2025-10-16T18:00:00Z',
-    formatoDigital: false,
-    formatoFisico: true,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Personal y remuneraciones',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'MEDIA',
-    semaforo: 'VERDE',
-    diasRestantes: 0,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 601,
-        solicitudId: 723,
-        nombreArchivo: 'Solicitud-SAIP-2025-00723.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00723/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 145000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-10-02T10:30:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: [
-      {
-        id: 1,
-        solicitudId: 723,
-        expediente: 'SAIP-2025-00723',
-        codigoLiquidacion: 'LIQ-2025-0089',
-        monto: '8.50',
-        moneda: 'S/',
-        concepto: 'Liquidación de costo de reproducción: 85 folios en copia simple a S/ 0.10 c/u.',
-        fechaEmision: '2025-10-13T12:00:00Z',
-        fechaNotificacion: '2025-10-13T12:30:00Z',
-        fechaLimiteRecojo: '2025-11-12',
-        estadoLiquidacion: 'NOTIFICADA',
-        medioNotificacion: 'CORREO_ELECTRONICO'
-      }
-    ],
-    respuesta: {
-      id: 724,
-      solicitudId: 723,
-      tipoRespuesta: 'ENTREGA_TOTAL',
-      contenido: 'La información solicitada se encuentra disponible en soporte físico impreso conforme a la liquidación de costo de reproducción emitida.',
-      fechaRespuesta: '2025-10-13T12:00:00Z',
-      funcionarioNombre: 'Abog. Carmen Vargas',
-      decision: 'aceptar'
-    } as any
-  },
-
-  'SAIP-2025-00451': {
-    id: 451,
-    expediente: 'SAIP-2025-00451',
-    entidadId: 2,
-    entidadNombre: 'Ministerio de Salud',
-    entidadAcronimo: 'MINSA',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Detalle de viáticos del despacho ministerial',
-    descripcion: 'Solicito las liquidaciones de viáticos y pasajes del titular del despacho ministerial correspondientes al primer semestre 2025.',
-    estado: 'EN_REVISION' as any,
-    fechaPresentacion: '2025-10-07T08:50:00Z',
-    fechaLimite: '2025-10-21T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Gestión administrativa y viáticos',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'ALTA',
-    semaforo: 'AMBAR',
-    diasRestantes: 3,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 701,
-        solicitudId: 451,
-        nombreArchivo: 'Solicitud-SAIP-2025-00451.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00451/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 138000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-10-07T08:50:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [
-      {
-        id: 1,
-        solicitudId: 451,
-        expediente: 'SAIP-2025-00451',
-        entidadOrigenId: 2,
-        entidadOrigenNombre: 'Ministerio de Salud',
-        entidadDestinoId: 5,
-        entidadDestinoNombre: 'Presidencia del Consejo de Ministros',
-        motivoEncauzamiento: 'Parte de las comisiones de servicio corresponden a delegaciones multisectoriales administradas por PCM.',
-        alcance: 'PARCIAL',
-        fechaEncauzamiento: '2025-10-10T11:00:00Z',
-        fechaLimiteEncauzamiento: '2025-10-24',
-        estadoEncauzamiento: 'DERIVADO',
-        observacionSustento: 'Misiones oficiales conjuntas al interior del país'
-      }
-    ],
-    liquidacionesCosto: []
-  },
-
-  'SAIP-2025-00611': {
-    id: 611,
-    expediente: 'SAIP-2025-00611',
-    entidadId: 4,
-    entidadNombre: 'Gobierno Regional Cusco',
-    entidadAcronimo: 'GORE-CUSCO',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Obras públicas paralizadas 2023-2024',
-    descripcion: 'Solicito el inventario y estado situacional de proyectos viales y de salud paralizados en el ámbito regional durante 2023 y 2024.',
-    estado: 'APELADA' as any,
-    fechaPresentacion: '2025-09-08T09:10:00Z',
-    fechaLimite: '2025-09-22T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Obras públicas regionales',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'ALTA',
-    semaforo: 'ROJO',
-    diasRestantes: 0,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 801,
-        solicitudId: 611,
-        nombreArchivo: 'Solicitud-SAIP-2025-00611.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00611/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 144000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-09-08T09:10:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: [],
-    respuesta: {
-      id: 802,
-      solicitudId: 611,
-      tipoRespuesta: 'ENTREGA_PARCIAL',
-      contenido: 'Se remite el inventario correspondiente al sector vial; el sector salud se encuentra en fase de consolidación técnica.',
-      fechaRespuesta: '2025-09-22T16:00:00Z',
-      funcionarioNombre: 'Ing. Manuel Quispe',
-      decision: 'aceptar'
-    } as any,
-    apelacion: {
-      id: 210,
-      expediente: '00210-2025-JUS/TTAIP',
-      solicitudId: 611,
-      solicitudExpediente: 'SAIP-2025-00611',
-      entidadNombre: 'Gobierno Regional Cusco',
-      ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-      estado: 'EN_CALIFICACION_1',
-      resultado: '',
-      fechaApelacion: '2025-09-24T10:00:00Z',
-      calificacionPrimera: '',
-      calificacionSegunda: null,
-      tipoOrigen: 'SAIP_INTERNA'
-    } as any
-  },
-
-  'SAIP-2025-00278': {
-    id: 278,
-    expediente: 'SAIP-2025-00278',
-    entidadId: 7,
-    entidadNombre: 'CONCYTEC',
-    entidadAcronimo: 'CONCYTEC',
-    ciudadanoId: 1,
-    ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-    ciudadanoDni: '45678912',
-    asunto: 'Proyectos de I+D+i financiados 2024',
-    descripcion: 'Solicito el listado de proyectos de innovación y desarrollo científico que recibieron financiamiento de fondos públicos durante el ejercicio 2024.',
-    estado: 'RESPONDIDA' as any,
-    fechaPresentacion: '2025-06-28T10:20:00Z',
-    fechaLimite: '2025-07-12T18:00:00Z',
-    formatoDigital: true,
-    formatoFisico: false,
-    copiaSimple: true,
-    copiaCertificada: false,
-    tipoInformacion: 'Investigación y desarrollo',
-    canalNotificacion: 'CORREO_ELECTRONICO',
-    prioridad: 'BAJA',
-    semaforo: 'VERDE',
-    diasRestantes: 0,
-    estaVencida: false,
-    documentos: [
-      {
-        id: 901,
-        solicitudId: 278,
-        nombreArchivo: 'Solicitud-SAIP-2025-00278.pdf',
-        rutaArchivo: '/docs/SAIP-2025-00278/solicitud.pdf',
-        mimeType: 'application/pdf',
-        tamanioBytes: 132000,
-        tipoDocumento: 'SOLICITUD',
-        fechaSubida: '2025-06-28T10:20:00Z'
-      } as any
-    ],
-    documentosMetadata: [],
-    observaciones: [],
-    ampliacionesPlazo: [],
-    encauzamientos: [],
-    liquidacionesCosto: [],
-    respuesta: {
-      id: 902,
-      solicitudId: 278,
-      tipoRespuesta: 'ENTREGA_TOTAL',
-      contenido: 'Se adjunta la nómina consolidada de proyectos de investigación científica adjudicados con fondos concursables durante el ejercicio 2024.',
-      fechaRespuesta: '2025-07-04T15:00:00Z',
-      funcionarioNombre: 'Dra. Elena Alarcón',
-      decision: 'aceptar'
-    } as any
-  }
-};

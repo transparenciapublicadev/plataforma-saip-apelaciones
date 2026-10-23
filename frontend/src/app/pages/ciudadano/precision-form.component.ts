@@ -2,11 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  DestroyRef,
   computed,
   inject,
   signal
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -27,7 +30,9 @@ import {
 import { SolicitudService } from '../../services/solicitud.service';
 import { DocumentoService } from '../../services/documento.service';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { DocumentoMetadata, validarDocumento } from '../../models/documento.model';
+import { PrecisionSaipRecepcion, PrecisionSaipService } from '../../services/precision-saip.service';
 import {
   ReferenceConfirmModalComponent,
   ReferenceConfirmSummary,
@@ -44,6 +49,7 @@ import {
 } from '../../shared/document-preview-modal.component';
 
 export interface ExpedienteDocItem {
+  id: number;
   nombre: string;
   fecha?: string;
   tamano?: string;
@@ -57,6 +63,14 @@ export interface GrupoDocItem {
   kind: 'ciudadano' | 'subsanacion';
   label: string;
   docs: ExpedienteDocItem[];
+}
+
+interface IntentoPrecision {
+  solicitudId: number;
+  observacionId: number;
+  claveOperacion: string;
+  comentario?: string;
+  archivo?: File;
 }
 
 @Component({
@@ -93,6 +107,9 @@ export class PrecisionFormComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
   private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
+  private readonly precisionService = inject(PrecisionSaipService);
+  private readonly destroyRef = inject(DestroyRef);
+  private intento: IntentoPrecision | null = null;
 
   readonly pasosGuia: string[] = [
     'Lea la observación señalada por la entidad.',
@@ -103,11 +120,20 @@ export class PrecisionFormComponent implements OnInit {
   ];
 
   // Estado del expediente
-  expediente = signal<string>('SAIP-2026-00012');
+  expediente = signal<string>('');
   solicitud = signal<Solicitud | null>(null);
   loadingSolicitud = signal<boolean>(true);
   loadingEnvio = signal<boolean>(false);
   error = signal<string>('');
+  verificacionPendiente = signal(false);
+  private readonly conservarContenidoIntento = signal(false);
+  recepcion = signal<PrecisionSaipRecepcion | null>(null);
+  observacionSeleccionada = signal<ObservacionSolicitud | null>(null);
+  readonly formularioBloqueado = computed(() => this.loadingEnvio() || this.verificacionPendiente()
+    || this.conservarContenidoIntento() || !!this.recepcion());
+  readonly puedeEnviar = computed(() => !!this.solicitud()?.id
+    && this.observacionSeleccionada()?.estado === 'PENDIENTE_SUBSANACION'
+    && !this.loadingSolicitud() && !this.loadingEnvio() && !this.verificacionPendiente() && !this.recepcion());
 
   // Metadatos de la observación en 1ª instancia
   observacion = signal<string>('');
@@ -162,120 +188,65 @@ export class PrecisionFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.authService.obtenerSesion();
-
     const param = this.route.snapshot.paramMap.get('expediente');
     if (param) {
       this.expediente.set(param);
       this.cargarDatos(param);
     } else {
-      // Valor de demostración para visualización directa
-      this.cargarDatosDemo();
+      this.loadingSolicitud.set(false);
+      this.error.set('No se ha identificado la solicitud SAIP. Abra la precisión desde su panel.');
     }
   }
 
   cargarDatos(expedienteParam: string): void {
     this.loadingSolicitud.set(true);
-    this.solicitudService.findByExpediente(expedienteParam).subscribe({
+    this.error.set('');
+    this.solicitudService.findByExpediente(expedienteParam).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (sol) => {
         this.solicitud.set(sol);
         this.expediente.set(sol.expediente);
-
-        // Extraer observación activa si existe
-        const obsActiva = sol.observaciones?.length ? sol.observaciones[sol.observaciones.length - 1] : null;
-        if (obsActiva) {
-          this.observacion.set(obsActiva.motivoObservacion);
-          const fNotif = obsActiva.fechaObservacion
-            ? this.formatearFecha(obsActiva.fechaObservacion)
-            : this.formatearFecha(sol.fechaPresentacion);
-          this.fechaNotificacion.set(fNotif);
-
-          const fLim = obsActiva.fechaLimiteSubsanacion
-            ? this.formatearFecha(obsActiva.fechaLimiteSubsanacion)
-            : this.sumarDiasHabiles(fNotif, 2);
-          this.fechaLimite.set(fLim);
-        } else {
-          this.observacion.set('Se requiere precisar el alcance de la documentación requerida y el periodo exacto.');
-          const fNotif = this.formatearFecha(sol.fechaPresentacion);
-          this.fechaNotificacion.set(fNotif);
-          this.fechaLimite.set(this.sumarDiasHabiles(fNotif, 2));
-        }
-
-        // Mapear documentos
-        const docItems: ExpedienteDocItem[] = (sol.documentos || []).map(d => ({
-          nombre: d.nombreArchivo || `Documento-${d.id}.pdf`,
-          fecha: d.fechaSubida ? d.fechaSubida.slice(0, 10) : sol.fechaPresentacion.slice(0, 10),
-          tamano: d.tamanio ? `${(d.tamanio / 1024).toFixed(1)} KB` : '124.5 KB',
-          path: String(d.id),
-          kind: (d.tipoDocumento === 'SUBSANACION' ? 'subsanacion' : 'ciudadano') as 'ciudadano' | 'subsanacion'
-        }));
-
-        if (docItems.length === 0) {
-          docItems.push({
-            nombre: `Solicitud_${sol.expediente}.pdf`,
-            fecha: this.formatearFecha(sol.fechaPresentacion),
-            tamano: '142.3 KB',
-            kind: 'ciudadano'
-          });
-        }
-        this.documentosExpediente.set(docItems);
+        const observaciones = [...(sol.observaciones || [])].sort((a, b) =>
+          (b.fechaObservacion || '').localeCompare(a.fechaObservacion || '') || (b.id || 0) - (a.id || 0));
+        const activa = observaciones.find((obs) => obs.estado === 'PENDIENTE_SUBSANACION') || observaciones[0] || null;
+        this.observacionSeleccionada.set(activa);
+        this.observacion.set(activa?.motivoObservacion || '');
+        this.fechaNotificacion.set(activa?.fechaObservacion ? this.formatearFecha(activa.fechaObservacion) : '');
+        this.fechaLimite.set(activa?.fechaLimiteSubsanacion ? this.formatearFecha(activa.fechaLimiteSubsanacion) : '');
+        const metadata = sol.documentosMetadata || [];
+        this.documentosExpediente.set(metadata.length
+          ? metadata.filter((doc) => !!doc.id).map((doc) => this.documentoItem(doc))
+          : (sol.documentos || []).filter((doc) => !!doc.id).map((doc) => ({
+              id: doc.id,
+              nombre: doc.nombreArchivo || `Documento ${doc.id}`,
+              fecha: doc.fechaSubida ? this.formatearFecha(doc.fechaSubida) : undefined,
+              tamano: doc.tamanio != null ? `${(doc.tamanio / 1024).toFixed(1)} KB` : undefined,
+              kind: doc.tipoDocumento === 'SUBSANACION' ? 'subsanacion' as const : 'ciudadano' as const
+            })));
         this.loadingSolicitud.set(false);
+        const recuperado = activa?.id ? this.recuperarIntento(sol.id, activa.id) : null;
+        if (recuperado) {
+          this.intento = recuperado;
+          this.comprobarRecepcion();
+        } else if (!activa || activa.estado !== 'PENDIENTE_SUBSANACION') {
+          this.error.set('Esta solicitud no tiene una observación pendiente de subsanación.');
+        }
       },
-      error: () => {
-        // En caso de que no exista en backend, cargar estado de muestra idéntico a design-reference
-        this.cargarDatosDemo(expedienteParam);
+      error: (error: unknown) => {
+        this.solicitud.set(null);
+        this.observacionSeleccionada.set(null);
+        this.documentosExpediente.set([]);
+        this.loadingSolicitud.set(false);
+        this.error.set(this.mensajeError(error, 'No se pudo recuperar la solicitud. Vuelva a intentarlo desde su panel.'));
       }
     });
   }
 
-  private cargarDatosDemo(expParam?: string): void {
-    const cod = expParam || 'SAIP-2026-00012';
-    this.expediente.set(cod);
-    this.observacion.set(
-      'La solicitud no precisa las fechas de inicio y fin del periodo consultado, ni la gerencia o unidad orgánica responsable del informe requerido. Sírvase aclarar y delimitar los documentos solicitados conforme al Art. 13 de la Ley N.° 27806.'
-    );
-    const fNotif = '04/09/2026';
-    this.fechaNotificacion.set(fNotif);
-    this.fechaLimite.set(this.sumarDiasHabiles(fNotif, 2));
-
-    this.documentosExpediente.set([
-      {
-        nombre: `Solicitud_${cod}.pdf`,
-        fecha: '02/09/2026',
-        tamano: '142.0 KB',
-        kind: 'ciudadano'
-      },
-      {
-        nombre: 'Anexo_Terminos_Referencia.pdf',
-        fecha: '02/09/2026',
-        tamano: '320.5 KB',
-        kind: 'ciudadano'
-      }
-    ]);
-    this.loadingSolicitud.set(false);
-  }
-
-  // Utilidad de cálculo legal de días hábiles
-  sumarDiasHabiles(fechaDMY: string | undefined, n: number): string {
-    if (!fechaDMY) return '—';
-    const partes = fechaDMY.split('/').map(Number);
-    if (partes.length !== 3 || isNaN(partes[0]) || isNaN(partes[1]) || isNaN(partes[2])) {
-      return '—';
-    }
-    const [d, m, y] = partes;
-    const dt = new Date(y, m - 1, d);
-    let added = 0;
-    while (added < n) {
-      dt.setDate(dt.getDate() + 1);
-      const dow = dt.getDay();
-      if (dow !== 0 && dow !== 6) added++;
-    }
-    return dt.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-
   private formatearFecha(fechaIso: string): string {
     if (!fechaIso) return '—';
-    const dt = new Date(fechaIso);
+    const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaIso);
+    const dt = soloFecha
+      ? new Date(Number(soloFecha[1]), Number(soloFecha[2]) - 1, Number(soloFecha[3]))
+      : new Date(fechaIso);
     if (isNaN(dt.getTime())) return fechaIso;
     return dt.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
@@ -308,54 +279,36 @@ export class PrecisionFormComponent implements OnInit {
   }
 
   private procesarArchivo(file: File): void {
-    const validTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/png',
-      'application/zip',
-      'application/x-zip-compressed',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    const extension = file.name.split('.').pop()?.toLowerCase() || '';
-    const esValido =
-      validTypes.includes(file.type) ||
-      ['pdf', 'jpg', 'jpeg', 'png', 'zip', 'doc', 'docx'].includes(extension);
-
-    if (!esValido) {
-      alert('Solo se permiten archivos PDF, JPG, PNG, DOC o ZIP.');
+    if (this.formularioBloqueado()) return;
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const error = file.size === 0 ? 'El archivo está vacío.'
+      : validarDocumento(file) || (!['pdf', 'jpg', 'jpeg', 'png', 'txt'].includes(extension || '')
+        ? 'Formato no permitido. Use PDF, JPG, PNG o TXT.' : null);
+    if (error) {
+      this.error.set(error);
       return;
     }
-
-    if (file.size > 10 * 1024 * 1024) {
-      alert('El archivo no debe superar los 10 MB.');
-      return;
-    }
-
+    this.error.set('');
     this.archivoSeleccionado.set(file);
   }
 
   removerArchivo(): void {
-    this.archivoSeleccionado.set(null);
+    if (!this.formularioBloqueado()) this.archivoSeleccionado.set(null);
   }
 
-  // Previsualización y descarga de documentos
+  // Recuperar siempre los bytes privados por su identificador de servidor.
   abrirDoc(doc: ExpedienteDocItem, descargar: boolean): void {
-    if (descargar) {
-      this.descargarDoc(doc);
-      return;
-    }
-
-    this.previewTarget.set({
-      nombre: doc.nombre,
-      url: doc.url || null,
-      blob: doc.blob || null,
-      expediente: this.expediente(),
-      fecha: doc.fecha || this.fechaHoy,
-      entidad: this.solicitud()?.entidadNombre || undefined,
-      recurrente: this.solicitud()?.ciudadanoNombre || undefined
+    this.documentoService.download(doc.id, doc.nombre).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ blob, filename }) => {
+        if (descargar) {
+          this.guardarArchivo(blob, filename);
+        } else {
+          this.previewTarget.set({ nombre: filename, blob, expediente: this.expediente(), fecha: doc.fecha });
+          this.isPreviewOpen.set(true);
+        }
+      },
+      error: (error: unknown) => this.error.set(this.mensajeError(error, 'No se pudo recuperar el archivo. No se ha sustituido por otro documento.'))
     });
-    this.isPreviewOpen.set(true);
   }
 
   abrirPreviewArchivoLocal(): void {
@@ -378,88 +331,206 @@ export class PrecisionFormComponent implements OnInit {
   }
 
   descargarDoc(doc: ExpedienteDocItem): void {
-    if (doc.blob && typeof window !== 'undefined') {
-      const url = URL.createObjectURL(doc.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.nombre.endsWith('.pdf') ? doc.nombre : `${doc.nombre}.pdf`;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      return;
-    }
-    const url = doc.url || this.getCanonicalDocUrl(doc.nombre);
-    if (url && typeof window !== 'undefined') {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.nombre.endsWith('.pdf') ? doc.nombre : `${doc.nombre}.pdf`;
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
+    this.abrirDoc(doc, true);
   }
 
-  private getCanonicalDocUrl(nombre: string): string {
-    const n = (nombre || '').toLowerCase();
-    if (n.includes('requerimiento') || n.includes('oficio') || n.includes('observacion')) {
-      return '/assets/docs/FUNDADO O FUNDADO EN PARTE - RECURRENTE.pdf';
-    }
-    return '/assets/docs/SAIP-OFICIAL.pdf';
+  private guardarArchivo(blob: Blob, nombre: string): void {
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombre;
+    enlace.rel = 'noopener';
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
   }
 
-  // Manejo de envío
   abrirConfirmacion(): void {
-    if (!this.respuesta().trim() || !this.archivoSeleccionado()) {
-      alert('Complete todos los campos obligatorios: describa las correcciones y adjunte el documento.');
-      return;
-    }
-    this.confirmModalAbierto.set(true);
+    if (this.validarEnvio()) this.confirmModalAbierto.set(true);
   }
 
   confirmarEnvio(): void {
+    if (this.loadingEnvio() || this.recepcion()) return;
+    if (this.verificacionPendiente()) {
+      this.comprobarRecepcion();
+      return;
+    }
+    if (!this.validarEnvio()) return;
+    const solicitudId = this.solicitud()!.id;
+    const observacionId = this.observacionSeleccionada()!.id;
+    const comentario = this.respuesta().trim();
+    const archivo = this.archivoSeleccionado()!;
+    const anterior = this.intento;
+    if (this.conservarContenidoIntento() && anterior?.archivo
+      && (anterior.archivo !== archivo || anterior.comentario !== comentario)) {
+      this.error.set('Reintente con el mismo comentario y archivo del envío pendiente para evitar una recepción diferente.');
+      return;
+    }
+    if (!anterior || anterior.solicitudId !== solicitudId || anterior.observacionId !== observacionId) {
+      this.intento = { solicitudId, observacionId, claveOperacion: crypto.randomUUID(), comentario, archivo };
+    } else {
+      this.intento = { ...anterior, comentario, archivo };
+    }
+    const intento = this.intento;
+    if (!intento || !this.guardarIntento(intento)) return;
     this.loadingEnvio.set(true);
-    const sol = this.solicitud();
-    const doc = this.archivoSeleccionado();
-    const resp = this.respuesta().trim();
-
-    if (sol && sol.id && doc) {
-      const obsActiva = sol.observaciones?.length ? sol.observaciones[sol.observaciones.length - 1] : null;
-      const obsId = obsActiva?.id || 1;
-
-      this.solicitudService.subsanar(sol.id, obsId, {
-        comentarioSubsanacion: resp,
-        documentoSubsanacionNombre: doc.name
-      }).subscribe({
-        next: () => {
-          this.finalizarEnvioExitoso(doc);
+    this.error.set('');
+    this.precisionService.enviar(solicitudId, observacionId, intento.claveOperacion, comentario, archivo)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (recepcion) => {
+          if (!this.aceptarRecepcion(recepcion)) this.dejarResultadoIncierto();
         },
-        error: () => {
-          // Si el backend no responde o es demo, registrar localmente
-          this.finalizarEnvioExitoso(doc);
+        error: (error: unknown) => {
+          this.confirmModalAbierto.set(false);
+          if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500 || error.status === 408) {
+            this.conservarContenidoIntento.set(true);
+            this.verificacionPendiente.set(true);
+            this.comprobarRecepcion();
+          } else {
+            this.conservarContenidoIntento.set(false);
+            this.loadingEnvio.set(false);
+            this.error.set(this.mensajeError(error, 'La precisión no fue recibida. Revise los datos e inténtelo de nuevo.'));
+          }
         }
       });
-    } else {
-      // Modo demo / offline
-      this.finalizarEnvioExitoso(doc!);
+  }
+
+  comprobarRecepcion(): void {
+    const intento = this.intento;
+    if (!intento || this.recepcion()) return;
+    this.loadingEnvio.set(true);
+    this.verificacionPendiente.set(true);
+    this.error.set('');
+    this.precisionService.consultar(intento.solicitudId, intento.observacionId, intento.claveOperacion)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (recepcion) => {
+          if (!this.aceptarRecepcion(recepcion)) this.dejarResultadoIncierto();
+        },
+        error: (error: unknown) => {
+          this.loadingEnvio.set(false);
+          if (error instanceof HttpErrorResponse && error.status === 404) {
+            this.verificacionPendiente.set(false);
+            this.error.set('El servidor aún no registra esta recepción. Puede reintentar con el mismo comentario y archivo; se conservará la misma clave para evitar duplicados.');
+          } else {
+            this.dejarResultadoIncierto(error);
+          }
+        }
+      });
+  }
+
+  private aceptarRecepcion(recepcion: PrecisionSaipRecepcion): boolean {
+    const intento = this.intento;
+    const doc = recepcion?.documento;
+    if (!intento || !recepcion || recepcion.solicitudId !== intento.solicitudId || recepcion.observacionId !== intento.observacionId
+      || recepcion.claveOperacion !== intento.claveOperacion || recepcion.estado !== 'SUBSANADA'
+      || !recepcion.fechaRecepcion || Number.isNaN(Date.parse(recepcion.fechaRecepcion)) || !doc?.id || doc.solicitudId !== intento.solicitudId
+      || doc.tipoDocumento !== 'SUBSANACION' || doc.estado !== 'ACTIVO' || !doc.nombreOriginal
+      || !doc.sizeBytes || !/^[a-f0-9]{64}$/i.test(doc.hashSha256 || '')
+      || (intento.archivo !== undefined && doc.sizeBytes !== intento.archivo.size)
+      || (intento.comentario !== undefined && recepcion.comentario !== intento.comentario)) return false;
+    this.recepcion.set(recepcion);
+    this.documentosExpediente.update((docs) => [...docs.filter((d) => d.id !== doc.id), this.documentoItem(doc)]);
+    this.loadingEnvio.set(false);
+    this.verificacionPendiente.set(false);
+    this.confirmModalAbierto.set(false);
+    this.error.set('');
+    this.successModalAbierto.set(true);
+    return true;
+  }
+
+  private dejarResultadoIncierto(error?: unknown): void {
+    this.loadingEnvio.set(false);
+    this.verificacionPendiente.set(true);
+    this.conservarContenidoIntento.set(!!this.intento?.archivo);
+    this.confirmModalAbierto.set(false);
+    this.error.set(this.mensajeError(error,
+      'No se pudo confirmar la recepción. Conserve este formulario y compruebe la recepción antes de volver a enviar.'));
+  }
+
+  private validarEnvio(): boolean {
+    if (!this.puedeEnviar()) {
+      this.error.set('No hay una observación pendiente disponible para este envío.');
+      return false;
+    }
+    const archivo = this.archivoSeleccionado();
+    if (!this.respuesta().trim() || this.respuesta().trim().length > 3000 || !archivo) {
+      this.error.set('Describa las correcciones (hasta 3000 caracteres) y adjunte el documento requerido.');
+      return false;
+    }
+    const errorArchivo = validarDocumento(archivo);
+    if (!archivo.size || errorArchivo) {
+      this.error.set(errorArchivo || 'El archivo está vacío.');
+      return false;
+    }
+    if (!this.usuarioId()) {
+      this.error.set('No se pudo identificar su sesión. Ingrese nuevamente antes de enviar.');
+      return false;
+    }
+    return true;
+  }
+
+  private documentoItem(doc: DocumentoMetadata): ExpedienteDocItem {
+    return {
+      id: doc.id!, nombre: doc.nombreOriginal!,
+      fecha: doc.fechaCreacion ? this.formatearFecha(doc.fechaCreacion) : undefined,
+      tamano: doc.sizeBytes != null ? `${(doc.sizeBytes / 1024).toFixed(1)} KB` : undefined,
+      kind: doc.tipoDocumento === 'SUBSANACION' ? 'subsanacion' : 'ciudadano'
+    };
+  }
+
+  private usuarioId(): number | undefined {
+    try {
+      return this.authService.obtenerSesion()?.usuarioId;
+    } catch {
+      return undefined;
     }
   }
 
-  private finalizarEnvioExitoso(doc: File): void {
-    // Agregar documento a la lista
-    const nuevoDoc: ExpedienteDocItem = {
-      nombre: doc.name,
-      fecha: this.fechaHoy,
-      tamano: `${(doc.size / 1024).toFixed(1)} KB`,
-      kind: 'subsanacion'
-    };
-    this.documentosExpediente.update(docs => [...docs, nuevoDoc]);
+  private storageKey(solicitudId: number, observacionId: number): string {
+    return `yaiku:precision:${this.usuarioId()}:${solicitudId}:${observacionId}`;
+  }
 
-    this.loadingEnvio.set(false);
-    this.confirmModalAbierto.set(false);
-    this.successModalAbierto.set(true);
+  private guardarIntento(intento: IntentoPrecision): boolean {
+    try {
+      // Solo identificadores de operación; nunca comentario, archivo ni credenciales.
+      sessionStorage.setItem(this.storageKey(intento.solicitudId, intento.observacionId), JSON.stringify({
+        solicitudId: intento.solicitudId, observacionId: intento.observacionId, claveOperacion: intento.claveOperacion
+      }));
+      return true;
+    } catch {
+      this.error.set('No se pudo preparar la verificación del envío. Habilite el almacenamiento de esta sesión y reintente.');
+      return false;
+    }
+  }
+
+  private recuperarIntento(solicitudId: number, observacionId: number): IntentoPrecision | null {
+    try {
+      if (!this.usuarioId()) return null;
+      const raw = sessionStorage.getItem(this.storageKey(solicitudId, observacionId));
+      if (!raw) return null;
+      const intento: unknown = JSON.parse(raw);
+      if (intento && typeof intento === 'object' && 'solicitudId' in intento && 'observacionId' in intento
+        && 'claveOperacion' in intento && intento.solicitudId === solicitudId && intento.observacionId === observacionId
+        && typeof intento.claveOperacion === 'string' && /^[a-f0-9-]{36}$/i.test(intento.claveOperacion)) {
+        return { solicitudId, observacionId, claveOperacion: intento.claveOperacion };
+      }
+    } catch {
+      // Un dato local corrupto nunca constituye confirmación del servidor.
+    }
+    return null;
+  }
+
+  private mensajeError(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) return 'Su sesión no está autorizada. Ingrese nuevamente; no se ha confirmado la recepción.';
+      if (error.status === 403) return 'No tiene permiso para realizar esta operación sobre la solicitud.';
+      if (error.status === 404) return 'No se encontró la solicitud, observación o documento solicitado.';
+      if (error.status === 400 || error.status === 409 || error.status === 413 || error.status === 415) {
+        return typeof error.error?.detail === 'string' ? error.error.detail : fallback;
+      }
+    }
+    return fallback;
   }
 
   irAlPanel(): void {
@@ -493,11 +564,12 @@ export class PrecisionFormComponent implements OnInit {
 
   // Metadatos para modal de éxito
   subsanacionSuccessMetadata = computed<ReferenceSuccessMeta[]>(() => {
-    const doc = this.archivoSeleccionado();
+    const recepcion = this.recepcion();
     return [
-      { label: 'Observación subsanada', value: this.observacion() ? 'Sí' : '—' },
-      { label: 'Documento adjunto', value: doc?.name || '—' },
-      { label: 'Fundamentación', value: `${this.respuesta().length} caracteres` }
+      { label: 'Observación subsanada', value: recepcion ? String(recepcion.observacionId) : '—' },
+      { label: 'Documento adjunto', value: recepcion?.documento.nombreOriginal || '—' },
+      { label: 'Recepción registrada', value: recepcion ? this.formatearFecha(recepcion.fechaRecepcion) : '—' },
+      { label: 'Documento registrado', value: recepcion?.documento.id ? String(recepcion.documento.id) : '—', mono: true }
     ];
   });
 

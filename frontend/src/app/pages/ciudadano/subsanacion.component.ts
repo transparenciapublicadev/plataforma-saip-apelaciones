@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, computed, effect, untracked, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -17,8 +17,12 @@ import {
 } from '../../shared/reference-success-modal.component';
 import { DocumentoService } from '../../services/documento.service';
 import { Documento, validarDocumento } from '../../models/documento.model';
-import { firstValueFrom } from 'rxjs';
-import { problemDetailsMessage } from '../../utils/problem-details.util';
+import { Subscription, TimeoutError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { SubsanacionTtaipService, RecepcionSubsanacionTtaip, RequerimientoSubsanacionTtaip } from '../../services/subsanacion-ttaip.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+
 
 interface ObservacionSubsanacion {
   numero: number;
@@ -41,12 +45,22 @@ import {
   styleUrl: './subsanacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SubsanacionComponent implements OnInit {
+export class SubsanacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
   private readonly documentoService = inject(DocumentoService);
+  private readonly recepcionService = inject(SubsanacionTtaipService);
+  readonly requerimiento = signal<RequerimientoSubsanacionTtaip | null>(null);
+  readonly loadingRequerimiento = signal(false);
+  readonly recepcion = signal<RecepcionSubsanacionTtaip | null>(null);
+  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'confirmada'>('lista');
+  private readonly congelado = signal(false);
+  private intento: { apelacionId: number; requerimientoId: number; clave: string; numeroArchivos: number;
+    texto?: string; archivos?: File[]; cache: string; conflicto?: boolean } | null = null;
+  readonly formularioBloqueado = computed(() => this.loading() || this.loadingRequerimiento()
+    || this.estadoEnvio() === 'incierta' || this.congelado() || !!this.recepcion());
 
   apelacion = signal<Apelacion | null>(null);
   loading = signal<boolean>(false);
@@ -69,87 +83,170 @@ export class SubsanacionComponent implements OnInit {
     'Envíe la subsanación antes del plazo límite.'
   ];
 
-  ngOnInit(): void {
-    this.authService.obtenerSesion();
+  readonly estadoConsulta = signal<EstadoConsulta>('cargando');
+  readonly puedeReintentarConsulta = signal(false);
+  readonly documentoError = signal('');
+  private readonly destroyRef = inject(DestroyRef);
+  private consultas = new Subscription();
+  private descargas = new Subscription();
+  private generacion = 0;
+  private expedienteActual: string | null = null;
+  private tokenActual = this.authService.getToken();
 
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibió el expediente para subsanar.');
-      this.loadingApelacion.set(false);
-      return;
-    }
-
-    this.cargarApelacion(expediente);
-  }
-
-  cargarApelacion(expediente: string): void {
-    this.loadingApelacion.set(true);
-    this.apelacionService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        this.apelacion.set(data);
-        this.loadingApelacion.set(false);
-      },
-      error: () => {
-        const demo: Apelacion = {
-          id: 145,
-          expediente: expediente || '00145-2025-JUS/TTAIP',
-          solicitudId: 512,
-          solicitudExpediente: 'SAIP-2025-00512',
-          entidadNombre: 'Ministerio de Educación',
-          ciudadanoNombre: 'Juan Carlos Pérez Mendoza',
-          estado: 'EN_SUBSANACION',
-          resultado: 'INADMISIBLE',
-          fechaApelacion: '2025-10-10T09:00:00Z',
-          fechaSubsanacion: '2025-10-12T11:00:00Z',
-          diasSubsanacion: 2,
-          fundamentos: 'Interpongo recurso de apelación contra la denegatoria ficta/expresa emitida por la entidad.',
-          calificacionPrimera: 'INADMISIBLE',
-          observacionesCalificacion1: 'El recurrente no adjuntó copia clara del documento de identidad ni acreditó la denegatoria expresa con fecha cierta.'
-        } as any;
-        this.apelacion.set(demo);
-        this.error.set('');
-        this.loadingApelacion.set(false);
-      }
+  constructor() {
+    effect(() => {
+      this.authService.cambiosSesion();
+      untracked(() => {
+        const token = this.authService.getToken();
+        if (token !== this.tokenActual) {
+          this.tokenActual = token;
+          if (this.expedienteActual !== null) this.cargarApelacion(this.expedienteActual);
+        }
+      });
     });
   }
 
-  calcularDiasRestantes(): number {
+  ngOnInit(): void {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.cargarApelacion(params.get('expediente') || '');
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.generacion++;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
+  }
+
+  cargarApelacion(expediente: string): void {
+    this.expedienteActual = expediente;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
+    this.consultas = new Subscription();
+    this.descargas = new Subscription();
+    const generacion = ++this.generacion;
+    const token = this.authService.getToken();
+    this.apelacion.set(null);
+    this.requerimiento.set(null);
+    this.recepcion.set(null);
+    this.intento = null;
+    this.congelado.set(false);
+    this.estadoEnvio.set('lista');
+    this.loadingRequerimiento.set(false);
+    this.cerrarPreview();
+    this.documentosSeleccionados.set([]);
+    this.fundamentosAdicionales = '';
+    this.confirmModalAbierto.set(false);
+    this.successModalAbierto.set(false);
+    this.mensaje.set('');
+    this.documentoError.set('');
+    this.error.set('');
+    this.loading.set(false);
+    this.puedeReintentarConsulta.set(false);
+    this.loadingApelacion.set(false);
+    if (!expediente.trim()) {
+      this.estadoConsulta.set('validacion');
+      this.error.set('No se recibió el identificador del expediente para subsanar.');
+      return;
+    }
+    if (!token) {
+      this.estadoConsulta.set('autenticacion');
+      this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
+      return;
+    }
+    this.loadingApelacion.set(true);
+    this.estadoConsulta.set('cargando');
+    this.consultas.add(this.apelacionService.findByExpediente(expediente).subscribe({
+      next: (data) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loadingApelacion.set(false);
+        if (!data) {
+          this.estadoConsulta.set('vacio');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
+        if (!data.id || data.expediente !== expediente) {
+          this.estadoConsulta.set('error');
+          this.error.set('El servidor devolvió una apelación que no corresponde al expediente consultado.');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
+        this.apelacion.set(data);
+        this.estadoConsulta.set('disponible');
+        this.cargarRequerimiento();
+      },
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        const fallo = falloConsulta(error, 'la apelación');
+        this.estadoConsulta.set(fallo.estado);
+        this.error.set(fallo.mensaje);
+        this.puedeReintentarConsulta.set(fallo.reintentable);
+        this.loadingApelacion.set(false);
+      }
+    }));
+  }
+
+  reintentarConsulta(): void {
+    if (this.expedienteActual !== null) this.cargarApelacion(this.expedienteActual);
+  }
+
+  private esConsultaActual(generacion: number, token: string | null): boolean {
+    return generacion === this.generacion && token === this.authService.getToken();
+  }
+
+  cargarRequerimiento(): void {
     const ap = this.apelacion();
-    if (!ap || !ap.fechaSubsanacion) {
-      return 0;
-    }
-
-    const fechaLimite = new Date(ap.fechaSubsanacion);
-    fechaLimite.setDate(fechaLimite.getDate() + this.getPlazoSubsanacionDias());
-    const hoy = new Date();
-    const diff = Math.ceil((fechaLimite.getTime() - hoy.getTime()) / 86400000);
-    return Math.max(diff, 0);
+    if (!ap) return;
+    const generacion = this.generacion, token = this.authService.getToken();
+    this.loadingRequerimiento.set(true);
+    this.requerimiento.set(null);
+    this.consultas.add(this.recepcionService.requerimiento(ap.id).subscribe({
+      next: r => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loadingRequerimiento.set(false);
+        if (!r?.requerimientoId || r.apelacionId !== ap.id) {
+          this.error.set('No se pudo identificar el requerimiento vigente. No se habilitó la presentación.');
+          return;
+        }
+        this.requerimiento.set(r);
+        const cache = this.claveCache(ap.id, r.requerimientoId);
+        try {
+          const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(cache) : null;
+          if (raw) {
+            const saved = JSON.parse(raw) as { clave?: string; numeroArchivos?: number };
+            if (saved.clave && Number.isInteger(saved.numeroArchivos) && saved.numeroArchivos! >= 0) {
+              this.intento = { apelacionId: ap.id, requerimientoId: r.requerimientoId,
+                clave: saved.clave, numeroArchivos: saved.numeroArchivos!, cache };
+              this.estadoEnvio.set('incierta');
+              this.comprobarRecepcion();
+            }
+          }
+        } catch { this.error.set('No se pudo recuperar la comprobación local. Revise la recepción desde su panel.'); }
+      },
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loadingRequerimiento.set(false);
+        this.error.set(falloConsulta(error, 'el requerimiento de subsanación').mensaje);
+      }
+    }));
   }
 
-  getPlazoSubsanacionDias(): number {
-    return this.apelacion()?.diasSubsanacion || 2;
+  calcularDiasRestantes(): number | null {
+    return this.requerimiento()?.plazo?.diasHabilesRestantes ?? null;
   }
 
-  getFechaNotificacion(): Date | null {
-    const ap = this.apelacion();
-    if (!ap) {
-      return null;
-    }
-    return ap.fechaSubsanacion ? new Date(ap.fechaSubsanacion) : new Date(ap.fechaApelacion);
+  plazoPendienteInicio(): boolean {
+    const plazo = this.requerimiento()?.plazo;
+    return !plazo || plazo.estado === 'PENDIENTE_INICIO';
   }
 
-  getFechaLimite(): Date | null {
-    const notificacion = this.getFechaNotificacion();
-    if (!notificacion) {
-      return null;
-    }
-
-    const limite = new Date(notificacion);
-    limite.setDate(limite.getDate() + this.getPlazoSubsanacionDias());
-    return limite;
-  }
+  getPlazoSubsanacionDias(): number { return this.requerimiento()?.diasSubsanacion ?? this.apelacion()?.diasSubsanacion ?? 2; }
+  getFechaNotificacion(): Date | null { return this.fecha(this.requerimiento()?.plazo?.fechaEficacia?.slice(0, 10)); }
+  getFechaLimite(): Date | null { return this.fecha(this.requerimiento()?.plazo?.fechaLimite); }
+  private fecha(value?: string | null): Date | null { return value ? new Date(`${value.slice(0, 10)}T00:00:00`) : null; }
 
   seleccionarDocumento(event: Event): void {
+    if (this.formularioBloqueado()) return;
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const filesToAdd: File[] = [];
@@ -176,6 +273,7 @@ export class SubsanacionComponent implements OnInit {
   }
 
   removerDocumento(index: number): void {
+    if (this.formularioBloqueado()) return;
     this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
     this.error.set('');
   }
@@ -189,45 +287,18 @@ export class SubsanacionComponent implements OnInit {
       return;
     }
 
-    this.confirmModalAbierto.set(true);
+    if (!this.loading() && !this.recepcion()) this.confirmModalAbierto.set(true);
   }
 
-  previsualizarDocumento(doc: any): void {
-    if (!doc.id) {
-      this.previewTarget.set({
-        nombre: doc.nombreArchivo || 'documento.pdf',
-        tipo: doc.mimeType || 'application/pdf',
-        expediente: this.apelacion()?.expediente || '',
-        entidad: this.apelacion()?.entidadNombre || '',
-        recurrente: this.apelacion()?.ciudadanoNombre || ''
-      });
-      this.isPreviewOpen.set(true);
+  previsualizarDocumento(doc: Documento): void {
+    this.documentoError.set('');
+    this.cerrarPreview();
+    if (!doc.id || !this.apelacion()) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
       return;
     }
-
-    this.loading.set(true);
-    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
-      next: ({ blob, filename }) => {
-        this.loading.set(false);
-        this.previewTarget.set({
-          nombre: filename || doc.nombreArchivo || 'documento.pdf',
-          blob: blob,
-          tipo: doc.mimeType || 'application/pdf'
-        });
-        this.isPreviewOpen.set(true);
-      },
-      error: () => {
-        this.loading.set(false);
-        this.previewTarget.set({
-          nombre: doc.nombreArchivo || 'documento.pdf',
-          tipo: doc.mimeType || 'application/pdf',
-          expediente: this.apelacion()?.expediente || '',
-          entidad: this.apelacion()?.entidadNombre || '',
-          recurrente: this.apelacion()?.ciudadanoNombre || ''
-        });
-        this.isPreviewOpen.set(true);
-      }
-    });
+    this.previewTarget.set({ id: doc.id, nombre: doc.nombreArchivo || 'Documento sin nombre', tipo: doc.tipoArchivo });
+    this.isPreviewOpen.set(true);
   }
 
   previsualizarArchivoLocal(file: File): void {
@@ -245,20 +316,17 @@ export class SubsanacionComponent implements OnInit {
     this.previewTarget.set(null);
   }
 
-  descargarDocumento(doc: any): void {
-    if (!doc.id) {
-      const canonicalUrl = this.getCanonicalDocUrl(doc.nombreArchivo || '');
-      const a = document.createElement('a');
-      a.href = canonicalUrl;
-      a.download = doc.nombreArchivo || 'documento.pdf';
-      a.rel = 'noopener';
-      a.click();
-      a.remove();
+  descargarDocumento(doc: Documento): void {
+    this.documentoError.set('');
+    if (!doc.id || !this.apelacion()) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
       return;
     }
-    this.error.set('');
-    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    this.descargas.add(this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
       next: ({ blob, filename }) => {
+        if (!this.esConsultaActual(generacion, token)) return;
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = objectUrl;
@@ -267,87 +335,105 @@ export class SubsanacionComponent implements OnInit {
         anchor.click();
         URL.revokeObjectURL(objectUrl);
       },
-      error: () => {
-        const canonicalUrl = this.getCanonicalDocUrl(doc.nombreArchivo || '');
-        const a = document.createElement('a');
-        a.href = canonicalUrl;
-        a.download = doc.nombreArchivo || 'documento.pdf';
-        a.rel = 'noopener';
-        a.click();
-        a.remove();
+      error: (error: unknown) => {
+        if (this.esConsultaActual(generacion, token)) this.documentoError.set(falloConsulta(error, 'el documento').mensaje);
       }
-    });
-  }
-
-  private getCanonicalDocUrl(nombre: string): string {
-    const n = (nombre || '').toLowerCase();
-    if (n.includes('resolucion') || n.includes('final') || n.includes('001079')) {
-      return '/assets/docs/RESOLUCION_001079-2026_JUS-TTAIP-SEGUNDA SALA.pdf';
-    }
-    if (n.includes('cedula') || n.includes('notificacion') || n.includes('admision')) {
-      return '/assets/docs/ADMISION - RECURRENTE.pdf';
-    }
-    return '/assets/docs/SAIP-OFICIAL.pdf';
+    }));
   }
 
   enviarSubsanacion(): void {
-    const ap = this.apelacion();
-    if (!ap) {
-      return;
+    if (this.loading() || this.recepcion()) return;
+    if (this.intento?.conflicto && this.estadoEnvio() === 'rechazada') return;
+    if (this.estadoEnvio() === 'incierta') { this.comprobarRecepcion(); return; }
+    const ap = this.apelacion(), r = this.requerimiento();
+    if (!ap || !r?.requerimientoId || !this.validarSubsanacion()) return;
+    if (!this.intento) {
+      const clave = crypto.randomUUID();
+      this.intento = { apelacionId: ap.id, requerimientoId: r.requerimientoId, clave,
+        numeroArchivos: this.documentosSeleccionados().length, cache: this.claveCache(ap.id, r.requerimientoId),
+        texto: this.fundamentosAdicionales.trim(), archivos: [...this.documentosSeleccionados()] };
     }
-
-    if (!this.validarSubsanacion()) {
-      return;
+    const intento = this.intento;
+    if (intento.texto === undefined || intento.archivos === undefined) {
+      if (this.documentosSeleccionados().length !== intento.numeroArchivos) {
+        this.error.set('Vuelva a seleccionar los adjuntos originales antes de reintentar con la misma clave.'); return;
+      }
+      intento.texto = this.fundamentosAdicionales.trim(); intento.archivos = [...this.documentosSeleccionados()];
     }
-
-    this.loading.set(true);
-    this.error.set('');
-
-    this.apelacionService.subsanar(ap.id, this.fundamentosAdicionales).subscribe({
-      next: async (updated) => {
-        const files = this.documentosSeleccionados();
-        if (files.length > 0) {
-          let exitos = 0;
-          const errores: string[] = [];
-          
-          for (const file of files) {
-            try {
-              await firstValueFrom(
-                this.documentoService.upload(file, 'SUBSANACION', { apelacionId: ap.id })
-              );
-              exitos++;
-            } catch (uploadErr: any) {
-              const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
-              errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
-            }
-          }
-
-          this.apelacion.set(updated ?? ap);
-          this.loading.set(false);
-
-          if (errores.length > 0) {
-            this.mensaje.set(`Subsanación registrada. Se subieron ${exitos} de ${files.length} documentos correctamente. Errores: ${errores.join(' | ')}`);
-          } else {
-            this.mensaje.set(`Subsanación enviada correctamente y ${exitos} documentos adjuntos subidos.`);
-          }
-          
-          this.successModalAbierto.set(true);
-          this.confirmModalAbierto.set(false);
-        } else {
-          this.apelacion.set(updated ?? ap);
-          this.loading.set(false);
-          this.mensaje.set('Subsanación enviada correctamente. El TTAIP revisará su apelación en la segunda calificación.');
-          
-          this.successModalAbierto.set(true);
-          this.confirmModalAbierto.set(false);
+    // Only the operation key/count are stored locally, never bytes, JWT or personal text.
+    try { sessionStorage.setItem(intento.cache, JSON.stringify({ clave: intento.clave, numeroArchivos: intento.numeroArchivos })); }
+    catch { this.error.set('No se pudo conservar la identificación del envío. Habilite el almacenamiento de esta pestaña antes de enviar.'); return; }
+    const generacion = this.generacion, token = this.authService.getToken();
+    this.loading.set(true); this.error.set(''); this.mensaje.set(''); this.congelado.set(true);
+    this.consultas.add(this.recepcionService.enviar(intento.apelacionId, intento.requerimientoId,
+      intento.clave, intento.texto, intento.archivos).subscribe({
+      next: recibida => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loading.set(false);
+        if (!this.confirmarRecepcion(recibida)) {
+          this.estadoEnvio.set('incierta'); this.comprobarRecepcion();
         }
       },
-      error: (err) => {
-        this.loading.set(false);
-        this.confirmModalAbierto.set(false);
-        this.error.set(err.error?.mensaje || err.error?.message || 'Error al enviar la subsanación');
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loading.set(false); this.confirmModalAbierto.set(false);
+        if (error instanceof TimeoutError || !(error instanceof HttpErrorResponse)
+            || error.status === 0 || error.status === 409 || error.status >= 500) {
+          if (error instanceof HttpErrorResponse && error.status === 409) intento.conflicto = true;
+          this.estadoEnvio.set('incierta'); this.comprobarRecepcion();
+        } else {
+          this.estadoEnvio.set('rechazada'); this.congelado.set(false);
+          this.error.set(falloConsulta(error, 'la recepción de subsanación').mensaje);
+          try { sessionStorage.removeItem(intento.cache); } catch { /* No server operation is repeated here. */ }
+          this.intento = null;
+        }
       }
-    });
+    }));
+  }
+
+  comprobarRecepcion(): void {
+    const intento = this.intento;
+    if (!intento || this.loading()) return;
+    const generacion = this.generacion, token = this.authService.getToken();
+    this.loading.set(true); this.estadoEnvio.set('incierta'); this.error.set('');
+    this.consultas.add(this.recepcionService.consultar(intento.apelacionId, intento.requerimientoId, intento.clave).subscribe({
+      next: recibida => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loading.set(false);
+        if (!this.confirmarRecepcion(recibida)) this.error.set('La respuesta no acredita esta recepción. Compruebe nuevamente antes de reenviar.');
+      },
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        this.loading.set(false);
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.estadoEnvio.set(intento.conflicto ? 'rechazada' : 'lista');
+          this.congelado.set(!!intento.archivos);
+          this.error.set(intento.conflicto
+            ? 'El servidor rechazó esta presentación por un conflicto de estado o contenido. Actualice la consulta antes de presentar nuevamente.'
+            : 'No hay recepción confirmada para esta operación. Puede reintentar con la misma clave y contenido original.');
+        } else {
+          this.error.set('Resultado incierto: no se pudo comprobar la recepción. Compruebe de nuevo antes de reenviar.');
+        }
+      }
+    }));
+  }
+
+  private confirmarRecepcion(r: RecepcionSubsanacionTtaip | null): boolean {
+    const intento = this.intento;
+    if (!r || !intento || !r.id || r.apelacionId !== intento.apelacionId || r.requerimientoId !== intento.requerimientoId
+        || r.claveOperacion !== intento.clave || r.estado !== 'RECIBIDA' || !r.fechaRecepcion
+        || !Array.isArray(r.documentos) || r.documentos.length !== intento.numeroArchivos
+        || r.documentos.some(d => !d.id || d.apelacionId !== intento.apelacionId)
+        || intento.texto !== undefined && r.fundamentosAdicionales !== intento.texto) return false;
+    this.recepcion.set(r); this.estadoEnvio.set('confirmada'); this.congelado.set(true);
+    this.mensaje.set(`Recepción ${r.id} registrada por el servidor el ${r.fechaRecepcion}.`);
+    this.fundamentosAdicionales = r.fundamentosAdicionales;
+    this.confirmModalAbierto.set(false); this.successModalAbierto.set(true);
+    return true;
+  }
+
+  private claveCache(apelacionId: number, requerimientoId: number): string {
+    return `ttaip:subsanacion:v1:${this.authService.obtenerSesion()?.usuarioId}:${apelacionId}:${requerimientoId}`;
   }
 
   subsanacionConfirmSummary(): ReferenceConfirmSummary[] {
@@ -370,17 +456,17 @@ export class SubsanacionComponent implements OnInit {
   }
 
   subsanacionSuccessMetadata(): ReferenceSuccessMeta[] {
-    const files = this.documentosSeleccionados();
-    const docValue = files.length > 0 ? `${files.length} documento(s) subido(s)` : 'Ninguno';
-    return [
-      { label: 'Observaciones cubiertas', value: `${this.observacionesTtaip().length} de ${this.observacionesTtaip().length}` },
-      { label: 'Documentos adjuntos', value: docValue },
-      { label: 'Fundamentación', value: `${this.fundamentosAdicionales.length} caracteres` }
-    ];
+    const r = this.recepcion();
+    return r ? [
+      { label: 'Recepción', value: String(r.id), mono: true },
+      { label: 'Requerimiento', value: String(r.requerimientoId), mono: true },
+      { label: 'Archivos registrados', value: String(r.documentos.length) },
+      { label: 'Fecha de recepción', value: r.fechaRecepcion }
+    ] : [];
   }
 
   observacionesTtaip(): ObservacionSubsanacion[] {
-    const observaciones = this.apelacion()?.resolucionPrimeraCalificacion?.observaciones?.trim();
+    const observaciones = this.requerimiento()?.observaciones?.trim();
     if (!observaciones) {
       return [];
     }
@@ -398,13 +484,8 @@ export class SubsanacionComponent implements OnInit {
   }
 
   subsanacionNextSteps(): ReferenceSuccessNextStep[] {
-    return [
-      {
-        label: 'Si la subsanación es válida, su apelación pasará a Resolución Final.',
-        hint: 'Plazo del Tribunal: 10 días hábiles'
-      },
-      { label: 'Recibirá notificación con la 2da calificación.' }
-    ];
+    return [{ label: 'Puede recuperar esta recepción y sus archivos desde esta pantalla.' },
+      { label: 'Consulte el estado del trámite en su panel.' }];
   }
 
   irPanelCiudadano(): void {
@@ -413,20 +494,16 @@ export class SubsanacionComponent implements OnInit {
   }
 
   esSubsanacionVencida(): boolean {
-    const ap = this.apelacion();
-    if (!ap || !ap.fechaSubsanacion) return false;
-    const limite = this.getFechaLimite();
-    if (!limite) return false;
-    return new Date().getTime() > limite.getTime();
+    return this.requerimiento()?.plazo?.estado === 'VENCIDO';
   }
 
   private validarSubsanacion(): boolean {
-    if (!this.apelacion()) {
-      this.error.set('No se encontró la apelación para subsanar.');
+    if (!this.apelacion() || !this.requerimiento() || !this.requerimiento()?.admitePresentacion && !this.intento) {
+      this.error.set('No hay un requerimiento vigente habilitado por el servidor para presentar.');
       return false;
     }
 
-    if (this.esSubsanacionVencida()) {
+    if (this.esSubsanacionVencida() && !this.intento) {
       this.error.set('El plazo legal de 2 días hábiles para subsanar ha vencido. No es posible enviar observaciones.');
       return false;
     }

@@ -5,6 +5,7 @@ import {
   HostListener,
   OnInit,
   computed,
+  effect,
   inject,
   input,
   signal
@@ -22,10 +23,12 @@ import {
   LucideInbox,
   LucideScale
 } from '@lucide/angular';
+import { SolicitudService } from '../services/solicitud.service';
+import { ApelacionService } from '../services/apelacion.service';
 
 export interface NotificationItem {
   id: string;
-  iconName: 'alert' | 'scale' | 'gavel' | 'hourglass' | 'check' | 'clock';
+  iconName: 'alert' | 'scale' | 'gavel' | 'hourglass' | 'check' | 'clock' | 'inbox';
   titulo: string;
   detalle: string;
   fecha?: string;
@@ -138,6 +141,9 @@ export interface NotificationItem {
                       @case ('check') {
                         <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
                       }
+                      @case ('inbox') {
+                        <svg lucideInbox class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
+                      }
                       @default {
                         <svg lucideClock class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
                       }
@@ -192,6 +198,8 @@ export class NotificationBellComponent implements OnInit {
 
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
+  private readonly solicitudService = inject(SolicitudService, { optional: true });
+  private readonly apelacionService = inject(ApelacionService, { optional: true });
 
   abierto = signal<boolean>(false);
   readIds = signal<Set<string>>(new Set());
@@ -203,6 +211,15 @@ export class NotificationBellComponent implements OnInit {
     const ids = this.readIds();
     return this.items().filter(i => !ids.has(i.id)).length;
   });
+
+  constructor() {
+    effect(() => {
+      // Reacciona a cambios en userType para regenerar notificaciones contextuales
+      const _ = this.userType();
+      this.cargarEstadoLeidas();
+      this.generarNotificacionesPorRol();
+    });
+  }
 
   ngOnInit(): void {
     this.cargarEstadoLeidas();
@@ -355,6 +372,119 @@ export class NotificationBellComponent implements OnInit {
           urgente: true
         }
       ]);
+    } else if (rol === 'ADMINISTRADOR' || rol === 'ADMIN') {
+      const defaultAdminItems: NotificationItem[] = [
+        {
+          id: 'adm-venc',
+          iconName: 'alert',
+          titulo: 'Solicitudes vencidas',
+          detalle: 'Requieren atención prioritaria en entidades públicas',
+          fecha: 'Hoy',
+          ruta: '/admin',
+          tone: 'danger',
+          urgente: true
+        },
+        {
+          id: 'adm-pend',
+          iconName: 'inbox',
+          titulo: 'Solicitudes pendientes',
+          detalle: 'En bandejas de entidades públicas',
+          fecha: 'Hoy',
+          ruta: '/admin',
+          tone: 'info'
+        },
+        {
+          id: 'adm-apel',
+          iconName: 'scale',
+          titulo: 'Apelaciones en el Tribunal',
+          detalle: 'En trámite ante el TTAIP',
+          fecha: 'Ayer',
+          ruta: '/admin',
+          tone: 'brand'
+        },
+        {
+          id: 'adm-res',
+          iconName: 'check',
+          titulo: 'Apelaciones resueltas',
+          detalle: 'Cerradas por el Tribunal',
+          fecha: 'Hace 2 días',
+          ruta: '/admin',
+          tone: 'success'
+        }
+      ];
+
+      this.items.set(defaultAdminItems);
+
+      if (this.solicitudService && this.apelacionService) {
+        this.solicitudService.getEstadisticas().subscribe({
+          next: (solStats) => {
+            this.apelacionService?.getEstadisticas().subscribe({
+              next: (apelStats) => {
+                const venc = solStats?.vencidas ?? 0;
+                const pend = (solStats?.pendientes ?? 0) + (solStats?.enProceso ?? 0);
+                const apel = (apelStats?.total ?? 0) - (apelStats?.resueltas ?? 0);
+                const res = apelStats?.resueltas ?? 0;
+
+                const liveItems: NotificationItem[] = [];
+                if (venc > 0) {
+                  liveItems.push({
+                    id: 'adm-venc',
+                    iconName: 'alert',
+                    titulo: `${venc} solicitud${venc === 1 ? '' : 'es'} vencida${venc === 1 ? '' : 's'}`,
+                    detalle: 'Requieren atención en entidades',
+                    fecha: 'Hoy',
+                    ruta: '/admin',
+                    tone: 'danger',
+                    urgente: true
+                  });
+                }
+                if (pend > 0) {
+                  liveItems.push({
+                    id: 'adm-pend',
+                    iconName: 'inbox',
+                    titulo: `${pend} solicitud${pend === 1 ? '' : 'es'} pendiente${pend === 1 ? '' : 's'}`,
+                    detalle: 'En bandejas de entidades públicas',
+                    fecha: 'Hoy',
+                    ruta: '/admin',
+                    tone: 'info'
+                  });
+                }
+                if (apel > 0) {
+                  liveItems.push({
+                    id: 'adm-apel',
+                    iconName: 'scale',
+                    titulo: `${apel} apelación${apel === 1 ? '' : 'es'} en el Tribunal`,
+                    detalle: 'En trámite en el TTAIP',
+                    fecha: 'Ayer',
+                    ruta: '/admin',
+                    tone: 'brand'
+                  });
+                }
+                if (res > 0) {
+                  liveItems.push({
+                    id: 'adm-res',
+                    iconName: 'check',
+                    titulo: `${res} apelación${res === 1 ? '' : 'es'} resuelta${res === 1 ? '' : 's'}`,
+                    detalle: 'Cerradas por el Tribunal',
+                    fecha: 'Hace 2 días',
+                    ruta: '/admin',
+                    tone: 'success'
+                  });
+                }
+                if (liveItems.length > 0) {
+                  this.items.set(liveItems);
+                }
+              },
+              error: () => {
+                // Mantener defaultAdminItems
+              }
+            });
+          },
+          error: () => {
+            // Mantener defaultAdminItems
+          }
+        });
+      }
     } else {
       this.items.set([
         {

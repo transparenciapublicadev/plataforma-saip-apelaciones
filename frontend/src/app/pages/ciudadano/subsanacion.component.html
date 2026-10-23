@@ -18,11 +18,37 @@
 
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6">
     @if (loadingApelacion()) {
-      <div class="form-shell p-16 text-center">
+      <div role="status" aria-live="polite" class="form-shell p-16 text-center">
         <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p class="mt-4 text-muted-foreground">Cargando apelación...</p>
       </div>
     } @else if (apelacion(); as ap) {
+      @if (documentoError()) {
+        <div role="alert" class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">{{ documentoError() }}</div>
+      }
+      @if (loadingRequerimiento()) {
+        <p role="status" class="text-sm text-muted-foreground">Comprobando el requerimiento vigente...</p>
+      } @else if (!requerimiento()) {
+        <button type="button" class="btn-ghost-brand" (click)="cargarRequerimiento()">Reintentar requerimiento</button>
+      }
+      @if (estadoEnvio() === 'incierta') {
+        <div role="status" class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+          No se ha confirmado el resultado del envío. Compruebe la recepción antes de reenviar.
+          <button type="button" class="btn-ghost-brand mt-2" [disabled]="loading()" (click)="comprobarRecepcion()">Comprobar recepción</button>
+        </div>
+      }
+      @if (recepcion(); as recibida) {
+        <section class="form-shell p-5" aria-label="Recepción confirmada">
+          <p role="status" class="text-sm">Recepción {{ recibida.id }} · requerimiento {{ recibida.requerimientoId }} · {{ recibida.fechaRecepcion | date:'dd/MM/yyyy HH:mm:ss' }}</p>
+          @for (doc of recibida.documentos; track doc.id) {
+            <div class="flex items-center justify-between gap-3 mt-3">
+              <span class="text-sm">{{ doc.nombreOriginal }}</span>
+              <button type="button" class="btn-ghost-brand" (click)="descargarDocumento({ id: doc.id, nombreArchivo: doc.nombreOriginal, tipoArchivo: doc.contentType })">Descargar archivo registrado</button>
+            </div>
+          }
+        </section>
+      }
+      @if (requerimiento()) {
       <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -31,12 +57,12 @@
           <span class="eyebrow" style="color: var(--warning)">Plazo · {{ getPlazoSubsanacionDias() }} días hábiles</span>
           <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
             Su apelación fue calificada como <span class="font-semibold">INADMISIBLE</span>. Tiene
-            <span class="font-mono font-semibold">{{ getPlazoSubsanacionDias() }} días hábiles</span> desde la notificación para subsanar.
+            <span class="font-mono font-semibold">{{ getPlazoSubsanacionDias() }} días hábiles</span> desde la notificación eficaz para subsanar.
             Si no subsana, se resolverá como <span class="font-semibold">TENER POR NO PRESENTADO</span>.
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-              <div class="eyebrow">Notificación</div>
+              <div class="eyebrow">Notificación eficaz acreditada</div>
               <div class="font-mono text-sm mt-1">
                 @if (getFechaNotificacion()) {
                   {{ getFechaNotificacion() | date:'dd/MM/yyyy' }}
@@ -56,11 +82,17 @@
               </div>
             </div>
           </div>
-          <p class="text-xs text-muted-foreground mt-2">Días restantes: <span class="font-semibold">{{ calcularDiasRestantes() }}</span></p>
+          @if (plazoPendienteInicio()) {
+            <p role="status" class="text-xs text-muted-foreground mt-2">Plazo pendiente de inicio: no hay una fecha de notificación eficaz acreditada para este requerimiento y recurrente. Puede presentar si el servidor lo habilita.</p>
+          } @else {
+            <p class="text-xs text-muted-foreground mt-2">Días hábiles restantes: <span class="font-semibold">{{ calcularDiasRestantes() }}</span></p>
+          }
         </div>
       </div>
 
-      @if (esSubsanacionVencida()) {
+      }
+
+      @if (esSubsanacionVencida() && !recepcion()) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(239,68,68,0.08); border: 1px solid var(--destructive); border-left: 4px solid var(--destructive)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--destructive)">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -75,7 +107,10 @@
 
       @if (error()) {
         <div class="rounded-lg p-4" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-          <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
+          <p role="alert" class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
+          @if (estadoEnvio() === 'rechazada' && formularioBloqueado()) {
+            <button type="button" class="btn-ghost-brand mt-2" (click)="reintentarConsulta()">Actualizar consulta</button>
+          }
         </div>
       }
 
@@ -85,7 +120,7 @@
         </div>
       }
 
-      @if (ap.estado !== 'EN_SUBSANACION') {
+      @if (!recepcion() && ap.estado !== 'EN_SUBSANACION') {
         <div class="form-shell p-12 text-center space-y-4 animate-fade-in">
           <div class="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600" style="background: var(--brand-subtle); color: var(--brand-700)">
             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -99,7 +134,7 @@
             Volver a mi panel
           </a>
         </div>
-      } @else {
+      } @else if (!recepcion()) {
         <div
           class="grid grid-cols-1 lg:grid-cols-2 gap-6"
           data-motion-stagger
@@ -192,6 +227,7 @@
                   <label class="field-label">Describa las correcciones realizadas <span class="req">*</span></label>
                   <textarea
                     [(ngModel)]="fundamentosAdicionales"
+                    [readOnly]="formularioBloqueado()"
                     name="fundamentosAdicionales"
                     rows="7"
                     class="field-input"
@@ -209,10 +245,10 @@
               </div>
               <div class="p-6 space-y-3">
                 <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
-                  <input type="file" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" multiple (change)="seleccionarDocumento($event)" />
+                  <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" multiple [disabled]="formularioBloqueado()" (change)="seleccionarDocumento($event)" />
                   <svg class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" /></svg>
                   <p class="text-sm text-foreground/85">Adjunte los documentos de subsanación (opcional)</p>
-                  <p class="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, JPG o PNG</p>
+                  <p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT · máximo total 10 MB</p>
                 </label>
 
                 @for (file of documentosSeleccionados(); track file.name; let i = $index) {
@@ -236,7 +272,7 @@
               type="button"
               class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               (click)="abrirConfirmacionSubsanacion()"
-              [disabled]="loading() || esSubsanacionVencida() || !fundamentosAdicionales.trim()">
+              [disabled]="loading() || loadingRequerimiento() || !requerimiento() || estadoEnvio() === 'incierta' || (estadoEnvio() === 'rechazada' && formularioBloqueado()) || !!recepcion() || !fundamentosAdicionales.trim()">
               @if (loading()) {
                 <span class="inline-flex items-center gap-2">
                   <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
@@ -254,6 +290,17 @@
           </div>
         </div>
       }
+    } @else {
+      <div class="form-shell p-6">
+        @if (error()) {
+          <p role="alert" class="text-sm text-muted-foreground">{{ error() }}</p>
+        } @else {
+          <p role="status" class="text-sm text-muted-foreground">El servidor no devolvió datos para esta apelación.</p>
+        }
+        @if (puedeReintentarConsulta()) {
+          <button type="button" class="btn-ghost-brand mt-3" (click)="reintentarConsulta()">Reintentar consulta</button>
+        }
+      </div>
     }
   </div>
 
@@ -278,12 +325,9 @@
     tone="success"
     eyebrow="Subsanación recibida"
     title="Documentación enviada al TTAIP"
-    description="Su escrito de subsanación fue cargado al expediente. El Tribunal procederá con la 2da calificación."
+    description="El servidor confirmó la recepción del escrito y de todos los adjuntos seleccionados."
     [expediente]="apelacion()?.expediente || ''"
-    expedienteHint="Subsanación recibida dentro del plazo legal"
-    [plazoDias]="5"
-    plazoTipo="hábiles"
-    plazoDescripcion="Tiempo aproximado en que el TTAIP emitirá la 2da calificación: ADMITIDO A TRÁMITE o IMPROCEDENTE."
+    expedienteHint="Recepción persistida"
     [metadata]="subsanacionSuccessMetadata()"
     [nextSteps]="subsanacionNextSteps()"
     primaryLabel="Ir a mi panel"

@@ -1,7 +1,9 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
-import { vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Solicitud } from '../../models/solicitud.model';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
@@ -27,6 +29,8 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     await TestBed.configureTestingModule({
       imports: [FuncionarioSolicitudDetalleComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'SAIP-2026-00012' } } } },
         { provide: SolicitudService, useValue: mockSolicitudService },
         { provide: AuthService, useValue: mockAuthService },
@@ -96,4 +100,16 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     uploadEl = fixture.nativeElement.querySelector('app-document-upload');
     expect(uploadEl).toBeNull();
   });
+  it('no ofrece aprobar o archivar una subsanación mediante un cambio genérico', () => {
+    mockSolicitudService.findByExpediente.mockReturnValue(of({ id: 12, estado: 'PENDIENTE_INFORMACION',
+      documentosMetadata: [], observaciones: [{ id: 8, estado: 'PENDIENTE_SUBSANACION',
+      comentarioSubsanacion: 'Dato histórico sin recepción acreditada', fechaSubsanacion: '2026-10-22T10:00:00' }] } as any));
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const texto = fixture.nativeElement.textContent;
+    expect(texto).not.toContain('Aceptar subsanación · pasar a trámite');
+    expect(texto).not.toContain('No subsanada · archivar');
+    expect(texto).toMatch(/no disponible|información inconsistente/i);
+  });
+
 });

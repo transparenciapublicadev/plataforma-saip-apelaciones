@@ -54,6 +54,7 @@ public class ExpedienteTtaipService {
     private final DescargoEntidadTtaipRepository descargoRepository;
     private final SuspensionPlazoTtaipRepository suspensionRepository;
     private final CumplimientoResolucionTtaipRepository cumplimientoRepository;
+    private final InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
                                   SalaTtaipRepository salaRepository,
@@ -65,7 +66,8 @@ public class ExpedienteTtaipService {
                                   HistorialTtaipRepository historialRepository,
                                   DescargoEntidadTtaipRepository descargoRepository,
                                   SuspensionPlazoTtaipRepository suspensionRepository,
-                                  CumplimientoResolucionTtaipRepository cumplimientoRepository) {
+                                  CumplimientoResolucionTtaipRepository cumplimientoRepository,
+                                  InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
         this.miembroService = miembroService;
@@ -77,6 +79,7 @@ public class ExpedienteTtaipService {
         this.descargoRepository = descargoRepository;
         this.suspensionRepository = suspensionRepository;
         this.cumplimientoRepository = cumplimientoRepository;
+        this.inicioPlazoSubsanacion = inicioPlazoSubsanacion;
     }
 
     @Transactional
@@ -244,6 +247,9 @@ public class ExpedienteTtaipService {
         ));
 
         NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        inicioPlazoSubsanacion.registrar(saved, request.fechaAcuse(), "ACUSE_ENTREGADO",
+                saved.getAcuseAutomatico() + "; constancia=" + valorTraza(saved.getConstanciaEnvio())
+                        + "; referencia=" + valorTraza(saved.getReferenciaEvidencia()));
         registrarHistorial(
                 saved.getExpediente(),
                 HistorialTtaip.TipoEvento.ACUSE_NOTIFICACION_REGISTRADO,
@@ -284,6 +290,8 @@ public class ExpedienteTtaipService {
         ));
 
         NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        inicioPlazoSubsanacion.registrar(saved, request.fechaEficacia(), "VALIDACION_MANUAL",
+                saved.getObservacionValidacion() + "; referencia=" + valorTraza(saved.getReferenciaEvidencia()));
         registrarHistorial(
                 saved.getExpediente(),
                 HistorialTtaip.TipoEvento.NOTIFICACION_VALIDADA,

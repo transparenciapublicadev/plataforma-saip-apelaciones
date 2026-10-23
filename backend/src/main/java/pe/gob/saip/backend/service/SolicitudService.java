@@ -4,6 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import jakarta.persistence.EntityManager;
+import pe.gob.saip.backend.exception.ConflictoEstadoException;
+import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
@@ -52,6 +56,8 @@ public class SolicitudService {
     private final LiquidacionCostoSolicitudRepository liquidacionRepository;
     private final EntidadRepository entidadRepository;
     private final PlazoCalculadorService plazoCalculadorService;
+    private final AutorizacionRecursosService autorizacion;
+    private final EntityManager entityManager;
 
     public SolicitudService(SolicitudRepository solicitudRepository,
                             ObservacionSolicitudRepository observacionRepository,
@@ -60,7 +66,9 @@ public class SolicitudService {
                             EncauzamientoSolicitudRepository encauzamientoRepository,
                             LiquidacionCostoSolicitudRepository liquidacionRepository,
                             EntidadRepository entidadRepository,
-                            PlazoCalculadorService plazoCalculadorService) {
+                            PlazoCalculadorService plazoCalculadorService,
+                            AutorizacionRecursosService autorizacion,
+                            EntityManager entityManager) {
         this.solicitudRepository = solicitudRepository;
         this.observacionRepository = observacionRepository;
         this.ampliacionRepository = ampliacionRepository;
@@ -69,6 +77,77 @@ public class SolicitudService {
         this.liquidacionRepository = liquidacionRepository;
         this.entidadRepository = entidadRepository;
         this.plazoCalculadorService = plazoCalculadorService;
+        this.autorizacion = autorizacion;
+        this.entityManager = entityManager;
+    }
+
+    /** All SAIP writers acquire the request before its acts; refresh earlier security reads. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Solicitud bloquearSolicitud(Long id) {
+        Solicitud solicitud = solicitudRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
+        entityManager.refresh(solicitud);
+        return solicitud;
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Solicitud bloquearSolicitudInstitucional(Long id) {
+        Solicitud solicitud = bloquearSolicitud(id);
+        // A total referral may have changed the entity while this operation waited.
+        autorizacion.verificarSolicitudInstitucional(id);
+        return solicitud;
+    }
+
+    /** Generic editing cannot stand in for observation, receipt, response or expiry. */
+    @Transactional
+    public Solicitud cambiarEstado(Long id, String estado) {
+        Solicitud solicitud = bloquearSolicitudInstitucional(id);
+        Solicitud.EstadoSolicitud destino;
+        try {
+            destino = Solicitud.EstadoSolicitud.valueOf(estado.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Valor no válido para la solicitud: indique un estado reconocido");
+        }
+        if (destino == solicitud.getEstado()) return solicitud;
+        if (solicitud.getEstado() != Solicitud.EstadoSolicitud.RECEPCIONADA
+                || destino != Solicitud.EstadoSolicitud.EN_REVISION) {
+            throw new ConflictoEstadoException("La transición requiere su actuación específica; no puede registrarse cambiando el estado");
+        }
+        validarSinActuacionPendiente(solicitud);
+        solicitud.setEstado(destino);
+        return solicitudRepository.save(solicitud);
+    }
+
+    /** Preserve the ordinary edit whitelist, inside the same lock as domain commands. */
+    @Transactional
+    public Solicitud actualizarDatos(Long id, SolicitudDTO dto) {
+        Solicitud solicitud = bloquearSolicitudInstitucional(id);
+        if (dto.asunto() != null) solicitud.setAsunto(dto.asunto());
+        if (dto.descripcion() != null) solicitud.setDescripcion(dto.descripcion());
+        if (dto.tipoInformacion() != null) solicitud.setTipoInformacion(dto.tipoInformacion());
+        if (dto.consentimientoDatosPersonales() != null) {
+            if (!Boolean.TRUE.equals(dto.consentimientoDatosPersonales())) {
+                throw new IllegalArgumentException("El consentimiento de tratamiento de datos personales no puede retirarse desde este endpoint");
+            }
+            solicitud.setConsentimientoDatosPersonales(true);
+        }
+        if (dto.canalNotificacion() != null) solicitud.setCanalNotificacion(parseCanalNotificacion(dto.canalNotificacion()));
+        if (dto.prioridad() != null) {
+            try {
+                solicitud.setPrioridad(Solicitud.Prioridad.valueOf(dto.prioridad().toUpperCase(java.util.Locale.ROOT)));
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("Prioridad no válida. Valores permitidos: BAJA, NORMAL, MEDIA, ALTA, URGENTE");
+            }
+        }
+        return solicitudRepository.save(solicitud);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void validarSinActuacionPendiente(Solicitud solicitud) {
+        if (solicitud.getRespuesta() != null || observacionRepository.existsBySolicitud_IdSolicitudAndEstado(
+                solicitud.getId(), ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION)) {
+            throw new ConflictoEstadoException("La solicitud tiene una respuesta o una observación pendiente incompatible con esta actuación");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -202,7 +281,7 @@ public class SolicitudService {
 
     @Transactional
     public LiquidacionCostoSolicitud emitirLiquidacion(Long solicitudId, RegistrarLiquidacionCostoRequest request) {
-        Solicitud solicitud = buscarSolicitud(solicitudId);
+        Solicitud solicitud = bloquearSolicitudInstitucional(solicitudId);
         validarPuedeEmitirLiquidacion(solicitud);
         validarSolicitudRequiereEntregaFisica(solicitud);
         validarSinLiquidacionActiva(solicitudId);
@@ -246,9 +325,19 @@ public class SolicitudService {
     public LiquidacionCostoSolicitud actualizarLiquidacion(Long solicitudId,
                                                            Long liquidacionId,
                                                            ActualizarLiquidacionCostoRequest request) {
+        Solicitud solicitud = bloquearSolicitudInstitucional(solicitudId);
         LiquidacionCostoSolicitud liquidacion = buscarLiquidacionDeSolicitud(solicitudId, liquidacionId);
+        entityManager.refresh(liquidacion);
         LiquidacionCostoSolicitud.EstadoLiquidacion nuevoEstado = parseEstadoLiquidacionOperativo(request.estado());
         validarLiquidacionNoCerrada(liquidacion);
+        if (nuevoEstado != LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA) {
+            validarSolicitudEnAtencion(solicitud);
+        }
+        if (nuevoEstado == liquidacion.getEstadoLiquidacion()
+                && (request.fechaPago() == null || request.fechaPago().equals(liquidacion.getFechaPago()))
+                && (request.observacion() == null || request.observacion().equals(liquidacion.getObservacion()))) {
+            return liquidacion;
+        }
 
         String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
         LocalDate hoy = LocalDate.now();
@@ -264,9 +353,8 @@ public class SolicitudService {
             }
             case RECOGIDA -> {
                 liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA);
-                if (liquidacion.getFechaPago() == null && liquidacion.getMonto() != null
-                        && liquidacion.getMonto().compareTo(BigDecimal.ZERO) > 0) {
-                    liquidacion.setFechaPago(request.fechaPago() != null ? request.fechaPago() : hoy);
+                if (liquidacion.getFechaPago() == null && request.fechaPago() != null) {
+                    liquidacion.setFechaPago(request.fechaPago());
                 }
                 liquidacion.setFechaRecojo(request.fechaRecojo() != null ? request.fechaRecojo() : hoy);
                 liquidacion.setTrazabilidad(agregarTraza(
@@ -301,15 +389,37 @@ public class SolicitudService {
     public List<LiquidacionCostoSolicitud> procesarLiquidacionesVencidas() {
         List<LiquidacionCostoSolicitud> vencidas = liquidacionRepository
                 .findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(ESTADOS_LIQUIDACION_ACTIVA, LocalDate.now());
-        for (LiquidacionCostoSolicitud liquidacion : vencidas) {
+        List<LiquidacionCostoSolicitud> procesadas = new ArrayList<>();
+        for (LiquidacionCostoSolicitud candidata : vencidas.stream().sorted(Comparator.comparing(l -> l.getSolicitud().getId())).toList()) {
+            Solicitud solicitud = bloquearSolicitud(candidata.getSolicitud().getId());
+            LiquidacionCostoSolicitud liquidacion = buscarLiquidacionDeSolicitud(solicitud.getId(), candidata.getId());
+            entityManager.refresh(liquidacion);
+            if (!ESTADOS_LIQUIDACION_ACTIVA.contains(liquidacion.getEstadoLiquidacion())
+                    || liquidacion.getFechaLimiteRecojo() == null
+                    || !liquidacion.getFechaLimiteRecojo().isBefore(LocalDate.now())
+                    || !esSolicitudEnAtencion(solicitud) || solicitud.getRespuesta() != null) continue;
             archivarLiquidacionPorNoRecojo(liquidacion);
+            procesadas.add(liquidacion);
         }
-        return liquidacionRepository.saveAll(vencidas);
+        return liquidacionRepository.saveAll(procesadas);
+    }
+
+    private boolean esSolicitudEnAtencion(Solicitud solicitud) {
+        return solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.VENCIDA;
+    }
+
+    private void validarSolicitudEnAtencion(Solicitud solicitud) {
+        if (!esSolicitudEnAtencion(solicitud)) {
+            throw new ConflictoEstadoException("La solicitud no admite pago o recojo en su estado actual");
+        }
+        validarSinActuacionPendiente(solicitud);
     }
 
     @Transactional
     public EncauzamientoSolicitud registrarEncauzamiento(Long solicitudId, RegistrarEncauzamientoSolicitudRequest request) {
-        Solicitud solicitud = buscarSolicitud(solicitudId);
+        Solicitud solicitud = bloquearSolicitudInstitucional(solicitudId);
         validarPuedeEncauzar(solicitud);
         validarSinEncauzamientoActivo(solicitudId);
 
@@ -360,7 +470,7 @@ public class SolicitudService {
 
     @Transactional
     public AmpliacionPlazoSolicitud registrarAmpliacion(Long solicitudId, RegistrarAmpliacionPlazoRequest request) {
-        Solicitud solicitud = buscarSolicitud(solicitudId);
+        Solicitud solicitud = bloquearSolicitudInstitucional(solicitudId);
         validarPuedeAmpliar(solicitud);
         validarSinAmpliacionActiva(solicitudId);
 
@@ -420,7 +530,7 @@ public class SolicitudService {
                                                                       Long ampliacionId,
                                                                       Long entregaId,
                                                                       ActualizarEntregaParcialRequest request) {
-        validarSolicitudExiste(solicitudId);
+        bloquearSolicitudInstitucional(solicitudId);
         AmpliacionPlazoSolicitud ampliacion = buscarAmpliacionDeSolicitud(solicitudId, ampliacionId);
         CronogramaEntregaParcialSolicitud entrega = buscarEntregaDeAmpliacion(ampliacionId, entregaId);
 
@@ -441,7 +551,7 @@ public class SolicitudService {
 
     @Transactional
     public ObservacionSolicitud observarSolicitud(Long solicitudId, ObservarSolicitudRequest request) {
-        Solicitud solicitud = buscarSolicitud(solicitudId);
+        Solicitud solicitud = bloquearSolicitudInstitucional(solicitudId);
         validarPuedeObservar(solicitud);
 
         LocalDate hoy = LocalDate.now();
@@ -480,7 +590,26 @@ public class SolicitudService {
     public ObservacionSolicitud subsanarSolicitud(Long solicitudId,
                                                   Long observacionId,
                                                   SubsanarSolicitudRequest request) {
-        Solicitud solicitud = buscarSolicitud(solicitudId);
+        if (!isBlank(request.documentoSubsanacionNombre()) || !isBlank(request.documentoSubsanacionRuta())) {
+            throw new IllegalArgumentException("Los archivos requieren la recepción multipart de precisiones; un nombre o ruta no acredita su almacenamiento");
+        }
+        return registrarSubsanacion(solicitudId, observacionId, request);
+    }
+
+    /** Internal E1.1 coordination: the surrounding transaction persists bytes and receipt. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public ObservacionSolicitud subsanarSolicitudDocumental(Long solicitudId, Long observacionId,
+                                                            SubsanarSolicitudRequest request) {
+        return registrarSubsanacion(solicitudId, observacionId, request);
+    }
+
+    private ObservacionSolicitud registrarSubsanacion(Long solicitudId, Long observacionId,
+                                                      SubsanarSolicitudRequest request) {
+        Solicitud solicitud = bloquearSolicitud(solicitudId);
+        autorizacion.verificarCiudadanoActualOAdministrador(solicitud.getCiudadano().getId());
+        if (solicitud.getEstado() != Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION || solicitud.getRespuesta() != null) {
+            throw new ConflictoEstadoException("La solicitud no admite subsanación en su estado actual");
+        }
         ObservacionSolicitud observacion = buscarObservacionDeSolicitud(solicitudId, observacionId);
         validarObservacionPendiente(observacion);
 
@@ -518,10 +647,19 @@ public class SolicitudService {
                 ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION,
                 LocalDate.now()
         );
-        for (ObservacionSolicitud observacion : vencidas) {
+        List<ObservacionSolicitud> procesadas = new ArrayList<>();
+        for (ObservacionSolicitud candidata : vencidas.stream().sorted(Comparator.comparing(o -> o.getSolicitud().getId())).toList()) {
+            Solicitud solicitud = bloquearSolicitud(candidata.getSolicitud().getId());
+            ObservacionSolicitud observacion = buscarObservacionDeSolicitud(solicitud.getId(), candidata.getId());
+            if (observacion.getEstado() != ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION
+                    || observacion.getFechaLimiteSubsanacion() == null
+                    || !observacion.getFechaLimiteSubsanacion().isBefore(LocalDate.now())
+                    || solicitud.getEstado() != Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION
+                    || solicitud.getRespuesta() != null) continue;
             marcarNoSubsanada(observacion, "Sistema SAIP", "Cierre automático por falta de subsanación en plazo");
+            procesadas.add(observacion);
         }
-        return observacionRepository.saveAll(vencidas);
+        return observacionRepository.saveAll(procesadas);
     }
 
     private static final List<Solicitud.EstadoSolicitud> ESTADOS_FINALES_SOLICITUD = List.of(
@@ -553,10 +691,18 @@ public class SolicitudService {
     @Transactional
     public List<Solicitud> detectarSilencioAdministrativo() {
         List<Solicitud> vencidas = solicitudRepository.findVencidas(LocalDate.now(), ESTADOS_FINALES_SOLICITUD);
-        for (Solicitud s : vencidas) {
+        List<Solicitud> procesadas = new ArrayList<>();
+        for (Solicitud candidata : vencidas.stream().sorted(Comparator.comparing(Solicitud::getId)).toList()) {
+            Solicitud s = bloquearSolicitud(candidata.getId());
+            if ((s.getEstado() != Solicitud.EstadoSolicitud.RECEPCIONADA && s.getEstado() != Solicitud.EstadoSolicitud.EN_REVISION)
+                    || s.getRespuesta() != null || s.getFechaLimite() == null
+                    || !s.getFechaLimite().isBefore(LocalDate.now())
+                    || observacionRepository.existsBySolicitud_IdSolicitudAndEstado(s.getId(),
+                            ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION)) continue;
             s.setEstado(Solicitud.EstadoSolicitud.VENCIDA);
+            procesadas.add(s);
         }
-        return solicitudRepository.saveAll(vencidas);
+        return solicitudRepository.saveAll(procesadas);
     }
 
     /**
@@ -615,11 +761,12 @@ public class SolicitudService {
     }
 
     private ObservacionSolicitud buscarObservacionDeSolicitud(Long solicitudId, Long observacionId) {
-        ObservacionSolicitud observacion = observacionRepository.findById(observacionId)
+        ObservacionSolicitud observacion = observacionRepository.findByIdForUpdate(observacionId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Observación SAIP no encontrada con ID: " + observacionId));
         if (observacion.getSolicitud() == null || !solicitudId.equals(observacion.getSolicitud().getId())) {
             throw new RecursoNoEncontradoException("Observación SAIP no encontrada para la solicitud ID: " + solicitudId);
         }
+        entityManager.refresh(observacion);
         return observacion;
     }
 

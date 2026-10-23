@@ -1,6 +1,11 @@
 package pe.gob.saip.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -72,21 +77,36 @@ public class RespuestaRestController {
         return ResponseEntity.ok(RespuestaDTO.from(solicitud.getRespuesta()));
     }
 
-    @Operation(summary = "Crear respuesta a solicitud SAIP")
+    @Operation(summary = "Crear respuesta a solicitud SAIP", description = "Registra entrega total, parcial o denegatoria desde RECEPCIONADA, EN_REVISION o VENCIDA, sin respuesta ni observación pendiente. Una respuesta tardía conserva el límite registrado. Registrar no acredita entrega, firma ni notificación eficaz.")
+    @ApiResponses({
+        @ApiResponse(responseCode="201", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=RespuestaDTO.class))),
+        @ApiResponse(responseCode="400", description="Tipo de respuesta desconocido o incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="409", description="Respuesta existente o transición incompatible con las actuaciones del expediente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping
     public ResponseEntity<RespuestaDTO> crear(@Valid @RequestBody CrearRespuestaRequest request) {
         verificarAutorizacionRespuesta(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuestaService.crearRespuesta(request));
     }
 
-    @Operation(summary = "Aceptar solicitud", description = "Crea respuesta con entrega total de información")
+    @Operation(summary = "Aceptar solicitud", description = "Registra exclusivamente ENTREGA_TOTAL. Para ENTREGA_PARCIAL use POST /api/respuestas. Requiere solicitud RECEPCIONADA, EN_REVISION o VENCIDA sin respuesta ni observación pendiente.")
+    @ApiResponses({
+        @ApiResponse(responseCode="201", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=RespuestaDTO.class))),
+        @ApiResponse(responseCode="400", description="Tipo de respuesta desconocido o incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="409", description="Respuesta existente o transición incompatible con las actuaciones del expediente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/aceptar")
     public ResponseEntity<RespuestaDTO> aceptarSolicitud(@Valid @RequestBody CrearRespuestaRequest request) {
         verificarAutorizacionRespuesta(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuestaService.aceptarSolicitud(request));
     }
 
-    @Operation(summary = "Denegar solicitud", description = "Crea respuesta con denegación total y causal")
+    @Operation(summary = "Denegar solicitud", description = "Registra DENEGACION_TOTAL con los datos aportados. Requiere solicitud RECEPCIONADA, EN_REVISION o VENCIDA sin respuesta ni observación pendiente. No acredita notificación eficaz.")
+    @ApiResponses({
+        @ApiResponse(responseCode="201", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=RespuestaDTO.class))),
+        @ApiResponse(responseCode="400", description="Tipo de respuesta desconocido o incompatible con el comando", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="409", description="Respuesta existente o transición incompatible con las actuaciones del expediente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/denegar")
     public ResponseEntity<RespuestaDTO> denegarSolicitud(@Valid @RequestBody CrearRespuestaRequest request) {
         verificarAutorizacionRespuesta(request);

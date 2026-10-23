@@ -22,17 +22,20 @@ public class ReportesRestController {
     private final EntidadService entidadService;
     private final CiudadanoService ciudadanoService;
     private final FuncionarioService funcionarioService;
+    private final UsuarioService usuarioService;
 
     public ReportesRestController(SolicitudService solicitudService,
                                    ApelacionService apelacionService,
                                    EntidadService entidadService,
                                    CiudadanoService ciudadanoService,
-                                   FuncionarioService funcionarioService) {
+                                   FuncionarioService funcionarioService,
+                                   UsuarioService usuarioService) {
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.entidadService = entidadService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
+        this.usuarioService = usuarioService;
     }
 
     @Operation(summary = "Reporte de solicitudes", description = "Filtrable por estado, entidad y rango de fechas")
@@ -317,7 +320,8 @@ public class ReportesRestController {
         resumen.put("usuarios", Map.of(
                 "ciudadanos", ciudadanoService.obtenerTodosLosCiudadanos().size(),
                 "funcionarios", funcionarioService.obtenerTodosLosFuncionarios().size(),
-                "entidades", entidades.size()
+                "entidades", entidades.size(),
+                "total", usuarioService.obtenerTodosLosUsuarios().size()
         ));
 
         return ResponseEntity.ok(resumen);

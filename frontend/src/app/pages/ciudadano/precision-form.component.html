@@ -18,6 +18,20 @@
   <!-- Contenido principal -->
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6">
 
+    @if (loadingSolicitud()) {
+      <p class="text-sm text-muted-foreground" role="status">Recuperando la solicitud y su observación...</p>
+    }
+    @if (error()) {
+      <div class="rounded-md p-4 text-sm" role="alert" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <p>{{ error() }}</p>
+        @if (verificacionPendiente()) {
+          <button type="button" class="btn-outline mt-3" [disabled]="loadingEnvio()" (click)="comprobarRecepcion()">
+            Comprobar recepción
+          </button>
+        }
+      </div>
+    }
+
     <!-- Alerta de Plazo Legal (2 días hábiles) -->
     <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
       <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
@@ -179,6 +193,8 @@
                 style="resize: vertical; min-height: 160px;"
                 placeholder="En atención a la observación de la entidad, preciso mi solicitud:&#10;&#10;1. Especifico que solicito los documentos correspondientes al periodo…&#10;2. Detallo el área/dependencia que posee la información…&#10;3. Adjunto el documento que precisa mi pedido…"
                 [ngModel]="respuesta()"
+                [disabled]="formularioBloqueado()"
+                maxlength="3000"
                 (ngModelChange)="respuesta.set($event)">
               </textarea>
               <span class="field-hint font-mono">{{ respuesta().length }} caracteres</span>
@@ -197,7 +213,7 @@
               Documento de subsanación <span class="req">*</span>
             </label>
             <p class="text-sm text-muted-foreground -mt-1">
-              Archivo único PDF/DOC/imagen que subsana la observación.
+              Archivo único PDF, JPG, PNG o TXT que subsana la observación.
             </p>
 
             <!-- Zona Drag & Drop -->
@@ -205,7 +221,7 @@
               (dragover)="onDragOver($event)"
               (dragleave)="onDragLeave($event)"
               (drop)="onDrop($event)"
-              (click)="!archivoSeleccionado() && fileInput.click()"
+              (click)="!formularioBloqueado() && !archivoSeleccionado() && fileInput.click()"
               class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
               [ngClass]="{
                 'border-[var(--brand-700)] bg-[color:var(--brand-subtle)]': isDragging(),
@@ -219,7 +235,7 @@
                   <p class="text-sm">
                     Arrastra tu archivo aquí o <span class="text-[var(--brand-700)] font-semibold">haz clic para seleccionar</span>
                   </p>
-                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG, DOC o ZIP (máx. 10MB)</p>
+                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG o TXT (máx. 10MB)</p>
                 </div>
               } @else {
                 <div class="space-y-3">
@@ -242,6 +258,7 @@
                     </button>
                     <button
                       type="button"
+                      [disabled]="formularioBloqueado()"
                       (click)="$event.stopPropagation(); removerArchivo()"
                       class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5 text-red-600 hover:text-red-700">
                       <svg lucideX class="w-3.5 h-3.5"></svg>
@@ -255,7 +272,8 @@
                 #fileInput
                 type="file"
                 class="hidden"
-                accept=".pdf,.jpg,.jpeg,.png,.zip,.doc,.docx"
+                accept=".pdf,.jpg,.jpeg,.png,.txt"
+                [disabled]="formularioBloqueado()"
                 (change)="onFileSelected($event)">
             </div>
 
@@ -277,7 +295,7 @@
           type="button"
           class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           (click)="abrirConfirmacion()"
-          [disabled]="!respuesta().trim() || !archivoSeleccionado() || loadingEnvio()">
+          [disabled]="!puedeEnviar() || !respuesta().trim() || !archivoSeleccionado()">
           @if (loadingEnvio()) {
             <svg lucideLoader2 class="w-4 h-4 animate-spin"></svg>
             <span>Enviando subsanación...</span>
@@ -322,10 +340,10 @@
     title="Subsanación enviada a la entidad"
     description="Su escrito de subsanación fue cargado al expediente. La entidad validará la subsanación y reanudará el trámite de su solicitud."
     [expediente]="expediente()"
-    [expedienteHint]="'Subsanación recibida el ' + fechaHoy + ' · dentro del plazo legal'"
+    [expedienteHint]="'Recepción registrada: ' + (recepcion()?.fechaRecepcion || '—')"
     [plazoDias]="10"
     plazoTipo="hábiles"
-    plazoDescripcion="Al validarse la subsanación, su solicitud pasa a EN TRÁMITE y comienzan los 10 días hábiles de atención."
+    plazoDescripcion="La recepción y el plazo aplicable se registran en el servidor. Puede consultar el trámite actualizado desde su panel."
     [metadata]="subsanacionSuccessMetadata()"
     [nextSteps]="subsanacionNextSteps"
     primaryLabel="Ir a mi panel"

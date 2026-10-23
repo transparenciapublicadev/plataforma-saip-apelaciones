@@ -88,6 +88,9 @@ class ExpedienteTtaipServiceTest {
     @Mock
     CumplimientoResolucionTtaipRepository cumplimientoRepository;
 
+    @Mock
+    InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
+
     @InjectMocks
     ExpedienteTtaipService service;
 

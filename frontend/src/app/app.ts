@@ -47,6 +47,7 @@ export class App {
   readonly mobileMenuAbierto = signal(false);
   readonly showSplash = signal(false);
   readonly splashLeaving = signal(false);
+  readonly avisoCierreSesion = this.authService.avisoCierreSesion;
 
   constructor() {
     effect(() => {
@@ -142,7 +143,7 @@ export class App {
   }
 
   logout(): void {
-    this.authService.cerrarSesion();
+    void this.authService.cerrarSesion();
     this.menuAbierto.set(false);
     this.mobileMenuAbierto.set(false);
     this.router.navigate(['/']);

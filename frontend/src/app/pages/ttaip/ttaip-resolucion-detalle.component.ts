@@ -8,8 +8,19 @@ import { CumplimientoResolucionTtaip, NotificacionTtaip, SuspensionPlazoTtaip } 
 import { DocumentoRelation } from '../../models/documento.model';
 import { DocumentListComponent } from '../../shared/document-list.component';
 import { DocumentUploadComponent } from '../../shared/document-upload.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 
-type DetailTab = 'apelacion' | 'descargos' | 'cumplimiento' | 'adjuntos';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { resolucionPdf, buildResolucionBlob, DocContext, OfficialStage } from './shared/official-docs.util';
+import {
+  LucideEye, LucideDownload, LucideFileText, LucideBuilding2,
+  LucideCalendar, LucideHash, LucideScale, LucideCheckCircle2,
+  LucideXCircle, LucideAlertCircle, LucideClock, LucideMail,
+  LucideGlobe, LucideMonitor, LucidePackage, LucideArrowLeft,
+  LucideRefreshCw, LucideShieldCheck, LucideUser
+} from '@lucide/angular';
+
+type DetailTab = 'apelacion' | 'subprocesos' | 'notificaciones' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
 type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
 type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
@@ -27,11 +38,15 @@ interface ResultadoMeta {
   accent: string;
 }
 
-import { StatusBadgeComponent } from '../../shared/status-badge.component';
-
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent],
+  imports: [
+    CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
+    DocumentPreviewModalComponent,
+    LucideEye, LucideDownload, LucideFileText,
+    LucideCheckCircle2, LucideMail, LucideGlobe,
+    LucideMonitor, LucidePackage, LucideShieldCheck
+  ],
   templateUrl: './ttaip-resolucion-detalle.component.html',
   styleUrl: './ttaip-resolucion-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,11 +69,15 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly cumplimientoLoading = signal<boolean>(false);
   readonly cumplimientoMessage = signal<string>('');
   readonly cumplimientoError = signal<string>('');
+  readonly draftError = signal('');
+  private documentQuery = 0;
+  readonly previewModalOpen = signal<boolean>(false);
+  readonly previewModalDoc = signal<DocumentPreviewTarget | null>(null);
   readonly tabs: { id: DetailTab; label: string }[] = [
-    { id: 'apelacion', label: 'Apelacion' },
-    { id: 'descargos', label: 'Descargos' },
-    { id: 'cumplimiento', label: 'Cumplimiento' },
-    { id: 'adjuntos', label: 'Adjuntos' }
+    { id: 'apelacion', label: 'Apelación' },
+    { id: 'subprocesos', label: 'Subprocesos' },
+    { id: 'notificaciones', label: 'Notificaciones' },
+    { id: 'adjuntos', label: 'Documentos del expediente' }
   ];
 
   private readonly routeExpediente = signal<string>('');
@@ -217,6 +236,69 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     return resultado.startsWith('FUNDADO') ? 'var(--success)' : 'var(--brand-700)';
   });
 
+  readonly docCtx = computed<Partial<DocContext>>(() => {
+    const ap = this.apelacion();
+    const res = ap?.resolucion;
+    return {
+      expediente: ap?.expediente || this.routeExpediente() || '',
+      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
+      entidad: ap?.entidadNombre || 'No registrada',
+      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
+      direccionEntidad: '—',
+      sumilla: ap?.solicitudAsunto || (ap as any)?.resumenSolicitudOriginal || (ap as any)?.fundamentos || 'No registrada',
+      resolucionNro: res?.numeroResolucion || undefined,
+      fechaResolucion: res?.fechaResolucion || undefined
+    };
+  });
+
+  verResolucion(): void {
+    this.draftError.set('');
+    if (!this.puedePrepararBorrador()) return;
+    try {
+      const { blob, filename } = buildResolucionBlob(this.obtenerOfficialStage(),
+        this.resultadoNormalizado() || undefined, this.docCtx());
+      this.previewModalDoc.set({ nombre: filename, blob, tipo: 'application/pdf', expediente: this.docCtx().expediente });
+      this.previewModalOpen.set(true);
+    } catch {
+      this.draftError.set('No se pudo preparar el borrador. No se ha emitido ningún documento.');
+    }
+  }
+
+  cerrarPreviewModal(): void {
+    this.previewModalOpen.set(false);
+    this.previewModalDoc.set(null);
+  }
+
+  descargarResolucion(): void {
+    this.draftError.set('');
+    if (!this.puedePrepararBorrador()) return;
+    try {
+      resolucionPdf('download', this.obtenerOfficialStage(), this.resultadoNormalizado() || undefined, this.docCtx());
+    } catch {
+      this.draftError.set('No se pudo descargar el borrador. Reintente; no se ha emitido ningún documento.');
+    }
+  }
+
+  private puedePrepararBorrador(): boolean {
+    const expediente = this.apelacion()?.expediente;
+    if (this.loading() || this.error() || !expediente || expediente !== this.routeExpediente()) {
+      this.draftError.set('Consulte correctamente el expediente antes de preparar un borrador.');
+      return false;
+    }
+    return true;
+  }
+
+  private obtenerOfficialStage(): OfficialStage {
+    const estado = this.normalizeKey(this.apelacion()?.estado);
+    if (estado.startsWith('RESUELTO') || estado === 'RESUELTO' || this.resultadoNormalizado()) {
+      return 'final';
+    }
+    if (estado.includes('CALIFICACION_2') || estado.includes('SUBSANACION')) {
+      return 'segunda';
+    }
+    return 'primera';
+  }
+
   ngOnInit(): void {
     const expediente = this.route.snapshot.paramMap.get('expediente') || '';
     this.routeExpediente.set(expediente);
@@ -231,14 +313,25 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   }
 
   cargarApelacion(expediente: string): void {
+    const query = ++this.documentQuery;
+    this.routeExpediente.set(expediente);
+    this.cerrarPreviewModal();
+    this.draftError.set('');
+    this.apelacion.set(null);
+    this.error.set('');
     this.loading.set(true);
-
     this.apelacionService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        this.apelacion.set(data);
+        if (query !== this.documentQuery) return;
+        if (!data || data.expediente !== expediente) {
+          this.error.set('El servidor no devolvió el expediente solicitado.');
+        } else {
+          this.apelacion.set(data);
+        }
         this.loading.set(false);
       },
       error: () => {
+        if (query !== this.documentQuery) return;
         this.error.set('Error al cargar la apelacion');
         this.loading.set(false);
       }
@@ -578,7 +671,8 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     notificacionId: number | undefined,
     estadoAcuse: string,
     acuseAutomatico: string,
-    evidencia: string
+    evidencia: string,
+    fechaAcreditada = ''
   ): void {
     const expedienteId = this.expedienteTtaip()?.id;
     if (!expedienteId || !notificacionId) {
@@ -595,12 +689,17 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       return;
     }
 
+    if (fechaAcreditada && Number.isNaN(new Date(fechaAcreditada).getTime())) {
+      this.notificacionError.set('Indique una fecha acreditada válida.');
+      return;
+    }
     this.notificacionLoading.set(true);
     this.notificacionMessage.set('');
     this.notificacionError.set('');
     this.ttaipService.registrarAcuseAutomatico(expedienteId, notificacionId, {
       estadoAcuse: estado,
       acuseAutomatico,
+      fechaAcuse: fechaAcreditada ? `${fechaAcreditada}:00`.slice(0, 19) : null,
       evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
       referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null,
       responsable: 'Sistema de notificaciones TTAIP',
@@ -623,7 +722,8 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   validarNotificacionManual(
     notificacionId: number | undefined,
     observacion: string,
-    evidencia: string
+    evidencia: string,
+    fechaAcreditada = ''
   ): void {
     const expedienteId = this.expedienteTtaip()?.id;
     if (!expedienteId || !notificacionId) {
@@ -635,12 +735,17 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       return;
     }
 
+    if (fechaAcreditada && Number.isNaN(new Date(fechaAcreditada).getTime())) {
+      this.notificacionError.set('Indique una fecha acreditada válida.');
+      return;
+    }
     this.notificacionLoading.set(true);
     this.notificacionMessage.set('');
     this.notificacionError.set('');
     this.ttaipService.validarNotificacionManualmente(expedienteId, notificacionId, {
       responsableValidacion: 'Secretaría Técnica TTAIP',
       observacionValidacion: observacion,
+      fechaEficacia: fechaAcreditada ? `${fechaAcreditada}:00`.slice(0, 19) : null,
       evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
       referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null
     }).subscribe({

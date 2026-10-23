@@ -12,16 +12,27 @@
         Cumplimiento de <span class="italic" style="color: var(--gold-soft)">resoluciones</span>
       </h1>
       <p class="text-white/75 mt-2 text-sm">
-        Las resoluciones FUNDADAS abren un seguimiento: la entidad tiene 7 días hábiles para acatar lo ordenado.
+        La entidad tiene 7 días hábiles para cumplir las resoluciones FUNDADAS o FUNDADAS EN PARTE. Consulte los seguimientos registrados.
       </p>
     </div>
     <div class="brand-divider"></div>
   </div>
 
   <!-- Contenido principal -->
-  <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-10" [attr.aria-busy]="cargando()">
 
+    <div class="flex justify-end mb-4">
+      <button type="button" class="btn-ghost-brand" (click)="cargarSeguimientos()" [disabled]="cargando() || enviando()">
+        Recargar seguimientos
+      </button>
+    </div>
+    @if (informacionIncompleta()) {
+      <div class="form-shell p-4 mb-4 text-sm" role="status">
+        Información incompleta. Faltan datos del servidor; no se confirma la ausencia de actuaciones.
+      </div>
+    }
     <!-- Indicadores / KPI Cards -->
+    @if (!cargando() && !mensajeConsulta() && !informacionIncompleta()) {
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
       <!-- Pendientes -->
       <div class="rounded-lg p-4 flex items-center gap-3 bg-card border border-border">
@@ -66,10 +77,18 @@
       </div>
     </div>
 
+    }
     <!-- Estado de Carga -->
     @if (cargando()) {
-      <div class="form-shell p-12 text-center text-sm text-muted-foreground">
+      <div class="form-shell p-12 text-center text-sm text-muted-foreground" role="status" aria-live="polite">
         Cargando el seguimiento de cumplimiento…
+      </div>
+    } @else if (mensajeConsulta()) {
+      <div class="form-shell p-6 text-sm" role="alert">
+        <p>{{ mensajeConsulta() }}</p>
+        @if (reintentable()) {
+          <button type="button" class="btn-ghost-brand mt-3" (click)="cargarSeguimientos()">Reintentar consulta</button>
+        }
       </div>
     } @else if (!sel()) {
       <!-- Estado Vacío -->
@@ -77,10 +96,11 @@
         <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
           <svg lucideInbox class="w-7 h-7" style="color: var(--brand-700)"></svg>
         </div>
-        <h3 class="font-display tracking-wide mt-4 text-xl">Sin seguimientos abiertos</h3>
+        <h3 class="font-display tracking-wide mt-4 text-xl">Sin seguimientos recuperados</h3>
         <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
-          Cuando el Tribunal declare FUNDADA una apelación, aquí aparecerá el seguimiento del
-          cumplimiento por parte de la entidad.
+          No se recuperaron seguimientos registrados para las apelaciones resueltas consultadas.
+          La resolución fundada no equivale a un seguimiento creado. La apertura desde esta pantalla
+          no está disponible mientras falte acreditar la base del plazo de cumplimiento.
         </p>
       </div>
     } @else {
@@ -111,7 +131,7 @@
                 </div>
 
                 <div class="text-sm font-medium mt-1 truncate">{{ item.entidad }}</div>
-                <div class="text-xs text-muted-foreground mt-0.5">Vence: {{ item.fechaLimite || '—' }}</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Límite registrado: {{ item.fechaLimite || 'No informada' }} (registrado)</div>
               </button>
             }
           </div>
@@ -138,11 +158,11 @@
                 <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
                 <div>
                   <div class="font-display tracking-wider font-semibold">
-                    RESOLUCIÓN {{ (itemActual.resultado || 'FUNDADA') | uppercase }}
+                    RESOLUCIÓN {{ (itemActual.resultado || 'Decisión no informada') | uppercase }}
                   </div>
                   <p class="text-xs text-foreground/80 mt-1 leading-relaxed">
-                    Se ordenó a <span class="font-medium">{{ itemActual.entidad }}</span> entregar la información del expediente
-                    <span class="font-mono">{{ itemActual.expedienteSAIP }}</span> dentro de 7 días hábiles.
+                    Seguimiento de la resolución <span class="font-mono">{{ itemActual.registro.numeroResolucion || 'Número no informado' }}</span>.
+                    Estado registrado por el servidor; el cierre operativo no acredita por sí solo entrega total.
                   </p>
                 </div>
               </div>
@@ -155,8 +175,8 @@
                 </div>
 
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="eyebrow">Expediente SAIP</div>
-                  <div class="mt-1 font-mono text-[13px] text-foreground">{{ itemActual.expedienteSAIP }}</div>
+                  <div class="eyebrow">Solicitud SAIP de origen</div>
+                  <div class="mt-1 font-mono text-[13px] text-foreground">{{ itemActual.expedienteSAIP || 'Sin SAIP local informada' }}</div>
                 </div>
 
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
@@ -165,7 +185,7 @@
                 </div>
 
                 <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="eyebrow">Plazo de cumplimiento</div>
+                  <div class="eyebrow">Fecha límite registrada</div>
                   <div
                     class="mt-1 font-mono text-[13px]"
                     [style.color]="itemActual.estado === 'vencido' ? 'var(--brand-700)' : 'var(--foreground)'">
@@ -183,6 +203,32 @@
                 }
               </div>
 
+              <div class="rounded-md p-4 text-xs text-muted-foreground border border-border" role="note">
+                El plazo de cumplimiento es de 7 días hábiles y es distinto del plazo de subsanación.
+                Esta consulta no acredita su inicio: el backend conserva bases operativas históricas
+                y el contrato no identifica la notificación eficaz que sustenta cada fecha.
+                No se calcula ni se certifica aquí un vencimiento legal.
+              </div>
+
+              @if (itemActual.registro.descripcionCumplimiento || itemActual.registro.referenciaDocumento || itemActual.registro.evidenciaCumplimiento) {
+                <div class="rounded-md p-4 border border-border space-y-2">
+                  <span class="eyebrow">Comunicación de la entidad</span>
+                  <p>{{ itemActual.registro.descripcionCumplimiento }}</p>
+                  @if (itemActual.registro.referenciaDocumento) {
+                    <p>Referencia documental: {{ itemActual.registro.referenciaDocumento }}</p>
+                  }
+                  @if (itemActual.registro.evidenciaCumplimiento) {
+                    <p>Evidencia registrada: {{ itemActual.registro.evidenciaCumplimiento }}</p>
+                  }
+                  <p class="text-xs text-muted-foreground">Son referencias registradas; no representan archivos descargables desde esta pantalla.</p>
+                </div>
+              }
+              @if (itemActual.registro.trazabilidad) {
+                <div>
+                  <span class="eyebrow">Trazabilidad registrada</span>
+                  <p class="whitespace-pre-line mt-2">{{ itemActual.registro.trazabilidad }}</p>
+                </div>
+              }
               <!-- Observaciones del Tribunal -->
               @if (itemActual.observaciones) {
                 <div>
@@ -214,8 +260,8 @@
                 </div>
 
                 <div class="field">
-                  <label class="field-label">Observaciones (opcional)</label>
-                  <textarea
+                  <label for="observacion-cumplimiento" class="field-label">Observaciones (obligatorias para observar)</label>
+                  <textarea id="observacion-cumplimiento" maxlength="2000" aria-describedby="resultado-cumplimiento"
                     class="field-input"
                     rows="3"
                     style="resize: vertical;"
@@ -225,13 +271,18 @@
                   </textarea>
                 </div>
 
+                <p id="resultado-cumplimiento" role="status" aria-live="polite" class="text-sm text-muted-foreground">
+                  {{ enviando() ? 'Registrando y verificando la actuación…' : mensajeAccion() }}
+                </p>
                 <!-- Botonera de Acciones -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   @for (accion of acciones; track accion.estado) {
                     <button
                       type="button"
                       (click)="actualizarEstado(accion.estado)"
-                      class="rounded-md p-3.5 text-sm text-left flex items-center gap-2.5 transition-colors cursor-pointer hover:bg-[color:var(--brand-subtle)]"
+                      [disabled]="!!motivoNoDisponible(accion.estado)"
+                      [attr.aria-describedby]="'motivo-' + accion.estado"
+                      class="rounded-md p-3.5 text-sm text-left flex items-center gap-2.5 transition-colors cursor-pointer disabled:cursor-not-allowed hover:bg-[color:var(--brand-subtle)]"
                       style="background: var(--card); border: 1px solid var(--border);"
                       [style.borderLeft]="'3px solid ' + accion.tone">
 
@@ -249,7 +300,12 @@
                           <svg lucideShieldCheck class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
                         }
                       }
-                      <span class="font-medium">{{ accion.label }}</span>
+                      <span>
+                        <span class="font-medium">{{ accion.label }}</span>
+                        <span [id]="'motivo-' + accion.estado" class="block text-xs text-muted-foreground mt-1">
+                          {{ motivoNoDisponible(accion.estado) }}
+                        </span>
+                      </span>
                     </button>
                   }
                 </div>
@@ -258,8 +314,8 @@
                 <div class="rounded-md p-3.5 flex items-start gap-2.5 text-xs" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                   <svg lucideXCircle class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
                   <span class="text-foreground/80 leading-relaxed">
-                    Si el plazo vence sin cumplimiento, el sistema abre automáticamente un proceso
-                    disciplinario contra el funcionario responsable (art. 4° de la Ley N° 27806).
+                    La reiteración y la apertura de un proceso disciplinario no se ejecutan desde esta pantalla.
+                    Requieren una actuación y sus precondiciones específicas.
                   </span>
                 </div>
               </div>
@@ -278,7 +334,7 @@
     <div class="fixed bottom-6 right-6 z-50 animate-fade-in-up">
       <div class="rounded-lg shadow-lg px-4 py-3 bg-[var(--brand-800)] text-white text-sm flex items-center gap-2.5 border border-white/10">
         <svg lucideCheckCircle2 class="w-4 h-4 text-green-400 flex-shrink-0"></svg>
-        <span>{{ msg }}</span>
+        <span role="status" aria-live="polite">{{ msg }}</span>
       </div>
     </div>
   }

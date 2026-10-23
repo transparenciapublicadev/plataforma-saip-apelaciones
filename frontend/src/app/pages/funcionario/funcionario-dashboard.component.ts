@@ -3,10 +3,8 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
-import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
-import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
@@ -64,7 +62,6 @@ import {
 })
 export class FuncionarioDashboardComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
-  private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
   private readonly tourService = inject(GuidedTourService);
 
@@ -134,9 +131,6 @@ export class FuncionarioDashboardComponent implements OnInit {
   solicitudes = signal<Solicitud[]>([]);
   loading = signal<boolean>(true);
   error = signal<string>('');
-  elevacionesPendientes = signal<ElevacionApelacionTtaip[]>([]);
-  elevacionEnProceso = signal<number | null>(null);
-  referenciasElevacion: Record<number, string> = {};
 
   selectedBucket = signal<BucketKey>('san');
   busqueda = signal<string>('');
@@ -180,11 +174,13 @@ export class FuncionarioDashboardComponent implements OnInit {
     return c.san + c.hoy + c.semana + c.plazo;
   });
 
+  readonly cerradas = computed(() => this.counts().respondidas + this.counts().san);
+  readonly respondidas = computed(() => this.counts().respondidas);
+
   readonly cumplimiento = computed(() => {
-    const c = this.counts();
-    const cerradas = c.respondidas + c.san;
+    const cerradas = this.cerradas();
     if (cerradas <= 0) return 100;
-    return Math.round((c.respondidas / cerradas) * 100);
+    return Math.round((this.respondidas() / cerradas) * 100);
   });
 
   readonly donutAccent = computed(() => {
@@ -206,18 +202,21 @@ export class FuncionarioDashboardComponent implements OnInit {
 
   readonly filtradas = computed(() => {
     const bucket = this.selectedBucket();
-    const query = this.busqueda().trim().toLowerCase();
+    const norm = (s: string) => (s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+    const q = norm(this.busqueda().trim());
 
     const list = bucket === 'todas'
       ? this.queueItems()
       : this.queueItems().filter((item) => item.bucket === bucket);
 
-    const byQuery = query
+    const byQuery = q
       ? list.filter((item) => {
-          const expediente = (item.solicitud.expediente || '').toLowerCase();
-          const ciudadano = (item.solicitud.ciudadanoNombre || '').toLowerCase();
-          const asunto = (item.solicitud.asunto || '').toLowerCase();
-          return expediente.includes(query) || ciudadano.includes(query) || asunto.includes(query);
+          const exp = norm(item.solicitud.expediente || '');
+          const ciu = norm(item.solicitud.ciudadanoNombre || '');
+          const dni = norm(item.solicitud.ciudadanoDni || '');
+          const asu = norm(item.solicitud.asunto || '');
+          const tem = norm(item.tema || '');
+          return exp.includes(q) || ciu.includes(q) || dni.includes(q) || asu.includes(q) || tem.includes(q);
         })
       : list;
 
@@ -284,13 +283,12 @@ export class FuncionarioDashboardComponent implements OnInit {
       this.nombreEntidad.set(sesion.entidadNombre || 'Entidad');
       this.entidadId.set(sesion.entidadId || 0);
       this.cargarSolicitudes();
-      this.cargarElevacionesPendientes();
       this.tourService.checkAutoStart('saip_tour_funcionario', this.tourSteps);
     }
   }
 
   readonly paginaActual = signal<number>(1);
-  readonly itemsPorPagina = signal<number>(10);
+  readonly itemsPorPagina = signal<number>(4);
 
   readonly totalRegistros = computed(() => this.filtradas().length);
   readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
@@ -381,50 +379,61 @@ export class FuncionarioDashboardComponent implements OnInit {
     return this.buckets.find((item) => item.key === bucket)?.color ?? 'var(--brand-600)';
   }
 
-  cargarElevacionesPendientes(): void {
-    const entidadId = this.entidadId();
-    if (entidadId === 0) return;
-
-    this.apelacionService.findPendientesElevacionByEntidadId(entidadId).subscribe({
-      next: (elevaciones) => this.elevacionesPendientes.set(elevaciones),
-      error: (err) => {
-        const mensaje = err.error?.detail || err.error?.mensaje || 'No se pudo consultar la bandeja de elevaciones';
-        this.error.set(mensaje);
-      }
-    });
-  }
-
-  elevarApelacion(elevacion: ElevacionApelacionTtaip): void {
-    const referencia = (this.referenciasElevacion[elevacion.apelacionId] || '').trim();
-    if (!referencia) {
-      this.error.set('Ingrese la referencia documental del expediente elevado al TTAIP');
-      return;
-    }
-
-    this.elevacionEnProceso.set(elevacion.apelacionId);
-    this.error.set('');
-    this.apelacionService.elevar(elevacion.apelacionId, {
-      responsableEntidad: this.nombreFuncionario(),
-      referenciaExpedienteElevado: referencia
-    }).subscribe({
-      next: () => {
-        delete this.referenciasElevacion[elevacion.apelacionId];
-        this.elevacionEnProceso.set(null);
-        this.cargarElevacionesPendientes();
-      },
-      error: (err) => {
-        this.elevacionEnProceso.set(null);
-        this.error.set(err.error?.detail || err.error?.mensaje || 'No se pudo elevar la apelación al TTAIP');
-      }
-    });
-  }
-
   getDiasValor(item: QueueItem): string {
     if (item.bucket === 'san') {
       return `+${Math.abs(item.diasRestantes)}d`;
     }
 
     return `${item.diasRestantes}d`;
+  }
+
+  getMetaLabel(item: QueueItem): string {
+    if (item.bucket === 'respondidas') {
+      return 'Respondida el';
+    }
+    if (item.solicitud.estado === 'PENDIENTE_INFORMACION') {
+      return 'Precisar antes de';
+    }
+    if (item.bucket === 'san') {
+      return 'En silencio (SAN)';
+    }
+    return 'Plazo p/ responder';
+  }
+
+  getMetaValue(item: QueueItem): string {
+    if (item.bucket === 'respondidas') {
+      const respFecha = item.solicitud.respuesta?.fechaRespuesta;
+      if (respFecha) {
+        return this.formatFechaCorta(respFecha);
+      }
+      return '—';
+    }
+    if (item.solicitud.estado === 'PENDIENTE_INFORMACION') {
+      const obs = item.solicitud.observaciones?.find(o => o.estado === 'PENDIENTE_SUBSANACION');
+      if (obs?.fechaLimiteSubsanacion) {
+        return this.formatFechaCorta(obs.fechaLimiteSubsanacion);
+      }
+      return '—';
+    }
+    if (item.bucket === 'san') {
+      const diasVencido = Math.abs(item.diasRestantes);
+      return `+${diasVencido} ${diasVencido === 1 ? 'día' : 'días'}`;
+    }
+    const d = item.diasRestantes;
+    return `${d} ${d === 1 ? 'día háb.' : 'días háb.'}`;
+  }
+
+  isItemRespondida(item: QueueItem): boolean {
+    return item.bucket === 'respondidas' || item.solicitud.estado === 'RESPONDIDA' || item.solicitud.estado === 'DENEGADA' || item.solicitud.estado === 'CONCLUIDA';
+  }
+
+  private formatFechaCorta(fechaStr: string): string {
+    const d = new Date(fechaStr);
+    if (isNaN(d.getTime())) return fechaStr;
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const anio = d.getFullYear();
+    return `${dia}/${mes}/${anio}`;
   }
 
   canResponder(solicitud: Solicitud): boolean {
@@ -437,7 +446,7 @@ export class FuncionarioDashboardComponent implements OnInit {
   }
 
   logout(): void {
-    this.authService.cerrarSesion();
+    void this.authService.cerrarSesion();
   }
 
   private mapSolicitud(solicitud: Solicitud): QueueItem {

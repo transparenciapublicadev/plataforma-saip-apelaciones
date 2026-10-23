@@ -85,6 +85,10 @@ public class Resolucion {
     @OneToMany(mappedBy = "resolucion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<CedulaNotificacion> cedulasNotificacion;
 
+    @ToString.Exclude @EqualsAndHashCode.Exclude
+    @OneToOne(mappedBy="requerimiento", fetch=FetchType.LAZY)
+    private InicioPlazoSubsanacionTtaip inicioPlazoSubsanacion;
+
     @PrePersist
     protected void onCreate() {
         fechaResolucion = LocalDateTime.now();
