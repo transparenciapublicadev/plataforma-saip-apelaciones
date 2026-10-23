@@ -42,7 +42,7 @@
         <!-- Body -->
         <div class="flex-1 overflow-auto" style="background: var(--muted)">
           @if (loading()) {
-            <div class="p-10 flex flex-col items-center justify-center text-center" style="min-height: 50vh;">
+            <div role="status" aria-live="polite" class="p-10 flex flex-col items-center justify-center text-center" style="min-height: 50vh;">
               <svg lucideLoader2 class="w-8 h-8 animate-spin" style="color: var(--brand-700)"></svg>
               <p class="text-sm text-muted-foreground mt-3">Cargando documento…</p>
             </div>
@@ -55,7 +55,10 @@
                 <svg lucideFileText class="w-8 h-8" style="color: var(--brand-700)"></svg>
               </div>
               <div class="font-display" style="font-size: 18px; letter-spacing: -0.01em;">{{ doc.nombre }}</div>
-              <p class="text-sm text-muted-foreground mt-1.5 max-w-sm">{{ error() }}</p>
+              <p role="alert" class="text-sm text-muted-foreground mt-1.5 max-w-sm">{{ error() }}</p>
+              @if (reintentable()) {
+                <button type="button" class="btn-ghost-brand mt-3" (click)="reintentar()">Reintentar documento</button>
+              }
             </div>
           } @else if (safeUrl() && isPdf()) {
             <iframe

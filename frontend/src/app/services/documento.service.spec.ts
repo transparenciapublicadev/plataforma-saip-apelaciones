@@ -126,4 +126,14 @@ describe('DocumentoService', () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null);
   });
+
+  it.each(['sin cuerpo', 'cuerpo vacío'])('no sustituye una descarga sin bytes por un documento vacío: %s', caso => {
+    const body = caso === 'sin cuerpo' ? null : new Blob();
+    const next = vi.fn();
+    const error = vi.fn();
+    service.download(44, 'original.pdf').subscribe({ next, error });
+    httpMock.expectOne(`${apiUrl}/44/download`).flush(body);
+    expect(next).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledOnce();
+  });
 });
