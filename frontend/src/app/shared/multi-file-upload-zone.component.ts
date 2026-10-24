@@ -77,6 +77,10 @@ export interface MultiFileSlot {
                 'bg-[color:var(--card)] hover:border-[var(--brand-600)]': !slot.file && !slot.dragging
               }"
               (click)="onSlotClick(slot)"
+              [attr.role]="keyboardAccessible() && !slot.file ? 'button' : null"
+              [attr.tabindex]="keyboardAccessible() && !slot.file ? 0 : null"
+              [attr.aria-label]="keyboardAccessible() && !slot.file ? label() + ': seleccionar archivo ' + (idx + 1) : null"
+              (keydown)="onSlotKey($event, slot)"
             >
               @if (!slot.file) {
                 <div class="space-y-2">
@@ -231,6 +235,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
 
   readonly label = input<string>('');
   readonly required = input<boolean>(false);
+  readonly keyboardAccessible = input(false);
   readonly description = input<string>('');
   readonly showPreview = input<boolean>(true);
   readonly allowZip = input<boolean>(false);
@@ -257,6 +262,12 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   onEscape(): void {
     if (this.previewModalOpen()) {
       this.cerrarPrevisualizacion();
+    }
+  }
+
+  onSlotKey(event: KeyboardEvent, slot: MultiFileSlot): void {
+    if (this.keyboardAccessible() && !slot.file && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault(); this.onSlotClick(slot);
     }
   }
 

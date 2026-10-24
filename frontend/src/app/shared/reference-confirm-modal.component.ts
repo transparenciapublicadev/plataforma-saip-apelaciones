@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BodyPortalDirective } from './body-portal.directive';
+import { ModalFocusDirective } from './modal-focus.directive';
 
 export interface ReferenceConfirmSummary {
   label: string;
@@ -16,7 +17,7 @@ export interface ReferenceConfirmWarning {
 @Component({
   selector: 'app-reference-confirm-modal',
   standalone: true,
-  imports: [CommonModule, BodyPortalDirective],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective],
   template: `
     @if (open) {
       <ng-container *appBodyPortal>
@@ -32,6 +33,9 @@ export interface ReferenceConfirmWarning {
           <section
             class="reference-confirm-panel"
             role="dialog"
+            tabindex="-1"
+            [appModalFocus]="manageFocus"
+            (modalEscape)="!submitting && close.emit()"
             aria-modal="true"
             [attr.aria-label]="title">
             <header class="reference-confirm-header">
@@ -469,6 +473,7 @@ export interface ReferenceConfirmWarning {
 })
 export class ReferenceConfirmModalComponent {
   @Input() open = false;
+  @Input() manageFocus = false;
   @Input() submitting = false;
   @Input() title = '¿Confirma el envío?';
   @Input() titleLead = 'Confirma';

@@ -1,4 +1,7 @@
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
+import { falloConsulta } from '../../utils/consulta-remota.util';
+import { ResponseContextComponent } from '../../shared/response-context.component';
+import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -88,7 +91,7 @@ export const CAUSALES_DENEGATORIA = [
 @Component({
   selector: 'app-funcionario-responder',
   imports: [
-    CommonModule,
+    ResponseContextComponent, ReferenceTabsDirective, CommonModule,
     FormsModule,
     RouterLink,
     StatusBadgeComponent,
@@ -122,6 +125,24 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   loading = signal<boolean>(false);
   loadingSolicitud = signal<boolean>(true);
   error = signal<string>('');
+  consultaReintentable = signal(false);
+  private expedienteActual = '';
+  private sesionActual = this.claveSesion();
+  constructor() {
+    effect(() => {
+      this.authService.cambiosSesion?.();
+      const sesion = this.claveSesion();
+      if (sesion !== this.sesionActual) {
+        this.sesionActual = sesion; this.generacionRespuesta++; this.consultaSolicitud?.unsubscribe();
+        this.solicitud.set(null); this.intentoRespuesta = null; this.recepcionRespuesta.set(null);
+        this.documentosEntrega.set([]); this.evidenciaDenegatoria.set([]); this.previewTarget.set(null);
+        this.descripcionAceptacion = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
+        this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.loading.set(false); this.loadingSolicitud.set(false);
+        this.consultaReintentable.set(false); this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
+      }
+    });
+  }
+  reintentarConsulta(): void { if (this.consultaReintentable()) this.cargarSolicitud(this.expedienteActual); }
   readonly respuestaPendienteVerificacion = signal(false);
   readonly puedeReintentarRespuesta = signal(false);
   readonly recepcionRespuesta = signal<RespuestaSaipRecepcion | null>(null);
@@ -332,9 +353,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   descargarDoc(doc: any): void {
     const d = doc.raw || doc;
     const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    const generacion = this.generacionRespuesta, sesion = this.claveSesion();
+    const vigente = () => !this.destruido && generacion === this.generacionRespuesta && sesion === this.claveSesion();
+    this.error.set('');
     if (d.id) {
       this.documentoService.download(d.id, nombre).subscribe({
         next: ({ blob }) => {
+          if (!vigente()) return;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -344,11 +369,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
           a.click();
           a.remove();
           URL.revokeObjectURL(url);
-        }
+        },
+        error: err => { if (vigente()) this.error.set(falloConsulta(err, 'el documento').mensaje); }
       });
-    } else if (d.url) {
-      window.open(d.url, '_blank');
-    }
+    } else this.error.set('Documento sin identificador recuperable. No se puede descargar.');
   }
 
   tamanoDoc(doc: any): string {
@@ -357,7 +381,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       if (bytes >= 1024 * 1024) {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       }
-      return `${Math.round(bytes / 1024)} KB`;
+      return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`;
     }
     return typeof doc.tamano === 'string' ? doc.tamano : 'PDF';
   }
@@ -395,7 +419,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     {
       id: 'denegacion_total',
       title: 'Denegación total',
-      description: 'Requiere causal legal y evidencia documental.',
+      description: 'Requiere causal y fundamento legal. Los adjuntos son opcionales.',
       accent: 'var(--brand-700)'
     }
   ];
@@ -412,6 +436,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   cargarSolicitud(expediente: string): void {
+    this.expedienteActual = expediente; this.consultaReintentable.set(false);
+    this.previewTarget.set(null); this.confirmModalAbierto.set(false); this.decision.set(null); this.activeTab.set('responder');
     const generacion = ++this.generacionRespuesta;
     const sesion = this.claveSesion();
     this.consultaSolicitud?.unsubscribe();
@@ -433,9 +459,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
           void this.comprobarRecepcionRespuesta();
         }
       },
-      error: () => {
+      error: err => {
         if (this.destruido || generacion !== this.generacionRespuesta || sesion !== this.claveSesion()) return;
-        this.error.set('Error al cargar la solicitud'); this.loadingSolicitud.set(false);
+        const fallo = falloConsulta(err, 'la solicitud'); this.error.set(fallo.mensaje); this.consultaReintentable.set(fallo.reintentable); this.loadingSolicitud.set(false);
       }
     });
   }
@@ -626,6 +652,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   motivoRespuestaNoDisponible(): string {
+    const sol = this.solicitud();
+    if (sol?.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) return 'Existe una observación pendiente. Recupere la recepción de precisión y el estado vigente antes de responder.';
+    if (sol && !this.puedeRegistrarRespuestaManual()) return 'El estado actual del expediente no permite registrar otra respuesta. Consulte la respuesta y sus documentos desde el detalle.';
     if (this.encauzar) return 'El envío conjunto con encauzamiento no está disponible. Registre el encauzamiento desde el detalle y recupere el expediente antes de responder.';
     if (this.requiereFisico() && this.decision() !== 'denegacion_total') return 'La entrega física requiere registrar la liquidación y el recojo desde el detalle. Este formulario no acredita esas actuaciones.';
     return '';
