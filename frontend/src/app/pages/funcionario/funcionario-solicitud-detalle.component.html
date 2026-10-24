@@ -621,6 +621,7 @@
   }
 
   <app-document-preview-modal
+    [manageFocus]="true"
     [open]="previewTarget() !== null"
     [doc]="previewTarget()"
     (close)="previewTarget.set(null)">

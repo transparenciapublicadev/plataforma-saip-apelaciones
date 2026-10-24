@@ -5,6 +5,7 @@ import { LucideBuilding2, LucideInfo } from '@lucide/angular';
 @Component({
   selector: 'app-response-context',
   imports: [LucideBuilding2, LucideInfo],
+  styles: ':host { display: block; }',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="form-shell" aria-label="Área responsable">

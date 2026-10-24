@@ -20,6 +20,7 @@ import {
   LucideLoader2,
 } from '@lucide/angular';
 import { BodyPortalDirective } from './body-portal.directive';
+import { ModalFocusDirective } from './modal-focus.directive';
 import { DocumentoService } from '../services/documento.service';
 import { Subscription } from 'rxjs';
 import { falloConsulta } from '../utils/consulta-remota.util';
@@ -49,6 +50,7 @@ export interface DocumentPreviewTarget {
   imports: [
     CommonModule,
     BodyPortalDirective,
+    ModalFocusDirective,
     LucideFileText,
     LucideDownload,
     LucideX,
@@ -64,6 +66,7 @@ export class DocumentPreviewModalComponent implements OnChanges, OnDestroy {
 
   @Input() doc: DocumentPreviewTarget | null = null;
   @Input() open = false;
+  @Input() manageFocus = false;
   @Output() close = new EventEmitter<void>();
 
   loading = signal<boolean>(false);
