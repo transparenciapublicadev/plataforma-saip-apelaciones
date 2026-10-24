@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BodyPortalDirective } from './body-portal.directive';
+import { ModalFocusDirective } from './modal-focus.directive';
 
 export type ReferenceSuccessTone = 'success' | 'warning' | 'brand' | 'gold';
 
@@ -18,7 +19,7 @@ export interface ReferenceSuccessNextStep {
 @Component({
   selector: 'app-reference-success-modal',
   standalone: true,
-  imports: [CommonModule, BodyPortalDirective],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective],
   template: `
     @if (open) {
       <ng-container *appBodyPortal>
@@ -33,6 +34,9 @@ export interface ReferenceSuccessNextStep {
         <section
           class="reference-success-panel"
           role="dialog"
+            tabindex="-1"
+            [appModalFocus]="manageFocus"
+            (modalEscape)="close.emit()"
           aria-modal="true"
           [attr.aria-label]="title"
           [attr.data-tone]="tone">
@@ -261,6 +265,7 @@ export interface ReferenceSuccessNextStep {
 })
 export class ReferenceSuccessModalComponent {
   @Input() open = false;
+  @Input() manageFocus = false;
   @Input() variant = 'generic';
   @Input() tone: ReferenceSuccessTone = 'success';
   @Input() eyebrow = 'Operación completada';

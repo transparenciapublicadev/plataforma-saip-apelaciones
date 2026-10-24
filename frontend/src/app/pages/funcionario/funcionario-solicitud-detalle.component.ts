@@ -1,4 +1,8 @@
-import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
+import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
+import { Subscription } from 'rxjs';
+import { falloConsulta } from '../../utils/consulta-remota.util';
+import { ResponseContextComponent } from '../../shared/response-context.component';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -58,7 +62,7 @@ import {
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentUploadComponent,
+    CommonModule, FormsModule, RouterLink, DocumentUploadComponent, ResponseContextComponent, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
     LucideArrowLeft, LucideSend, LucideClock,
@@ -69,7 +73,7 @@ import {
   styleUrl: './funcionario-solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FuncionarioSolicitudDetalleComponent implements OnInit {
+export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
   private readonly documentoService = inject(DocumentoService);
@@ -80,6 +84,37 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   plazoSeguimiento = signal<PlazoSeguimientoDTO | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
+  reintentable = signal(false);
+  previasError = signal('');
+  plazoError = signal('');
+  documentoError = signal('');
+  private consultas = new Subscription();
+  private navegacion?: Subscription;
+  private generacion = 0;
+  private destruido = false;
+  private expedienteActual = '';
+  private sesionActual = this.claveSesion();
+  constructor() {
+    effect(() => {
+      this.authService.cambiosSesion?.();
+      const sesion = this.claveSesion();
+      if (sesion !== this.sesionActual) {
+        this.sesionActual = sesion; this.generacion++; this.consultas.unsubscribe(); this.limpiarConsulta();
+        this.loading.set(false); this.reintentable.set(false);
+        this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
+      }
+    });
+  }
+  private claveSesion(): string {
+    const s = this.authService.obtenerSesion();
+    return JSON.stringify([s?.token, s?.usuarioId, s?.funcionarioId]);
+  }
+  private limpiarConsulta(): void {
+    this.solicitud.set(null); this.plazoSeguimiento.set(null); this.previewTarget.set(null);
+    this.solicitudesPrevias.set([]); this.previasError.set(''); this.plazoError.set(''); this.documentoError.set('');
+  }
+  ngOnDestroy(): void { this.destruido = true; this.generacion++; this.consultas.unsubscribe(); this.navegacion?.unsubscribe(); }
+  reintentarConsulta(): void { if (this.reintentable()) this.cargarSolicitud(this.expedienteActual); }
   activeTab = signal<DetailTabId>('solicitud');
   solicitudesPrevias = signal<Solicitud[]>([]);
   observacionMotivo = signal<string>('');
@@ -196,14 +231,6 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
     return 'Digital (plataforma)';
   });
 
-  readonly plazoEntrega = computed<string>(() => {
-    const liq = this.liquidacionActiva();
-    if (liq) {
-      return `Hasta el ${liq.fechaNotificacion || 'plazo indicado'}`;
-    }
-    return 'Inmediato';
-  });
-
   readonly funcionarioResponsable = computed<string>(() => {
     const sol = this.solicitud();
     return sol?.respuesta?.funcionarioNombre || sol?.entidadNombre || 'Funcionario responsable';
@@ -230,9 +257,13 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   descargarDoc(doc: any): void {
     const d = doc.raw || doc;
     const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    this.documentoError.set('');
+    const generacion = this.generacion, sesion = this.claveSesion();
+    const vigente = () => !this.destruido && generacion === this.generacion && sesion === this.claveSesion();
     if (d.id) {
-      this.documentoService.download(d.id, nombre).subscribe({
+      this.consultas.add(this.documentoService.download(d.id, nombre).subscribe({
         next: ({ blob }) => {
+          if (!vigente()) return;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -242,11 +273,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
           a.click();
           a.remove();
           URL.revokeObjectURL(url);
-        }
-      });
-    } else if (doc.url) {
-      window.open(doc.url, '_blank');
-    }
+        },
+        error: err => { if (vigente()) this.documentoError.set(falloConsulta(err, 'el documento').mensaje); }
+      }));
+    } else this.documentoError.set('Documento sin identificador recuperable. No se puede descargar.');
   }
 
   tamanoDoc(doc: any): string {
@@ -255,7 +285,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
       if (bytes >= 1024 * 1024) {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       }
-      return `${Math.round(bytes / 1024)} KB`;
+      return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`;
     }
     return typeof doc.tamano === 'string' ? doc.tamano : 'PDF';
   }
@@ -316,7 +346,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
 
     if (sol.respuesta?.fechaRespuesta) {
       items.push({
-        accion: `Respuesta emitida · ${this.getTipoRespuestaDisplay()}`,
+        accion: `Respuesta registrada · ${this.getTipoRespuestaDisplay()}`,
         fecha: sol.respuesta.fechaRespuesta,
         responsable: 'Funcionario responsable',
         detalle: 'La entidad registró respuesta para el ciudadano.',
@@ -437,51 +467,44 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibió el expediente de la solicitud.');
-      this.loading.set(false);
-      return;
-    }
-
-    this.cargarSolicitud(expediente);
+    const params = this.route.paramMap;
+    if (params) this.navegacion = params.subscribe(p => this.cargarSolicitud(p.get('expediente') || ''));
+    else this.cargarSolicitud(this.route.snapshot.paramMap.get('expediente') || '');
     this.cargarEntidadesActivas();
   }
 
   cargarSolicitud(expediente: string, preferredTab?: DetailTabId): void {
-    this.loading.set(true);
-    this.solicitudService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        this.solicitud.set(data);
+    const generacion = ++this.generacion, sesion = this.claveSesion();
+    this.expedienteActual = expediente;
+    this.consultas.unsubscribe(); this.consultas = new Subscription(); this.limpiarConsulta();
+    this.error.set(''); this.reintentable.set(false); this.loading.set(true);
+    const vigente = () => !this.destruido && generacion === this.generacion && sesion === this.claveSesion();
+    if (!expediente) { this.error.set('No se recibió el expediente de la solicitud.'); this.loading.set(false); return; }
+    this.consultas.add(this.solicitudService.findByExpediente(expediente).subscribe({
+      next: data => {
+        if (!vigente()) return;
+        this.solicitud.set(data); this.loading.set(false);
+        if (!data) return;
         this.activeTab.set(preferredTab || (this.puedeVerRespuesta() ? 'respuesta' : 'solicitud'));
-        
-        if (data && data.id) {
-          this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
-            next: (plazo) => this.plazoSeguimiento.set(plazo),
-            error: () => console.warn('No se pudo cargar el seguimiento de plazo de la solicitud.')
-          });
-        }
-
-        if (data && data.ciudadanoId) {
-          this.cargarSolicitudesPrevias(data.ciudadanoId, data.expediente);
-        }
-        
-        this.loading.set(false);
+        if (data.id) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
+          next: plazo => { if (vigente()) this.plazoSeguimiento.set(plazo); },
+          error: () => { if (vigente()) this.plazoError.set('Seguimiento del plazo no disponible. Se conserva la fecha límite registrada.'); }
+        }));
+        if (data.ciudadanoId) this.cargarSolicitudesPrevias(data.ciudadanoId, data.expediente, vigente);
       },
-      error: () => {
-        this.error.set('Error al cargar la solicitud');
-        this.loading.set(false);
+      error: err => {
+        if (!vigente()) return;
+        const fallo = falloConsulta(err, 'la solicitud'); this.error.set(fallo.mensaje);
+        this.reintentable.set(fallo.reintentable); this.loading.set(false);
       }
-    });
+    }));
   }
 
-  cargarSolicitudesPrevias(ciudadanoId: number, currentExpediente?: string): void {
-    this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: (previas) => {
-        this.solicitudesPrevias.set(previas.filter(p => p.expediente !== currentExpediente).slice(0, 5));
-      },
-      error: () => {}
-    });
+  cargarSolicitudesPrevias(ciudadanoId: number, currentExpediente?: string, vigente: () => boolean = () => true): void {
+    this.consultas.add(this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
+      next: previas => { if (vigente()) this.solicitudesPrevias.set(previas.filter(p => p.expediente !== currentExpediente).slice(0, 5)); },
+      error: () => { if (vigente()) this.previasError.set('Consulta de solicitudes previas no disponible para esta sesión. No se pudo consultar el historial del administrado.'); }
+    }));
   }
 
   getResultadoLabel(): string {
