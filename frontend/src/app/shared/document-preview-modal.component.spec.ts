@@ -95,4 +95,28 @@ describe('DocumentPreviewModalComponent — archivo real', () => {
     expect(documentos.download).not.toHaveBeenCalled();
     expect(URL.createObjectURL).toHaveBeenCalledWith(file);
   });
+
+  it('contiene el foco del visor SAIP y lo devuelve al control que lo abrió', async () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger); trigger.focus();
+    const f = TestBed.createComponent(DocumentPreviewModalComponent);
+    f.componentRef.setInput('manageFocus', true);
+    f.componentRef.setInput('doc', { nombre: 'adjunto.pdf', file: new File(['pdf'], 'adjunto.pdf') });
+    f.componentRef.setInput('open', true); f.detectChanges();
+    await Promise.resolve();
+    const panel = document.querySelector('[role="dialog"]')!;
+    expect(panel).not.toBeNull();
+    expect(panel.getAttribute('aria-label')).toBe('adjunto.pdf');
+    expect(panel.contains(document.activeElement)).toBe(true);
+    const buttons = panel.querySelectorAll<HTMLButtonElement>('button');
+    buttons.item(buttons.length - 1).focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(buttons.item(0));
+    const close = vi.fn(); f.componentInstance.close.subscribe(close);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(close).toHaveBeenCalledOnce();
+    f.componentRef.setInput('open', false); f.detectChanges();
+    expect(document.activeElement).toBe(trigger);
+    f.destroy(); trigger.remove();
+  });
 });
