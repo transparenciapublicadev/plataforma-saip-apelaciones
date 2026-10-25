@@ -6,10 +6,11 @@ import { ReferenceSuccessModalComponent } from './reference-success-modal.compon
 describe('Diálogos de respuesta: foco opt-in', () => {
   afterEach(() => { TestBed.resetTestingModule(); document.body.innerHTML = ''; });
   for (const component of [ReferenceConfirmModalComponent, ReferenceSuccessModalComponent]) {
-    it(`${component.name}: contiene Tab/Escape y restaura foco`, async () => {
+    it.each(['default', 'saip-response'])(`${component.name}: contiene Tab/Escape y restaura foco (%s)`, async presentation => {
       const trigger = document.createElement('button'); document.body.append(trigger); trigger.focus();
       const f = TestBed.createComponent<any>(component); f.componentInstance.open = true;
       (f.componentInstance as any).manageFocus = true;
+      (f.componentInstance as any).presentation = presentation;
       const close = vi.fn(); f.componentInstance.close.subscribe(close); f.detectChanges();
       await Promise.resolve();
       const panel = document.querySelector('[role="dialog"]')!;

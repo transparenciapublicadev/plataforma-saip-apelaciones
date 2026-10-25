@@ -1,0 +1,115 @@
+/* SuccessModal.tsx: pt-8/pb-7, 64px disc/84px ring, py-6/space-y-5,
+   grid-cols-2 and footer py-4. Compact-height rules preserve reachable actions. */
+.reference-success-panel[data-presentation="saip-response"] {
+  --saip-result-primary: var(--success);
+}
+.reference-success-panel[data-presentation="saip-response"][data-tone="brand"] {
+  --saip-result-primary: var(--brand-700);
+}
+.reference-success-panel[data-presentation="saip-response"][data-tone="warning"] {
+  --saip-result-primary: var(--warning);
+}
+.reference-success-panel[data-presentation="saip-response"][data-tone="gold"] {
+  --saip-result-primary: var(--gold);
+}
+.reference-success-panel[data-presentation="saip-response"][data-tone="brand"] .reference-success-hero {
+  background: linear-gradient(135deg, var(--brand-800), var(--brand-700));
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-glow {
+  background: radial-gradient(circle, var(--saip-result-primary), transparent 70%);
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-hero-inner {
+  padding: 32px 28px 28px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-icon span {
+  width: 84px;
+  height: 84px;
+  margin-top: -16px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-hero h2 {
+  font-weight: 500;
+  font-optical-sizing: auto;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-hero p {
+  margin-top: 10px;
+  line-height: 1.55;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-eyebrow,
+.reference-success-panel[data-presentation="saip-response"] .reference-small-label {
+  font-weight: 400;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-body {
+  display: block;
+  padding: 24px 28px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-body > * + * {
+  margin-top: 20px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-expediente-card {
+  border-radius: 8px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-expediente-icon {
+  border-radius: 6px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-expediente-value {
+  font-weight: 600;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-meta .reference-small-label {
+  letter-spacing: 0.16em;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-meta-value {
+  line-height: 20px;
+}
+.reference-success-panel[data-presentation="saip-response"] .reference-success-actions {
+  padding: 16px 28px;
+}
+@media (max-width: 640px) {
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-hero-inner,
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-body {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-actions {
+    padding-left: 20px;
+    padding-right: 20px;
+    align-items: stretch;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-actions button {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
+@media (max-height: 700px) {
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-hero-inner {
+    padding: 20px 24px 18px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-icon span {
+    width: 64px;
+    height: 64px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-hero p {
+    line-height: 1.45;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-body {
+    padding: 16px 24px 18px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-body > * + * {
+    margin-top: 12px;
+  }
+  .reference-success-panel[data-presentation="saip-response"] .reference-success-actions {
+    padding: 12px 24px 8px;
+  }
+}
