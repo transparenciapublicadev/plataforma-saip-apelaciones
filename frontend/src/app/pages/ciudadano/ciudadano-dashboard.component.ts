@@ -1,14 +1,13 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { SolicitudService } from '../../services/solicitud.service';
-import { ApelacionService } from '../../services/apelacion.service';
+import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
 import { Solicitud } from '../../models/solicitud.model';
-import { Apelacion } from '../../models/apelacion.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { parseISO } from 'date-fns';
 
@@ -38,8 +37,7 @@ interface TimelineStep {
 }
 
 interface PlazoEntidadView {
-  restantes: number;
-  pct: number;
+  restantes: number | null;
   tone: string;
   fechaLimite?: string;
 }
@@ -48,7 +46,6 @@ interface SubsanacionView {
   dias: number | null;
   pendiente: boolean;
   vencido: boolean;
-  observaciones: string;
   expediente?: string;
 }
 
@@ -65,6 +62,7 @@ interface PipelineStage {
   num: string;
   iconName: string;
   color: string;
+  bg: string;
   label: string;
   desc: string;
   count: number;
@@ -82,7 +80,7 @@ import {
   LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser,
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser, LucideUserPen,
   LucideAlertTriangle, LucideSearch, LucideX
 } from '@lucide/angular';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -97,16 +95,15 @@ import { PaginationComponent } from '../../shared/pagination.component';
     LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser,
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser, LucideUserPen,
     LucideAlertTriangle, LucideSearch, LucideX
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CiudadanoDashboardComponent implements OnInit {
+export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   private readonly solicitudService = inject(SolicitudService);
-  private readonly apelacionService = inject(ApelacionService);
   private readonly tourService = inject(GuidedTourService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -155,10 +152,16 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly filtrosRapidos = ['En Proceso', 'Apelada', 'Denegada', 'Educacion', 'Vivienda'];
 
   todasSolicitudes = signal<Solicitud[]>([]);
-  apelaciones = signal<Apelacion[]>([]);
 
   loading = signal<boolean>(true);
   error = signal<string>('');
+  readonly errorTipo = signal<'sesion' | 'permiso' | 'validacion' | 'inexistente' | 'servidor' | 'red' | 'incompleta' | null>(null);
+  private read?: Subscription;
+  private generation = 0;
+  private initialized = false;
+  private destroyed = false;
+  private sessionRevision = 0;
+  private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 
   totalSolicitudes = signal<number>(0);
   enProceso = signal<number>(0);
@@ -166,7 +169,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   denegadas = signal<number>(0);
   vencidas = signal<number>(0);
 
-  nombreUsuario = signal<string>('Usuario');
+  nombreUsuario = signal<string>('');
   ciudadanoId = signal<number>(0);
   tieneApelables = signal<boolean>(false);
 
@@ -254,28 +257,6 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
   readonly timelineDisplaySteps = computed(() => this.timelinePrincipal().slice(0, 5));
 
-  readonly timelineProgress = computed(() => {
-    const steps = this.timelinePrincipal();
-    if (!steps.length) return 0;
-
-    const activeIdx = steps.findIndex((step) => step.status === 'active');
-    const doneCount = steps.filter((step) => step.status === 'done').length;
-
-    if (activeIdx >= 0) {
-      return Math.round((activeIdx / Math.max(steps.length - 1, 1)) * 100);
-    }
-
-    return Math.round((doneCount / steps.length) * 100);
-  });
-
-  readonly timelineLineProgress = computed(() => {
-    const steps = this.timelineDisplaySteps();
-    if (steps.length <= 1) return 0;
-
-    const doneCount = steps.filter((step) => step.status === 'done').length;
-    return Math.min(100, Math.round((doneCount / Math.max(steps.length - 1, 1)) * 100));
-  });
-
   readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
     const solicitud = this.solicitudPrincipal();
     if (!solicitud) return null;
@@ -283,17 +264,11 @@ export class CiudadanoDashboardComponent implements OnInit {
     const estado = (solicitud.estado || '').toUpperCase();
     if (!this.estadosEnProceso.has(estado)) return null;
 
-    const totalDias = 10;
-    const restantes = Math.max(this.diasRestantesParaEntidad(solicitud), 0);
-    const consumidos = Math.max(0, totalDias - Math.min(restantes, totalDias));
-    const pct = Math.min(100, Math.round((consumidos / totalDias) * 100));
-    const tone = restantes <= 1 ? 'var(--brand-700)' : restantes <= 3 ? 'var(--warning)' : 'var(--success)';
-
+    const restantes = this.diasRestantesParaEntidad(solicitud);
     return {
       restantes,
-      pct,
-      tone,
-      fechaLimite: this.formatDate(solicitud.fechaLimite)
+      tone: restantes === null ? 'var(--muted-foreground)' : 'var(--info)',
+      fechaLimite: this.formatDate(solicitud.fechaLimite),
     };
   });
 
@@ -304,9 +279,8 @@ export class CiudadanoDashboardComponent implements OnInit {
     const rawDias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
     return {
       dias: rawDias === null ? null : Math.max(rawDias, 0),
-      pendiente: rawDias === null,
+      pendiente: solicitud.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO',
       vencido: solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO',
-      observaciones: solicitud.apelacion?.resultado || 'observaciones',
       expediente: solicitud.apelacion?.expediente
     };
   });
@@ -314,11 +288,11 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly resumenActivasTexto = computed(() => {
     const activas = this.solicitudesActivas();
     if (!activas.length) {
-      return 'Aun no tiene solicitudes activas. Cuando lo necesite, puede pedir informacion a cualquier entidad publica.';
+      return 'Aún no tiene solicitudes activas. Cuando lo necesite, puede pedir informacion a cualquier entidad publica.';
     }
 
     const cantidad = activas.length;
-    const base = `Aqui estan sus ${cantidad} solicitud${cantidad === 1 ? '' : 'es'} en curso`;
+    const base = `Aquí están sus ${cantidad} solicitud${cantidad === 1 ? '' : 'es'} en curso`;
     return this.accionPrincipal() ? `${base}. Le mostramos lo que conviene hacer hoy.` : `${base}.`;
   });
 
@@ -327,12 +301,12 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   requiereSubsanacionTTAIP(s: Solicitud): boolean {
-    return !!s.apelacion?.expediente && (s.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION' && s.apelacion?.diasSubsanacion !== undefined;
+    return !!s.apelacion?.expediente && (s.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION';
   }
 
   requiereAccion(s: Solicitud): boolean {
     const estado = (s.estado || '').toUpperCase();
-    return estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
+    return (estado === 'PENDIENTE_INFORMACION' && s.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) || estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
   }
 
   // ── Pipeline computed properties ──────────────────────────────────────
@@ -384,13 +358,13 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly pipeline = computed<PipelineStage[]>(() => {
     const b = this.stageBuckets();
     return [
-      { key: 'todas', num: '00', iconName: 'layers', color: 'var(--brand-700)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: b.todas.length },
-      { key: 'accion', num: '01', iconName: 'alertTriangle', color: 'var(--brand-600)', label: 'Requieren su acción', desc: 'Subsane ante la entidad (1ª) o el Tribunal (2ª), o recoja su información', count: b.accion.length },
-      { key: 'proceso', num: '02', iconName: 'hourglass', color: 'var(--info)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: b.proceso.length },
-      { key: 'respondidas', num: '03', iconName: 'mailCheck', color: 'var(--success)', label: 'Respondida por la entidad', desc: 'La entidad ya entregó su respuesta', count: b.respondidas.length },
-      { key: 'apelar', num: '04', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'Puede apelar al Tribunal', desc: 'Si no está conforme con la respuesta, puede llevar su caso al Tribunal', count: b.apelar.length },
-      { key: 'tribunal', num: '05', iconName: 'gavel', color: 'var(--brand-700)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: b.tribunal.length },
-      { key: 'resueltas', num: '06', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal ya emitió el fallo final', count: b.resueltas.length },
+      { key: 'todas', num: '00', iconName: 'layers', color: 'var(--foreground)', bg: 'var(--muted)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: b.todas.length },
+      { key: 'accion', num: '01', iconName: 'alertTriangle', color: 'var(--warning)', bg: 'var(--warning-subtle)', label: 'Requieren su acción', desc: 'Subsane ante la entidad (1ª) o el Tribunal (2ª), o recoja su información', count: b.accion.length },
+      { key: 'proceso', num: '02', iconName: 'hourglass', color: 'var(--info)', bg: 'var(--info-subtle)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: b.proceso.length },
+      { key: 'respondidas', num: '03', iconName: 'mailCheck', color: 'var(--success)', bg: 'var(--success-subtle)', label: 'Respondida por la entidad', desc: 'La entidad registró una respuesta', count: b.respondidas.length },
+      { key: 'apelar', num: '04', iconName: 'scale', color: 'var(--gold-dark)', bg: 'rgba(176,136,66,0.10)', label: 'Consultar apelación', desc: 'Si no está conforme con la respuesta, puede llevar su caso al Tribunal', count: b.apelar.length },
+      { key: 'tribunal', num: '05', iconName: 'gavel', color: 'var(--brand-700)', bg: 'var(--brand-subtle)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: b.tribunal.length },
+      { key: 'resueltas', num: '06', iconName: 'checkCircle', color: 'var(--muted-foreground)', bg: 'var(--muted)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal registró el resultado del recurso', count: b.resueltas.length },
     ];
   });
 
@@ -467,6 +441,8 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   abrirExpediente(s: Solicitud): void {
+    if (this.loading() || this.error() || this.sessionRevision !== this.authService.cambiosSesion()
+      || !this.todasSolicitudes().some(current => current.id === s.id && current.expediente === s.expediente)) return;
     this.clearGlobalSearch();
     if (s.expediente) {
       this.router.navigate(['/ciudadano/solicitud', s.expediente]);
@@ -502,7 +478,7 @@ export class CiudadanoDashboardComponent implements OnInit {
       { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: en proceso, respondidas, por apelar, en el Tribunal y con fallo final. Toque una etapa para filtrar la lista de abajo.' },
     ];
     if (this.accionPrincipal()) {
-      s.push({ selector: '[data-tour="accion"]', title: 'Lo que debe hacer hoy', body: 'La gestión más urgente de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
+      s.push({ selector: '[data-tour="accion"]', title: 'Solicitud para revisar', body: 'Un resumen para revisar de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
     }
     if (this.solicitudPrincipal()) {
       s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'La línea de tiempo del expediente seleccionado y su ubicación actual: "con la entidad" (1ª instancia) o "en el Tribunal" (2ª instancia). Aquí ve la trazabilidad completa.' });
@@ -526,6 +502,10 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   constructor() {
     effect(() => {
+      const revision = this.authService.cambiosSesion();
+      if (this.initialized && revision !== this.sessionRevision) untracked(() => this.cargarDatos());
+    });
+    effect(() => {
       if (this.tourService.isOpen()) {
         this.mostrarResultadosBusqueda.set(false);
       }
@@ -533,86 +513,75 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (sesion) {
-      this.nombreUsuario.set(sesion.nombreCompleto || sesion.nombre || 'Usuario');
-      this.ciudadanoId.set(sesion.ciudadanoId || 0);
-      this.tipoPersona.set(sesion.tipoPersona || 'NATURAL');
-      this.dni.set(sesion.dni || '');
-      this.ruc.set(sesion.ruc || '');
-      this.razonSocial.set(sesion.razonSocial || '');
-      this.representanteDni.set(sesion.representanteDni || '');
-      this.representanteNombreCompleto.set(sesion.representanteNombreCompleto || '');
-      this.nombreCompleto.set(sesion.nombreCompleto || sesion.nombre || '');
-      this.cargarDatos();
-    }
+    this.initialized = true;
+    this.cargarDatos();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    ++this.generation;
+    this.read?.unsubscribe();
+    this.timers.forEach(timer => clearTimeout(timer));
+    this.timers.clear();
   }
 
   cargarDatos(): void {
-    this.cargarSolicitudes();
-    this.cargarApelaciones();
-  }
-
-  cargarSolicitudes(): void {
-    this.loading.set(true);
-    const ciudadanoId = this.ciudadanoId();
-
-    if (ciudadanoId === 0) {
-      this.error.set('No se encontro el ID del ciudadano');
-      this.loading.set(false);
-      return;
+    const generation = ++this.generation;
+    this.read?.unsubscribe();
+    this.timers.forEach(timer => clearTimeout(timer)); this.timers.clear();
+    this.todasSolicitudes.set([]); this.calcularEstadisticas([]);
+    this.selectedSolicitudId.set(null); this.selectedStageKey.set('todas'); this.stagePage.set(1);
+    this.stageSearch.set(''); this.globalQuery.set(''); this.globalIdx.set(0); this.accionResaltada.set(false);
+    this.error.set(''); this.errorTipo.set(null); this.loading.set(true);
+    this.sessionRevision = this.authService.cambiosSesion();
+    let session: ReturnType<AuthService['obtenerSesion']> = null;
+    try { session = this.authService.obtenerSesion(); } catch { /* Invalid local session: no request. */ }
+    this.nombreUsuario.set(session?.nombreCompleto || session?.nombre || '');
+    this.nombreCompleto.set(session?.nombreCompleto || session?.nombre || '');
+    this.ciudadanoId.set(session?.ciudadanoId || 0);
+    this.tipoPersona.set(session?.tipoPersona || 'NATURAL'); this.dni.set(session?.dni || '');
+    this.ruc.set(session?.ruc || ''); this.razonSocial.set(session?.razonSocial || '');
+    this.representanteDni.set(session?.representanteDni || '');
+    this.representanteNombreCompleto.set(session?.representanteNombreCompleto || '');
+    const citizen = this.ciudadanoId(), revision = this.sessionRevision, token = session?.token;
+    if (!token || session?.tipoUsuario !== 'CIUDADANO' || !Number.isSafeInteger(citizen) || citizen <= 0) {
+      this.nombreUsuario.set(''); this.nombreCompleto.set(''); this.ciudadanoId.set(0);
+      this.dni.set(''); this.ruc.set(''); this.razonSocial.set(''); this.representanteDni.set(''); this.representanteNombreCompleto.set('');
+      this.errorTipo.set('sesion'); this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
+      this.loading.set(false); return;
     }
-
-    this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: (data) => {
-        this.todasSolicitudes.set(data);
-        this.calcularEstadisticas(data);
-
-        // Auto-select initial pipeline stage
-        const stageOrder: Array<'accion' | 'proceso' | 'apelar' | 'tribunal' | 'respondidas' | 'resueltas' | 'todas'> =
-          ['accion', 'proceso', 'apelar', 'tribunal', 'respondidas', 'resueltas', 'todas'];
-        const buckets = this.stageBuckets();
-        const initialStage = stageOrder.find(k => buckets[k].length > 0) || 'todas';
-        this.selectedStageKey.set(initialStage);
-
-        if (data.length > 0) {
-          const activeFirst = data.find((solicitud) => {
-            const estado = (solicitud.estado || '').toUpperCase();
-            return this.estadosEnProceso.has(estado)
-              || estado === 'DENEGADA'
-              || estado === 'VENCIDA'
-              || this.tieneApelacionActiva(solicitud);
-          });
-          if (activeFirst) {
-            this.selectedSolicitudId.set(activeFirst.id);
-          }
+    const current = () => {
+      try {
+        return !this.destroyed && generation === this.generation && revision === this.authService.cambiosSesion()
+          && token === this.authService.obtenerSesion()?.token;
+      } catch { return false; }
+    };
+    // SolicitudDTO already includes the linked appeal and its accredited clock.
+    this.read = this.solicitudService.findByCiudadanoId(citizen).subscribe({
+      next: data => {
+        if (!current()) return;
+        if (!Array.isArray(data) || data.some(item => !item || !Number.isSafeInteger(item.id) || item.id <= 0 || !item.expediente || !item.estado || item.ciudadanoId !== citizen)) {
+          this.errorTipo.set('incompleta'); this.error.set('La información recibida está incompleta o no corresponde a esta consulta. Reintente la consulta.');
+          this.loading.set(false); return;
         }
-
+        this.todasSolicitudes.set(data); this.calcularEstadisticas(data);
+        const order: Array<PipelineStage['key']> = ['accion', 'proceso', 'apelar', 'tribunal', 'respondidas', 'resueltas', 'todas'];
+        this.selectedStageKey.set(order.find(key => this.stageBuckets()[key].length > 0) || 'todas');
         this.loading.set(false);
         this.tourService.checkAutoStart('saip_tour_done', this.tourSteps());
       },
-      error: (err) => {
-        const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
-        this.error.set(`Error al cargar solicitudes: ${mensaje} (${err.status || 'sin conexion'})`);
+      error: failure => {
+        if (!current()) return;
+        const status = failure?.status;
+        this.errorTipo.set(status === 401 ? 'sesion' : status === 403 ? 'permiso' : status === 400 ? 'validacion' : status === 404 ? 'inexistente' : status === 0 ? 'red' : 'servidor');
+        this.error.set(status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
+          : status === 403 ? 'No tiene permiso para consultar estas solicitudes.'
+          : status === 400 ? 'No se pudo validar la consulta de solicitudes.'
+          : status === 404 ? 'El recurso solicitado no fue encontrado.'
+          : status === 0 ? 'No se pudo conectar con el servidor. Revise su conexión y reintente.'
+          : 'El servidor no pudo completar la consulta. Reintente más tarde.');
         this.loading.set(false);
-        console.error('Error al cargar solicitudes:', err);
-      }
-    });
-  }
-
-  cargarApelaciones(): void {
-    const ciudadanoId = this.ciudadanoId();
-    if (ciudadanoId === 0) return;
-
-    this.apelacionService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
       },
-      error: (err) => {
-        console.error('Error al cargar apelaciones:', err);
-        const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
-        this.error.set(`Error al cargar apelaciones: ${mensaje} (${err.status || 'sin conexion'})`);
-      }
     });
   }
 
@@ -622,7 +591,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   onSearchBlur(): void {
-    setTimeout(() => {
+    this.schedule(() => {
       this.busquedaEnfocada.set(false);
       this.mostrarResultadosBusqueda.set(false);
     }, 150);
@@ -641,13 +610,13 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.selectedSolicitudId.set(solicitudId);
     this.accionResaltada.set(true);
     this.scrollToTimelineSection();
-    setTimeout(() => this.accionResaltada.set(false), 1800);
+    this.schedule(() => this.accionResaltada.set(false), 1800);
   }
 
   private scrollToTimelineSection(): void {
     if (typeof document === 'undefined') return;
 
-    setTimeout(() => {
+    this.schedule(() => {
       const element = document.getElementById('seccion-timeline');
       if (element) {
         element.scrollIntoView({
@@ -772,7 +741,7 @@ export class CiudadanoDashboardComponent implements OnInit {
     this.stageSearch.set('');
     this.stagePage.set(1);
 
-    setTimeout(() => {
+    this.schedule(() => {
       const element = document.getElementById('seccion-etapa-enfocada');
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -783,6 +752,8 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   onPrimary(s: Solicitud): void {
+    if (this.loading() || this.error() || this.sessionRevision !== this.authService.cambiosSesion()
+      || !this.todasSolicitudes().some(current => current.id === s.id && current.expediente === s.expediente)) return;
     const esResueltas = this.selectedStageKey() === 'resueltas';
     const esRespondidas = this.selectedStageKey() === 'respondidas';
     if (esResueltas || esRespondidas) {
@@ -849,59 +820,24 @@ export class CiudadanoDashboardComponent implements OnInit {
 
   filaUrgencia(s: Solicitud): { value: string | number; unit: string; tone: string } | null {
     const estado = (s.estado || '').toUpperCase();
-    const estadoApelacion = (s.apelacion?.estado || '').toUpperCase();
-
-    // 1ª instancia - precisión ante la entidad
-    if (estado === 'EN_PRECISION') {
-      return { value: '2', unit: 'días háb. para precisar', tone: 'var(--brand-700)' };
+    if (this.requiereSubsanacionTTAIP(s)) {
+      if (s.apelacion?.plazoSubsanacion?.estado === 'VENCIDO') return { value: 'Vencido', unit: 'plazo de subsanación', tone: 'var(--destructive)' };
+      const dias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(s);
+      return dias === null ? { value: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'Pendiente' : 'No disponible', unit: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'notificación eficaz' : 'información del plazo', tone: 'var(--muted-foreground)' }
+        : { value: Math.max(0, dias), unit: 'días háb. para subsanar', tone: 'var(--brand-700)' };
     }
-    // Subsanación ante el Tribunal (2ª instancia)
-    if (estadoApelacion === 'EN_SUBSANACION' && s.apelacion) {
-      if (s.apelacion.plazoSubsanacion?.estado === 'VENCIDO') return { value: 'Vencido', unit: 'plazo de subsanación', tone: 'var(--destructive)' };
-      const restantes = this.calcularDiasRestantesSubsanacionDesdeSolicitud(s);
-      if (restantes === null) return { value: 'Pendiente', unit: 'notificación eficaz', tone: 'var(--muted-foreground)' };
-      const dias = Math.max(0, restantes);
-      return { value: dias, unit: dias === 1 ? 'día háb. para subsanar' : 'días háb. para subsanar', tone: 'var(--brand-700)' };
-    }
-    // Recojo de información física
-    if (estado === 'POR_RECOGER') {
-      return { value: 'Recojo', unit: 'información lista para recoger', tone: 'var(--gold-dark)' };
-    }
-    // Plazo para interponer apelación
-    if ((estado === 'DENEGADA' || estado === 'VENCIDA') && !this.tieneApelacionActiva(s)) {
-      const d = this.calcularDiasParaApelar(s);
-      if (d > 0) {
-        return { value: d, unit: d === 1 ? 'día para apelar' : 'días para apelar', tone: 'var(--gold-dark)' };
-      }
-    }
-    // 2ª instancia - el Tribunal tramitando la apelación
-    if (this.tieneApelacionActiva(s)) {
-      if (estadoApelacion === 'EN_RESOLUCION') {
-        return { value: '10', unit: 'días háb. para la resolución final', tone: 'var(--info)' };
-      }
-      if (estadoApelacion === 'EN_CALIFICACION_2') {
-        return { value: '7', unit: 'días háb. · 2da calificación', tone: 'var(--info)' };
-      }
-      if (estadoApelacion === 'EN_CALIFICACION_1' || estadoApelacion === 'PENDIENTE_ELEVACION') {
-        return { value: '7', unit: 'días háb. · 1ra calificación', tone: 'var(--info)' };
-      }
-    }
-    // 1ª instancia - recepcionada
-    if (estado === 'RECEPCIONADA') {
-      return { value: 'Recepcionada', unit: 'en revisión de requisitos', tone: 'var(--info)' };
-    }
-    // 1ª instancia - en proceso
+    if (this.tieneApelacionActiva(s)) return { value: 'En trámite', unit: 'consulte la actuación registrada', tone: 'var(--info)' };
+    if (estado === 'DENEGADA' || estado === 'VENCIDA') return { value: 'No disponible', unit: 'plazo de apelación no informado', tone: 'var(--muted-foreground)' };
     if (this.estadosEnProceso.has(estado)) {
-      const restantes = Math.max(0, this.diasRestantesParaEntidad(s));
-      const tone = restantes <= 1 ? 'var(--brand-700)' : restantes <= 3 ? 'var(--warning)' : 'var(--success)';
-      return { value: restantes, unit: restantes === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda', tone };
+      const dias = this.diasRestantesParaEntidad(s);
+      return { value: dias ?? 'No disponible', unit: 'saldo de plazo informado', tone: 'var(--info)' };
     }
     return null;
   }
 
   goStagePage(page: number): void {
     this.stagePage.set(Math.max(1, Math.min(page, this.stageTotalPages())));
-    setTimeout(() => document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+    this.schedule(() => document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
   }
 
   onStageSearchChange(value: string): void {
@@ -1014,22 +950,24 @@ export class CiudadanoDashboardComponent implements OnInit {
   private construirAccionPrincipal(solicitud: Solicitud | null): DashboardAction | null {
     if (!solicitud) return null;
 
-    const expediente = solicitud.expediente || 'SIN-EXPEDIENTE';
+    const expediente = solicitud.expediente;
+    if (!expediente) return null;
     const entidad = solicitud.entidadNombre || 'Entidad no especificada';
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
     if (estadoApelacion === 'EN_SUBSANACION' && solicitud.apelacion?.expediente) {
       const diasSubsanacion = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
+      const inicioPendiente = solicitud.apelacion.plazoSubsanacion?.estado === 'PENDIENTE_INICIO';
       if (solicitud.apelacion.plazoSubsanacion?.estado === 'VENCIDO') {
         // Expired subsanación cannot be acted upon today -> do not display in "Lo que debe hacer hoy"
         return null;
       }
       return {
-        eyebrow: diasSubsanacion === null ? 'Plazo pendiente de inicio' : 'Tarea urgente - vence pronto',
-        titulo: 'Complete los documentos del Tribunal',
-        detalle: 'Su apelación requiere subsanación. Si no corrige las observaciones dentro del plazo, su recurso quedará sin efecto.',
-        metricValue: diasSubsanacion === null ? 'Pendiente' : `${diasSubsanacion}`,
-        metricUnit: diasSubsanacion === null ? 'notificación eficaz' : 'días hábiles',
+        eyebrow: inicioPendiente ? 'Plazo pendiente de inicio' : diasSubsanacion === null ? 'Plazo no disponible' : 'Subsanación ante el Tribunal',
+        titulo: 'Revise las observaciones del Tribunal',
+        detalle: 'Consulte el requerimiento y, si corresponde, presente su subsanación. El inicio y vencimiento del plazo se muestran según la evidencia registrada.',
+        metricValue: inicioPendiente ? 'Pendiente' : diasSubsanacion === null ? 'No disponible' : `${diasSubsanacion}`,
+        metricUnit: inicioPendiente ? 'notificación eficaz' : diasSubsanacion === null ? 'información del plazo' : 'días hábiles',
         ctaLabel: 'Completar subsanación',
         route: ['/ciudadano/subsanacion', solicitud.apelacion.expediente],
         icon: 'alert',
@@ -1046,9 +984,9 @@ export class CiudadanoDashboardComponent implements OnInit {
       return {
         eyebrow: 'Apelacion presentada ante la entidad',
         titulo: 'La entidad debe elevar su recurso al Tribunal',
-        detalle: `La entidad tiene 2 dias habiles para remitir el recurso. Fecha limite: ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}.`,
-        metricValue: '2',
-        metricUnit: 'dias habiles',
+        detalle: `Consulte la elevación registrada. Fecha límite informada: ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'no disponible'}.`,
+        metricValue: 'Pendiente',
+        metricUnit: 'elevación',
         ctaLabel: 'Ver elevacion',
         route: ['/ciudadano/solicitud', expediente],
         icon: 'scale',
@@ -1064,7 +1002,7 @@ export class CiudadanoDashboardComponent implements OnInit {
       return {
         eyebrow: 'El Tribunal esta revisando su caso',
         titulo: 'Su apelacion esta en evaluacion',
-        detalle: `El expediente ${solicitud.apelacion?.expediente || expediente} se encuentra en etapa ${this.formatoEstado(solicitud.apelacion?.estado)}. Le notificaremos cualquier avance.`,
+        detalle: `El expediente ${solicitud.apelacion?.expediente || expediente} se encuentra en etapa ${this.formatoEstado(solicitud.apelacion?.estado)}. Consulte las actuaciones registradas.`,
         metricValue: '·',
         metricUnit: 'en estudio',
         ctaLabel: 'Ver expediente',
@@ -1079,16 +1017,21 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
 
     const estado = (solicitud.estado || '').toUpperCase();
+    if (estado === 'PENDIENTE_INFORMACION' && solicitud.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) {
+      return { eyebrow: 'Observación registrada', titulo: 'Revise la precisión solicitada por la entidad',
+        detalle: 'Consulte el requerimiento antes de presentar su precisión.', metricValue: 'Consultar', metricUnit: 'requerimiento',
+        ctaLabel: 'Revisar precisión', route: ['/ciudadano/precision', expediente], icon: 'alert',
+        toneColor: 'var(--brand-700)', toneBg: 'var(--brand-subtle)', toneSoft: 'var(--brand-200)', expediente, entidad };
+    }
     if (estado === 'DENEGADA' || estado === 'VENCIDA') {
-      const dias = this.calcularDiasParaApelar(solicitud);
       return {
-        eyebrow: 'Puede reclamar - plazo limitado',
-        titulo: 'Puede apelar ante el Tribunal',
+        eyebrow: 'Consulta de apelación',
+        titulo: 'Revise las opciones de apelación',
         detalle: estado === 'VENCIDA'
           ? 'La entidad no respondio dentro del plazo legal. Puede presentar apelacion por silencio administrativo negativo.'
           : 'La entidad denego su solicitud. Puede presentar apelacion dentro del plazo legal aplicable.',
-        metricValue: `${Math.max(dias, 0)}`,
-        metricUnit: 'dias para apelar',
+        metricValue: 'No disponible',
+        metricUnit: 'plazo de apelación no informado',
         ctaLabel: 'Apelar al Tribunal',
         route: ['/ciudadano/nueva-apelacion'],
         queryParams: { solicitudId: solicitud.id },
@@ -1104,8 +1047,8 @@ export class CiudadanoDashboardComponent implements OnInit {
     if (estado === 'RESPONDIDA') {
       return {
         eyebrow: 'Respuesta disponible',
-        titulo: 'Su informacion ya esta lista',
-        detalle: 'La entidad envio una respuesta. Revise el contenido y descargue los documentos adjuntos desde el detalle del expediente.',
+        titulo: 'La entidad registró una respuesta',
+        detalle: 'Consulte la respuesta registrada y los documentos que existan en el detalle. Este estado no acredita entrega ni notificación eficaz.',
         metricValue: '✓',
         metricUnit: 'lista',
         ctaLabel: 'Ver respuesta',
@@ -1119,13 +1062,14 @@ export class CiudadanoDashboardComponent implements OnInit {
       };
     }
 
+    if (!this.estadosEnProceso.has(estado)) return null;
     const diasEntidad = this.diasRestantesParaEntidad(solicitud);
     return {
-      eyebrow: 'Esperando respuesta de la entidad',
-      titulo: 'La entidad esta preparando su respuesta',
-      detalle: `${entidad} aun esta dentro del plazo de atencion. Le notificaremos por correo cuando exista una respuesta oficial.`,
-      metricValue: `${Math.max(diasEntidad, 0)}`,
-      metricUnit: 'dias habiles',
+      eyebrow: 'Seguimiento de solicitud',
+      titulo: 'Consulte su solicitud en la entidad',
+      detalle: `Consulte el estado y las actuaciones registradas por ${entidad}.`,
+      metricValue: diasEntidad === null ? 'No disponible' : String(diasEntidad),
+      metricUnit: 'días informados por el servidor',
       ctaLabel: 'Ver mi solicitud',
       route: ['/ciudadano/solicitud', expediente],
       icon: 'clock',
@@ -1157,13 +1101,13 @@ export class CiudadanoDashboardComponent implements OnInit {
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
-        meta: `${Math.max(dias, 0)}d restantes${vencimiento ? ` - vence ${vencimiento}` : ''}`,
+        meta: `${dias === null ? 'Saldo de plazo no disponible' : dias + 'd informados'}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`,
         status: 'active'
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
     } else if (estado === 'RESPONDIDA') {
       const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'recibida';
-      steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', meta: 'Atencion cerrada', status: 'done' });
+      steps.push({ key: 'plazo-entidad', label: 'Respuesta registrada', meta: 'Estado informado por la entidad', status: 'done' });
       steps.push({
         key: 'respuesta',
         label: `Respuesta - ${resultado}`,
@@ -1222,7 +1166,7 @@ export class CiudadanoDashboardComponent implements OnInit {
     if (estado === 'RESPONDIDA') return 30;
 
     const dias = this.diasRestantesParaEntidad(solicitud);
-    return 55 + Math.max(0, 4 - dias);
+    return 55 + Math.max(0, 4 - (dias ?? 0));
   }
 
   private tieneApelacionActiva(solicitud: Solicitud): boolean {
@@ -1240,27 +1184,8 @@ export class CiudadanoDashboardComponent implements OnInit {
     return estado.toLowerCase();
   }
 
-  private diasRestantesParaEntidad(solicitud: Solicitud): number {
-    if (typeof solicitud.diasRestantes === 'number') {
-      return solicitud.diasRestantes;
-    }
-
-    const fechaLimite = this.parseFecha(solicitud.fechaLimite);
-    if (!fechaLimite) return 0;
-
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  }
-
-  private calcularDiasParaApelar(solicitud: Solicitud): number {
-    const base = this.parseFecha(solicitud.respuesta?.fechaRespuesta)
-      || this.parseFecha(solicitud.fechaLimite)
-      || this.parseFecha(solicitud.fechaPresentacion);
-
-    if (!base) return 15;
-
-    const fechaCaducidad = new Date(base);
-    fechaCaducidad.setDate(fechaCaducidad.getDate() + 15);
-    return Math.ceil((fechaCaducidad.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  private diasRestantesParaEntidad(solicitud: Solicitud): number | null {
+    return typeof solicitud.diasRestantes === 'number' && Number.isFinite(solicitud.diasRestantes) ? solicitud.diasRestantes : null;
   }
 
   private calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud: Solicitud): number | null {
@@ -1306,9 +1231,14 @@ export class CiudadanoDashboardComponent implements OnInit {
     const [anio, mes, dia] = partes;
     return new Date(anio, mes - 1, dia);
   }
+  private schedule(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const generation = this.generation, revision = this.sessionRevision;
+    const timer = setTimeout(() => {
+      this.timers.delete(timer);
+      if (!this.destroyed && generation === this.generation && revision === this.authService.cambiosSesion()) callback();
+    }, delay);
+    this.timers.add(timer);
+    return timer;
+  }
+
 }
-
-
-
-
-
