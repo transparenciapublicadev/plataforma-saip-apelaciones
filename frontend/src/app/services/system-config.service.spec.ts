@@ -75,4 +75,41 @@ describe('SystemConfigService', () => {
     service.updateNotif('umbralProximo', 3);
     expect(service.config().notif.umbralProximo).toBe(3);
   });
+
+  it('distinguishes unavailable defaults, failed reads and a complete server configuration', () => {
+    expect(service.loadState()).toBe('unavailable');
+    service.cargarDesdeBackend();
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush('Unavailable', { status: 503, statusText: 'Unavailable' });
+    expect(service.loadState()).toBe('error');
+    service.cargarDesdeBackend();
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush({ plazos: {} });
+    expect(service.loadState()).toBe('unavailable');
+    service.cargarDesdeBackend();
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush(DEFAULT_CONFIG);
+    expect(service.loadState()).toBe('ready');
+  });
+
+  it('does not confirm an empty save response or a failed save', async () => {
+    service.updateTarifas('costoPorCopia', 0.25);
+    const empty = firstValueFrom(service.save());
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush(null);
+    expect(await empty).toBe(false);
+    expect(service.isDirty()).toBe(true);
+    const failed = firstValueFrom(service.save());
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush('Unavailable', { status: 500, statusText: 'Unavailable' });
+    expect(await failed).toBe(false);
+    expect(service.isDirty()).toBe(true);
+  });
+
+  it('preserves a newer draft while confirming the configuration that was actually saved', async () => {
+    service.updateNotif('umbralProximo', 3);
+    const submitted = structuredClone(service.config());
+    const saving = firstValueFrom(service.save());
+    service.updateNotif('umbralProximo', 4);
+    httpTesting.expectOne('http://localhost:8080/api/configuracion').flush(submitted);
+    expect(await saving).toBe(true);
+    expect(service.savedConfig().notif.umbralProximo).toBe(3);
+    expect(service.config().notif.umbralProximo).toBe(4);
+    expect(service.isDirty()).toBe(true);
+  });
 });

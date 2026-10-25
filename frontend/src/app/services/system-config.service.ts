@@ -87,6 +87,7 @@ export class SystemConfigService {
   readonly config = this.configState.asReadonly();
   readonly savedConfig = this.savedState.asReadonly();
   readonly saving = this.savingState.asReadonly();
+  readonly loadState = signal<'loading' | 'ready' | 'error' | 'unavailable'>('loading');
 
   readonly isDirty = computed<boolean>(() => {
     return JSON.stringify(this.configState()) !== JSON.stringify(this.savedState());
@@ -100,11 +101,21 @@ export class SystemConfigService {
     return JSON.parse(JSON.stringify(val));
   }
 
+  private isServerConfig(value: SystemConfig | null): value is SystemConfig {
+    return !!value && (['plazos', 'notif', 'tarifas'] as const).every(section =>
+      !!value[section] && Object.keys(DEFAULT_CONFIG[section]).every(key => {
+        const field = (value[section] as unknown as Record<string, unknown>)[key];
+        const expected = (DEFAULT_CONFIG[section] as unknown as Record<string, unknown>)[key];
+        return typeof field === typeof expected && (typeof field !== 'number' || Number.isFinite(field));
+      }));
+  }
+
   cargarDesdeBackend(): void {
-    if (!this.http) return;
+    if (!this.http) { this.loadState.set('unavailable'); return; }
+    this.loadState.set('loading');
     this.http.get<SystemConfig>(this.apiUrl).subscribe({
       next: (data) => {
-        if (data) {
+        if (this.isServerConfig(data)) {
           const merged: SystemConfig = {
             plazos: { ...DEFAULT_CONFIG.plazos, ...(data.plazos || {}) },
             notif: { ...DEFAULT_CONFIG.notif, ...(data.notif || {}) },
@@ -112,10 +123,13 @@ export class SystemConfigService {
           };
           this.configState.set(merged);
           this.savedState.set(this.clone(merged));
+          this.loadState.set('ready');
+        } else {
+          this.loadState.set('unavailable');
         }
       },
       error: () => {
-        // En caso de error o backend fuera de línea, se mantiene la configuración local
+        this.loadState.set('error');
       }
     });
   }
@@ -189,7 +203,14 @@ export class SystemConfigService {
     if (this.http) {
       return this.http.put<SystemConfig>(this.apiUrl, toSave).pipe(
         map((saved) => {
-          const cfg = saved || toSave;
+          if (!this.isServerConfig(saved)) {
+            this.savingState.set(false);
+            return false;
+          }
+          const cfg = saved;
+          if (JSON.stringify(this.configState()) === JSON.stringify(toSave)) {
+            this.configState.set(this.clone(cfg));
+          }
           this.savedState.set(this.clone(cfg));
           this.savingState.set(false);
           if (typeof localStorage !== 'undefined') {
@@ -208,16 +229,8 @@ export class SystemConfigService {
       );
     }
 
-    if (typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(toSave));
-      } catch {
-        // Almacenamiento no disponible
-      }
-    }
-    this.savedState.set(this.clone(toSave));
     this.savingState.set(false);
-    return of(true);
+    return of(false);
   }
 
   cancel(): void {
