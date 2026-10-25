@@ -85,6 +85,21 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(root.querySelector('[role="alert"]')?.textContent).toContain('Operación rechazada');
     expect(root.querySelector('label[for="respuesta-descripcion"]')).not.toBeNull();
   });
+  it('presenta la recepción recuperada en Yaiku sin cambiar los diálogos de otras actuaciones', async () => {
+    const h = await RouterTestingHarness.create(); const c = await h.navigateByUrl('/respuesta/SAIP-A', Responder);
+    // Render a recovered DTO fixture; persistence is covered by the reception suites.
+    c.recepcionRespuesta.set({ id: 15, solicitudId: 1, respuesta: { id: 41, tipoRespuesta: 'ENTREGA_TOTAL' },
+      documentos: [{ id: 9, respuestaId: 41, nombreOriginal: 'informe-real.pdf' }] } as any);
+    c.decision.set('entrega_total'); c.successModalAbierto.set(true); h.detectChanges();
+    const dialog = document.body.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Yaiku');
+    expect(dialog.textContent).toContain('15 · respuesta 41');
+    expect(dialog.textContent).toContain('informe-real.pdf');
+    expect(dialog.textContent).toContain('no acredita por sí solo entrega ni notificación eficaz');
+    c.via.set('precision'); h.detectChanges();
+    expect(dialog.textContent).toContain('TTAIP · República del Perú');
+    expect(dialog.textContent).not.toContain('Pide, sigue y apela. Todo en un solo lugar.');
+  });
   it.each([0, 401, 403, 404, 500])('consulta fallida %s sin datos de la solicitud anterior', async status => {
     const h = await RouterTestingHarness.create(); const c = await h.navigateByUrl('/detalle/SAIP-A', Detalle);
     solicitudes.findByExpediente.mockReturnValue(throwError(() => new HttpErrorResponse({ status })));

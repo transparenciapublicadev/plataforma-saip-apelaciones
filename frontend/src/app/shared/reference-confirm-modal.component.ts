@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import { CommonModule } from '@angular/common';
 import { BodyPortalDirective } from './body-portal.directive';
 import { ModalFocusDirective } from './modal-focus.directive';
+import { DialogBrandComponent } from './dialog-brand.component';
+import { LucideArrowRight, LucidePencil, LucideScrollText, LucideShieldCheck, LucideSparkles } from '@lucide/angular';
 
 export interface ReferenceConfirmSummary {
   label: string;
@@ -17,7 +19,9 @@ export interface ReferenceConfirmWarning {
 @Component({
   selector: 'app-reference-confirm-modal',
   standalone: true,
-  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective, DialogBrandComponent,
+    LucideArrowRight, LucidePencil, LucideScrollText, LucideShieldCheck, LucideSparkles],
+  styleUrl: './reference-confirm-saip.css',
   template: `
     @if (open) {
       <ng-container *appBodyPortal>
@@ -32,6 +36,7 @@ export interface ReferenceConfirmWarning {
 
           <section
             class="reference-confirm-panel"
+            [attr.data-presentation]="presentation"
             role="dialog"
             tabindex="-1"
             [appModalFocus]="manageFocus"
@@ -42,17 +47,25 @@ export interface ReferenceConfirmWarning {
               <div class="reference-modal-gold-line"></div>
               <div class="reference-confirm-header-inner">
                 <div class="reference-confirm-icon" aria-hidden="true">
+                  @if (presentation === 'saip-response') {
+                    <svg lucideShieldCheck></svg>
+                  } @else {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-width="2" d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8Z" />
                     <path stroke-width="2" d="m9 12 2 2 4-4" />
                   </svg>
+                  }
                 </div>
 
                 <div class="min-w-0">
                   <div class="reference-confirm-eyebrow">
+                    @if (presentation === 'saip-response') {
+                      <svg lucideSparkles></svg>
+                    } @else {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path stroke-width="2" d="m12 3 1.9 5.8L20 12l-6.1 3.2L12 21l-1.9-5.8L4 12l6.1-3.2L12 3Z" />
                     </svg>
+                    }
                     {{ eyebrow }}
                   </div>
                   <h2 class="reference-confirm-title">
@@ -70,12 +83,16 @@ export interface ReferenceConfirmWarning {
               @if (summary.length > 0) {
                 <div>
                   <div class="reference-modal-section-label">
+                    @if (presentation === 'saip-response') {
+                      <svg lucideScrollText></svg>
+                    } @else {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path stroke-width="2" d="M8 4h8" />
                       <path stroke-width="2" d="M8 8h8" />
                       <path stroke-width="2" d="M8 12h5" />
                       <rect x="5" y="2" width="14" height="20" rx="2" stroke-width="2" />
                     </svg>
+                    }
                     Resumen de su solicitud
                   </div>
 
@@ -119,10 +136,14 @@ export interface ReferenceConfirmWarning {
                   class="btn-ghost-brand !py-2.5 flex-1 justify-center"
                   [disabled]="submitting"
                   (click)="close.emit()">
+                  @if (presentation === 'saip-response') {
+                    <svg lucidePencil class="w-4 h-4"></svg>
+                  } @else {
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-width="2" d="M12 20h9" />
                     <path stroke-width="2" d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
                   </svg>
+                  }
                   {{ cancelLabel }}
                 </button>
                 <button
@@ -130,7 +151,10 @@ export interface ReferenceConfirmWarning {
                   class="btn-brand !py-2.5 flex-1 justify-center disabled:opacity-60"
                   [disabled]="submitting"
                   (click)="confirm.emit()">
-                  @if (submitting) {
+                  @if (presentation === 'saip-response') {
+                    <span aria-live="polite">{{ submitting ? 'Enviando…' : confirmLabel }}</span>
+                    @if (!submitting) { <svg lucideArrowRight class="w-4 h-4"></svg> }
+                  } @else if (submitting) {
                     Enviando...
                   } @else {
                     {{ confirmLabel }}
@@ -140,11 +164,15 @@ export interface ReferenceConfirmWarning {
                   }
                 </button>
               </div>
+              @if (presentation === 'saip-response') {
+                <app-dialog-brand />
+              } @else {
               <div class="reference-modal-signature">
                 <span></span>
                 TTAIP · República del Perú
                 <span></span>
               </div>
+              }
             </footer>
           </section>
         </div>
@@ -474,6 +502,7 @@ export interface ReferenceConfirmWarning {
 export class ReferenceConfirmModalComponent {
   @Input() open = false;
   @Input() manageFocus = false;
+  @Input() presentation: 'default' | 'saip-response' = 'default';
   @Input() submitting = false;
   @Input() title = '¿Confirma el envío?';
   @Input() titleLead = 'Confirma';

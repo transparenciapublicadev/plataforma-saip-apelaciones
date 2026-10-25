@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
 import { CommonModule } from '@angular/common';
 import { BodyPortalDirective } from './body-portal.directive';
 import { ModalFocusDirective } from './modal-focus.directive';
+import { DialogBrandComponent } from './dialog-brand.component';
+import { LucideArrowRight, LucideBuilding2, LucideFileText, LucideSparkles } from '@lucide/angular';
 
 export type ReferenceSuccessTone = 'success' | 'warning' | 'brand' | 'gold';
 
@@ -19,7 +21,9 @@ export interface ReferenceSuccessNextStep {
 @Component({
   selector: 'app-reference-success-modal',
   standalone: true,
-  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective, DialogBrandComponent,
+    LucideArrowRight, LucideBuilding2, LucideFileText, LucideSparkles],
+  styleUrl: './reference-success-saip.css',
   template: `
     @if (open) {
       <ng-container *appBodyPortal>
@@ -33,6 +37,7 @@ export interface ReferenceSuccessNextStep {
 
         <section
           class="reference-success-panel"
+          [attr.data-presentation]="presentation"
           role="dialog"
             tabindex="-1"
             [appModalFocus]="manageFocus"
@@ -89,10 +94,14 @@ export interface ReferenceSuccessNextStep {
                     </svg>
                   }
                   @case ('respuesta-entidad') {
+                    @if (presentation === 'saip-response') {
+                      <svg lucideBuilding2 [strokeWidth]="2.2"></svg>
+                    } @else {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path stroke-width="2" d="M3 21h18" />
                       <path stroke-width="2" d="M5 21V7l7-4 7 4v14" />
                     </svg>
+                    }
                   }
                   @case ('calificacion-1ra') {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -144,9 +153,13 @@ export interface ReferenceSuccessNextStep {
               </div>
 
               <div class="reference-success-eyebrow">
+                @if (presentation === 'saip-response') {
+                  <svg lucideSparkles></svg>
+                } @else {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-width="2" d="m12 3 1.9 5.8L20 12l-6.1 3.2L12 21l-1.9-5.8L4 12l6.1-3.2L12 3Z" />
                 </svg>
+                }
                 {{ eyebrow }}
               </div>
               <h2>{{ title }}</h2>
@@ -160,23 +173,37 @@ export interface ReferenceSuccessNextStep {
             @if (expediente) {
               <div class="reference-expediente-card">
                 <div class="reference-expediente-icon">
+                  @if (presentation === 'saip-response') {
+                    <svg lucideFileText></svg>
+                  } @else {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-width="2" d="M7 3h8l5 5v13H7z" />
                     <path stroke-width="2" d="M15 3v6h6" />
                   </svg>
+                  }
                 </div>
                 <div class="min-w-0 flex-1">
-                  <div class="reference-small-label">Nro. de expediente</div>
+                  <div class="reference-small-label">{{ presentation === 'saip-response' ? 'N° de expediente' : 'Nro. de expediente' }}</div>
                   <div class="reference-expediente-value">{{ expediente }}</div>
                   @if (expedienteHint) {
                     <div class="reference-expediente-hint">{{ expedienteHint }}</div>
                   }
                 </div>
-                <button type="button" (click)="copyExpediente()">Copiar</button>
+                <button type="button" [attr.aria-label]="presentation === 'saip-response' ? 'Copiar número de expediente' : null" (click)="copyExpediente()">Copiar</button>
               </div>
             }
 
             @if (metadata.length > 0) {
+              @if (presentation === 'saip-response') {
+                <dl class="reference-success-meta">
+                  @for (item of metadata; track item.label) {
+                    <div>
+                      <dt class="reference-small-label">{{ item.label }}</dt>
+                      <dd class="reference-meta-value" [class.font-mono]="item.mono">{{ item.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              } @else {
               <div class="reference-success-meta">
                 @for (item of metadata; track item.label) {
                   <div>
@@ -185,6 +212,7 @@ export interface ReferenceSuccessNextStep {
                   </div>
                 }
               </div>
+              }
             }
 
             @if (plazoDias !== null && plazoDescripcion) {
@@ -244,16 +272,24 @@ export interface ReferenceSuccessNextStep {
               }
               <button type="button" class="btn-brand !py-2.5 flex-1 justify-center" (click)="primary.emit()">
                 {{ primaryLabel }}
+                @if (presentation === 'saip-response') {
+                  <svg lucideArrowRight class="w-4 h-4"></svg>
+                } @else {
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-width="2" d="m9 18 6-6-6-6" />
                 </svg>
+                }
               </button>
             </div>
+            @if (presentation === 'saip-response') {
+              <app-dialog-brand />
+            } @else {
             <div class="reference-modal-signature">
               <span></span>
               TTAIP · República del Perú
               <span></span>
             </div>
+            }
           </footer>
         </section>
         </div>
@@ -266,6 +302,7 @@ export interface ReferenceSuccessNextStep {
 export class ReferenceSuccessModalComponent {
   @Input() open = false;
   @Input() manageFocus = false;
+  @Input() presentation: 'default' | 'saip-response' = 'default';
   @Input() variant = 'generic';
   @Input() tone: ReferenceSuccessTone = 'success';
   @Input() eyebrow = 'Operación completada';

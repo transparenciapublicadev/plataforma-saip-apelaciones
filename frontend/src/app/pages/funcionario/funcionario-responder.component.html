@@ -740,6 +740,7 @@
   }
 
   <app-reference-confirm-modal
+    [presentation]="via() === 'responder' ? 'saip-response' : 'default'"
     [open]="confirmModalAbierto()" [manageFocus]="true"
     [submitting]="loading()"
     [title]="respuestaConfirmTitle()"
@@ -755,6 +756,7 @@
   </app-reference-confirm-modal>
 
   <app-reference-success-modal
+    [presentation]="via() === 'responder' ? 'saip-response' : 'default'"
     [open]="successModalAbierto()" [manageFocus]="true"
     variant="respuesta-entidad"
     [tone]="respuestaSuccessTone()"
