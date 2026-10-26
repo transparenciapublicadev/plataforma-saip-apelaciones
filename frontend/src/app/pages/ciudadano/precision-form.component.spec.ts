@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of, Subject, throwError, TimeoutError } from 'rxjs';
+import { BehaviorSubject, of, Subject, throwError, TimeoutError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrecisionFormComponent } from './precision-form.component';
 import { SolicitudService } from '../../services/solicitud.service';
@@ -34,13 +35,17 @@ describe('PrecisionFormComponent — recepción verificable', () => {
   const solicitudService = { subsanar: vi.fn(), findByExpediente: vi.fn() };
   const precisionService = { enviar: vi.fn(), consultar: vi.fn() };
   const documentoService = { download: vi.fn() };
-  const auth = { obtenerSesion: vi.fn() };
-  const route = { snapshot: { paramMap: convertToParamMap({ expediente: 'SAIP-2026-00023' }) } };
+  const auth = { obtenerSesion: vi.fn(), getToken: vi.fn(), cambiosSesion: signal(0) };
+  const route = { snapshot: { paramMap: convertToParamMap({ expediente: 'SAIP-2026-00023' }) },
+    paramMap: new BehaviorSubject(convertToParamMap({ expediente: 'SAIP-2026-00023' })) };
 
   beforeEach(async () => {
     vi.resetAllMocks();
     sessionStorage.clear();
     route.snapshot.paramMap = convertToParamMap({ expediente: 'SAIP-2026-00023' });
+    route.paramMap.next(route.snapshot.paramMap);
+    auth.cambiosSesion.set(0);
+    auth.getToken.mockReturnValue('sesion-sintetica');
     auth.obtenerSesion.mockReturnValue({ usuarioId: 17, tipoUsuario: 'CIUDADANO' });
     solicitudService.findByExpediente.mockReturnValue(of(solicitud));
     precisionService.consultar.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
@@ -60,9 +65,7 @@ describe('PrecisionFormComponent — recepción verificable', () => {
 
   function formulario(): PrecisionFormComponent {
     const component = TestBed.createComponent(PrecisionFormComponent).componentInstance;
-    component.solicitud.set(solicitud);
-    component.observacionSeleccionada.set(observacion);
-    component.loadingSolicitud.set(false);
+    component.cargarDatos(solicitud.expediente);
     component.respuesta.set(comentario);
     component.archivoSeleccionado.set(new File(['%PDF-1.4\nprecision'], 'precision.pdf', { type: 'application/pdf' }));
     return component;
@@ -247,6 +250,8 @@ describe('PrecisionFormComponent — recepción verificable', () => {
     sessionStorage.setItem('yaiku:precision:17:23:9', JSON.stringify({ solicitudId: 23, observacionId: 9, claveOperacion: clave }));
     const component = formulario();
     component.ngOnInit();
+    component.respuesta.set(comentario);
+    component.archivoSeleccionado.set(new File(['%PDF-1.4\nprecision'], 'precision.pdf', { type: 'application/pdf' }));
     component.confirmarEnvio();
     expect(precisionService.enviar).toHaveBeenCalledWith(23, 9, clave, comentario, component.archivoSeleccionado());
   });
@@ -286,6 +291,7 @@ describe('PrecisionFormComponent — recepción verificable', () => {
 
   it('rechaza acceso directo sin código SAIP en la ruta', () => {
     route.snapshot.paramMap = convertToParamMap({});
+    route.paramMap.next(route.snapshot.paramMap);
     const component = TestBed.createComponent(PrecisionFormComponent).componentInstance;
     component.ngOnInit();
     expect(solicitudService.findByExpediente).not.toHaveBeenCalled();
@@ -305,6 +311,7 @@ describe('PrecisionFormComponent — recepción verificable', () => {
 
   it('un fallo de descarga no abre un PDF canónico ni otro archivo', () => {
     const component = formulario();
+    component.documentosExpediente.set([{ id: 88, nombre: 'precision.pdf', kind: 'subsanacion' }]);
     documentoService.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
     component.abrirDoc({ id: 88, nombre: 'precision.pdf', kind: 'subsanacion' }, false);
     expect(component.isPreviewOpen()).toBe(false);
