@@ -62,7 +62,12 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
   }
   function recibo(clave: string, documentos: unknown[] = [], texto = 'Correcciones sintéticas') {
     return { id: 501, apelacionId: 145, requerimientoId: 71, expediente, claveOperacion: clave,
-      fechaRecepcion: '2026-10-22T10:00:00', fundamentosAdicionales: texto, estado: 'RECIBIDA', documentos };
+      fechaRecepcion: '2026-10-22T10:00:00', fundamentosAdicionales: texto, estado: 'RECIBIDA', documentos: documentos.map((item): Record<string, unknown> => {
+        const doc = item as Record<string, unknown>;
+        const { nombreArchivo, hashContenido: _legacyHash, ...metadata } = doc;
+        return { tipoDocumento: 'SUBSANACION', estado: 'ACTIVO', nombreOriginal: typeof nombreArchivo === 'string' ? nombreArchivo : 'sustento.pdf',
+          contentType: 'application/pdf', sizeBytes: 13, hashSha256: 'a'.repeat(64), ...metadata };
+      }) };
   }
   function preparar() {
     const f = pagina(); responder(f);
@@ -341,10 +346,12 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
   });
 
   it.each(['requerimiento', 'documento', 'cantidad'])('no acepta una recepción incompatible: %s', cambio => {
-    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    const f = preparar();
+    if (cambio === 'documento') f.componentInstance.documentosSeleccionados.set([new File(['sustento'], 'sustento.pdf', { type: 'application/pdf' })]);
+    f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
     const r = recibo(clave);
     if (cambio === 'requerimiento') r.requerimientoId = 72;
-    if (cambio === 'documento') r.documentos = [{ id: 99, apelacionId: 999 }];
+    if (cambio === 'documento') r.documentos = recibo(clave, [{ id: 99, apelacionId: 999 }]).documentos;
     if (cambio === 'cantidad') r.documentos = [{ id: 99, apelacionId: 145 }];
     req.flush(r);
     http.expectOne(`${recepcionUrl}/${clave}`).flush(null, { status: 503, statusText: 'Error' });
@@ -403,5 +410,216 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     http.expectOne(`${base}/apelaciones/expediente/00024-2026-JUS/TTAIP`).flush(null, { status: 404, statusText: 'Not Found' });
     expect(f.componentInstance.recepcion()).toBeNull();
     expect(sessionStorage.getItem('ttaip:subsanacion:v1:17:145:71')).not.toBeNull();
+  });
+
+  it('un reloj ausente no se presenta como un inicio pendiente acreditado', () => {
+    const f = preparar(); f.detectChanges();
+    expect(f.componentInstance.plazoPendienteInicio()).toBe(false);
+    expect(f.nativeElement.textContent).toContain('Reloj no disponible');
+    expect(f.nativeElement.textContent).not.toContain('Plazo pendiente de inicio');
+  });
+
+  it('la lectura pendiente del requerimiento no muestra un formulario ni ausencia de observaciones', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`); f.detectChanges();
+    expect(f.nativeElement.querySelector('textarea')).toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('no registró observaciones');
+  });
+
+  it('un requerimiento inexistente no mantiene el formulario vacío habilitado', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush(null, { status: 404, statusText: 'Not Found' }); f.detectChanges();
+    expect(f.nativeElement.querySelector('textarea')).toBeNull();
+    expect(f.nativeElement.querySelector('[role=alert]')).not.toBeNull();
+  });
+
+  it('el reloj de otro requerimiento no aporta fechas ni días a este formulario', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush({ ...requerimiento,
+      plazo: { requerimientoId: 999, estado: 'EN_CURSO', notificacionId: 91, diasHabiles: 2,
+        diasHabilesRestantes: 1, fechaEficacia: '2026-10-21T10:00:00', fechaLimite: '2026-10-23' } }); f.detectChanges();
+    expect(f.componentInstance.getFechaNotificacion()).toBeNull();
+    expect(f.componentInstance.calcularDiasRestantes()).toBeNull();
+    expect(f.nativeElement.textContent).toContain('información del reloj está incompleta');
+  });
+
+  it('una revisión de sesión con el mismo token descarta la consulta de la cuenta anterior', () => {
+    const f = pagina(); const anterior = http.expectOne(url);
+    auth.guardarSesion({ success: true, token: 'sesion-a', usuarioId: 18, tipoUsuario: 'CIUDADANO' });
+    anterior.flush(apelacion);
+    expect(f.componentInstance.apelacion()).toBeNull();
+    TestBed.tick(); http.expectOne(url).flush(null, { status: 403, statusText: 'Forbidden' });
+  });
+
+  it('actualizar el requerimiento cancela el envío anterior y no acepta su recepción en el nuevo', () => {
+    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req } = envio();
+    f.componentInstance.cargarRequerimiento(); expect(req.cancelled).toBe(true);
+    responderRequerimiento(145, 72);
+    expect(f.componentInstance.recepcion()).toBeNull();
+    expect(f.componentInstance.fundamentosAdicionales).toBe('');
+  });
+
+  it('vincula los fundamentos y permite abrir el selector opcional por teclado', () => {
+    const f = preparar(); f.detectChanges();
+    expect(f.nativeElement.querySelector('label[for="subsanacion-observaciones"]')).not.toBeNull();
+    const trigger = f.nativeElement.querySelector('[role=button][aria-label*="Seleccionar archivos"]') as HTMLElement;
+    expect(trigger?.getAttribute('tabindex')).toBe('0');
+    const input = f.nativeElement.querySelector('input[type=file]') as HTMLInputElement;
+    const click = vi.spyOn(input, 'click').mockImplementation(() => {});
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    expect(click).toHaveBeenCalledOnce();
+    expect(input.required).toBe(false);
+  });
+
+  it('la confirmación contiene el foco y Escape cierra sin registrar una presentación', async () => {
+    const f = preparar(); f.componentInstance.abrirConfirmacionSubsanacion(); f.detectChanges(); await Promise.resolve();
+    const dialog = document.querySelector('[role=dialog]')!;
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();
+    expect(f.componentInstance.confirmModalAbierto()).toBe(false);
+    http.expectNone(recepcionUrl); expect(f.componentInstance.recepcion()).toBeNull();
+  });
+
+  it.each([
+    { estado: 'PENDIENTE_INICIO', dias: null, admite: true },
+    { estado: 'EN_CURSO', dias: 0, admite: true },
+    { estado: 'EN_CURSO', dias: 1, admite: true },
+    { estado: 'VENCIDO', dias: -1, admite: false },
+  ])('respeta el estado $estado y saldo $dias del servidor sin calcular un reloj local', ({ estado, dias, admite }) => {
+    const f = pagina(); http.expectOne(url).flush({ ...apelacion, fechaSubsanacion: '2000-01-01' });
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush({ ...requerimiento, admitePresentacion: admite,
+      plazo: { requerimientoId: 71, estado, diasHabiles: 4, diasHabilesRestantes: dias,
+        notificacionId: estado === 'PENDIENTE_INICIO' ? null : 91,
+        fechaEficacia: estado === 'PENDIENTE_INICIO' ? null : '2026-10-19T10:00:00',
+        fechaLimite: estado === 'PENDIENTE_INICIO' ? null : '2026-10-23' } }); f.detectChanges();
+    expect(f.componentInstance.calcularDiasRestantes()).toBe(dias);
+    expect(f.componentInstance.getPlazoSubsanacionDias()).toBe(4);
+    expect(f.componentInstance.esSubsanacionVencida()).toBe(estado === 'VENCIDO');
+    if (estado === 'EN_CURSO' && dias === 0) expect(f.nativeElement.textContent).toContain('Último día permitido');
+    f.componentInstance.fundamentosAdicionales = 'Correcciones sintéticas'; f.componentInstance.enviarSubsanacion();
+    if (admite) { const { req, clave } = envio(); req.flush(recibo(clave)); }
+    else http.expectNone(recepcionUrl);
+  });
+
+  it('un rótulo de proveedor no sustituye el estado pendiente ni aporta una fecha eficaz', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush({ ...requerimiento,
+      plazo: { requerimientoId: 71, estado: 'PENDIENTE_INICIO', diasHabiles: 2, fuente: 'SMTP_ENTREGADO' } }); f.detectChanges();
+    expect(f.componentInstance.plazoPendienteInicio()).toBe(true);
+    expect(f.componentInstance.getFechaNotificacion()).toBeNull(); expect(f.componentInstance.calcularDiasRestantes()).toBeNull();
+    expect(f.nativeElement.textContent).toContain('Plazo pendiente de inicio');
+  });
+
+  it('un reloj en curso con evidencia temporal incompleta se señala sin inventar notificación', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush({ ...requerimiento,
+      plazo: { requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2, diasHabilesRestantes: 1 } }); f.detectChanges();
+    expect(f.componentInstance.relojIncompleto()).toBe(true);
+    expect(f.componentInstance.getFechaNotificacion()).toBeNull(); expect(f.componentInstance.getFechaLimite()).toBeNull();
+    expect(f.nativeElement.textContent).toContain('información del reloj está incompleta');
+  });
+
+  it('no sustituye una duración ausente por la de la apelación ni por dos días', () => {
+    const f = pagina(); http.expectOne(url).flush({ ...apelacion, diasSubsanacion: 99 });
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush({ ...requerimiento, diasSubsanacion: null }); f.detectChanges();
+    expect(f.componentInstance.getPlazoSubsanacionDias()).toBeNull();
+    expect(f.nativeElement.textContent).toContain('No disponible');
+  });
+
+  it('un requerimiento vacío no es una ausencia confirmada de observaciones y permite consultar nuevamente', () => {
+    const f = pagina(); http.expectOne(url).flush(apelacion);
+    http.expectOne(`${base}/apelaciones/145/subsanacion/requerimiento`).flush(null); f.detectChanges();
+    expect(f.componentInstance.estadoRequerimiento()).toBe('vacio'); expect(f.nativeElement.querySelector('textarea')).toBeNull();
+    f.componentInstance.cargarRequerimiento(); responderRequerimiento(); f.detectChanges();
+    expect(f.nativeElement.querySelector('textarea')).not.toBeNull();
+  });
+
+  it('no deduce exigencias documentales del texto libre ni impone el límite de comentario SAIP', () => {
+    const f = preparar(); f.componentInstance.fundamentosAdicionales = 'Corrección '.repeat(400);
+    f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    expect((req.request.body as FormData).getAll('archivos')).toEqual([]);
+    req.flush(recibo(clave, [], f.componentInstance.fundamentosAdicionales.trim()));
+    expect(f.componentInstance.recepcion()?.id).toBe(501);
+  });
+
+  it('incluye todos los archivos seleccionados con igual nombre, sus bytes y el orden original', async () => {
+    const f = preparar(); f.detectChanges();
+    const files = [new File(['primero'], 'anexo.txt', { type: 'text/plain' }), new File(['segundo'], 'anexo.txt', { type: 'text/plain' })];
+    const input = f.nativeElement.querySelector('input[type=file]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: files }); input.dispatchEvent(new Event('change')); f.detectChanges();
+    expect(f.componentInstance.documentosSeleccionados()).toEqual(files);
+    f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    const enviados = (req.request.body as FormData).getAll('archivos') as File[];
+    expect(enviados).toHaveLength(2);
+    const textos = await Promise.all(enviados.map(file => new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(file); })));
+    expect(textos).toEqual(['primero', 'segundo']);
+    req.flush(recibo(clave, files.map((file, i) => ({ id: 99 + i, apelacionId: 145, nombreOriginal: file.name, sizeBytes: file.size, contentType: file.type }))));
+    expect(f.componentInstance.recepcion()?.documentos.map(d => d.id)).toEqual([99, 100]);
+    http.expectNone(`${base}/documentos/upload`);
+  });
+
+  it('rechaza una selección parcialmente inválida sin presentar solo un subconjunto silenciosamente', () => {
+    const f = preparar(); f.detectChanges();
+    const input = f.nativeElement.querySelector('input[type=file]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['válido'], 'valido.txt', { type: 'text/plain' }), new File(['x'], 'x.zip', { type: 'application/zip' })] });
+    input.dispatchEvent(new Event('change')); f.detectChanges();
+    expect(f.componentInstance.documentosSeleccionados()).toEqual([]);
+    expect(f.componentInstance.archivosError()).toContain('No se añadió esta selección');
+    expect(input.getAttribute('aria-invalid')).toBe('true'); http.expectNone(recepcionUrl);
+  });
+
+  it('no permite modificar fundamentos o archivos congelados durante un reintento', () => {
+    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    req.error(new ProgressEvent('error')); http.expectOne(`${recepcionUrl}/${clave}`).flush(null, { status: 404, statusText: 'Not Found' });
+    f.componentInstance.fundamentosAdicionales = 'Otro texto'; f.componentInstance.enviarSubsanacion();
+    http.expectNone(recepcionUrl); expect(f.componentInstance.error()).toContain('mismos fundamentos');
+  });
+
+  it('no confirma la recepción de otro expediente aunque sus otros IDs coincidan', () => {
+    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    req.flush({ ...recibo(clave), expediente: '00999-2026-JUS/TTAIP' });
+    http.expectOne(`${recepcionUrl}/${clave}`).flush(null, { status: 503, statusText: 'Unavailable' });
+    expect(f.componentInstance.recepcion()).toBeNull(); expect(f.componentInstance.estadoEnvio()).toBe('incierta');
+  });
+
+  it('los metadatos documentales de otra apelación no se muestran ni se descargan', () => {
+    const f = pagina(); responder(f, { ...apelacion, documentosMetadata: [{ id: 89, apelacionId: 999, nombreOriginal: 'ajeno.txt' }] });
+    expect(f.componentInstance.documentosOriginales()).toEqual([]); expect(f.componentInstance.documentosIncompletos()).toBe(true);
+    f.componentInstance.descargarDocumento({ id: 89, nombreArchivo: 'ajeno.txt' }); http.expectNone(`${base}/documentos/89/download`);
+  });
+
+  it('vuelve a la solicitud de origen solo con su identidad persistida y mantiene ambas numeraciones', () => {
+    const f = pagina(); responder(f, { ...apelacion, solicitudId: 23, solicitudExpediente: 'SAIP-2026-00023' });
+    expect(f.nativeElement.querySelector('a[href="/ciudadano/solicitud/SAIP-2026-00023"]')).not.toBeNull();
+    expect(f.nativeElement.textContent).toContain(expediente);
+    expect(f.componentInstance.rutaRegreso()).toEqual(['/ciudadano/solicitud', 'SAIP-2026-00023']);
+  });
+
+  it('una confirmación abierta antes de cambiar de requerimiento no inicia un envío tardío', () => {
+    const f = preparar(); f.componentInstance.abrirConfirmacionSubsanacion();
+    f.componentInstance.cargarRequerimiento(); responderRequerimiento(145, 72);
+    f.componentInstance.confirmarDesdeDialogo(); http.expectNone(recepcionUrl);
+    expect(f.componentInstance.confirmModalAbierto()).toBe(false);
+  });
+
+  it('destruir el componente cancela las operaciones y no inicia recuperación o envío tardíos', () => {
+    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req, clave } = envio();
+    f.destroy(); expect(req.cancelled).toBe(true);
+    f.componentInstance.comprobarRecepcion(); f.componentInstance.enviarSubsanacion();
+    http.expectNone(recepcionUrl); http.expectNone(`${recepcionUrl}/${clave}`);
+    expect(f.componentInstance.documentosSeleccionados()).toEqual([]);
+  });
+
+  it('la confirmación persistida recibe foco y al cerrar lo devuelve al resultado del requerimiento', async () => {
+    const f = preparar(); f.componentInstance.enviarSubsanacion(); const { req, clave } = envio(); req.flush(recibo(clave));
+    f.detectChanges(); await Promise.resolve();
+    const dialog = document.querySelector('[role=dialog]')!;
+    expect(dialog.getAttribute('aria-label')).toBe('Subsanación registrada'); expect(dialog.contains(document.activeElement)).toBe(true);
+    const buttons = dialog.querySelectorAll<HTMLButtonElement>('button'); buttons[buttons.length - 1].focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(buttons[0]);
+    (dialog.querySelector('button[aria-label="Cerrar"]') as HTMLButtonElement).click(); f.detectChanges(); await Promise.resolve();
+    expect(document.activeElement?.id).toBe('subsanacion-recepcion');
+    expect(f.componentInstance.recepcion()?.id).toBe(501); http.expectNone(recepcionUrl);
   });
 });
