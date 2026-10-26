@@ -1,10 +1,9 @@
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, computed, effect, untracked, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, ElementRef, computed, effect, untracked, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { Apelacion } from '../../models/apelacion.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
@@ -12,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
-import { DocumentoRelation, DocumentoListItem } from '../../models/documento.model';
+import { DocumentoRelation, DocumentoListItem, DOCUMENTO_RELATION_KEYS, getDocumentoRelationEntry } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
@@ -28,11 +27,9 @@ import {
   LucideEye,
   LucideFileText,
   LucideHelpCircle,
-  LucideLock,
   LucideReceipt,
   LucideScale,
-  LucideUser,
-  LucideX
+  LucideUser
 } from '@lucide/angular';
 
 export type RequestTabId = 'solicitud' | 'respuesta' | 'notificaciones' | 'apelacion';
@@ -73,7 +70,6 @@ export interface NotifStageItem {
   selector: 'app-solicitud-detalle',
   imports: [
     CommonModule,
-    FormsModule,
     RouterLink,
     StatusBadgeComponent,
     TimelineComponent,
@@ -88,7 +84,6 @@ export interface NotifStageItem {
     LucideEye,
     LucideFileText,
     LucideHelpCircle,
-    LucideLock,
     LucideReceipt,
     LucideScale,
     LucideUser,
@@ -104,19 +99,13 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
   private readonly documentoService = inject(DocumentoService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   solicitud = signal<Solicitud | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
   activeTab = signal<RequestTabId>('solicitud');
-  subsanacionComentario = signal<string>('');
-  subsanacionDocumentoNombre = signal<string>('');
-  subsanacionLoading = signal<boolean>(false);
-  subsanacionError = signal<string>('');
-  subsanacionSuccess = signal<string>('');
-  recojoConfirmado = signal<boolean>(false);
 
-  previewDoc = signal<DocumentoDetalleItem | null>(null);
   previewTarget = signal<DocumentPreviewTarget | null>(null);
   isPreviewOpen = signal<boolean>(false);
 
@@ -171,18 +160,16 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   });
 
   readonly yaRespondio = computed<boolean>(() => {
-    const sol = this.solicitud();
-    if (!sol) return false;
-    return !!sol.respuesta || ['RESPONDIDA', 'DENEGADA', 'VENCIDA', 'CONCLUIDA', 'APELADA'].includes((sol.estado || '').toUpperCase());
+    return this.idValido(this.solicitud()?.respuesta?.id);
   });
 
   readonly apelable = computed<boolean>(() => {
-    return this.yaRespondio() && !this.enApelacion();
+    return this.puedeApelar();
   });
 
   readonly respDenegada = computed<boolean>(() => {
     const sol = this.solicitud();
-    return sol?.estado === 'DENEGADA' || sol?.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+    return sol?.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
   });
 
   readonly respParcial = computed<boolean>(() => {
@@ -193,27 +180,12 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     if (this.respDenegada()) return 'Denegada';
     if (this.respParcial()) return 'Entrega parcial';
     if (this.solicitud()?.respuesta?.tipoRespuesta === 'ENTREGA_TOTAL') return 'Entrega total';
-    return this.yaRespondio() ? 'Atendida' : 'En proceso';
-  });
-
-  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const solicitudId = this.solicitud()?.id;
-    return solicitudId ? { solicitudId } : null;
-  });
-
-  readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const respuestaId = this.solicitud()?.respuesta?.id;
-    return respuestaId ? { respuestaId } : null;
-  });
-
-  readonly puedeAdjuntarDocumentos = computed<boolean>(() => {
-    const estado = this.solicitud()?.estado;
-    return estado !== 'RESPONDIDA' && estado !== 'VENCIDA' && estado !== 'DENEGADA' && estado !== 'CONCLUIDA';
+    return 'Tipo no registrado';
   });
 
   readonly misDocumentos = computed<DocumentoDetalleItem[]>(() => {
     const sol = this.solicitud();
-    return sol ? this.mapDocumentos(sol.documentosMetadata?.length ? sol.documentosMetadata : sol.documentos ?? [], 'ciudadano') : [];
+    return sol ? this.mapDocumentos(sol.documentosMetadata ?? sol.documentos ?? [], 'ciudadano', { solicitudId: sol.id }) : [];
   });
 
   readonly gruposMisDocumentos = computed(() => {
@@ -226,7 +198,19 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   readonly adjuntosRespuesta = computed<DocumentoDetalleItem[]>(() => {
     const respuesta = this.solicitud()?.respuesta;
-    return respuesta ? this.mapDocumentos(respuesta.documentosMetadata?.length ? respuesta.documentosMetadata : respuesta.documentos ?? [], 'entidad') : [];
+    return respuesta && this.idValido(respuesta.id)
+      ? this.mapDocumentos(respuesta.documentosMetadata ?? respuesta.documentos ?? [], 'entidad', { respuestaId: respuesta.id }) : [];
+  });
+
+  readonly documentosSolicitudIncompletos = computed(() => {
+    const sol = this.solicitud();
+    const docs = sol?.documentosMetadata ?? sol?.documentos;
+    return !Array.isArray(docs) || docs.length !== this.misDocumentos().length;
+  });
+  readonly documentosRespuestaIncompletos = computed(() => {
+    const resp = this.solicitud()?.respuesta;
+    const docs = resp?.documentosMetadata ?? resp?.documentos;
+    return !Array.isArray(docs) || docs.length !== this.adjuntosRespuesta().length;
   });
 
   // La SAIP contiene solo el resumen de la apelación. Los archivos y sus IDs
@@ -238,23 +222,31 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       ap.resolucionSegundaCalificacion, ap.resolucion].filter(r => !!r);
     const vistos = new Set<number>();
     return resoluciones.filter(r => {
-      if (!r.id || vistos.has(r.id)) return false;
+      if (!this.idValido(r.id) || vistos.has(r.id)) return false;
       vistos.add(r.id);
       return true;
     }).map(r => ({
       stage: String(r.id), num: r.numeroResolucion || '—',
       label: this.getEstadoDisplay(r.tipoResolucion), resultado: this.getEstadoDisplay(r.decision),
       docs: [
-        ...this.mapDocumentos(r.documentos ?? [], 'resolucion').map(doc => ({ ...doc,
+        ...this.mapDocumentos(r.documentos ?? [], 'resolucion', { resolucionId: r.id! }).map(doc => ({ ...doc,
           tipo: 'resolucion' as const, titulo: doc.nombre, subtitulo: r.numeroResolucion || 'Resolución registrada' })),
-        ...(r.cedulas ?? []).flatMap(cedula => this.mapDocumentos(cedula.documentos ?? [], 'resolucion').map(doc => ({ ...doc,
+        ...(r.cedulas ?? []).filter(cedula => this.idValido(cedula.id) && cedula.destinatario === 'CIUDADANO').flatMap(cedula => this.mapDocumentos(cedula.documentos ?? [], 'resolucion', { cedulaNotificacionId: cedula.id! }).map(doc => ({ ...doc,
           tipo: 'cedula' as const, titulo: doc.nombre, subtitulo: cedula.numeroCedula || 'Cédula registrada' })))
       ]
     }));
   });
 
-  private mapDocumentos(documentos: ReadonlyArray<DocumentoListItem>, origen: DocumentoDetalleItem['tipoOrigen']): DocumentoDetalleItem[] {
-    return documentos.map(doc => {
+  private mapDocumentos(documentos: ReadonlyArray<DocumentoListItem>, origen: DocumentoDetalleItem['tipoOrigen'], relation: DocumentoRelation): DocumentoDetalleItem[] {
+    const [key, id] = getDocumentoRelationEntry(relation);
+    // Legacy DTOs have no relation fields: their association is the authorized nested DTO.
+    // Explicit metadata must agree with that parent; never reinterpret another resource.
+    return (Array.isArray(documentos) ? documentos : []).filter(doc => {
+      if (!doc || !this.idValido(doc.id)) return false;
+      const metadata = doc as Record<string, unknown>;
+      const explicitRelation = DOCUMENTO_RELATION_KEYS.some(field => metadata[field] != null);
+      return !explicitRelation || metadata[key] === id;
+    }).map(doc => {
       const metadata = 'nombreOriginal' in doc ? doc : null;
       const legacy = 'nombreArchivo' in doc ? doc : null;
       return {
@@ -286,14 +278,19 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   private generacion = 0;
   private expedienteActual: string | null = null;
   private tokenActual = this.authService.getToken();
+  private sesionActual = this.authService.cambiosSesion();
+  private tokenDetalle: string | null = null;
+  private sesionDetalle = -1;
+  private consultaTribunal = new Subscription();
 
   constructor() {
     effect(() => {
-      this.authService.cambiosSesion();
+      const sesion = this.authService.cambiosSesion();
       untracked(() => {
         const token = this.authService.getToken();
-        if (token !== this.tokenActual) {
+        if (token !== this.tokenActual || sesion !== this.sesionActual) {
           this.tokenActual = token;
+          this.sesionActual = sesion;
           if (this.expedienteActual !== null) this.cargarSolicitud(this.expedienteActual);
         }
       });
@@ -310,16 +307,21 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     this.generacion++;
     this.consultas.unsubscribe();
     this.descargas.unsubscribe();
+    this.consultaTribunal.unsubscribe();
   }
 
   cargarSolicitud(expediente: string): void {
     this.expedienteActual = expediente;
     this.consultas.unsubscribe();
     this.descargas.unsubscribe();
+    this.consultaTribunal.unsubscribe();
     this.consultas = new Subscription();
     this.descargas = new Subscription();
     const generacion = ++this.generacion;
     const token = this.authService.getToken();
+    const sesion = this.authService.cambiosSesion();
+    this.tokenDetalle = null;
+    this.sesionDetalle = -1;
     this.solicitud.set(null);
     this.apelacionDetalle.set(null);
     this.loadingApelacion.set(false);
@@ -327,12 +329,6 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     this.documentoError.set('');
     this.cerrarPreview();
     this.activeTab.set('solicitud');
-    this.recojoConfirmado.set(false);
-    this.subsanacionComentario.set('');
-    this.subsanacionDocumentoNombre.set('');
-    this.subsanacionError.set('');
-    this.subsanacionSuccess.set('');
-    this.subsanacionLoading.set(false);
     this.error.set('');
     this.puedeReintentarConsulta.set(false);
     this.loading.set(false);
@@ -350,25 +346,28 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     this.estadoConsulta.set('cargando');
     this.consultas.add(this.solicitudService.findByExpediente(expediente).subscribe({
       next: (data) => {
-        if (!this.esConsultaActual(generacion, token)) return;
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
         this.loading.set(false);
         if (!data) {
           this.estadoConsulta.set('vacio');
           this.puedeReintentarConsulta.set(true);
           return;
         }
-        if (!data.id || data.expediente !== expediente) {
+        if (!this.idValido(data.id) || data.expediente !== expediente ||
+          (data.ciudadanoId != null && data.ciudadanoId !== this.authService.obtenerSesion()?.usuarioId)) {
           this.estadoConsulta.set('error');
           this.error.set('El servidor devolvió una solicitud que no corresponde al recurso consultado.');
           this.puedeReintentarConsulta.set(true);
           return;
         }
         this.solicitud.set(data);
+        this.tokenDetalle = token;
+        this.sesionDetalle = sesion;
         this.estadoConsulta.set('disponible');
         this.cargarDocumentosTribunal();
       },
       error: (error: unknown) => {
-        if (!this.esConsultaActual(generacion, token)) return;
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
         const fallo = falloConsulta(error, 'la solicitud');
         this.estadoConsulta.set(fallo.estado);
         this.error.set(fallo.mensaje);
@@ -384,18 +383,22 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   cargarDocumentosTribunal(): void {
     const id = this.solicitud()?.apelacion?.id;
-    if (!id) return;
+    if (!this.idValido(id) || !this.detalleActual()) return;
+    this.consultaTribunal.unsubscribe();
     const generacion = this.generacion;
     const token = this.authService.getToken();
+    const sesion = this.authService.cambiosSesion();
     this.apelacionDetalle.set(null);
     this.errorApelacion.set('');
     this.loadingApelacion.set(true);
     this.reintentarApelacion.set(false);
-    this.consultas.add(this.apelacionService.findById(id).subscribe({
+    this.consultaTribunal = this.apelacionService.findById(id).subscribe({
       next: data => {
-        if (!this.esConsultaActual(generacion, token)) return;
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
         this.loadingApelacion.set(false);
-        if (!data || data.id !== id) {
+        if (!data || data.id !== id ||
+          (data.solicitudId != null && data.solicitudId !== this.solicitud()?.id) ||
+          (data.ciudadanoId != null && data.ciudadanoId !== this.authService.obtenerSesion()?.usuarioId)) {
           this.errorApelacion.set('El servidor no devolvió el detalle documental de esta apelación.');
           this.reintentarApelacion.set(true);
           return;
@@ -403,28 +406,50 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
         this.apelacionDetalle.set(data);
       },
       error: (error: unknown) => {
-        if (!this.esConsultaActual(generacion, token)) return;
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
         const fallo = falloConsulta(error, 'los documentos del Tribunal');
         this.errorApelacion.set(fallo.mensaje);
         this.reintentarApelacion.set(fallo.reintentable);
         this.loadingApelacion.set(false);
       }
-    }));
+    });
   }
 
-  private esConsultaActual(generacion: number, token: string | null): boolean {
-    return generacion === this.generacion && token === this.authService.getToken();
+  private esConsultaActual(generacion: number, token: string | null, sesion = this.sesionDetalle): boolean {
+    return generacion === this.generacion && token === this.authService.getToken() && sesion === this.authService.cambiosSesion();
   }
 
-  onDocumentoSubido(): void {
-    const expediente = this.solicitud()?.expediente;
-    if (expediente) {
-      this.cargarSolicitud(expediente);
-    }
+  private idValido(id: unknown): id is number { return typeof id === 'number' && Number.isSafeInteger(id) && id > 0; }
+
+  private detalleActual(): boolean {
+    return !!this.solicitud() && !!this.tokenDetalle && this.tokenDetalle === this.authService.getToken() &&
+      this.sesionDetalle === this.authService.cambiosSesion();
   }
 
   cambiarTab(tab: RequestTabId): void {
-    this.activeTab.set(tab);
+    if (this.detalleActual() && this.tabs().some(item => item.id === tab)) this.activeTab.set(tab);
+  }
+
+  navegarTabs(event: KeyboardEvent, tab: RequestTabId): void {
+    const tabs = this.tabs();
+    const index = tabs.findIndex(item => item.id === tab);
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight': next = (index + 1) % tabs.length; break;
+      case 'ArrowLeft': next = (index - 1 + tabs.length) % tabs.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = tabs.length - 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    this.cambiarTab(tabs[next].id);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#tab-${tabs[next].id}`)?.focus();
+  }
+
+  private documentoActual(id: number | undefined): boolean {
+    return this.detalleActual() && this.idValido(id) && [
+      ...this.misDocumentos(), ...this.adjuntosRespuesta(), ...this.notifStages().flatMap(stage => stage.docs)
+    ].some(doc => doc.id === id);
   }
 
   isTabActive(tab: RequestTabId): boolean {
@@ -434,7 +459,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   abrirModalPreview(doc: { id?: number; nombre: string; contentType?: string }): void {
     this.documentoError.set('');
     this.cerrarPreview();
-    if (!doc.id || !this.solicitud()) {
+    if (!this.documentoActual(doc.id)) {
       this.documentoError.set('Este documento no dispone de un archivo recuperable.');
       return;
     }
@@ -443,20 +468,19 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   cerrarPreview(): void {
-    this.previewDoc.set(null);
     this.previewTarget.set(null);
     this.isPreviewOpen.set(false);
   }
 
   descargarDoc(doc: { id?: number; nombre: string }): void {
     this.documentoError.set('');
-    if (!doc.id || !this.solicitud()) {
+    if (!this.documentoActual(doc.id)) {
       this.documentoError.set('Este documento no dispone de un archivo recuperable.');
       return;
     }
     const generacion = this.generacion;
     const token = this.authService.getToken();
-    this.descargas.add(this.documentoService.download(doc.id, doc.nombre).subscribe({
+    this.descargas.add(this.documentoService.download(doc.id!, doc.nombre).subscribe({
       next: ({ blob, filename }) => {
         if (!this.esConsultaActual(generacion, token)) return;
         const url = URL.createObjectURL(blob);
@@ -470,55 +494,6 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
         if (this.esConsultaActual(generacion, token)) this.documentoError.set(falloConsulta(error, 'el documento').mensaje);
       }
     }));
-  }
-
-  confirmarRecojo(): void {
-    this.recojoConfirmado.set(true);
-  }
-
-  subsanarObservacion(): void {
-    const sol = this.solicitud();
-    const observacion = this.observacionPendiente();
-    const comentario = this.subsanacionComentario().trim();
-    const documento = this.subsanacionDocumentoNombre().trim();
-
-    if (!sol || !observacion) {
-      return;
-    }
-    if (this.esSubsanacionObservacionVencida(observacion)) {
-      this.subsanacionError.set('El plazo legal de subsanación ha vencido.');
-      return;
-    }
-    if (!comentario && !documento) {
-      this.subsanacionError.set('Ingrese un comentario o referencia de documento para subsanar.');
-      return;
-    }
-
-    this.subsanacionLoading.set(true);
-    this.subsanacionError.set('');
-    this.subsanacionSuccess.set('');
-
-    const generacion = this.generacion;
-    const token = this.authService.getToken();
-    this.solicitudService.subsanar(sol.id, observacion.id, {
-      comentarioSubsanacion: comentario || undefined,
-      documentoSubsanacionNombre: documento || undefined,
-      responsable: this.getSolicitanteNombre()
-    }).subscribe({
-      next: () => {
-        if (!this.esConsultaActual(generacion, token)) return;
-        this.subsanacionComentario.set('');
-        this.subsanacionDocumentoNombre.set('');
-        this.subsanacionSuccess.set('Subsanación enviada. La solicitud volvió a revisión de la entidad.');
-        this.subsanacionLoading.set(false);
-        this.cargarSolicitud(sol.expediente);
-      },
-      error: (error) => {
-        if (!this.esConsultaActual(generacion, token)) return;
-        this.subsanacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la subsanación.');
-        this.subsanacionLoading.set(false);
-      }
-    });
   }
 
   getEstadoDisplay(value: string | undefined): string {
@@ -542,7 +517,9 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   observaciones(): ObservacionSolicitud[] {
-    return this.solicitud()?.observaciones || [];
+    const sol = this.solicitud();
+    return (sol?.observaciones ?? []).filter(item => this.idValido(item.id) &&
+      (item.solicitudId == null || item.solicitudId === sol?.id));
   }
 
   observacionPendiente(): ObservacionSolicitud | null {
@@ -553,18 +530,9 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return this.observaciones().find((item) => item.estado === 'SUBSANADA') || null;
   }
 
-  esSubsanacionObservacionVencida(obs: ObservacionSolicitud | null): boolean {
-    if (!obs || !obs.fechaLimiteSubsanacion) return false;
-    try {
-      const fechaLimite = new Date(obs.fechaLimiteSubsanacion);
-      return new Date().getTime() > fechaLimite.getTime();
-    } catch {
-      return false;
-    }
-  }
-
   ampliaciones(): AmpliacionPlazoSolicitud[] {
-    return this.solicitud()?.ampliacionesPlazo || [];
+    const sol = this.solicitud();
+    return (sol?.ampliacionesPlazo ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
   }
 
   ampliacionActiva(): AmpliacionPlazoSolicitud | null {
@@ -572,7 +540,8 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   encauzamientos(): EncauzamientoSolicitud[] {
-    return this.solicitud()?.encauzamientos || [];
+    const sol = this.solicitud();
+    return (sol?.encauzamientos ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
   }
 
   encauzamientoActivo(): EncauzamientoSolicitud | null {
@@ -580,7 +549,8 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   liquidaciones(): LiquidacionCostoSolicitud[] {
-    return this.solicitud()?.liquidacionesCosto || [];
+    const sol = this.solicitud();
+    return (sol?.liquidacionesCosto ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
   }
 
   liquidacionActiva(): LiquidacionCostoSolicitud | null {
@@ -670,242 +640,58 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  // ── Timeline logic matching design-reference ──────────────────────────────
+  // Only recorded acts enter this view. Current status is a separate summary,
+  // not evidence that intermediate acts, delivery or notifications occurred.
   buildCitizenTimeline(sol: Solicitud): TimelineEvent[] {
-    const steps: TimelineEvent[] = [];
-    const fechaPres = this.formatTimelineDate(sol.fechaPresentacion);
-    const respondida = !!sol.respuesta?.fechaRespuesta;
-    const enApel = !!(sol.apelacion?.expediente || sol.apelacion?.id);
-    const denegada = sol.estado === 'DENEGADA' || sol.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
-    const yaRespondida = respondida || denegada || enApel;
-
-    // 1. Solicitud presentada
-    steps.push({
-      instancia: 1,
-      icon: 'mail',
-      status: 'completed',
-      title: 'Solicitud presentada',
-      description: 'SAIP registrada y notificada a la entidad.',
-      date: fechaPres
-    });
-
-    // Precision (observaciones)
-    const obsActiva = sol.observaciones?.find(o => o.estado === 'PENDIENTE_SUBSANACION');
-    const obsSubsanada = sol.observaciones?.find(o => o.estado === 'SUBSANADA');
-    if (obsActiva) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'current',
-        title: 'Solicitud de precisión',
-        description: `La entidad pidió precisar la solicitud · plazo de 2 días hábiles hasta el ${this.formatTimelineDate(obsActiva.fechaLimiteSubsanacion)}.`,
-        date: this.formatTimelineDate(obsActiva.fechaObservacion)
-      });
-    } else if (obsSubsanada) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'completed',
-        title: 'Solicitud de precisión',
-        description: 'La entidad pidió precisar la solicitud · plazo de 2 días hábiles.',
-        date: this.formatTimelineDate(obsSubsanada.fechaObservacion)
-      });
-      steps.push({
-        instancia: 1,
-        icon: 'filecheck',
-        status: 'completed',
-        title: 'Subsanación presentada',
-        description: 'El administrado precisó su solicitud dentro del plazo.',
-        date: this.formatTimelineDate(obsSubsanada.fechaSubsanacion)
-      });
+    const events: (TimelineEvent & { fechaOrden: number | null })[] = [];
+    const add = (title: string, description: string, date: string | null | undefined,
+      icon: TimelineEvent['icon'], instancia: 1 | 2 = 1) => {
+      const timestamp = date ? Date.parse(date) : NaN;
+      events.push({ title, description, date: this.formatTimelineDate(date), icon, instancia, status: 'completed', fechaOrden: Number.isFinite(timestamp) ? timestamp : null });
+    };
+    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud SAIP.', sol.fechaPresentacion, 'mail');
+    for (const obs of sol.observaciones ?? []) {
+      if (!this.idValido(obs.id) || (obs.solicitudId != null && obs.solicitudId !== sol.id)) continue;
+      add('Solicitud de precisión', obs.motivoObservacion || 'Motivo no registrado.', obs.fechaObservacion, 'search');
+      if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck');
     }
-
-    // Encauzamiento
-    const enc = sol.encauzamientos?.find(e => e.estadoEncauzamiento === 'REGISTRADO' || e.estadoEncauzamiento === 'DERIVADO');
-    if (enc) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'completed',
-        title: `Encauzamiento ${enc.alcance === 'TOTAL' ? 'total' : 'parcial'}`,
-        description: `La solicitud fue derivada a ${enc.entidadDestinoNombre} por corresponder a su competencia.`,
-        date: this.formatTimelineDate(enc.fechaEncauzamiento)
-      });
+    for (const enc of sol.encauzamientos ?? []) {
+      if (!this.idValido(enc.id) || enc.solicitudId !== sol.id) continue;
+      add('Encauzamiento registrado', enc.motivoEncauzamiento || 'Motivo no registrado.', enc.fechaEncauzamiento, 'search');
     }
-
-    // Liquidación (Cupón de pago)
-    const liq = sol.liquidacionesCosto?.find(l => l.estadoLiquidacion === 'EMITIDA' || l.estadoLiquidacion === 'NOTIFICADA' || l.estadoLiquidacion === 'PAGADA' || l.estadoLiquidacion === 'RECOGIDA');
-    if (liq) {
-      const recogido = liq.estadoLiquidacion === 'RECOGIDA' || this.recojoConfirmado();
-      steps.push({
-        instancia: 1,
-        icon: 'mail',
-        status: recogido ? 'completed' : 'current',
-        title: recogido ? 'Información recogida' : 'Cupón de pago emitido',
-        description: recogido
-          ? 'El administrado recogió la información en la oficina de la entidad.'
-          : `Pague ${liq.moneda} ${liq.monto} y recoja antes del ${this.formatTimelineDate(liq.fechaLimiteRecojo)} (30 días calendario).`,
-        date: this.formatTimelineDate(liq.fechaNotificacion)
-      });
+    for (const amp of sol.ampliacionesPlazo ?? []) {
+      if (!this.idValido(amp.id) || amp.solicitudId !== sol.id) continue;
+      add('Ampliación registrada', amp.motivoAmpliacion || amp.informeAmpliacion || 'Motivo no registrado.', amp.fechaSolicitudAmpliacion, 'search');
     }
-
-    // Ampliación
-    const amp = sol.ampliacionesPlazo?.find(a => a.estadoAmpliacion === 'REGISTRADA' || a.estadoAmpliacion === 'NOTIFICADA');
-    if (amp) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'completed',
-        title: 'Plazo ampliado · ampliación registrada',
-        description: `La entidad amplió el plazo de atención. Nueva fecha límite: ${this.formatTimelineDate(amp.fechaLimiteAmpliada)}.`,
-        date: this.formatTimelineDate(amp.fechaNotificacionAmpliacion)
-      });
+    for (const liq of sol.liquidacionesCosto ?? []) {
+      if (!this.idValido(liq.id) || liq.solicitudId !== sol.id) continue;
+      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail');
+      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck');
+      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck');
     }
-
-    if (sol.estado === 'VENCIDA' || this.esSilencioAdministrativo()) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'completed',
-        title: 'Plazo vencido · Silencio administrativo',
-        description: 'La entidad no respondió dentro del plazo legal (SAN).',
-        date: this.formatTimelineDate(sol.fechaLimite)
-      });
-    } else if (yaRespondida) {
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: 'completed',
-        title: 'Revisión de la entidad',
-        description: 'La entidad evaluó la solicitud.',
-        date: fechaPres
-      });
-      const respTitle = denegada
-        ? 'Denegada por la entidad'
-        : `Respuesta de la entidad · ${sol.respuesta?.tipoRespuesta === 'ENTREGA_PARCIAL' ? 'Parcial' : 'Total'}`;
-      steps.push({
-        instancia: 1,
-        icon: 'filecheck',
-        status: 'completed',
-        title: respTitle,
-        description: enApel ? 'El ciudadano no quedó conforme e interpuso apelación.' : 'La entidad emitió su respuesta.',
-        date: this.formatTimelineDate(sol.respuesta?.fechaRespuesta)
-      });
-    } else {
-      const yaHayCurrent = steps.some(s => s.status === 'current');
-      steps.push({
-        instancia: 1,
-        icon: 'search',
-        status: yaHayCurrent ? 'completed' : 'current',
-        title: 'En revisión de la entidad',
-        description: `Plazo legal de 10 días hábiles${sol.fechaLimite ? ` · vence ${this.formatTimelineDate(sol.fechaLimite)}` : ''}.`,
-        date: fechaPres
-      });
-      steps.push({
-        instancia: 1,
-        icon: 'filecheck',
-        status: 'pending',
-        title: 'Respuesta de la entidad',
-        description: 'Pendiente de respuesta de la entidad.',
-        date: 'Pendiente'
-      });
+    if (this.idValido(sol.respuesta?.id)) {
+      add('Respuesta registrada', this.respLabel() + ' · el registro no acredita entrega ni notificación eficaz.', sol.respuesta?.fechaRespuesta, 'filecheck');
     }
-
-    // Segunda instancia (TTAIP)
-    if (enApel) {
-      const apel = sol.apelacion!;
-      const est = (apel.estado || '').toUpperCase();
-      const enSubsanacion = est === 'EN_SUBSANACION' || est === 'SUBSANACION';
-      const primeraPendiente = est === 'EN_CALIFICACION_1' || est === 'PENDIENTE_ELEVACION';
-      const cal1 = (apel as any).calificacionPrimera || (enSubsanacion ? { resultado: 'INADMISIBLE' } : null);
-      const cal2 = (apel as any).calificacionSegunda;
-      const resuelto = this.isApelacionResuelta();
-
-      steps.push({
-        instancia: 2,
-        icon: 'gavel',
-        status: 'completed',
-        title: 'Apelación presentada al TTAIP',
-        description: `Recurso elevado al Tribunal · ${apel.expediente || 'en trámite'}.`,
-        date: this.formatTimelineDate(apel.fechaApelacion)
-      });
-
-      // 1ra Calificación
-      steps.push({
-        instancia: 2,
-        icon: 'scale',
-        status: primeraPendiente ? 'current' : 'completed',
-        title: '1ra Calificación',
-        description: primeraPendiente
-          ? 'El Tribunal revisa la admisibilidad del recurso.'
-          : enSubsanacion
-            ? 'El Tribunal declaró el recurso INADMISIBLE.'
-            : 'El Tribunal calificó la admisibilidad del recurso.',
-        date: this.formatTimelineDate((cal1 as any)?.fecha || apel.fechaApelacion)
-      });
-
-      // Subsanación requerida
-      if (enSubsanacion) {
-        steps.push({
-          instancia: 2,
-          icon: 'filecheck',
-          status: 'current',
-          title: 'Subsanación requerida',
-          description: 'Debe subsanar las observaciones del Tribunal para que su recurso sea admitido.',
-          date: this.formatTimelineDate((cal1 as any)?.fecha || apel.fechaApelacion)
-        });
+    const ap = sol.apelacion;
+    if (this.idValido(ap?.id)) {
+      add('Apelación registrada', ap?.expediente || 'Numeración TTAIP no registrada.', ap?.fechaApelacion, 'gavel', 2);
+      const detalle = this.apelacionDetalle();
+      if (detalle) {
+        const vistos = new Set<number>();
+        for (const res of [...(detalle.resoluciones ?? []), detalle.resolucionPrimeraCalificacion,
+          detalle.resolucionSegundaCalificacion, detalle.resolucion]) {
+          if (!res || !this.idValido(res.id) || vistos.has(res.id)) continue;
+          vistos.add(res.id);
+          add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 2);
+        }
       }
-
-      if (cal1?.resultado !== 'IMPROCEDENTE') {
-        const segPendiente = est === 'EN_CALIFICACION_2' || est === 'NOTIFICACION_SEGUNDA_CALIFICACION';
-        const segTerminada = est === 'EN_RESOLUCION' || resuelto;
-        steps.push({
-          instancia: 2,
-          icon: 'scale',
-          status: segPendiente ? 'current' : segTerminada ? 'completed' : 'pending',
-          title: '2da Calificación',
-          description: segTerminada
-            ? 'Tras la subsanación, el Tribunal declaró el recurso ADMITIDO.'
-            : 'Verificación de requisitos tras la subsanación.',
-          date: this.formatTimelineDate((cal2 as any)?.fecha || apel.fechaSubsanacion)
-        });
-
-        steps.push({
-          instancia: 2,
-          icon: 'gavel',
-          status: est === 'EN_RESOLUCION' ? 'current' : resuelto ? 'completed' : 'pending',
-          title: 'En resolución',
-          description: 'La sala analiza el fondo del expediente.',
-          date: '—'
-        });
-      }
-
-      steps.push({
-        instancia: 2,
-        icon: 'check',
-        status: resuelto ? 'completed' : 'pending',
-        title: 'Resolución final',
-        description: apel.resultado ? `Fallo del Tribunal: ${apel.resultado}.` : 'Pendiente de resolución del Tribunal.',
-        date: this.formatTimelineDate(sol.respuesta?.fechaRespuesta || (apel as any)?.fechaResolucionFinal)
-      });
-    } else if (sol.estado === 'VENCIDA' || sol.estado === 'DENEGADA') {
-      steps.push({
-        instancia: 2,
-        icon: 'scale',
-        status: 'pending',
-        title: 'Apelación disponible',
-        description: 'Puede interponer recurso de apelación ante el TTAIP.',
-        date: 'Disponible'
-      });
     }
-
-    return steps;
+    const dated = events.filter(event => event.fechaOrden !== null).sort((a, b) => a.fechaOrden! - b.fechaOrden!);
+    const undated = events.filter(event => event.fechaOrden === null);
+    return [...dated, ...undated].map(({ fechaOrden, ...event }) => event);
   }
 
   timelineDisplayOrder(steps: TimelineEvent[]): TimelineEvent[] {
-    const currentIdx = steps.findIndex(s => s.status === 'current');
-    const cut = currentIdx >= 0 ? currentIdx : steps.length - 1;
-    return steps.slice(0, cut + 1).reverse();
+    return [...steps].reverse();
   }
-
 }
