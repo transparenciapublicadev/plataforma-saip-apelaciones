@@ -1,7 +1,18 @@
-/* Estilos nueva apelación */
-
-.reference-upload-zone-filled {
-  background: color-mix(in srgb, var(--success) 8%, var(--card)) !important;
-  border-color: color-mix(in srgb, var(--success) 32%, var(--border)) !important;
-}
-
+/* AppealForm: preserve reference hero/cards; keep adaptation and focus scoped here. */
+:host { display:block; }
+.appeal-form-page { overflow-wrap:anywhere; }
+.appeal-form-page .grid > *, .appeal-form-page fieldset { min-width:0; }
+.appeal-form-page :is(button,a,input,select,textarea,[tabindex]):focus-visible { outline:2px solid var(--brand-600);outline-offset:3px; }
+.appeal-section-number { font-family:var(--font-display);font-size:48px;line-height:1;letter-spacing:-0.04em;color:color-mix(in srgb,var(--brand-700) 35%,transparent);-webkit-text-stroke:1px color-mix(in srgb,var(--brand-700) 55%,transparent); }
+.appeal-alert { padding:1rem;border:1px solid color-mix(in srgb,var(--destructive) 24%,transparent);background:color-mix(in srgb,var(--destructive) 8%,var(--card));border-radius:0.5rem;font-size:0.875rem; }
+.appeal-option { display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border:1px solid var(--border);border-radius:0.5rem;background:var(--card);cursor:pointer; }
+.appeal-option:has(input:checked) { border:1.5px solid var(--brand-700);background:var(--brand-subtle);box-shadow:0 0 0 3px var(--brand-50); }
+.appeal-option:has(input:focus-visible) { outline:2px solid var(--brand-600);outline-offset:3px; }
+.appeal-upload-zone { border:2px dashed var(--border);border-radius:0.5rem;padding:1.5rem;text-align:center;background:var(--card);cursor:pointer;transition:border-color 160ms ease,background-color 160ms ease; }
+.appeal-upload-zone:hover { border-color:var(--brand-600);background:color-mix(in srgb,var(--brand-50) 50%,var(--card)); }
+.appeal-selected { cursor:default;background:color-mix(in srgb,var(--success) 8%,var(--card));border-color:color-mix(in srgb,var(--success) 32%,var(--border)); }
+.appeal-file-row { display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem;justify-content:space-between; }
+.appeal-form-page button:disabled { opacity:0.6;cursor:not-allowed; }
+.appeal-form-page input { accent-color:var(--brand-600); }
+@media(max-width:639px) { .appeal-form-page .form-shell > .p-6 { padding:1.25rem; } .appeal-file-row > :first-child { flex:1 1 100%; } }
+@media(prefers-reduced-motion:reduce) { .appeal-upload-zone { transition:none; } }
