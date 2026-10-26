@@ -1,2 +1,22 @@
-/* Estilos subsanacion */
+/* SubsanationForm: retain the reference hero, brand tokens and two-column cards. */
+:host { display: block; }
+.subsanation-page { overflow-wrap: anywhere; }
+.subsanation-page :is(button, a, textarea, [role="button"]):focus-visible {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 3px;
+}
+.subsanation-page .grid > *, .subsanacion-file-row > :first-child { min-width: 0; }
+.subsanacion-file-row .truncate { white-space: normal; overflow-wrap: anywhere; }
+.subsanation-page [aria-disabled="true"] { cursor: default; }
+.subsanation-page [role="button"][aria-disabled="false"] { cursor: pointer; }
+@media (max-width: 639px) {
+  .subsanacion-file-row { flex-wrap: wrap; }
+  .subsanacion-file-row > :first-child { flex: 1 1 100%; }
+  .subsanacion-file-row > :last-child { margin-left: auto; }
+  .subsanation-page .form-shell > .p-6 { padding: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .subsanation-page .transition-colors { transition: none; }
+  .subsanation-page .animate-spin { animation: none; }
+}
 
