@@ -1,829 +1,382 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, computed, inject, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { forkJoin, Subscription, timeout } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { SolicitudService } from '../../services/solicitud.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { Entidad } from '../../models/entidad.model';
-import { SolicitudCreate } from '../../models/solicitud.model';
-import {
-  ReferenceConfirmModalComponent,
-  ReferenceConfirmSummary,
-  ReferenceConfirmWarning
-} from '../../shared/reference-confirm-modal.component';
-import {
-  ReferenceSuccessMeta,
-  ReferenceSuccessModalComponent,
-  ReferenceSuccessNextStep
-} from '../../shared/reference-success-modal.component';
-import {
-  DocumentPreviewModalComponent,
-  DocumentPreviewTarget
-} from '../../shared/document-preview-modal.component';
-import {
-  ReferenceComboboxComponent,
-  ReferenceComboboxOption
-} from '../../shared/reference-combobox.component';
-import { firstValueFrom } from 'rxjs';
-import { problemDetailsMessage } from '../../utils/problem-details.util';
-import { TipoDocumento } from '../../models/documento.model';
-import {
-  LucideArrowLeft, LucideShieldCheck, LucideBadgeCheck, LucideCheckCircle2,
-  LucideXCircle, LucideHelpCircle, LucideInfo, LucideUpload,
-  LucideEye, LucideX, LucideSave, LucideSend, LucideFileText,
-  LucideAlertTriangle
-} from '@lucide/angular';
+import { Solicitud, SolicitudCreate } from '../../models/solicitud.model';
+import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
+import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
+import { ReferenceSuccessModalComponent, ReferenceSuccessMeta, ReferenceSuccessNextStep } from '../../shared/reference-success-modal.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+import { GUIA, MODELOS, PLANTILLA_GENERAL } from './saip-form-reference';
+import { LucideArrowLeft, LucideShieldCheck, LucideCheckCircle2, LucideHelpCircle, LucideInfo,
+  LucideUpload, LucideEye, LucideX, LucideSave, LucideSend, LucideFileText, LucideChevronLeft,
+  LucideChevronRight, LucideLightbulb, LucideListChecks } from '@lucide/angular';
 
-export interface FormatoItem {
-  key: 'correo' | 'copiaSimple' | 'copiaCertificada' | 'soporteMagnetico';
-  label: string;
-  desc: string;
-}
-
-export interface MedioNotificacionItem {
-  key: 'correo' | 'fisica';
-  label: string;
-  desc: string;
-}
-
-interface SesionVisual {
-  nombre: string;
-  dni: string;
-  email: string;
-  telefono?: string;
-  tipoPersona?: 'NATURAL' | 'JURIDICA';
-  ruc?: string;
-  razonSocial?: string;
-  representanteNombreCompleto?: string;
-}
-
-export const FORMATOS: FormatoItem[] = [
-  { key: 'correo', label: 'Correo electrónico', desc: 'Vía gratuita para formatos digitales (PDF, Excel, Word)' },
-  { key: 'copiaSimple', label: 'Copia simple / fotocopia', desc: 'Impreso, previo pago del costo de reproducción' },
-  { key: 'copiaCertificada', label: 'Copia certificada', desc: 'Con sello y firma' },
-  { key: 'soporteMagnetico', label: 'Soportes magnéticos o digitales', desc: 'Datos grabados en CD, DVD o USB (según TUPA)' },
+export const FORMATOS = [
+  { key: 'correo' as const, label: 'Correo electrónico', desc: 'Formato digital (PDF, Excel, Word)' },
+  { key: 'copiaSimple' as const, label: 'Copia simple / fotocopia', desc: 'Impreso, previo pago del costo de reproducción aplicable' },
+  { key: 'copiaCertificada' as const, label: 'Copia certificada', desc: 'Modalidad solicitada; no acredita certificación de un documento' },
+  { key: 'soporteMagnetico' as const, label: 'Soportes magnéticos o digitales', desc: 'Se consigna en la descripción; disponibilidad según la entidad' }
 ];
-
-export const MEDIOS_NOTIFICACION: MedioNotificacionItem[] = [
-  { key: 'correo', label: 'Correo electrónico', desc: 'Notificación al correo consignado (T.U.O. Ley N° 27444)' },
-  { key: 'fisica', label: 'Notificación física', desc: 'Entrega en el domicilio registrado, previo pago según TUPA' },
+export const MEDIOS_NOTIFICACION = [
+  { key: 'correo' as const, label: 'Correo electrónico', desc: 'Al correo registrado de la cuenta' },
+  { key: 'fisica' as const, label: 'Notificación física', desc: 'Al domicilio registrado, conforme al procedimiento' }
 ];
-
-export const TEMAS_PREDETERMINADOS: string[] = [
-  'Presupuesto, contrataciones y adquisiciones',
-  'Planeamiento, organización y funciones',
-  'Personal, planillas y escalas remunerativas',
-  'Actividades oficiales, actas y agendas',
-  'Información ambiental y recursos naturales',
-  'Proyectos de inversión y obras públicas',
-  'Normativa, directivas y resoluciones',
-  'Otros'
-];
-
+interface ArchivoPresentacion {
+  file: File; tipo: TipoDocumento; estado: 'seleccionado' | 'subiendo' | 'registrado' | 'rechazado' | 'incierto';
+  documento?: DocumentoMetadata;
+}
+interface Envio { datos: SolicitudCreate; archivos: ArchivoPresentacion[]; }
 @Component({
   selector: 'app-nueva-saip',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterLink,
-    ReferenceConfirmModalComponent,
-    ReferenceSuccessModalComponent,
-    DocumentPreviewModalComponent,
-    ReferenceComboboxComponent,
-    LucideArrowLeft,
-    LucideShieldCheck,
-    LucideBadgeCheck,
-    LucideCheckCircle2,
-    LucideXCircle,
-    LucideHelpCircle,
-    LucideInfo,
-    LucideUpload,
-    LucideEye,
-    LucideX,
-    LucideSave,
-    LucideSend,
-    LucideFileText,
-    LucideAlertTriangle
-  ],
-  templateUrl: './nueva-saip.component.html',
-  styleUrl: './nueva-saip.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    DocumentPreviewModalComponent, LucideArrowLeft, LucideShieldCheck, LucideCheckCircle2,
+    LucideHelpCircle, LucideInfo, LucideUpload, LucideEye, LucideX, LucideSave, LucideSend, LucideFileText,
+    LucideChevronLeft, LucideChevronRight, LucideLightbulb, LucideListChecks],
+  templateUrl: './nueva-saip.component.html', styleUrl: './nueva-saip.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NuevaSaipComponent implements OnInit {
+export class NuevaSaipComponent implements OnInit, OnDestroy {
   private readonly solicitudService = inject(SolicitudService);
   private readonly entidadService = inject(EntidadService);
   private readonly authService = inject(AuthService);
   private readonly documentoService = inject(DocumentoService);
   private readonly router = inject(Router);
-  private readonly cdr = inject(ChangeDetectorRef);
-
-  // Catálogos
   readonly formatos = FORMATOS;
   readonly mediosNotificacion = MEDIOS_NOTIFICACION;
-  readonly temas = TEMAS_PREDETERMINADOS;
-  entidades = signal<Entidad[]>([]);
-
-  // Estado general
-  loading = signal<boolean>(false);
-  error = signal<string>('');
-  mensaje = signal<string>('');
-
-  // Modales
-  confirmModalAbierto = signal<boolean>(false);
-  successModalAbierto = signal<boolean>(false);
-  draftModalAbierto = signal<boolean>(false);
-  expedienteCreado = signal<string>('');
-
-  // Visor de documentos in-page
-  previewTarget = signal<DocumentPreviewTarget | null>(null);
-  isPreviewOpen = signal<boolean>(false);
-
-  // Sesión del administrado
-  sesionVisual = signal<SesionVisual>({
-    nombre: 'Ciudadano autenticado',
-    dni: 'No disponible',
-    email: 'No disponible',
-    telefono: '',
-    tipoPersona: 'NATURAL'
-  });
-
-  // Campos del formulario
+  readonly modelos = MODELOS;
+  readonly plantillaGeneral = PLANTILLA_GENERAL;
+  readonly pasos = [
+    { title: 'Qué información pide', short: 'Información' }, { title: 'Entrega y notificación', short: 'Entrega' },
+    { title: 'Archivos (opcional)', short: 'Archivos' }, { title: 'Revise antes de enviar', short: 'Revisión' }
+  ];
+  readonly step = signal(1);
+  readonly entidades = signal<Entidad[]>([]);
+  readonly estadoEntidades = signal<EstadoConsulta>('cargando');
+  readonly errorEntidades = signal('');
+  readonly reintentarEntidades = signal(false);
+  readonly loading = signal(false);
+  readonly error = signal('');
+  readonly mensaje = signal('');
+  readonly errores = signal<Record<string, string>>({});
+  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'parcial' | 'confirmada'>('lista');
+  readonly confirmModalAbierto = signal(false);
+  readonly successModalAbierto = signal(false);
+  readonly draftModalAbierto = signal(false);
+  readonly modeloPendiente = signal<{ texto: string; asunto?: string } | null>(null);
+  readonly expedienteCreado = signal('');
+  readonly solicitudCreada = signal<Solicitud | null>(null);
+  readonly archivosEnviados = signal<ArchivoPresentacion[]>([]);
+  readonly documentosConsultados = signal<DocumentoMetadata[] | null>(null);
+  readonly errorRecuperacion = signal('');
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly isPreviewOpen = signal(false);
+  readonly sesionVisual = signal({ nombre: '', dni: '', email: '', tipoPersona: '', ruc: '' });
+  readonly esEmpresa = computed(() => this.sesionVisual().tipoPersona === 'JURIDICA');
+  readonly docLabel = computed(() => this.esEmpresa() ? 'RUC' : 'DNI');
+  readonly docNumero = computed(() => this.esEmpresa() ? this.sesionVisual().ruc : this.sesionVisual().dni);
+  readonly correoMask = computed(() => { const [u, d] = this.sesionVisual().email.split('@'); return d ? `${u.slice(0, 2)}***@${d}` : 'No disponible'; });
+  readonly bloqueado = computed(() => this.loading() || !!this.solicitudCreada() || this.estadoEnvio() === 'incierta');
+  readonly accept = DOCUMENTO_ACCEPT;
+  readonly adjunto = signal<File | null>(null);
+  readonly anexo1 = signal<File | null>(null);
+  readonly anexo2 = signal<File | null>(null);
+  readonly fileWarningPrincipal = signal<string | null>(null);
+  readonly fileWarningAnexo1 = signal<string | null>(null);
+  readonly fileWarningAnexo2 = signal<string | null>(null);
+  readonly zonas = [
+    { label: 'Archivo principal', file: this.adjunto, warning: this.fileWarningPrincipal, dragging: signal(false) },
+    { label: 'Anexo 1', file: this.anexo1, warning: this.fileWarningAnexo1, dragging: signal(false) },
+    { label: 'Anexo 2', file: this.anexo2, warning: this.fileWarningAnexo2, dragging: signal(false) }
+  ];
   entidadId: number | null = null;
   tema = '';
-  temaOtro = '';
   oficinaDestinataria = '';
   asunto = '';
   descripcion = '';
-
-  // Sección 02: Modalidad de entrega (Checkbox 2x2)
-  formatoRespuesta = {
-    correo: true,
-    copiaSimple: false,
-    copiaCertificada: false,
-    soporteMagnetico: false
-  };
-
-  // Sección 03: Medio de notificación
-  medioNotificacion: '' | 'correo' | 'fisica' = 'correo';
-  aceptaCorreo = true;
+  formatoRespuesta = { correo: false, copiaSimple: false, copiaCertificada: false, soporteMagnetico: false };
+  medioNotificacion: '' | 'correo' | 'fisica' = '';
+  aceptaCorreo = false;
   aceptaFisica = false;
-
-  // Sección 04: Archivos
-  adjunto = signal<File | null>(null);
-  anexo1 = signal<File | null>(null);
-  anexo2 = signal<File | null>(null);
-
-  isDraggingPrincipal = signal<boolean>(false);
-  isDraggingAnexo1 = signal<boolean>(false);
-  isDraggingAnexo2 = signal<boolean>(false);
-
-  // Avisos y advertencias contextuales para archivos
-  fileWarningPrincipal = signal<string | null>(null);
-  fileWarningAnexo1 = signal<string | null>(null);
-  fileWarningAnexo2 = signal<string | null>(null);
-
-  // Helper computados
-  esEmpresa = computed(() => this.sesionVisual().tipoPersona === 'JURIDICA');
-  docLabel = computed(() => (this.esEmpresa() ? 'RUC' : 'DNI'));
-  docNumero = computed(() => (this.esEmpresa() ? (this.sesionVisual().ruc || this.sesionVisual().dni) : this.sesionVisual().dni));
-  correoMask = computed(() => this.maskEmail(this.sesionVisual().email));
-  fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }));
-
-  // Opciones reactivas para Comboboxes estilo Radix UI
-  entidadOptions = computed<ReferenceComboboxOption[]>(() =>
-    this.entidades().map((e) => ({
-      id: e.id,
-      label: e.nombre,
-      sublabel: e.acronimo || ''
-    }))
-  );
-
-  readonly temaOptions: ReferenceComboboxOption[] = TEMAS_PREDETERMINADOS.map((t) => ({
-    id: t,
-    label: t
-  }));
-
-  onEntidadChange(id: number | null): void {
-    this.entidadId = id;
-    this.cdr.markForCheck();
+  consentimientoDatosPersonales = false;
+  declaraVeracidad = false;
+  private consultas = new Subscription();
+  private operaciones = new Subscription();
+  private generacion = 0;
+  private destruido = false;
+  private token = this.authService.getToken();
+  private revision = this.authService.cambiosSesion();
+  private confirmacion: Envio | null = null;
+  private envio: Envio | null = null;
+  constructor() {
+    effect(() => { const revision = this.authService.cambiosSesion(); untracked(() => {
+      if (revision !== this.revision || this.token !== this.authService.getToken()) {
+        this.revision = revision; this.token = this.authService.getToken(); this.limpiarContexto(); this.cargarSesionVisual(); this.cargarEntidades();
+      }
+    }); });
   }
-
-  onTemaChange(val: string): void {
-    this.tema = val || '';
-    if (this.tema !== 'Otros') {
-      this.temaOtro = '';
-    }
-    this.cdr.markForCheck();
+  ngOnInit(): void { this.cargarSesionVisual(); this.cargarEntidades(); }
+  ngOnDestroy(): void { this.destruido = true; this.limpiarContexto(); }
+  private actual(generacion = this.generacion): boolean {
+    return !this.destruido && generacion === this.generacion && !!this.token && this.token === this.authService.getToken()
+      && this.revision === this.authService.cambiosSesion();
   }
-
-  ngOnInit(): void {
-    this.cargarSesionVisual();
-    this.cargarEntidades();
-    this.restaurarBorradorSeguro();
+  private idValido(value: unknown): value is number { return typeof value === 'number' && Number.isSafeInteger(value) && value > 0; }
+  private limpiarContexto(): void {
+    this.generacion++; this.consultas.unsubscribe(); this.operaciones.unsubscribe();
+    this.consultas = new Subscription(); this.operaciones = new Subscription(); this.entidades.set([]);
+    this.resetForm(); this.envio = null; this.confirmacion = null; this.solicitudCreada.set(null);
+    this.expedienteCreado.set(''); this.archivosEnviados.set([]); this.documentosConsultados.set(null);
+    this.errorRecuperacion.set(''); this.loading.set(false); this.estadoEnvio.set('lista');
+    this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.draftModalAbierto.set(false);
+    this.modeloPendiente.set(null); this.cerrarPreview();
   }
-
   private cargarSesionVisual(): void {
-    const sesion = this.authService.obtenerSesion();
-    this.sesionVisual.set({
-      nombre: sesion?.nombre?.trim() || sesion?.nombreCompleto?.trim() || 'Ciudadano autenticado',
-      dni: sesion?.dni?.trim() || 'No disponible',
-      email: sesion?.email?.trim() || 'No disponible',
-      telefono: (sesion as any)?.telefono || '',
-      tipoPersona: sesion?.tipoPersona || 'NATURAL',
-      ruc: sesion?.ruc?.trim() || '',
-      razonSocial: sesion?.razonSocial?.trim() || '',
-      representanteNombreCompleto: sesion?.representanteNombreCompleto?.trim() || ''
-    });
+    const s = this.authService.obtenerSesion();
+    this.sesionVisual.set({ nombre: s?.nombre?.trim() || s?.nombreCompleto?.trim() || '', dni: s?.dni || '',
+      email: s?.email || '', tipoPersona: s?.tipoPersona || '', ruc: s?.ruc || '' });
   }
-
-  private cargarEntidades(): void {
-    this.entidadService.findActivas().subscribe({
-      next: (data) => {
-        this.entidades.set(data);
-        this.cdr.markForCheck();
+  cargarEntidades(): void {
+    if (this.bloqueado()) return;
+    this.consultas.unsubscribe(); this.consultas = new Subscription();
+    const gen = this.generacion; this.entidades.set([]); this.errorEntidades.set(''); this.reintentarEntidades.set(false);
+    this.estadoEntidades.set('cargando');
+    if (!this.actual()) { this.estadoEntidades.set('autenticacion'); this.errorEntidades.set('Inicie sesión para consultar las entidades.'); return; }
+    this.consultas.add(this.entidadService.findActivas().subscribe({
+      next: data => {
+        if (!this.actual(gen)) return;
+        if (!Array.isArray(data) || data.some(e => !e || !this.idValido(e.id) || !e.nombre?.trim()) || new Set(data.map(e => e.id)).size !== data.length) {
+          this.estadoEntidades.set('error'); this.errorEntidades.set('El catálogo de entidades está incompleto. No se habilitó la selección.'); this.reintentarEntidades.set(true); return;
+        }
+        this.entidades.set(data); this.estadoEntidades.set(data.length ? 'disponible' : 'vacio');
       },
-      error: () => this.error.set('Error al cargar la lista de entidades públicas')
-    });
+      error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'las entidades'); this.estadoEntidades.set(fallo.estado);
+        this.errorEntidades.set(fallo.mensaje); this.reintentarEntidades.set(fallo.reintentable); } }
+    }));
   }
-
-  private maskEmail(email: string): string {
-    if (!email || !email.includes('@')) return email || '—';
-    const [user, domain] = email.split('@');
-    if (!domain) return email;
-    const visible = user.slice(0, 2);
-    return `${visible}${'*'.repeat(Math.max(3, user.length - 2))}@${domain}`;
+  guia() { return GUIA[this.step()]; }
+  temaEfectivo(): string { return this.tema.trim(); }
+  getEntidadSeleccionadaNombre(): string { return this.entidades().find(e => e.id === this.entidadId)?.nombre || 'Entidad no disponible'; }
+  formatosSeleccionadosLabels(): string[] { return this.formatos.filter(f => this.formatoRespuesta[f.key]).map(f => f.label); }
+  revisionLocal(): { label: string; revisado: boolean }[] {
+    return [
+      { label: 'Entidad identificada en el catálogo consultado', revisado: this.entidades().some(e => e.id === this.entidadId) },
+      { label: 'Asunto y descripción incorporados para revisión', revisado: !!this.asunto.trim() && !!this.descripcion.trim() },
+      { label: 'Modalidad y canal seleccionados', revisado: !!this.formatosSeleccionadosLabels().length && !!this.medioNotificacion },
+      { label: 'Archivos opcionales revisados; todavía no registrados', revisado: this.zonas.every(z => !z.file() || this.validarArchivoConAviso(z.file()!).valid) }
+    ];
   }
-
-  temaEfectivo(): string {
-    return this.tema === 'Otros' ? this.temaOtro.trim() : this.tema;
-  }
-
-  formatosSeleccionadosLabels(): string[] {
-    const seleccionados: string[] = [];
-    if (this.formatoRespuesta.correo) seleccionados.push('Correo electrónico');
-    if (this.formatoRespuesta.copiaSimple) seleccionados.push('Copia simple / fotocopia');
-    if (this.formatoRespuesta.copiaCertificada) seleccionados.push('Copia certificada');
-    if (this.formatoRespuesta.soporteMagnetico) seleccionados.push('Soportes magnéticos o digitales');
-    return seleccionados;
-  }
-
-  getEntidadSeleccionadaNombre(): string {
-    return this.entidades().find((e) => e.id === this.entidadId)?.nombre || '—';
-  }
-
-  seleccionarMedioNotificacion(medio: 'correo' | 'fisica'): void {
-    this.medioNotificacion = medio;
-    if (medio === 'correo') {
-      this.aceptaCorreo = true;
-    } else {
-      this.aceptaFisica = true;
+  seleccionarMedioNotificacion(medio: 'correo' | 'fisica'): void { if (!this.bloqueado()) this.medioNotificacion = medio; }
+  private validar(paso: number): Record<string, string> {
+    const errors: Record<string, string> = {};
+    if (!this.actual() || !this.idValido(this.authService.obtenerSesion()?.ciudadanoId)) errors['sesion'] = 'No se identificó al ciudadano de la sesión. Inicie sesión nuevamente.';
+    if (this.estadoEntidades() !== 'disponible' || !this.entidades().some(e => e.id === this.entidadId)) errors['entidad'] = 'Seleccione una entidad del catálogo autorizado.';
+    if (!this.asunto.trim() || this.asunto.trim().length > 500) errors['asunto'] = 'Ingrese un asunto de hasta 500 caracteres.';
+    if (!this.descripcion.trim()) errors['descripcion'] = 'Describa la información solicitada.';
+    if (this.tema.trim().length > 100) errors['tema'] = 'El tema admite hasta 100 caracteres.';
+    if (paso >= 2) {
+      if (!this.formatosSeleccionadosLabels().length) errors['formato'] = 'Seleccione al menos una modalidad de entrega.';
+      if (!['correo', 'fisica'].includes(this.medioNotificacion)) errors['medio'] = 'Seleccione un medio formal de notificación.';
+      if (this.medioNotificacion === 'correo' && !this.aceptaCorreo) errors['medio'] = 'Acepte expresamente la notificación por correo.';
+      if (this.medioNotificacion === 'fisica' && !this.aceptaFisica) errors['medio'] = 'Revise y acepte el compromiso aplicable a las reproducciones solicitadas.';
     }
-  }
-
-  // ── GESTIÓN DE ARCHIVOS ─────────────────────────────────────────────────────
-
-  validarArchivoConAviso(
-    file: File,
-    allowZip = false,
-    isPrincipal = false
-  ): { valid: boolean; warning?: string } {
-    const name = file.name || 'documento';
-    const ext = name.toLowerCase().split('.').pop() || '';
-    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-    const maxSize = 10 * 1024 * 1024; // 10MB
-
-    // 1. Advertencia de límite de peso mayor a 10 MB
-    if (file.size > maxSize) {
-      return {
-        valid: false,
-        warning: `El archivo «${name}» (${sizeMB} MB) supera el límite máximo permitido de 10 MB. Reduzca el tamaño o comprima el documento antes de adjuntarlo.`
-      };
+    if (paso >= 3) for (const zona of this.zonas) { const file = zona.file(); if (file && !this.validarArchivoConAviso(file).valid) errors['archivos'] = 'Revise los archivos seleccionados.'; }
+    if (paso >= 4) {
+      if (!this.consentimientoDatosPersonales) errors['consentimiento'] = 'Acepte el tratamiento de datos personales para este procedimiento.';
+      if (!this.declaraVeracidad) errors['veracidad'] = 'Confirme la veracidad de la información antes de presentar.';
     }
-
-    // 2. Advertencia si intenta subir .ZIP en Archivo Principal
-    if (isPrincipal && (ext === 'zip' || file.type.includes('zip'))) {
-      return {
-        valid: false,
-        warning: `El archivo principal no admite formato ZIP. Puede adjuntar archivos ZIP únicamente en los casilleros de Anexos a continuación.`
-      };
+    return errors;
+  }
+  canSubmit(): boolean { return !this.bloqueado() && Object.keys(this.validar(4)).length === 0; }
+  irPaso(paso: number): void {
+    if (!this.actual() || this.bloqueado() || paso < 1 || paso > 4) return;
+    const errors = paso > this.step() ? this.validar(Math.min(paso - 1, 3)) : {};
+    this.errores.set(errors); this.error.set(Object.keys(errors).length ? 'Revise los campos señalados antes de continuar.' : '');
+    if (Object.keys(errors).length) { this.enfocar('saip-errores'); return; }
+    this.step.set(paso); this.enfocar('saip-paso-titulo');
+  }
+  private enfocar(id: string): void { const gen = this.generacion; queueMicrotask(() => { if (this.actual(gen)) document.getElementById(id)?.focus(); }); }
+  usarModelo(texto: string, asunto?: string): void {
+    if (this.bloqueado() || !this.actual()) return;
+    if (this.descripcion.trim()) { this.modeloPendiente.set({ texto, asunto }); return; }
+    this.aplicarModelo(texto, asunto);
+  }
+  confirmarModelo(): void { const m = this.modeloPendiente(); if (m && this.actual() && !this.bloqueado()) this.aplicarModelo(m.texto, m.asunto); this.modeloPendiente.set(null); }
+  private aplicarModelo(texto: string, asunto?: string): void { this.descripcion = texto; if (!this.asunto.trim() && asunto) this.asunto = asunto; this.enfocar('saip-descripcion'); }
+  avisosCalidad(): string[] {
+    const avisos: string[] = [], d = this.descripcion.trim();
+    if (d && d.length < 40) avisos.push('La descripción es muy corta. Puede agregar tipo de documento, área y periodo.');
+    if (/\[[^\]]*\]/.test(d)) avisos.push('Reemplace los textos entre [corchetes] del modelo.');
+    if (/por\s*qu[eé]|opini[oó]n|explique|justifique/i.test(d)) avisos.push('Revise si puede pedir el documento existente en lugar de una opinión o explicación.');
+    return avisos;
+  }
+  validarArchivoConAviso(file: File, _allowZip = false, _isPrincipal = false): { valid: boolean; warning?: string } {
+    const warning = !file.size ? 'No se admiten archivos vacíos.' : validarDocumento(file);
+    return { valid: !warning, warning: warning ?? undefined };
+  }
+  seleccionarArchivo(event: Event, indice: number): void {
+    const input = event.target as HTMLInputElement; this.agregarArchivo(input.files?.[0], indice); input.value = '';
+  }
+  arrastrarArchivo(event: DragEvent, indice: number, activo: boolean): void {
+    event.preventDefault();
+    if (this.actual() && !this.bloqueado()) this.zonas[indice]?.dragging.set(activo);
+  }
+  soltarArchivo(event: DragEvent, indice: number): void {
+    event.preventDefault();
+    if (!this.actual() || this.bloqueado()) return;
+    this.zonas[indice]?.dragging.set(false);
+    if (event.dataTransfer && event.dataTransfer.files.length > 1) {
+      this.zonas[indice]?.warning.set('Seleccione un archivo por casillero. No se añadió un subconjunto de los archivos arrastrados.'); return;
     }
-
-    // 3. Validar formatos permitidos
-    const isPdf = file.type === 'application/pdf' || file.type === 'application/x-pdf' || ext === 'pdf';
-    const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext);
-    const isZip = allowZip && (
-      ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip', 'application/x-zip'].includes(file.type) ||
-      ext === 'zip'
-    );
-
-    if (!isPdf && !isImage && !isZip) {
-      const permitidos = allowZip ? 'PDF, JPG, PNG o ZIP' : 'PDF, JPG o PNG';
-      return {
-        valid: false,
-        warning: `El formato .${ext.toUpperCase() || 'desconocido'} de «${name}» no es compatible. Formatos admitidos: ${permitidos} (hasta 10 MB).`
-      };
-    }
-
-    return { valid: true };
+    this.agregarArchivo(event.dataTransfer?.files?.[0], indice);
   }
-
-  validarArchivo(file: File, allowZip = false): boolean {
-    const res = this.validarArchivoConAviso(file, allowZip, false);
-    if (!res.valid) {
-      this.error.set(res.warning || 'Archivo no permitido');
-      return false;
-    }
-    this.error.set('');
-    return true;
+  private agregarArchivo(file: File | undefined, indice: number): void {
+    if (!file || this.bloqueado() || !this.actual()) return;
+    const zona = this.zonas[indice]; if (!zona) return;
+    const check = this.validarArchivoConAviso(file); zona.warning.set(check.warning || null); if (check.valid) zona.file.set(file);
   }
-
-  formatFileSizeMB(size: number): string {
-    return (size / 1024 / 1024).toFixed(2);
-  }
-
-  onDragOverPrincipal(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingPrincipal.set(true);
-  }
-
-  onDragLeavePrincipal(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingPrincipal.set(false);
-  }
-
-  onPrincipalDrop(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingPrincipal.set(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, false, true);
-      if (check.valid) {
-        this.adjunto.set(file);
-        this.fileWarningPrincipal.set(null);
-      } else {
-        this.fileWarningPrincipal.set(check.warning || 'Archivo no permitido');
-      }
-    }
-  }
-
-  onPrincipalSelect(e: Event): void {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, false, true);
-      if (check.valid) {
-        this.adjunto.set(file);
-        this.fileWarningPrincipal.set(null);
-      } else {
-        this.fileWarningPrincipal.set(check.warning || 'Archivo no permitido');
-      }
-    }
-    input.value = '';
-  }
-
-  removePrincipal(): void {
-    this.adjunto.set(null);
-    this.fileWarningPrincipal.set(null);
-  }
-
-  onDragOverAnexo1(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo1.set(true);
-  }
-
-  onDragLeaveAnexo1(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo1.set(false);
-  }
-
-  onAnexo1Drop(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo1.set(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, true, false);
-      if (check.valid) {
-        this.anexo1.set(file);
-        this.fileWarningAnexo1.set(null);
-      } else {
-        this.fileWarningAnexo1.set(check.warning || 'Archivo no permitido');
-      }
-    }
-  }
-
-  onAnexo1Select(e: Event): void {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, true, false);
-      if (check.valid) {
-        this.anexo1.set(file);
-        this.fileWarningAnexo1.set(null);
-      } else {
-        this.fileWarningAnexo1.set(check.warning || 'Archivo no permitido');
-      }
-    }
-    input.value = '';
-  }
-
-  removeAnexo1(): void {
-    this.anexo1.set(null);
-    this.fileWarningAnexo1.set(null);
-  }
-
-  onDragOverAnexo2(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo2.set(true);
-  }
-
-  onDragLeaveAnexo2(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo2.set(false);
-  }
-
-  onAnexo2Drop(e: DragEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    this.isDraggingAnexo2.set(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, true, false);
-      if (check.valid) {
-        this.anexo2.set(file);
-        this.fileWarningAnexo2.set(null);
-      } else {
-        this.fileWarningAnexo2.set(check.warning || 'Archivo no permitido');
-      }
-    }
-  }
-
-  onAnexo2Select(e: Event): void {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      const check = this.validarArchivoConAviso(file, true, false);
-      if (check.valid) {
-        this.anexo2.set(file);
-        this.fileWarningAnexo2.set(null);
-      } else {
-        this.fileWarningAnexo2.set(check.warning || 'Archivo no permitido');
-      }
-    }
-    input.value = '';
-  }
-
-  removeAnexo2(): void {
-    this.anexo2.set(null);
-    this.fileWarningAnexo2.set(null);
-  }
-
+  quitarArchivo(indice: number): void { if (!this.bloqueado() && this.actual()) { this.zonas[indice]?.file.set(null); this.zonas[indice]?.warning.set(null); } }
+  abrirSelector(event: KeyboardEvent, input: HTMLInputElement): void { if (!this.bloqueado() && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); input.click(); } }
+  formatFileSizeMB(size: number): string { return (size / 1024 / 1024).toFixed(2); }
   previsualizarArchivo(file: File): void {
-    if (!file) return;
-    const ext = (file.name || '').toLowerCase().split('.').pop() || '';
-    let tipo = file.type;
-    if (!tipo) {
-      if (ext === 'pdf') tipo = 'application/pdf';
-      else if (['jpg', 'jpeg'].includes(ext)) tipo = 'image/jpeg';
-      else if (ext === 'png') tipo = 'image/png';
-      else if (ext === 'zip') tipo = 'application/zip';
-      else tipo = 'application/octet-stream';
-    }
-
-    this.previewTarget.set({
-      nombre: file.name,
-      blob: file,
-      file: file,
-      tipo: tipo
-    });
-    this.isPreviewOpen.set(true);
+    if (!this.actual() || !this.zonas.some(z => z.file() === file)) return;
+    this.previewTarget.set({ nombre: file.name, blob: file, file, tipo: file.type }); this.isPreviewOpen.set(true);
   }
-
-  cerrarPreview(): void {
-    this.isPreviewOpen.set(false);
-    this.previewTarget.set(null);
-  }
-
-  // ── BORRADOR ───────────────────────────────────────────────────────────────
-
-  guardarBorrador(): void {
-    const sesion = this.authService.obtenerSesion();
-    const payload = {
-      entidadId: this.entidadId,
-      tema: this.tema,
-      temaOtro: this.temaOtro,
-      oficinaDestinataria: this.oficinaDestinataria,
-      asunto: this.asunto,
-      descripcion: this.descripcion,
-      formatoRespuesta: this.formatoRespuesta,
-      medioNotificacion: this.medioNotificacion,
-      aceptaCorreo: this.aceptaCorreo,
-      aceptaFisica: this.aceptaFisica,
-      ciudadanoId: sesion?.ciudadanoId ?? null,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('saip.borrador', JSON.stringify(payload));
-    }
-    this.error.set('');
-    this.draftModalAbierto.set(true);
-  }
-
-  private restaurarBorradorSeguro(): void {
-    if (typeof localStorage === 'undefined') return;
-    const borradorRaw = localStorage.getItem('saip.borrador');
-    if (!borradorRaw) return;
-
-    try {
-      const borrador = JSON.parse(borradorRaw);
-      const sesion = this.authService.obtenerSesion();
-      if (borrador && sesion?.ciudadanoId && borrador.ciudadanoId === sesion.ciudadanoId) {
-        this.entidadId = borrador.entidadId ?? null;
-        this.tema = borrador.tema || '';
-        this.temaOtro = borrador.temaOtro || '';
-        this.oficinaDestinataria = borrador.oficinaDestinataria || '';
-        this.asunto = borrador.asunto || '';
-        this.descripcion = borrador.descripcion || '';
-        if (borrador.formatoRespuesta) {
-          this.formatoRespuesta = { ...this.formatoRespuesta, ...borrador.formatoRespuesta };
-        }
-        if (borrador.medioNotificacion) {
-          this.medioNotificacion = borrador.medioNotificacion;
-        }
-        this.aceptaCorreo = borrador.aceptaCorreo ?? true;
-        this.aceptaFisica = borrador.aceptaFisica ?? false;
-
-        const fechaMsg = borrador.updatedAt ? new Date(borrador.updatedAt).toLocaleString() : 'recientemente';
-        this.mensaje.set(`Se restauró el borrador guardado el ${fechaMsg}`);
-        this.cdr.markForCheck();
-      } else {
-        localStorage.removeItem('saip.borrador');
-      }
-    } catch {
-      localStorage.removeItem('saip.borrador');
-    }
-  }
-
+  cerrarPreview(): void { this.isPreviewOpen.set(false); this.previewTarget.set(null); }
+  guardarBorrador(): void { if (this.actual() && !this.bloqueado()) this.draftModalAbierto.set(true); }
   resetForm(): void {
-    this.entidadId = null;
-    this.tema = '';
-    this.temaOtro = '';
-    this.oficinaDestinataria = '';
-    this.asunto = '';
-    this.descripcion = '';
-    this.formatoRespuesta = { correo: true, copiaSimple: false, copiaCertificada: false, soporteMagnetico: false };
-    this.medioNotificacion = 'correo';
-    this.aceptaCorreo = true;
-    this.aceptaFisica = false;
-    this.adjunto.set(null);
-    this.anexo1.set(null);
-    this.anexo2.set(null);
-    this.fileWarningPrincipal.set(null);
-    this.fileWarningAnexo1.set(null);
-    this.fileWarningAnexo2.set(null);
-    this.error.set('');
-    this.mensaje.set('');
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    this.cdr.markForCheck();
+    this.entidadId = null; this.tema = ''; this.oficinaDestinataria = ''; this.asunto = ''; this.descripcion = '';
+    this.formatoRespuesta = { correo: false, copiaSimple: false, copiaCertificada: false, soporteMagnetico: false };
+    this.medioNotificacion = ''; this.aceptaCorreo = false; this.aceptaFisica = false;
+    this.consentimientoDatosPersonales = false; this.declaraVeracidad = false;
+    for (const z of this.zonas) { z.file.set(null); z.warning.set(null); z.dragging.set(false); }
+    this.step.set(1); this.errores.set({}); this.error.set(''); this.mensaje.set('');
   }
-
-  // ── VALIDACIÓN Y ENVÍO ──────────────────────────────────────────────────────
-
-  canSubmit(): boolean {
-    if (!this.entidadId || !this.asunto.trim() || !this.descripcion.trim()) return false;
-    const anyFormat = Object.values(this.formatoRespuesta).some((v) => v);
-    if (!anyFormat) return false;
-    if (!this.medioNotificacion) return false;
-    if (this.medioNotificacion === 'correo' && !this.aceptaCorreo) return false;
-    if (this.medioNotificacion === 'fisica' && !this.aceptaFisica) return false;
-    if (this.tema === 'Otros' && !this.temaOtro.trim()) return false;
-    return true;
-  }
-
   handleSubmit(isDraft: boolean): void {
-    if (isDraft) {
-      this.guardarBorrador();
-      return;
-    }
-
-    if (!this.entidadId || !this.asunto.trim() || !this.descripcion.trim()) {
-      this.error.set('Por favor complete todos los campos obligatorios (*).');
-      return;
-    }
-
-    const anyFormat = Object.values(this.formatoRespuesta).some((v) => v);
-    if (!anyFormat) {
-      this.error.set('Seleccione al menos una modalidad de entrega.');
-      return;
-    }
-
-    if (!this.medioNotificacion) {
-      this.error.set('Seleccione un medio formal de notificación.');
-      return;
-    }
-
-    if (this.medioNotificacion === 'correo' && !this.aceptaCorreo) {
-      this.error.set('Debe aceptar la notificación por correo electrónico conforme a Ley.');
-      return;
-    }
-
-    if (this.medioNotificacion === 'fisica' && !this.aceptaFisica) {
-      this.error.set('Debe aceptar el compromiso de pago según el TUPA de la entidad.');
-      return;
-    }
-
-    if (this.tema === 'Otros' && !this.temaOtro.trim()) {
-      this.error.set('Ha seleccionado "Otros" como tema: por favor escriba la materia correspondiente.');
-      return;
-    }
-
-    this.error.set('');
-    this.confirmModalAbierto.set(true);
+    if (isDraft) { this.guardarBorrador(); return; }
+    if (this.bloqueado()) return;
+    const errors = this.validar(4); this.errores.set(errors);
+    if (Object.keys(errors).length) { this.error.set('Revise los campos señalados antes de presentar.'); this.enfocar('saip-errores'); return; }
+    this.error.set(''); this.confirmacion = this.capturarEnvio(); this.confirmModalAbierto.set(true);
   }
-
+  private capturarEnvio(): Envio {
+    const notas: string[] = [];
+    if (this.oficinaDestinataria.trim()) notas.push(`[Oficina destinataria: ${this.oficinaDestinataria.trim()}]`);
+    if (this.formatoRespuesta.soporteMagnetico) notas.push('[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]');
+    return { datos: { asunto: this.asunto.trim(), descripcion: [...notas, this.descripcion.trim()].join('\n\n'),
+      ciudadanoId: this.authService.obtenerSesion()!.ciudadanoId!, entidadId: this.entidadId!, tipoInformacion: this.temaEfectivo() || undefined,
+      formatoDigital: this.formatoRespuesta.correo, formatoFisico: this.formatoRespuesta.copiaSimple || this.formatoRespuesta.copiaCertificada || this.formatoRespuesta.soporteMagnetico,
+      copiaSimple: this.formatoRespuesta.copiaSimple, copiaCertificada: this.formatoRespuesta.copiaCertificada,
+      consentimientoDatosPersonales: this.consentimientoDatosPersonales, canalNotificacion: this.medioNotificacion === 'fisica' ? 'FISICA' : 'CORREO_ELECTRONICO' },
+      archivos: this.zonas.flatMap((z, i) => z.file() ? [{ file: z.file()!, tipo: (i ? 'DOCUMENTO_ADJUNTO' : 'SOLICITUD_ORIGINAL') as TipoDocumento, estado: 'seleccionado' as const }] : []) };
+  }
   crearSolicitud(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (!sesion?.ciudadanoId) {
-      this.error.set('No se encontró el ciudadano en sesión. Por favor inicie sesión nuevamente.');
-      this.confirmModalAbierto.set(false);
-      return;
+    if (this.bloqueado() || !this.actual()) return;
+    const errors = this.validar(4); this.errores.set(errors);
+    if (Object.keys(errors).length) { this.error.set('Revise los campos señalados antes de presentar.'); return; }
+    const envio = this.capturarEnvio();
+    if (this.confirmacion && (JSON.stringify(envio.datos) !== JSON.stringify(this.confirmacion.datos)
+      || envio.archivos.length !== this.confirmacion.archivos.length || envio.archivos.some((a, i) => a.file !== this.confirmacion!.archivos[i].file))) {
+      this.confirmModalAbierto.set(false); this.confirmacion = null; this.error.set('El contenido cambió. Revise y confirme nuevamente.'); return;
     }
-
-    this.loading.set(true);
-    this.error.set('');
-
-    const temaFinal = this.temaEfectivo();
-    const formatoDigital = this.formatoRespuesta.correo;
-    const formatoFisico = this.formatoRespuesta.copiaSimple || this.formatoRespuesta.copiaCertificada || this.formatoRespuesta.soporteMagnetico;
-    const canalNotif = this.medioNotificacion === 'fisica' ? 'FISICA' : 'CORREO_ELECTRONICO';
-
-    const notasAdicionales: string[] = [];
-    if (this.oficinaDestinataria.trim()) {
-      notasAdicionales.push(`[Oficina destinataria: ${this.oficinaDestinataria.trim()}]`);
-    }
-    if (this.formatoRespuesta.soporteMagnetico) {
-      notasAdicionales.push(`[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]`);
-    }
-
-    const descFinal = notasAdicionales.length > 0
-      ? `${notasAdicionales.join('\n')}\n\n${this.descripcion.trim()}`
-      : this.descripcion.trim();
-
-    const solicitud: SolicitudCreate = {
-      asunto: this.asunto.trim(),
-      descripcion: descFinal,
-      ciudadanoId: sesion.ciudadanoId,
-      entidadId: this.entidadId!,
-      tipoInformacion: temaFinal || undefined,
-      formatoDigital,
-      formatoFisico,
-      copiaSimple: this.formatoRespuesta.copiaSimple,
-      copiaCertificada: this.formatoRespuesta.copiaCertificada,
-      consentimientoDatosPersonales: true,
-      canalNotificacion: canalNotif
-    };
-
-    this.solicitudService.crear(solicitud).subscribe({
-      next: (respuesta) => {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem('saip.borrador');
-        }
-
-        const archivos: { file: File; tipo: TipoDocumento }[] = [];
-        if (this.adjunto()) archivos.push({ file: this.adjunto()!, tipo: 'SOLICITUD_ORIGINAL' });
-        if (this.anexo1()) archivos.push({ file: this.anexo1()!, tipo: 'DOCUMENTO_ADJUNTO' });
-        if (this.anexo2()) archivos.push({ file: this.anexo2()!, tipo: 'DOCUMENTO_ADJUNTO' });
-
-        if (archivos.length > 0 && respuesta.id) {
-          (async () => {
-            let exitos = 0;
-            const errores: string[] = [];
-
-            for (const item of archivos) {
-              try {
-                await firstValueFrom(
-                  this.documentoService.upload(item.file, item.tipo, { solicitudId: respuesta.id! })
-                );
-                exitos++;
-              } catch (uploadErr: any) {
-                const msg = problemDetailsMessage(uploadErr, 'Error al subir archivo');
-                errores.push(`${item.file.name}: ${msg}`);
-              }
-            }
-
-            this.loading.set(false);
-            this.confirmModalAbierto.set(false);
-            this.expedienteCreado.set(respuesta.expediente || '');
-
-            if (errores.length > 0) {
-              this.mensaje.set(`Solicitud registrada pero ocurrieron errores al subir adjuntos: ${errores.join(' | ')}`);
-            }
-            this.successModalAbierto.set(true);
-            this.cdr.markForCheck();
-          })();
-        } else {
-          this.loading.set(false);
-          this.confirmModalAbierto.set(false);
-          this.expedienteCreado.set(respuesta.expediente || '');
-          this.successModalAbierto.set(true);
-          this.cdr.markForCheck();
-        }
-      },
-      error: (err) => {
-        this.loading.set(false);
+    this.envio = envio; const gen = this.generacion;
+    this.archivosEnviados.set(envio.archivos); this.loading.set(true); this.error.set(''); this.mensaje.set('');
+    this.operaciones.add(this.solicitudService.crear(envio.datos).pipe(timeout(30_000)).subscribe({
+      next: respuesta => {
+        if (!this.actual(gen)) return;
         this.confirmModalAbierto.set(false);
-        this.error.set(err.error?.mensaje || 'Error al presentar la solicitud. Verifique su conexión.');
-        this.cdr.markForCheck();
+        if (!this.respuestaCompatible(respuesta, envio)) { this.incierta('El servidor respondió sin una identidad de solicitud compatible. No repita la creación; revise su panel.'); return; }
+        this.solicitudCreada.set(respuesta); this.expedienteCreado.set(respuesta.expediente); this.subirSiguiente(0, gen);
+      },
+      error: error => {
+        if (!this.actual(gen)) return;
+        this.loading.set(false); this.confirmModalAbierto.set(false);
+        if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
+          this.incierta('Resultado incierto: el servidor podría haber registrado la solicitud. No se repetirá el POST. No existe una recuperación inequívoca por operación; revise su panel antes de iniciar otra solicitud.');
+        } else {
+          this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
+            : error.status === 403 ? 'No tiene permiso para presentar esta solicitud.' : 'El servidor rechazó la creación. Revise los campos y las condiciones de presentación.');
+        }
       }
-    });
+    }));
   }
-
-  // ── RESUMEN PARA MODAL DE CONFIRMACIÓN ──────────────────────────────────────
-
+  private respuestaCompatible(r: Solicitud | null, envio: Envio): r is Solicitud {
+    return !!r && this.idValido(r.id) && !!r.expediente?.trim() && r.ciudadanoId === envio.datos.ciudadanoId && r.entidadId === envio.datos.entidadId
+      && r.asunto === envio.datos.asunto && r.descripcion === envio.datos.descripcion
+      && r.consentimientoDatosPersonales === envio.datos.consentimientoDatosPersonales
+      && r.canalNotificacion === envio.datos.canalNotificacion
+      && r.formatoDigital === envio.datos.formatoDigital && r.formatoFisico === envio.datos.formatoFisico
+      && r.copiaSimple === envio.datos.copiaSimple && r.copiaCertificada === envio.datos.copiaCertificada;
+  }
+  private incierta(mensaje: string): void { this.loading.set(false); this.confirmModalAbierto.set(false); this.estadoEnvio.set('incierta'); this.error.set(mensaje); }
+  private subirSiguiente(indice: number, gen: number): void {
+    if (!this.actual(gen) || !this.envio || !this.solicitudCreada()) return;
+    const item = this.envio.archivos[indice];
+    if (!item) { this.loading.set(false); this.estadoEnvio.set('confirmada'); this.successModalAbierto.set(true); return; }
+    item.estado = 'subiendo'; this.archivosEnviados.set([...this.envio.archivos]);
+    this.operaciones.add(this.documentoService.upload(item.file, item.tipo, { solicitudId: this.solicitudCreada()!.id }).pipe(timeout(30_000)).subscribe({
+      next: doc => {
+        if (!this.actual(gen)) return;
+        if (!this.documentoCompatible(doc, item)) { item.estado = 'incierto'; this.detenerSubidas('La respuesta documental no acredita el archivo vinculado esperado.'); return; }
+        item.documento = doc; item.estado = 'registrado'; this.archivosEnviados.set([...this.envio!.archivos]); this.subirSiguiente(indice + 1, gen);
+      },
+      error: error => {
+        if (!this.actual(gen)) return;
+        item.estado = error instanceof HttpErrorResponse && error.status > 0 && error.status < 500 ? 'rechazado' : 'incierto';
+        this.detenerSubidas('La solicitud está registrada, pero no se confirmó la vinculación de todos los archivos. No se repiten subidas automáticamente.');
+      }
+    }));
+  }
+  private documentoCompatible(doc: DocumentoMetadata, item: ArchivoPresentacion): boolean {
+    return !!doc && this.idValido(doc.id) && doc.solicitudId === this.solicitudCreada()?.id && doc.tipoDocumento === item.tipo
+      && !DOCUMENTO_RELATION_KEYS.some(key => key !== 'solicitudId' && doc[key] != null)
+      && doc.estado === 'ACTIVO' && doc.nombreOriginal === item.file.name && doc.sizeBytes === item.file.size
+      && !!doc.hashSha256 && /^[a-f0-9]{64}$/i.test(doc.hashSha256)
+      && !this.archivosEnviados().some(a => a.documento?.id === doc.id);
+  }
+  private detenerSubidas(mensaje: string): void {
+    this.loading.set(false); this.estadoEnvio.set('parcial'); this.error.set(mensaje); this.archivosEnviados.set([...this.envio!.archivos]);
+  }
+  comprobarRegistro(): void {
+    const creada = this.solicitudCreada(), envio = this.envio;
+    if (!this.actual() || this.loading() || !creada || !envio) return;
+    const gen = this.generacion; this.loading.set(true); this.errorRecuperacion.set(''); this.documentosConsultados.set(null);
+    this.operaciones.add(forkJoin({ solicitud: this.solicitudService.findById(creada.id), documentos: this.documentoService.listByRelation({ solicitudId: creada.id }) }).pipe(timeout(30_000)).subscribe({
+      next: ({ solicitud, documentos }) => {
+        if (!this.actual(gen)) return;
+        this.loading.set(false);
+        if (!this.respuestaCompatible(solicitud, envio) || solicitud.id !== creada.id || solicitud.expediente !== creada.expediente
+          || !Array.isArray(documentos) || new Set(documentos.map(d => d?.id)).size !== documentos.length
+          || documentos.some(d => !this.idValido(d?.id) || d.solicitudId !== creada.id || d.estado !== 'ACTIVO'
+            || DOCUMENTO_RELATION_KEYS.some(key => key !== 'solicitudId' && d[key] != null))) {
+          this.errorRecuperacion.set('La consulta no acredita este recurso y sus documentos. No se confirmó otro registro.'); return;
+        }
+        this.solicitudCreada.set(solicitud); this.documentosConsultados.set(documentos);
+      },
+      error: () => { if (this.actual(gen)) { this.loading.set(false); this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. El error no acredita ausencia de archivos.'); } }
+    }));
+  }
   solicitudConfirmSummary(): ReferenceConfirmSummary[] {
-    const tema = this.temaEfectivo();
-    const formatosStr = this.formatosSeleccionadosLabels().join(', ') || '—';
-    const medioLabel = this.medioNotificacion === 'fisica' ? 'Notificación física' : 'Correo electrónico';
-
-    const summary: ReferenceConfirmSummary[] = [
-      { label: 'Solicitante', value: this.sesionVisual().nombre || '—' },
-      { label: this.docLabel(), value: this.docNumero() || '—', mono: true },
-      { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() }
-    ];
-
-    if (tema) {
-      summary.push({ label: 'Tema o materia', value: tema });
-    }
-    if (this.oficinaDestinataria.trim()) {
-      summary.push({ label: 'Oficina destinataria', value: this.oficinaDestinataria.trim() });
-    }
-
-    summary.push(
-      { label: 'Asunto', value: this.asunto.trim() || '—' },
-      { label: 'Modalidad de entrega', value: formatosStr },
-      { label: 'Medio de notificación', value: medioLabel }
-    );
-
-    return summary;
+    return [{ label: 'Solicitante', value: this.sesionVisual().nombre || 'Nombre no disponible' }, { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() },
+      { label: 'Asunto', value: this.asunto.trim() }, { label: 'Modalidad', value: this.formatosSeleccionadosLabels().join(', ') },
+      { label: 'Notificación', value: this.medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' },
+      { label: 'Archivos seleccionados', value: String(this.zonas.filter(z => z.file()).length) }];
   }
-
-  solicitudWarning(): ReferenceConfirmWarning {
-    return {
-      label: 'Plazo legal',
-      detail: 'La entidad tendrá 10 días hábiles para responder desde la fecha de envío (Ley N° 27806).'
-    };
-  }
-
-  // ── METADATOS PARA MODAL DE ÉXITO ──────────────────────────────────────────
-
-  solicitudSuccessMetadata(): ReferenceSuccessMeta[] {
-    const formatosStr = this.formatosSeleccionadosLabels().join(', ') || 'No definida';
-    return [
-      { label: 'Entidad receptora', value: this.getEntidadSeleccionadaNombre() },
-      { label: 'Asunto', value: this.asunto.trim() || '—' },
-      { label: 'Modalidad', value: formatosStr },
-      { label: 'Solicitante', value: this.sesionVisual().nombre || '—' }
-    ];
-  }
-
-  solicitudNextSteps(): ReferenceSuccessNextStep[] {
-    return [
-      {
-        label: 'La entidad evaluará su solicitud y emitirá respuesta.',
-        hint: 'Recibirá notificación por correo cuando exista una decisión.'
-      },
-      {
-        label: 'Si no recibe respuesta en 10 días hábiles, podrá apelar ante el TTAIP.',
-        hint: 'Silencio Administrativo Negativo'
-      },
-      { label: 'Puede consultar el estado en cualquier momento desde su panel.' }
-    ];
-  }
-
-  irPanelCiudadano(): void {
-    this.successModalAbierto.set(false);
-    this.draftModalAbierto.set(false);
-    this.resetForm();
-    this.router.navigate(['/ciudadano']);
-  }
-
-  verSolicitudCreada(): void {
-    const exp = this.expedienteCreado();
-    this.successModalAbierto.set(false);
-    this.resetForm();
-    this.router.navigate(exp ? ['/ciudadano/solicitud', exp] : ['/ciudadano']);
-  }
+  solicitudWarning(): ReferenceConfirmWarning { return { label: 'Registro y adjuntos', detail: 'La creación y cada archivo se registran por separado. Una subida fallida no revierte la solicitud. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.' }; }
+  solicitudSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.solicitudCreada(); return r ? [
+    { label: 'Solicitud', value: String(r.id), mono: true }, { label: 'Entidad', value: r.entidadNombre || this.getEntidadSeleccionadaNombre() },
+    { label: 'Fecha registrada', value: r.fechaPresentacion || 'No disponible' }, { label: 'Fecha límite del servidor', value: r.fechaLimite || 'No disponible' },
+    { label: 'Documentos vinculados', value: String(this.archivosEnviados().filter(a => a.estado === 'registrado').length) }] : []; }
+  solicitudNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte el recurso y sus documentos por sus identificadores persistidos.' },
+    { label: 'El registro no acredita entrega, notificación eficaz, firma ni emisión formal.' }]; }
+  cerrarResultado(): void { this.successModalAbierto.set(false); this.enfocar('saip-resultado'); }
+  irPanelCiudadano(): void { if (this.actual()) this.router.navigate(['/ciudadano']); }
+  verSolicitudCreada(): void { const r = this.solicitudCreada(); if (this.actual() && r && this.idValido(r.id) && r.expediente) this.router.navigate(['/ciudadano/solicitud', r.expediente]); }
 }

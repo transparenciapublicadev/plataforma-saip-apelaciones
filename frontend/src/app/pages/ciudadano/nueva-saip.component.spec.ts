@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
+import { signal } from '@angular/core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { NuevaSaipComponent } from './nueva-saip.component';
 import { SolicitudService } from '../../services/solicitud.service';
@@ -11,7 +12,9 @@ import { Solicitud } from '../../models/solicitud.model';
 
 describe('NuevaSaipComponent', () => {
   const mockSolicitudService = {
-    crear: vi.fn(() => of({ id: 101, expediente: 'SAIP-2026-00101' } as Partial<Solicitud>))
+    crear: vi.fn(() => of({ id: 101, expediente: 'SAIP-2026-00101', ciudadanoId: 5, entidadId: 1, asunto: 'Asunto para envío', descripcion: 'Descripción para envío',
+      consentimientoDatosPersonales: true, canalNotificacion: 'CORREO_ELECTRONICO', formatoDigital: true, formatoFisico: false,
+      copiaSimple: false, copiaCertificada: false } as Partial<Solicitud>))
   };
 
   const mockEntidadService = {
@@ -22,6 +25,8 @@ describe('NuevaSaipComponent', () => {
   };
 
   const mockAuthService = {
+    getToken: () => 'sesion-sintetica',
+    cambiosSesion: signal(1),
     obtenerSesion: vi.fn(() => ({
       ciudadanoId: 5,
       nombre: 'Juan Pérez Quispe',
@@ -32,7 +37,7 @@ describe('NuevaSaipComponent', () => {
   };
 
   const mockDocumentoService = {
-    upload: vi.fn(() => of({ id: 99, nombreOriginal: 'archivo.pdf' }))
+    upload: vi.fn(() => of({ id: 99, nombreOriginal: 'sustento.pdf', solicitudId: 101, tipoDocumento: 'SOLICITUD_ORIGINAL', estado: 'ACTIVO', sizeBytes: 13, hashSha256: 'a'.repeat(64) }))
   };
 
   const mockRouter = {
@@ -83,6 +88,8 @@ describe('NuevaSaipComponent', () => {
     component.descripcion = 'Requiero detalle de partidas presupuestales 2025';
     component.medioNotificacion = 'correo';
     component.aceptaCorreo = true;
+    component.consentimientoDatosPersonales = true; component.declaraVeracidad = true;
+    component.formatoRespuesta.correo = true;
 
     expect(component.canSubmit()).toBe(true);
 
@@ -99,30 +106,28 @@ describe('NuevaSaipComponent', () => {
     component.formatoRespuesta.correo = true;
     expect(component.canSubmit()).toBe(true);
 
-    // Si selecciona Otros pero no escribe temaOtro
-    component.tema = 'Otros';
-    component.temaOtro = '';
+    component.tema = 'x'.repeat(101);
     expect(component.canSubmit()).toBe(false);
 
-    component.temaOtro = 'Procesos disciplinarios';
+    component.tema = 'Procesos disciplinarios';
     expect(component.canSubmit()).toBe(true);
   });
 
-  it('debería cambiar el medio de notificación y ajustar consentimientos', () => {
+  it('debería cambiar el medio sin aceptar consentimientos silenciosamente', () => {
     const fixture = TestBed.createComponent(NuevaSaipComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
 
     component.seleccionarMedioNotificacion('fisica');
     expect(component.medioNotificacion).toBe('fisica');
-    expect(component.aceptaFisica).toBe(true);
+    expect(component.aceptaFisica).toBe(false);
 
     component.seleccionarMedioNotificacion('correo');
     expect(component.medioNotificacion).toBe('correo');
-    expect(component.aceptaCorreo).toBe(true);
+    expect(component.aceptaCorreo).toBe(false);
   });
 
-  it('debería guardar y restaurar borrador en localStorage', () => {
+  it('debería informar que el borrador permanece solo en memoria', () => {
     const fixture = TestBed.createComponent(NuevaSaipComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
@@ -133,9 +138,9 @@ describe('NuevaSaipComponent', () => {
     component.guardarBorrador();
 
     expect(component.draftModalAbierto()).toBe(true);
-    const stored = JSON.parse(localStorage.getItem('saip.borrador') || '{}');
-    expect(stored.asunto).toBe('Borrador de prueba');
-    expect(stored.entidadId).toBe(2);
+    expect(localStorage.getItem('saip.borrador')).toBeNull();
+    expect(component.asunto).toBe('Borrador de prueba');
+    expect(component.entidadId).toBe(2);
   });
 
   it('debería abrir modal de confirmación si handleSubmit(false) es válido', () => {
@@ -149,6 +154,7 @@ describe('NuevaSaipComponent', () => {
     component.formatoRespuesta.correo = true;
     component.medioNotificacion = 'correo';
     component.aceptaCorreo = true;
+    component.consentimientoDatosPersonales = true; component.declaraVeracidad = true;
 
     component.handleSubmit(false);
     expect(component.confirmModalAbierto()).toBe(true);
@@ -166,13 +172,14 @@ describe('NuevaSaipComponent', () => {
     component.formatoRespuesta.correo = true;
     component.medioNotificacion = 'correo';
     component.aceptaCorreo = true;
+    component.consentimientoDatosPersonales = true; component.declaraVeracidad = true;
 
     const dummyFile = new File(['dummy content'], 'sustento.pdf', { type: 'application/pdf' });
     component.adjunto.set(dummyFile);
 
     component.crearSolicitud();
     // Permitir resolución de microtareas asíncronas
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await fixture.whenStable();
 
     expect(mockSolicitudService.crear).toHaveBeenCalled();
     expect(mockDocumentoService.upload).toHaveBeenCalledWith(
