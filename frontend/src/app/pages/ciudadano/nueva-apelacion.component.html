@@ -1,501 +1,115 @@
-<div class="min-h-screen bg-background">
-  @if (loadingSolicitud()) {
-    <div class="max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando solicitudes...</p>
-      </div>
-    </div>
-  } @else if (modoSeleccion() && !solicitud()) {
+<div class="appeal-form-page min-h-screen bg-background">
+  @if (modoSeleccion()) {
     <div class="relative bg-paper border-b border-border overflow-hidden">
-      <div class="relative max-w-4xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-        <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-          <svg lucideArrowLeft class="w-4 h-4"></svg>
-          Volver al panel
-        </a>
-
-        <div class="flex items-start gap-5">
-          <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
-            <svg lucideScale class="w-7 h-7 text-white"></svg>
-          </div>
-          <div>
-            <span class="eyebrow">Recurso de apelación · TTAIP</span>
-            <h1 class="font-display mt-1.5" style="font-size: clamp(30px, 3.4vw, 42px); line-height: 1.08; letter-spacing: -0.02em;">
-              Interponer <span class="italic" style="color: var(--brand-700)">apelación</span>
-            </h1>
-            <p class="text-muted-foreground mt-1.5 max-w-xl">Seleccione el expediente SAIP que desea apelar ante el Tribunal.</p>
-          </div>
+      <div class="max-w-4xl mx-auto px-6 md:px-10 pt-28 pb-10">
+        <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-muted-foreground text-sm mb-6"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>Volver al panel</a>
+        <div class="flex items-start gap-5"><div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,var(--brand-500),var(--brand-700));box-shadow:inset 0 1px 0 rgba(255,255,255,0.18),var(--shadow-sm)"><svg aria-hidden="true" lucideScale class="w-7 h-7 text-white"></svg></div>
+          <div><span class="eyebrow">Recurso de apelación · TTAIP</span><h1 class="font-display mt-1.5" style="font-size:clamp(30px,3.4vw,42px);line-height:1.08;letter-spacing:-0.02em">Interponer <span class="italic" style="color:var(--brand-700)">apelación</span></h1><p class="text-muted-foreground mt-1.5 max-w-xl">Seleccione una SAIP registrada para revisar su recurso o declare una solicitud externa.</p></div>
         </div>
       </div>
     </div>
-
-    <div
-      class="max-w-4xl mx-auto px-6 md:px-10 py-10"
-      data-motion-stagger
-      data-motion-y="12"
-      data-motion-duration="0.38"
-      data-motion-delay-step="0.05">
-      <div data-motion-item class="rounded-lg p-5 mb-6 flex items-start gap-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
-        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29, 78, 216, 0.08)">
-          <svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M12 16v-4m0-4h.01" /></svg>
-        </div>
-        <div>
-          <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
-          <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-            Solo procede apelar solicitudes <span class="font-semibold">denegadas</span>, <span class="font-semibold">respondidas</span> con discrepancia o <span class="font-semibold">vencidas</span> (silencio administrativo).
-            Plazo: <span class="font-mono font-semibold">según el supuesto legal aplicable</span>.
-          </p>
-        </div>
-      </div>
-
-      <div data-motion-item class="form-shell mb-6">
-        <div class="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <span class="eyebrow">Solicitud tramitada fuera de la plataforma</span>
-            <h2 class="form-section-title mt-1">¿Su SAIP no aparece en esta bandeja?</h2>
-            <p class="text-sm text-muted-foreground mt-1.5 max-w-2xl">
-              Registre una apelación externa con la copia de su solicitud, el cargo cuando corresponda y la respuesta de la entidad o sustento del silencio administrativo.
-            </p>
-          </div>
-          <button type="button" class="btn-ghost-brand whitespace-nowrap" (click)="iniciarApelacionExterna()">
-            Apelar SAIP externa
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h14m-6-6 6 6-6 6" /></svg>
-          </button>
-        </div>
-      </div>
-
-      @if (error()) {
-        <div data-motion-item class="rounded-lg p-4 mb-6" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-          <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-        </div>
-      }
-
-      <div data-motion-item class="form-shell mb-6">
-        <div class="p-4 md:p-5">
-          <div class="relative">
-            <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path stroke-width="2" d="m20 20-3.5-3.5" /></svg>
-            <input
-              class="field-input has-icon-left !pl-10"
-              placeholder="Buscar por expediente o entidad..."
-              [ngModel]="searchTerm()"
-              (ngModelChange)="actualizarBusqueda($event)" />
-          </div>
-        </div>
-      </div>
-
-      <div data-motion-item class="form-shell">
-        <div class="form-section-header">
-          <span class="eyebrow">Bandeja</span>
-          <div class="form-section-title flex items-center gap-2">
-            <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-            Expedientes apelables
-          </div>
-        </div>
-
-        <div class="p-5">
-          @if (filteredSolicitudes().length === 0) {
-            <div class="text-center py-12">
-              <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-              </div>
-              <h3 class="font-display" style="font-size: 18px">Sin resultados</h3>
-              <p class="text-sm text-muted-foreground mt-1 mb-4">Intente con otros términos de búsqueda.</p>
-              <a routerLink="/ciudadano" class="btn-ghost-brand">Ver mis solicitudes</a>
-            </div>
-          } @else {
-            <div class="space-y-3">
-              @for (sol of filteredSolicitudes(); track sol.id) {
-                <div
-                    data-table-row
-                    class="reference-option-card rounded-lg p-5 transition-all cursor-pointer flex items-start justify-between gap-4"
-                  style="background: var(--card); border: 1px solid var(--border)"
-                  (click)="seleccionarSolicitud(sol)">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2 flex-wrap">
-                      <span class="code-chip">{{ sol.expediente }}</span>
-                      <app-status-badge [status]="sol.estado"></app-status-badge>
-                    </div>
-                    <p class="text-sm text-foreground/85">{{ sol.asunto }}</p>
-                    <div class="flex items-center gap-4 text-xs text-muted-foreground mt-1.5">
-                      <span><span class="uppercase tracking-widest text-[10px] mr-1">Entidad</span>{{ sol.entidadNombre }}</span>
-                      <span class="font-mono">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn-brand !px-4 !py-2 !text-[13px]"
-                    (click)="$event.stopPropagation(); seleccionarSolicitud(sol)">
-                    Apelar
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h14m-6-6 6 6-6 6" /></svg>
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      </div>
-    </div>
-  } @else if (solicitud() || esApelacionExterna()) {
-    <div class="relative bg-brand-gradient text-white overflow-hidden">
-      <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-      <div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12" data-hero>
-        <button type="button" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors cursor-pointer" (click)="volverASeleccion()">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-          Cambiar expediente
-        </button>
-
-        <div class="eyebrow !text-[color:var(--gold-soft)] mb-3">Recurso de apelación</div>
-        <h1 class="font-display text-balance" style="font-size: clamp(32px, 3.8vw, 48px); line-height: 1.05; letter-spacing: -0.025em;">
-          Interponer apelación ante TTAIP
-        </h1>
-        <p class="text-white/75 mt-3 max-w-2xl">
-          {{ origenVinculoDisplay() }}
-        </p>
-      </div>
-      <div class="brand-divider"></div>
-    </div>
-
-    <div
-      class="max-w-5xl mx-auto px-6 md:px-10 py-12 space-y-7"
-      data-motion-stagger
-      data-motion-y="12"
-      data-motion-duration="0.4"
-      data-motion-delay-step="0.055">
-      <div data-motion-item class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-        </div>
-        <div>
-          <span class="eyebrow" style="color: var(--brand-700)">Obligatorio · 3 documentos</span>
-          <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-            Para procesar su apelación debe adjuntar los tres documentos siguientes. El botón de presentación se activa al cargar todos los archivos y completar los fundamentos (mín. 50 caracteres).
-          </p>
-        </div>
-      </div>
-
-      @if (error()) {
-        <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-          <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-        </div>
-      }
-
-      @if (mensaje()) {
-        <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
-          <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
-        </div>
-      }
-
-      @if (esApelacionExterna()) {
-        <section data-motion-item class="form-shell">
-          <div class="form-section-header flex items-start justify-between gap-4">
-            <div>
-              <span class="eyebrow">00 · Origen externo</span>
-              <h2 class="form-section-title">Datos de la SAIP tramitada fuera de la plataforma</h2>
-            </div>
-            <span class="font-display" style="font-size: 48px; line-height: 1; color: color-mix(in srgb, var(--brand-700) 35%, transparent)">00</span>
-          </div>
-          <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div class="field">
-              <label class="field-label">Entidad del catálogo</label>
-              <select class="field-input" [(ngModel)]="entidadExternaId" name="entidadExternaId">
-                <option [ngValue]="null">No figura en el catálogo</option>
-                @for (entidad of entidades(); track entidad.id) {
-                  <option [ngValue]="entidad.id">{{ entidad.nombre }}</option>
-                }
-              </select>
-              <span class="field-hint">Seleccione una entidad cuando esté disponible.</span>
-            </div>
-            <div class="field">
-              <label class="field-label">Nombre de entidad externa</label>
-              <input class="field-input" [(ngModel)]="entidadExternaNombre" name="entidadExternaNombre" placeholder="Complete si no seleccionó una entidad" />
-            </div>
-            <div class="field">
-              <label class="field-label">RUC de entidad</label>
-              <input class="field-input" [(ngModel)]="entidadExternaRuc" name="entidadExternaRuc" maxlength="20" />
-            </div>
-            <div class="field">
-              <label class="field-label">Correo de entidad</label>
-              <input class="field-input" type="email" [(ngModel)]="entidadExternaEmail" name="entidadExternaEmail" />
-            </div>
-            <div class="field">
-              <label class="field-label">Número de solicitud externa <span class="req">*</span></label>
-              <input class="field-input" [(ngModel)]="numeroSolicitudExterna" name="numeroSolicitudExterna" placeholder="Ej. MP-2026-00421" />
-            </div>
-            <div class="field">
-              <label class="field-label">Fecha de presentación <span class="req">*</span></label>
-              <input class="field-input" type="date" [(ngModel)]="fechaPresentacionSolicitudExterna" name="fechaPresentacionSolicitudExterna" />
-            </div>
-            <div class="field">
-              <label class="field-label">Tipo de denegatoria <span class="req">*</span></label>
-              <select class="field-input" [ngModel]="tipoDenegatoriaExterna()" (ngModelChange)="tipoDenegatoriaExterna.set($event)" name="tipoDenegatoriaExterna">
-                <option value="EXPRESA">Expresa · la entidad respondió</option>
-                <option value="TACITA">Tácita · silencio administrativo negativo</option>
-              </select>
-            </div>
-            @if (tipoDenegatoriaExterna() === 'EXPRESA') {
-              <div class="field">
-                <label class="field-label">Fecha de respuesta <span class="req">*</span></label>
-                <input class="field-input" type="date" [(ngModel)]="fechaRespuestaEntidad" name="fechaRespuestaEntidad" />
-              </div>
-            }
-            <div class="field md:col-span-2">
-              <label class="field-label">Resumen de la solicitud original <span class="req">*</span></label>
-              <textarea class="field-input" rows="4" [(ngModel)]="resumenSolicitudOriginal" name="resumenSolicitudOriginal"></textarea>
-            </div>
-            @if (tipoDenegatoriaExterna() === 'EXPRESA') {
-              <div class="field md:col-span-2">
-                <label class="field-label">Resumen de la respuesta de la entidad</label>
-                <textarea class="field-input" rows="3" [(ngModel)]="resumenRespuestaEntidad" name="resumenRespuestaEntidad"></textarea>
-              </div>
-            }
-            <div class="field">
-              <label class="field-label">Referencia del cargo de recepción</label>
-              <input class="field-input" [(ngModel)]="referenciaCargoRecepcion" name="referenciaCargoRecepcion" placeholder="Código, URL o referencia documental" />
-            </div>
-            <div class="field">
-              <label class="field-label">Observación</label>
-              <input class="field-input" [(ngModel)]="observacionExterna" name="observacionExterna" placeholder="Información adicional útil para la calificación" />
-            </div>
-          </div>
-        </section>
-      } @else {
-        <section data-motion-item class="form-shell">
-          <div class="form-section-header flex items-start justify-between gap-4">
-            <div>
-              <span class="eyebrow">00 · Canal de presentación</span>
-              <h2 class="form-section-title">¿Dónde presenta su recurso?</h2>
-            </div>
-            <span class="font-display" style="font-size: 48px; line-height: 1; color: color-mix(in srgb, var(--brand-700) 35%, transparent)">00</span>
-          </div>
-          <div class="p-6 md:p-8 space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <button
-                type="button"
-                class="reference-option-card rounded-lg p-4 text-left transition-all"
-                [style.background]="canalPresentacion() === 'DIRECTA_TTAIP' ? 'var(--brand-subtle)' : 'var(--card)'"
-                [style.border]="canalPresentacion() === 'DIRECTA_TTAIP' ? '1.5px solid var(--brand-700)' : '1px solid var(--border)'"
-                (click)="canalPresentacion.set('DIRECTA_TTAIP')">
-                <span class="eyebrow">Ingreso directo</span>
-                <span class="block text-sm font-semibold text-foreground mt-1">Presentar al TTAIP</span>
-                <span class="block text-xs text-muted-foreground mt-1">El expediente ingresa inmediatamente a primera calificación.</span>
-              </button>
-              <button
-                type="button"
-                class="reference-option-card rounded-lg p-4 text-left transition-all"
-                [style.background]="canalPresentacion() === 'ANTE_ENTIDAD' ? 'var(--brand-subtle)' : 'var(--card)'"
-                [style.border]="canalPresentacion() === 'ANTE_ENTIDAD' ? '1.5px solid var(--brand-700)' : '1px solid var(--border)'"
-                (click)="canalPresentacion.set('ANTE_ENTIDAD')">
-                <span class="eyebrow">Elevación formal</span>
-                <span class="block text-sm font-semibold text-foreground mt-1">Presentar ante la entidad</span>
-                <span class="block text-xs text-muted-foreground mt-1">La entidad dispone de 2 días hábiles para elevar el recurso al TTAIP.</span>
-              </button>
-            </div>
-
-            @if (esPresentacionAnteEntidad()) {
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-                <div class="field">
-                  <label class="field-label">Fecha de presentación ante la entidad <span class="req">*</span></label>
-                  <input class="field-input" type="date" [(ngModel)]="fechaPresentacionAnteEntidad" name="fechaPresentacionAnteEntidad" />
-                </div>
-                <div class="field">
-                  <label class="field-label">Referencia del cargo <span class="req">*</span></label>
-                  <input class="field-input" [(ngModel)]="referenciaCargoPresentacionEntidad" name="referenciaCargoPresentacionEntidad" placeholder="Código, URL o referencia documental" />
-                </div>
-                <div class="field md:col-span-2">
-                  <label class="field-label">Observación</label>
-                  <textarea class="field-input" rows="3" [(ngModel)]="observacionPresentacionEntidad" name="observacionPresentacionEntidad" placeholder="Detalle adicional para la trazabilidad de la presentación"></textarea>
-                </div>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
-      <section data-motion-item class="form-shell">
-        <div class="form-section-header flex items-start justify-between gap-4">
-          <div>
-            <span class="eyebrow">01 · Tres archivos requeridos</span>
-            <h2 class="form-section-title">Documentos obligatorios</h2>
-          </div>
-          <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent)">01</span>
-        </div>
-
-        <div class="p-6 md:p-8 space-y-5">
-          @for (documento of requiredDocuments(); track documento.n) {
-            <div class="relative">
-              @if (hasDocument(documento.fileNum)) {
-                <div class="absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--success); box-shadow: var(--shadow-sm)">
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /></svg>
-                </div>
-              }
-
-              <div class="flex items-start gap-3 mb-2">
-                <span class="font-mono text-[11px] tracking-widest" style="color: var(--brand-700)">{{ documento.n }}</span>
-                <div class="flex-1">
-                  <div class="text-sm font-medium text-foreground">{{ documento.label }}</div>
-                  <div class="text-xs text-muted-foreground">{{ documento.desc }}</div>
-                </div>
-              </div>
-
-              <div
-                class="reference-upload-zone border-2 border-dashed rounded-lg p-6 text-center transition-all"
-                [class.reference-upload-zone-filled]="hasDocument(documento.fileNum)"
-                style="border-color: var(--border); background: var(--card)"
-              >
-                @if (hasDocument(documento.fileNum)) {
-                  <div class="space-y-3">
-                    <div class="flex items-center justify-center gap-2">
-                      @if (isAutoLoaded(documento.fileNum)) {
-                        <span class="pill pill-low !text-[11px] font-semibold py-0.5 px-2">Auto-cargado</span>
-                      } @else {
-                        <span class="pill pill-medium !text-[11px] font-semibold py-0.5 px-2">Carga manual</span>
-                      }
-                      <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path stroke-width="2" d="M14 2v6h6"/></svg>
-                    </div>
-                    <p class="font-medium text-foreground truncate max-w-md mx-auto">{{ documentNameFor(documento.fileNum) }}</p>
-                    <p class="text-xs text-muted-foreground">{{ documentSizeFor(documento.fileNum) }}</p>
-                    <div class="flex items-center justify-center gap-2 flex-wrap mt-1">
-                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5" (click)="previewFile(documento.fileNum)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path stroke-width="2" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
-                        Previsualizar
-                      </button>
-                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5" (click)="downloadFile(documento.fileNum)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4-4 4m0 0-4-4m4 4V4"/></svg>
-                        Descargar
-                      </button>
-                      <button type="button" class="btn-ghost-brand !px-3 !py-1.5 !text-destructive hover:!bg-destructive-subtle" (click)="removeFile(documento.fileNum)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                } @else {
-                  <label class="block cursor-pointer">
-                    <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" (change)="onFileChange($event, documento.fileNum)" />
-                    <span class="space-y-2 block">
-                      <svg class="w-8 h-8 mx-auto text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12"/></svg>
-                      <span class="text-sm text-foreground block">Arrastra tu archivo aquí o <span style="color: var(--brand-700)">haz clic para seleccionar</span></span>
-                      <span class="text-xs text-muted-foreground block">PDF, JPG, PNG o TXT (máx. 10MB)</span>
-                    </span>
-                  </label>
-                }
-              </div>
-            </div>
-          }
-
-          <div class="reference-progress-card rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs uppercase tracking-widest text-muted-foreground">Progreso</span>
-              <span class="font-mono text-sm font-semibold" [style.color]="allFilesUploaded() ? 'var(--success)' : 'var(--brand-700)'">{{ uploadedCount() }} / 3</span>
-            </div>
-            <div class="w-full h-1.5 rounded-full" style="background: var(--border)">
-              <div class="h-1.5 rounded-full transition-all duration-500" [style.width.%]="(uploadedCount() / 3) * 100" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section data-motion-item class="form-shell">
-        <div class="form-section-header flex items-start justify-between gap-4">
-          <div>
-            <span class="eyebrow">02 · Sustento jurídico</span>
-            <h2 class="form-section-title">Fundamentos de la apelación</h2>
-          </div>
-          <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent)">02</span>
-        </div>
-        <div class="p-6 md:p-8">
-          <div class="field">
-            <label class="field-label">Fundamentos jurídicos <span class="req">*</span></label>
-            <textarea
-              class="field-input"
-              rows="9"
-              style="resize: vertical; min-height: 180px"
-              placeholder="Describa detalladamente los fundamentos de su apelación. Explique por qué considera que la información solicitada no debería estar clasificada como confidencial, reservada o secreta…"
-              [(ngModel)]="fundamentos"
-              name="fundamentos"></textarea>
-            <div class="flex items-center justify-between mt-1.5">
-              <span class="field-hint">Mínimo 50 caracteres.</span>
-              <span class="font-mono text-xs" [style.color]="fundamentos.trim().length >= 50 ? 'var(--success)' : 'var(--muted-foreground)'">{{ fundamentos.trim().length }} / 50</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div data-motion-item class="form-shell">
-        <div class="p-6 md:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucideInfo class="w-4 h-4 text-brand-700"></svg>
-            </div>
-            <div class="text-sm text-muted-foreground leading-relaxed">
-              Al presentar el recurso, declara que la información es verídica.<br />
-              El TTAIP califica el recurso en <span class="font-mono font-semibold text-foreground">7 días hábiles</span> (1ra calificación).
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="btn-brand !px-6 !py-3 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-            (click)="abrirConfirmacionApelacion()"
-            [disabled]="loading() || !puedeEnviar()">
-            @if (loading()) {
-              <span class="inline-flex items-center gap-2">
-                <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
-                Enviando...
-              </span>
-            } @else {
-              <span class="inline-flex items-center gap-2">
-                <svg lucideSend class="w-4 h-4"></svg>
-                Presentar apelación
-              </span>
-            }
-          </button>
-        </div>
-      </div>
-    </div>
+  } @else {
+    <div class="relative bg-brand-gradient text-white overflow-hidden"><div class="absolute inset-0 bg-paper opacity-[0.06]"></div><div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12">
+      <a [routerLink]="rutaRegreso()" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>{{ rutaRegreso().length > 1 ? 'Volver a la solicitud' : 'Volver al panel' }}</a>
+      <div class="eyebrow !text-[color:var(--gold-soft)] mb-3">Recurso de apelación</div><h1 class="font-display text-balance" style="font-size:clamp(32px,3.8vw,48px);line-height:1.05;letter-spacing:-0.025em">Interponer apelación ante TTAIP</h1>
+      <p class="text-white/75 mt-3 max-w-2xl">{{ esApelacionExterna() ? 'Solicitud tramitada fuera de la plataforma · sin SAIP local' : 'Expediente vinculado · ' + (solicitud()?.expediente || 'Comprobando recurso') }}</p>
+    </div><div class="brand-divider"></div></div>
   }
-
-  <app-reference-confirm-modal
-    [open]="confirmModalAbierto()"
-    [submitting]="loading()"
-    title="Confirme su apelación"
-    titleLead="Confirme"
-    titleEmphasis="su apelación"
-    eyebrow="Revisión final · Apelación"
-    [description]="confirmDescription()"
-    [summary]="apelacionConfirmSummary()"
-    [warning]="apelacionWarning()"
-    [confirmLabel]="confirmLabel()"
-    (close)="confirmModalAbierto.set(false)"
-    (confirm)="crearApelacion()">
-  </app-reference-confirm-modal>
-
-  <app-reference-success-modal
-    [open]="successModalAbierto()"
-    variant="apelacion-presentada"
-    tone="success"
-    [eyebrow]="successEyebrow()"
-    [title]="successTitle()"
-    [description]="successDescription()"
-    [expediente]="expedienteTtaip()"
-    [expedienteHint]="successExpedienteHint()"
-    [plazoDias]="successPlazoDias()"
-    plazoTipo="hábiles"
-    [plazoDescripcion]="successPlazoDescripcion()"
-    plazoNorma="Reglamento del TTAIP — Ley N° 27806"
-    [metadata]="apelacionSuccessMetadata()"
-    [nextSteps]="apelacionNextSteps()"
-    primaryLabel="Ir a mi panel"
-    secondaryLabel="Ver expediente"
-    (close)="irPanelCiudadano()"
-    (primary)="irPanelCiudadano()"
-    (secondary)="verSolicitudOrigen()">
-  </app-reference-success-modal>
-
-  <app-document-preview-modal
-    [doc]="previewTarget()"
-    [open]="isPreviewOpen()"
-    (close)="cerrarPreview()">
-  </app-document-preview-modal>
+  <div class="mx-auto px-6 md:px-10 py-10 space-y-7" [ngClass]="modoSeleccion() ? 'max-w-4xl' : 'max-w-5xl'" [attr.aria-busy]="loadingSolicitud() || loading()">
+    @if (loadingSolicitud()) { <div role="status" class="form-shell p-12 text-center"><p class="text-muted-foreground">Consultando el recurso autorizado…</p></div> }
+    @if (errorConsulta()) { <div role="alert" class="appeal-alert"><p>{{ errorConsulta() }}</p>@if (reintentarConsulta()) { <button type="button" class="btn-ghost-brand mt-2" (click)="reintentarFuente()">Reintentar consulta</button> }</div> }
+    @if (error()) { <div id="apelacion-errores" tabindex="-1" role="alert" class="appeal-alert"><p>{{ error() }}</p><ul class="list-disc pl-5 mt-2">@for (item of errores() | keyvalue; track item.key) { <li>{{ item.value }}</li> }</ul></div> }
+    @if (documentoError()) { <p role="alert" class="appeal-alert">{{ documentoError() }}</p> }
+    @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el registro y las operaciones documentales…</p> }
+    @if (!apelacionCreada()) {
+      <section class="form-shell"><div class="p-5 flex flex-col md:flex-row gap-4 md:items-center justify-between"><div><span class="eyebrow">Origen del recurso</span><p class="text-sm text-muted-foreground mt-1">Cambiar de origen descarta el contenido en memoria. Cancelar una petición no revierte un registro que el servidor ya haya realizado.</p></div><div class="flex gap-2 flex-wrap">
+        @if (!modoSeleccion()) { <button type="button" class="btn-ghost-brand !text-xs" (click)="volverASeleccion()">Elegir otra SAIP registrada</button> }
+        @if (!esApelacionExterna()) { <button type="button" class="btn-ghost-brand !text-xs" (click)="iniciarApelacionExterna()">Apelar SAIP externa<svg aria-hidden="true" lucideArrowRight class="w-4 h-4"></svg></button> }
+      </div></div></section>
+    }
+    @if (modoSeleccion()) {
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--info)"><svg aria-hidden="true" lucideInfo class="w-5 h-5 flex-shrink-0" style="color:var(--info)"></svg><div><span class="eyebrow">Información registrada</span><p class="text-sm mt-1.5">Esta lista no acredita elegibilidad ni calcula el plazo para apelar. El servidor conserva sus comprobaciones y el Tribunal calificará el recurso. Una etiqueta de estado no acredita notificación eficaz.</p></div></div>
+      @if (estadoConsulta() === 'disponible') {
+        <div class="form-shell p-4 md:p-5"><label for="apelacion-busqueda" class="sr-only">Buscar por expediente, entidad o asunto</label><div class="relative"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2"></svg><input id="apelacion-busqueda" type="search" class="field-input !pl-10" placeholder="Buscar por expediente o entidad…" [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)"></div></div>
+        <section class="form-shell"><div class="form-section-header"><span class="eyebrow">Bandeja</span><h2 class="form-section-title flex items-center gap-2"><svg aria-hidden="true" lucideFileText class="w-5 h-5"></svg>Solicitudes para revisar</h2></div><div class="p-5 space-y-3">
+          @for (sol of filteredSolicitudes(); track sol.id) {
+            <article class="rounded-lg p-5 flex flex-col sm:flex-row gap-4 justify-between" style="background:var(--card);border:1px solid var(--border)"><div class="flex-1 min-w-0"><div class="flex gap-2 flex-wrap mb-2"><span class="code-chip">{{ sol.expediente }}</span><app-status-badge [status]="sol.estado"></app-status-badge></div><p class="text-sm">{{ sol.asunto || 'Asunto no registrado' }}</p><p class="text-xs text-muted-foreground mt-1.5">{{ sol.entidadNombre || 'Entidad sin nombre recuperado' }} · {{ sol.fechaPresentacion || 'Fecha no recuperada' }}</p>@if (sol.apelacion) { <p class="text-xs mt-2">La solicitud ya registra una apelación.</p> }</div><button type="button" class="btn-brand !px-4 !py-2 !text-[13px]" [disabled]="!!sol.apelacion" [attr.aria-label]="'Revisar solicitud ' + sol.expediente + ' para apelar'" (click)="seleccionarSolicitud(sol)">Revisar<svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg></button></article>
+          } @empty { <div role="status" class="py-12 text-center"><h3 class="font-display text-lg">Sin coincidencias</h3><p class="text-sm text-muted-foreground">Cambie la búsqueda; esto no altera las solicitudes del servidor.</p></div> }
+        </div></section>
+      } @else if (estadoConsulta() === 'vacio' && !errorConsulta()) { <p role="status" class="form-shell p-6">El servidor confirmó una lista vacía de solicitudes para esta cuenta. Puede declarar un origen externo si corresponde.</p> }
+    } @else if (solicitud() || esApelacionExterna()) {
+      @if (estadoEnvio() === 'incierta' && !apelacionCreada()) { <section role="status" class="form-shell p-5 space-y-3"><h2 class="form-section-title">Resultado incierto</h2><p class="text-sm">No se conoce el identificador de un registro confirmado. No se buscará una coincidencia por asunto, número declarado o nombre de archivo, ni se repetirá el POST automáticamente.</p><a routerLink="/ciudadano" class="btn-ghost-brand">Revisar mis solicitudes</a></section> }
+      @if (apelacionCreada(); as r) {
+        <section id="apelacion-resultado" tabindex="-1" class="form-shell" aria-label="Resultado del registro de apelación"><div class="form-section-header"><span class="eyebrow">Identificación del servidor</span><h2 class="form-section-title">Apelación registrada · {{ r.expediente }}</h2></div><div class="p-6 md:p-8 space-y-4"><p role="status" class="text-sm">ID {{ r.id }} · {{ r.estado || 'Estado no recuperado' }} · {{ r.fechaApelacion || 'Fecha no recuperada' }}</p>
+          @if (r.estado === 'PENDIENTE_ELEVACION') { <p class="text-sm">Registro ante entidad pendiente de elevación. La numeración reservada no acredita ingreso efectivo al TTAIP.</p> }
+          @if (estadoEnvio() === 'parcial') { <p role="status" class="text-sm font-medium">Registro con documentos incompletos: la apelación existe; no se confirmó la asociación de todos los archivos o clones. No vuelva a crearla para resolver este fallo.</p> }
+          @for (doc of documentosEnviados(); track doc) { <div class="appeal-file-row rounded-md p-3 text-sm" style="border:1px solid var(--border)"><span>{{ doc.file?.name || doc.origen?.nombreOriginal }}</span><span>{{ doc.estado === 'registrado' ? 'Asociación confirmada · ID ' + doc.documento?.id : doc.estado === 'pendiente' ? 'Operación no iniciada' : doc.estado === 'incierto' ? 'Resultado incierto' : doc.estado === 'rechazado' ? 'Rechazado por el servidor' : 'En curso' }}</span>@if (doc.documento; as registrado) { <button type="button" class="btn-ghost-brand !text-xs" (click)="descargarRegistrado(registrado)">Descargar documento registrado</button> }</div> }
+          <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar apelación y documentos</button>
+          @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
+          @if (documentosConsultados(); as docs) { <div role="status" class="space-y-2 text-sm"><p>Documentos asociados consultados: {{ docs.length }}. No se atribuyen operaciones inciertas por nombres coincidentes.</p>@for (d of docs; track d.id) { <div class="appeal-file-row"><span>Documento {{ d.id }} · {{ d.nombreOriginal || 'Nombre no recuperado' }}</span><button type="button" class="btn-ghost-brand !text-xs" (click)="descargarRegistrado(d)">Descargar</button></div> }</div> }
+          <p class="text-xs text-muted-foreground">Las referencias declaradas no equivalen a archivos almacenados. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.</p><button type="button" class="btn-brand" (click)="irPanelCiudadano()">Ir a mi panel</button>
+        </div></section>
+      }
+      @if (solicitud(); as s) { <section class="rounded-lg p-5" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><span class="eyebrow">SAIP vinculada por ID {{ s.id }}</span><p class="text-sm mt-2 font-medium">{{ s.asunto || 'Asunto no recuperado' }}</p><p class="text-sm mt-1">{{ s.entidadNombre || 'Nombre de entidad no recuperado' }}</p><p class="text-xs mt-2 text-muted-foreground">Se muestran datos del expediente autorizado. Su estado no certifica procedencia ni fecha de notificación. Los fundamentos de la apelación los consigna el recurrente.</p></section> }
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><svg aria-hidden="true" lucideAlertCircle class="w-5 h-5 flex-shrink-0" style="color:var(--brand-700)"></svg><p class="text-sm">Revise los documentos y referencias correspondientes a su origen. Un registro de datos o un archivo seleccionado no sustituye un documento del servidor ni certifica admisibilidad.</p></div>
+<fieldset class="space-y-7 min-w-0" [disabled]="bloqueado()"><legend class="sr-only">Presentación del recurso de apelación</legend>
+        @if (esApelacionExterna()) {
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">Origen externo · sin SAIP local</span><h2 class="form-section-title">Datos de la solicitud y de la entidad declarados</h2></div><div class="p-6 md:p-8 space-y-5">
+            <p class="text-sm text-muted-foreground">No se creará una SAIP local. Las fechas y referencias las declara usted; no acreditan notificación eficaz ni existencia de un archivo subido.</p>
+            <div role="radiogroup" aria-label="Procedencia de la entidad" class="grid grid-cols-1 sm:grid-cols-2 gap-3"><label class="appeal-option"><input type="radio" name="modoEntidad" value="catalogo" [ngModel]="modoEntidad()" (ngModelChange)="cambiarEntidad($event)"><span>Entidad del catálogo</span></label><label class="appeal-option"><input type="radio" name="modoEntidad" value="declarada" [ngModel]="modoEntidad()" (ngModelChange)="cambiarEntidad($event)"><span>Entidad declarada fuera del catálogo</span></label></div>
+            @if (modoEntidad() === 'catalogo') {
+              <div class="field"><label for="apelacion-entidad" class="field-label">Entidad del catálogo <span class="req">*</span></label><select id="apelacion-entidad" class="field-input" name="entidad" [(ngModel)]="entidadExternaId" [disabled]="estadoEntidades() !== 'disponible'" aria-describedby="apelacion-entidad-estado apelacion-entidad-error"><option [ngValue]="null">Seleccione una entidad por su identificador</option>@for (entidad of entidades(); track entidad.id) { <option [ngValue]="entidad.id">{{ entidad.nombre }}</option> }</select><p id="apelacion-entidad-estado" role="status" class="field-hint">@if (estadoEntidades() === 'cargando') { Consultando catálogo… } @else if (estadoEntidades() === 'vacio') { El servidor devolvió un catálogo vacío. } @else if (errorEntidades()) { {{ errorEntidades() }} }</p><p id="apelacion-entidad-error" class="field-hint text-destructive">{{ errores()['entidad'] }}</p>@if (errorEntidades()) { <button type="button" class="btn-ghost-brand !text-xs" (click)="cargarEntidades()">Reintentar catálogo</button> }</div>
+            } @else {
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5"><div class="field sm:col-span-2"><label for="apelacion-entidad-declarada" class="field-label">Nombre declarado de la entidad <span class="req">*</span></label><input id="apelacion-entidad-declarada" class="field-input" name="entidadExternaNombre" [(ngModel)]="entidadExternaNombre" maxlength="200" aria-describedby="apelacion-entidad-error-declarada"><p id="apelacion-entidad-error-declarada" class="field-hint text-destructive">{{ errores()['entidad'] }}</p></div><div class="field"><label for="apelacion-ruc" class="field-label">RUC declarado (opcional)</label><input id="apelacion-ruc" class="field-input" name="ruc" [(ngModel)]="entidadExternaRuc" maxlength="20"></div><div class="field"><label for="apelacion-email" class="field-label">Correo declarado (opcional)</label><input id="apelacion-email" type="email" class="field-input" name="email" [(ngModel)]="entidadExternaEmail" maxlength="120" aria-describedby="apelacion-correo-error"><p id="apelacion-correo-error" class="field-hint text-destructive">{{ errores()['correo'] }}</p></div></div>
+              <p role="note" class="text-xs text-muted-foreground">El nombre declarado no es una vinculación al catálogo. Las operaciones institucionales posteriores pueden requerir esa vinculación por un actor autorizado; este formulario no la fabrica.</p>
+            }
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5"><div class="field"><label for="apelacion-numero" class="field-label">Número de solicitud externa <span class="req">*</span></label><input id="apelacion-numero" class="field-input" name="numeroSolicitudExterna" [(ngModel)]="numeroSolicitudExterna" maxlength="100" aria-describedby="apelacion-externa-error"></div><div class="field"><label for="apelacion-fecha-original" class="field-label">Fecha declarada de presentación <span class="req">*</span></label><input id="apelacion-fecha-original" type="date" class="field-input" name="fechaPresentacionSolicitudExterna" [(ngModel)]="fechaPresentacionSolicitudExterna" aria-describedby="apelacion-externa-error"></div></div>
+            <div class="field"><label for="apelacion-resumen-original" class="field-label">Resumen de la solicitud original <span class="req">*</span></label><textarea id="apelacion-resumen-original" class="field-input" rows="4" name="resumenSolicitudOriginal" [(ngModel)]="resumenSolicitudOriginal" maxlength="5000" aria-describedby="apelacion-externa-error"></textarea></div>
+            <div class="field"><label for="apelacion-ref-original" class="field-label">Referencia declarada del documento de solicitud <span class="req">*</span></label><input id="apelacion-ref-original" class="field-input" name="referenciaDocumentoSolicitud" [(ngModel)]="referenciaDocumentoSolicitud" maxlength="500" aria-describedby="apelacion-externa-error"><p class="field-hint">Referencia real que conoce: código, cargo o localización. No se completa con el nombre de un archivo seleccionado ni se presenta como subida aceptada.</p></div>
+            <div class="field"><label for="apelacion-cargo-original" class="field-label">Referencia del cargo de recepción (cuando corresponda)</label><input id="apelacion-cargo-original" class="field-input" name="referenciaCargoRecepcion" [(ngModel)]="referenciaCargoRecepcion" maxlength="500"></div>
+            <div role="radiogroup" aria-label="Tipo de denegatoria declarada" class="grid grid-cols-1 sm:grid-cols-2 gap-3"><label class="appeal-option"><input type="radio" name="denegatoria" value="EXPRESA" [ngModel]="tipoDenegatoriaExterna()" (ngModelChange)="cambiarDenegatoria($event)"><span>Denegatoria expresa</span></label><label class="appeal-option"><input type="radio" name="denegatoria" value="TACITA" [ngModel]="tipoDenegatoriaExterna()" (ngModelChange)="cambiarDenegatoria($event)"><span>Denegatoria tácita / silencio declarado</span></label></div>
+            @if (tipoDenegatoriaExterna() === 'EXPRESA') {
+              <div class="field"><label for="apelacion-fecha-respuesta" class="field-label">Fecha declarada de respuesta <span class="req">*</span></label><input id="apelacion-fecha-respuesta" type="date" class="field-input" name="fechaRespuestaEntidad" [(ngModel)]="fechaRespuestaEntidad" aria-describedby="apelacion-respuesta-error"></div>
+              <div class="field"><label for="apelacion-resumen-respuesta" class="field-label">Resumen de la respuesta (o indique su referencia)</label><textarea id="apelacion-resumen-respuesta" class="field-input" rows="3" name="resumenRespuestaEntidad" [(ngModel)]="resumenRespuestaEntidad" maxlength="5000" aria-describedby="apelacion-respuesta-error"></textarea></div>
+              <div class="field"><label for="apelacion-ref-respuesta" class="field-label">Referencia declarada de respuesta (o complete el resumen)</label><input id="apelacion-ref-respuesta" class="field-input" name="referenciaRespuestaEntidad" [(ngModel)]="referenciaRespuestaEntidad" maxlength="500" aria-describedby="apelacion-respuesta-error"></div>
+            } @else {
+              <div class="field"><label for="apelacion-silencio" class="field-label">Evidencia o declaración de silencio administrativo <span class="req">*</span></label><textarea id="apelacion-silencio" class="field-input" rows="4" name="evidenciaSilencioAdministrativo" [(ngModel)]="evidenciaSilencioAdministrativo" maxlength="5000" aria-describedby="apelacion-respuesta-error"></textarea><p class="field-hint">Consigne su sustento real. El formulario no deduce silencio ni vencimiento por fechas o etiquetas.</p></div>
+            }
+            <p id="apelacion-respuesta-error" class="field-hint text-destructive">{{ errores()['respuesta'] }}</p><p id="apelacion-externa-error" class="field-hint text-destructive">{{ errores()['externa'] }}</p>
+            <div class="field"><label for="apelacion-observacion-externa" class="field-label">Observación adicional (opcional)</label><textarea id="apelacion-observacion-externa" class="field-input" rows="3" name="observacionExterna" [(ngModel)]="observacionExterna" maxlength="5000"></textarea></div>
+          </div></section>
+        } @else {
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">Canal de presentación</span><h2 class="form-section-title">¿Dónde presenta su recurso?</h2></div><div class="p-6 md:p-8 space-y-5"><div role="radiogroup" aria-label="Canal de presentación" class="grid grid-cols-1 sm:grid-cols-2 gap-3"><label class="appeal-option"><input type="radio" name="canalPresentacion" value="DIRECTA_TTAIP" [ngModel]="canalPresentacion()" (ngModelChange)="cambiarCanal($event)"><span><strong class="block">Directo al TTAIP</strong><span class="text-xs text-muted-foreground">Presentación directa del recurso; no equivale a firma ni emisión documental.</span></span></label><label class="appeal-option"><input type="radio" name="canalPresentacion" value="ANTE_ENTIDAD" [ngModel]="canalPresentacion()" (ngModelChange)="cambiarCanal($event)"><span><strong class="block">Presentación ante entidad</strong><span class="text-xs text-muted-foreground">Registro pendiente de elevación. No acredita que la entidad ya lo remitió.</span></span></label></div>
+            @if (esPresentacionAnteEntidad()) { <div class="grid grid-cols-1 sm:grid-cols-2 gap-5"><div class="field"><label for="apelacion-fecha-ante-entidad" class="field-label">Fecha real de presentación ante entidad <span class="req">*</span></label><input id="apelacion-fecha-ante-entidad" type="date" class="field-input" name="fechaPresentacionAnteEntidad" [(ngModel)]="fechaPresentacionAnteEntidad" aria-describedby="apelacion-cargo-error"></div><div class="field"><label for="apelacion-cargo-ante-entidad" class="field-label">Referencia del cargo <span class="req">*</span></label><input id="apelacion-cargo-ante-entidad" class="field-input" name="referenciaCargoPresentacionEntidad" [(ngModel)]="referenciaCargoPresentacionEntidad" maxlength="500" aria-describedby="apelacion-cargo-error"></div><div class="field sm:col-span-2"><label for="apelacion-observacion-ante-entidad" class="field-label">Observación (opcional)</label><textarea id="apelacion-observacion-ante-entidad" class="field-input" rows="3" name="observacionPresentacionEntidad" [(ngModel)]="observacionPresentacionEntidad" maxlength="5000"></textarea></div><p id="apelacion-cargo-error" class="field-hint text-destructive">{{ errores()['cargo'] }}</p></div> }
+            <p class="text-xs text-muted-foreground">Elevar por la entidad y admitir excepcionalmente una omisión son actuaciones de otros actores. No se ofrecen como estados que el recurrente pueda imponer en este formulario.</p>
+          </div></section>
+        }
+        <section class="form-shell"><div class="form-section-header flex items-start justify-between gap-4"><div><span class="eyebrow">01 · Archivos y antecedentes reales</span><h2 class="form-section-title">Documentos del recurso</h2></div><span aria-hidden="true" class="appeal-section-number">01</span></div><div class="p-6 md:p-8 space-y-5">
+          <div class="rounded-md p-3 flex items-start gap-2.5" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><svg aria-hidden="true" lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5"></svg><p class="text-xs">Un antecedente conserva su relación original. Al presentar se solicitará una copia vinculada a la nueva apelación. Excluirlo de la selección no elimina el archivo del servidor. Un archivo seleccionado todavía no está registrado.</p></div>
+          @if (documentosIncompletos()) { <p role="status" class="text-sm text-muted-foreground">La información de antecedentes está incompleta o contiene relaciones incompatibles. Solo se ofrecen los documentos cuya relación está comprobada.</p> }
+          @for (item of documentos(); track item.n) {
+            <div><div class="flex items-start gap-3 mb-2"><span class="font-mono text-[11px] tracking-widest" style="color:var(--brand-700)">0{{ item.n }}</span><div class="flex-1 min-w-0"><label [for]="'apelacion-file-' + item.n" class="text-sm font-medium">{{ item.label }}</label><p class="text-xs text-muted-foreground">{{ item.desc }}</p></div></div>
+              @if (documentoPara(item.n); as doc) {
+                <div class="appeal-prefilled rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-4" style="background:var(--card);border:1px solid var(--border)"><div class="w-11 h-11 rounded-md flex items-center justify-center flex-shrink-0" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><svg aria-hidden="true" lucideFileText class="w-5 h-5"></svg></div><div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ doc.nombreOriginal }}</p><span class="inline-flex gap-1 items-center text-[10px] uppercase font-semibold mt-1" style="color:var(--gold-dark)"><svg aria-hidden="true" lucideArchive class="w-3 h-3"></svg>Antecedente registrado · ID {{ doc.id }}</span><p class="text-xs text-muted-foreground mt-1">Aún no asociado a esta nueva apelación.</p></div><div class="flex flex-wrap gap-1.5"><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar antecedente ' + doc.nombreOriginal" (click)="previewFile(item.n)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Descargar antecedente ' + doc.nombreOriginal" (click)="downloadFile(item.n)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !text-xs" (click)="removeFile(item.n)">Excluir de esta selección</button></div></div>
+              } @else if (fileFor(item.n); as file) {
+                <div class="appeal-upload-zone appeal-selected" role="status"><svg aria-hidden="true" lucideFileText class="w-6 h-6 mx-auto text-muted-foreground"></svg><p class="text-sm font-medium mt-2">{{ file.name }}</p><p class="text-xs text-muted-foreground mt-1">{{ file.size }} bytes · archivo seleccionado en memoria, aún no subido</p><div class="flex flex-wrap justify-center gap-2 mt-3"><button type="button" class="btn-ghost-brand !text-xs" (click)="previewFile(item.n)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>Previsualizar selección</button><button type="button" class="btn-ghost-brand !text-xs" (click)="removeFile(item.n)"><svg aria-hidden="true" lucideX class="w-4 h-4"></svg>Quitar selección</button></div></div>
+              } @else {
+                <div class="appeal-upload-zone" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar archivo para ' + item.label" (click)="fileInput.click()" (keydown)="abrirSelector($event, fileInput)"><svg aria-hidden="true" lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg><p class="text-sm mt-2">Seleccione un archivo real</p><p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT · hasta 10 MB por archivo</p></div>
+              }
+              <input #fileInput [id]="'apelacion-file-' + item.n" type="file" class="sr-only" [accept]="accept" [attr.aria-describedby]="'apelacion-file-error-' + item.n" (change)="onFileChange($event, item.n)"><p [id]="'apelacion-file-error-' + item.n" role="status" class="field-hint text-destructive">{{ avisosArchivo()[item.n] }}</p>
+              @if (!hasDocument(item.n)) { @for (doc of antecedentes(item.n); track doc.id) { <button type="button" class="btn-ghost-brand !text-xs mt-2" (click)="usarAntecedente(item.n, doc)">Seleccionar antecedente {{ doc.id }} · {{ doc.nombreOriginal }}</button> } }
+            </div>
+          }
+          <div class="rounded-lg p-4 text-sm" style="background:var(--card);border:1px solid var(--border)"><span class="eyebrow">Revisión local</span><p class="text-xs text-muted-foreground mt-2">Los casilleros no equivalen a tres archivos obligatorios en todas las modalidades. La copia de SAIP vinculada y la respuesta que corresponda deben ser reales; los demás archivos complementan las referencias y fundamentos declarados. El servidor y el Tribunal verifican los requisitos.</p></div>
+          <p class="field-hint text-destructive">{{ errores()['documentos'] }} {{ errores()['archivos'] }}</p>
+        </div></section>
+        <section class="form-shell"><div class="form-section-header flex items-start justify-between gap-4"><div><span class="eyebrow">02 · Sustento del recurso</span><h2 class="form-section-title">Fundamentos de la apelación</h2></div><span aria-hidden="true" class="appeal-section-number">02</span></div><div class="p-6 md:p-8"><div class="field"><label for="apelacion-fundamentos" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="apelacion-fundamentos" class="field-input" name="fundamentos" rows="9" style="resize:vertical;min-height:180px" [(ngModel)]="fundamentos" [attr.maxlength]="limiteFundamentos()" aria-required="true" aria-describedby="apelacion-fundamentos-hint apelacion-fundamentos-error" [attr.aria-invalid]="!!errores()['fundamentos']" placeholder="Consigne sus fundamentos reales. No se incluyen argumentos legales predeterminados."></textarea><div class="flex items-center justify-between gap-3 mt-1.5"><p id="apelacion-fundamentos-hint" class="field-hint">Texto obligatorio. {{ limiteFundamentos() ? 'Máximo 5000 caracteres.' : 'Consigne los fundamentos de su recurso.' }}</p><span class="font-mono text-xs">{{ fundamentos.length }} caracteres</span></div><p id="apelacion-fundamentos-error" class="field-hint text-destructive">{{ errores()['fundamentos'] }}</p></div><p class="text-xs text-muted-foreground mt-4">Los archivos y referencias no sustituyen los fundamentos. Un registro de respuesta no demuestra entrega o notificación eficaz. No se calculan plazos para apelar en Angular.</p></div></section>
+        <section class="form-shell"><div class="p-6 md:p-7 space-y-4"><h2 class="form-section-title">Revise antes de presentar</h2><dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm"><div><dt class="eyebrow">Origen</dt><dd>{{ esApelacionExterna() ? 'Externo, sin ID de SAIP local' : solicitud()?.expediente }}</dd></div><div><dt class="eyebrow">Entidad</dt><dd>{{ entidadDisplay() }}{{ esApelacionExterna() && modoEntidad() === 'declarada' ? ' (nombre declarado, sin vínculo al catálogo)' : '' }}</dd></div><div><dt class="eyebrow">Ingreso</dt><dd>{{ esPresentacionAnteEntidad() ? 'Ante entidad · pendiente de elevación' : 'Directo al TTAIP' }}</dd></div></dl><p class="text-sm whitespace-pre-line">{{ fundamentos }}</p><div class="flex flex-col md:flex-row gap-5 md:items-center justify-between"><p class="text-sm text-muted-foreground">Al confirmar declara que la información consignada es veraz. El registro no acredita admisibilidad, notificación eficaz, firma ni emisión formal.</p><button type="button" class="btn-brand !px-6 !py-3 justify-center" (click)="abrirConfirmacionApelacion()"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>Revisar y presentar</button></div></div></section>
+      </fieldset>
+      <p role="note" class="text-xs text-muted-foreground">Texto, selección de archivos e identificación del envío permanecen solo en memoria. Al salir, recargar o cambiar de solicitud, origen o sesión se pierden. Una creación incierta no se puede recuperar inequívocamente sin un ID confirmado; revise su panel antes de otro registro. No se guarda una copia de este formulario en el almacenamiento del navegador.</p>
+    }
+  </div>
+  <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su apelación" titleLead="Confirme" titleEmphasis="su apelación" eyebrow="Revisión final · Apelación" description="Revise el origen, los documentos seleccionados y los fundamentos antes de solicitar el registro." [summary]="apelacionConfirmSummary()" [warning]="apelacionWarning()" confirmLabel="Confirmar registro" (close)="confirmModalAbierto.set(false)" (confirm)="crearApelacion()"></app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && !!apelacionCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="apelacion-presentada" tone="success" eyebrow="Registro confirmado por el servidor" title="Apelación registrada" description="El servidor identificó el recurso y confirmó las operaciones documentales seleccionadas, si las había. Las referencias declaradas no equivalen a archivos almacenados." [expediente]="expedienteTtaip()" expedienteHint="Identificador devuelto por el servidor; consulte el estado del registro" [metadata]="apelacionSuccessMetadata()" [nextSteps]="apelacionNextSteps()" primaryLabel="Ir a mi panel" (close)="cerrarResultado()" (primary)="irPanelCiudadano()"></app-reference-success-modal>
+  <app-document-preview-modal [doc]="previewTarget()" [open]="isPreviewOpen()" [manageFocus]="true" (close)="cerrarPreview()"></app-document-preview-modal>
 </div>
-
