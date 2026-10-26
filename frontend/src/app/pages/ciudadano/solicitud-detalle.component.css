@@ -1,2 +1,29 @@
-/* Estilos solicitud detalle */
-
+/* RequestDetail uses the reference's editorial hero, 4/8 grid and brand tokens.
+   These adaptations stay local to the citizen detail, including Timeline's host. */
+:host { display: block; }
+.request-detail :is(h1, p, .code-chip, .detail-panel, .detail-notice) { overflow-wrap: anywhere; }
+.request-detail :is(button, a, [role="tabpanel"]):focus-visible {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 3px;
+}
+.detail-tabs { overflow-x: auto; }
+.detail-tabs [role="tab"] { min-width: 0; }
+.detail-row > :first-child, .detail-notice > .flex-1 { min-width: 0; }
+.detail-row .truncate { white-space: normal; overflow-wrap: anywhere; }
+.detail-doc-actions { flex-wrap: wrap; }
+.detail-timeline app-timeline { display: block; }
+@media (max-width: 639px) {
+  .detail-tabs [role="tab"] { padding-inline: .75rem; font-size: .8125rem; }
+  .detail-panel { padding: 1.25rem; }
+  .detail-row { flex-wrap: wrap; align-items: flex-start; }
+  .detail-row > :first-child { flex: 1 1 100%; }
+  .detail-doc-actions { margin-left: auto; }
+  .detail-notice { flex-wrap: wrap; }
+  .detail-notice > .flex-1 { flex-basis: calc(100% - 4rem); }
+  .detail-notice > a { margin-left: 3.5rem; }
+  .detail-panel .p-12 { padding: 1.5rem .25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .request-detail .animate-pulse, .request-detail .animate-spin { animation: none; }
+  .request-detail .transition-colors { transition: none; }
+}

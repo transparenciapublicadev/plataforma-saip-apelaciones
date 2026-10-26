@@ -221,8 +221,235 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.componentInstance.notifStages()).toEqual([]);
     f.componentInstance.cargarDocumentosTribunal();
     http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, resoluciones: [
-      { id: 71, documentos: [{ ...documento, id: 89, resolucionId: 71 }], cedulas: [{ id: 6, documentos: [{ ...documento, id: 90, cedulaNotificacionId: 6 }] }] },
+      { id: 71, documentos: [{ ...documento, id: 89, resolucionId: 71 }], cedulas: [{ id: 6, destinatario: 'CIUDADANO', documentos: [{ ...documento, id: 90, cedulaNotificacionId: 6 }] }] },
     ] });
     expect(f.componentInstance.notifStages()[0].docs.map(d => d.id)).toEqual([89, 90]);
+  });
+
+  it('las pestañas exponen selección, panel asociado y navegación con flechas/Home/End', () => {
+    const f = pagina(); responder(f);
+    const tabs = [...f.nativeElement.querySelectorAll('[role=tab]')] as HTMLButtonElement[];
+    expect(tabs).toHaveLength(3);
+    tabs[0].focus();
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    f.detectChanges();
+    expect(document.activeElement).toBe(tabs[1]);
+    expect(tabs[1].getAttribute('aria-selected')).toBe('true');
+    expect(f.nativeElement.querySelector('[role=tabpanel]').id).toBe(tabs[1].getAttribute('aria-controls'));
+    tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    f.detectChanges(); expect(tabs[2].getAttribute('tabindex')).toBe('0');
+    tabs[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    f.detectChanges(); expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it.each(['VENCIDA', 'RESPONDIDA'])('el estado %s sin respuesta recuperable no acredita entrega ni una respuesta completa', estado => {
+    const f = pagina(); responder(f, { ...solicitud, estado });
+    f.componentInstance.cambiarTab('respuesta'); f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('La entidad entregó');
+    expect(f.nativeElement.textContent).toContain('No se recuperó una respuesta registrada');
+    expect(f.componentInstance.adjuntosRespuesta()).toEqual([]);
+  });
+
+  it('una respuesta parcial conserva contenido, causal y fundamento sin afirmar entrega ni firma', () => {
+    const f = pagina(); responder(f, { ...solicitud, respuesta: { id: 91, tipoRespuesta: 'ENTREGA_PARCIAL',
+      contenido: 'Contenido real', causalDenegatoria: 'Causal registrada', fundamentoLegal: 'Fundamento registrado',
+      documentos: [], documentosMetadata: [] } });
+    f.componentInstance.cambiarTab('respuesta'); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Contenido real');
+    expect(f.nativeElement.textContent).toContain('Causal registrada');
+    expect(f.nativeElement.textContent).toContain('Fundamento registrado');
+    expect(f.nativeElement.textContent).not.toContain('La entidad entregó');
+    expect(f.nativeElement.textContent).not.toContain('idénticos a los firmados');
+  });
+
+  it('no inventa revisión, notificación ni fecha de resolución final desde la respuesta SAIP', () => {
+    const f = pagina(); responder(f, { ...solicitud, respuesta: { id: 91, fechaRespuesta: '2026-10-22T10:00:00' },
+      apelacion: { id: 145, estado: 'EN_RESOLUCION', fechaApelacion: '2026-10-23T10:00:00' } });
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, resoluciones: [] });
+    const events = f.componentInstance.timelineEvents();
+    expect(events.some(e => e.description.includes('notificada'))).toBe(false);
+    expect(events.some(e => e.title === 'Revisión de la entidad')).toBe(false);
+    expect(events.some(e => e.title === 'Resolución final')).toBe(false);
+    expect(events.some(e => e.description.includes('ADMITIDO'))).toBe(false);
+  });
+
+  it('una liquidación no permite confirmar un recojo solo en el navegador', () => {
+    const f = pagina(); responder(f, { ...solicitud, liquidacionesCosto: [{ id: 6, solicitudId: 23,
+      estadoLiquidacion: 'PAGADA', moneda: 'PEN', monto: '2.50', concepto: 'Copias', codigoLiquidacion: 'L-6' }] });
+    const button = [...f.nativeElement.querySelectorAll('button')].find((b: any) => b.textContent.includes('Ya recogí')) as HTMLButtonElement;
+    expect(button?.disabled).toBe(true);
+    expect(f.nativeElement.textContent).toContain('no está disponible en esta pantalla');
+    expect(f.nativeElement.textContent).not.toContain('Recojo confirmado');
+  });
+
+  it('la precisión navega al caso de uso existente con el expediente exacto sin otro formulario inline', () => {
+    const f = pagina(); responder(f, { ...solicitud, estado: 'PENDIENTE_INFORMACION', observaciones: [
+      { id: 7, estado: 'PENDIENTE_SUBSANACION', motivoObservacion: 'Precise el asunto' }] });
+    const link = f.nativeElement.querySelector('a[href="/ciudadano/precision/SAIP-2026-00023"]');
+    expect(link).not.toBeNull();
+    expect(f.nativeElement.querySelector('textarea')).toBeNull();
+  });
+
+  it('no muestra ni descarga un documento asociado explícitamente a otra solicitud', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [{ ...documento, solicitudId: 99 }] });
+    expect(f.componentInstance.misDocumentos()).toEqual([]);
+    f.componentInstance.descargarDoc({ id: 88, nombre: 'precision.pdf' });
+    http.expectNone(`${base}/documentos/88/download`);
+    expect(f.componentInstance.documentoError()).not.toBe('');
+  });
+
+  it('un objeto documental anterior no permite abrir otro recurso tras navegar', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento] });
+    const old = f.componentInstance.misDocumentos()[0];
+    params.next(convertToParamMap({ expediente: 'SAIP-2026-00024' }));
+    http.expectOne(`${base}/solicitudes/expediente/SAIP-2026-00024`).flush({ ...solicitud, id: 24, expediente: 'SAIP-2026-00024' });
+    f.componentInstance.abrirModalPreview(old);
+    f.componentInstance.descargarDoc(old);
+    http.expectNone(`${base}/documentos/88/download`);
+    expect(f.componentInstance.isPreviewOpen()).toBe(false);
+  });
+
+  it('el cambio de sesión inmediato impide iniciar descargas con el detalle anterior', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento] });
+    auth.guardarSesion({ success: true, token: 'sesion-b', usuarioId: 18, tipoUsuario: 'CIUDADANO' });
+    f.componentInstance.descargarDoc(f.componentInstance.misDocumentos()[0]);
+    http.expectNone(`${base}/documentos/88/download`);
+    TestBed.tick(); http.expectOne(url).flush(null, { status: 403, statusText: 'Forbidden' });
+  });
+
+  it('una revisión de sesión con el mismo token descarta la consulta previa', () => {
+    const f = pagina(); const anterior = http.expectOne(url);
+    auth.guardarSesion({ success: true, token: 'sesion-a', usuarioId: 18, tipoUsuario: 'CIUDADANO' });
+    anterior.flush(solicitud);
+    expect(f.componentInstance.solicitud()).toBeNull();
+    TestBed.tick(); http.expectOne(url).flush(null, { status: 403, statusText: 'Forbidden' });
+  });
+
+  it('una titularidad explícita ajena no se presenta como expediente del administrado', () => {
+    const f = pagina(); responder(f, { ...solicitud, ciudadanoId: 99 });
+    expect(f.componentInstance.solicitud()).toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Persona sintética');
+  });
+
+  it('una lista documental ausente no se presenta como ausencia confirmada de adjuntos', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentos: undefined, documentosMetadata: undefined });
+    expect(f.nativeElement.textContent).toContain('información documental está incompleta');
+    expect(f.nativeElement.textContent).not.toContain('No adjuntó documentos');
+  });
+
+  it('documentos del mismo nombre conservan IDs distintos y una relación de respuesta ajena se excluye', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento, { ...documento, id: 89 }],
+      respuesta: { id: 91, documentosMetadata: [{ ...documento, id: 90, solicitudId: null, respuestaId: 999 }] } });
+    expect(f.componentInstance.misDocumentos().map(d => d.id)).toEqual([88, 89]);
+    expect(f.componentInstance.adjuntosRespuesta()).toEqual([]);
+    f.componentInstance.cambiarTab('respuesta'); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('No se recuperó una lista completa');
+    expect(f.nativeElement.textContent).not.toContain('La entidad no adjuntó');
+  });
+
+  it('el reintento de consulta limpia el expediente anterior y conserva el identificador', () => {
+    const f = pagina(); responder(f);
+    f.componentInstance.reintentarConsulta(); f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Persona sintética');
+    http.expectOne(url).flush(null, { status: 503, statusText: 'Unavailable' }); f.detectChanges();
+    expect(f.componentInstance.solicitud()).toBeNull();
+    expect(f.componentInstance.timelineEvents()).toEqual([]);
+    expect(f.nativeElement.querySelector('[role=alert]')).not.toBeNull();
+    f.componentInstance.reintentarConsulta(); responder(f);
+    expect(f.nativeElement.textContent).toContain('Persona sintética');
+  });
+
+  it('rechaza un detalle de apelación con el ID correcto pero asociado a otra solicitud', () => {
+    const f = pagina(); responder(f, { ...solicitud, apelacion: { id: 145 } });
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, solicitudId: 999, resoluciones: [{ id: 71 }] });
+    expect(f.componentInstance.apelacionDetalle()).toBeNull();
+    expect(f.componentInstance.notifStages()).toEqual([]);
+    expect(f.componentInstance.errorApelacion()).not.toBe('');
+  });
+
+  it('reintentar documentos del Tribunal cancela la consulta anterior', () => {
+    const f = pagina(); responder(f, { ...solicitud, apelacion: { id: 145 } });
+    const anterior = http.expectOne(`${base}/apelaciones/145`);
+    f.componentInstance.cargarDocumentosTribunal();
+    expect(anterior.cancelled).toBe(true);
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, resoluciones: [] });
+  });
+
+  it('muestra la fecha propia de cada resolución y conserva sin fecha las actuaciones incompletas', () => {
+    const f = pagina(); responder(f, { ...solicitud, apelacion: { id: 145, fechaApelacion: '2026-10-22T09:00:00' } });
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, solicitudId: 23, resoluciones: [
+      { id: 71, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'ADMISIBLE', fechaResolucion: '2026-10-23T10:00:00' },
+      { id: 72, tipoResolucion: 'RESOLUCION_FINAL', decision: 'FUNDADO' },
+    ] });
+    const timeline = f.componentInstance.timelineEvents();
+    expect(timeline.find(e => e.description === 'ADMISIBLE')?.date).toContain('23');
+    expect(timeline.find(e => e.description === 'Fundado')?.date).toBe('—');
+    expect(timeline.some(e => e.description.includes('notificada a'))).toBe(false);
+  });
+
+  it('no calcula un vencimiento desde fechas para decidir la acción de precisión', () => {
+    const f = pagina(); responder(f, { ...solicitud, observaciones: [{ id: 7, estado: 'PENDIENTE_SUBSANACION',
+      fechaLimiteSubsanacion: '2020-01-01', motivoObservacion: 'Motivo real' }] });
+    expect(f.nativeElement.querySelector('a[href="/ciudadano/precision/SAIP-2026-00023"]')).not.toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Subsanación Vencida');
+    expect(f.nativeElement.textContent).toContain('se comprueban en el servidor');
+  });
+
+  it('navega de vuelta al panel y al formulario de apelación con el expediente persistido', () => {
+    const f = pagina(); responder(f, { ...solicitud, estado: 'DENEGADA' });
+    expect(f.nativeElement.querySelector('a[href="/ciudadano"]')).not.toBeNull();
+    expect(f.nativeElement.querySelector('a[href="/ciudadano/apelacion/nueva/SAIP-2026-00023"]')).not.toBeNull();
+  });
+
+  it('cancela consulta, documentos del Tribunal y descarga al destruir el componente', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento], apelacion: { id: 145 } });
+    const tribunal = http.expectOne(`${base}/apelaciones/145`);
+    f.componentInstance.descargarDoc(f.componentInstance.misDocumentos()[0]);
+    const descarga = http.expectOne(`${base}/documentos/88/download`);
+    f.destroy();
+    expect(tribunal.cancelled).toBe(true); expect(descarga.cancelled).toBe(true);
+  });
+
+  it('el visor opt-in recibe foco, contiene Tab, cierra con Escape y lo devuelve al botón del documento', async () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento] });
+    const trigger = f.nativeElement.querySelector('button[aria-label="Ver precision.pdf"]') as HTMLButtonElement;
+    trigger.focus(); trigger.click(); f.detectChanges();
+    const request = http.expectOne(`${base}/documentos/88/download`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer sesion-a');
+    request.flush(new Blob(['documento de prueba'], { type: 'text/plain' })); f.detectChanges();
+    await Promise.resolve();
+    const dialog = document.querySelector('[role=dialog]')!;
+    expect(dialog?.getAttribute('aria-label')).toBe('precision.pdf');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    const buttons = dialog.querySelectorAll<HTMLButtonElement>('button');
+    buttons.item(buttons.length - 1).focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(buttons.item(0));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); f.detectChanges();
+    expect(f.componentInstance.isPreviewOpen()).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('una vista previa pendiente se cancela al cambiar de recurso sin conservar el documento anterior', () => {
+    const f = pagina(); responder(f, { ...solicitud, documentosMetadata: [documento] });
+    f.nativeElement.querySelector('button[aria-label="Ver precision.pdf"]').click(); f.detectChanges();
+    const descarga = http.expectOne(`${base}/documentos/88/download`);
+    params.next(convertToParamMap({ expediente: 'SAIP-2026-00024' })); f.detectChanges();
+    expect(descarga.cancelled).toBe(true);
+    http.expectOne(`${base}/solicitudes/expediente/SAIP-2026-00024`).flush(null, { status: 403, statusText: 'Forbidden' }); f.detectChanges();
+    expect(document.querySelector('[role=dialog]')).toBeNull();
+    expect(f.componentInstance.previewTarget()).toBeNull();
+  });
+
+  it('las cédulas de la entidad o sin destinatario no se muestran como documentos del recurrente', () => {
+    const f = pagina(); responder(f, { ...solicitud, apelacion: { id: 145 } });
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, resoluciones: [{ id: 71, cedulas: [
+      { id: 6, destinatario: 'ENTIDAD_PUBLICA', documentos: [{ ...documento, id: 90, cedulaNotificacionId: 6 }] },
+      { id: 7, documentos: [{ ...documento, id: 91, cedulaNotificacionId: 7 }] },
+      { id: 8, destinatario: 'CIUDADANO', documentos: [{ ...documento, id: 92, cedulaNotificacionId: 8 }] },
+    ] }] });
+    expect(f.componentInstance.notifStages()[0].docs.map(d => d.id)).toEqual([92]);
+    f.componentInstance.descargarDoc({ id: 90, nombre: 'cedula-entidad.pdf' });
+    http.expectNone(`${base}/documentos/90/download`);
   });
 });
