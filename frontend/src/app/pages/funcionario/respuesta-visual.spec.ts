@@ -19,8 +19,8 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
   const row = (expediente = 'SAIP-A') => ({ id: expediente === 'SAIP-A' ? 1 : 2, expediente,
     asunto: expediente, estado: 'RECEPCIONADA', fechaPresentacion: '2026-10-23T10:00:00',
     fechaLimite: '2026-11-06', diasRestantes: 11, formatoDigital: true,
-    ciudadanoId: 1, ciudadanoNombre: 'Persona sintética', entidadNombre: 'Entidad sintética',
-    documentosMetadata: [], observaciones: [], respuesta: null } as any);
+    ciudadanoId: 1, ciudadanoNombre: 'Persona sintética', entidadId: 3, entidadNombre: 'Entidad sintética',
+    documentosMetadata: [], observaciones: [], ampliacionesPlazo: [], encauzamientos: [], liquidacionesCosto: [], respuesta: null } as any);
   let solicitudes: any, auth: any, documentos: any;
   beforeEach(async () => {
     sessionStorage.clear();
@@ -132,6 +132,7 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(c.successModalAbierto()).toBe(false);
   });
   it('una descarga fallida no anuncia entrega ni genera un sustituto', async () => {
+    solicitudes.findByExpediente.mockReturnValue(of({ ...row(), documentosMetadata: [{ id: 9, solicitudId: 1, nombreOriginal: 'real.pdf' }] }));
     documentos.download.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
     const h = await RouterTestingHarness.create(); const c = await h.navigateByUrl('/detalle/SAIP-A', Detalle);
     c.descargarDoc({ id: 9, nombre: 'real.pdf' }); h.detectChanges();
