@@ -13,7 +13,7 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
   const url = `${environment.apiUrl}/solicitudes/publica/expediente/${expediente}`;
   const resumen = { expediente, ciudadano: 'S*** S***', entidad: 'Entidad sintética',
     fechaPresentacion: '2026-10-01T09:30:00', fechaLimite: '2026-10-15', diasTranscurridos: 25,
-    diasRestantes: 0, estado: 'EN_PROCESO', asunto: 'Información sintética', respuestaFecha: null,
+    diasRestantes: 0, estado: 'EN_PROCESO', respuestaFecha: null,
     respuestaTipo: null, apelacionExpediente: null, apelacionEstado: null, apelacionFecha: null,
     resolucionFecha: null, resolucionResultado: null };
   let http: HttpTestingController;
@@ -79,9 +79,9 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     if (rol) TestBed.inject(AuthService).guardarSesion({ success: true, token: 'sesion-sintetica', usuarioId: 5, ciudadanoId: 5, tipoUsuario: rol });
     const f = pagina(), c = f.componentInstance; c.buscar(); const req = http.expectOne(url);
     expect(req.request.headers.has('Authorization')).toBe(!!rol);
-    req.flush({ ...resumen, descripcion: 'DESCRIPCION_PRIVADA_NO_PERMITIDA', documentos: [{ id: 55, nombre: 'DOCUMENTO_PRIVADO_NO_PERMITIDO' }],
+    req.flush({ ...resumen, asunto: 'ASUNTO_PRIVADO_NO_PERMITIDO', descripcion: 'DESCRIPCION_PRIVADA_NO_PERMITIDA', documentos: [{ id: 55, nombre: 'DOCUMENTO_PRIVADO_NO_PERMITIDO' }],
       dni: 'DATO_IDENTIFICACION_NO_PERMITIDO', fundamentos: 'FUNDAMENTO_PRIVADO_NO_PERMITIDO', ciudadanoId: 5 }); f.detectChanges();
-    expect(c.resultado()?.ciudadano).toBe('S*** S***'); expect(c.resultado()?.asunto).toBe('Información sintética');
+    expect(c.resultado()?.ciudadano).toBe('S*** S***'); expect(c.resultado()?.entidad).toBe('Entidad sintética');
     expect(JSON.stringify(c.resultado())).not.toContain('NO_PERMITID'); expect(f.nativeElement.textContent).not.toContain('NO_PERMITID');
     expect(f.nativeElement.querySelector('[download]')).toBeNull(); http.expectNone(() => true);
   });
@@ -127,9 +127,9 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     const c = pagina().componentInstance; c.buscar(); http.expectOne(url).flush({ ...resumen, fechaPresentacion: fecha, diasTranscurridos: 0 });
     expect(c.resultado()?.fechaPresentacion).toBeNull(); expect(c.resultado()?.diasTranscurridos).toBeNull(); expect(c.resultado()?.timeline).toEqual([]);
   });
-  it('un resumen parcial mantiene únicamente la información recibida sin inventar entidad, asunto ni tipo de persona', () => {
-    const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush({ ...resumen, entidad: null, asunto: null, ciudadano: null }); f.detectChanges();
-    expect(c.resultado()?.faltantes).toEqual(expect.arrayContaining(['nombre de entidad', 'asunto', 'identificación enmascarada del solicitante']));
+  it('un resumen parcial mantiene únicamente la información pública recibida sin inventar entidad ni tipo de persona', () => {
+    const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush({ ...resumen, entidad: null, ciudadano: null }); f.detectChanges();
+    expect(c.resultado()?.faltantes).toEqual(expect.arrayContaining(['nombre de entidad', 'identificación enmascarada del solicitante']));
     expect(f.nativeElement.textContent).toContain('Nombre no informado'); expect(f.nativeElement.textContent).not.toContain('Persona Natural'); expect(f.nativeElement.textContent).not.toContain('RUC)');
   });
   it('la respuesta registrada no se presenta como entregada, notificada o emitida oficialmente', () => {
@@ -188,14 +188,26 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
   });
   it('nombres largos y texto con marcado se muestran como texto, sin crear enlaces ni contenido ejecutable', () => {
     const f = pagina(), c = f.componentInstance; c.buscar();
-    const asunto = 'Asunto sintético '.repeat(25) + '<script>contenido-sintetico</script>';
-    http.expectOne(url).flush({ ...resumen, entidad: 'Entidad sintética '.repeat(12), asunto }); f.detectChanges();
-    expect(f.nativeElement.textContent).toContain(asunto); expect(f.nativeElement.querySelector('script')).toBeNull();
-    expect(f.nativeElement.querySelectorAll('a')).toHaveLength(2); expect(c.resultado()?.asunto).toBe(asunto);
+    const entidad = 'Entidad sintética '.repeat(12) + '<script>contenido-sintetico</script>';
+    http.expectOne(url).flush({ ...resumen, entidad }); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain(entidad); expect(f.nativeElement.querySelector('script')).toBeNull();
+    expect(f.nativeElement.querySelectorAll('a')).toHaveLength(2); expect(c.resultado()?.entidad).toBe(entidad);
   });
   it('una continuación de foco de una búsqueda cancelada no recupera su resultado anterior', async () => {
     const f = pagina(), c = f.componentInstance; document.body.appendChild(f.nativeElement); c.buscar();
     http.expectOne(url).flush(resumen); c.limpiarBusqueda(); f.detectChanges(); await f.whenStable();
     expect(c.resultado()).toBeNull(); expect(document.activeElement?.id).toBe('expediente'); f.nativeElement.remove();
+  });
+  it('la omisión deliberada del asunto público no se trata como información incompleta ni dispara consultas privadas', () => {
+    const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush(resumen); f.detectChanges();
+    expect(c.estadoConsulta()).toBe('disponible'); expect(c.resultado()?.faltantes).toEqual([]);
+    expect(c.resultado()).not.toHaveProperty('asunto'); expect(f.nativeElement.textContent).not.toContain('Asunto no informado');
+    expect(f.nativeElement.textContent).toContain('no forman parte de esta consulta pública'); http.expectNone(() => true);
+  });
+  it('un asunto inesperado de una respuesta legacy no se conserva ni se muestra como dato público', () => {
+    const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush({ ...resumen, asunto: 'MARCADOR_PERSONAL_SINTETICO_NO_PUBLICO' }); f.detectChanges();
+    expect(JSON.stringify(c.resultado())).not.toContain('MARCADOR_PERSONAL_SINTETICO');
+    expect(f.nativeElement.textContent).not.toContain('MARCADOR_PERSONAL_SINTETICO'); expect(c.resultado()).not.toHaveProperty('asunto');
+    http.expectNone(() => true);
   });
 });

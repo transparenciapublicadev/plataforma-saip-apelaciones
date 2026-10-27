@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -102,6 +103,7 @@ public class SolicitudRestController {
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }
 
+    @SecurityRequirements
     @Operation(summary = "Consulta pública enmascarada de solicitud por expediente")
     @GetMapping("/publica/expediente/{expediente}")
     public ResponseEntity<ConsultaPublicaSolicitudDTO> obtenerPublicaPorExpediente(

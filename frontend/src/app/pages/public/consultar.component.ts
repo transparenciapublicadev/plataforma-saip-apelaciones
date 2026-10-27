@@ -21,7 +21,6 @@ interface ConsultaResultado {
   estado: EstadoPublico;
   ciudadano: string | null;
   entidad: string | null;
-  asunto: string | null;
   fechaPresentacion: string | null;
   diasTranscurridos: number | null;
   apelacionExpediente: string | null;
@@ -167,7 +166,7 @@ export class ConsultarComponent implements OnDestroy {
     const raw = data as Record<string, unknown>;
     if (raw['expediente'] !== codigo || typeof raw['estado'] !== 'string' || !Object.hasOwn(ESTADOS, raw['estado'])) return null;
     const estado = raw['estado'] as EstadoPublico;
-    const ciudadano = this.texto(raw['ciudadano']), entidad = this.texto(raw['entidad']), asunto = this.texto(raw['asunto']);
+    const ciudadano = this.texto(raw['ciudadano']), entidad = this.texto(raw['entidad']);
     const fechaPresentacion = this.fecha(raw['fechaPresentacion']);
     const dias = raw['diasTranscurridos'];
     const diasTranscurridos = fechaPresentacion && typeof dias === 'number' && Number.isSafeInteger(dias) && dias >= 0 ? dias : null;
@@ -180,7 +179,6 @@ export class ConsultarComponent implements OnDestroy {
     const faltantes: string[] = [];
     if (!ciudadano) faltantes.push('identificación enmascarada del solicitante');
     if (!entidad) faltantes.push('nombre de entidad');
-    if (!asunto) faltantes.push('asunto');
     if (!fechaPresentacion) faltantes.push('fecha de presentación válida');
     if (diasTranscurridos === null) faltantes.push('días transcurridos verificables en el resumen');
     if ((raw['respuestaFecha'] != null || respuestaTipo) && (!respuestaFecha || !respuestaTipo)) faltantes.push('datos de respuesta completos');
@@ -200,7 +198,7 @@ export class ConsultarComponent implements OnDestroy {
       description: resolucionResultado ? `Resultado informado: ${resolucionResultado.replaceAll('_', ' ')}. No acredita firma ni emisión documental verificadas.`
         : 'Resultado no informado. No acredita firma ni emisión documental verificadas.', date: resolucionFecha, status: 'completed', icon: 'scale' });
     // Deliberate allowlist: never retain private fields or document relations from an unexpected payload.
-    return { expediente: codigo, estado, ciudadano, entidad, asunto, fechaPresentacion, diasTranscurridos,
+    return { expediente: codigo, estado, ciudadano, entidad, fechaPresentacion, diasTranscurridos,
       apelacionExpediente, apelacionEstado, resolucionResultado, timeline, faltantes };
   }
 }

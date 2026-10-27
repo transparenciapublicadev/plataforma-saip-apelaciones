@@ -4499,7 +4499,6 @@ export interface components {
             /** Format: int32 */
             diasRestantes?: number;
             estado?: string;
-            asunto?: string;
             respuestaFecha?: string;
             respuestaTipo?: string;
             apelacionExpediente?: string;
