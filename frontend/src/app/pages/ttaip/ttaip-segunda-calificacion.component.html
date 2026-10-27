@@ -1,338 +1,86 @@
-<div class="min-h-screen bg-background">
+<div class="second-page min-h-screen bg-background">
   @if (loadingApelacion()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando apelacion...</p>
-      </div>
-    </div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-10 md:p-16 text-center" role="status" aria-live="polite"><div class="spinner mx-auto" aria-hidden="true"></div><p class="mt-4 text-muted-foreground">Cargando apelación y actuaciones…</p></div></div>
+  } @else if (loadError() || !contextoVigente() || !apelacion()) {
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-6 text-center"><h1 class="font-display text-2xl">Segunda calificación no disponible</h1><p role="alert" class="text-sm text-muted-foreground mt-3">{{ loadError() || 'No se ha recuperado el expediente de la sesión actual.' }}</p><div class="flex flex-wrap gap-3 mt-4 justify-center"><button type="button" class="btn-brand" (click)="reintentarConsulta()">Consultar nuevamente</button><a routerLink="/ttaip" class="btn-ghost-brand">Volver al panel</a><a routerLink="/acceso-ttaip" class="btn-ghost-brand">Acceso interno TTAIP</a></div></div></div>
   } @else if (apelacion(); as ap) {
-    <div class="relative bg-brand-gradient text-white overflow-hidden">
-      <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-        <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-          <svg lucideArrowLeft class="w-4 h-4"></svg>
-          Volver al panel TTAIP
-        </a>
-        <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Verificacion de subsanacion</span>
-        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em;">
-          Segunda <span class="italic" style="color: var(--gold-soft)">calificacion</span>
-        </h1>
-        <p class="text-white/75 mt-2 font-mono text-sm">Expediente · {{ ap.expediente }}</p>
-      </div>
-      <div class="brand-divider"></div>
+    <div class="relative bg-brand-gradient text-white overflow-hidden"><div aria-hidden="true" class="absolute inset-0 bg-paper opacity-[0.06]"></div>
+      <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero><a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>Volver al panel TTAIP</a><span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Verificación de subsanación</span><h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em">Segunda <span class="italic" style="color: var(--gold-soft)">calificación</span></h1><p class="text-white/75 mt-2 font-mono text-sm">Expediente · {{ ap.expediente }}</p></div><div class="brand-divider" aria-hidden="true"></div>
     </div>
-
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(217,119,6,0.12)">
-          <svg lucideInfo class="w-5 h-5" style="color: var(--warning)"></svg>
-        </div>
-        <div>
-          <span class="eyebrow" style="color: var(--warning)">Verificacion de subsanacion</span>
-          <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-            El ciudadano presento documentacion complementaria. Verifique si cumple los requisitos para ser <span class="font-semibold">Admitido a Tramite</span> o resulta <span class="font-semibold">Improcedente</span>.
-          </p>
-        </div>
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, color-mix(in srgb, var(--warning) 8%, transparent), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: color-mix(in srgb, var(--warning) 12%, transparent)"><svg aria-hidden="true" lucideInfo class="w-5 h-5" style="color: var(--warning)"></svg></div>
+        <div><span class="eyebrow" style="color: var(--warning)">Verificación de subsanación</span><p class="text-sm text-foreground/85 leading-relaxed mt-1.5">Revise la primera actuación, su requerimiento y la recepción vinculada. La consulta de una apelación o un archivo no acredita por sí sola esa recepción ni sus requisitos.</p></div>
       </div>
-
-      <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.38"
-        data-motion-delay-step="0.055">
-        <div class="form-shell" data-motion-item>
-          <div class="flex border-b" style="border-color: var(--border)">
-            @for (tab of tabs; track tab.id) {
-              <button
-                type="button"
-                (click)="cambiarTab(tab.id)"
-                class="flex-1 px-4 py-3.5 text-sm relative"
-                [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'"
-                [style.font-weight]="activeTab() === tab.id ? '600' : '400'">
-                {{ tab.label }}
-                @if (activeTab() === tab.id) {
-                  <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
-                }
-              </button>
-            }
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="form-shell min-w-0" aria-label="Contexto y requerimiento">
+          <div role="tablist" aria-label="Contexto de segunda calificación" class="flex border-b border-border">
+            @for (tab of tabs; track tab.id) { <button type="button" role="tab" [id]="'second-tab-' + tab.id" [attr.aria-controls]="'second-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (click)="cambiarTab(tab.id)" (keydown)="onTabKey($event, tab.id)" class="flex-1 min-w-0 px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.font-weight]="activeTab() === tab.id ? 600 : 400">{{ tab.label }}@if (activeTab() === tab.id) { <span aria-hidden="true" class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span> }</button> }
           </div>
-
-          @if (activeTab() === 'subsanacion') {
-            <div class="p-6 space-y-5 text-sm animate-fade-in">
-              <div class="rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--info)">
-                <span class="eyebrow" style="color: var(--info)">Observaciones · 1ra calificacion</span>
-                @if (getObservaciones().length > 0) {
-                  <ul class="text-xs text-foreground/80 list-disc list-inside space-y-1 mt-2">
-                    @for (item of getObservaciones(); track item) {
-                      <li>{{ item }}</li>
-                    }
-                  </ul>
-                } @else {
-                  <p class="text-xs text-muted-foreground mt-2">Sin observaciones registradas.</p>
-                }
-              </div>
-
-              <div>
-                <span class="eyebrow">Documentos presentados en subsanacion</span>
-                @if (documentosSubsanacion().length > 0) {
-                  <div class="space-y-2 mt-2">
-                    @for (doc of documentosSubsanacion(); track doc.id) {
-                      <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: rgba(5,150,105,0.05); border: 1px solid rgba(5,150,105,0.2)">
-                        <div class="flex items-center gap-3">
-                          <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.1)">
-                            <svg lucideCheckCircle2 class="w-4 h-4" style="color: var(--success)"></svg>
-                          </div>
-                          <div>
-                            <div class="font-medium">{{ doc.nombreArchivo }}</div>
-                            <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
-                          </div>
-                        </div>
-                        <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
-                          <svg lucideUpload class="w-4 h-4"></svg>
-                        </button>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <div class="rounded-md p-4 mt-2 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
-                    El backend no registra documentos de subsanación para este expediente.
-                  </div>
-                }
-              </div>
-
-              <div class="rounded-md p-3 grid grid-cols-2 gap-3" style="background: var(--card); border: 1px solid var(--border)">
-                <div>
-                  <div class="eyebrow">Fecha de solicitud</div>
-                  <div class="font-mono mt-0.5">{{ ap.fechaSubsanacion | date:'dd/MM/yyyy' }}</div>
-                </div>
-                <div>
-                  <div class="eyebrow" style="color: var(--success)">Plazo otorgado</div>
-                  <div class="font-mono mt-0.5" style="color: var(--success)">{{ ap.diasSubsanacion || 2 }} dias habiles</div>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Fundamentos de subsanacion del ciudadano</span>
-                <div class="mt-2 rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  @if (ap.fundamentosSubsanacion) {
-                    <p class="text-foreground leading-relaxed whitespace-pre-wrap">{{ ap.fundamentosSubsanacion }}</p>
-                  } @else if (getSubsanacionFromFundamentos()) {
-                    <p class="text-foreground leading-relaxed whitespace-pre-wrap">{{ getSubsanacionFromFundamentos() }}</p>
-                  } @else {
-                    <p class="text-muted-foreground">Sin fundamentos adicionales de subsanacion.</p>
-                  }
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Fundamentos originales de la apelacion</span>
-                <div class="mt-2 rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <p class="text-foreground leading-relaxed whitespace-pre-wrap">{{ getOriginalFundamentos() || 'Sin fundamentos registrados.' }}</p>
-                </div>
-              </div>
+          <div role="tabpanel" id="second-panel-subsanacion" aria-labelledby="second-tab-subsanacion" [hidden]="activeTab() !== 'subsanacion'" class="p-6 space-y-5 text-sm">
+            <div><h2 class="eyebrow">Apelación consultada</h2><p class="font-medium mt-2">{{ ap.ciudadanoNombre || 'Recurrente no informado' }}</p><p class="text-xs text-muted-foreground mt-1">{{ ap.entidadNombre || ap.entidadExternaNombre || 'Entidad no informada' }}</p><p class="font-mono text-xs mt-2">ID {{ ap.id }} · {{ getEstadoDisplay(ap.estado) }}</p><p class="text-xs text-muted-foreground mt-1">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || 'Solicitud de origen no informada' }}</p></div>
+            <div class="rounded-md p-3" style="background: color-mix(in srgb, var(--info) 5%, transparent); border: 1px solid color-mix(in srgb, var(--info) 20%, transparent)">
+              <h2 class="eyebrow" style="color: var(--info)">Primera calificación y requerimiento</h2>
+              @if (requerimiento(); as req) {
+                <p class="font-mono text-xs mt-2">ID {{ req.id }} · {{ req.numeroResolucion || 'Sin numeración registrada' }} · INADMISIBLE</p><p class="text-xs text-muted-foreground mt-1">Fecha de la actuación: {{ (fechaVisible(req.fechaResolucion) | date:'dd/MM/yyyy') || 'No informada' }}. No acredita notificación eficaz.</p>
+                <h3 class="text-xs font-semibold mt-3">Observaciones registradas · texto libre</h3><ul class="text-xs list-disc list-inside mt-2 space-y-1">@for (obs of getObservaciones(); track $index) { <li>{{ obs }}</li> } @empty { <li>No hay texto de observaciones informado en esta actuación.</li> }</ul>
+              } @else { <p role="status" class="text-sm mt-2">No se dispone de una primera INADMISIBLE compatible con el requerimiento indicado. La información está incompleta o es incompatible.</p> }
             </div>
-          }
-
-          @if (activeTab() === 'adjuntos') {
-            @if (documentosOriginales().length > 0) {
-              <div class="p-6 space-y-2 animate-fade-in">
-                @for (doc of documentosOriginales(); track doc.id) {
-                  <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                      </div>
-                      <div>
-                        <div class="text-sm font-medium">{{ doc.nombreArchivo }}</div>
-                        <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
-                      <svg lucideUpload class="w-4 h-4"></svg>
-                    </button>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="p-12 text-center">
-                <svg lucideFileText class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4"></svg>
-                <p class="text-sm text-muted-foreground">No hay adjuntos originales para esta apelacion.</p>
-              </div>
-            }
-          }
-        </div>
-
-        <div class="space-y-5">
-          @if (error()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-              <svg lucideXCircle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)"></svg>
-              <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-            </div>
-          }
-
-          @if (mensaje()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--success) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
-              <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-              <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
-            </div>
-          }
-
-          @if (!puedeEmitirSegundaCalificacion()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
-              <svg lucideClock class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark, var(--gold))"></svg>
-              <p class="text-sm text-foreground/85">Esta apelación ya avanzó de la segunda calificación. Estado actual: <span class="font-semibold">{{ getEstadoDisplay(ap.estado) }}</span>.</p>
-            </div>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">01 · Resultado</span>
-              <h2 class="form-section-title">Verificacion</h2>
-            </div>
-            <div class="p-6 space-y-3">
-              @for (option of options; track option.id) {
-                <button
-                  type="button"
-                  (click)="seleccionarDecision(option.id)"
-                  [disabled]="!puedeEmitirSegundaCalificacion() || loading()"
-                  class="reference-option-card w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed"
-                  [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                  [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')"
-                  [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')">
-                      @if (option.id === 'admitido') {
-                        <svg lucideCheckCircle2 class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
-                      } @else {
-                        <svg lucideXCircle class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
-                      }
-                    </span>
-                    <div class="flex-1">
-                      <div class="font-display text-sm font-semibold tracking-wider">{{ option.label }}</div>
-                      <div class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</div>
-                    </div>
-                  </div>
-                </button>
+            <section class="rounded-md p-4 border border-border bg-card"><h2 class="eyebrow">Recepción de subsanación · no consultable aquí</h2><p id="second-receipt-capability" role="note" class="text-sm text-muted-foreground mt-2">{{ recepcionNoDisponible }}</p><p class="text-xs text-muted-foreground mt-2">Sin una recepción identificada no se atribuyen un escrito, una fecha ni archivos al requerimiento. Los adjuntos son opcionales: cero archivos no significa que no se haya presentado subsanación.</p><p class="text-xs text-muted-foreground mt-2">El registro no estará disponible hasta poder verificar la recepción vinculada. Consulte las actuaciones del expediente.</p></section>
+            <section class="rounded-md p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 border border-border bg-card" aria-label="Reloj del requerimiento">
+              <div class="sm:col-span-2"><h2 class="eyebrow">Reloj de subsanación consultado</h2><p role="status" class="font-mono mt-1">{{ relojTexto() }}</p></div>
+              @if (requerimiento() && ap.plazoSubsanacion && relojTexto() !== 'Reloj incompleto' && relojTexto() !== 'Reloj incompleto o de otro requerimiento') {
+                <div><span class="eyebrow">Eficacia registrada</span><p class="font-mono mt-1">{{ (fechaVisible(ap.plazoSubsanacion.fechaEficacia) | date:'dd/MM/yyyy') || 'Pendiente / no informada' }}</p></div>
+                <div><span class="eyebrow">Límite informado</span><p class="font-mono mt-1">{{ (fechaVisible(ap.plazoSubsanacion.fechaLimite) | date:'dd/MM/yyyy') || 'No informado' }}</p></div>
               }
-            </div>
-          </section>
-
-          @if (selectedOption(); as selected) {
-            <div class="rounded-lg p-5 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent">
-              <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="selected.accent"></svg>
-              <p class="text-sm text-foreground/85 leading-relaxed">
-                @if (selected.id === 'admitido') {
-                  La subsanacion cumple con todos los requisitos. El expediente pasa a Resolucion Final para pronunciamiento de fondo.
-                }
-                @if (selected.id === 'improcedente') {
-                  La subsanacion no cumple los requisitos legales. El proceso se archiva.
-                }
-                @if (selected.id === 'no_presentado') {
-                  El administrado no subsano dentro del plazo legal de 2 dias habiles. El recurso se tiene por no presentado y el expediente se archiva (Art. 34.3).
-                }
-              </p>
-            </div>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">02 · Sustento</span>
-              <h2 class="form-section-title">Fundamentos de la verificacion</h2>
-            </div>
-            <div class="p-6">
-              <div class="field">
-                <label class="field-label">Fundamentos <span class="req">*</span></label>
-                <textarea [(ngModel)]="fundamentos" [disabled]="!puedeEmitirSegundaCalificacion() || loading()" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa el analisis de la subsanacion y fundamentos de la decision..."></textarea>
-                <span class="field-hint font-mono">{{ fundamentos.length }} caracteres</span>
-              </div>
-            </div>
-          </section>
-
-          <app-official-docs-section
-            [expediente]="ap.expediente"
-            stage="segunda"
-            [decision]="selectedDecision()"
-            [ctx]="docCtx()">
-          </app-official-docs-section>
-
-          <button type="button" class="btn-ghost-brand w-full justify-center !py-3 inline-flex items-center gap-2" (click)="togglePreview()">
-            @if (showPreview()) {
-              <svg lucideEyeOff class="w-4 h-4"></svg>
-              Ocultar borrador
-            } @else {
-              <svg lucideEye class="w-4 h-4"></svg>
-              Ver borradores de resolución y cédulas
+              <p class="text-xs text-muted-foreground sm:col-span-2">No es el plazo de segunda calificación ni el de resolución final. Este estado temporal no permite decidir si una recepción fue o no presentada en plazo. No se calcula un calendario local.</p>
+            </section>
+            <div><h2 class="eyebrow">Texto histórico de la apelación</h2><div class="mt-2 rounded-md p-3 border border-border bg-card"><p class="whitespace-pre-wrap leading-relaxed">{{ getOriginalFundamentos() || 'Texto no informado' }}</p></div><p class="text-xs text-muted-foreground mt-2">Se conserva íntegro el texto recibido. Sus separadores no identifican una recepción ni un requerimiento.</p></div>
+          </div>
+          <div role="tabpanel" id="second-panel-adjuntos" aria-labelledby="second-tab-adjuntos" [hidden]="activeTab() !== 'adjuntos'" class="p-6">
+            @if (loadingDocuments()) { <p role="status">Consultando documentos por relación…</p> }
+            @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarDocumentos()">Reintentar consulta documental</button> }
+            @else {
+              <p class="text-xs text-muted-foreground mb-4">Documentos registrados de relaciones consultadas. El tipo SUBSANACION o el nombre de un archivo no acreditan qué recepción o requerimiento le corresponde. No es un inventario universal ni una certificación de firma.</p>
+              @if (documentCount() > 3) {
+                <div class="space-y-2 mb-3"><div class="relative"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg><label class="sr-only" for="second-doc-search">Buscar documentos del expediente</label><input id="second-doc-search" type="search" class="field-input !pl-9 !py-2 !text-sm" [ngModel]="documentSearch()" (ngModelChange)="documentSearch.set($event)" placeholder="Buscar por nombre, tipo, fecha o relación"/></div><div role="group" aria-label="Filtrar documentos por relación" class="flex flex-wrap gap-1.5"><button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" (click)="documentFilter.set('')">Todos {{ documentCount() }}</button>@for (group of documentGroups(); track group.label) { @if (group.documents.length) { <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === group.label" (click)="documentFilter.set(group.label)">{{ group.label }} {{ group.documents.length }}</button> } }</div></div>
+              }
+              @for (group of visibleGroups(); track group.label) {
+                <section class="mb-3"><h2><button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(group.label)" [attr.aria-controls]="documentGroupId(group)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleDocumentGroup(group.label)"><span class="eyebrow flex-1">{{ group.label }}</span><span class="font-mono text-[11px] text-muted-foreground">{{ group.documents.length }} de {{ group.total }} docs.</span><svg aria-hidden="true" lucideChevronDown class="w-4 h-4 text-muted-foreground" [style.transform]="groupOpen(group.label) ? null : 'rotate(-90deg)'"></svg></button></h2>
+                  <div [id]="documentGroupId(group)" role="list" [attr.aria-label]="'Documentos: ' + group.label" [hidden]="!groupOpen(group.label)" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">
+                    @for (doc of group.documents; track doc.id) {
+                      <div role="listitem" class="rounded-md p-3 flex items-center gap-3 flex-wrap border border-border bg-card"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg></span><div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ nombreDocumento(doc) }}</p><p class="font-mono text-[11px] text-muted-foreground">ID {{ doc.id }} · {{ doc.contentType || 'Tipo no informado' }}</p></div><div class="flex gap-1"><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar ' + nombreDocumento(doc)" (click)="verDocumento(doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" [attr.aria-label]="'Descargar ' + nombreDocumento(doc)" (click)="descargarDocumento(doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button></div></div>
+                    }
+                  </div>
+                </section>
+              } @empty { <p role="status" class="rounded-md p-3 text-sm text-muted-foreground border border-dashed border-border">{{ documentCount() ? 'Ningún documento coincide con la búsqueda o filtro.' : 'No hay documentos registrados en las relaciones consultadas. No acredita ausencia de recepción.' }}</p> }
             }
-          </button>
-
-          @if (showPreview()) {
-            <app-official-preview
-              stage="segunda"
-              [decision]="selectedDecision()"
-              [vistos]="'El recurso de apelación interpuesto por ' + ap.ciudadanoNombre + ' y el escrito de subsanación presentado.'"
-              [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'"
-              [seResuelve]="'Declarar ' + getDecisionLabel(selectedDecision()) + ' el recurso de apelación interpuesto por ' + ap.ciudadanoNombre + '.'"
-              [cedulaVariant]="cedulaVariant()"
-              [ctx]="docCtx()">
-            </app-official-preview>
-          }
-
-          <button type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-            @if (loading()) {
-              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Procesando...
-            } @else {
-              <svg lucideSend class="w-4 h-4"></svg>
-              Emitir 2da calificacion
-            }
-          </button>
+            @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
+          </div>
+        </section>
+        <div class="space-y-5 min-w-0">
+          <p role="status" class="rounded-lg p-4 border border-border text-sm text-muted-foreground">{{ motivoContexto() }}</p>
+          @if (error()) { <p role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ error() }}</p> }
+          @if (segundaActuacion(); as act) { <section class="form-shell p-5"><h2 class="font-display text-xl">Segunda actuación consultada</h2><p class="font-mono text-xs mt-2">ID {{ act.id }} · {{ act.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ act.decision }} · {{ getEstadoDisplay(ap.estado) }}</p><p class="text-xs text-muted-foreground mt-2">Esta consulta acredita una actuación registrada, no confirma un envío anterior cuyo resultado siga incierto. No se identifica una operación por coincidencia de fundamentos.</p><button id="second-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verActuacionRegistrada()">Ver actuación registrada</button></section> }
+          <div class="rounded-lg p-4 text-sm border border-border"><h2 class="font-semibold">Admisión y notificación son actuaciones distintas</h2><p class="text-xs text-muted-foreground mt-2">ADMITIDO queda en NOTIFICACION_SEGUNDA_CALIFICACION. El avance exige ambas notificaciones eficaces de esa actuación y su comando específico. Envío técnico, archivo o etiqueta de proveedor no bastan. La fecha base del plazo final sigue pendiente.</p><a class="btn-ghost-brand mt-3" [routerLink]="['/ttaip/apelacion', ap.expediente]">Consultar expediente y notificaciones</a><p class="text-xs text-muted-foreground mt-1">Abra la pestaña Notificaciones para revisar o registrar la evidencia mediante los controles existentes. No se ejecuta el avance desde este formulario.</p></div>
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Resultado para revisión local</span><h2 id="second-options" class="form-section-title">Verificación</h2></div><div class="p-6 space-y-3" role="group" aria-labelledby="second-options">
+            @for (option of options; track option.id) { <button type="button" (click)="seleccionarDecision(option.id)" [disabled]="!puedePrepararBorrador() || option.id === 'no_presentado'" [attr.aria-pressed]="selectedDecision() === option.id" aria-describedby="second-registry-unavailable" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">@if (option.id === 'admitido') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }</span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span></button> }
+          </div></section>
+          @if (selectedOption(); as selected) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent"><svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" [style.color]="selected.accent"></svg><p>Selección local para borrador: {{ selected.label }}. No constituye una decisión registrada ni una evaluación acreditada de la recepción.</p></div> }
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">02 · Sustento local</span><h2 class="form-section-title">Fundamentos de la verificación</h2></div><div class="p-6"><div class="field"><label for="second-grounds" class="field-label">Fundamentos para revisión local <span class="req">*</span></label><textarea id="second-grounds" [(ngModel)]="fundamentos" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="second-grounds-hint second-registry-unavailable" [attr.aria-invalid]="fundamentos.trim().length > 5000" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa el análisis para el borrador; no se enviará una actuación…"></textarea><p id="second-grounds-hint" class="field-hint font-mono">{{ fundamentos.trim().length }} / 5000 caracteres</p></div></div></section>
+          <app-official-docs-section [expediente]="ap.expediente" stage="segunda" [decision]="selectedDecision()" [ctx]="docCtx()"></app-official-docs-section>
+          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" [disabled]="!selectedDecision()" [attr.aria-expanded]="showPreview()" aria-controls="second-draft" (click)="togglePreview()">@if (showPreview()) { <svg aria-hidden="true" lucideEyeOff class="w-4 h-4"></svg> } @else { <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg> }{{ showPreview() ? 'Ocultar borrador' : 'Previsualizar borrador de segunda calificación' }}</button>
+          @if (showPreview()) { <div id="second-draft"><app-official-preview stage="segunda" [decision]="selectedDecision()" [considerando]="fundamentos || 'Fundamentos locales pendientes de completar.'" [cedulaVariant]="cedulaVariant()" [ctx]="docCtx()"></app-official-preview></div> }
+          <p class="text-xs text-muted-foreground">Texto y borradores permanecen solo en memoria. Cambiar expediente, requerimiento, sesión o recargar pierde la preparación local. No hay subida de archivos ni registro coordinado desde esta pantalla. Cancelar cliente no revierte una escritura aceptada por el servidor.</p>
+          <button id="second-review" type="button" class="btn-ghost-brand w-full !py-3 justify-center" [disabled]="!puedePrepararBorrador() || !!validacionBorrador()" (click)="abrirConfirmacionCalificacion()">Revisar borrador local</button>
+          <p id="second-registry-unavailable" role="note" class="text-sm text-muted-foreground">{{ recepcionNoDisponible }} El registro se mantiene no disponible; consulte el expediente sin repetir escrituras.</p>
+          <button type="button" disabled class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed" aria-describedby="second-registry-unavailable">Registro de segunda calificación no disponible</button>
+          <button type="button" class="btn-ghost-brand w-full" (click)="reintentarConsulta()">Consultar estado y actuaciones</button>
         </div>
-      </div>
-    </div>
-  } @else {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-        <p class="text-sm" style="color: var(--destructive)">{{ error() || 'No se pudo cargar la apelacion.' }}</p>
       </div>
     </div>
   }
-
-  <app-reference-confirm-modal
-    [open]="confirmModalAbierto()"
-    [submitting]="loading()"
-    title="Confirme la 2da calificación"
-    titleLead="Confirme"
-    titleEmphasis="la 2da calificación"
-    eyebrow="Revisión final · 2da Calificación"
-    description="Verifique el resultado de la subsanación antes de emitir la resolución."
-    [summary]="segundaConfirmSummary()"
-    [warning]="segundaWarning()"
-    confirmLabel="Registrar calificación"
-    (close)="confirmModalAbierto.set(false)"
-    (confirm)="enviarCalificacion()">
-  </app-reference-confirm-modal>
-
-  <app-reference-success-modal
-    [open]="successModalAbierto()"
-    variant="calificacion-2da"
-    [tone]="segundaSuccessTone()"
-    eyebrow="2da calificación registrada"
-    [title]="segundaSuccessTitle()"
-    description="Actuación devuelta por el servidor. No acredita firma digital ni emisión de un archivo oficial. Consulte sus documentos y la eficacia de la notificación en el expediente."
-    [expediente]="apelacion()?.expediente || ''"
-    [expedienteHint]="apelacion()?.resolucionSegundaCalificacion?.numeroResolucion || 'Sin numeración registrada'"
-    [plazoDias]="null"
-    plazoTipo="hábiles"
-    [plazoDescripcion]="segundaPlazoDescripcion()"
-    plazoNorma="Reglamento TTAIP"
-    [metadata]="segundaSuccessMetadata()"
-    [nextSteps]="segundaNextSteps()"
-    primaryLabel="Ir al panel TTAIP"
-    secondaryLabel="Ver expediente"
-    (close)="irPanelTtaip()"
-    (primary)="irPanelTtaip()"
-    (secondary)="irPanelTtaip()">
-  </app-reference-success-modal>
+  <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" title="Revise el borrador de segunda calificación" titleLead="Revise" titleEmphasis="el borrador" eyebrow="Revisión local · sin envío" description="La recepción institucional no está disponible para este formulario. Esta revisión no presenta ni confirma una actuación." [summary]="segundaConfirmSummary()" [warning]="segundaWarning()" confirmLabel="Volver al borrador" (close)="confirmModalAbierto.set(false)" (confirm)="confirmModalAbierto.set(false)"></app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente() && !!segundaActuacion()" [manageFocus]="true" variant="calificacion-2da" [tone]="segundaSuccessTone()" eyebrow="Actuación consultada · no es una confirmación de envío" [title]="segundaSuccessTitle()" description="Actuación consultada por su ID. No acredita firma digital ni emisión de un archivo oficial. Tampoco prueba notificación eficaz o la identidad de una operación incierta sin ID devuelto." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="segundaActuacion()?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="segundaSuccessMetadata()" [nextSteps]="segundaNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Ver expediente" (close)="successModalAbierto.set(false)" (primary)="irPanelTtaip()" (secondary)="irExpediente()"></app-reference-success-modal>
+  <app-document-preview-modal [doc]="previewTarget()" [open]="!!previewTarget() && contextoVigente()" [manageFocus]="true" (close)="previewTarget.set(null)"></app-document-preview-modal>
 </div>

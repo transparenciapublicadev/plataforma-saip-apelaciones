@@ -1,2 +1,9 @@
-/* Estilos segunda calificacion */
-
+:host { display: block; }
+.second-page { overflow-wrap: anywhere; }
+.second-page .field-input, .second-page section { min-width: 0; }
+.second-page button:focus-visible, .second-page a:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.second-page [role="tabpanel"][hidden] { display: none; }
+.second-page [aria-pressed="true"]:not(.w-full) { background: var(--brand-700); color: white; }
+@media (prefers-reduced-motion: reduce) {
+  .second-page *, .second-page *::before, .second-page *::after { animation: none !important; transition: none !important; }
+}
