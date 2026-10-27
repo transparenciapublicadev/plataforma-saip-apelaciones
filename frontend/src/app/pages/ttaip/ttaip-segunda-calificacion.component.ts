@@ -1,453 +1,260 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription, forkJoin } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
-import { TtaipService } from '../../services/ttaip.service';
-import { Apelacion } from '../../models/apelacion.model';
-import {
-  ReferenceConfirmModalComponent,
-  ReferenceConfirmSummary,
-  ReferenceConfirmWarning
-} from '../../shared/reference-confirm-modal.component';
-import {
-  ReferenceSuccessMeta,
-  ReferenceSuccessModalComponent,
-  ReferenceSuccessNextStep,
-  ReferenceSuccessTone
-} from '../../shared/reference-success-modal.component';
+import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
-
+import { Apelacion } from '../../models/apelacion.model';
+import { DocumentoMetadata, DocumentoRelation } from '../../models/documento.model';
+import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
+import { ReferenceSuccessMeta, ReferenceSuccessModalComponent, ReferenceSuccessNextStep, ReferenceSuccessTone } from '../../shared/reference-success-modal.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
+import { falloConsulta } from '../../utils/consulta-remota.util';
 import { OfficialDocsSectionComponent } from './shared/official-docs-section.component';
 import { OfficialPreviewComponent } from './shared/official-preview.component';
 import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
-import {
-  LucideArrowLeft, LucideCheckCircle2, LucideUpload,
-  LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend, LucidePlus,
-  LucideEye, LucideEyeOff
-} from '@lucide/angular';
+import { positiveId, apelacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
+import { SegundaDecision, RECEPCION_INSTITUCIONAL_NO_DISPONIBLE, segundaOpciones, requerimientoConsultado, segundaConsultada, contextoSegunda, relojConsultado } from './ttaip-segunda-calificacion.model';
+import { LucideArrowLeft, LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff,
+  LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
-type SegundaDecision = 'admitido' | 'improcedente' | 'no_presentado';
-type SegundaTab = 'subsanacion' | 'adjuntos';
-
-interface SegundaOption {
-  id: SegundaDecision;
-  label: string;
-  description: string;
-  accent: string;
-}
-
+interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
-  imports: [
-    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent,
-    LucideArrowLeft, LucideCheckCircle2, LucideUpload,
-    LucideFileText, LucideXCircle, LucideClock, LucideInfo, LucideSend,
-    LucideEye, LucideEyeOff
-  ],
-  templateUrl: './ttaip-segunda-calificacion.component.html',
-  styleUrl: './ttaip-segunda-calificacion.component.css',
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+    OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideArrowLeft,
+    LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
+  templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TtaipSegundaCalificacionComponent implements OnInit {
+export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly apelacionService = inject(ApelacionService);
-  private readonly ttaipService = inject(TtaipService);
   private readonly documentoService = inject(DocumentoService);
-  private readonly segundaCalificacionEstados = new Set<string>(['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION']);
-
-  apelacion = signal<Apelacion | null>(null);
-  loading = signal<boolean>(false);
-  loadingApelacion = signal<boolean>(true);
-  error = signal<string>('');
-  mensaje = signal<string>('');
-  confirmModalAbierto = signal<boolean>(false);
-  successModalAbierto = signal<boolean>(false);
-
-  activeTab = signal<SegundaTab>('subsanacion');
-  selectedDecision = signal<SegundaDecision | null>(null);
-  showPreview = signal<boolean>(false);
-
+  private readonly authService = inject(AuthService);
+  private routeSub = new Subscription();
+  private reads = new Subscription();
+  private docReads = new Subscription();
+  private downloads = new Subscription();
+  private generation = 0;
+  private destroyed = false;
+  private initialized = false;
+  private requested = '';
+  private session = '';
+  private revision = -1;
+  private previousId: number | null = null;
+  private previousRequirement: number | null = null;
+  private docsLoaded = false;
+  readonly apelacion = signal<Apelacion | null>(null);
+  readonly loadingApelacion = signal(true);
+  readonly loadError = signal('');
+  readonly error = signal('');
+  readonly confirmModalAbierto = signal(false);
+  /** A consulted persisted act, never a confirmation of a new submission. */
+  readonly successModalAbierto = signal(false);
+  readonly activeTab = signal<'subsanacion' | 'adjuntos'>('subsanacion');
+  readonly selectedDecision = signal<SegundaDecision | null>(null);
+  readonly showPreview = signal(false);
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly documentGroups = signal<DocumentGroup[]>([]);
+  readonly documentSearch = signal('');
+  readonly documentFilter = signal('');
+  readonly closedGroups = signal<Record<string, boolean>>({});
+  readonly loadingDocuments = signal(false);
+  readonly documentError = signal('');
+  readonly downloadError = signal('');
+  readonly downloadingId = signal<number | null>(null);
+  readonly recepcionNoDisponible = RECEPCION_INSTITUCIONAL_NO_DISPONIBLE;
+  readonly tabs = [{ id: 'subsanacion' as const, label: 'Subsanación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
+  readonly options = segundaOpciones;
+  readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
+  readonly requerimiento = computed(() => requerimientoConsultado(this.apelacion()));
+  readonly segundaActuacion = computed(() => segundaConsultada(this.apelacion()));
+  readonly contexto = computed(() => contextoSegunda(this.apelacion()));
+  readonly relojTexto = computed(() => relojConsultado(this.apelacion()));
+  readonly cedulaVariant = computed<CedulaVariant>(() => cedulaVariantForStage('segunda', this.selectedDecision() || undefined));
+  readonly docCtx = computed<Partial<DocContext>>(() => ({
+    expediente: this.apelacion()?.expediente || '', recurrente: this.apelacion()?.ciudadanoNombre || 'No registrado',
+    entidad: this.apelacion()?.entidadNombre || this.apelacion()?.entidadExternaNombre || 'No registrada',
+    sumilla: this.apelacion()?.solicitudAsunto || this.apelacion()?.resumenSolicitudOriginal || 'No registrada',
+  }));
+  readonly documentCount = computed(() => this.documentGroups().reduce((sum, group) => sum + group.documents.length, 0));
+  readonly visibleGroups = computed(() => {
+    const norm = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
+    const query = norm(this.documentSearch().trim());
+    return this.documentGroups().filter(group => !this.documentFilter() || this.documentFilter() === group.label)
+      .map(group => ({ ...group, total: group.documents.length, documents: group.documents.filter(doc => !query
+        || norm([doc.nombreOriginal, doc.tipoDocumento, doc.contentType, doc.fechaCreacion, group.label].filter(Boolean).join(' ')).includes(query)) }))
+      .filter(group => group.documents.length > 0);
+  });
   fundamentos = '';
-
-  readonly docCtx = computed<Partial<DocContext>>(() => {
-    const ap = this.apelacion();
-    return {
-      expediente: ap?.expediente || '',
-      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
-      entidad: ap?.entidadNombre || 'No registrada',
-      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
-      direccionEntidad: '—',
-      sumilla: ap?.solicitudAsunto || ap?.resumenSolicitudOriginal || ap?.fundamentos || 'No registrada',
-    };
-  });
-
-  readonly cedulaVariant = computed<CedulaVariant>(() => {
-    return cedulaVariantForStage('segunda', this.selectedDecision() || undefined);
-  });
-
-  readonly tabs: ReadonlyArray<{ id: SegundaTab; label: string }> = [
-    { id: 'subsanacion', label: 'Subsanacion' },
-    { id: 'adjuntos', label: 'Adjuntos' }
-  ];
-
-  readonly options: ReadonlyArray<SegundaOption> = [
-    {
-      id: 'admitido',
-      label: 'ADMITIDO A TRÁMITE',
-      description: 'Subsanación aprobada · pasa a Resolución Final',
-      accent: 'var(--success)'
-    },
-    {
-      id: 'improcedente',
-      label: 'IMPROCEDENTE',
-      description: 'Subsanación insuficiente · proceso archivado',
-      accent: 'var(--muted-foreground)'
-    },
-    {
-      id: 'no_presentado',
-      label: 'TENER POR NO PRESENTADO',
-      description: 'No subsanó en el plazo de 2 días hábiles',
-      accent: 'var(--warning)'
-    }
-  ];
-
-  readonly selectedOption = computed<SegundaOption | undefined>(() => {
-    const current = this.selectedDecision();
-    return this.options.find((option) => option.id === current);
-  });
-
-  canSubmit(): boolean {
-    return this.puedeEmitirSegundaCalificacion()
-      && !!this.selectedDecision()
-      && this.fundamentos.trim().length > 0;
+  constructor() {
+    effect(() => {
+      const revision = this.authService.cambiosSesion();
+      if (this.initialized && revision !== this.revision) untracked(() => this.cargarApelacion(this.requested));
+    });
   }
-
-  readonly documentosSubsanacion = computed(() => {
-    // Nota de mantenimiento: limitación conocida si se habilitan múltiples rondas de subsanación
-    return this.apelacion()?.documentos?.filter(doc => doc.tipoDocumento === 'SUBSANACION') ?? [];
-  });
-
-  readonly documentosOriginales = computed(() => {
-    return this.apelacion()?.documentos?.filter(doc => doc.tipoDocumento !== 'SUBSANACION') ?? [];
-  });
-
-  ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibio expediente para segunda calificacion.');
-      this.loadingApelacion.set(false);
-      return;
-    }
-
-    this.cargarApelacion(expediente);
+  private sessionKey(): string {
+    try { const s = this.authService.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.miembroId]); }
+    catch { return ''; }
   }
-
+  contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
+  private current(generation: number): boolean { return generation === this.generation && this.contextoVigente(); }
+  ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(params => this.cargarApelacion(params.get('expediente') || '')); }
+  ngOnDestroy(): void { this.destroyed = true; this.generation++; this.routeSub.unsubscribe(); this.cancelarLecturas(); }
+  private cancelarLecturas(): void {
+    this.reads.unsubscribe(); this.docReads.unsubscribe(); this.downloads.unsubscribe();
+    this.reads = new Subscription(); this.docReads = new Subscription(); this.downloads = new Subscription();
+  }
+  private limpiarBorrador(): void { this.selectedDecision.set(null); this.fundamentos = ''; this.showPreview.set(false); this.confirmModalAbierto.set(false); }
   cargarApelacion(expediente: string): void {
-    this.loadingApelacion.set(true);
-    this.apelacionService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        this.apelacion.set(data);
-        this.loadingApelacion.set(false);
-      },
-      error: () => {
-        this.error.set('Error al cargar la apelacion.');
-        this.loadingApelacion.set(false);
-      }
-    });
-  }
-
-  cambiarTab(tab: SegundaTab): void {
-    this.activeTab.set(tab);
-  }
-
-  descargarDocumento(doc: any): void {
-    if (!doc.id) {
-      this.error.set('No se puede descargar un documento sin ID.');
-      return;
+    if (this.destroyed) return;
+    const same = expediente === this.requested && this.session === this.sessionKey();
+    if (same && this.loadingApelacion() && this.generation > 0) return;
+    this.cancelarLecturas(); const generation = ++this.generation;
+    this.requested = expediente; this.session = this.sessionKey(); this.revision = this.authService.cambiosSesion();
+    this.apelacion.set(null); this.loadingApelacion.set(true); this.loadError.set(''); this.error.set('');
+    this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
+    this.documentGroups.set([]); this.documentSearch.set(''); this.documentFilter.set(''); this.closedGroups.set({});
+    this.documentError.set(''); this.downloadError.set(''); this.loadingDocuments.set(false); this.downloadingId.set(null); this.docsLoaded = false;
+    if (!same) { this.previousId = null; this.previousRequirement = null; this.limpiarBorrador(); this.activeTab.set('subsanacion'); }
+    let account; try { account = this.authService.obtenerSesion(); } catch { account = null; }
+    if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR'].includes(account.tipoUsuario || '')) {
+      this.loadingApelacion.set(false); this.loadError.set('La sesión no permite consultar el Tribunal. Utilice el acceso interno.'); return;
     }
-    this.error.set('');
-    this.documentoService.download(doc.id, doc.nombreArchivo || 'documento').subscribe({
-      next: ({ blob, filename }) => {
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        anchor.rel = 'noopener';
-        anchor.click();
-        URL.revokeObjectURL(objectUrl);
+    if (!expediente) { this.loadingApelacion.set(false); this.loadError.set('No se recibió un expediente.'); return; }
+    this.reads.add(this.apelacionService.findByExpediente(expediente).subscribe({
+      next: ap => {
+        if (!this.current(generation)) return;
+        if (!apelacionCompatible(ap, expediente) || (this.previousId != null && ap.id !== this.previousId)) {
+          this.loadError.set('La respuesta está incompleta o no identifica el expediente solicitado.'); this.loadingApelacion.set(false); return;
+        }
+        const requirement = requerimientoConsultado(ap)?.id ?? null;
+        if (this.previousRequirement !== requirement) this.limpiarBorrador();
+        this.previousId = ap.id; this.previousRequirement = requirement; this.apelacion.set(ap); this.loadingApelacion.set(false);
       },
-      error: (err) => {
-        this.error.set('Error al descargar el documento.');
-      }
-    });
+      error: err => { if (this.current(generation)) { this.loadError.set(falloConsulta(err, 'la apelación').mensaje); this.loadingApelacion.set(false); } }
+    }));
   }
-
+  reintentarConsulta(): void { this.cargarApelacion(this.requested); }
+  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && this.contexto() === 'borrador'; }
+  /** No institutional receipt read exists in the current contract: fail closed instead of guessing. */
+  puedeEmitirSegundaCalificacion(): boolean { return false; }
+  canSubmit(): boolean { return false; }
   seleccionarDecision(decision: SegundaDecision): void {
-    if (!this.puedeEmitirSegundaCalificacion()) {
-      return;
-    }
-
-    this.selectedDecision.set(decision);
-    this.error.set('');
+    if (!this.puedePrepararBorrador() || decision === 'no_presentado') return;
+    this.confirmModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
+    this.downloads.unsubscribe(); this.downloads = new Subscription(); this.downloadingId.set(null);
+    this.selectedDecision.set(decision); this.error.set('');
   }
-
-  togglePreview(): void {
-    this.showPreview.update((value) => !value);
+  validacionBorrador(): string {
+    if (!this.selectedDecision() || this.selectedDecision() === 'no_presentado') return 'Seleccione una opción de segunda calificación para el borrador.';
+    if (!this.fundamentos.trim()) return 'Complete los fundamentos de revisión local.';
+    return this.fundamentos.trim().length <= 5000 ? '' : 'Los fundamentos no pueden exceder 5000 caracteres.';
   }
-
-  getObservaciones(): string[] {
-    const observaciones = this.apelacion()?.resolucionPrimeraCalificacion?.observaciones?.trim();
-    if (!observaciones) {
-      return [];
-    }
-
-    return observaciones
-      .split(';')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-  }
-
-  getSubsanacionFromFundamentos(): string {
-    const fundamentos = this.apelacion()?.fundamentos || '';
-    if (!fundamentos.includes('--- SUBSANACIÓN ---')) {
-      return '';
-    }
-
-    const parts = fundamentos.split('--- SUBSANACIÓN ---');
-    return parts.length > 1 ? parts[1].trim() : '';
-  }
-
-  getOriginalFundamentos(): string {
-    const fundamentos = this.apelacion()?.fundamentos || '';
-    if (!fundamentos) {
-      return '';
-    }
-
-    if (!fundamentos.includes('--- SUBSANACIÓN ---')) {
-      return fundamentos;
-    }
-
-    return fundamentos.split('--- SUBSANACIÓN ---')[0]?.trim() || '';
-  }
-
-  getDecisionLabel(decision: string | null): string {
-    if (!decision) {
-      return '[DECISIÓN]';
-    }
-
-    if (decision === 'admitido') {
-      return 'ADMITIDO A TRÁMITE';
-    }
-
-    if (decision === 'no_presentado') {
-      return 'TENER POR NO PRESENTADO';
-    }
-
-    return 'IMPROCEDENTE';
-  }
-
   abrirConfirmacionCalificacion(): void {
-    if (!this.validarSegundaCalificacion()) {
-      return;
-    }
-
+    if (!this.puedePrepararBorrador() || this.validacionBorrador()) { this.error.set(this.validacionBorrador() || 'Revise el contexto del expediente.'); return; }
     this.confirmModalAbierto.set(true);
   }
-
   enviarCalificacion(): void {
-    const currentAppeal = this.apelacion();
-    const decision = this.selectedDecision();
-
-    if (!this.validarSegundaCalificacion() || !currentAppeal || !decision) {
-      return;
-    }
-
-    this.loading.set(true);
-    this.error.set('');
-
-    if (decision === 'admitido') {
-      this.ttaipService.admitirApelacion(currentAppeal.id, {
-        fundamentos: this.fundamentos.trim()
-      }).subscribe({
-        next: (updated) => this.handleSuccess('Apelación declarada ADMITIDA A TRÁMITE.', updated),
-        error: (err) => this.handleError(err)
-      });
-      return;
-    }
-
-    if (decision === 'no_presentado') {
-      this.ttaipService.declararNoPresentado(currentAppeal.id, {
-        fundamentos: this.fundamentos.trim()
-      }).subscribe({
-        next: (updated) => this.handleSuccess('Recurso declarado TENIDO POR NO PRESENTADO.', updated),
-        error: (err) => this.handleError(err)
-      });
-      return;
-    }
-
-    this.ttaipService.inadmitirApelacion(currentAppeal.id, {
-      fundamentos: this.fundamentos.trim()
-    }).subscribe({
-      next: (updated) => this.handleSuccess('Apelación declarada IMPROCEDENTE.', updated),
-      error: (err) => this.handleError(err)
-    });
-  }
-
-  private handleSuccess(message: string, updated?: Apelacion): void {
-    const current = this.apelacion();
-    if (!updated?.id || updated.id !== current?.id || updated.expediente !== current?.expediente) {
-      this.loading.set(false);
-      this.successModalAbierto.set(false);
-      this.confirmModalAbierto.set(false);
-      this.error.set('No se recibió una confirmación verificable del recurso; consulte el expediente antes de repetir la operación.');
-      return;
-    }
-    const nextAppeal = updated;
-    this.apelacion.set(nextAppeal);
-
-    this.loading.set(false);
-    this.mensaje.set(message);
-    this.successModalAbierto.set(true);
+    if (this.destroyed) return;
     this.confirmModalAbierto.set(false);
+    this.error.set('Registro no disponible: falta una consulta institucional de recepción vinculada; consulte el expediente. No se ha enviado ningún comando.');
   }
-
-  private handleError(err: unknown): void {
-    this.loading.set(false);
-    this.confirmModalAbierto.set(false);
-    const apiError = err as { error?: { mensaje?: string } };
-    this.error.set(apiError.error?.mensaje || 'Error al procesar la segunda calificacion.');
+  togglePreview(): void { if (this.contextoVigente() && this.selectedDecision() && this.selectedDecision() !== 'no_presentado') this.showPreview.update(value => !value); }
+  getObservaciones(): string[] { const value = this.requerimiento()?.observaciones; return typeof value === 'string' ? value.split(/\r?\n/).map(line => line.trim()).filter(Boolean) : []; }
+  getOriginalFundamentos(): string { return this.apelacion()?.fundamentos || ''; }
+  getDecisionLabel(value: string | null): string { return this.options.find(option => option.id === value)?.label || 'Decisión local no seleccionada'; }
+  getEstadoDisplay(value: string | undefined): string { return value?.replaceAll('_', ' ') || 'No informado'; }
+  fechaVisible(value: unknown): string | null { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && Number.isFinite(Date.parse(value)) ? value : null; }
+  motivoContexto(): string {
+    if (this.contexto() === 'registrada') return 'Hay una segunda actuación registrada. No se habilita otra calificación; consulte su ID y sus notificaciones.';
+    if (this.contexto() === 'incompleto') return 'Información incompleta o asociaciones incompatibles de primera calificación, requerimiento o segunda actuación.';
+    if (this.contexto() === 'incompatible') return 'Estado incompatible con la preparación de segunda calificación: ' + this.getEstadoDisplay(this.apelacion()?.estado) + '.';
+    return 'Preparación local de borradores. El registro sigue no disponible hasta disponer de consulta institucional de recepción.';
   }
-
+  cambiarTab(tab: 'subsanacion' | 'adjuntos'): void { this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded) this.cargarDocumentos(); }
+  onTabKey(event: KeyboardEvent, tab: 'subsanacion' | 'adjuntos'): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault(); const next = event.key === 'Home' ? 'subsanacion' : event.key === 'End' ? 'adjuntos' : tab === 'subsanacion' ? 'adjuntos' : 'subsanacion';
+    this.cambiarTab(next); this.host.nativeElement.querySelector<HTMLElement>('#second-tab-' + next)?.focus();
+  }
+  cargarDocumentos(): void {
+    const ap = this.apelacion(); if (!ap || !this.contextoVigente() || this.loadingApelacion() || this.loadingDocuments() || this.loadError()) return;
+    const generation = this.generation, groups: Omit<DocumentGroup, 'documents'>[] = [];
+    if (positiveId(ap.solicitudId)) groups.push({ label: 'Solicitud de origen referenciada', relation: { solicitudId: ap.solicitudId } });
+    groups.push({ label: 'Apelación · sin atribuir recepción', relation: { apelacionId: ap.id } });
+    const requirement = this.requerimiento();
+    if (requirement) groups.push({ label: 'Primera calificación y requerimiento', relation: { resolucionId: requirement.id! } });
+    const second = this.segundaActuacion();
+    if (second) groups.push({ label: 'Segunda actuación consultada', relation: { resolucionId: second.id! } });
+    const aggregate = ap.expedienteTtaip;
+    if (positiveId(aggregate?.id) && aggregate?.numeroExpediente === ap.expediente) groups.push({ label: 'Expediente TTAIP', relation: { expedienteTtaipId: aggregate.id } });
+    this.docReads.unsubscribe(); this.docReads = new Subscription(); this.loadingDocuments.set(true);
+    this.documentError.set(''); this.documentGroups.set([]); this.previewTarget.set(null);
+    this.docReads.add(forkJoin(groups.map(group => this.documentoService.listByRelation(group.relation))).subscribe({
+      next: values => {
+        if (!this.current(generation)) return;
+        const result = groups.map((group, index) => ({ ...group, documents: documentosRelacionados(values[index], group.relation) }));
+        const ids = new Set<number>();
+        if (result.some(group => group.documents === null || group.documents.some(doc => ids.has(doc.id!) || !ids.add(doc.id!))))
+          this.documentError.set('Datos documentales incompletos o asociados a otro recurso. No se muestran archivos sustitutos.');
+        else { this.documentGroups.set(result as DocumentGroup[]); this.docsLoaded = true; }
+        this.loadingDocuments.set(false);
+      },
+      error: err => { if (this.current(generation)) { this.loadingDocuments.set(false); this.documentError.set(falloConsulta(err, 'los documentos').mensaje); } }
+    }));
+  }
+  private documentoActual(doc: DocumentoMetadata): boolean { return this.contextoVigente() && this.documentGroups().some(group => group.documents.some(item => item === doc && positiveId(item.id))); }
+  verDocumento(doc: DocumentoMetadata): void {
+    if (this.documentoActual(doc)) this.previewTarget.set({ id: doc.id, nombre: this.nombreDocumento(doc), tipo: doc.contentType, expediente: this.apelacion()!.expediente });
+  }
+  descargarDocumento(doc: DocumentoMetadata): void {
+    if (!this.documentoActual(doc) || this.downloadingId() != null) { this.downloadError.set('Consulte un archivo identificado del recurso actual.'); return; }
+    const generation = this.generation, decision = this.selectedDecision();
+    this.downloadingId.set(doc.id!); this.downloadError.set('');
+    this.downloads.add(this.documentoService.download(doc.id!, this.nombreDocumento(doc)).subscribe({
+      next: ({ blob, filename }) => {
+        if (!this.current(generation) || this.selectedDecision() !== decision) return;
+        this.downloadingId.set(null); const url = URL.createObjectURL(blob);
+        try { const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.rel = 'noopener'; anchor.click(); }
+        finally { URL.revokeObjectURL(url); }
+      },
+      error: err => { if (this.current(generation)) { this.downloadingId.set(null); this.downloadError.set(falloConsulta(err, 'el documento').mensaje); } }
+    }));
+  }
+  nombreDocumento(doc: DocumentoMetadata): string { return doc.nombreOriginal || 'Nombre no informado'; }
+  documentGroupId(group: DocumentGroup): string { const [key, id] = Object.entries(group.relation)[0]; return 'second-docs-' + key + '-' + id; }
+  groupOpen(label: string): boolean { return !!this.documentSearch().trim() || !!this.documentFilter() || !this.closedGroups()[label]; }
+  toggleDocumentGroup(label: string): void { if (!this.documentSearch().trim() && !this.documentFilter()) this.closedGroups.update(groups => ({ ...groups, [label]: !groups[label] })); }
   segundaConfirmSummary(): ReferenceConfirmSummary[] {
-    const selected = this.selectedOption();
-    return [
-      { label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true },
-      { label: 'Resultado', value: selected?.label || '—' },
-      { label: 'Efecto', value: selected?.description || '—' },
-      { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }
-    ];
+    return [{ label: 'Expediente consultado', value: this.apelacion()?.expediente || '—', mono: true },
+      { label: 'Requerimiento · ID', value: this.requerimiento()?.id?.toString() || 'No identificado', mono: true },
+      { label: 'Selección local para borrador', value: this.getDecisionLabel(this.selectedDecision()) },
+      { label: 'Fundamentos locales', value: String(this.fundamentos.trim().length) + ' caracteres' }];
   }
-
-  segundaWarning(): ReferenceConfirmWarning {
-    return {
-      label: 'Decisión final',
-      detail: this.selectedDecision() === 'admitido'
-        ? 'El expediente pasará a etapa de Resolución Final.'
-        : 'El recurso quedará archivado definitivamente conforme al Art. 34.3 del TUO de la Ley N.° 27806.'
-    };
-  }
-
-  segundaSuccessTone(): ReferenceSuccessTone {
-    const d = this.selectedDecision();
-    if (d === 'admitido') return 'success';
-    if (d === 'no_presentado') return 'warning';
-    return 'brand';
-  }
-
-  segundaSuccessTitle(): string {
-    const d = this.selectedDecision();
-    if (d === 'admitido') return 'Subsanación ADMITIDA A TRÁMITE';
-    if (d === 'no_presentado') return 'Recurso TENIDO POR NO PRESENTADO';
-    return 'Recurso declarado IMPROCEDENTE';
-  }
-
-  segundaSuccessDescription(): string {
-    const d = this.selectedDecision();
-    if (d === 'admitido') {
-      return 'La subsanación cumple los requisitos. El expediente avanza a Resolución Final donde el Tribunal se pronunciará sobre el fondo.';
-    }
-    if (d === 'no_presentado') {
-      return 'El administrado no subsanó dentro del plazo de 2 días hábiles. El recurso se tiene por no presentado y el expediente se archiva.';
-    }
-    return 'La subsanación resulta insuficiente. El proceso queda archivado y se notifica al ciudadano.';
-  }
-
-  segundaPlazoDias(): number | null {
-    return this.selectedDecision() === 'admitido' ? 10 : null;
-  }
-
-  segundaPlazoDescripcion(): string {
-    return this.selectedDecision() === 'admitido'
-      ? 'Plazo en que el Tribunal emitirá Resolución Final.'
-      : '';
-  }
-
+  segundaWarning(): ReferenceConfirmWarning { return { label: 'Solo revisión local', detail: 'Cerrar esta revisión no registra ni notifica una actuación. El envío no está disponible; falta consultar la recepción del requerimiento.' }; }
+  verActuacionRegistrada(): void { if (this.contextoVigente() && this.segundaActuacion() && !this.loadError()) this.successModalAbierto.set(true); }
+  segundaSuccessTone(): ReferenceSuccessTone { return 'warning'; }
+  segundaSuccessTitle(): string { return 'Segunda calificación consultada · ' + (this.segundaActuacion()?.decision || 'No identificada'); }
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
-    const docsCount = this.documentosSubsanacion().length;
-    return [
-      { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) },
-      { label: 'Docs revisados', value: `${docsCount} archivos` },
-      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` },
-      { label: 'Secretaría', value: 'TTAIP' }
-    ];
+    const r = this.segundaActuacion();
+    return [{ label: 'Actuación · ID', value: r?.id?.toString() || 'No informado', mono: true },
+      { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' },
+      { label: 'Estado del expediente', value: this.apelacion()?.estado || 'No informado' }];
   }
-
   segundaNextSteps(): ReferenceSuccessNextStep[] {
-    const d = this.selectedDecision();
-    if (d === 'admitido') {
-      return [
-        { label: 'Notificación al ciudadano y a la entidad emplazada.' },
-        { label: 'El expediente avanza a Resolución Final.', hint: '10 días hábiles' },
-        { label: 'La sala emitirá fallo: FUNDADO o INFUNDADO.' }
-      ];
-    }
-    if (d === 'no_presentado') {
-      return [
-        { label: 'Se notifica al recurrente que el recurso se tiene por no presentado.' },
-        { label: 'El expediente queda archivado conforme a ley.' }
-      ];
-    }
-    return [
-      { label: 'Se notifica al ciudadano la improcedencia.' },
-      { label: 'El expediente queda archivado.' }
+    if (this.segundaActuacion()?.decision === 'IMPROCEDENTE') return [
+      { label: 'Improcedencia registrada en segunda calificación. No acredita emisión documental, firma ni notificación eficaz.' },
+      { label: 'Consulte las actuaciones y las notificaciones del expediente; no se habilita otra segunda calificación.' }
     ];
+    return [{ label: 'La segunda admisión registrada no acredita el avance a resolución. Este exige ambas notificaciones eficaces de esa actuación, al recurrente y a la entidad.' },
+      { label: 'Consulte la pestaña Notificaciones del expediente. La fecha base del plazo final continúa pendiente de definición de dominio.' }];
   }
-
-  irPanelTtaip(): void {
-    this.successModalAbierto.set(false);
-    this.router.navigate(['/ttaip']);
-  }
-
-  puedeEmitirSegundaCalificacion(): boolean {
-    return this.segundaCalificacionEstados.has(this.normalizeEstado(this.apelacion()?.estado));
-  }
-
-  getEstadoDisplay(value: string | undefined): string {
-    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
-  }
-
-  private validarSegundaCalificacion(): boolean {
-    const currentAppeal = this.apelacion();
-    const decision = this.selectedDecision();
-
-    if (!currentAppeal) {
-      this.error.set('No se encontro la apelacion para evaluar.');
-      return false;
-    }
-
-    if (!this.puedeEmitirSegundaCalificacion()) {
-      this.error.set(`Esta apelacion ya no se encuentra en segunda calificacion. Estado actual: ${this.getEstadoDisplay(currentAppeal.estado)}.`);
-      return false;
-    }
-
-    if (!decision) {
-      this.error.set('Debe seleccionar una decision de segunda calificacion.');
-      return false;
-    }
-
-    if (!this.fundamentos.trim()) {
-      this.error.set('Los fundamentos son obligatorios.');
-      return false;
-    }
-
-    this.error.set('');
-    return true;
-  }
-
-  private normalizeEstado(value: string | undefined | null): string {
-    return (value || '').trim().toUpperCase().replaceAll(' ', '_');
-  }
+  irPanelTtaip(): void { if (this.contextoVigente()) void this.router.navigate(['/ttaip']); }
+  irExpediente(): void { if (this.contextoVigente() && this.apelacion()) void this.router.navigate(['/ttaip/apelacion', this.apelacion()!.expediente]); }
 }
