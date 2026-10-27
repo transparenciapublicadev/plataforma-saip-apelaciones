@@ -3,12 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
+import { signal } from '@angular/core';
 import { TtaipCalificarComponent } from '../ttaip-calificar.component';
 import { TtaipSegundaCalificacionComponent } from '../ttaip-segunda-calificacion.component';
 import { TtaipResolverComponent } from '../ttaip-resolver.component';
 import { ApelacionService } from '../../../services/apelacion.service';
 import { TtaipService } from '../../../services/ttaip.service';
 import { DocumentoService } from '../../../services/documento.service';
+import { SolicitudService } from '../../../services/solicitud.service';
+import { AuthService } from '../../../services/auth.service';
 import { ReferenceSuccessModalComponent } from '../../../shared/reference-success-modal.component';
 import { ReferenceConfirmModalComponent } from '../../../shared/reference-confirm-modal.component';
 
@@ -21,14 +24,21 @@ describe.each([
   const expediente = '00001-2026-JUS/TTAIP';
   const backend = { admitirApelacion: vi.fn(), declararInfundado: vi.fn() };
   const ap = { id: 1, expediente, estado, ciudadanoNombre: 'Persona sintética', entidadNombre: 'Entidad sintética',
-    resolucion: { id: 91, numeroResolucion: 'REGISTRADA-91' },
-    resolucionPrimeraCalificacion: { id: 91, numeroResolucion: 'REGISTRADA-91' },
-    resolucionSegundaCalificacion: { id: 91, numeroResolucion: 'REGISTRADA-91' } };
+    tipoOrigen: 'EXTERNA', solicitudId: null, calificacionPrimera: null, resoluciones: [],
+    resolucion: _name === 'primera' ? null : { id: 91, numeroResolucion: 'REGISTRADA-91' },
+    resolucionPrimeraCalificacion: _name === 'primera' ? null : { id: 91, numeroResolucion: 'REGISTRADA-91' },
+    resolucionSegundaCalificacion: _name === 'primera' ? null : { id: 91, numeroResolucion: 'REGISTRADA-91' } };
+  const primeraConfirmada = { ...ap, estado: 'EN_RESOLUCION', calificacionPrimera: 'ADMISIBLE',
+    resolucionPrimeraCalificacion: { id: 91, numeroResolucion: 'REGISTRADA-91', tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'ADMISIBLE', fundamentos: 'Fundamentos sintéticos del operador' } };
+  const consultas = { findByExpediente: vi.fn() };
   beforeEach(() => {
     vi.resetAllMocks();
+    consultas.findByExpediente.mockReturnValue(of(ap));
     TestBed.configureTestingModule({ imports: [type], providers: [provideRouter([]),
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ expediente }) } } },
-      { provide: ApelacionService, useValue: { findByExpediente: vi.fn(() => of(ap)) } },
+      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ expediente }) }, paramMap: of(convertToParamMap({ expediente })) } },
+      { provide: ApelacionService, useValue: consultas },
+      { provide: SolicitudService, useValue: {} },
+      { provide: AuthService, useValue: { cambiosSesion: signal(0), obtenerSesion: () => ({ usuarioId: 7, token: 'sesion-sintetica', tipoUsuario: 'TTAIP' }) } },
       { provide: TtaipService, useValue: backend },
       { provide: DocumentoService, useValue: { listByRelation: vi.fn(() => of([])) } },
     ] });
@@ -41,6 +51,7 @@ describe.each([
     return f;
   }
   it('muestra solo la numeración del servidor en la confirmación y no ofrece firmar digitalmente', () => {
+    if (_name === 'primera') consultas.findByExpediente.mockReturnValue(of(primeraConfirmada));
     const f = pagina();
     f.componentInstance.successModalAbierto.set(true); f.componentInstance.confirmModalAbierto.set(true);
     f.detectChanges();
@@ -64,8 +75,10 @@ describe.each([
     expect(f.componentInstance.error()).toBeTruthy();
   });
   it('el registro confirmado conserva los identificadores del servidor sin acreditar firma', () => {
-    backend[endpoint].mockReturnValue(of(ap));
-    const f = pagina(); f.componentInstance[command](); f.detectChanges();
+    backend[endpoint].mockReturnValue(of(_name === 'primera' ? primeraConfirmada : ap));
+    const f = pagina();
+    if (_name === 'primera') consultas.findByExpediente.mockReturnValue(of(primeraConfirmada));
+    f.componentInstance[command](); f.detectChanges();
     expect(f.componentInstance.successModalAbierto()).toBe(true);
     const success = f.debugElement.query(By.directive(ReferenceSuccessModalComponent)).componentInstance;
     expect(success.expedienteHint).toBe('REGISTRADA-91');
