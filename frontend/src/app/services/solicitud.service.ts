@@ -28,7 +28,6 @@ export interface ConsultaPublicaSolicitud {
   diasTranscurridos: number;
   diasRestantes: number;
   estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
-  asunto: string;
   respuestaFecha: string | null;
   respuestaTipo: string | null;
   apelacionExpediente: string | null;

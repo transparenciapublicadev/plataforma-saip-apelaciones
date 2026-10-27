@@ -5324,7 +5324,8 @@
               }
             }
           }
-        }
+        },
+        "security": []
       }
     },
     "/api/solicitudes/paginadas": {
@@ -11152,9 +11153,6 @@
             "format": "int32"
           },
           "estado": {
-            "type": "string"
-          },
-          "asunto": {
             "type": "string"
           },
           "respuestaFecha": {
