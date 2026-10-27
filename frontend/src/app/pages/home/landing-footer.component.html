@@ -1,0 +1,65 @@
+<footer class="relative bg-[color:var(--sidebar)] text-[color:var(--sidebar-foreground)] overflow-hidden" aria-label="Pie de Yaiku">
+  <div class="brand-divider"></div>
+  <div class="absolute inset-0 bg-paper opacity-[0.04] pointer-events-none" aria-hidden="true"></div>
+  <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-16 pb-8">
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 pb-12 border-b border-white/8">
+      <div class="max-w-2xl">
+        <div class="eyebrow" style="color: var(--gold-soft); letter-spacing: .28em">Yaiku · Acceso a la información pública</div>
+        <h2 class="font-display mt-3" style="font-size: 32px; line-height: 1.1; letter-spacing: -.02em; color: var(--sidebar-foreground)">
+          La transparencia es un derecho, <span class="italic" style="color: var(--gold-soft)">no un privilegio.</span>
+        </h2>
+      </div>
+      <a href="https://leyes.congreso.gob.pe/DetLeyNume_1p.aspx?xNorma=6&amp;xNumero=27806&amp;xTipoNorma=0" target="_blank" rel="noopener noreferrer" class="btn-ghost-brand" style="background: rgba(255,255,255,.05); color: white; border-color: rgba(255,255,255,.15)">
+        Ley N° 27806 — archivo del Congreso <span class="sr-only">(abre en una pestaña nueva)</span>
+        <svg aria-hidden="true" lucideArrowUpRight class="w-3.5 h-3.5"></svg>
+      </a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-10 py-12">
+      <div class="md:col-span-4">
+        <div class="flex flex-col items-start gap-3.5 mb-5">
+          <span class="yaiku-brand" role="img" aria-label="Yaiku">
+            <svg aria-hidden="true" viewBox="0 0 64 64" width="34" height="34" class="shrink-0">
+              <defs><linearGradient id="landing-yaiku-seal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C8243A"/><stop offset="1" stop-color="#93192A"/></linearGradient></defs>
+              <rect x="1" y="1" width="62" height="62" rx="15" fill="url(#landing-yaiku-seal)" stroke="rgba(251,244,230,.45)" stroke-width="2"/>
+              <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="6.5">
+                <path d="M30.5 38 L30.5 50" stroke="#FBF4E6"/><path d="M19 26.5 L30.5 38" stroke="#FBF4E6"/><path d="M45.5 15 L30.5 38" stroke="#E6C27A"/>
+              </g>
+            </svg>
+            <span aria-hidden="true" class="yaiku-word">Ya<span class="yaiku-dotless">ı</span>ku</span>
+          </span>
+          <p class="font-serif italic text-sm text-white/65">Pide, sigue y apela. Todo en un solo lugar.</p>
+        </div>
+        <p class="text-sm opacity-90 leading-relaxed max-w-sm">Proyecto académico de Kelly y Daniel para registrar y seguir solicitudes SAIP y apelaciones TTAIP. La mención de instituciones no acredita respaldo, alianza ni adopción oficial.</p>
+      </div>
+      <nav class="md:col-span-2" aria-label="Plataforma">
+        <h3 class="eyebrow mb-4 text-white/70">Plataforma</h3>
+        <ul class="space-y-2.5 text-sm text-white/70">
+          <li><a routerLink="/ciudadano/nueva-saip" class="hover:text-white transition-colors">Presentar solicitud</a></li>
+          <li><a routerLink="/consultar" class="hover:text-white transition-colors">Consultar estado</a></li>
+          <li><a routerLink="/ayuda" class="hover:text-white transition-colors">Centro de ayuda</a></li>
+          <li><a routerLink="/ayuda" fragment="faq" class="hover:text-white transition-colors">Preguntas frecuentes</a></li>
+        </ul>
+      </nav>
+      <nav class="md:col-span-2" aria-label="Recursos">
+        <h3 class="eyebrow mb-4 text-white/70">Recursos</h3>
+        <ul class="space-y-2.5 text-sm text-white/70">
+          <li>Documentación <span class="text-xs">— no disponible</span></li>
+          <li><a routerLink="/ayuda" class="hover:text-white transition-colors">Guía de uso</a></li>
+          <li><a routerLink="/" fragment="estadisticas" class="hover:text-white transition-colors">Estadísticas del sistema</a></li>
+          <li>Acerca de Yaiku <span class="text-xs">— página no disponible</span></li>
+        </ul>
+      </nav>
+      <div class="md:col-span-4">
+        <h3 class="eyebrow mb-4 text-white/70">Contacto</h3>
+        <p class="text-sm text-white/85 leading-relaxed">No hay un canal de soporte verificado configurado en esta portada.</p>
+        <p class="text-sm text-white/70 mt-3">Correo, teléfono y dirección de atención: no disponibles.</p>
+      </div>
+    </div>
+    <div class="pt-6 border-t border-white/8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <p class="text-xs text-white/70">Yaiku · Proyecto académico.</p>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/70" aria-label="Páginas informativas pendientes">
+        <span>Privacidad — no disponible</span><span>Términos — no disponibles</span><span>Accesibilidad — página no disponible</span>
+      </div>
+    </div>
+  </div>
+</footer>

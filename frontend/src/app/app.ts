@@ -17,13 +17,14 @@ import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
 import { GuidedTourService } from './core/guided-tour/guided-tour.service';
 import { HostListener, effect } from '@angular/core';
 import { NotificationBellComponent } from './shared/notification-bell.component';
+import { LandingFooterComponent } from './pages/home/landing-footer.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    GuidedTourComponent, NotificationBellComponent,
+    GuidedTourComponent, NotificationBellComponent, LandingFooterComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
@@ -88,7 +89,7 @@ export class App {
       .subscribe(() => {
         this.menuAbierto.set(false);
         this.mobileMenuAbierto.set(false);
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !(this.isLandingRoute() && this.router.parseUrl(this.router.url).fragment)) {
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         }
         if (!this.showSplash()) {

@@ -1,9 +1,13 @@
 import {
   Component, ChangeDetectionStrategy, inject, PLATFORM_ID,
-  AfterViewInit, OnDestroy, OnInit, ElementRef, NgZone, ChangeDetectorRef,
+  AfterViewInit, OnDestroy, OnInit, ElementRef, NgZone, ChangeDetectorRef, DestroyRef, signal,
 } from '@angular/core';
 import { isPlatformBrowser, DecimalPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
+import { FAQ_CATEGORIES } from '../public/ayuda-content';
+import { emptyIndicators, readPublicPortal } from './landing-data';
 import {
   LucideScale, LucideZap,
   LucideBookOpen, LucideShield, LucideUsers, LucidePlus,
@@ -15,7 +19,7 @@ import {
 } from '@lucide/angular';
 import { PortalMiembroTtaip, PortalPublicoService } from '../../services/portal-publico.service';
 
-type MiembroArea = 'presidencia' | 'sala1' | 'sala2' | 'secretaria';
+type MiembroArea = 'presidencia' | 'sala1' | 'sala2' | 'secretaria' | 'sin-asignar';
 type ExampleIcon = 'coins' | 'hammer' | 'graduation-cap' | 'stethoscope' | 'file-text' | 'users';
 
 interface MiembroTrayectoria {
@@ -107,20 +111,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly portalPublicoService = inject(PortalPublicoService);
+  private readonly route = inject(ActivatedRoute);
   private observer: IntersectionObserver | null = null;
 
-  indicadores = {
-    saipPresentadas: 0,
-    respondidas: 0,
-    apelaciones: 0,
-    entidades: 0,
-    personasApelantes: 0,
-    tasaResolucion: 0,
-  };
+  indicadores = emptyIndicators();
+  readonly estadoPortal = signal<'cargando' | 'disponible' | 'incompleto' | 'error'>('cargando');
+  private readonly destroyRef = inject(DestroyRef);
+  private portalRequest?: Subscription;
+  seccionesDisponibles = { entidades: false, tendencia: false, ejemplos: false, miembros: false };
 
   ejemplos: Array<{ icon: ExampleIcon; text: string }> = [];
 
-  faqs: Array<{ q: string; a: string }> = [];
+  readonly faqs = FAQ_CATEGORIES.flatMap(category => category.questions)
+    .filter(question => ['definicion', 'registro', 'publica', 'vinculada'].includes(question.id));
 
   miembros: Miembro[] = [];
 
@@ -178,59 +181,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectMember(memberId: string): void {
-    if (this.selectedMemberId === memberId) return;
-    if (!isPlatformBrowser(this.platformId)) {
+    if (this.miembros.some(member => member.id === memberId)) {
       this.selectedMemberId = memberId;
-      return;
+      this.cdr.markForCheck();
     }
-
-    this.zone.runOutsideAngular(() => {
-      const detail = this.el.nativeElement.querySelector('[data-member-detail]') as HTMLElement | null;
-      const reduceMotion = this.prefersReducedMotion();
-
-      if (!detail || reduceMotion) {
-        this.zone.run(() => {
-          this.selectedMemberId = memberId;
-          this.cdr.markForCheck();
-        });
-        return;
-      }
-
-      const exitAnimation = detail.animate(
-        [
-          { opacity: 1, transform: 'translateY(0) scale(1)' },
-          { opacity: 0, transform: 'translateY(-8px) scale(0.992)' },
-        ],
-        {
-          duration: 150,
-          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-          fill: 'forwards',
-        }
-      );
-
-      void exitAnimation.finished.catch(() => undefined).then(() => {
-        this.zone.run(() => {
-          this.selectedMemberId = memberId;
-          this.cdr.detectChanges();
-        });
-
-        window.requestAnimationFrame(() => {
-          const nextDetail = this.el.nativeElement.querySelector('[data-member-detail]') as HTMLElement | null;
-          nextDetail?.animate(
-            [
-              { opacity: 0, transform: 'translateY(16px) scale(0.985)' },
-              { opacity: 1, transform: 'translateY(-2px) scale(1.003)', offset: 0.72 },
-              { opacity: 1, transform: 'translateY(0) scale(1)' },
-            ],
-            {
-              duration: 420,
-              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-              fill: 'both',
-            }
-          );
-        });
-      });
-    });
   }
 
   showDepartmentTooltip(bar: DepartmentBarColumn): void {
@@ -305,6 +259,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.zone.runOutsideAngular(() => this.initScrollReveal());
+    this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(fragment => {
+      if (fragment) this.scrollToSection(fragment);
+    });
   }
 
   ngOnDestroy(): void {
@@ -313,58 +270,64 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   scrollToSection(sectionId: string): void {
     if (isPlatformBrowser(this.platformId)) {
-      const element = document.getElementById(sectionId);
+      const element = Array.from(this.el.nativeElement.querySelectorAll('section[id]') as NodeListOf<HTMLElement>)
+        .find(section => section.id === sectionId);
       if (element) {
         const offset = 100;
         const elementPosition = element.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.pageYOffset - offset;
-        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        window.scrollTo({ top: offsetPosition, behavior: this.prefersReducedMotion() ? 'instant' : 'smooth' });
+        element.tabIndex = -1;
+        element.focus({ preventScroll: true });
       }
     }
   }
 
   scrollToTop(): void {
     if (isPlatformBrowser(this.platformId)) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: this.prefersReducedMotion() ? 'instant' : 'smooth' });
     }
   }
 
+  recargarPortal(): void {
+    if (!this.portalRequest || this.portalRequest.closed) this.cargarPortalPublico();
+  }
+
+  mensajeSeccion(disponible: boolean, vacio: string): string {
+    if (this.estadoPortal() === 'cargando') return 'Consultando información pública…';
+    if (this.estadoPortal() === 'error') return 'Información no disponible: falló la consulta pública.';
+    return disponible ? vacio : 'Información incompleta o no disponible en la respuesta del servidor.';
+  }
+
   private cargarPortalPublico(): void {
-    this.portalPublicoService.getPortal().subscribe({
-      next: (portal) => {
-        this.indicadores = {
-          saipPresentadas: portal.metricas.saipPresentadas,
-          respondidas: portal.metricas.respondidas,
-          apelaciones: portal.metricas.apelaciones,
-          entidades: portal.metricas.entidades,
-          personasApelantes: portal.metricas.personasApelantes,
-          tasaResolucion: portal.metricas.tasaResolucion,
-        };
-        this.apelacionesPorDepartamento = portal.apelacionesPorEntidad.map((item) => ({
-          d: item.etiqueta,
-          v: item.valor,
-        }));
-        this.tendenciaMensual = portal.tendenciaMensual.map((item) => ({
-          m: item.etiqueta,
-          s: item.solicitudes,
-          a: item.apelaciones,
-        }));
-        this.ejemplos = (portal.ejemplosSolicitud ?? []).map((item) => ({
-          icon: this.toExampleIcon(item.icono),
-          text: item.texto,
-        }));
-        this.faqs = (portal.preguntasFrecuentes ?? []).map((item) => ({
-          q: item.pregunta,
-          a: item.respuesta,
-        }));
-        this.openFaq = this.faqs.length > 0 ? 0 : null;
-        this.miembros = portal.miembrosTTAIP.map((miembro) => this.toMiembro(miembro));
+    this.indicadores = emptyIndicators();
+    this.estadoPortal.set('cargando');
+    this.miembros = [];
+    this.selectedMemberId = '';
+    this.apelacionesPorDepartamento = [];
+    this.tendenciaMensual = [];
+    this.ejemplos = [];
+    this.seccionesDisponibles = { entidades: false, tendencia: false, ejemplos: false, miembros: false };
+    this.hideDepartmentTooltip();
+    this.hideTrendTooltip();
+    this.rebuildChartData();
+    this.portalRequest = this.portalPublicoService.getPortal().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: payload => {
+        const portal = readPublicPortal(payload);
+        this.indicadores = portal.indicadores;
+        this.apelacionesPorDepartamento = portal.entidades.datos;
+        this.tendenciaMensual = portal.tendencia.datos;
+        this.ejemplos = portal.ejemplos.datos.map(item => ({ icon: this.toExampleIcon(item.icono), text: item.texto }));
+        this.miembros = portal.miembros.datos.map(miembro => this.toMiembro(miembro));
         this.selectedMemberId = this.presidente?.id ?? this.miembros[0]?.id ?? '';
+        this.seccionesDisponibles = { entidades: portal.entidades.disponible, tendencia: portal.tendencia.disponible,
+          ejemplos: portal.ejemplos.disponible, miembros: portal.miembros.disponible };
+        this.estadoPortal.set(portal.incompleto ? 'incompleto' : 'disponible');
         this.rebuildChartData();
         this.cdr.markForCheck();
       },
       error: () => {
-        this.rebuildChartData();
+        this.estadoPortal.set('error');
         this.cdr.markForCheck();
       },
     });
@@ -372,19 +335,18 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private toMiembro(miembro: PortalMiembroTtaip): Miembro {
     const nombre = miembro.nombre?.trim() || 'Miembro TTAIP sin nombre registrado';
-    const cargo = miembro.cargo?.trim() || 'Miembro del Tribunal';
+    const cargo = miembro.cargo?.trim() || 'Cargo no informado';
     return {
-      id: String(miembro.id ?? nombre),
+      id: String(miembro.id),
       nombre,
       cargo,
       cargoCorto: this.shortCargo(cargo),
       area: this.resolveMemberArea(cargo, miembro.sala, Boolean(miembro.presidenteTribunal)),
       iniciales: this.initials(nombre),
       periodo: this.formatMemberPeriod(miembro.periodoInicio, miembro.periodoFin),
-      bio: miembro.especialidad?.trim() || 'Especialidad no registrada por el backend.',
+      bio: miembro.especialidad?.trim() || 'Especialidad no informada en esta ficha.',
       formacion: [],
       trayectoria: [],
-      contacto: miembro.email ?? undefined,
     };
   }
 
@@ -394,17 +356,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private shortCargo(cargo: string): string {
-    if (cargo.toLowerCase().includes('presidente')) return 'Presidencia de sala';
-    if (cargo.toLowerCase().includes('secret')) return 'Secretaría Técnica';
-    return cargo.replace('Vocal ', '').replace('Titular ', '').trim() || cargo;
+    return cargo;
   }
 
   private resolveMemberArea(cargo: string, sala?: string | null, presidenteTribunal = false): MiembroArea {
     if (presidenteTribunal) return 'presidencia';
-    const value = `${cargo} ${sala ?? ''}`.toLowerCase();
-    if (value.includes('secret')) return 'secretaria';
-    if (value.includes('segunda') || value.includes('sala 2') || value.includes('2')) return 'sala2';
-    return 'sala1';
+    if (cargo.toLowerCase().includes('secret')) return 'secretaria';
+    const value = (sala ?? '').toLowerCase();
+    if (value.includes('segunda') || /^sala\s*2$/.test(value)) return 'sala2';
+    if (value.includes('primera') || value.includes('sala 1')) return 'sala1';
+    return 'sin-asignar';
   }
 
   private formatMemberPeriod(inicio?: string | null, fin?: string | null): string | undefined {
@@ -413,7 +374,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private formatCompactDate(raw?: string | null): string {
-    if (!raw) return 'vigente';
+    if (!raw) return 'No informado';
     const date = new Date(`${raw}T00:00:00`);
     if (Number.isNaN(date.getTime())) return raw;
     return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
@@ -456,6 +417,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private initScrollReveal(): void {
     const targets = this.el.nativeElement.querySelectorAll('[data-reveal]');
     if (!targets.length) return;
+    if (this.prefersReducedMotion() || typeof IntersectionObserver !== 'function') {
+      targets.forEach((target: HTMLElement) => target.classList.add('revealed'));
+      return;
+    }
 
     this.observer = new IntersectionObserver(
       (entries) => {
