@@ -2,7 +2,7 @@ import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
 import { Subscription } from 'rxjs';
 import { falloConsulta } from '../../utils/consulta-remota.util';
 import { ResponseContextComponent } from '../../shared/response-context.component';
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -20,7 +20,8 @@ import {
   Solicitud
 } from '../../models/solicitud.model';
 import { Entidad } from '../../models/entidad.model';
-import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { canNavigateToResponse, positiveId } from './funcionario-dashboard.model';
+import { documentosDelRecurso, modalidadesRegistradas, detalleConRelacionesVerificadas } from './entity-request-detail.model';
 import { DocumentoRelation } from '../../models/documento.model';
 import { DocumentoService } from '../../services/documento.service';
 import { DocumentUploadComponent } from '../../shared/document-upload.component';
@@ -56,7 +57,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import {
   LucideArrowLeft, LucideSend, LucideClock,
   LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
-  LucideScale, LucideChevronRight, LucideEye, LucideDownload
+  LucideScale, LucideChevronRight, LucideEye, LucideDownload, LucideBuilding2
 } from '@lucide/angular';
 
 @Component({
@@ -67,7 +68,7 @@ import {
     StatusBadgeComponent,
     LucideArrowLeft, LucideSend, LucideClock,
     LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
-    LucideScale, LucideChevronRight, LucideEye, LucideDownload
+    LucideScale, LucideChevronRight, LucideEye, LucideDownload, LucideBuilding2
   ],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
@@ -86,6 +87,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   error = signal<string>('');
   reintentable = signal(false);
   previasError = signal('');
+  previasLoading = signal(false);
+  informacionIncompleta = signal(false);
   plazoError = signal('');
   documentoError = signal('');
   private consultas = new Subscription();
@@ -94,24 +97,37 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   private destruido = false;
   private expedienteActual = '';
   private sesionActual = this.claveSesion();
+  private sesionDetalle = '';
   constructor() {
     effect(() => {
       this.authService.cambiosSesion?.();
       const sesion = this.claveSesion();
       if (sesion !== this.sesionActual) {
-        this.sesionActual = sesion; this.generacion++; this.consultas.unsubscribe(); this.limpiarConsulta();
-        this.loading.set(false); this.reintentable.set(false);
-        this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
+        untracked(() => {
+          this.sesionActual = sesion; this.generacion++; this.consultas.unsubscribe(); this.limpiarConsulta();
+          this.loading.set(false); this.reintentable.set(false);
+          this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
+        });
       }
     });
   }
   private claveSesion(): string {
     const s = this.authService.obtenerSesion();
-    return JSON.stringify([s?.token, s?.usuarioId, s?.funcionarioId]);
+    return JSON.stringify([s?.token, s?.usuarioId, s?.funcionarioId, s?.entidadId]);
   }
   private limpiarConsulta(): void {
+    this.sesionDetalle = '';
     this.solicitud.set(null); this.plazoSeguimiento.set(null); this.previewTarget.set(null);
     this.solicitudesPrevias.set([]); this.previasError.set(''); this.plazoError.set(''); this.documentoError.set('');
+    this.previasLoading.set(false); this.informacionIncompleta.set(false); this.activeTab.set('solicitud');
+    this.observacionMotivo.set(''); this.observacionError.set(''); this.observacionSuccess.set(''); this.observacionLoading.set(false);
+    this.ampliacionMotivo.set(''); this.ampliacionInforme.set(''); this.ampliacionError.set(''); this.ampliacionSuccess.set(''); this.ampliacionLoading.set(false);
+    this.ampliacionFechaNotificacion.set(''); this.ampliacionCronograma.set([this.crearEntregaForm(1)]);
+    this.encauzamientoMotivo.set(''); this.encauzamientoSustento.set(''); this.encauzamientoEntidadDestinoId.set(null);
+    this.encauzamientoError.set(''); this.encauzamientoSuccess.set(''); this.encauzamientoLoading.set(false);
+    this.liquidacionCodigo.set(''); this.liquidacionMonto.set(''); this.liquidacionConcepto.set(''); this.liquidacionObservacion.set('');
+    this.liquidacionFechaNotificacion.set('');
+    this.liquidacionError.set(''); this.liquidacionSuccess.set(''); this.liquidacionLoading.set(false); this.liquidacionUpdateLoading.set(false);
   }
   ngOnDestroy(): void { this.destruido = true; this.generacion++; this.consultas.unsubscribe(); this.navegacion?.unsubscribe(); }
   reintentarConsulta(): void { if (this.reintentable()) this.cargarSolicitud(this.expedienteActual); }
@@ -123,7 +139,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   observacionSuccess = signal<string>('');
   ampliacionMotivo = signal<string>('');
   ampliacionInforme = signal<string>('');
-  ampliacionFechaNotificacion = signal<string>(this.toInputDate(new Date()));
+  ampliacionFechaNotificacion = signal<string>('');
   ampliacionCronograma = signal<RegistrarEntregaParcialPayload[]>([this.crearEntregaForm(1)]);
   ampliacionLoading = signal<boolean>(false);
   ampliacionError = signal<string>('');
@@ -140,7 +156,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   liquidacionMonto = signal<string>('');
   liquidacionMoneda = signal<string>('PEN');
   liquidacionConcepto = signal<string>('');
-  liquidacionFechaNotificacion = signal<string>(this.toInputDate(new Date()));
+  liquidacionFechaNotificacion = signal<string>('');
   liquidacionMedioNotificacion = signal<CanalNotificacion>('CASILLA_ELECTRONICA');
   liquidacionObservacion = signal<string>('');
   liquidacionLoading = signal<boolean>(false);
@@ -166,14 +182,12 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly todosDocumentosAdministrado = computed(() => {
     const sol = this.solicitud();
     if (!sol) return [];
-    return (sol.documentosMetadata && sol.documentosMetadata.length > 0)
-      ? sol.documentosMetadata
-      : (sol.documentos || []);
+    return documentosDelRecurso(sol.documentosMetadata ?? sol.documentos, { solicitudId: sol.id });
   });
 
   private mapToDocRow(d: any): DocRowItem {
     const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || 'Documento';
-    const tipo = d.tipoDocumento || d.tipoArchivo || d.tipo || 'PDF';
+    const tipo = d.contentType || d.tipoArchivo || d.tipoDocumento || 'Tipo no informado';
     return {
       id: d.id,
       raw: d,
@@ -207,56 +221,61 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     return this.todosDocumentosAdministrado()
       .filter((d: any) => {
         const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
-        const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
-        return tipo === 'SUBSANACION' || /subsanaci[oó]n/i.test(nombre);
+        return tipo === 'SUBSANACION';
       })
       .map(d => this.mapToDocRow(d));
   });
 
   readonly documentosRespuestaEntidad = computed<DocRowItem[]>(() => {
     const sol = this.solicitud();
-    const docs = sol?.respuesta?.documentosMetadata || [];
-    return docs.map(d => this.mapToDocRow(d));
+    const respuesta = sol?.respuesta;
+    return respuesta ? documentosDelRecurso(respuesta.documentosMetadata ?? respuesta.documentos, { respuestaId: respuesta.id }).map(d => this.mapToDocRow(d)) : [];
   });
 
   readonly formatoEntrega = computed<string>(() => {
-    const liq = this.liquidacionActiva();
-    if (liq) {
-      return `Física · recojo en ${liq.observacion || 'Sede institucional'}`;
-    }
-    const sol = this.solicitud();
-    if (sol?.formatoFisico || sol?.copiaSimple || sol?.copiaCertificada) {
-      return 'Física · recojo en sede';
-    }
-    return 'Digital (plataforma)';
+    return this.formatosSolicitados().join(' · ') || 'Modalidad no informada';
   });
 
   readonly funcionarioResponsable = computed<string>(() => {
     const sol = this.solicitud();
-    return sol?.respuesta?.funcionarioNombre || sol?.entidadNombre || 'Funcionario responsable';
+    return sol?.respuesta?.funcionarioNombre || 'Funcionario no informado';
   });
 
   readonly esRespuestaAceptada = computed<boolean>(() => {
     const sol = this.solicitud();
     const tipo = sol?.respuesta?.tipoRespuesta;
-    return tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL' || sol?.estado === 'RESPONDIDA';
+    return tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL';
   });
 
   abrirDocPreview(doc: any): void {
-    const d = doc.raw || doc;
-    const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    const actual = this.documentoActual(doc);
+    if (!actual) { this.documentoError.set('El documento no pertenece al contexto recuperable de este expediente.'); return; }
+    this.documentoError.set('');
+    const d = actual.raw, nombre = actual.nombre;
     this.previewTarget.set({
       id: d.id,
       nombre,
-      tipo: doc.tipo || d.tipoDocumento || d.tipoArchivo || d.tipo || 'application/pdf',
-      expediente: this.solicitud()?.expediente,
-      url: d.url || d.ruta
+      tipo: d.contentType || d.tipoArchivo,
+      expediente: this.solicitud()?.expediente
     });
   }
 
+  private documentoActual(doc: any): DocRowItem | null {
+    if (!this.contextoVigente()) return null;
+    const id = doc?.raw?.id ?? doc?.id;
+    return positiveId(id) ? [...this.todosDocumentosAdministrado().map(item => this.mapToDocRow(item)),
+      ...this.documentosRespuestaEntidad()].find(item => item.id === id) ?? null : null;
+  }
+
+  contextoVigente(): boolean {
+    return !this.destruido && !!this.solicitud() && this.sesionDetalle === this.claveSesion()
+      && this.solicitud()?.expediente === this.expedienteActual;
+  }
+
   descargarDoc(doc: any): void {
-    const d = doc.raw || doc;
-    const nombre = doc.nombre || d.nombreOriginal || d.nombreArchivo || d.nombre || 'documento.pdf';
+    const actual = this.documentoActual(doc);
+    if (!actual) { this.documentoError.set('Documento sin identificador o relación recuperable en este expediente. No se puede descargar.'); return; }
+    const d = actual.raw, nombre = actual.nombre;
     this.documentoError.set('');
     const generacion = this.generacion, sesion = this.claveSesion();
     const vigente = () => !this.destruido && generacion === this.generacion && sesion === this.claveSesion();
@@ -280,32 +299,22 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   tamanoDoc(doc: any): string {
-    const bytes = doc.tamanoBytes || doc.sizeBytes || doc.tamanio || doc.size || doc.tamano;
-    if (typeof bytes === 'number' && bytes > 0) {
+    const bytes = doc.tamanoBytes ?? doc.sizeBytes ?? doc.tamanio ?? doc.size ?? doc.tamano;
+    if (typeof bytes === 'number' && bytes >= 0) {
       if (bytes >= 1024 * 1024) {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
       }
       return bytes < 1024 ? `${bytes} B` : `${Math.round(bytes / 1024)} KB`;
     }
-    return typeof doc.tamano === 'string' ? doc.tamano : 'PDF';
+    return 'Tamaño no informado';
   }
 
   readonly formatosSolicitados = computed(() => {
-    const desc = this.solicitud()?.descripcion || '';
-    const formatos: string[] = [];
-    if (/correo|email|digital/i.test(desc)) formatos.push('Copia digital (correo)');
-    if (/simple|copia simple/i.test(desc)) formatos.push('Copia simple');
-    if (/certificad/i.test(desc)) formatos.push('Copia certificada');
-    if (/cd|dvd|magn[ée]tic|usb/i.test(desc)) formatos.push('Soporte magnético');
-    if (formatos.length === 0) formatos.push('Copia digital (plataforma)');
-    return formatos;
+    return modalidadesRegistradas(this.solicitud());
   });
 
   readonly yaRespondida = computed<boolean>(() => {
-    const sol = this.solicitud();
-    if (!sol) return false;
-    const est = (sol.estado || '').toUpperCase();
-    return !!sol.respuesta?.fechaRespuesta || ['RESPONDIDA', 'ENCAUZADA', 'POR_RECOGER', 'DENEGADA', 'CONCLUIDA', 'ARCHIVADA'].includes(est);
+    return positiveId(this.solicitud()?.respuesta?.id);
   });
 
   readonly tabs = computed<DetailTab[]>(() => {
@@ -344,21 +353,13 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       }
     ];
 
-    if (sol.respuesta?.fechaRespuesta) {
+    if (positiveId(sol.respuesta?.id)) {
       items.push({
         accion: `Respuesta registrada · ${this.getTipoRespuestaDisplay()}`,
-        fecha: sol.respuesta.fechaRespuesta,
-        responsable: 'Funcionario responsable',
+        fecha: sol.respuesta!.fechaRespuesta || '',
+        responsable: sol.respuesta!.funcionarioNombre || 'Funcionario no informado',
         detalle: 'La entidad registró respuesta para el ciudadano.',
         color: this.esRespuestaEntrega() ? 'success' : 'warning'
-      });
-    } else if (this.esSilencioAdministrativo()) {
-      items.push({
-        accion: 'Silencio administrativo automático',
-        fecha: sol.fechaLimite,
-        responsable: 'Sistema SAIP',
-        detalle: 'Se configuró por vencimiento de plazo sin respuesta manual.',
-        color: 'muted'
       });
     }
 
@@ -370,10 +371,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         detalle: observacion.motivoObservacion,
         color: observacion.estado === 'SUBSANADA' ? 'success' : (observacion.estado === 'NO_SUBSANADA' ? 'warning' : 'muted')
       });
-      if (observacion.fechaSubsanacion) {
+      if (observacion.estado === 'SUBSANADA') {
         items.push({
           accion: 'Subsanación ciudadana recibida',
-          fecha: observacion.fechaSubsanacion,
+        fecha: observacion.fechaSubsanacion || '',
           responsable: observacion.responsableSubsanacion || 'Ciudadano',
           detalle: observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Subsanación registrada.',
           color: 'success'
@@ -384,7 +385,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     for (const ampliacion of this.ampliaciones()) {
       items.push({
         accion: `Ampliación de plazo · ${this.getAmpliacionEstadoDisplay(ampliacion.estadoAmpliacion)}`,
-        fecha: ampliacion.fechaSolicitudAmpliacion || ampliacion.fechaNotificacionAmpliacion,
+        fecha: ampliacion.fechaSolicitudAmpliacion,
         responsable: ampliacion.responsable || 'Entidad pública',
         detalle: `Plazo ampliado de ${ampliacion.fechaLimiteOriginal} a ${ampliacion.fechaLimiteAmpliada}.`,
         color: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'success' : 'warning'
@@ -404,7 +405,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     for (const liquidacion of this.liquidaciones()) {
       items.push({
         accion: `Liquidación · ${this.getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion)}`,
-        fecha: liquidacion.fechaEmision || liquidacion.fechaNotificacion,
+        fecha: liquidacion.fechaEmision,
         responsable: liquidacion.responsable || 'Entidad pública',
         detalle: `${liquidacion.codigoLiquidacion} por ${liquidacion.moneda} ${liquidacion.monto}. Límite de recojo: ${liquidacion.fechaLimiteRecojo}.`,
         color: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'success' : (liquidacion.estadoLiquidacion === 'ARCHIVADA' ? 'warning' : 'brand')
@@ -416,7 +417,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         accion: `Apelación presentada · ${this.getEstadoDisplay(sol.apelacion.estado || '')}`,
         fecha: sol.apelacion.fechaApelacion,
         responsable: 'Ciudadano recurrente',
-        detalle: 'El recurso fue recibido por el TTAIP para primera calificación.',
+        detalle: 'Apelación vinculada en la solicitud; consulte su detalle para las actuaciones del Tribunal.',
         color: 'violet'
       });
     }
@@ -470,10 +471,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     const params = this.route.paramMap;
     if (params) this.navegacion = params.subscribe(p => this.cargarSolicitud(p.get('expediente') || ''));
     else this.cargarSolicitud(this.route.snapshot.paramMap.get('expediente') || '');
-    this.cargarEntidadesActivas();
   }
 
   cargarSolicitud(expediente: string, preferredTab?: DetailTabId): void {
+    if (this.destruido) return;
     const generacion = ++this.generacion, sesion = this.claveSesion();
     this.expedienteActual = expediente;
     this.consultas.unsubscribe(); this.consultas = new Subscription(); this.limpiarConsulta();
@@ -483,11 +484,22 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.consultas.add(this.solicitudService.findByExpediente(expediente).subscribe({
       next: data => {
         if (!vigente()) return;
-        this.solicitud.set(data); this.loading.set(false);
+        this.loading.set(false);
         if (!data) return;
-        this.activeTab.set(preferredTab || (this.puedeVerRespuesta() ? 'respuesta' : 'solicitud'));
+        if (!positiveId(data.id) || data.expediente !== expediente) {
+          this.error.set('La respuesta está incompleta o no corresponde al expediente solicitado.'); return;
+        }
+        const verified = detalleConRelacionesVerificadas(data);
+        this.sesionDetalle = sesion;
+        this.solicitud.set(verified.solicitud); this.informacionIncompleta.set(verified.incompleta);
+        const initial = this.puedeVerRespuesta() ? 'respuesta' : 'solicitud';
+        this.activeTab.set(preferredTab && this.tabs().some(tab => tab.id === preferredTab) ? preferredTab : initial);
         if (data.id) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
-          next: plazo => { if (vigente()) this.plazoSeguimiento.set(plazo); },
+          next: plazo => {
+            if (!vigente()) return;
+            if (plazo && Number.isSafeInteger(plazo.diasRestantes)) this.plazoSeguimiento.set(plazo);
+            else this.plazoError.set('Seguimiento del plazo incompleto. No se calcula un saldo sustituto.');
+          },
           error: () => { if (vigente()) this.plazoError.set('Seguimiento del plazo no disponible. Se conserva la fecha límite registrada.'); }
         }));
         if (data.ciudadanoId) this.cargarSolicitudesPrevias(data.ciudadanoId, data.expediente, vigente);
@@ -501,10 +513,11 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   cargarSolicitudesPrevias(ciudadanoId: number, currentExpediente?: string, vigente: () => boolean = () => true): void {
-    this.consultas.add(this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: previas => { if (vigente()) this.solicitudesPrevias.set(previas.filter(p => p.expediente !== currentExpediente).slice(0, 5)); },
-      error: () => { if (vigente()) this.previasError.set('Consulta de solicitudes previas no disponible para esta sesión. No se pudo consultar el historial del administrado.'); }
-    }));
+    if (!vigente()) return;
+    // GET /ciudadano/{id} is for that citizen or TTAIP/admin, not this institutional route.
+    // Do not obtain a broader list merely to reconstruct a private citizen history here.
+    this.solicitudesPrevias.set([]); this.previasLoading.set(false);
+    this.previasError.set('Consulta de solicitudes previas no disponible para el funcionario en este detalle. No se consulta el historial privado del administrado.');
   }
 
   getResultadoLabel(): string {
@@ -513,21 +526,22 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     if (tipo === 'ENTREGA_PARCIAL') return 'Entrega parcial';
     if (tipo === 'ENTREGA_TOTAL') return 'Entrega total';
     if (tipo === 'SILENCIO_ADMINISTRATIVO') return 'Silencio administrativo';
-    return 'Atendida';
+    return 'Tipo no informado';
   }
 
   getResultadoColor(): string {
     const tipo = this.getTipoRespuestaDisplay();
     if (tipo === 'DENEGACION_TOTAL' || tipo === 'SILENCIO_ADMINISTRATIVO') return 'var(--brand-700)';
-    return 'var(--success)';
+    return tipo === 'ENTREGA_TOTAL' || tipo === 'ENTREGA_PARCIAL' ? 'var(--success)' : 'var(--muted-foreground)';
   }
 
   getIniciales(nombre?: string): string {
-    if (!nombre) return 'CI';
-    return nombre.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase() || '').join('') || 'CI';
+    if (!nombre) return '—';
+    return nombre.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase() || '').join('') || '—';
   }
 
-  onDocumentoSubido(preferredTab: DetailTabId = 'adjuntos'): void {
+  onDocumentoSubido(preferredTab: DetailTabId = 'adjuntos', solicitudId?: number): void {
+    if (!this.contextoVigente() || (solicitudId != null && solicitudId !== this.solicitud()?.id)) return;
     const expediente = this.solicitud()?.expediente;
     if (expediente) {
       this.cargarSolicitud(expediente, preferredTab);
@@ -535,7 +549,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   cambiarTab(tab: DetailTabId): void {
-    this.activeTab.set(tab);
+    if (this.tabs().some(item => item.id === tab)) this.activeTab.set(tab);
   }
 
   puedeResponder(): boolean {
@@ -544,17 +558,15 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    return canSendManualResponse(sol)
-      && (sol.estado === 'RECEPCIONADA' || sol.estado === 'EN_REVISION');
+    return this.contextoVigente() && !this.informacionIncompleta() && canNavigateToResponse(sol);
   }
 
   puedeVerRespuesta(): boolean {
-    const sol = this.solicitud();
-    return !!sol?.respuesta?.tipoRespuesta || this.esSilencioAdministrativo();
+    return positiveId(this.solicitud()?.respuesta?.id);
   }
 
   esSilencioAdministrativo(): boolean {
-    return isSilencioAdministrativo(this.solicitud());
+    return this.solicitud()?.estado === 'VENCIDA' || this.solicitud()?.respuesta?.tipoRespuesta === 'SILENCIO_ADMINISTRATIVO';
   }
 
   getTipoRespuestaDisplay(): string {
@@ -563,7 +575,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       return '';
     }
 
-    return sol.respuesta?.tipoRespuesta || (this.esSilencioAdministrativo() ? 'SILENCIO_ADMINISTRATIVO' : 'SIN_RESPUESTA');
+    return sol.respuesta?.tipoRespuesta || 'SIN_RESPUESTA';
   }
 
   getTituloRespuesta(): string {
@@ -581,7 +593,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       return 'Sin respuesta registrada';
     }
 
-    return 'Solicitud denegada';
+    return tipo === 'DENEGACION_TOTAL' ? 'Denegación registrada' : 'Tipo de respuesta no informado';
   }
 
   esRespuestaEntrega(): boolean {
@@ -642,6 +654,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   registrarObservacion(): void {
+    if (!this.contextoVigente() || this.observacionLoading()) return;
+    const vigente = this.operacionVigente();
     const sol = this.solicitud();
     const motivo = this.observacionMotivo().trim();
     if (!sol || !motivo) {
@@ -653,24 +667,28 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.observacionError.set('');
     this.observacionSuccess.set('');
 
-    this.solicitudService.observar(sol.id, {
+    this.consultas.add(this.solicitudService.observar(sol.id, {
       motivoObservacion: motivo,
       responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
     }).subscribe({
       next: () => {
+        if (!vigente()) return;
         this.observacionMotivo.set('');
-        this.observacionSuccess.set('Observación registrada. El ciudadano tiene 2 días hábiles para subsanar.');
+        this.observacionSuccess.set('Observación registrada. Consulte las condiciones y fechas recuperadas del servidor.');
         this.observacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'observacion');
       },
       error: (error) => {
+        if (!vigente()) return;
         this.observacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la observación.');
         this.observacionLoading.set(false);
       }
-    });
+    }));
   }
 
   registrarAmpliacion(): void {
+    if (!this.contextoVigente() || this.ampliacionLoading()) return;
+    const vigente = this.operacionVigente();
     const sol = this.solicitud();
     const motivo = this.ampliacionMotivo().trim();
     const informe = this.ampliacionInforme().trim();
@@ -693,7 +711,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.ampliacionError.set('');
     this.ampliacionSuccess.set('');
 
-    this.solicitudService.registrarAmpliacion(sol.id, {
+    this.consultas.add(this.solicitudService.registrarAmpliacion(sol.id, {
       motivoAmpliacion: motivo,
       informeAmpliacion: informe,
       fechaNotificacionAmpliacion: fechaNotificacion,
@@ -701,22 +719,26 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       cronograma
     }).subscribe({
       next: () => {
+        if (!vigente()) return;
         this.ampliacionMotivo.set('');
         this.ampliacionInforme.set('');
-        this.ampliacionFechaNotificacion.set(this.toInputDate(new Date()));
+        this.ampliacionFechaNotificacion.set('');
         this.ampliacionCronograma.set([this.crearEntregaForm(1)]);
-        this.ampliacionSuccess.set('Ampliación registrada y notificada con cronograma de entregas parciales.');
+        this.ampliacionSuccess.set('Ampliación registrada; el registro no acredita notificación eficaz.');
         this.ampliacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'ampliacion');
       },
       error: (error) => {
+        if (!vigente()) return;
         this.ampliacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la ampliación.');
         this.ampliacionLoading.set(false);
       }
-    });
+    }));
   }
 
   registrarEncauzamiento(): void {
+    if (!this.contextoVigente() || this.encauzamientoLoading()) return;
+    const vigente = this.operacionVigente();
     const sol = this.solicitud();
     const entidadDestinoId = this.encauzamientoEntidadDestinoId();
     const motivo = this.encauzamientoMotivo().trim();
@@ -731,7 +753,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.encauzamientoError.set('');
     this.encauzamientoSuccess.set('');
 
-    this.solicitudService.registrarEncauzamiento(sol.id, {
+    this.consultas.add(this.solicitudService.registrarEncauzamiento(sol.id, {
       entidadDestinoId,
       motivoEncauzamiento: motivo,
       alcance: this.encauzamientoAlcance(),
@@ -739,6 +761,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       observacionSustento: sustento || undefined
     }).subscribe({
       next: () => {
+        if (!vigente()) return;
         this.encauzamientoEntidadDestinoId.set(null);
         this.encauzamientoAlcance.set('TOTAL');
         this.encauzamientoMotivo.set('');
@@ -748,13 +771,16 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.cargarSolicitud(sol.expediente, 'encauzamiento');
       },
       error: (error) => {
+        if (!vigente()) return;
         this.encauzamientoError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar el encauzamiento.');
         this.encauzamientoLoading.set(false);
       }
-    });
+    }));
   }
 
   emitirLiquidacion(): void {
+    if (!this.contextoVigente() || this.liquidacionLoading()) return;
+    const vigente = this.operacionVigente();
     const sol = this.solicitud();
     const monto = Number(this.liquidacionMonto());
     const concepto = this.liquidacionConcepto().trim();
@@ -769,7 +795,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.liquidacionError.set('');
     this.liquidacionSuccess.set('');
 
-    this.solicitudService.emitirLiquidacion(sol.id, {
+    this.consultas.add(this.solicitudService.emitirLiquidacion(sol.id, {
       codigoLiquidacion: this.liquidacionCodigo().trim() || undefined,
       monto,
       moneda: this.liquidacionMoneda().trim() || 'PEN',
@@ -780,25 +806,29 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       observacion: this.liquidacionObservacion().trim() || undefined
     }).subscribe({
       next: () => {
+        if (!vigente()) return;
         this.liquidacionCodigo.set('');
         this.liquidacionMonto.set('');
         this.liquidacionMoneda.set('PEN');
         this.liquidacionConcepto.set('');
-        this.liquidacionFechaNotificacion.set(this.toInputDate(new Date()));
+        this.liquidacionFechaNotificacion.set('');
         this.liquidacionMedioNotificacion.set('CASILLA_ELECTRONICA');
         this.liquidacionObservacion.set('');
-        this.liquidacionSuccess.set('Liquidación notificada. El ciudadano tiene 30 días hábiles para recoger la información física.');
+        this.liquidacionSuccess.set('Liquidación registrada; consulte sus fechas y actuaciones en el servidor.');
         this.liquidacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'liquidacion');
       },
       error: (error) => {
+        if (!vigente()) return;
         this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo emitir la liquidación.');
         this.liquidacionLoading.set(false);
       }
-    });
+    }));
   }
 
   actualizarLiquidacion(liquidacion: LiquidacionCostoSolicitud, estado: 'PAGADA' | 'RECOGIDA' | 'CANCELADA'): void {
+    if (!this.contextoVigente() || this.liquidacionUpdateLoading() || !this.liquidaciones().some(item => item.id === liquidacion.id)) return;
+    const vigente = this.operacionVigente();
     const sol = this.solicitud();
     if (!sol) {
       return;
@@ -808,25 +838,27 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.liquidacionError.set('');
     this.liquidacionSuccess.set('');
 
-    this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
+    this.consultas.add(this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
       estado,
       responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
     }).subscribe({
       next: () => {
+        if (!vigente()) return;
         const message = estado === 'PAGADA'
           ? 'Pago registrado en la liquidación.'
           : estado === 'RECOGIDA'
-            ? 'Recojo registrado; la solicitud queda respondida.'
+            ? 'Recojo registrado; consulte el estado recuperado de la solicitud.'
             : 'Liquidación cancelada.';
         this.liquidacionSuccess.set(message);
         this.liquidacionUpdateLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'liquidacion');
       },
       error: (error) => {
+        if (!vigente()) return;
         this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo actualizar la liquidación.');
         this.liquidacionUpdateLoading.set(false);
       }
-    });
+    }));
   }
 
   agregarEntregaCronograma(): void {
@@ -900,7 +932,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
 
   getDiasRestantes(): number | null {
     const value = this.plazoSeguimiento()?.diasRestantes;
-    return typeof value === 'number' ? value : null;
+    return Number.isSafeInteger(value) ? value! : null;
   }
 
   getDiasRestantesColor(): string {
@@ -1016,15 +1048,28 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   private crearEntregaForm(numeroEntrega: number): RegistrarEntregaParcialPayload {
-    const fecha = new Date();
-    fecha.setDate(fecha.getDate() + 15 * numeroEntrega);
     return {
       numeroEntrega,
       descripcion: '',
-      fechaProgramada: this.toInputDate(fecha),
+      fechaProgramada: '',
       observacion: ''
     };
   }
+
+  private operacionVigente(): () => boolean {
+    const generacion = this.generacion, sesion = this.claveSesion(), id = this.solicitud()?.id;
+    return () => this.contextoVigente() && generacion === this.generacion && sesion === this.claveSesion()
+      && this.solicitud()?.id === id;
+  }
+
+  fechaVisible(value: unknown): string | null {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null;
+  }
+
+  readonly plazosDiscordantes = computed(() => {
+    const detalle = this.solicitud()?.diasRestantes, seguimiento = this.plazoSeguimiento()?.diasRestantes;
+    return Number.isSafeInteger(detalle) && Number.isSafeInteger(seguimiento) && detalle !== seguimiento;
+  });
 
   private cargarEntidadesActivas(): void {
     this.entidadService.findActivas().subscribe({

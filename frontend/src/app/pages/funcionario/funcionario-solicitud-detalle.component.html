@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background">
+<div class="entity-detail min-h-screen bg-background">
   @if (loading()) {
     <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="form-shell p-16 text-center" role="status" aria-live="polite">
@@ -6,10 +6,11 @@
         <p class="mt-4 text-muted-foreground">Cargando solicitud...</p>
       </div>
     </div>
-  } @else if (error()) {
+  } @else if (error() || (solicitud() && !contextoVigente())) {
     <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-        <p class="text-sm" role="alert" style="color: var(--destructive)">{{ error() }}</p>
+        <p class="text-sm" role="alert" style="color: var(--destructive)">{{ error() || 'El contexto de sesión ha cambiado. Abra nuevamente el expediente.' }}</p>
+        <a routerLink="/funcionario" class="btn-ghost-brand mt-3">Volver al panel</a>
         @if (reintentable()) { <button type="button" class="btn-ghost-brand mt-3" (click)="reintentarConsulta()">Reintentar consulta</button> }
       </div>
     </div>
@@ -17,12 +18,12 @@
     <div class="relative bg-paper border-b border-border overflow-hidden">
       <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
         <a routerLink="/funcionario" class="response-back-link">
-          <svg lucideArrowLeft class="w-4 h-4"></svg>
+          <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>
           Volver al panel
         </a>
 
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
+          <div class="min-w-0 flex-1">
             <span class="eyebrow">Bandeja institucional · Detalle</span>
             <div class="flex items-center gap-3 mt-2 flex-wrap">
               <span class="code-chip" style="font-size: 13px">{{ sol.expediente }}</span>
@@ -34,12 +35,12 @@
                 </span>
               }
             </div>
-            <h1 class="font-display mt-3" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.02em;">{{ sol.asunto }}</h1>
+            <h1 class="font-display mt-3 break-words" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.02em;">{{ sol.asunto || 'Asunto no informado' }}</h1>
           </div>
 
           @if (puedeResponder()) {
             <a [routerLink]="['/funcionario/responder', sol.expediente]" class="btn-brand !px-5 !py-3">
-              <svg lucideSend class="w-4 h-4"></svg>
+              <svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>
               Responder solicitud
             </a>
           }
@@ -48,15 +49,18 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
+      @if (informacionIncompleta()) {
+        <p role="status" class="rounded-lg border border-border p-4 text-sm text-muted-foreground">Hay información incompleta o relaciones que no se pudieron verificar. Los registros o documentos incompatibles no se muestran; la ausencia visible no acredita que no existan actuaciones.</p>
+      }
       @if (observacionPendiente(); as observacion) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg lucideClock class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideClock class="w-5 h-5 text-white"></svg>
           </div>
           <div class="flex-1">
             @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
               <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
-              <p class="text-sm text-foreground/85 mt-1.5">Se solicitó al administrado precisar su solicitud (plazo hasta el <span class="font-mono font-semibold">{{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}</span>). Si no responde, el expediente se archivará automáticamente.</p>
+              <p class="text-sm text-foreground/85 mt-1.5">Requerimiento registrado. Fecha límite informada: <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaLimiteSubsanacion) ? (observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy') : 'No informada' }}</span>. Consulte su estado y recepción; el registro no acredita notificación eficaz.</p>
               <p class="text-sm text-foreground/70 mt-2 leading-relaxed">{{ observacion.motivoObservacion }}</p>
             } @else {
               <span class="eyebrow" style="color: var(--warning)">Información inconsistente · recepción pendiente de verificar</span>
@@ -72,10 +76,10 @@
       @if (encauzamientoActivo(); as encauzamiento) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-            <svg lucideScale class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideScale class="w-5 h-5 text-white"></svg>
           </div>
           <div>
-            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
+            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ (fechaVisible(encauzamiento.fechaEncauzamiento) | date:'dd/MM/yyyy') || 'No informada' }}</span>
             <p class="text-sm text-foreground/85 mt-1.5">Derivada a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. {{ encauzamiento.motivoEncauzamiento }}</p>
             @if (encauzamiento.observacionSustento) {
               <p class="text-sm text-foreground/70 mt-1.5"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
@@ -87,11 +91,11 @@
       @if (liquidacionActiva(); as liquidacion) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
-            <svg lucideFileText class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideFileText class="w-5 h-5 text-white"></svg>
           </div>
           <div>
-            <span class="eyebrow" style="color: var(--gold-dark)">Cupón de pago enviado · entrega física</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Monto <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span> · {{ liquidacion.concepto }}. El administrado tiene hasta el <span class="font-mono font-semibold">{{ liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span> (30 días calendario) para recoger.</p>
+            <span class="eyebrow" style="color: var(--gold-dark)">Liquidación registrada · {{ getLiquidacionEstadoDisplay(liquidacion.estadoLiquidacion) }}</span>
+            <p class="text-sm text-foreground/85 mt-1.5">Monto <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span> · {{ liquidacion.concepto }}. Fecha límite registrada: <span class="font-mono font-semibold">{{ fechaVisible(liquidacion.fechaLimiteRecojo) ? (liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy') : 'No informada' }}</span>. Este registro no acredita envío, entrega ni recojo.</p>
           </div>
         </div>
       }
@@ -99,11 +103,11 @@
       @if (isUrgente()) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 text-white"></svg>
           </div>
           <div>
             <span class="eyebrow" style="color: var(--warning)">Solicitud urgente</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Quedan solo <span class="font-mono font-semibold">{{ getDiasRestantes() }} días hábiles</span> para responder.</p>
+            <p class="text-sm text-foreground/85 mt-1.5">Saldo informado por el seguimiento del servidor: <span class="font-mono font-semibold">{{ getDiasRestantes() }} días</span>. No se recalcula el plazo en esta pantalla.</p>
           </div>
         </div>
       }
@@ -113,25 +117,25 @@
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--info)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
+              <svg aria-hidden="true" lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
               <span class="eyebrow">Fecha solicitud</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ (fechaVisible(sol.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</div>
           </div>
 
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--success)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideCheckCircle2 class="w-4 h-4" style="color: var(--success)"></svg>
+              <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" style="color: var(--success)"></svg>
               <span class="eyebrow">Fecha de respuesta</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--success)">{{ sol.respuesta?.fechaRespuesta ? (sol.respuesta.fechaRespuesta | date:'dd/MM/yyyy') : 'No registrada' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--success)">{{ (fechaVisible(sol.respuesta?.fechaRespuesta) | date:'dd/MM/yyyy') || 'No registrada' }}</div>
           </div>
 
           <div class="stat-card">
             <span class="stat-card-bar" [style.background]="getResultadoColor()"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideScale class="w-4 h-4" [style.color]="getResultadoColor()"></svg>
+              <svg aria-hidden="true" lucideScale class="w-4 h-4" [style.color]="getResultadoColor()"></svg>
               <span class="eyebrow">Resultado</span>
             </div>
             <div class="font-display" [style.color]="getResultadoColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getResultadoLabel() }}</div>
@@ -140,34 +144,34 @@
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--brand-700)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+              <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
               <span class="eyebrow">Tipo</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'No informado' }}</div>
           </div>
         } @else {
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--info)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
+              <svg aria-hidden="true" lucideCalendar class="w-4 h-4" style="color: var(--info)"></svg>
               <span class="eyebrow">Fecha solicitud</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ sol.fechaPresentacion | date:'dd/MM/yyyy' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ (fechaVisible(sol.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</div>
           </div>
 
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--warning)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
+              <svg aria-hidden="true" lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
               <span class="eyebrow">Fecha límite</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ (fechaVisible(sol.fechaLimite) | date:'dd/MM/yyyy') || 'No informada' }}</div>
           </div>
 
           <div class="stat-card">
             <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
+              <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
               <span class="eyebrow">Días restantes</span>
             </div>
             <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
@@ -176,17 +180,22 @@
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--brand-700)"></span>
             <div class="flex items-center gap-2 mb-2">
-              <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+              <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
               <span class="eyebrow">Tipo</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'General' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'No informado' }}</div>
           </div>
         }
       </div>
 
       @if (plazoError()) { <p role="status" class="text-sm text-muted-foreground">{{ plazoError() }}</p> }
+      @if (plazosDiscordantes()) { <p role="status" class="text-sm text-muted-foreground">Los endpoints informan saldos distintos: solicitud {{ sol.diasRestantes }}; seguimiento {{ getDiasRestantes() }}. Se conserva la fuente del seguimiento de esta pantalla; la discrepancia requiere revisión de dominio.</p> }
       @if (documentoError()) { <p role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ documentoError() }}</p> }
       <app-response-context />
+      <section class="form-shell" aria-labelledby="entity-area-title">
+        <div class="form-section-header"><span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideBuilding2 class="w-3 h-3"></svg>Atención interna</span><h2 id="entity-area-title" class="entity-availability-title font-display">Área responsable de su atención</h2></div>
+        <p class="p-5 text-sm text-muted-foreground">La asignación de área o funcionario no está disponible en este detalle. La entidad registrada se conserva sin asignaciones locales.</p>
+      </section>
 
       <div class="form-shell" data-reveal>
         <div class="flex border-b overflow-x-auto" appReferenceTabs role="tablist" aria-label="Secciones del expediente" style="border-color: var(--border)">
@@ -214,9 +223,9 @@
               <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="'var(--brand-subtle)'" [style.border]="'1px solid var(--brand-200)'" [style.border-left]="'3px solid ' + (esRespuestaAceptada() ? 'var(--success)' : 'var(--brand-700)')">
                 <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="esRespuestaAceptada() ? 'var(--success)' : 'var(--brand-700)'">
                   @if (esRespuestaAceptada()) {
-                    <svg lucideCheckCircle2 class="w-5 h-5 text-white"></svg>
+                    <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5 text-white"></svg>
                   } @else {
-                    <svg lucideAlertTriangle class="w-5 h-5 text-white"></svg>
+                    <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 text-white"></svg>
                   }
                 </div>
                 <div class="flex-1">
@@ -226,7 +235,7 @@
                   <div class="grid grid-cols-2 gap-4 mt-2">
                     <div>
                       <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Fecha</div>
-                      <div class="text-sm font-mono">{{ sol.respuesta?.fechaRespuesta ? (sol.respuesta.fechaRespuesta | date:'dd/MM/yyyy') : 'No registrada' }}</div>
+                      <div class="text-sm font-mono">{{ (fechaVisible(sol.respuesta?.fechaRespuesta) | date:'dd/MM/yyyy') || 'No registrada' }}</div>
                     </div>
                     <div>
                       <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Funcionario</div>
@@ -238,7 +247,7 @@
 
               @if (getTipoRespuestaDisplay() === 'SILENCIO_ADMINISTRATIVO') {
                 <div class="rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
-                  La solicitud excedió el plazo legal de 10 días hábiles sin respuesta registrada. El sistema aplicó SILENCIO_ADMINISTRATIVO de forma automática.
+                  El servidor informa el tipo SILENCIO_ADMINISTRATIVO en este registro. Su existencia no acredita entrega, notificación eficaz ni una actuación adicional.
                 </div>
               } @else if (esRespuestaAceptada()) {
                 <div>
@@ -281,20 +290,20 @@
                   </div>
                 </div>
               }
-              @if (sol.respuesta && !esSilencioAdministrativo()) {
+              @if (sol.respuesta && sol.respuesta.tipoRespuesta !== 'SILENCIO_ADMINISTRATIVO') {
                 <div>
                   <span class="eyebrow">Documentos registrados con la respuesta</span>
                   <div class="space-y-2 mt-2">
                     @if (documentosRespuestaEntidad().length === 0) {
                       <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
-                        La entidad no adjuntó documentos a su respuesta.
+                        {{ informacionIncompleta() ? 'No hay documentos verificables de la respuesta en la información recibida.' : 'La respuesta recuperada no contiene documentos asociados.' }}
                       </div>
                     } @else {
                       @for (d of documentosRespuestaEntidad(); track d.id || d.nombre) {
                         <div class="response-document-row rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                           <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: rgba(5,150,105,0.08)">
-                              <svg lucideFileText class="w-5 h-5" style="color: var(--success)"></svg>
+                              <svg aria-hidden="true" lucideFileText class="w-5 h-5" style="color: var(--success)"></svg>
                             </div>
                             <div>
                               <div class="text-sm font-medium">{{ d.nombre }}</div>
@@ -303,11 +312,11 @@
                           </div>
                           <div class="flex items-center gap-2">
                             <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" [attr.aria-label]="'Ver ' + d.nombre" title="Ver documento">
-                              <svg lucideEye class="w-4 h-4"></svg>
+                              <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                               <span>Ver</span>
                             </button>
                             <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" [attr.aria-label]="'Descargar ' + d.nombre" title="Descargar documento">
-                              <svg lucideDownload class="w-4 h-4"></svg>
+                              <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
                               <span>Descargar</span>
                             </button>
                           </div>
@@ -320,7 +329,7 @@
             </div>
           } @else {
             <div class="p-12 text-center">
-              <svg class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
+              <svg aria-hidden="true" class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
               <p class="text-sm text-muted-foreground">Aún no existe respuesta registrada.</p>
             </div>
           }
@@ -339,7 +348,7 @@
               </div>
               <div>
                 <span class="eyebrow">Tipo de información</span>
-                <div class="mt-1.5 text-sm">{{ sol.tipoInformacion || 'General' }}</div>
+                <div class="mt-1.5 text-sm">{{ sol.tipoInformacion || 'No informado' }}</div>
               </div>
               <div>
                 <span class="eyebrow">Modalidad de entrega solicitada</span>
@@ -379,7 +388,7 @@
                 {{ getIniciales(sol.ciudadanoNombre) }}
               </div>
               <div>
-                <div class="text-sm font-medium">{{ sol.ciudadanoNombre || 'Ciudadano' }}</div>
+                <div class="text-sm font-medium">{{ sol.ciudadanoNombre || 'Nombre no informado' }}</div>
                 <div class="font-mono text-xs text-muted-foreground">DNI {{ sol.ciudadanoDni || 'No registrado' }}</div>
               </div>
             </div>
@@ -398,8 +407,8 @@
             <div>
               <span class="eyebrow">Solicitudes previas</span>
               <div class="space-y-2 mt-2">
-                @if (previasError()) { <p class="text-sm text-muted-foreground" role="status">{{ previasError() }}</p> } @else if (solicitudesPrevias().length === 0) {
-                  <p class="text-xs text-muted-foreground">Este administrado no tiene otras solicitudes ante la entidad.</p>
+                @if (previasLoading()) { <p role="status" class="text-sm text-muted-foreground">Consultando solicitudes previas…</p> } @else if (previasError()) { <p class="text-sm text-muted-foreground" role="status">{{ previasError() }}</p> } @else if (solicitudesPrevias().length === 0) {
+                  <p class="text-xs text-muted-foreground">La consulta autorizada no devolvió otras solicitudes en este contexto.</p>
                 } @else {
                   @for (p of solicitudesPrevias(); track p.expediente) {
                     <a [routerLink]="['/funcionario/solicitud', p.expediente]"
@@ -426,14 +435,14 @@
                   heading="Adjuntar documento a la solicitud"
                   tipoDocumento="DOCUMENTO_ADJUNTO"
                   [relation]="relation"
-                  (uploaded)="onDocumentoSubido()"
+                  (uploaded)="onDocumentoSubido('adjuntos', sol.id)"
                 />
               }
             }
 
             @if (todosDocumentosAdministrado().length === 0) {
               <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
-                El administrado no adjuntó documentos a este expediente.
+                {{ informacionIncompleta() ? 'No hay documentos verificables en la información recibida.' : 'La consulta no contiene documentos del administrado asociados a esta solicitud.' }}
               </div>
             }
 
@@ -446,10 +455,10 @@
                 </div>
                 <div class="space-y-2">
                   @for (d of grupoPrincipales(); track d.id || d.nombre) {
-                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="response-document-row rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                       <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                          <svg lucideFileText class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                          <svg aria-hidden="true" lucideFileText class="w-5 h-5" style="color: var(--brand-700)"></svg>
                         </div>
                         <div>
                           <div class="flex items-center gap-2">
@@ -465,11 +474,11 @@
                       </div>
                       <div class="flex items-center gap-2 flex-shrink-0">
                         <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
-                          <svg lucideEye class="w-4 h-4"></svg>
+                          <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                           <span>Ver</span>
                         </button>
                         <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
-                          <svg lucideDownload class="w-4 h-4"></svg>
+                          <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
                           <span>Descargar</span>
                         </button>
                       </div>
@@ -480,10 +489,10 @@
                     <div class="space-y-2 pt-1">
                       <div class="text-[10px] uppercase tracking-widest text-muted-foreground" style="margin-left: 20px">Anexos de la solicitud</div>
                       @for (d of grupoAnexos(); track d.id || d.nombre) {
-                        <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border); margin-left: 20px">
+                        <div class="response-document-row rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border); margin-left: 20px">
                           <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: color-mix(in srgb, var(--info) 10%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent)">
-                              <svg lucideFileText class="w-5 h-5" style="color: var(--info)"></svg>
+                              <svg aria-hidden="true" lucideFileText class="w-5 h-5" style="color: var(--info)"></svg>
                             </div>
                             <div>
                               <div class="flex items-center gap-2">
@@ -499,11 +508,11 @@
                           </div>
                           <div class="flex items-center gap-2 flex-shrink-0">
                             <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
-                              <svg lucideEye class="w-4 h-4"></svg>
+                              <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                               <span>Ver</span>
                             </button>
                             <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
-                              <svg lucideDownload class="w-4 h-4"></svg>
+                              <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
                               <span>Descargar</span>
                             </button>
                           </div>
@@ -524,10 +533,10 @@
                 </div>
                 <div class="space-y-2">
                   @for (d of grupoSubsanaciones(); track d.id || d.nombre) {
-                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                    <div class="response-document-row rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
                       <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: color-mix(in srgb, var(--warning) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent)">
-                          <svg lucideFileText class="w-5 h-5" style="color: var(--warning)"></svg>
+                          <svg aria-hidden="true" lucideFileText class="w-5 h-5" style="color: var(--warning)"></svg>
                         </div>
                         <div>
                           <div class="flex items-center gap-2">
@@ -543,11 +552,11 @@
                       </div>
                       <div class="flex items-center gap-2 flex-shrink-0">
                         <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Ver documento">
-                          <svg lucideEye class="w-4 h-4"></svg>
+                          <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                           <span>Ver</span>
                         </button>
                         <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" title="Descargar documento">
-                          <svg lucideDownload class="w-4 h-4"></svg>
+                          <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
                           <span>Descargar</span>
                         </button>
                       </div>
@@ -562,9 +571,9 @@
         @if (activeTab() === 'notificaciones') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
             <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
-              <svg lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+              <svg aria-hidden="true" lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
               <p class="text-sm text-foreground/85 leading-relaxed">
-                El <span class="font-semibold">Tribunal (TTAIP)</span> notificó a la entidad las siguientes actuaciones dentro del expediente de apelación {{ sol.apelacion?.expediente || '' }}. Cada cédula es idéntica al documento oficial firmado.
+                La solicitud contiene una referencia al expediente de apelación {{ sol.apelacion?.expediente || '' }}. Este resumen no incluye documentos ni evidencia de notificación eficaz o firma verificada. Consulte el expediente autorizado del Tribunal para sus actuaciones.
               </p>
             </div>
 
@@ -573,11 +582,11 @@
                 <div>
                   <div class="eyebrow">Expediente TTAIP</div>
                   <div class="font-mono font-bold text-base mt-1" style="color: var(--brand-700)">{{ sol.apelacion.expediente }}</div>
-                  <div class="text-xs text-muted-foreground mt-1">Fecha apelación: {{ sol.apelacion.fechaApelacion | date:'dd/MM/yyyy' }}</div>
+                  <div class="text-xs text-muted-foreground mt-1">Fecha apelación: {{ (fechaVisible(sol.apelacion.fechaApelacion) | date:'dd/MM/yyyy') || 'No informada' }}</div>
                 </div>
                 <a [routerLink]="['/funcionario/apelaciones', sol.apelacion.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-xs inline-flex items-center gap-1.5">
                   <span>Ver expediente en Tribunal</span>
-                  <svg lucideChevronRight class="w-4 h-4"></svg>
+                  <svg aria-hidden="true" lucideChevronRight class="w-4 h-4"></svg>
                 </a>
               </div>
             }
@@ -592,7 +601,7 @@
                   <span class="absolute left-[-7px] top-1 w-3.5 h-3.5 rounded-full ring-4" [style.background]="getHistorialColorClass(item.color)" [style.box-shadow]="'0 0 0 4px var(--brand-50)'"></span>
                   <div class="flex items-baseline gap-2 flex-wrap">
                     <span class="text-sm font-semibold text-foreground">{{ item.accion }}</span>
-                    <span class="font-mono text-[11px] text-muted-foreground">· {{ item.fecha | date:'dd/MM/yyyy' }}</span>
+                    <span class="font-mono text-[11px] text-muted-foreground">· {{ fechaVisible(item.fecha) ? (item.fecha | date:'dd/MM/yyyy') : 'Fecha no informada' }}</span>
                   </div>
                   <div class="text-xs text-muted-foreground mt-0.5">{{ item.responsable }}</div>
                   <p class="text-sm text-foreground/85 mt-1">{{ item.detalle }}</p>
@@ -602,7 +611,7 @@
                          class="inline-flex items-center gap-1.5 text-xs font-semibold hover:underline group"
                          style="color: var(--accent-violet)">
                         <span>Ver expediente TTAIP</span>
-                        <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <svg aria-hidden="true" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
                         </svg>
                       </a>
@@ -617,7 +626,7 @@
       </div>
     </div>
   } @else {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><p role="status" class="form-shell p-8 text-muted-foreground">No se encontró la solicitud.</p></div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><p role="status" class="form-shell p-8 text-muted-foreground">No se encontró la solicitud.</p><a routerLink="/funcionario" class="btn-ghost-brand mt-3">Volver al panel</a></div>
   }
 
   <app-document-preview-modal

@@ -11,6 +11,9 @@ import { EntidadService } from '../../services/entidad.service';
 import { FuncionarioSolicitudDetalleComponent } from './funcionario-solicitud-detalle.component';
 
 describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
+  const base: Partial<Solicitud> = { id: 12, expediente: 'SAIP-2026-00012', entidadId: 3, asunto: 'Pedido sintético',
+    fechaPresentacion: '2026-10-01', respuesta: null, observaciones: [], documentosMetadata: [],
+    ampliacionesPlazo: [], encauzamientos: [], liquidacionesCosto: [] };
   const mockSolicitudService = {
     findByExpediente: vi.fn(),
     obtenerSeguimientoPlazo: vi.fn(() => of({} as any))
@@ -24,7 +27,7 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockSolicitudService.findByExpediente.mockReturnValue(of({} as Solicitud));
+    mockSolicitudService.findByExpediente.mockReturnValue(of(base as unknown as Solicitud));
     mockSolicitudService.obtenerSeguimientoPlazo.mockReturnValue(of({} as any));
     await TestBed.configureTestingModule({
       imports: [FuncionarioSolicitudDetalleComponent],
@@ -42,6 +45,7 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
 
   it('debería retornar puedeAdjuntarDocumentos como true para estados activos', () => {
     mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
       id: 12,
       estado: 'RECEPCIONADA'
     } as Solicitud));
@@ -58,6 +62,7 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
 
   it('debería retornar puedeAdjuntarDocumentos como false para estados cerrados', () => {
     mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
       id: 12,
       estado: 'RESPONDIDA'
     } as Solicitud));
@@ -77,7 +82,7 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
 
   it('debería renderizar o remover el elemento <app-document-upload> en base a la regla de visibilidad', () => {
     // Return an active request
-    const mockSol = { id: 12, estado: 'RECEPCIONADA', documentosMetadata: [] } as any;
+    const mockSol = { ...base, id: 12, estado: 'RECEPCIONADA', documentosMetadata: [] } as any;
     mockSolicitudService.findByExpediente.mockReturnValue(of(mockSol));
 
     const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
@@ -101,7 +106,7 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     expect(uploadEl).toBeNull();
   });
   it('no ofrece aprobar o archivar una subsanación mediante un cambio genérico', () => {
-    mockSolicitudService.findByExpediente.mockReturnValue(of({ id: 12, estado: 'PENDIENTE_INFORMACION',
+    mockSolicitudService.findByExpediente.mockReturnValue(of({ ...base, id: 12, estado: 'PENDIENTE_INFORMACION',
       documentosMetadata: [], observaciones: [{ id: 8, estado: 'PENDIENTE_SUBSANACION',
       comentarioSubsanacion: 'Dato histórico sin recepción acreditada', fechaSubsanacion: '2026-10-22T10:00:00' }] } as any));
     const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
