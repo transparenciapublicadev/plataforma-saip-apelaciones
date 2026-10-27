@@ -1,17 +1,18 @@
-<div class="min-h-screen bg-background">
+<div class="entity-dashboard min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero data-tour="e-hero">
       <div class="flex items-start gap-5 flex-wrap">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
-          <svg lucideBuilding2 class="w-7 h-7 text-white"></svg>
+          <svg aria-hidden="true" lucideBuilding2 class="w-7 h-7 text-white"></svg>
         </div>
 
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-3">
-            <span class="eyebrow">Bandeja del funcionario · {{ nombreEntidad() }}</span>
+            <div><span class="eyebrow">Bandeja del funcionario</span>
+              <p class="font-display mt-1" style="font-size: clamp(17px, 1.6vw, 21px); line-height: 1.2; letter-spacing: -0.01em; color: var(--brand-700)">{{ contextoVigente() ? (nombreEntidad() || 'Entidad sin nombre informado') : 'Contexto institucional pendiente' }}</p></div>
             <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap relative inline-flex items-center gap-1.5" title="Ver tutorial guiado">
-              <svg lucideCompass class="w-3.5 h-3.5"></svg>
+              <svg aria-hidden="true" lucideCompass class="w-3.5 h-3.5"></svg>
               <span>Ver tutorial</span>
               @if (isFirstVisit) {
                 <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
@@ -22,34 +23,22 @@
             </button>
           </div>
           <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
-            Tu día — <span class="italic" style="color: var(--brand-700)">{{ fechaHoy() }}</span>
+            Bandeja — <span class="italic" style="color: var(--brand-700)">SAIP</span>
           </h1>
-          <p class="text-muted-foreground mt-1.5 text-sm">
-            <span class="font-mono font-semibold text-foreground">{{ totalActivas() }}</span> solicitudes en bandeja ·
-            @if (counts().san > 0) {
-              <span class="font-mono font-semibold" style="color: var(--brand-700)"> {{ counts().san }} en SAN</span> ·
-            }
-            @if (counts().hoy > 0) {
-              <span class="font-mono font-semibold" style="color: var(--brand-600)"> {{ counts().hoy }} para hoy</span>
-            }
+          <p class="text-muted-foreground mt-1.5 text-sm" role="status" aria-live="polite" aria-atomic="true">
+            @if (!loading() && !error() && contextoVigente()) {
+              <span class="font-mono font-semibold text-foreground">{{ counts().todas }}</span> registros recuperados de la entidad.
+            } @else { Información institucional no disponible todavía. }
+            La bandeja no representa la actividad individual del funcionario.
           </p>
         </div>
 
         <div data-tour="e-cumplimiento" class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
-          <div class="relative" style="width: 70px; height: 70px">
-            <svg width="70" height="70" viewBox="0 0 70 70">
-              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" stroke="var(--muted)" stroke-width="6" />
-              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" [attr.stroke-dasharray]="donutCirc" [attr.stroke-dashoffset]="donutOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms"></circle>
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center font-display" [style.color]="donutAccent()" style="font-size: 14px; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
-          </div>
-          <div class="min-w-[140px]">
-            <span class="eyebrow">Cumplimiento del plazo legal</span>
-            <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
-            <div class="flex items-center gap-1 text-xs mt-0.5" style="color: var(--muted-foreground)">
-              <svg lucideTrendingUp class="w-3 h-3"></svg>
-              {{ respondidas() }} de {{ cerradas() }} atendidas a tiempo
-            </div>
+          <div class="w-[70px] h-[70px] rounded-full flex items-center justify-center shrink-0 font-display text-muted-foreground text-2xl" style="border: 6px solid var(--muted)" aria-hidden="true">—</div>
+          <div class="min-w-0 max-w-[240px]">
+            <span class="eyebrow">Atención dentro de plazo</span>
+            <p class="font-display text-lg">Indicador no disponible</p>
+            <p class="text-xs text-muted-foreground mt-1">La consulta no informa atención a tiempo ni comparación mensual.</p>
           </div>
         </div>
       </div>
@@ -58,36 +47,40 @@
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-8">
     @if (loading()) {
-      <div class="text-center py-16"><div class="spinner spinner-lg mx-auto"></div><p class="mt-4 text-sm text-[var(--niebla)]">Cargando solicitudes...</p></div>
-    } @else if (error()) {
-      <div class="alert alert-error p-6 text-center">
-        <p>{{ error() }}</p>
-        <button (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
+      <div class="text-center py-16" role="status" aria-live="polite"><div class="spinner spinner-lg mx-auto" aria-hidden="true"></div><p class="mt-4 text-sm text-muted-foreground">Cargando contexto y solicitudes de la entidad…</p></div>
+    } @else if (error() || !contextoVigente()) {
+      <div class="alert alert-error p-6 text-center" role="alert">
+        <p>{{ error() || 'El contexto de sesión ha cambiado. Vuelva a consultar.' }}</p><a routerLink="/acceso-funcionario" class="inline-block text-sm underline mt-2">Acceso interno del funcionario</a>
+        <button type="button" (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
+      <p class="text-xs text-muted-foreground mb-4">Entidad #{{ entidadId() }} informada en la ficha del funcionario. Búsqueda, filtros y páginas son locales al listado autorizado recibido. Los conteos describen este listado, no una medición individual o por periodo.</p>
+      @if (informacionIncompleta()) {
+        <p role="status" class="rounded-lg border border-border p-4 mb-4 text-sm text-muted-foreground">Algunos registros tienen información incompleta o discordante. Se conservan sus estados originales; no se calculan fechas ni saldos sustitutos.</p>
+      }
       @if (counts().san > 0) {
-        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
+        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex flex-wrap md:flex-nowrap items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
           <div class="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-700); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20)">
-            <svg lucideShieldAlert class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideShieldAlert class="w-5 h-5 text-white"></svg>
           </div>
-          <div class="flex-1">
-            <span class="eyebrow" style="color: var(--brand-700)">Silencio administrativo negativo</span>
-            <h3 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
-              {{ counts().san }} solicitud(es) en SAN
-            </h3>
-            <p class="text-sm text-muted-foreground mt-0.5">El plazo legal venció. Cada día sin respuesta puede originar sanción para la entidad y derecho de apelación del ciudadano.</p>
+          <div class="flex-1 min-w-0">
+            <span class="eyebrow" style="color: var(--brand-700)">Estado informado por el servidor</span>
+            <h2 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
+              {{ counts().san }} registros en estado VENCIDA
+            </h2>
+            <p class="text-sm text-muted-foreground mt-0.5">Revise las actuaciones de cada expediente. Esta agrupación usa el estado registrado y no acredita por sí sola notificación, entrega ni una sanción.</p>
           </div>
-          <button (click)="selectBucket('san')" class="btn-brand !px-5 self-center">
+          <button type="button" (click)="selectBucket('san')" class="btn-brand !px-5 self-center w-full md:w-auto">
             Atender ahora
-            <svg lucideArrowRight class="w-4 h-4"></svg>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4"></svg>
           </button>
         </div>
       }
 
       <div class="mb-6" data-tour="e-buckets">
         <div class="flex items-baseline justify-between mb-3">
-          <span class="eyebrow">Bandeja por SLA</span>
+          <span class="eyebrow">Bandejas por estado y saldo informado</span>
           <span class="text-xs text-muted-foreground hidden md:inline">Click una columna para enfocar</span>
         </div>
 
@@ -99,18 +92,18 @@
           data-motion-delay-step="0.035"
         >
           @for (bucket of buckets; track bucket.key) {
-            <button data-motion-item (click)="selectBucket(bucket.key)" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="selectedBucket() === bucket.key ? bucket.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedBucket() === bucket.key ? bucket.color : 'var(--border)')" [style.boxShadow]="selectedBucket() === bucket.key ? '0 0 0 3px ' + bucket.bg : 'none'">
+            <button data-motion-item (click)="selectBucket(bucket.key)" [attr.aria-pressed]="selectedBucket() === bucket.key" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="selectedBucket() === bucket.key ? bucket.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedBucket() === bucket.key ? bucket.color : 'var(--border)')" [style.boxShadow]="selectedBucket() === bucket.key ? '0 0 0 3px ' + bucket.bg : 'none'">
               @if (selectedBucket() === bucket.key) {
                 <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="bucket.color"></span>
               }
 
               <div class="flex items-start justify-between mb-2">
                 @switch (bucket.icon) {
-                  @case ('alert') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('flame') { <svg lucideFlame class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('calendar') { <svg lucideCalendar class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('check') { <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @default { <svg lucideInbox class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('alert') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('flame') { <svg aria-hidden="true" lucideFlame class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('calendar') { <svg aria-hidden="true" lucideCalendar class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @default { <svg aria-hidden="true" lucideInbox class="w-4 h-4" [style.color]="bucket.color"></svg> }
                 }
                 @if (selectedBucket() === bucket.key) {
                   <span class="w-2 h-2 rounded-full" [style.background]="bucket.color"></span>
@@ -125,6 +118,15 @@
         </div>
       </div>
 
+      <div class="flex items-center flex-wrap gap-3 mb-5">
+        <button type="button" class="btn-ghost-brand" [attr.aria-pressed]="selectedBucket() === 'otras'" (click)="selectBucket('otras')">Otros estados o sin saldo · {{ counts().otras }}</button>
+        <label for="entity-state" class="text-xs text-muted-foreground">Estado registrado</label>
+        <select id="entity-state" class="field-input w-auto" [ngModel]="filtroEstado()" (ngModelChange)="cambiarEstado($event)">
+          <option value="">Todos los estados</option>
+          @for (state of estados; track state) { <option [value]="state">{{ state }}</option> }
+        </select>
+        <button type="button" class="btn-ghost-brand" (click)="limpiarFiltros()">Limpiar filtros</button>
+      </div>
       <div
         class="grid grid-cols-1 lg:grid-cols-12 gap-6"
         data-motion-stagger
@@ -137,55 +139,60 @@
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="bucketActivoMeta().bg" [style.border]="'1px solid ' + bucketActivoMeta().color">
                 @switch (bucketActivoMeta().icon) {
-                  @case ('alert') { <svg lucideAlertTriangle class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('flame') { <svg lucideFlame class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('calendar') { <svg lucideCalendar class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('check') { <svg lucideCheckCircle2 class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @default { <svg lucideInbox class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('alert') { <svg aria-hidden="true" lucideAlertTriangle class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('flame') { <svg aria-hidden="true" lucideFlame class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('calendar') { <svg aria-hidden="true" lucideCalendar class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @default { <svg aria-hidden="true" lucideInbox class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
                 }
               </div>
               <div class="flex-1 min-w-0">
                 <span class="eyebrow">Bandeja enfocada</span>
-                <div class="font-display" style="font-size: 19px; letter-spacing: -0.015em">
+                <h2 class="font-display" style="font-size: 19px; letter-spacing: -0.015em">
                   {{ bucketActivoMeta().label }}
                   <span class="font-mono text-muted-foreground" style="font-size: 14px; margin-left: 8px">· {{ filtradas().length }}</span>
-                </div>
+                </h2>
               </div>
 
               <div class="relative w-full md:w-[300px] md:flex-shrink-0">
-                <svg lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
-                <input class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar administrado, asunto o N°…" [(ngModel)]="busquedaModel" />
+                <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+                <label for="entity-search" class="sr-only">Buscar en los registros recibidos</label>
+                <input id="entity-search" type="search" class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar administrado, asunto o N°…" [(ngModel)]="busquedaModel" />
               </div>
             </div>
 
+            <p role="status" aria-live="polite" aria-atomic="true" class="px-4 pt-3 text-xs text-muted-foreground">{{ filtradas().length }} coincidencias entre {{ counts().todas }} registros recuperados. Orden de presentación recibido del servidor.</p>
             <div class="p-3 md:p-4 space-y-2">
               @if (filtradas().length === 0) {
                 <div class="text-center py-12">
                   <div class="w-12 h-12 mx-auto mb-3 rounded-lg flex items-center justify-center" style="background: var(--brand-subtle)">
-                    <svg lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
+                    <svg aria-hidden="true" lucideInbox class="w-5 h-5" style="color: var(--muted-foreground)"></svg>
                   </div>
                   <p class="text-sm text-foreground/85 font-medium">{{ busqueda().trim() ? 'Sin resultados para su búsqueda' : 'Sin solicitudes en esta bandeja' }}</p>
-                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Disfrute la calma o explore otra cola arriba.' }}</p>
+                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Seleccione otra bandeja o limpie los filtros. Este resultado corresponde solo a la consulta recibida.' }}</p>
                 </div>
               } @else {
+                <div role="list" aria-label="Solicitudes de la entidad" class="space-y-2">
                 @for (item of filtradasVisibles(); track item.solicitud.id) {
-                  <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item.bucket)">
+                  <div role="listitem" data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item.bucket)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="code-chip">{{ item.solicitud.expediente }}</span>
-                        <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad.toUpperCase() }}</span>
+                        <a class="code-chip" [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" [attr.aria-label]="'Ver detalle de ' + item.solicitud.expediente">{{ item.solicitud.expediente }}</a>
+                        <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad || 'NO INFORMADA' }}</span>
                         <app-status-badge [status]="getEstadoDisplay(item.solicitud)"></app-status-badge>
                       </div>
 
-                      <div class="text-sm font-medium text-foreground mt-1.5 truncate" [title]="item.solicitud.asunto">{{ item.solicitud.asunto }}</div>
+                      <h3 class="text-sm font-medium text-foreground mt-1.5 break-words">{{ item.solicitud.asunto || 'Asunto no informado' }}</h3>
                       <div class="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                        <svg lucideUser class="w-3 h-3 inline"></svg>
-                        {{ item.solicitud.ciudadanoNombre }} · <span class="font-mono">{{ item.tema }}</span> · presentada {{ item.solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}
+                        <svg aria-hidden="true" lucideUser class="w-3 h-3 inline"></svg>
+                        {{ item.solicitud.ciudadanoNombre || 'Identificación no informada' }} · <span class="font-mono">{{ item.tema || 'Tipo no informado' }}</span> ·
+                        @if (fechaVisible(item.solicitud.fechaPresentacion); as fecha) { presentada {{ fecha | date:'dd/MM/yyyy' }} } @else { Fecha de presentación no informada }
                       </div>
                     </div>
 
+                    <p class="md:hidden text-xs text-muted-foreground">{{ getMetaLabel(item) }}: {{ getMetaValue(item) }}</p>
                     <!-- Columna derecha uniforme (etiqueta + valor) -->
                     <div class="hidden md:flex flex-col items-end justify-center text-right w-[132px] flex-shrink-0">
                       <span class="text-[10px] tracking-wide uppercase text-muted-foreground truncate max-w-full">{{ getMetaLabel(item) }}</span>
@@ -193,26 +200,31 @@
                     </div>
 
                     <!-- Acción -->
-                    @if (isItemRespondida(item) || item.solicitud.estado === 'PENDIENTE_INFORMACION') {
+                    @if (!canResponder(item.solicitud)) {
                       <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] w-[116px] justify-center flex-shrink-0">
                         Ver detalle
-                        <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
+                        <svg aria-hidden="true" lucideChevronRight class="w-3.5 h-3.5"></svg>
                       </a>
                     } @else {
                       <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] w-[116px] justify-center flex-shrink-0">
-                        <svg lucideSend class="w-3.5 h-3.5"></svg>
+                        <svg aria-hidden="true" lucideSend class="w-3.5 h-3.5"></svg>
                         Responder
                       </a>
                     }
                   </div>
                 }
+                </div>
               }
 
               <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
               @if (totalRegistros() > 0) {
                 <div class="pt-2">
+                  <label for="entity-page-size" class="text-xs text-muted-foreground">Registros por página local</label>
+                  <select id="entity-page-size" class="field-input w-auto mt-1" [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)">
+                    @for (size of [4, 8, 12]; track size) { <option [ngValue]="size">{{ size }}</option> }
+                  </select>
                   <app-pagination
-                    [page]="paginaActual()"
+                    [page]="paginaSegura()"
                     [totalPages]="totalPaginas()"
                     [total]="totalRegistros()"
                     [rangeFrom]="inicioRegistro()"
@@ -229,23 +241,24 @@
           <div class="form-shell" data-tour="e-carga">
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
-                <svg lucideLayers class="w-3 h-3"></svg>
+                <svg aria-hidden="true" lucideLayers class="w-3 h-3"></svg>
                 Distribución de carga
               </span>
-              <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos próximos</div>
+              <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Saldos de atención informados</h2>
             </div>
             <div class="p-4 space-y-1.5">
               @for (row of distribucionDias(); track row.dia) {
                 <div class="flex items-center gap-2.5" data-table-row>
-                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia === 0 ? 'hoy' : row.dia + 'd' }}</span>
+                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia + 'd' }}</span>
                   <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: var(--muted)">
                     <div class="h-full rounded-full transition-all" [style.width.%]="row.width" [style.background]="row.count === 0 ? 'var(--border-strong)' : row.color" [style.opacity]="row.count === 0 ? 0.4 : 1"></div>
                   </div>
                   <span class="font-mono text-[11px] w-5 text-right" [style.color]="row.count > 0 ? row.color : 'var(--muted-foreground)'">{{ row.count }}</span>
                 </div>
               }
+              @if (distribucionDias().length === 0) { <p class="text-xs text-muted-foreground">No hay saldos de atención agrupables en esta consulta.</p> }
               <p class="text-[11px] text-muted-foreground pt-3 border-t border-border mt-3">
-                Vencimientos por días hábiles restantes.
+                Se agrupan solo saldos recibidos en estados de atención. La longitud compara cantidades, no avance del trámite. No se recalculan plazos.
               </p>
             </div>
           </div>
@@ -254,10 +267,10 @@
             <div class="form-shell" data-tour="e-batch" data-reveal>
               <div class="form-section-header">
                 <span class="eyebrow flex items-center gap-2">
-                  <svg lucideTarget class="w-3 h-3"></svg>
-                  Oportunidad
+                  <svg aria-hidden="true" lucideTarget class="w-3 h-3"></svg>
+                  Resumen del listado
                 </span>
-                <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Temas para batch</div>
+                <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Tipos de información registrados</h2>
               </div>
               <div class="p-4 space-y-2.5">
                 @for (tema of topTemas(); track tema[0]) {
@@ -272,18 +285,22 @@
                   </div>
                 }
                 <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
-                  Considere preparar respuestas tipo para los temas recurrentes.
+                  Tipos informados por el servidor en los registros recuperados; no se infieren del asunto ni habilitan respuestas masivas.
                 </p>
               </div>
             </div>
           }
 
+          <div class="form-shell p-4 text-sm text-muted-foreground">
+            <h2 class="font-display text-lg text-foreground">Asignaciones y operaciones masivas</h2>
+            <p class="mt-2">La asignación de área o funcionario no está disponible en este panel. Revise cada expediente por separado; no se guardan asignaciones locales ni se presentan lotes como registrados.</p>
+          </div>
           <div class="rounded-lg p-4" data-tour="e-norma" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)" data-reveal>
-            <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
+            <span class="eyebrow" style="color: var(--info)">Actuaciones y límites</span>
             <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
-              <li><span class="font-mono font-semibold">10 días hábiles</span> para responder · Ley N° 27806.</li>
-              <li>Vencido el plazo aplica <span class="font-semibold">silencio administrativo negativo</span>.</li>
-              <li>El ciudadano puede apelar dentro del <span class="font-mono font-semibold">plazo legal aplicable</span> ante el Tribunal.</li>
+              <li>Revise los estados, fechas y requerimientos que constan en cada expediente.</li>
+              <li>Una respuesta registrada no acredita entrega ni notificación eficaz o firma.</li>
+              <li>Las fechas ausentes o discordantes requieren revisión; aquí no se elige un calendario.</li>
             </ul>
           </div>
         </aside>
