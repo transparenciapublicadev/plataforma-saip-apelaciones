@@ -352,6 +352,9 @@
   <router-outlet></router-outlet>
 </main>
 
+@if (isLandingRoute()) {
+  <app-landing-footer />
+} @else {
 <footer class="saip-footer relative overflow-hidden">
   <!-- Top brand accent -->
   <div class="brand-divider"></div>
@@ -448,6 +451,7 @@
     </div>
   </div>
 </footer>
+}
 
 <app-guided-tour />
 
