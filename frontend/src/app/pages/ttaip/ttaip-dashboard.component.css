@@ -1,6 +1,15 @@
 :host {
   display: block;
 }
+.ttaip-dashboard { overflow-wrap: anywhere; }
+.ttaip-dashboard button:focus-visible, .ttaip-dashboard a:focus-visible,
+.ttaip-dashboard select:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+.tribunal-row { flex-wrap: wrap; }
+@media (min-width: 768px) { .tribunal-row { flex-wrap: nowrap; } }
+@media (max-width: 767px) { .tribunal-row > .flex-1 { flex-basis: calc(100% - 60px); } }
+@media (prefers-reduced-motion: reduce) {
+  .ttaip-dashboard *, .ttaip-dashboard *::before, .ttaip-dashboard *::after { animation: none !important; transition: none !important; }
+}
 
 .custom-scrollbar {
   scrollbar-width: thin;
