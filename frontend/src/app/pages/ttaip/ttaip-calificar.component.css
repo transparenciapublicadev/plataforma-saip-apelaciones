@@ -1,2 +1,9 @@
-/* Estilos TTAIP calificar */
-
+:host { display: block; }
+.qualification-page { overflow-wrap: anywhere; }
+.qualification-page section, .qualification-page .field-input { min-width: 0; }
+.qualification-page button:focus-visible, .qualification-page a:focus-visible,
+.qualification-page [tabindex="-1"]:focus { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.qualification-page [role="tabpanel"][hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .qualification-page *, .qualification-page *::before, .qualification-page *::after { animation: none !important; transition: none !important; }
+}
