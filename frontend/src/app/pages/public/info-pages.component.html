@@ -1,0 +1,89 @@
+@if (page() === 'documentacion') {
+  <app-info-page-shell icon="book" eyebrow="Documentación de la plataforma" title="Cómo funciona" accent="Yaiku"
+    intro="Módulos, perfiles y recorridos disponibles para registrar, consultar y apelar solicitudes de acceso a la información pública.">
+    <nav aria-label="Contenido de documentación" class="flex flex-wrap gap-3 text-sm">
+      <a routerLink="/documentacion" fragment="modulos">Módulos</a><a routerLink="/documentacion" fragment="guia">Guía de uso</a><a routerLink="/documentacion" fragment="requerimientos">Requerimientos</a><a routerLink="/documentacion" fragment="alcance">Recepciones y límites</a>
+    </nav>
+    <section aria-labelledby="modulos" class="space-y-4">
+      <h2 id="modulos" tabindex="-1">Módulos por perfil</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        @for (module of modules; track module.perfil) {
+          <article class="info-card"><h3 class="font-display text-lg">{{ module.perfil }}</h3><p class="text-sm text-muted-foreground mb-3">{{ module.quien }}</p>
+            <ul class="space-y-2">@for (item of module.items; track item) {
+              <li class="flex gap-2.5 text-[15px] leading-relaxed"><svg lucideCheck class="w-4 h-4 mt-1 shrink-0" style="color: var(--brand-700)" aria-hidden="true"></svg><span>{{ item }}</span></li>
+            }</ul>
+          </article>
+        }
+      </div>
+    </section>
+    <section aria-labelledby="guia" class="space-y-4">
+      <h2 id="guia" tabindex="-1">Guía de uso</h2>
+      <ol class="grid md:grid-cols-5 gap-3">@for (step of guide; track step.title; let i = $index) {
+        <li class="info-card !p-4"><span class="font-mono text-xs" style="color: var(--gold-dark)">0{{ i + 1 }}</span><h3 class="font-medium mt-1">{{ step.title }}</h3><p class="text-sm text-muted-foreground mt-1 leading-relaxed">{{ step.detail }}</p></li>
+      }</ol>
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a routerLink="/ciudadano/nueva-saip" class="btn-brand">Presentar una SAIP <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a>
+        <a routerLink="/ayuda" class="btn-ghost-brand">Ir al centro de ayuda</a>
+        <a routerLink="/registro" class="btn-ghost-brand">Crear cuenta ciudadana</a>
+      </div>
+    </section>
+    <section aria-labelledby="consulta" class="space-y-4">
+      <h2 id="consulta" tabindex="-1">Consulta pública y expediente autorizado</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <article class="info-card"><h3 class="font-display text-lg">Seguimiento público</h3><p>Consulta el estado con el código SAIP. Este resultado no muestra el asunto ni proporciona acceso a los documentos del expediente.</p><a routerLink="/consultar" class="inline-flex gap-2 mt-4 font-medium">Consultar un código SAIP <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a></article>
+        <article class="info-card"><h3 class="font-display text-lg">Detalle privado</h3><p>Inicia sesión mediante el acceso ciudadano para consultar tus solicitudes y sus actuaciones autorizadas. Los demás perfiles conservan sus accesos internos.</p><a routerLink="/login" class="inline-flex gap-2 mt-4 font-medium">Ir al acceso ciudadano <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a></article>
+      </div>
+    </section>
+    <section aria-labelledby="requerimientos" class="space-y-4">
+      <h2 id="requerimientos" tabindex="-1">Precisión SAIP y subsanación TTAIP</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <article class="info-card"><h3 class="font-display text-lg">Precisión ante la entidad</h3><p>Abre el pedido concreto desde el detalle de tu solicitud. Completa el comentario y el archivo requerido por el formulario de precisión SAIP.</p></article>
+        <article class="info-card"><h3 class="font-display text-lg">Subsanación ante el Tribunal</h3><p>Abre el requerimiento correspondiente a tu apelación y completa los fundamentos. Los adjuntos son opcionales; todos los archivos seleccionados deben quedar incluidos en la recepción.</p></article>
+      </div>
+      <p class="text-[15px] leading-relaxed">Revisa las condiciones y los datos temporales de tu expediente. Si el inicio de un plazo está pendiente de acreditación o falta información, esta guía no sustituye esa evidencia ni calcula un vencimiento.</p>
+      <a routerLink="/ayuda" fragment="faq" class="inline-flex gap-2 font-medium">Consultar preguntas frecuentes sobre los recorridos <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a>
+    </section>
+    <section aria-labelledby="alcance" class="space-y-4">
+      <h2 id="alcance" tabindex="-1">Recepciones, documentos y límites</h2>
+      <div class="info-card space-y-3">
+        <p>Una recepción confirmada acredita el registro de esa actuación y de los archivos que identifica. Un archivo seleccionado todavía no es un documento registrado.</p>
+        <p>Si el envío queda incierto, conserva el contexto de la operación y utiliza la recuperación que ofrezca el formulario antes de repetirlo. Los archivos seleccionados permanecen solo en memoria; tras recargar puede ser necesario seleccionarlos otra vez.</p>
+        <p>Registrar una respuesta no demuestra entrega de información ni notificación eficaz. Un borrador, una imagen de firma o una descarga no acreditan firma digital verificada ni emisión documental formal.</p>
+        <p>La emisión formal, la edición segura de contacto desde el perfil y un procedimiento disciplinario completo no están disponibles. Esta guía no ofrece manuales o archivos descargables adicionales.</p>
+      </div>
+      <a routerLink="/acerca" class="inline-flex gap-2 font-medium">Conocer el propósito y alcance de Yaiku <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a>
+    </section>
+  </app-info-page-shell>
+} @else if (page() === 'acerca') {
+  <app-info-page-shell icon="info" eyebrow="Acerca de Yaiku" title="Dos instancias," accent="una sola plataforma."
+    intro="Un proyecto académico orientado a relacionar la atención de solicitudes SAIP y sus apelaciones ante el Tribunal de Transparencia.">
+    <div class="rounded-xl p-8 md:p-10 bg-brand-mesh text-white flex flex-col md:flex-row md:items-center gap-8">
+      <app-yaiku-logo [height]="48" gradientId="about-yaiku-seal" />
+      <p class="font-serif italic leading-[1.25] text-[26px]"><span class="block text-white/80">Pide, sigue y apela.</span><span class="block" style="color: var(--gold-soft)">Todo en un solo lugar.</span></p>
+    </div>
+    <section aria-labelledby="proposito" class="space-y-4"><h2 id="proposito" tabindex="-1">Nuestro propósito</h2>
+      <p class="text-[15px] leading-relaxed max-w-3xl">Yaiku busca facilitar el registro y seguimiento de solicitudes de acceso a la información pública y relacionarlas con la segunda instancia. Integrar ambos recorridos es el propósito del proyecto; no significa que todas las actuaciones estén automatizadas o disponibles.</p>
+    </section>
+    <section aria-labelledby="capacidades" class="space-y-4"><h2 id="capacidades" tabindex="-1">Capacidades y evolución</h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        <article class="info-card"><h3 class="font-display text-lg">Recorridos relacionados</h3><p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Las solicitudes y apelaciones vinculadas conservan sus identificadores y actuaciones propias. También existe el recorrido de apelación externa.</p></article>
+        <article class="info-card"><h3 class="font-display text-lg">Registro y seguimiento</h3><p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Se consultan los datos disponibles del expediente y las recepciones de los flujos habilitados. La recepción no equivale a entrega, notificación eficaz o firma.</p></article>
+        <article class="info-card"><h3 class="font-display text-lg">Diseño en evolución</h3><p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Se trabajan etiquetas, foco y navegación por teclado. La validación de accesibilidad y apariencia continúa; no se declara conformidad certificada.</p></article>
+      </div>
+      <p class="text-sm text-muted-foreground">No se presentan resultados medidos de ahorro, adopción o impacto institucional. Las metas del proyecto no son resultados acreditados.</p>
+    </section>
+    <section aria-labelledby="nombre" class="space-y-4"><h2 id="nombre" tabindex="-1">El nombre</h2>
+      <p class="text-[15px] leading-relaxed max-w-3xl">La «Y» del símbolo es también un visto bueno: dos trazos —la entidad y el Tribunal— que convergen en un mismo tronco para representar el recorrido del ciudadano.</p>
+    </section>
+    <section aria-labelledby="proyecto" class="space-y-4"><h2 id="proyecto" tabindex="-1">Proyecto académico</h2>
+      <div class="grid sm:grid-cols-2 gap-4 max-w-3xl">
+        <article class="info-card flex items-center gap-4"><span class="info-project-icon"><svg lucidePenTool class="w-6 h-6" aria-hidden="true"></svg></span><div><h3 class="font-display text-lg leading-tight">Diseño del recorrido</h3><p class="text-sm mt-1" style="color: var(--gold-dark)">Presentación y orientación para consultar y presentar actuaciones.</p></div></article>
+        <article class="info-card flex items-center gap-4"><span class="info-project-icon"><svg lucideCode2 class="w-6 h-6" aria-hidden="true"></svg></span><div><h3 class="font-display text-lg leading-tight">Construcción del sistema</h3><p class="text-sm mt-1" style="color: var(--gold-dark)">Desarrollo y validación de las capacidades disponibles.</p></div></article>
+      </div>
+      <p class="text-[15px] leading-relaxed max-w-3xl">Yaiku no se presenta como plataforma oficial del Estado. La mención de entidades o del Tribunal no acredita respaldo, alianza, certificación ni adopción institucional.</p>
+      <div class="flex flex-wrap gap-3 pt-2"><a routerLink="/documentacion" class="btn-brand">Explorar la documentación <svg lucideArrowRight class="w-4 h-4" aria-hidden="true"></svg></a><a routerLink="/ayuda" class="btn-ghost-brand">Ir al centro de ayuda</a></div>
+    </section>
+  </app-info-page-shell>
+} @else {
+  <div class="saip-page max-w-5xl mx-auto px-6 pt-28 pb-12"><h1 tabindex="-1">Página informativa no disponible</h1><a routerLink="/">Volver al inicio</a></div>
+}

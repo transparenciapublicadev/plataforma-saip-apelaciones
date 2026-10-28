@@ -17,16 +17,7 @@
     <div class="grid grid-cols-1 md:grid-cols-12 gap-10 py-12">
       <div class="md:col-span-4">
         <div class="flex flex-col items-start gap-3.5 mb-5">
-          <span class="yaiku-brand" role="img" aria-label="Yaiku">
-            <svg aria-hidden="true" viewBox="0 0 64 64" width="34" height="34" class="shrink-0">
-              <defs><linearGradient id="landing-yaiku-seal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C8243A"/><stop offset="1" stop-color="#93192A"/></linearGradient></defs>
-              <rect x="1" y="1" width="62" height="62" rx="15" fill="url(#landing-yaiku-seal)" stroke="rgba(251,244,230,.45)" stroke-width="2"/>
-              <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="6.5">
-                <path d="M30.5 38 L30.5 50" stroke="#FBF4E6"/><path d="M19 26.5 L30.5 38" stroke="#FBF4E6"/><path d="M45.5 15 L30.5 38" stroke="#E6C27A"/>
-              </g>
-            </svg>
-            <span aria-hidden="true" class="yaiku-word">Ya<span class="yaiku-dotless">ı</span>ku</span>
-          </span>
+          <app-yaiku-logo gradientId="landing-yaiku-seal" />
           <p class="font-serif italic text-sm text-white/65">Pide, sigue y apela. Todo en un solo lugar.</p>
         </div>
         <p class="text-sm opacity-90 leading-relaxed max-w-sm">Proyecto académico de Kelly y Daniel para registrar y seguir solicitudes SAIP y apelaciones TTAIP. La mención de instituciones no acredita respaldo, alianza ni adopción oficial.</p>
@@ -43,10 +34,10 @@
       <nav class="md:col-span-2" aria-label="Recursos">
         <h3 class="eyebrow mb-4 text-white/70">Recursos</h3>
         <ul class="space-y-2.5 text-sm text-white/70">
-          <li>Documentación <span class="text-xs">— no disponible</span></li>
-          <li><a routerLink="/ayuda" class="hover:text-white transition-colors">Guía de uso</a></li>
+          <li><a routerLink="/documentacion" class="hover:text-white transition-colors">Documentación</a></li>
+          <li><a routerLink="/documentacion" fragment="guia" class="hover:text-white transition-colors">Guía de uso</a></li>
           <li><a routerLink="/" fragment="estadisticas" class="hover:text-white transition-colors">Estadísticas del sistema</a></li>
-          <li>Acerca de Yaiku <span class="text-xs">— página no disponible</span></li>
+          <li><a routerLink="/acerca" class="hover:text-white transition-colors">Acerca de Yaiku</a></li>
         </ul>
       </nav>
       <div class="md:col-span-4">

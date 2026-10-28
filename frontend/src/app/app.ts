@@ -167,6 +167,11 @@ export class App {
     return currentUrl === '/';
   }
 
+  isInfoRoute(): boolean {
+    const currentUrl = this.router.url.split(/[?#]/)[0].replace(/\/$/, '');
+    return currentUrl === '/documentacion' || currentUrl === '/acerca';
+  }
+
   scrollToSection(sectionId: string): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
