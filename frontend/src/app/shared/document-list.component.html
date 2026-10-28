@@ -1,4 +1,7 @@
 <div class="space-y-3">
+  @if (verifiedContext() !== null && displayedDocuments().length > 3) {
+    <label class="block text-xs text-muted-foreground">Buscar documentos<input type="search" class="field-input mt-1" [value]="search()" (input)="search.set($any($event.target).value)"/></label>
+  }
   @if (loadingDocuments()) {
     <div class="flex items-center justify-center gap-2 rounded-lg p-6 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
       <svg lucideLoaderCircle class="h-4 w-4 animate-spin"></svg>
@@ -6,7 +9,7 @@
     </div>
   }
 
-  @for (documento of displayedDocuments(); track documento.id || documentName(documento)) {
+  @for (documento of visibleDocuments(); track documento.id || documentName(documento)) {
     <article
       data-table-row
       class="flex items-center justify-between gap-3 rounded-lg p-4"
@@ -17,7 +20,7 @@
           <svg lucideFileText class="h-5 w-5" style="color: var(--brand-700)"></svg>
         </div>
         <div class="min-w-0">
-          <p class="truncate text-sm font-medium text-foreground">{{ documentName(documento) }}</p>
+          <p class="text-sm font-medium text-foreground" [class.truncate]="verifiedContext() === null" [style.overflow-wrap]="verifiedContext() !== null ? 'anywhere' : null">{{ documentName(documento) }}</p>
           <p class="font-mono text-[11px] text-muted-foreground">
             {{ documentType(documento) }}
             @if (documentSize(documento); as size) {
@@ -34,7 +37,7 @@
         <button
           type="button"
           class="btn-ghost-brand !h-9 !w-9 !p-0"
-          aria-label="Ver documento"
+            [attr.aria-label]="verifiedContext() === null ? 'Ver documento' : 'Previsualizar ' + documentName(documento)"
           title="Ver documento"
           [disabled]="previewingId() === documento.id"
           (click)="preview(documento)"
@@ -49,7 +52,7 @@
         <button
           type="button"
           class="btn-ghost-brand !h-9 !w-9 !p-0"
-          aria-label="Descargar documento"
+            [attr.aria-label]="verifiedContext() === null ? 'Descargar documento' : 'Descargar ' + documentName(documento)"
           title="Descargar documento"
           [disabled]="!documento.id || downloadingId() === documento.id"
           (click)="download(documento)"
@@ -80,21 +83,25 @@
       </div>
     </article>
   } @empty {
+    @if (!loadingDocuments() && (!error() || verifiedContext() === null)) {
     <div class="rounded-lg p-10 text-center" style="background: var(--card); border: 1px dashed var(--border)">
       <svg lucideFileText class="mx-auto mb-3 h-12 w-12 text-muted-foreground/50"></svg>
-      <p class="text-sm text-muted-foreground">{{ emptyMessage() }}</p>
+      <p role="status" class="text-sm text-muted-foreground">{{ displayedDocuments().length ? 'Ningún documento coincide con la búsqueda.' : emptyMessage() }}</p>
     </div>
+    }
   }
 
   @if (error()) {
     <p class="rounded-md p-3 text-sm" role="alert" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
       {{ error() }}
     </p>
+    @if (verifiedContext() !== null) { <button type="button" class="btn-ghost-brand" [disabled]="loadingDocuments()" (click)="retry()">Reintentar consulta documental</button> }
   }
 
   <app-document-preview-modal
     [doc]="previewTarget()"
     [open]="isPreviewOpen()"
+    [manageFocus]="verifiedContext() !== null"
     (close)="cerrarPreview()">
   </app-document-preview-modal>
 </div>

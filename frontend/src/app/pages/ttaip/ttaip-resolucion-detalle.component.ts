@@ -1,5 +1,12 @@
+import { Observable, Subscription } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
+import { positiveId, apelacionCompatible, motivoPrimera } from './ttaip-calificar.model';
+import { motivoFinal } from './ttaip-resolver.model';
+import { relojConsultado } from './ttaip-segunda-calificacion.model';
+import { detalleConsultado, eficaciaConsultada, single, DetailCollection } from './ttaip-resolucion-detalle.model';
+import { falloConsulta } from '../../utils/consulta-remota.util';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, ElementRef, effect, untracked, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
@@ -27,6 +34,7 @@ type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
 type TipoCumplimiento = 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE';
 
 interface TimelineItem {
+  id: number;
   fecha: string;
   titulo: string;
   descripcion: string;
@@ -43,7 +51,7 @@ interface ResultadoMeta {
   imports: [
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
     DocumentPreviewModalComponent,
-    LucideEye, LucideDownload, LucideFileText,
+    LucideEye, LucideDownload, LucideFileText, LucideScale,
     LucideCheckCircle2, LucideMail, LucideGlobe,
     LucideMonitor, LucidePackage, LucideShieldCheck
   ],
@@ -51,8 +59,20 @@ interface ResultadoMeta {
   styleUrl: './ttaip-resolucion-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TtaipResolucionDetalleComponent implements OnInit {
+export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private routeSub = new Subscription();
+  private requests = new Subscription();
+  private destroyed = false;
+  private initialized = false;
+  private session = '';
+  private revision = -1;
+  readonly resourceRevision = signal(0);
+  readonly actionUncertain = signal(false);
+  private pendingAction: { collection: DetailCollection; category: 'descargo' | 'notificacion' | 'cumplimiento'; id?: number; result?: Record<string, unknown>; code: string; apelacionId: number } | null = null;
+  readonly selectedActId = signal<number | null>(null);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
 
@@ -75,7 +95,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   readonly previewModalDoc = signal<DocumentPreviewTarget | null>(null);
   readonly tabs: { id: DetailTab; label: string }[] = [
     { id: 'apelacion', label: 'Apelación' },
-    { id: 'subprocesos', label: 'Subprocesos' },
+    { id: 'subprocesos', label: 'Descargos y subprocesos' },
     { id: 'notificaciones', label: 'Notificaciones' },
     { id: 'adjuntos', label: 'Documentos del expediente' }
   ];
@@ -84,32 +104,29 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   readonly expedienteDisplay = computed(() => this.apelacion()?.expediente || this.routeExpediente() || '—');
   readonly expedienteTtaip = computed(() => this.apelacion()?.expedienteTtaip ?? null);
-  readonly salaAsignada = computed(() => this.expedienteTtaip()?.sala?.nombre || 'Sala no asignada por el backend');
-  readonly miembrosSala = computed(() => this.expedienteTtaip()?.miembros ?? []);
-  readonly resolucionesExpediente = computed(() => this.expedienteTtaip()?.resoluciones ?? this.apelacion()?.resoluciones ?? []);
-  readonly cedulasExpediente = computed(() => this.expedienteTtaip()?.cedulas ?? []);
-  readonly notificacionesExpediente = computed(() => this.expedienteTtaip()?.notificaciones ?? []);
-  readonly historialExpediente = computed(() => this.expedienteTtaip()?.historial ?? []);
-  readonly reprocesosExpediente = computed(() => this.expedienteTtaip()?.reprocesos ?? []);
-  readonly descargosExpediente = computed(() => this.expedienteTtaip()?.descargosEntidad ?? []);
-  readonly suspensionesExpediente = computed(() => this.expedienteTtaip()?.suspensionesPlazo ?? []);
-  readonly cumplimientosExpediente = computed(() => this.expedienteTtaip()?.cumplimientosResolucion ?? []);
-  readonly descargoActivo = computed(() =>
-    this.descargosExpediente().find((descargo) => this.normalizeKey(descargo.estadoDescargo).includes('REQUERIDO')) ?? null
-  );
-  readonly cumplimientoActivo = computed(() =>
-    this.cumplimientosExpediente().find((cumplimiento) =>
-      ['PENDIENTE', 'OBSERVADO'].includes(this.normalizeKey(cumplimiento.estadoCumplimiento))
-    ) ?? null
-  );
-  readonly resolucionFinalFundada = computed(() =>
-    this.resolucionesExpediente().find((resolucion) =>
-      this.normalizeKey(resolucion.tipoResolucion) === 'RESOLUCION_FINAL'
-      && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(this.normalizeKey(resolucion.decision))
-    ) ?? null
-  );
-
-  readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || 'EN_CALIFICACION_1'));
+  readonly salaAsignada = computed(() => positiveId(this.expedienteTtaip()?.sala?.id) ? this.expedienteTtaip()?.sala?.nombre || 'Nombre de sala no informado' : 'Sala no informada');
+  readonly miembrosSala = computed(() => { const values = this.expedienteTtaip()?.miembros; return Array.isArray(values) && values.every(m => positiveId(m.id)) ? values : []; });
+  readonly detalle = computed(() => detalleConsultado(this.apelacion()));
+  readonly resolucionesExpediente = computed(() => this.detalle().resoluciones.data ?? []);
+  readonly cedulasExpediente = computed(() => this.detalle().cedulas.data ?? []);
+  readonly notificacionesExpediente = computed(() => this.detalle().notificaciones.data ?? []);
+  readonly historialExpediente = computed(() => this.detalle().historial.data ?? []);
+  readonly reprocesosExpediente = computed(() => this.detalle().reprocesos.data ?? []);
+  readonly descargosExpediente = computed(() => this.detalle().descargosEntidad.data ?? []);
+  readonly suspensionesExpediente = computed(() => this.detalle().suspensionesPlazo.data ?? []);
+  readonly cumplimientosExpediente = computed(() => this.detalle().cumplimientosResolucion.data ?? []);
+  readonly descargoActivo = computed(() => single(this.descargosExpediente(), d => d.estadoDescargo === 'REQUERIDO'));
+  readonly cumplimientoActivo = computed(() => single(this.cumplimientosExpediente(), c => ['PENDIENTE', 'OBSERVADO'].includes(c.estadoCumplimiento || '')));
+  readonly resolucionFinalFundada = computed(() => { const id = this.apelacion()?.resolucion?.id; return this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL' && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(r.decision || '')) ?? null; });
+  readonly selectedAct = computed(() => this.resolucionesExpediente().find(r => r.id === this.selectedActId()) ?? null);
+  readonly relojTexto = computed(() => relojConsultado(this.apelacion()));
+  readonly retorno = computed(() => { this.auth.cambiosSesion(); try { return this.auth.obtenerSesion()?.tipoUsuario === 'FUNCIONARIO' ? '/funcionario' : '/ttaip'; } catch { return '/ttaip'; } });
+  readonly rolInstitucional = computed(() => { this.auth.cambiosSesion(); try { return ['TTAIP', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
+  readonly rolEntidad = computed(() => { this.auth.cambiosSesion(); try { return ['FUNCIONARIO', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
+  readonly navegacionPrimera = computed(() => !!this.apelacion() && this.rolInstitucional() && !motivoPrimera(this.apelacion()!));
+  readonly navegacionFinal = computed(() => !!this.apelacion() && this.rolInstitucional() && !motivoFinal(this.apelacion()));
+  readonly coleccionesIncompletas = computed(() => Object.values(this.detalle()).map(c => c.error).filter(Boolean));
+  readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || ''));
 
   readonly puedeAdjuntarDocumentos = computed(() => {
     const estado = this.normalizeKey(this.apelacion()?.estado);
@@ -126,11 +143,12 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       'RESUELTO_ESTESE_A_LO_RESUELTO',
       'RESUELTO_NULIDAD_ACTO'
     ];
-    return estado ? !closedStates.includes(estado) : true;
+    return this.contextoVigente() && !this.loading() && !this.error() && this.rolInstitucional() && !!estado && !closedStates.includes(estado);
   });
 
   readonly resultadoNormalizado = computed(() => {
-    const raw = this.apelacion()?.resolucion?.decision || this.apelacion()?.resultado;
+    const id = this.apelacion()?.resolucion?.id;
+    const raw = this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL')?.decision || this.apelacion()?.resultado;
     return this.normalizeKey(raw);
   });
 
@@ -140,7 +158,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       case 'FUNDADO':
         return { label: 'FUNDADO', accent: 'var(--success)' };
       case 'FUNDADO_EN_PARTE':
-        return { label: 'FUNDADO EN PARTE', accent: 'var(--success)' };
+        return { label: 'FUNDADO EN PARTE', accent: 'var(--gold-dark)' };
       case 'INFUNDADO':
         return { label: 'INFUNDADO', accent: 'var(--brand-700)' };
       case 'INFUNDADO_EN_PARTE':
@@ -176,13 +194,11 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       dni: '—',
       email: '—',
       telefono: '—',
-      entidad: apelacion?.entidadNombre || 'Entidad publica',
+      entidad: apelacion?.entidadNombre || apelacion?.entidadExternaNombre || 'Entidad no informada',
       expedienteSAIP: apelacion?.solicitudExpediente || apelacion?.numeroSolicitudExterna || '—',
       asuntoSAIP: apelacion?.solicitudAsunto || apelacion?.resumenSolicitudOriginal || 'Sin asunto registrado',
-      causalDenegatoria: apelacion?.resolucionPrimeraCalificacion?.decision || 'No registrada por el backend',
-      fundamentoEntidad: apelacion?.resolucionPrimeraCalificacion?.observaciones
-        || apelacion?.resolucionPrimeraCalificacion?.fundamentos
-        || 'No registrada por el backend',
+      causalDenegatoria: apelacion?.tipoDenegatoria || 'Tipo de denegatoria no informado',
+      fundamentoEntidad: apelacion?.resumenRespuestaEntidad || 'La consulta no informa el fundamento de la entidad.',
       fundamentosApelacion: apelacion?.fundamentos || 'Sin fundamentos registrados.',
       fechaApelacion: apelacion?.fechaApelacion || ''
     };
@@ -206,10 +222,17 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     return cedulaId ? { cedulaNotificacionId: cedulaId } : null;
   }
 
+  cedulasDeResolucion(resolucionId: number) {
+    if (this.detalle().cedulas.error) return [];
+    const resolucion = this.resolucionesExpediente().find(r => r.id === resolucionId);
+    return this.cedulasExpediente().filter(c => resolucion?.cedulas?.some(own => own.id === c.id));
+  }
+
   readonly timeline = computed<TimelineItem[]>(() => this.buildTimeline());
 
   readonly mostrarCajaResultado = computed(() => {
-    const resultado = this.resultadoNormalizado();
+    const id = this.apelacion()?.resolucion?.id;
+    const resultado = this.resolucionesExpediente().some(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL') ? this.resultadoNormalizado() : '';
     return resultado.startsWith('FUNDADO') || resultado.startsWith('INFUNDADO');
   });
 
@@ -221,31 +244,26 @@ export class TtaipResolucionDetalleComponent implements OnInit {
   });
 
   readonly resultadoCajaDetalle = computed(() => {
-    const resultado = this.resultadoNormalizado();
-    if (resultado.startsWith('FUNDADO')) {
-      return 'Se ordena a la entidad entregar la informacion solicitada en el plazo establecido.';
-    }
-    if (resultado.startsWith('INFUNDADO')) {
-      return 'La denegatoria de la entidad se mantiene conforme al marco normativo aplicable.';
-    }
-    return 'El expediente culmino su evaluacion en el Tribunal.';
+    const id = this.apelacion()?.resolucion?.id;
+    const acto = this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL');
+    return acto?.fundamentos || 'La consulta informa la decisión registrada, pero no sus fundamentos. No acredita entrega, notificación eficaz ni cumplimiento.';
   });
 
   readonly resultadoCajaColor = computed(() => {
-    const resultado = this.resultadoNormalizado();
+    const resultado = this.apelacion()?.resolucion?.tipoResolucion === 'RESOLUCION_FINAL' ? this.resultadoNormalizado() : '';
     return resultado.startsWith('FUNDADO') ? 'var(--success)' : 'var(--brand-700)';
   });
 
   readonly docCtx = computed<Partial<DocContext>>(() => {
     const ap = this.apelacion();
-    const res = ap?.resolucion;
+    const res = this.selectedAct();
     return {
       expediente: ap?.expediente || this.routeExpediente() || '',
       recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
       entidad: ap?.entidadNombre || 'No registrada',
-      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
+      correo: '—',
       direccionEntidad: '—',
-      sumilla: ap?.solicitudAsunto || (ap as any)?.resumenSolicitudOriginal || (ap as any)?.fundamentos || 'No registrada',
+      sumilla: ap?.solicitudAsunto || ap?.resumenSolicitudOriginal || 'No registrada',
       resolucionNro: res?.numeroResolucion || undefined,
       fechaResolucion: res?.fechaResolucion || undefined
     };
@@ -256,7 +274,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     if (!this.puedePrepararBorrador()) return;
     try {
       const { blob, filename } = buildResolucionBlob(this.obtenerOfficialStage(),
-        this.resultadoNormalizado() || undefined, this.docCtx());
+        this.selectedAct()?.decision || undefined, this.docCtx());
       this.previewModalDoc.set({ nombre: filename, blob, tipo: 'application/pdf', expediente: this.docCtx().expediente });
       this.previewModalOpen.set(true);
     } catch {
@@ -273,7 +291,7 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     this.draftError.set('');
     if (!this.puedePrepararBorrador()) return;
     try {
-      resolucionPdf('download', this.obtenerOfficialStage(), this.resultadoNormalizado() || undefined, this.docCtx());
+      resolucionPdf('download', this.obtenerOfficialStage(), this.selectedAct()?.decision || undefined, this.docCtx());
     } catch {
       this.draftError.set('No se pudo descargar el borrador. Reintente; no se ha emitido ningún documento.');
     }
@@ -281,63 +299,47 @@ export class TtaipResolucionDetalleComponent implements OnInit {
 
   private puedePrepararBorrador(): boolean {
     const expediente = this.apelacion()?.expediente;
-    if (this.loading() || this.error() || !expediente || expediente !== this.routeExpediente()) {
+    if (!this.contextoVigente() || this.loading() || this.error() || !this.selectedAct() || !expediente || expediente !== this.routeExpediente()) {
       this.draftError.set('Consulte correctamente el expediente antes de preparar un borrador.');
       return false;
     }
     return true;
   }
 
-  private obtenerOfficialStage(): OfficialStage {
-    const estado = this.normalizeKey(this.apelacion()?.estado);
-    if (estado.startsWith('RESUELTO') || estado === 'RESUELTO' || this.resultadoNormalizado()) {
-      return 'final';
-    }
-    if (estado.includes('CALIFICACION_2') || estado.includes('SUBSANACION')) {
-      return 'segunda';
-    }
-    return 'primera';
-  }
-
-  ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente') || '';
-    this.routeExpediente.set(expediente);
-
-    if (!expediente) {
-      this.loading.set(false);
-      this.error.set('No se encontro el expediente solicitado');
-      return;
-    }
-
-    this.cargarApelacion(expediente);
-  }
-
+  private obtenerOfficialStage(): OfficialStage { const type = this.selectedAct()?.tipoResolucion; return type === 'RESOLUCION_FINAL' ? 'final' : type === 'SEGUNDA_CALIFICACION' ? 'segunda' : 'primera'; }
+  constructor() { effect(() => { const rev = this.auth.cambiosSesion(); if (this.initialized && rev !== this.revision) untracked(() => this.cargarApelacion(this.routeExpediente())); }); }
+  private sessionKey(): string { try { const s = this.auth.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.entidadId]); } catch { return ''; } }
+  contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
+  private current(query: number): boolean { return query === this.documentQuery && this.contextoVigente(); }
+  ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => this.cargarApelacion(p.get('expediente') || '')); }
+  ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
   cargarApelacion(expediente: string): void {
-    const query = ++this.documentQuery;
-    this.routeExpediente.set(expediente);
-    this.cerrarPreviewModal();
-    this.draftError.set('');
-    this.apelacion.set(null);
-    this.error.set('');
-    this.loading.set(true);
-    this.apelacionService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        if (query !== this.documentQuery) return;
-        if (!data || data.expediente !== expediente) {
-          this.error.set('El servidor no devolvió el expediente solicitado.');
-        } else {
-          this.apelacion.set(data);
-        }
-        this.loading.set(false);
-      },
-      error: () => {
-        if (query !== this.documentQuery) return;
-        this.error.set('Error al cargar la apelacion');
-        this.loading.set(false);
-      }
-    });
+    if (this.destroyed) return;
+    if (this.pendingAction && expediente === this.routeExpediente() && this.session === this.sessionKey()) { this.recuperarActuacion(); return; }
+    this.requests.unsubscribe(); this.requests = new Subscription(); const query = ++this.documentQuery;
+    this.routeExpediente.set(expediente); this.session = this.sessionKey(); this.revision = this.auth.cambiosSesion(); this.resourceRevision.update(v => v + 1);
+    this.cerrarPreviewModal(); this.draftError.set(''); this.apelacion.set(null); this.selectedActId.set(null); this.error.set(''); this.loading.set(true);
+    this.pendingAction = null; this.actionUncertain.set(false);
+    for (const category of ['descargo', 'notificacion', 'cumplimiento'] as const) { this.flags(category).busy.set(false); this.flags(category).message.set(''); this.flags(category).error.set(''); }
+    let account; try { account = this.auth.obtenerSesion(); } catch { account = null; }
+    if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR', 'FUNCIONARIO'].includes(account.tipoUsuario || '')) { this.loading.set(false); this.error.set('La sesión no permite consultar este detalle institucional. Utilice el acceso interno.'); return; }
+    if (!expediente) { this.loading.set(false); this.error.set('No se encontró el expediente solicitado.'); return; }
+    this.requests.add(this.apelacionService.findByExpediente(expediente).subscribe({ next: data => {
+      if (!this.current(query)) return;
+      if (!this.baseCompatible(data, expediente)) this.error.set('El servidor no devolvió el expediente solicitado o sus asociaciones son incompatibles.');
+      else { this.apelacion.set(data); const id = data.resolucion?.id ?? data.resolucionSegundaCalificacion?.id ?? data.resolucionPrimeraCalificacion?.id; this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); }
+      this.loading.set(false);
+    }, error: err => { if (this.current(query)) { this.error.set(falloConsulta(err, 'la apelación').mensaje); this.loading.set(false); } } }));
   }
-
+  private baseCompatible(data: unknown, code: string): data is Apelacion {
+    if (!apelacionCompatible(data, code)) return false; const ap = data as Apelacion;
+    if (ap.expedienteTtaip && (!positiveId(ap.expedienteTtaip.id) || ap.expedienteTtaip.numeroExpediente !== code)) return false;
+    const s = this.auth.obtenerSesion(); return s?.tipoUsuario !== 'FUNCIONARIO' || (positiveId(s.entidadId) && ap.entidadId === s.entidadId);
+  }
+  seleccionarActuacion(value: string): void { const id = Number(value); this.cerrarPreviewModal(); this.draftError.set(''); this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); }
+  onTabKey(event: KeyboardEvent, tab: DetailTab): void { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const i = this.tabs.findIndex(t => t.id === tab); const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1 : (i + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length; this.cambiarTab(this.tabs[next].id); this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-' + this.tabs[next].id)?.focus(); }
+  nombreSalaResolucion(r: { sala?: { nombre?: string } | null }): string { return r.sala?.nombre || 'Sala no informada'; }
+  eficaciaLabel(n: NotificacionTtaip): string { if (this.detalle().historial.error) return 'Evidencia de eficacia incompleta'; return eficaciaConsultada(n, this.detalle().historial.data) ? 'Evidencia de eficacia consultada' : 'Eficacia no acreditada en los datos consultados'; }
   onDocumentoSubido(): void {
     const expediente = this.expedienteDisplay();
     if (expediente && expediente !== '—') {
@@ -349,422 +351,110 @@ export class TtaipResolucionDetalleComponent implements OnInit {
     this.activeTab.set(tab);
   }
 
+  private flags(category: 'descargo' | 'notificacion' | 'cumplimiento') {
+    return category === 'descargo' ? { busy: this.descargoLoading, message: this.descargoMessage, error: this.descargoError }
+      : category === 'notificacion' ? { busy: this.notificacionLoading, message: this.notificacionMessage, error: this.notificacionError }
+      : { busy: this.cumplimientoLoading, message: this.cumplimientoMessage, error: this.cumplimientoError };
+  }
+  private actorLabel(): string { const s = this.auth.obtenerSesion(); return s?.nombre?.trim() || `Usuario ID ${s?.usuarioId}`; }
+  private allowed(category: 'descargo' | 'notificacion' | 'cumplimiento', collection: DetailCollection, target?: number, entity = false): boolean {
+    const f = this.flags(category), ap = this.apelacion();
+    if (!this.contextoVigente() || !ap || this.loading() || this.error() || this.pendingAction) return false;
+    const role = this.auth.obtenerSesion()?.tipoUsuario;
+    if (!(entity ? ['FUNCIONARIO', 'ADMINISTRADOR'] : ['TTAIP', 'ADMINISTRADOR']).includes(role || '')) { f.error.set('Esta actuación corresponde a otro rol. Se conserva la autorización del servidor.'); return false; }
+    if (!positiveId(this.expedienteTtaip()?.id) || this.detalle()[collection].error || (target != null && !this.records(collection).some(r => r['id'] === target))) {
+      f.error.set('No se ha consultado una actuación identificada de este expediente. No se envía la operación.'); return false;
+    }
+    return true;
+  }
+  private records(collection: DetailCollection): Record<string, unknown>[] { return (this.detalle()[collection].data ?? []) as unknown as Record<string, unknown>[]; }
+  private run(category: 'descargo' | 'notificacion' | 'cumplimiento', collection: DetailCollection, command: Observable<unknown>, expectedId?: number, intended: Record<string, unknown> = {}): void {
+    const ap = this.apelacion()!, query = this.documentQuery, f = this.flags(category);
+    const op = { category, collection, code: ap.expediente, apelacionId: ap.id, id: expectedId, result: undefined as Record<string, unknown> | undefined };
+    const previousIds = this.records(collection).map(r => r['id']);
+    this.pendingAction = op; f.busy.set(true); f.error.set(''); f.message.set(''); this.cerrarPreviewModal();
+    this.requests.add(command.subscribe({ next: value => {
+      if (!this.current(query) || this.pendingAction !== op) return;
+      const result = value as Record<string, unknown> | null;
+      const applied = !!result && Object.entries(intended).every(([key, value]) => key.startsWith('fecha') && typeof value === 'string'
+        ? Number.isFinite(Date.parse(String(result[key]))) && Date.parse(String(result[key])) === Date.parse(value) : result[key] === value);
+      if (!positiveId(result?.['id']) || (expectedId != null && result?.['id'] !== expectedId) || (expectedId == null && previousIds.includes(result['id'])) || !applied) { this.uncertain('No se recibió un ID y efecto compatibles. Consulte el estado antes de repetir.'); return; }
+      op.id = result['id']; op.result = result; this.queryAction(op, query);
+    }, error: err => {
+      if (!this.current(query) || this.pendingAction !== op) return; f.busy.set(false);
+      if ([400, 401, 403, 404, 409, 422].includes(err?.status)) { this.pendingAction = null; f.error.set(falloConsulta(err, 'la actuación').mensaje); }
+      else this.uncertain('Resultado incierto. El servidor puede haberlo registrado. Consulte sin repetir la operación.');
+    } }));
+  }
+  private uncertain(message: string): void { this.actionUncertain.set(true); const op = this.pendingAction; if (op) { this.flags(op.category).busy.set(false); this.flags(op.category).error.set(message); } }
+  recuperarActuacion(): void { const op = this.pendingAction; if (op && this.contextoVigente() && !this.flags(op.category).busy()) this.queryAction(op, this.documentQuery); }
+  private queryAction(op: NonNullable<TtaipResolucionDetalleComponent['pendingAction']>, query: number): void {
+    const f = this.flags(op.category); f.busy.set(true);
+    this.requests.add(this.apelacionService.findByExpediente(op.code).subscribe({ next: ap => {
+      if (!this.current(query) || this.pendingAction !== op) return; f.busy.set(false);
+      if (!this.baseCompatible(ap, op.code) || ap.id !== op.apelacionId) { this.apelacion.set(null); this.cerrarPreviewModal(); this.error.set('La recuperación no corresponde al expediente esperado.'); this.uncertain('La recuperación no corresponde al expediente. No se confirma la actuación.'); return; }
+      this.apelacion.set(ap); this.error.set(''); this.cerrarPreviewModal(); this.resourceRevision.update(v => v + 1);
+      const records = (detalleConsultado(ap)[op.collection].data ?? []) as unknown as Record<string, unknown>[];
+      const found = records.find(r => r['id'] === op.id);
+      const keys = Object.keys(op.result ?? {}).filter(k => op.result![k] == null || typeof op.result![k] !== 'object');
+      if (!positiveId(op.id) || !op.result || !found || !keys.every(k => found[k] === op.result![k])) { this.uncertain('Consulta realizada. La actuación no se puede atribuir al envío por su ID y datos. No se repite automáticamente.'); return; }
+      this.pendingAction = null; this.actionUncertain.set(false); f.error.set(''); f.message.set(`Actuación registrada y recuperada · ID ${op.id}. No acredita por sí sola firma, entrega o inicio de plazo.`);
+    }, error: () => { if (this.current(query) && this.pendingAction === op) { this.apelacion.set(null); this.cerrarPreviewModal(); this.error.set('No se pudo recuperar el expediente de la actuación. Reintente la consulta.'); this.uncertain('No se pudo recuperar la actuación. Consulte sin repetir la escritura.'); } } }));
+  }
   requerirDescargos(observacion: string): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId) {
-      this.descargoError.set('No se encontro expediente TTAIP para requerir descargos.');
-      return;
-    }
-
-    this.descargoLoading.set(true);
-    this.descargoMessage.set('');
-    this.descargoError.set('');
-    this.ttaipService.requerirDescargos(expedienteId, {
-      responsableTtaip: 'Secretaría Técnica TTAIP',
-      observacion: observacion || 'Requerimiento de descargos y expediente administrativo.'
-    }).subscribe({
-      next: () => {
-        this.descargoMessage.set('Descargos requeridos y plazo de resolución suspendido.');
-        this.descargoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.descargoError.set('No se pudo requerir descargos para este expediente.');
-        this.descargoLoading.set(false);
-      }
-    });
+    if (!this.allowed('descargo', 'descargosEntidad') || this.apelacion()?.estado !== 'EN_RESOLUCION' || this.descargosExpediente().some(d => d.estadoDescargo === 'REQUERIDO')) { this.descargoError.set('El requerimiento exige EN_RESOLUCION, datos completos y ausencia de otro descargo pendiente.'); return; }
+    this.run('descargo', 'descargosEntidad', this.ttaipService.requerirDescargos(this.expedienteTtaip()!.id, { responsableTtaip: this.actorLabel(), observacion: observacion.trim() || null }), undefined, { estadoDescargo: 'REQUERIDO' });
   }
-
-  presentarDescargo(
-    descargoId: number | undefined,
-    resumenDescargo: string,
-    referenciaDocumento: string,
-    responsableEntidad: string,
-    observacion: string
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId) {
-      this.descargoError.set('No se encontro expediente TTAIP para presentar descargo.');
-      return;
-    }
-    if (!descargoId) {
-      this.descargoError.set('No se encontro el requerimiento de descargo activo.');
-      return;
-    }
-    if (!resumenDescargo.trim() || !responsableEntidad.trim()) {
-      this.descargoError.set('Complete resumen del descargo y responsable de la entidad.');
-      return;
-    }
-
-    this.descargoLoading.set(true);
-    this.descargoMessage.set('');
-    this.descargoError.set('');
-    this.ttaipService.presentarDescargo(expedienteId, descargoId, {
-      resumenDescargo,
-      referenciaDocumento: referenciaDocumento || null,
-      responsableEntidad,
-      observacion: observacion || null
-    }).subscribe({
-      next: () => {
-        this.descargoMessage.set('Descargo presentado y suspensión cerrada.');
-        this.descargoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.descargoError.set('No se pudo presentar el descargo de la entidad.');
-        this.descargoLoading.set(false);
-      }
-    });
+  presentarDescargo(id: number | undefined, resumen: string, referencia: string, responsable: string, observacion: string): void {
+    if (!positiveId(id) || !this.allowed('descargo', 'descargosEntidad', id, true)) return;
+    if (!resumen.trim() || !responsable.trim()) { this.descargoError.set('Complete resumen del descargo y responsable de la entidad.'); return; }
+    this.run('descargo', 'descargosEntidad', this.ttaipService.presentarDescargo(this.expedienteTtaip()!.id, id, { resumenDescargo: resumen, referenciaDocumento: referencia || null, responsableEntidad: responsable, observacion: observacion || null }), id, { resumenDescargo: resumen, responsableEntidad: responsable });
   }
-
-  registrarSuspensionAdicional(
-    tipo: SuspensionAdicional,
-    solicitante: string,
-    motivo: string,
-    responsable: string,
-    observacion: string
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId) {
-      this.descargoError.set('No se encontro expediente TTAIP para registrar suspension.');
-      return;
-    }
-    const solicitanteNormalizado = this.parseSuspensionSolicitante(solicitante);
-    if (!solicitanteNormalizado) {
-      this.descargoError.set('Seleccione un solicitante valido para la suspension.');
-      return;
-    }
-    if (!motivo.trim() || !responsable.trim()) {
-      this.descargoError.set('Complete motivo y responsable de la suspension.');
-      return;
-    }
-
-    this.descargoLoading.set(true);
-    this.descargoMessage.set('');
-    this.descargoError.set('');
-    const request = {
-      solicitante: solicitanteNormalizado,
-      motivo,
-      responsable,
-      observacion: observacion || null
-    };
-    const action = tipo === 'INFORME_ORAL'
-      ? this.ttaipService.registrarInformeOral(expedienteId, request)
-      : this.ttaipService.registrarInformacionComplementaria(expedienteId, request);
-
-    action.subscribe({
-      next: () => {
-        this.descargoMessage.set(
-          tipo === 'INFORME_ORAL'
-            ? 'Informe oral registrado y plazo suspendido por 3 dias habiles.'
-            : 'Informacion complementaria registrada y plazo suspendido por 3 dias habiles.'
-        );
-        this.descargoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.descargoError.set('No se pudo registrar la suspension adicional del expediente.');
-        this.descargoLoading.set(false);
-      }
-    });
+  registrarSuspensionAdicional(tipo: SuspensionAdicional, solicitante: string, motivo: string, responsable: string, observacion: string): void {
+    if (!this.allowed('descargo', 'suspensionesPlazo') || this.apelacion()?.estado !== 'EN_RESOLUCION') return;
+    const actor = this.parseSuspensionSolicitante(solicitante); if (!actor || !motivo.trim() || !responsable.trim()) { this.descargoError.set('Complete solicitante, motivo y responsable de la suspensión.'); return; }
+    const request = { solicitante: actor, motivo, responsable, observacion: observacion || null };
+    this.run('descargo', 'suspensionesPlazo', tipo === 'INFORME_ORAL' ? this.ttaipService.registrarInformeOral(this.expedienteTtaip()!.id, request) : this.ttaipService.registrarInformacionComplementaria(this.expedienteTtaip()!.id, request), undefined, { estadoSuspension: 'ACTIVA', motivoSuspension: tipo, solicitante: actor, motivoDetalle: motivo });
   }
-
-  cancelarSuspension(suspensionId: number | undefined, observacion: string): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !suspensionId) {
-      this.descargoError.set('No se encontro la suspension activa para cancelar.');
-      return;
-    }
-
-    this.descargoLoading.set(true);
-    this.descargoMessage.set('');
-    this.descargoError.set('');
-    this.ttaipService.cancelarSuspension(expedienteId, suspensionId, {
-      responsable: 'Secretaría Técnica TTAIP',
-      observacion: observacion || 'Suspensión adicional dejada sin efecto.'
-    }).subscribe({
-      next: () => {
-        this.descargoMessage.set('Suspensión cancelada y fecha límite de resolución recalculada.');
-        this.descargoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.descargoError.set('No se pudo cancelar la suspension adicional.');
-        this.descargoLoading.set(false);
-      }
-    });
+  cancelarSuspension(id: number | undefined, observacion: string): void {
+    if (!positiveId(id) || !this.allowed('descargo', 'suspensionesPlazo', id) || !this.suspensionesExpediente().some(s => s.id === id && this.esSuspensionAdicionalActiva(s))) return;
+    this.run('descargo', 'suspensionesPlazo', this.ttaipService.cancelarSuspension(this.expedienteTtaip()!.id, id, { responsable: this.actorLabel(), observacion: observacion || null }), id, { estadoSuspension: 'CANCELADA' });
   }
-
-  crearSeguimientoCumplimiento(observacion: string): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    const resolucion = this.resolucionFinalFundada();
-    if (!expedienteId || !resolucion?.id) {
-      this.cumplimientoError.set('No se encontro una resolucion final fundada para iniciar seguimiento.');
-      return;
-    }
-
-    this.cumplimientoLoading.set(true);
-    this.cumplimientoMessage.set('');
-    this.cumplimientoError.set('');
-    this.ttaipService.crearSeguimientoCumplimiento(expedienteId, resolucion.id, {
-      responsableTtaip: 'Secretaría Técnica TTAIP',
-      observacion: observacion || 'Seguimiento de cumplimiento de resolución fundada.'
-    }).subscribe({
-      next: () => {
-        this.cumplimientoMessage.set('Seguimiento creado con plazo de 7 días hábiles.');
-        this.cumplimientoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.cumplimientoError.set('No se pudo crear el seguimiento de cumplimiento.');
-        this.cumplimientoLoading.set(false);
-      }
-    });
+  crearSeguimientoCumplimiento(_observacion: string): void { this.cumplimientoError.set('Apertura no disponible: falta una base de inicio acreditada inequívoca en el contrato. La fecha registrada no certifica un vencimiento legal.'); }
+  registrarCumplimiento(id: number | undefined, tipo: string, descripcion: string, evidencia: string, responsable: string, observacion: string): void {
+    if (!positiveId(id) || !this.allowed('cumplimiento', 'cumplimientosResolucion', id, true)) return;
+    const parsed = this.parseTipoCumplimiento(tipo); if (!parsed || !descripcion.trim() || !responsable.trim()) { this.cumplimientoError.set('Complete tipo, descripción y responsable del cumplimiento.'); return; }
+    this.run('cumplimiento', 'cumplimientosResolucion', this.ttaipService.registrarCumplimiento(this.expedienteTtaip()!.id, id, { tipoCumplimiento: parsed, descripcionCumplimiento: descripcion, evidenciaCumplimiento: this.isUrl(evidencia) ? evidencia : null, referenciaDocumento: this.isUrl(evidencia) ? null : evidencia || null, responsableEntidad: responsable, observacion: observacion || null }), id, { tipoCumplimiento: parsed, descripcionCumplimiento: descripcion, responsableEntidad: responsable });
   }
-
-  registrarCumplimiento(
-    cumplimientoId: number | undefined,
-    tipoCumplimiento: string,
-    descripcion: string,
-    evidencia: string,
-    responsable: string,
-    observacion: string
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !cumplimientoId) {
-      this.cumplimientoError.set('No se encontro seguimiento activo para registrar cumplimiento.');
-      return;
-    }
-    const tipo = this.parseTipoCumplimiento(tipoCumplimiento);
-    if (!tipo) {
-      this.cumplimientoError.set('Seleccione un tipo de cumplimiento valido.');
-      return;
-    }
-    if (!descripcion.trim() || !responsable.trim()) {
-      this.cumplimientoError.set('Complete descripción del cumplimiento y responsable de la entidad.');
-      return;
-    }
-
-    this.cumplimientoLoading.set(true);
-    this.cumplimientoMessage.set('');
-    this.cumplimientoError.set('');
-    this.ttaipService.registrarCumplimiento(expedienteId, cumplimientoId, {
-      tipoCumplimiento: tipo,
-      descripcionCumplimiento: descripcion,
-      evidenciaCumplimiento: this.isUrl(evidencia) ? evidencia : null,
-      referenciaDocumento: this.isUrl(evidencia) ? null : evidencia || null,
-      responsableEntidad: responsable,
-      observacion: observacion || null
-    }).subscribe({
-      next: () => {
-        this.cumplimientoMessage.set('Cumplimiento comunicado por la entidad.');
-        this.cumplimientoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.cumplimientoError.set('No se pudo registrar el cumplimiento de la entidad.');
-        this.cumplimientoLoading.set(false);
-      }
-    });
+  observarCumplimiento(id: number | undefined, observacion: string): void {
+    if (!positiveId(id) || !this.allowed('cumplimiento', 'cumplimientosResolucion', id)) return;
+    if (!observacion.trim()) { this.cumplimientoError.set('Complete el sustento de observación.'); return; }
+    this.run('cumplimiento', 'cumplimientosResolucion', this.ttaipService.observarCumplimiento(this.expedienteTtaip()!.id, id, { responsableTtaip: this.actorLabel(), observacion }), id, { estadoCumplimiento: 'OBSERVADO', observacion });
   }
-
-  observarCumplimiento(cumplimientoId: number | undefined, observacion: string): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !cumplimientoId) {
-      this.cumplimientoError.set('No se encontro seguimiento para observar.');
-      return;
-    }
-    if (!observacion.trim()) {
-      this.cumplimientoError.set('Complete el sustento de observación.');
-      return;
-    }
-
-    this.cumplimientoLoading.set(true);
-    this.cumplimientoMessage.set('');
-    this.cumplimientoError.set('');
-    this.ttaipService.observarCumplimiento(expedienteId, cumplimientoId, {
-      responsableTtaip: 'Secretaría Técnica TTAIP',
-      observacion
-    }).subscribe({
-      next: () => {
-        this.cumplimientoMessage.set('Cumplimiento observado por el TTAIP.');
-        this.cumplimientoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.cumplimientoError.set('No se pudo observar el cumplimiento.');
-        this.cumplimientoLoading.set(false);
-      }
-    });
+  cerrarCumplimiento(id: number | undefined, observacion: string): void {
+    if (!positiveId(id) || !this.allowed('cumplimiento', 'cumplimientosResolucion', id)) return;
+    this.run('cumplimiento', 'cumplimientosResolucion', this.ttaipService.cerrarCumplimiento(this.expedienteTtaip()!.id, id, { responsableTtaip: this.actorLabel(), observacion: observacion || null }), id, { estadoCumplimiento: 'CERRADO' });
   }
-
-  cerrarCumplimiento(cumplimientoId: number | undefined, observacion: string): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !cumplimientoId) {
-      this.cumplimientoError.set('No se encontro seguimiento para cerrar.');
-      return;
-    }
-
-    this.cumplimientoLoading.set(true);
-    this.cumplimientoMessage.set('');
-    this.cumplimientoError.set('');
-    this.ttaipService.cerrarCumplimiento(expedienteId, cumplimientoId, {
-      responsableTtaip: 'Secretaría Técnica TTAIP',
-      observacion: observacion || 'Seguimiento de cumplimiento cerrado.'
-    }).subscribe({
-      next: () => {
-        this.cumplimientoMessage.set('Seguimiento de cumplimiento cerrado.');
-        this.cumplimientoLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.cumplimientoError.set('No se pudo cerrar el seguimiento de cumplimiento.');
-        this.cumplimientoLoading.set(false);
-      }
-    });
+  private fechaAcreditada(value: string): string | null { return value && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value) && Number.isFinite(Date.parse(value)) ? value.length === 16 ? value + ':00' : value : null; }
+  registrarConstanciaNotificacion(id: number | undefined, medio: string, envio: string, codigo: string, constancia: string, evidencia: string): void {
+    if (!positiveId(id) || !this.allowed('notificacion', 'notificaciones', id)) return;
+    if (!medio.trim() || !constancia.trim()) { this.notificacionError.set('Complete medio y constancia de envío.'); return; }
+    this.run('notificacion', 'notificaciones', this.ttaipService.registrarConstanciaEnvio(this.expedienteTtaip()!.id, id, { medioNotificacion: medio, codigoEnvio: envio || null, codigoConstancia: codigo || null, constanciaEnvio: constancia, evidenciaUrl: this.isUrl(evidencia) ? evidencia : null, referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null, responsable: this.actorLabel(), observacion: null }), id, { medioNotificacion: medio, constanciaEnvio: constancia });
   }
-
-  registrarConstanciaNotificacion(
-    notificacionId: number | undefined,
-    medioNotificacion: string,
-    codigoEnvio: string,
-    codigoConstancia: string,
-    constanciaEnvio: string,
-    evidencia: string
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !notificacionId) {
-      this.notificacionError.set('No se encontro la notificacion para registrar constancia.');
-      return;
-    }
-    if (!medioNotificacion.trim() || !constanciaEnvio.trim()) {
-      this.notificacionError.set('Complete medio y constancia de envio.');
-      return;
-    }
-
-    this.notificacionLoading.set(true);
-    this.notificacionMessage.set('');
-    this.notificacionError.set('');
-    this.ttaipService.registrarConstanciaEnvio(expedienteId, notificacionId, {
-      medioNotificacion,
-      codigoEnvio: codigoEnvio || null,
-      codigoConstancia: codigoConstancia || null,
-      constanciaEnvio,
-      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
-      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null,
-      responsable: 'Mesa de Partes TTAIP',
-      observacion: 'Constancia registrada desde el detalle TTAIP.'
-    }).subscribe({
-      next: () => {
-        this.notificacionMessage.set('Constancia de envio registrada.');
-        this.notificacionLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.notificacionError.set('No se pudo registrar la constancia de envio.');
-        this.notificacionLoading.set(false);
-      }
-    });
+  registrarAcuseNotificacion(id: number | undefined, estadoAcuse: string, acuse: string, evidencia: string, fecha = ''): void {
+    if (!positiveId(id) || !this.allowed('notificacion', 'notificaciones', id)) return;
+    const estado = this.parseEstadoAcuse(estadoAcuse); if (!estado || !acuse.trim() || (fecha && !this.fechaAcreditada(fecha))) { this.notificacionError.set('Complete estado, acuse y una fecha acreditada válida cuando corresponda.'); return; }
+    this.run('notificacion', 'notificaciones', this.ttaipService.registrarAcuseAutomatico(this.expedienteTtaip()!.id, id, { estadoAcuse: estado, acuseAutomatico: acuse, fechaAcuse: this.fechaAcreditada(fecha), evidenciaUrl: this.isUrl(evidencia) ? evidencia : null, referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null, responsable: this.actorLabel(), observacion: null }), id, { estadoAcuse: estado, acuseAutomatico: acuse, ...(fecha ? { fechaAcuse: this.fechaAcreditada(fecha) } : {}) });
   }
-
-  registrarAcuseNotificacion(
-    notificacionId: number | undefined,
-    estadoAcuse: string,
-    acuseAutomatico: string,
-    evidencia: string,
-    fechaAcreditada = ''
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !notificacionId) {
-      this.notificacionError.set('No se encontro la notificacion para registrar acuse.');
-      return;
-    }
-    const estado = this.parseEstadoAcuse(estadoAcuse);
-    if (!estado) {
-      this.notificacionError.set('Seleccione un estado de acuse valido.');
-      return;
-    }
-    if (!acuseAutomatico.trim()) {
-      this.notificacionError.set('Complete el detalle del acuse automatico.');
-      return;
-    }
-
-    if (fechaAcreditada && Number.isNaN(new Date(fechaAcreditada).getTime())) {
-      this.notificacionError.set('Indique una fecha acreditada válida.');
-      return;
-    }
-    this.notificacionLoading.set(true);
-    this.notificacionMessage.set('');
-    this.notificacionError.set('');
-    this.ttaipService.registrarAcuseAutomatico(expedienteId, notificacionId, {
-      estadoAcuse: estado,
-      acuseAutomatico,
-      fechaAcuse: fechaAcreditada ? `${fechaAcreditada}:00`.slice(0, 19) : null,
-      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
-      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null,
-      responsable: 'Sistema de notificaciones TTAIP',
-      observacion: 'Acuse registrado desde el detalle TTAIP.'
-    }).subscribe({
-      next: () => {
-        this.notificacionMessage.set(estado === 'ENTREGADO'
-          ? 'Acuse entregado registrado.'
-          : 'Acuse fallido u observado registrado; la notificacion queda disponible para reproceso.');
-        this.notificacionLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.notificacionError.set('No se pudo registrar el acuse automatico.');
-        this.notificacionLoading.set(false);
-      }
-    });
+  validarNotificacionManual(id: number | undefined, observacion: string, evidencia: string, fecha = ''): void {
+    if (!positiveId(id) || !this.allowed('notificacion', 'notificaciones', id)) return;
+    if (!observacion.trim() || (fecha && !this.fechaAcreditada(fecha))) { this.notificacionError.set('Complete el sustento y una fecha acreditada válida cuando corresponda.'); return; }
+    this.run('notificacion', 'notificaciones', this.ttaipService.validarNotificacionManualmente(this.expedienteTtaip()!.id, id, { responsableValidacion: this.actorLabel(), observacionValidacion: observacion, fechaEficacia: this.fechaAcreditada(fecha), evidenciaUrl: this.isUrl(evidencia) ? evidencia : null, referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null }), id, { estado: 'VALIDADA', validadaManualmente: true, observacionValidacion: observacion });
   }
-
-  validarNotificacionManual(
-    notificacionId: number | undefined,
-    observacion: string,
-    evidencia: string,
-    fechaAcreditada = ''
-  ): void {
-    const expedienteId = this.expedienteTtaip()?.id;
-    if (!expedienteId || !notificacionId) {
-      this.notificacionError.set('No se encontro la notificacion para validar.');
-      return;
-    }
-    if (!observacion.trim()) {
-      this.notificacionError.set('Complete el sustento de validacion manual.');
-      return;
-    }
-
-    if (fechaAcreditada && Number.isNaN(new Date(fechaAcreditada).getTime())) {
-      this.notificacionError.set('Indique una fecha acreditada válida.');
-      return;
-    }
-    this.notificacionLoading.set(true);
-    this.notificacionMessage.set('');
-    this.notificacionError.set('');
-    this.ttaipService.validarNotificacionManualmente(expedienteId, notificacionId, {
-      responsableValidacion: 'Secretaría Técnica TTAIP',
-      observacionValidacion: observacion,
-      fechaEficacia: fechaAcreditada ? `${fechaAcreditada}:00`.slice(0, 19) : null,
-      evidenciaUrl: this.isUrl(evidencia) ? evidencia : null,
-      referenciaEvidencia: this.isUrl(evidencia) ? null : evidencia || null
-    }).subscribe({
-      next: () => {
-        this.notificacionMessage.set('Notificacion validada manualmente.');
-        this.notificacionLoading.set(false);
-        this.cargarApelacion(this.expedienteDisplay());
-      },
-      error: () => {
-        this.notificacionError.set('No se pudo validar manualmente la notificacion.');
-        this.notificacionLoading.set(false);
-      }
-    });
-  }
-
   notificationStatusClass(notificacion: NotificacionTtaip): string {
     const estado = this.normalizeKey(notificacion.estado);
     if (estado === 'FALLIDA' || estado === 'OBSERVADA') return 'pill pill-high';
-    if (estado === 'VALIDADA' || estado === 'ENTREGADA') return 'pill pill-low';
+    if (eficaciaConsultada(notificacion, this.detalle().historial.data)) return 'pill pill-low';
     return 'pill pill-medium';
   }
 
@@ -831,67 +521,11 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       return [];
     }
 
-    const historial = this.historialExpediente();
-    if (historial.length > 0) {
-      return historial.map((evento) => ({
-        fecha: this.formatDateLabel(evento.fechaEvento, true),
-        titulo: this.formatEventoTtaip(evento.tipoEvento),
-        descripcion: evento.descripcion || evento.referencia || 'Evento registrado por el backend.',
-        icon: this.iconForEventoTtaip(evento.tipoEvento)
-      }));
-    }
-
-    const items: TimelineItem[] = [
-      {
-        fecha: this.formatDateLabel(apelacion.fechaApelacion, true),
-        titulo: 'Apelación presentada',
-        descripcion: 'Recurso recibido y registrado en el Tribunal.',
-        icon: 'check'
-      }
-    ];
-
-    const primera = apelacion.resolucionPrimeraCalificacion;
-    if (primera) {
-      items.push({
-        fecha: this.formatDateLabel(primera.fechaResolucion, true),
-        titulo: `1ra calificación · ${this.formatDecision(primera.decision)}`,
-        descripcion: primera.observaciones || primera.fundamentos || 'Calificación registrada por el backend.',
-        icon: this.iconForDecision(primera.decision)
-      });
-    }
-
-    if (apelacion.fechaSubsanacion && this.normalizeKey(apelacion.estado) !== 'EN_SUBSANACION') {
-      items.push({
-        fecha: this.formatDateLabel(apelacion.fechaSubsanacion, false),
-        titulo: 'Subsanación registrada',
-        descripcion: 'El expediente avanzó a la revisión posterior a la subsanación.',
-        icon: 'check'
-      });
-    }
-
-    const segunda = apelacion.resolucionSegundaCalificacion;
-    if (segunda) {
-      items.push({
-        fecha: this.formatDateLabel(segunda.fechaResolucion, true),
-        titulo: `2da calificación · ${this.formatDecision(segunda.decision)}`,
-        descripcion: segunda.observaciones || segunda.fundamentos || 'Segunda calificación registrada por el backend.',
-        icon: this.iconForDecision(segunda.decision)
-      });
-    }
-
-    const final = apelacion.resolucion;
-    if (final) {
-      items.push({
-        fecha: this.formatDateLabel(final.fechaResolucion, true),
-        titulo: `Resolución final · ${this.formatDecision(final.decision)}`,
-        descripcion: final.observaciones || final.fundamentos || 'Resolución final registrada por el backend.',
-        icon: this.iconForDecision(final.decision)
-      });
-    }
-
-    return items;
+    return this.historialExpediente().map(evento => ({
+      id: evento.id, fecha: this.formatDateLabel(evento.fechaEvento, true), titulo: this.formatEventoTtaip(evento.tipoEvento),
+      descripcion: evento.descripcion || evento.referencia || 'Descripción no informada.', icon: this.iconForEventoTtaip(evento.tipoEvento)
+    }));
   }
-
   private normalizeKey(value?: string | null): string {
     return (value || '')
       .trim()
@@ -944,14 +578,14 @@ export class TtaipResolucionDetalleComponent implements OnInit {
       case 'CONCLUSION_DESISTIMIENTO':
         return 'Conclusion por desistimiento';
       default:
-        return 'En tramite';
+        return value ? value.replaceAll('_', ' ') : 'Estado no informado';
     }
   }
 
   private formatDateLabel(raw?: string | null, includeTime = false): string {
-    if (!raw) return 'Pendiente';
+    if (!raw) return 'Fecha no informada';
     const date = new Date(raw);
-    if (Number.isNaN(date.getTime())) return 'Pendiente';
+    if (Number.isNaN(date.getTime())) return 'Fecha no informada';
 
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
