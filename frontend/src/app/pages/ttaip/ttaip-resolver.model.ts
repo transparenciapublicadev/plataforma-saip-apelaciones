@@ -2,6 +2,8 @@ import { Apelacion } from '../../models/apelacion.model';
 import { DocumentoMetadata } from '../../models/documento.model';
 import { positiveId, documentosRelacionados } from './ttaip-calificar.model';
 import type { NotificacionTtaip } from '../../models/resolucion.model';
+import { requerimientoConsultado, segundaConsultada } from './ttaip-segunda-calificacion.model';
+import { ConsultaRecepcion, motivoRecepcion } from './recepcion-institucional.model';
 type EficaciaConsultada = Partial<Pick<NotificacionTtaip, 'id' | 'estado' | 'resultadoNotificacion' | 'validadaManualmente' | 'fechaValidacionManual' | 'responsableValidacion' | 'observacionValidacion' | 'estadoAcuse' | 'fechaAcuse' | 'acuseAutomatico' | 'medioNotificacion' | 'medio' | 'constanciaEnvio'>>;
 
 export const finalOpciones = [
@@ -80,7 +82,7 @@ export function estadoDescargos(ap: Apelacion | null): string {
       : d.estadoDescargo === 'VENCIDO_SIN_PRESENTACION' && fechaRegistrada(d.fechaLimiteDescargo)));
   return concluded ? 'Presentación o vencimiento registrado por el servidor' : 'No consta un requerimiento concluido compatible con la admisión';
 }
-export function motivoFinal(ap: Apelacion | null): string {
+export function motivoFinal(ap: Apelacion | null, recepcion?: ConsultaRecepcion): string {
   if (!ap) return 'No se ha recuperado la apelación.';
   if (finalConsultada(ap)) return 'Ya existe una resolución final registrada. Consulte la actuación; no se permite otra.';
   if (ap.resolucion !== null || ap.resuelta !== false || ap.resultado !== null || !Array.isArray(ap.resoluciones)
@@ -88,9 +90,11 @@ export function motivoFinal(ap: Apelacion | null): string {
   if (ap.estado !== 'EN_RESOLUCION') return 'Estado incompatible con resolución final: ' + ap.estado + '.';
   const aggregate = ap.expedienteTtaip;
   if (!positiveId(aggregate?.id) || aggregate?.numeroExpediente !== ap.expediente) return 'Información incompleta del expediente TTAIP.';
-  if (ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null || ap.resoluciones.some(r => r.tipoResolucion === 'SEGUNDA_CALIFICACION'))
-    return 'Registro no disponible: falta una consulta institucional de recepción vinculada al requerimiento de segunda calificación.';
-  if (ap.resolucionSegundaCalificacion !== null || ap.calificacionSegunda !== null || !admisionFinal(ap)) return 'Información incompleta de la admisión correspondiente.';
+  if (ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null || ap.resoluciones.some(r => r.tipoResolucion === 'SEGUNDA_CALIFICACION')) {
+    const req = requerimientoConsultado(ap);
+    if (!req || !segundaConsultada(ap) || !admisionFinal(ap)) return 'Información incompleta de la segunda admisión o su requerimiento.';
+    const reason = motivoRecepcion(ap, req.id!, recepcion); if (reason) return reason;
+  } else if (ap.resolucionSegundaCalificacion !== null || ap.calificacionSegunda !== null || !admisionFinal(ap)) return 'Información incompleta de la admisión correspondiente.';
   if (eficaciaAdmision(ap) !== 'Ambas evidencias de eficacia consultadas') return eficaciaAdmision(ap);
   if (estadoDescargos(ap) !== 'Presentación o vencimiento registrado por el servidor') return estadoDescargos(ap);
   return '';

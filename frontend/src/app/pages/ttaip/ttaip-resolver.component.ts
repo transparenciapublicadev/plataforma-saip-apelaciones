@@ -18,6 +18,9 @@ import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/offic
 import { positiveId, apelacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
 import { finalOpciones, FinalSelection, FinalOperacion, ArchivoFinal, finalConsultada, admisionFinal, motivoFinal, eficaciaAdmision, descargosConsultados, estadoDescargos, finalCompatible, archivoCompatible, fechaRegistrada, relacionesFinalCoherentes } from './ttaip-resolver.model';
 import { falloConsulta } from '../../utils/consulta-remota.util';
+import { requerimientoConsultado } from './ttaip-segunda-calificacion.model';
+import { consultarRecepcionInstitucional, sinConsultaRecepcion } from './recepcion-institucional.model';
+import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
 type ResolverTab = 'apelacion' | 'descargos' | 'adjuntos';
@@ -25,7 +28,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
 @Component({
   selector: 'app-ttaip-resolver',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
+    OfficialDocsSectionComponent, OfficialPreviewComponent, RecepcionInstitucionalComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
     LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-resolver.component.html', styleUrl: './ttaip-resolver.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -53,6 +56,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   private docsLoaded = false;
   private operation: FinalOperacion | null = null;
   readonly apelacion = signal<Apelacion | null>(null);
+  readonly recepcion = signal(sinConsultaRecepcion());
   readonly loadingApelacion = signal(true);
   readonly loadError = signal('');
   readonly loading = signal(false);
@@ -120,7 +124,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     if (same && this.operation) { if (!this.loading()) this.recuperarResultado(); return; }
     if (same && this.loadingApelacion() && this.generation > 0) return;
     this.cancelar(); const generation = ++this.generation; this.requested = expediente; this.session = this.sessionKey(); this.revision = this.authService.cambiosSesion();
-    this.apelacion.set(null); this.loadingApelacion.set(true); this.loadError.set(''); this.error.set(''); this.mensaje.set(''); this.loading.set(false);
+    this.apelacion.set(null); this.recepcion.set(sinConsultaRecepcion()); this.loadingApelacion.set(true); this.loadError.set(''); this.error.set(''); this.mensaje.set(''); this.loading.set(false);
     this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
     this.documentGroups.set([]); this.documentError.set(''); this.downloadError.set(''); this.loadingDocuments.set(false); this.downloadingId.set(null); this.docsLoaded = false;
     this.documentSearch.set(''); this.documentFilter.set(''); this.closedGroups.set({}); this.rechazoBloqueante.set(false);
@@ -134,6 +138,10 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
       const context = JSON.stringify([ap.resolucionPrimeraCalificacion?.id, ap.resolucionSegundaCalificacion?.id, ap.expedienteTtaip?.id, ap.entidadId, ap.solicitudId]);
       if (this.previousContext && context !== this.previousContext) this.limpiarBorrador();
       this.previousId = ap.id; this.previousContext = context; this.apelacion.set(ap); this.loadingApelacion.set(false);
+      const requirement = requerimientoConsultado(ap);
+      if (requirement && (ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null))
+        this.reads.add(consultarRecepcionInstitucional(this.ttaipService, ap, requirement.id!)
+          .subscribe(value => { if (this.current(generation)) this.recepcion.set(value); }));
     }, error: err => { if (this.current(generation)) { this.loadingApelacion.set(false); this.loadError.set(falloConsulta(err, 'la apelación').mensaje); } } }));
   }
   consultarEstado(): void { if (this.operation) this.recuperarResultado(); else this.cargarApelacion(this.requested); }
@@ -142,7 +150,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     if (this.loadingApelacion() || this.loadError()) return this.loadError() || 'Cargando antecedentes.';
     if (this.resultadoIncierto()) return 'Resultado incierto: consulte sin repetir el comando.';
     if (this.rechazoBloqueante()) return 'El servidor rechazó el acceso o la transición. Consulte nuevamente.';
-    const reason = motivoFinal(this.apelacion()); if (reason) return reason;
+    const reason = motivoFinal(this.apelacion(), this.recepcion()); if (reason) return reason;
     if (!positiveId(this.authService.obtenerSesion()?.miembroId)) return 'El acceso actual no informa un miembro TTAIP verificable. No se asigna un autor predeterminado desde el formulario.';
     return '';
   }

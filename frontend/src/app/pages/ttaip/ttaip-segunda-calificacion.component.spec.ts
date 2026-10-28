@@ -34,6 +34,88 @@ describe('SecondQualificationForm — contexto y límites reales', () => {
     const f = TestBed.createComponent(TtaipSegundaCalificacionComponent); f.detectChanges();
     http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(data); f.detectChanges(); return f;
   }
+  const receiptUrl = api + '/ttaip/expedientes/41/requerimientos/71/subsanacion/recepcion';
+  const aggregate = { id: 41, numeroExpediente: expediente };
+  const receipt = (patch: Record<string, unknown> = {}) => ({ expedienteTtaipId: 41, apelacionId: 21, requerimientoId: 71, expediente,
+    estado: 'RECIBIDA', recepcionId: 151, fechaRecepcion: '2026-10-28T10:00:00', fundamentosAdicionales: 'Correcciones recibidas', documentos: [], ...patch });
+  function ready() { const f = page(appeal({ expedienteTtaip: aggregate })); http.expectOne(receiptUrl).flush(receipt()); f.detectChanges(); return f; }
+  function prepare(f: ReturnType<typeof page>) { f.componentInstance.seleccionarDecision('admitido'); f.componentInstance.fundamentos = 'Sustento registrado'; }
+  function commandResult(decision = 'ADMITIDO') { return registered({ expedienteTtaip: aggregate,
+    estado: decision === 'ADMITIDO' ? 'NOTIFICACION_SEGUNDA_CALIFICACION' : 'RESUELTO_IMPROCEDENTE', calificacionSegunda: decision,
+    resolucionSegundaCalificacion: { id: 81, tipoResolucion: 'SEGUNDA_CALIFICACION', decision, fundamentos: 'Sustento registrado', miembroTTAIPId: 7 } }); }
+
+  it('consulta la recepción del agregado y requerimiento sin clave y acepta adjuntos opcionales vacíos', () => {
+    const f = page(appeal({ expedienteTtaip: aggregate })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+    const r = http.expectOne(receiptUrl); expect(r.request.headers.get('Authorization')).toBe('Bearer ' + session.token);
+    expect(r.request.params.keys()).toEqual([]); r.flush(receipt()); f.detectChanges();
+    expect(f.componentInstance.canSubmit()).toBe(true); expect(f.nativeElement.textContent).toContain('Recepción sin adjuntos');
+  });
+  it('muestra únicamente los documentos asociados de la recepción consultada', () => {
+    const f = page(appeal({ expedienteTtaip: aggregate })); http.expectOne(receiptUrl).flush(receipt({ documentos: [
+      { id: 154, apelacionId: 21, tipoDocumento: 'SUBSANACION', estado: 'ACTIVO', nombreOriginal: 'Anexo recibido.txt' }
+    ] })); f.detectChanges(); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
+    expect(f.nativeElement.textContent).toContain('Anexo recibido.txt'); expect(f.nativeElement.textContent).toContain('ID 154');
+  });
+  it.each(['admitido', 'improcedente'] as const)('registra %s con comando específico y exige recuperar el mismo ID antes del éxito', decision => {
+    const f = ready(); const c = f.componentInstance; c.seleccionarDecision(decision); c.fundamentos = 'Sustento registrado'; c.enviarCalificacion(); c.enviarCalificacion();
+    const post = http.expectOne(api + '/ttaip/calificacion/21/' + (decision === 'admitido' ? 'admitir' : 'inadmitir'));
+    expect(post.request.body).toEqual({ fundamentos: 'Sustento registrado', miembroId: 7 });
+    const result = commandResult(decision === 'admitido' ? 'ADMITIDO' : 'IMPROCEDENTE'); post.flush(result);
+    expect(c.successModalAbierto()).toBe(false); http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(result);
+    expect(c.resultadoConfirmado()).toBe(true); expect(c.successModalAbierto()).toBe(true); expect(c.canSubmit()).toBe(false);
+    expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it.each([401, 403, 404, 409, 500, 503, 0])('error de recepción %i no significa ausencia ni permite registrar', status => {
+    const f = page(appeal({ expedienteTtaip: aggregate })); const r = http.expectOne(receiptUrl);
+    if (status) r.flush(null, { status, statusText: 'Synthetic error' }); else r.error(new ProgressEvent('error'));
+    prepare(f); expect(f.componentInstance.recepcion().estado).toBe('error'); expect(f.componentInstance.canSubmit()).toBe(false);
+    expect(f.componentInstance.successModalAbierto()).toBe(false);
+  });
+  it.each([
+    { estado: 'AUSENTE', recepcionId: null, fechaRecepcion: null, fundamentosAdicionales: null },
+    { requerimientoId: 72 }, { apelacionId: 22 }, { expedienteTtaipId: 42 }, { documentos: [{ id: 4, apelacionId: 999, tipoDocumento: 'SUBSANACION' }] }
+  ])('ausencia o relación incompatible bloquea el comando: %j', patch => {
+    const f = page(appeal({ expedienteTtaip: aggregate })); http.expectOne(receiptUrl).flush(receipt(patch)); prepare(f);
+    expect(f.componentInstance.recepcion().estado).toBe(patch.estado === 'AUSENTE' ? 'ausente' : 'incompatible');
+    f.componentInstance.enviarCalificacion(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it.each([400, 401, 403, 404, 409, 422])('rechazo del comando %i conserva texto sin éxito', status => {
+    const f = ready(); prepare(f); const c = f.componentInstance; c.enviarCalificacion();
+    http.expectOne(api + '/ttaip/calificacion/21/admitir').flush(null, { status, statusText: 'Synthetic rejection' });
+    expect(c.fundamentos).toBe('Sustento registrado'); expect(c.error()).not.toBe(''); expect(c.resultadoIncierto()).toBe(false); expect(c.successModalAbierto()).toBe(false);
+  });
+  it('pérdida de respuesta no atribuye una actuación por texto ni repite el comando al consultar', () => {
+    const f = ready(); prepare(f); const c = f.componentInstance; c.enviarCalificacion();
+    http.expectOne(api + '/ttaip/calificacion/21/admitir').error(new ProgressEvent('error'));
+    expect(c.resultadoIncierto()).toBe(true); c.enviarCalificacion(); c.reintentarConsulta();
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(commandResult());
+    expect(c.registroObservado()).toBe(81); expect(c.resultadoIncierto()).toBe(true); expect(c.successModalAbierto()).toBe(false);
+    expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it('recupera por ID conocido tras fallo de GET sin otra escritura', () => {
+    const f = ready(); prepare(f); const c = f.componentInstance; c.enviarCalificacion(); http.expectOne(api + '/ttaip/calificacion/21/admitir').flush(commandResult());
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).error(new ProgressEvent('error')); expect(c.resultadoIncierto()).toBe(true);
+    c.recuperarResultado(); http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(commandResult()); expect(c.successModalAbierto()).toBe(true);
+    expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it('no confirma si la recuperación devuelve otra actuación aunque coincidan fundamentos', () => {
+    const f = ready(); prepare(f); const c = f.componentInstance; c.enviarCalificacion(); http.expectOne(api + '/ttaip/calificacion/21/admitir').flush(commandResult());
+    const changed = commandResult(); http.expectOne(api + '/apelaciones/expediente/' + expediente).flush({ ...changed,
+      resolucionSegundaCalificacion: { id: 82, tipoResolucion: 'SEGUNDA_CALIFICACION', decision: 'ADMITIDO', fundamentos: 'Sustento registrado', miembroTTAIPId: 7 } });
+    expect(c.resultadoIncierto()).toBe(true); expect(c.successModalAbierto()).toBe(false); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it('descarta consulta de recepción anterior al cambiar recurso o sesión', () => {
+    const f = page(appeal({ expedienteTtaip: aggregate })); const pending = http.expectOne(receiptUrl);
+    params.next(convertToParamMap({ expediente: 'OTRO' })); f.detectChanges(); expect(pending.cancelled).toBe(true);
+    http.expectOne(api + '/apelaciones/expediente/OTRO').flush(appeal({ id: 22, expediente: 'OTRO' }));
+    expect(f.componentInstance.recepcion().datos).toBeUndefined(); expect(f.componentInstance.canSubmit()).toBe(false);
+  });
+  it('cambiar sesión cancela POST pendiente y no inicia una continuación en la nueva cuenta', () => {
+    const f = ready(); prepare(f); const c = f.componentInstance; c.enviarCalificacion(); const pending = http.expectOne(api + '/ttaip/calificacion/21/admitir');
+    TestBed.inject(AuthService).guardarSesion({ ...session, token: 'otra-sesion', usuarioId: 8 }); f.detectChanges(); expect(pending.cancelled).toBe(true);
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(null, { status: 403, statusText: 'Forbidden' });
+    expect(c.fundamentos).toBe(''); expect(c.recepcion().datos).toBeUndefined(); expect(c.successModalAbierto()).toBe(false);
+  });
   it('no permite calificar otra vez durante notificación de la segunda actuación', () => {
     const f = page(registered()); f.componentInstance.selectedDecision.set('admitido'); f.componentInstance.fundamentos = 'Texto'; expect(f.componentInstance.canSubmit()).toBe(false);
   });
@@ -130,11 +212,10 @@ describe('SecondQualificationForm — contexto y límites reales', () => {
   it('no sustituye un reloj ausente por fecha de primera calificación ni hoy', () => {
     const f = page(); expect(f.componentInstance.relojTexto()).toBe('Reloj no informado'); expect(f.nativeElement.textContent).toContain('No se calcula un calendario local');
   });
-  it('la revisión local conserva la decisión y no registra al cerrar o confirmar', () => {
-    const f = page(); const c = f.componentInstance; c.seleccionarDecision('improcedente'); c.fundamentos = 'Sustento local'; c.abrirConfirmacionCalificacion(); f.detectChanges();
-    expect(c.confirmModalAbierto()).toBe(true); expect(document.querySelector('[role="dialog"]')?.textContent).toContain('sin envío');
-    c.confirmModalAbierto.set(false); c.enviarCalificacion(); expect(c.fundamentos).toBe('Sustento local');
-    expect(c.error()).toContain('No se ha enviado ningún comando'); expect(c.successModalAbierto()).toBe(false);
+  it('la revisión conserva la decisión y no registra al cerrar', () => {
+    const f = ready(); const c = f.componentInstance; c.seleccionarDecision('improcedente'); c.fundamentos = 'Sustento local'; c.abrirConfirmacionCalificacion(); f.detectChanges();
+    expect(c.confirmModalAbierto()).toBe(true); expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Registro de actuación');
+    c.confirmModalAbierto.set(false); expect(c.fundamentos).toBe('Sustento local'); expect(c.successModalAbierto()).toBe(false);
     expect(http.match(req => req.method !== 'GET')).toHaveLength(0);
   });
   it('exige selección y fundamentos explícitos para revisar, respetando el límite de 5000', () => {
@@ -226,10 +307,10 @@ describe('SecondQualificationForm — contexto y límites reales', () => {
     expect(nav).toHaveBeenCalledExactlyOnceWith(['/ttaip/apelacion', expediente]);
   });
   it('la revisión tiene nombre, foco contenido, Escape y retorno al control de apertura', async () => {
-    const f = page(); const c = f.componentInstance; c.seleccionarDecision('admitido'); c.fundamentos = 'Texto local'; f.detectChanges();
+    const f = ready(); const c = f.componentInstance; c.seleccionarDecision('admitido'); c.fundamentos = 'Texto local'; f.detectChanges();
     const opener = f.nativeElement.querySelector('#second-review') as HTMLButtonElement; opener.focus(); opener.click(); f.detectChanges(); await Promise.resolve();
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
-    expect(dialog.getAttribute('aria-label')).toBe('Revise el borrador de segunda calificación'); expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(dialog.getAttribute('aria-label')).toBe('Confirmar segunda calificación'); expect(dialog.contains(document.activeElement)).toBe(true);
     const controls = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')); controls.at(-1)!.focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); expect(document.activeElement).toBe(controls[0]);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();

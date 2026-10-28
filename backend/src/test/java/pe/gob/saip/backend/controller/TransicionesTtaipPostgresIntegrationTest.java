@@ -61,6 +61,7 @@ class TransicionesTtaipPostgresIntegrationTest {
     @Autowired ResolucionRepository resoluciones;
     @Autowired NotificacionTtaipRepository notificaciones;
     @Autowired SubsanacionTtaipService subsanaciones;
+    @Autowired DocumentoRepository documentos;
     @Autowired Flyway flyway;
     @LocalServerPort int port;
     long apelacionId, expedienteId;
@@ -122,6 +123,132 @@ class TransicionesTtaipPostgresIntegrationTest {
             .content("{\"fundamentos\":\"Fundamento aportado por el operador sintético\",\"observaciones\":\"Observación sintética\"}"));
     }
     String estado() { return jdbc.queryForObject("select estado from apelaciones where id_apelacion=?", String.class, apelacionId); }
+
+    String consultaRecepcion(long requerimientoId) {
+        return "/api/ttaip/expedientes/"+expedienteId+"/requerimientos/"+requerimientoId+"/subsanacion/recepcion";
+    }
+    long requerimientoId() {
+        return resoluciones.findByApelacion_Id(apelacionId).stream()
+            .filter(r -> r.getTipoResolucion()==Resolucion.TipoResolucion.PRIMERA_CALIFICACION).findFirst().orElseThrow().getId();
+    }
+    JsonNode recibirParaConsulta(boolean archivos) throws Exception {
+        comando("calificacion/{id}/subsanar",tribunal()).andExpect(status().isOk());
+        var request=multipart("/api/apelaciones/"+apelacionId+"/subsanacion/"+requerimientoId()+"/recepcion")
+            .param("claveOperacion",UUID.randomUUID().toString()).param("fundamentosAdicionales","Correcciones sintéticas para el requerimiento");
+        if(archivos) {
+            request.file(new org.springframework.mock.web.MockMultipartFile("archivos","uno.pdf","application/pdf","%PDF-1.4\nSintetico uno\n%%EOF".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            request.file(new org.springframework.mock.web.MockMultipartFile("archivos","dos.pdf","application/pdf","%PDF-1.4\nSintetico dos\n%%EOF".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        }
+        return json.readTree(mvc.perform(request.header("Authorization","Bearer "+login("persona@example.invalid")))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+    Map<String,String> estadoPersistido() {
+        Map<String,String> snapshot=new TreeMap<>();
+        for(String table:List.of("apelaciones","expedientes_ttaip","resoluciones","recepciones_subsanacion_ttaip",
+                "recepcion_subsanacion_ttaip_documentos","documentos","historial_ttaip","notificaciones_ttaip","cedulas_notificacion","inicios_plazo_subsanacion_ttaip"))
+            snapshot.put(table,jdbc.queryForObject("select coalesce(md5(string_agg(row_to_json(t)::text,'' order by row_to_json(t)::text)),'empty') from "+table+" t",String.class));
+        return snapshot;
+    }
+
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void consultaInstitucionalSinClaveDevuelveRecepcionConOSinAdjuntosSinMutar(boolean archivos) throws Exception {
+        JsonNode citizen=recibirParaConsulta(archivos); long req=requerimientoId(); String t=tribunal();
+        var before=estadoPersistido();
+        var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+consultaRecepcion(req)))
+            .header("Authorization","Bearer "+t).GET().build(),HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode receipt=json.readTree(response.body());
+        assertThat(receipt.path("estado").asString()).isEqualTo("RECIBIDA");
+        assertThat(receipt.path("recepcionId").asLong()).isEqualTo(citizen.path("id").asLong());
+        assertThat(receipt.path("expedienteTtaipId").asLong()).isEqualTo(expedienteId);
+        assertThat(receipt.path("apelacionId").asLong()).isEqualTo(apelacionId);
+        assertThat(receipt.path("requerimientoId").asLong()).isEqualTo(req);
+        assertThat(receipt.path("documentos").size()).isEqualTo(archivos?2:0);
+        assertThat(response.body()).doesNotContain("claveOperacion","huellaSolicitud","storageKey",citizen.path("claveOperacion").asString());
+        mvc.perform(get(consultaRecepcion(req)).header("Authorization","Bearer "+t)).andExpect(status().isOk());
+        assertThat(estadoPersistido()).isEqualTo(before);
+        if (archivos) for (JsonNode doc:receipt.path("documentos")) {
+            long id=doc.path("id").asLong();
+            assertThat(doc.path("apelacionId").asLong()).isEqualTo(apelacionId);
+            byte[] expected=("%PDF-1.4\nSintetico "+(doc.path("nombreOriginal").asString().equals("uno.pdf")?"uno":"dos")+"\n%%EOF")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            var download=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/documentos/"+id+"/download"))
+                .header("Authorization","Bearer "+t).GET().build(),HttpResponse.BodyHandlers.ofByteArray());
+            assertThat(download.statusCode()).isEqualTo(200); assertThat(download.body()).isEqualTo(expected);
+            assertThat(doc.path("hashSha256").asString()).isEqualTo(HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(expected)));
+            mvc.perform(get("/api/documentos/"+id+"/download").header("Authorization","Bearer "+login("otra@example.invalid"))).andExpect(status().isForbidden());
+        }
+        String recovery="/api/apelaciones/"+apelacionId+"/subsanacion/"+req+"/recepcion/"+citizen.path("claveOperacion").asString();
+        mvc.perform(get(recovery).header("Authorization","Bearer "+t)).andExpect(status().isForbidden());
+        mvc.perform(get(recovery).header("Authorization","Bearer "+login("otra@example.invalid"))).andExpect(status().isForbidden());
+        mvc.perform(get(recovery).header("Authorization","Bearer "+login("persona@example.invalid"))).andExpect(status().isOk());
+    }
+
+    @Test void consultaInstitucionalDistingueAusenciaDeRecursosInexistentes() throws Exception {
+        String t=tribunal(); comando("calificacion/{id}/subsanar",t).andExpect(status().isOk()); long req=requerimientoId(); var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(req)).header("Authorization","Bearer "+t)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado").value("AUSENTE")).andExpect(jsonPath("$.recepcionId").isEmpty())
+            .andExpect(jsonPath("$.documentos").isEmpty());
+        mvc.perform(get(consultaRecepcion(req+9999)).header("Authorization","Bearer "+t)).andExpect(status().isNotFound());
+        mvc.perform(get(consultaRecepcion(req).replace("/expedientes/"+expedienteId+"/","/expedientes/999999/"))
+            .header("Authorization","Bearer "+t)).andExpect(status().isNotFound());
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
+
+    @ParameterizedTest @ValueSource(strings={"persona@example.invalid","otra@example.invalid","funcionario@example.invalid","ajeno@example.invalid"})
+    void consultaInstitucionalNoAmpliaPermisosAActoresNoTribunal(String email) throws Exception {
+        recibirParaConsulta(false); var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(requerimientoId())).header("Authorization","Bearer "+login(email))).andExpect(status().isForbidden());
+        mvc.perform(get(consultaRecepcion(requerimientoId()))).andExpect(status().isUnauthorized());
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
+
+    @Test void consultaInstitucionalAdministradorPermitidoSinClaveCiudadana() throws Exception {
+        JsonNode recibida=recibirParaConsulta(false);
+        Usuario admin=new Usuario(); admin.setEmail("admin@example.invalid"); admin.setPassword(encoder.encode("Sintetico-2026!"));
+        admin.setTipoUsuario(Usuario.TipoUsuario.ADMINISTRADOR); usuarios.saveAndFlush(admin);
+        var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(requerimientoId())).header("Authorization","Bearer "+login(admin.getEmail())))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.recepcionId").value(recibida.path("id").asLong()));
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
+
+    @Test void consultaInstitucionalRechazaRelacionCruzadaYActuacionQueNoEsRequerimiento() throws Exception {
+        recibirParaConsulta(false); String t=tribunal(); long req=requerimientoId();
+        long otro=new TransactionTemplate(manager).execute(tx -> {
+            Apelacion original=apelaciones.findById(apelacionId).orElseThrow();
+            Apelacion ap=new Apelacion(); ap.setCiudadano(original.getCiudadano()); ap.setEntidadApelada(original.getEntidadApelada());
+            ap.setTipoOrigen(Apelacion.TipoOrigenApelacion.EXTERNA); ap.setFundamentos("Otro caso sintético");
+            ap.setExpediente("00002-2026-JUS/TTAIP"); ap.setEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1); apelaciones.saveAndFlush(ap);
+            ExpedienteTtaip exp=new ExpedienteTtaip(); exp.setApelacion(ap); exp.setSala(salas.findAll().getFirst());
+            exp.setNumeroExpediente(ap.getExpediente()); exp.setEstado(ap.getEstado()); return expedientes.saveAndFlush(exp).getId();
+        });
+        var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(req).replace("/expedientes/"+expedienteId+"/","/expedientes/"+otro+"/"))
+            .header("Authorization","Bearer "+t)).andExpect(status().isNotFound());
+        assertThat(estadoPersistido()).isEqualTo(before);
+        comando("calificacion/{id}/admitir",t).andExpect(status().isOk());
+        long second=resoluciones.findByApelacion_Id(apelacionId).stream().filter(r -> r.getTipoResolucion()==Resolucion.TipoResolucion.SEGUNDA_CALIFICACION).findFirst().orElseThrow().getId();
+        before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(second)).header("Authorization","Bearer "+t)).andExpect(status().isConflict());
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
+
+    @Test void consultaInstitucionalArchivoNoDisponibleNoEsAusenciaNiMutaLaRecepcion() throws Exception {
+        JsonNode r=recibirParaConsulta(true); String t=tribunal(); long id=r.path("documentos").get(0).path("id").asLong();
+        Documento doc=documentos.findById(id).orElseThrow(); Files.delete(ROOT.resolve(doc.getStorageKey()));
+        var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(requerimientoId())).header("Authorization","Bearer "+t)).andExpect(status().isInternalServerError());
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
+
+    @Test void consultaInstitucionalRechazaDocumentoConAsociacionIncompatibleSinMutacion() throws Exception {
+        JsonNode r=recibirParaConsulta(true); long id=r.path("documentos").get(0).path("id").asLong();
+        jdbc.update("update documentos set id_resolucion=? where id_documento=?",requerimientoId(),id);
+        var before=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(requerimientoId())).header("Authorization","Bearer "+tribunal())).andExpect(status().isConflict());
+        assertThat(estadoPersistido()).isEqualTo(before);
+    }
     void segundaCalificacion(String token) throws Exception {
         comando("calificacion/{id}/subsanar",token).andExpect(status().isOk());
         mvc.perform(post(base()+"/subsanacion").header("Authorization","Bearer "+login("persona@example.invalid"))
@@ -243,6 +370,11 @@ class TransicionesTtaipPostgresIntegrationTest {
     }
     @Test void segundaExigeAmbosDestinatariosYConfirmaEstadoRecuperableSinDuplicar() throws Exception {
         String token=tribunal(); segundaCalificacion(token);
+        var snapshot=estadoPersistido();
+        mvc.perform(get(consultaRecepcion(requerimientoId())).header("Authorization","Bearer "+token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.estado").value("RECIBIDA"));
+        assertThat(estadoPersistido()).isEqualTo(snapshot);
+        comando("resolucion/{id}/fundado",token).andExpect(status().isConflict());
         // An explicit validation of the previous requirement is not evidence for the new admission.
         validarNotificacion(notificacionesDe(Resolucion.TipoResolucion.PRIMERA_CALIFICACION).getFirst(),token);
         mvc.perform(post(notificar()).header("Authorization","Bearer "+token)).andExpect(status().isConflict());
@@ -257,6 +389,7 @@ class TransicionesTtaipPostgresIntegrationTest {
         var despues=registros();
         mvc.perform(post(notificar()).header("Authorization","Bearer "+token)).andExpect(status().isOk());
         assertThat(registros()).isEqualTo(despues);
+        comando("resolucion/{id}/fundado",token).andExpect(status().isConflict());
         completarDescargos(token);
         comando("resolucion/{id}/fundado",token).andExpect(status().isOk());
         assertThat(estado()).isEqualTo("RESUELTO_FUNDADO");
