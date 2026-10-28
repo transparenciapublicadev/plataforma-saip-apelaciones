@@ -1,457 +1,86 @@
-<div class="min-h-screen bg-background">
+<div class="final-page min-h-screen bg-background">
   @if (loadingApelacion()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando apelacion...</p>
-      </div>
-    </div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-10 md:p-16 text-center" role="status" aria-live="polite"><div class="spinner mx-auto" aria-hidden="true"></div><p class="mt-4 text-muted-foreground">Cargando apelación y antecedentes…</p></div></div>
+  } @else if (loadError() || !contextoVigente() || !apelacion()) {
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-6 text-center"><h1 class="font-display text-2xl">Resolución final no disponible</h1><p role="alert" class="text-sm text-muted-foreground mt-3">{{ loadError() || 'No se ha recuperado la apelación de la sesión actual.' }}</p><div class="flex gap-3 flex-wrap justify-center mt-4"><button type="button" class="btn-brand" (click)="consultarEstado()">Consultar nuevamente</button><a routerLink="/ttaip" class="btn-ghost-brand">Volver al panel</a><a routerLink="/acceso-ttaip" class="btn-ghost-brand">Acceso interno TTAIP</a></div></div></div>
   } @else if (apelacion(); as ap) {
     <div class="relative bg-brand-gradient text-white overflow-hidden">
-      <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
+      <div aria-hidden="true" class="absolute inset-0 bg-paper opacity-[0.06]"></div>
       <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-        <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-          <svg lucideArrowLeft class="w-4 h-4"></svg>
-          Volver al panel TTAIP
-        </a>
-        <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Analisis de fondo</span>
-        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em;">
-          Resolucion <span class="italic" style="color: var(--gold-soft)">final</span>
-        </h1>
+        <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>Volver al panel TTAIP</a>
+        <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Análisis de fondo</span>
+        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em">Resolución <span class="italic" style="color: var(--gold-soft)">final</span></h1>
         <p class="text-white/75 mt-2 font-mono text-sm">Expediente · {{ ap.expediente }}</p>
-      </div>
-      <div class="brand-divider"></div>
+      </div><div class="brand-divider" aria-hidden="true"></div>
     </div>
-
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      <div data-reveal class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)">
-        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)">
-          <svg lucideScale class="w-5 h-5" style="color: var(--info)"></svg>
-        </div>
-        <div>
-          <span class="eyebrow" style="color: var(--info)">Etapa de fondo · plazo 10 dias habiles</span>
-          <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-            La apelacion fue calificada como <span class="font-semibold">ADMISIBLE</span>. Corresponde analizar el fondo del caso y emitir la resolucion definitiva conforme a la Ley N.° 27806.
-          </p>
-        </div>
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: color-mix(in srgb, var(--info) 8%, transparent)"><svg aria-hidden="true" lucideGavel class="w-5 h-5" style="color: var(--info)"></svg></div>
+        <div><span class="eyebrow" style="color: var(--info)">Etapa de fondo · antecedentes consultados</span><p class="text-sm text-foreground/85 leading-relaxed mt-1.5">El registro exige admisión, notificaciones eficaces, descargos y ausencia de resolución final previa. La fecha base del plazo final sigue pendiente de definición: no se certifica un vencimiento legal desde esta pantalla.</p></div>
       </div>
-
-      <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.38"
-        data-motion-delay-step="0.055">
-        <div class="form-shell" data-motion-item>
-          <div class="flex border-b" style="border-color: var(--border)">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="form-shell min-w-0" aria-label="Antecedentes del expediente">
+          <div role="tablist" aria-label="Contexto de resolución final" class="flex border-b border-border">
             @for (tab of tabs; track tab.id) {
-              <button
-                type="button"
-                (click)="cambiarTab(tab.id)"
-                class="flex-1 px-4 py-3.5 text-sm relative"
-                [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'"
-                [style.font-weight]="activeTab() === tab.id ? '600' : '400'">
-                {{ tab.label }}
-                @if (activeTab() === tab.id) {
-                  <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
-                }
-              </button>
+              <button type="button" role="tab" [id]="'final-tab-' + tab.id" [attr.aria-controls]="'final-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (click)="cambiarTab(tab.id)" (keydown)="onTabKey($event, tab.id)" class="flex-1 min-w-0 px-2 sm:px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.font-weight]="activeTab() === tab.id ? 600 : 400">{{ tab.label }}@if (activeTab() === tab.id) { <span aria-hidden="true" class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span> }</button>
             }
           </div>
-
-          @if (activeTab() === 'apelacion') {
-            <div class="p-6 space-y-5 text-sm animate-fade-in">
-              <div>
-                <span class="eyebrow">Ciudadano apelante</span>
-                <div class="flex items-center gap-3 mt-2">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(ap.ciudadanoNombre) }}</div>
-                  <div>
-                    <div class="font-medium text-foreground">{{ ap.ciudadanoNombre }}</div>
-                    <div class="font-mono text-[11px] text-muted-foreground">Entidad · {{ ap.entidadNombre }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Expediente SAIP</span>
-                <div class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</span></div>
-                <p class="text-xs text-muted-foreground mt-2 leading-relaxed">Asunto: {{ ap.solicitudAsunto || ap.resumenSolicitudOriginal || '—' }}</p>
-              </div>
-
-              <div class="rule-ornament"></div>
-
-              <div>
-                <span class="eyebrow" style="color: var(--brand-700)">Causal de denegatoria invocada</span>
-                <div class="mt-2 rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
-                  <div class="font-semibold text-foreground">Revision de legalidad de la causal aplicada por la entidad</div>
-                  <p class="text-xs text-foreground/75 mt-1 leading-relaxed">Corresponde verificar si la denegatoria de primera instancia fue compatible con la normativa de transparencia y acceso a la informacion publica.</p>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Argumentos del apelante</span>
-                <div class="mt-2 rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <p class="text-foreground leading-relaxed whitespace-pre-wrap">{{ ap.fundamentos }}</p>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Primera calificacion</span>
-                <div class="mt-1 inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25); color: var(--success)">
-                  <svg lucideCheckCircle2 class="w-3.5 h-3.5"></svg>
-                  ADMISIBLE
-                </div>
-              </div>
-            </div>
-          }
-
-          @if (activeTab() === 'adjuntos') {
-            @if (documentosAdjuntos().length > 0) {
-              <div class="p-6 space-y-2 animate-fade-in">
-                @for (doc of documentosAdjuntos(); track doc.id) {
-                  <div data-table-row class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-                    <div class="flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                      </div>
-                      <div>
-                        <div class="text-sm font-medium">{{ doc.nombreArchivo }}</div>
-                        <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
-                      </div>
-                    </div>
-                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5">
-                      <svg lucideUpload class="w-4 h-4"></svg>
-                    </button>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="p-12 text-center animate-fade-in">
-                <svg lucideFileText class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4"></svg>
-                <p class="text-sm text-muted-foreground">No hay adjuntos registrados por el backend para esta apelación.</p>
-              </div>
-            }
-          }
-        </div>
-
-        <div class="space-y-5">
-          @if (error()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-              <svg lucideXCircle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)"></svg>
-              <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-            </div>
-          }
-
-          @if (mensaje()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--success) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
-              <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-              <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
-            </div>
-          }
-
-          @if (!puedeEmitirResolucion()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
-              <svg lucideClock class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark, var(--gold))"></svg>
-              <p class="text-sm text-foreground/85">Esta apelación ya no está en resolución final. Estado actual: <span class="font-semibold">{{ getEstadoDisplay(ap.estado) }}</span>.</p>
-            </div>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">01 · Analisis preliminar</span>
-              <h2 class="form-section-title">Causal invocada</h2>
-            </div>
-            <div class="p-6 space-y-4">
-              <div class="rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
-                <span class="eyebrow" style="color: var(--brand-700)">Causal de la entidad</span>
-                <p class="text-sm font-medium mt-1">Verificacion de legalidad de la denegatoria en primera instancia</p>
-              </div>
-
-              <div>
-                <span class="eyebrow">¿La causal esta correctamente aplicada?</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                  @for (causalOption of causales; track causalOption.id) {
-                    <button
-                      type="button"
-                      (click)="seleccionarCausal(causalOption.id)"
-                      [disabled]="!puedeEmitirResolucion() || loading()"
-                      class="reference-option-card rounded-lg p-3 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed"
-                      [style.background]="causal() === causalOption.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                      [style.border]="'1.5px solid ' + (causal() === causalOption.id ? causalOption.accent : 'var(--border)')"
-                      [style.box-shadow]="causal() === causalOption.id ? '0 0 0 3px var(--brand-50)' : 'none'">
-                      <div class="font-display text-sm font-semibold tracking-wider" [style.color]="causal() === causalOption.id ? causalOption.accent : 'var(--foreground)'">{{ causalOption.label }}</div>
-                      <div class="text-xs text-muted-foreground mt-0.5">{{ causalOption.description }}</div>
-                    </button>
-                  }
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">02 · Sentido del fallo</span>
-              <h2 class="form-section-title">Decision final</h2>
-            </div>
-            <div class="p-6 space-y-2.5">
-              @for (option of options; track option.id) {
-                <button
-                  type="button"
-                  (click)="seleccionarDecision(option.id)"
-                  [disabled]="!puedeEmitirResolucion() || loading()"
-                  class="reference-option-card w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed"
-                  [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                  [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')"
-                  [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')">
-                      @if (option.id === 'fundado' || option.id === 'fundado_en_parte') {
-                        <svg lucideCheckCircle2 class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
-                      } @else if (option.id === 'sustraccion_materia' || option.id === 'desistimiento' || option.id === 'estese_a_lo_resuelto') {
-                        <svg lucideMinusCircle class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
-                      } @else {
-                        <svg lucideXCircle class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent"></svg>
-                      }
-                    </span>
-                    <div class="flex-1">
-                      <div class="font-display text-sm font-semibold tracking-wider">{{ option.label }}</div>
-                      <div class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</div>
-                    </div>
-                  </div>
-                </button>
-              }
-            </div>
-          </section>
-
-          @if (selectedOption(); as selected) {
-            <div class="rounded-lg p-5 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent">
-              <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="selected.accent"></svg>
-              <p class="text-sm text-foreground/85 leading-relaxed">{{ getDecisionSummary(selected.id) }}</p>
-            </div>
-          }
-
-          @if (showOrden()) {
-            <section class="form-shell" data-motion-item style="border-color: rgba(5,150,105,0.35)">
-              <div class="form-section-header" style="border-left: 3px solid var(--success); background: rgba(5,150,105,0.04)">
-                <span class="eyebrow" style="color: var(--success)">Mandato de entrega</span>
-                <h2 class="form-section-title">Ordenar entrega de informacion</h2>
-              </div>
-              <div class="p-6 space-y-4">
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <span class="relative mt-0.5">
-                    <input type="checkbox" [(ngModel)]="ordenarEntrega" [disabled]="!puedeEmitirResolucion() || loading()" class="sr-only peer" />
-                    <span class="w-5 h-5 rounded-md flex items-center justify-center transition-all" [style.background]="ordenarEntrega ? 'var(--success)' : 'var(--card)'" [style.border]="'1.5px solid ' + (ordenarEntrega ? 'var(--success)' : 'var(--border)')">
-                      @if (ordenarEntrega) {
-                        <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                      }
-                    </span>
-                  </span>
-                  <span>
-                    <span class="font-medium text-sm">Ordenar a la entidad la entrega de la informacion</span>
-                    <span class="block text-xs text-muted-foreground mt-0.5">Se notificara formalmente a la entidad emplazada.</span>
-                  </span>
-                </label>
-
-                @if (ordenarEntrega) {
-                  <div class="field">
-                    <label class="field-label">Plazo de entrega · dias habiles</label>
-                    <input type="number" [(ngModel)]="plazoDias" [disabled]="!puedeEmitirResolucion() || loading()" class="field-input font-mono" min="1" max="30" />
-                    <span class="field-hint">La entidad debera cumplir el mandato en {{ plazoDias }} dias habiles.</span>
-                  </div>
-                }
-
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <span class="relative mt-0.5">
-                    <input type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" [disabled]="!puedeEmitirResolucion() || loading()" class="sr-only peer" />
-                    <span class="w-5 h-5 rounded-md flex items-center justify-center transition-all" [style.background]="iniciarProcesoDisciplinario ? 'var(--warning)' : 'var(--card)'" [style.border]="'1.5px solid ' + (iniciarProcesoDisciplinario ? 'var(--warning)' : 'var(--border)')">
-                      @if (iniciarProcesoDisciplinario) {
-                        <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                      }
-                    </span>
-                  </span>
-                  <span>
-                    <span class="font-medium text-sm">Iniciar proceso disciplinario</span>
-                    <span class="block text-xs text-muted-foreground mt-0.5">Remitir actuados a control interno por presunto incumplimiento funcional.</span>
-                  </span>
-                </label>
-              </div>
+          <div role="tabpanel" id="final-panel-apelacion" aria-labelledby="final-tab-apelacion" [hidden]="activeTab() !== 'apelacion'" class="p-6 space-y-5 text-sm">
+            <div><h2 class="eyebrow">Ciudadano apelante</h2><div class="flex items-center gap-3 mt-2"><span aria-hidden="true" class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(ap.ciudadanoNombre) }}</span><div class="min-w-0"><p class="font-medium">{{ ap.ciudadanoNombre || 'Recurrente no informado' }}</p><p class="font-mono text-[11px] text-muted-foreground">Entidad · {{ ap.entidadNombre || ap.entidadExternaNombre || 'No informada' }}</p></div></div><p class="font-mono text-xs mt-2">Apelación ID {{ ap.id }} · {{ getEstadoDisplay(ap.estado) }}</p></div>
+            <div><h2 class="eyebrow">Solicitud de origen</h2><p class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || 'No informada' }}</span></p><p class="text-xs text-muted-foreground mt-2">Asunto: {{ ap.solicitudAsunto || ap.resumenSolicitudOriginal || 'No informado' }}</p></div>
+            <div class="rule-ornament" aria-hidden="true"></div>
+            <div><h2 class="eyebrow" style="color: var(--brand-700)">Respuesta impugnada · datos registrados</h2><div class="mt-2 rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><p class="font-semibold">Tipo de denegatoria: {{ getEstadoDisplay(ap.tipoDenegatoria) }}</p><p class="text-xs mt-1 whitespace-pre-wrap">{{ ap.resumenRespuestaEntidad || 'El resumen de la respuesta no está informado. No se infiere una causal de su estado.' }}</p></div></div>
+            <div><h2 class="eyebrow">Argumentos históricos del apelante</h2><div class="mt-2 rounded-md p-3 border border-border bg-card"><p class="whitespace-pre-wrap leading-relaxed">{{ ap.fundamentos || 'No informados' }}</p></div><p class="text-xs text-muted-foreground mt-2">El texto histórico no identifica una recepción de subsanación.</p></div>
+            <section class="space-y-3" aria-label="Calificaciones consultadas">
+              <div><h2 class="eyebrow">Primera calificación</h2><p class="mt-1 font-mono text-xs">{{ ap.calificacionPrimera || 'No informada' }} · ID {{ primeraRegistro()?.id || 'No informado' }}</p><p class="text-xs text-muted-foreground mt-1">Fecha registrada: {{ (fechaVisible(primeraRegistro()?.fechaResolucion) | date:'dd/MM/yyyy') || 'No informada' }}</p><p class="text-xs whitespace-pre-wrap mt-2">{{ primeraRegistro()?.observaciones || 'Sin observaciones informadas' }}</p></div>
+              @if (ap.resolucionSegundaCalificacion || ap.calificacionSegunda) { <div><h2 class="eyebrow">Segunda calificación</h2><p class="font-mono text-xs mt-1">{{ ap.calificacionSegunda || 'No informada' }} · ID {{ segundaRegistro()?.id || 'No informado' }}</p><p class="text-xs text-muted-foreground mt-2">El acceso institucional actual no permite comprobar la recepción vinculada; el registro permanece no disponible en ese recorrido.</p></div> }
+              <div class="rounded-md p-3 border border-border"><h2 class="eyebrow">Admisión y notificaciones</h2><p class="font-mono text-xs mt-2">Admisión ID {{ admision()?.id || 'No identificada' }}</p><p role="status" class="text-xs mt-2">{{ notificacionesTexto() }}</p><p class="text-xs text-muted-foreground mt-2">Se contrastan cédula, destinatario y evidencia registrada de esa actuación. Un envío técnico no acredita eficacia ni firma.</p></div>
             </section>
-          }
-
-          @if (showNulidad()) {
-            <section class="form-shell animate-fade-in" data-motion-item style="border-color: rgba(217,119,6,0.35)">
-              <div class="form-section-header" style="border-left: 3px solid var(--warning); background: rgba(217,119,6,0.04)">
-                <span class="eyebrow" style="color: var(--warning)">Retroacción</span>
-                <h2 class="form-section-title">Nulidad · momento del vicio</h2>
-              </div>
-              <div class="p-6 space-y-4">
-                <div class="field">
-                  <label class="field-label">Momento del vicio al que se retrotrae <span class="req">*</span></label>
-                  <input
-                    type="text"
-                    [(ngModel)]="momentoVicio"
-                    [disabled]="!puedeEmitirResolucion() || loading()"
-                    class="field-input"
-                    placeholder="Ej. Calificación de admisibilidad · notificación del traslado a la entidad…"
-                  />
-                  <span class="field-hint">Etapa/actuación desde la cual se declara nulo lo actuado.</span>
-                </div>
-                <div class="field">
-                  <label class="field-label">Actuación ordenada <span class="req">*</span></label>
-                  <textarea
-                    [(ngModel)]="actuacionOrdenada"
-                    [disabled]="!puedeEmitirResolucion() || loading()"
-                    class="field-input"
-                    rows="3"
-                    style="resize: vertical"
-                    placeholder="Actuación que debe reponerse (p. ej. correr nuevo traslado, emitir nueva calificación…)."
-                  ></textarea>
-                  <span class="field-hint">El procedimiento se repone a esta etapa para subsanar el vicio.</span>
-                </div>
-              </div>
-            </section>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">03 · Sustento</span>
-              <h2 class="form-section-title">Fundamentos de la resolucion</h2>
-            </div>
-            <div class="p-6">
-              <div class="field">
-                <label class="field-label">Fundamentos <span class="req">*</span></label>
-                <textarea [(ngModel)]="fundamentos" [disabled]="!puedeEmitirResolucion() || loading()" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos legales y facticos de la resolucion final..."></textarea>
-                <span class="field-hint font-mono">{{ fundamentos.length }} caracteres</span>
-              </div>
-
-              @if (selectedDecision() === 'estese_a_lo_resuelto' || selectedDecision() === 'nulidad_del_acto') {
-                <div class="field mt-5">
-                  <label class="field-label">
-                    @if (selectedDecision() === 'estese_a_lo_resuelto') {
-                      Referencia del pronunciamiento previo
-                    } @else {
-                      Orden de nulidad o retroacción
-                    }
-                  </label>
-                  <textarea
-                    [(ngModel)]="observacionesResolucion"
-                    [disabled]="!puedeEmitirResolucion() || loading()"
-                    class="field-input"
-                    rows="4"
-                    style="resize: vertical; min-height: 108px"
-                    [placeholder]="selectedDecision() === 'estese_a_lo_resuelto' ? 'Indique la resolución previa, expediente o criterio aplicable...' : 'Indique si corresponde retrotraer el procedimiento o emitir nuevo pronunciamiento...'">
-                  </textarea>
-                  <span class="field-hint font-mono">{{ observacionesResolucion.length }} caracteres</span>
-                </div>
-              }
-
-              <!-- Documento de Sustento Final -->
-              <div class="field mt-5">
-                <span class="field-label">Archivo de soporte de la resolución</span>
-                <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer mt-2" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
-                  <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" multiple (change)="seleccionarDocumento($event)" [disabled]="!puedeEmitirResolucion() || loading()" />
-                  <svg lucideUpload class="w-8 h-8 mx-auto mb-2" style="color: var(--brand-600)"></svg>
-                  <p class="text-sm text-foreground/85">Adjuntar archivo (opcional; firma no verificada)</p>
-                  <p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT hasta 10 MB</p>
-                </label>
-
-                @for (file of documentosSeleccionados(); track file.name; let i = $index) {
-                  <div class="rounded-md p-3 flex items-center gap-3 mt-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                    <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
-                    <span class="text-sm flex-1 font-medium text-foreground truncate">{{ file.name }}</span>
-                    <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB · Seleccionado, recepción pendiente</span>
-                    <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)" [disabled]="loading()">
-                      Quitar
-                    </button>
-                  </div>
-                }
-              </div>
-            </div>
-          </section>
-
-          <app-official-docs-section
-            [expediente]="ap.expediente"
-            stage="final"
-            [decision]="selectedDecision()"
-            [ctx]="docCtx()">
-          </app-official-docs-section>
-
-          <button type="button" class="btn-ghost-brand w-full justify-center !py-3 inline-flex items-center gap-2" (click)="togglePreview()">
-            @if (showPreview()) {
-              <svg lucideEyeOff class="w-4 h-4"></svg>
-              Ocultar borrador
-            } @else {
-              <svg lucideEye class="w-4 h-4"></svg>
-              Ver borradores de resolución y cédulas
+          </div>
+          <div role="tabpanel" id="final-panel-descargos" aria-labelledby="final-tab-descargos" [hidden]="activeTab() !== 'descargos'" class="p-6 space-y-4">
+            <h2 class="font-display text-xl">Descargos de la entidad</h2><p role="status" class="text-sm text-muted-foreground">{{ descargosTexto() }}</p>
+            @if (descargos(); as values) { @for (d of values; track d.id) { <section class="rounded-md p-4 border border-border bg-card text-sm"><h3 class="font-mono text-xs">Requerimiento ID {{ d.id }} · Entidad ID {{ d.entidadId }}</h3><p class="mt-2 font-semibold">{{ getEstadoDisplay(d.estadoDescargo) }}</p><dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-xs"><div><dt class="eyebrow">Requerido</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaRequerimiento) | date:'dd/MM/yyyy') || 'No informado' }}</dd></div><div><dt class="eyebrow">Límite registrado</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaLimiteDescargo) | date:'dd/MM/yyyy') || 'No informado' }}</dd></div><div><dt class="eyebrow">Presentación</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</dd></div></dl><p class="whitespace-pre-wrap mt-3">{{ d.resumenDescargo || 'Resumen no informado' }}</p><p class="text-xs text-muted-foreground mt-2">Referencia declarada: {{ d.documentoDescargo || 'No informada' }}. No se convierte esta referencia en descarga ni firma verificada.</p></section> } @empty { <p role="status" class="text-sm text-muted-foreground">La consulta no devuelve requerimientos de descargos registrados.</p> } }
+            <p class="text-xs text-muted-foreground">El servidor determina la presentación o el vencimiento. No se calcula ni procesa un plazo desde este formulario. Se muestran descargos asociados a esta apelación y entidad. Su relación con la admisión sigue el criterio vigente del servidor por expediente, entidad y fecha.</p>
+            <a [routerLink]="['/ttaip/apelacion', ap.expediente]" class="btn-ghost-brand">Consultar actuaciones y notificaciones del expediente</a>
+          </div>
+          <div role="tabpanel" id="final-panel-adjuntos" aria-labelledby="final-tab-adjuntos" [hidden]="activeTab() !== 'adjuntos'" class="p-6">
+            @if (loadingDocuments()) { <p role="status">Consultando documentos por relación…</p> }
+            @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" (click)="cargarDocumentos()" class="btn-ghost-brand mt-3">Reintentar consulta documental</button> }
+            @else {
+              <p class="text-xs text-muted-foreground mb-4">Documentos registrados de las relaciones consultadas. No es un inventario universal ni una certificación de firma, entrega o recepción de subsanación.</p>
+              @if (documentCount() > 3) { <div class="mb-4 space-y-2"><div class="relative"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg><label class="sr-only" for="final-doc-search">Buscar documentos del expediente</label><input id="final-doc-search" type="search" class="field-input !pl-9 !py-2 !text-sm" [ngModel]="documentSearch()" (ngModelChange)="documentSearch.set($event)" placeholder="Buscar por nombre, tipo o relación"/></div><div role="group" aria-label="Filtrar documentos por relación" class="flex flex-wrap gap-1.5"><button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" (click)="documentFilter.set('')">Todos {{ documentCount() }}</button>@for (g of documentGroups(); track g.label) { @if (g.documents.length) { <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === g.label" (click)="documentFilter.set(g.label)">{{ g.label }} {{ g.documents.length }}</button> } }</div></div> }
+              @for (g of visibleGroups(); track g.label) { <section class="mb-3"><h2><button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(g.label)" [attr.aria-controls]="groupId(g)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleGroup(g.label)"><span class="eyebrow flex-1">{{ g.label }}</span><span class="font-mono text-[11px] text-muted-foreground">{{ g.documents.length }} de {{ g.total }} docs.</span><svg aria-hidden="true" lucideChevronDown class="w-4 h-4" [style.transform]="groupOpen(g.label) ? null : 'rotate(-90deg)'"></svg></button></h2><div [id]="groupId(g)" [hidden]="!groupOpen(g.label)" role="list" [attr.aria-label]="'Documentos: ' + g.label" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">@for (doc of g.documents; track doc.id) { <div role="listitem" class="rounded-md p-3 flex items-center gap-3 flex-wrap border border-border bg-card"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg></span><div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ doc.nombreOriginal || 'Nombre no informado' }}</p><p class="font-mono text-[11px] text-muted-foreground">ID {{ doc.id }} · {{ doc.contentType || 'Tipo no informado' }}</p></div><div class="flex gap-1"><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar ' + (doc.nombreOriginal || 'documento')" (click)="verDocumento(doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" [attr.aria-label]="'Descargar ' + (doc.nombreOriginal || 'documento')" (click)="descargarDocumento(doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button></div></div> }</div></section> }
+              @empty { <p role="status" class="rounded-md p-3 text-sm text-muted-foreground border border-dashed border-border">{{ documentCount() ? 'Ningún documento coincide con la búsqueda o filtro.' : 'No hay documentos registrados en las relaciones consultadas.' }}</p> }
             }
-          </button>
-
-          @if (showPreview()) {
-            <app-official-preview
-              stage="final"
-              [decision]="selectedDecision()"
-              [vistos]="'El recurso de apelación interpuesto por ' + ap.ciudadanoNombre + ' contra la entidad ' + ap.entidadNombre + ' respecto a la solicitud ' + (ap.solicitudExpediente || ap.numeroSolicitudExterna || '') + '.'"
-              [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'"
-              [seResuelve]="'Declarar ' + getDecisionLabel(selectedDecision()) + ' el recurso de apelación interpuesto por ' + ap.ciudadanoNombre + (ordenarEntrega ? '. Ordenar a la entidad la entrega de la información; plazo pendiente de contraste con el acto registrado.' : '.') + (showNulidad() && momentoVicio ? ' Retrotraer al momento de: ' + momentoVicio + '.' : '')"
-              [cedulaVariant]="cedulaVariant()"
-              [ctx]="docCtx()">
-            </app-official-preview>
-          }
-
-          <button type="button" (click)="abrirConfirmacionResolucion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-            @if (loading()) {
-              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Emitiendo resolucion...
-            } @else {
-              <svg lucideSend class="w-4 h-4"></svg>
-              Emitir resolucion final
-            }
-          </button>
+            @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
+          </div>
+        </section>
+        <div class="space-y-5 min-w-0">
+          @if (motivoNoDisponible()) { <p id="final-context-reason" role="status" class="rounded-lg p-4 border border-border text-sm text-muted-foreground">{{ motivoNoDisponible() }}</p> }
+          @if (error()) { <p id="final-error" role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ error() }}</p> }
+          @if (mensaje()) { <p role="status" class="rounded-lg p-4 text-sm border border-border">{{ mensaje() }}</p> }
+          @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando registro o archivos… No abandone el contexto si necesita conservar el seguimiento local.</p> }
+          @if (resultadoIncierto()) { <div class="rounded-lg p-4 border border-border"><p class="text-sm text-muted-foreground">No se repite el comando. {{ registroObservado() ? 'La consulta observó una resolución con ID ' + registroObservado() + ', sin atribuirla al envío.' : 'El registro todavía no está comprobado.' }}</p><button type="button" class="btn-ghost-brand mt-3" [disabled]="loading()" (click)="recuperarResultado()">Consultar resultado sin reenviar</button></div> }
+          @if (resolucionRegistrada(); as r) { <section class="form-shell p-5"><h2 class="font-display text-xl">Resolución final consultada</h2><p class="font-mono text-xs mt-2">ID {{ r.id }} · {{ r.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ r.decision }}</p><p class="text-xs text-muted-foreground mt-2">{{ resultadoConfirmado() ? 'Registro recuperado por el mismo ID devuelto al envío.' : 'Actuación consultada; no confirma una operación incierta anterior.' }}</p><button id="final-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verResolucionRegistrada()">Ver actuación registrada</button></section> }
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Análisis preliminar</span><h2 class="form-section-title">Causal invocada</h2></div><div class="p-6 space-y-4"><div class="rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><h3 class="eyebrow">Respuesta de la entidad</h3><p class="text-sm mt-1 whitespace-pre-wrap">{{ ap.resumenRespuestaEntidad || 'La consulta no informa la causal concreta. No se deduce del estado.' }}</p></div><p class="text-xs text-muted-foreground">Selección de análisis local: no hay un campo de causal confirmada o revocada en el comando. Incluya el sustento que corresponda en los fundamentos.</p><div role="group" aria-label="Análisis local de la causal" class="grid grid-cols-1 sm:grid-cols-2 gap-2">@for (item of ['confirmar', 'revocar']; track item) { <button type="button" class="rounded-lg p-3 text-left transition-all border border-border" [disabled]="!puedePrepararBorrador()" [attr.aria-pressed]="causal() === item" (click)="seleccionarCausal(item === 'confirmar' ? 'confirmar' : 'revocar')"><span class="font-display text-sm font-semibold">{{ item === 'confirmar' ? 'Confirmar' : 'Revocar' }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ item === 'confirmar' ? 'La causal es aplicable' : 'No es aplicable' }}</span></button> }</div></div></section>
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">02 · Sentido del fallo</span><h2 id="final-options" class="form-section-title">Decisión final</h2></div><div class="p-6 space-y-2.5" role="group" aria-labelledby="final-options">@for (option of options; track option.id) { <button type="button" (click)="seleccionarDecision(option.id)" [disabled]="!puedePrepararBorrador() || option.id === 'no_presentado'" [attr.aria-pressed]="selectedDecision() === option.id" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">@if (option.id === 'fundado' || option.id === 'fundado_en_parte') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @else if (option.id === 'sustraccion_materia' || option.id === 'desistimiento' || option.id === 'estese_a_lo_resuelto') { <svg aria-hidden="true" lucideMinusCircle class="w-5 h-5"></svg> } @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }</span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span></button> }</div></section>
+          @if (selectedOption(); as option) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + option.accent"><svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" [style.color]="option.accent"></svg><p>Selección para revisión: {{ option.label }}. No es una actuación registrada hasta comprobar la respuesta y su recuperación.</p></div> }
+          @if (showOrden()) { <section class="form-shell" style="border-color: color-mix(in srgb, var(--success) 35%, transparent)"><div class="form-section-header" style="border-left: 3px solid var(--success); background: color-mix(in srgb, var(--success) 4%, transparent)"><span class="eyebrow" style="color: var(--success)">Mandato de entrega</span><h2 class="form-section-title">Registro y cumplimiento</h2></div><div class="p-6 space-y-4"><p class="text-sm text-muted-foreground">El registro conserva la decisión y sus fundamentos. La configuración del plazo y la acreditación del inicio de cumplimiento no están disponibles desde este formulario. Consulte el mandato y sus notificaciones en el expediente.</p><label class="flex items-start gap-3 text-sm"><input id="final-disciplinary" type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--brand-700)]"/><span>Registrar indicación de proceso disciplinario<span class="block text-xs text-muted-foreground mt-1">Solo conserva el indicador de la resolución; no abre ni remite automáticamente un proceso.</span></span></label></div></section> }
+          @if (showNulidad()) { <section class="form-shell" style="border-color: color-mix(in srgb, var(--warning) 35%, transparent)"><div class="form-section-header" style="border-left: 3px solid var(--warning)"><span class="eyebrow" style="color: var(--warning)">Retroacción</span><h2 class="form-section-title">Nulidad · momento del vicio</h2></div><div class="p-6 space-y-4"><div class="field"><label for="final-defect" class="field-label">Momento del vicio <span class="req">*</span></label><input id="final-defect" type="text" class="field-input" [(ngModel)]="momentoVicio" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-special-hint"/></div><div class="field"><label for="final-ordered-act" class="field-label">Actuación ordenada <span class="req">*</span></label><textarea id="final-ordered-act" class="field-input" rows="3" [(ngModel)]="actuacionOrdenada" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-special-hint"></textarea></div><p id="final-special-hint" class="field-hint">Se registran como observaciones de la decisión especial, junto con el sustento adicional; máximo conjunto 5000 caracteres.</p></div></section> }
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">03 · Motivación</span><h2 class="form-section-title">Fundamentos de la resolución</h2></div><div class="p-6 space-y-4"><div class="field"><label for="final-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="final-grounds" class="field-input" rows="8" style="resize: vertical; min-height: 160px" [(ngModel)]="fundamentos" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-grounds-hint final-validation" [attr.aria-invalid]="fundamentos.trim().length > 5000"></textarea><p id="final-grounds-hint" class="field-hint font-mono">{{ fundamentos.trim().length }} / 5000 caracteres</p></div>@if (showNulidad() || selectedDecision() === 'estese_a_lo_resuelto') { <div class="field"><label for="final-observations" class="field-label">Sustento específico o referencia al pronunciamiento previo</label><textarea id="final-observations" class="field-input" rows="3" [(ngModel)]="observacionesResolucion" [disabled]="!puedePrepararBorrador()" aria-describedby="final-validation"></textarea></div> }<p id="final-validation" role="status" class="field-hint">{{ validacionTexto() }}</p></div></section>
+          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">04 · Archivos seleccionados</span><h2 class="form-section-title">Adjuntos opcionales · subida independiente</h2></div><div class="p-6 space-y-3"><label for="final-files" class="field-label">Seleccionar archivos</label><input id="final-files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.txt" [disabled]="!puedePrepararBorrador()" (change)="seleccionarDocumento($event)" class="field-input text-sm" aria-describedby="final-files-hint"/><p id="final-files-hint" class="field-hint">Solo en memoria hasta la subida. Se registra primero la decisión; después se sube y comprueba cada archivo. Una subida fallida no revierte la resolución. Recargar obliga a seleccionar de nuevo; no repita la decisión para reintentar archivos.</p>@if (!archivos().length) { @for (file of documentosSeleccionados(); track file; let i = $index) { <div class="rounded-md p-3 flex gap-3 items-center border border-border"><svg aria-hidden="true" lucideFileText class="w-4 h-4 shrink-0 text-muted-foreground"></svg><p class="flex-1 min-w-0 text-sm">{{ file.name }} <span class="font-mono text-xs text-muted-foreground">{{ formatFileSize(file.size) }} KB · seleccionado</span></p><button type="button" class="btn-ghost-brand !p-2" [disabled]="!puedePrepararBorrador()" [attr.aria-label]="'Quitar ' + file.name" (click)="removerDocumento(i)"><svg aria-hidden="true" lucideXCircle class="w-4 h-4"></svg></button></div> }} @for (item of archivos(); track item.file) { <div class="rounded-md p-3 border border-border text-sm"><p class="font-medium">{{ item.file.name }}</p><p role="status" class="text-xs mt-1">{{ getEstadoDisplay(item.estado) }}{{ item.documentoId ? ' · Documento ID ' + item.documentoId : '' }}</p><p class="text-xs text-muted-foreground mt-1">{{ item.mensaje || 'La selección local no acredita almacenamiento.' }}</p>@if (item.estado === 'incierto' && item.documentoId) { <button type="button" class="btn-ghost-brand mt-2" [disabled]="loading()" (click)="recuperarArchivo(item)">Consultar este documento sin subir de nuevo</button> }</div> }@if (resultadoConfirmado() && archivos().length) { <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="reintentarArchivos()">Subir solo pendientes o rechazados</button><p class="field-hint">No repite la resolución ni los archivos registrados o inciertos. Una subida incierta sin ID requiere revisar el expediente.</p> }</div></section>
+          <app-official-docs-section [expediente]="ap.expediente" stage="final" [decision]="selectedDecision()" [ctx]="docCtx()"></app-official-docs-section>
+          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" [disabled]="!selectedDecision()" [attr.aria-expanded]="showPreview()" aria-controls="final-draft" (click)="togglePreview()">@if (showPreview()) { <svg aria-hidden="true" lucideEyeOff class="w-4 h-4"></svg> } @else { <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg> }{{ showPreview() ? 'Ocultar borrador' : 'Previsualizar borrador local' }}</button>
+          @if (showPreview()) { <div id="final-draft"><app-official-preview stage="final" [decision]="selectedDecision()" [considerando]="fundamentos || 'Fundamentos locales pendientes de completar.'" [cedulaVariant]="cedulaVariant()" [ctx]="docCtx()"></app-official-preview></div> }
+          <p class="text-xs text-muted-foreground">Borradores, selección de archivos y seguimiento del envío permanecen solo en memoria. Se pierden al cambiar expediente, antecedentes o sesión, o al recargar. Mientras haya un registro pendiente no se puede cambiar su decisión. Cancelar una petición del cliente no revierte una escritura aceptada por el servidor.</p>
+          <button id="final-review" type="button" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="!canSubmit()" aria-describedby="final-validation" (click)="abrirConfirmacionResolucion()"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>Revisar registro de decisión</button>
+          <button type="button" class="btn-ghost-brand w-full" [disabled]="loading()" (click)="consultarEstado()">Consultar estado y actuaciones</button>
+          <a class="btn-ghost-brand w-full justify-center" [routerLink]="['/ttaip/apelacion', ap.expediente]">Ver expediente y notificaciones</a>
         </div>
-      </div>
-    </div>
-  } @else {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-        <p class="text-sm" style="color: var(--destructive)">{{ error() || 'No se pudo cargar la apelacion.' }}</p>
       </div>
     </div>
   }
-
-  <app-reference-confirm-modal
-    [open]="confirmModalAbierto()"
-    [submitting]="loading()"
-    title="Confirme la resolución final"
-    titleLead="Confirme"
-    titleEmphasis="la resolución final"
-    eyebrow="Revisión final · Tribunal"
-    description="Esta es la decisión de fondo del TTAIP. Revise el sentido, los fundamentos y los efectos antes de firmar."
-    [summary]="resolucionConfirmSummary()"
-    [warning]="resolucionWarning()"
-    confirmLabel="Registrar decisión"
-    (close)="confirmModalAbierto.set(false)"
-    (confirm)="enviarResolucion()">
-  </app-reference-confirm-modal>
-
-  <app-reference-success-modal
-    [open]="successModalAbierto()"
-    variant="resolucion-final"
-    [tone]="resolucionSuccessTone()"
-    eyebrow="Resolución final registrada"
-    [title]="resolucionSuccessTitle()"
-    description="Actuación devuelta por el servidor. No acredita firma digital ni emisión de un archivo oficial. Consulte sus documentos y la eficacia de la notificación en el expediente."
-    [expediente]="apelacion()?.expediente || ''"
-    [expedienteHint]="apelacion()?.resolucion?.numeroResolucion || 'Sin numeración registrada'"
-    [plazoDias]="null"
-    plazoTipo="hábiles"
-    [plazoDescripcion]="resolucionPlazoDescripcion()"
-    plazoNorma="Mandato del Tribunal"
-    [metadata]="resolucionSuccessMetadata()"
-    [nextSteps]="resolucionNextSteps()"
-    primaryLabel="Ir al panel TTAIP"
-    secondaryLabel="Ver expediente"
-    (close)="irPanelTtaip()"
-    (primary)="irPanelTtaip()"
-    (secondary)="irPanelTtaip()">
-  </app-reference-success-modal>
+  <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" [submitting]="loading()" title="Confirme el registro de la resolución" titleLead="Confirme" titleEmphasis="el registro" eyebrow="Revisión final · Tribunal" description="Revise la decisión, los fundamentos y las precondiciones consultadas. Esta operación registra una actuación; no firma ni emite un PDF oficial." [summary]="resolucionConfirmSummary()" [warning]="resolucionWarning()" confirmLabel="Registrar decisión" (close)="confirmModalAbierto.set(false)" (confirm)="enviarResolucion()"></app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente() && !!resolucionRegistrada()" [manageFocus]="true" variant="resolucion-final" [tone]="resolucionSuccessTone()" [eyebrow]="resultadoConfirmado() ? 'Registro recuperado por su ID' : 'Actuación consultada · no confirma un envío anterior'" [title]="resolucionSuccessTitle()" description="Actuación consultada por ID. No acredita firma digital ni emisión de un archivo oficial, entrega o eficacia de notificación. Los archivos se comprueban por separado." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="resolucionRegistrada()?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="resolucionSuccessMetadata()" [nextSteps]="resolucionNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelTtaip()" (secondary)="irExpediente()"></app-reference-success-modal>
+  <app-document-preview-modal [doc]="previewTarget()" [open]="!!previewTarget() && contextoVigente()" [manageFocus]="true" (close)="previewTarget.set(null)"></app-document-preview-modal>
 </div>

@@ -1,714 +1,303 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription, forkJoin } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
-import { Apelacion } from '../../models/apelacion.model';
-import type { ResolucionRequest } from '../../api/types';
-import {
-  ReferenceConfirmModalComponent,
-  ReferenceConfirmSummary,
-  ReferenceConfirmWarning
-} from '../../shared/reference-confirm-modal.component';
-import {
-  ReferenceSuccessMeta,
-  ReferenceSuccessModalComponent,
-  ReferenceSuccessNextStep,
-  ReferenceSuccessTone
-} from '../../shared/reference-success-modal.component';
+import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
-import { validarDocumento } from '../../models/documento.model';
-import { firstValueFrom } from 'rxjs';
-import { problemDetailsMessage } from '../../utils/problem-details.util';
-
+import { Apelacion } from '../../models/apelacion.model';
+import { DocumentoMetadata, DocumentoRelation, validarDocumento } from '../../models/documento.model';
+import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
+import { ReferenceSuccessModalComponent, ReferenceSuccessMeta, ReferenceSuccessNextStep, ReferenceSuccessTone } from '../../shared/reference-success-modal.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 import { OfficialDocsSectionComponent } from './shared/official-docs-section.component';
 import { OfficialPreviewComponent } from './shared/official-preview.component';
 import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
+import { positiveId, apelacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
+import { finalOpciones, FinalSelection, FinalOperacion, ArchivoFinal, finalConsultada, admisionFinal, motivoFinal, eficaciaAdmision, descargosConsultados, estadoDescargos, finalCompatible, archivoCompatible, fechaRegistrada, relacionesFinalCoherentes } from './ttaip-resolver.model';
+import { falloConsulta } from '../../utils/consulta-remota.util';
+import { LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
-type ResolverTab = 'apelacion' | 'adjuntos';
-type CausalAnalisis = 'confirmar' | 'revocar';
-type ResolucionDecision =
-  | 'fundado'
-  | 'fundado_en_parte'
-  | 'infundado'
-  | 'infundado_en_parte'
-  | 'improcedente'
-  | 'sustraccion_materia'
-  | 'desistimiento'
-  | 'estese_a_lo_resuelto'
-  | 'nulidad_del_acto'
-  | 'no_presentado';
-
-interface DecisionOption {
-  id: ResolucionDecision;
-  label: string;
-  description: string;
-  accent: string;
-}
-
-import {
-  LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
-  LucideSend, LucideInfo, LucideUpload,
-  LucideClock, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff
-} from '@lucide/angular';
-
+type ResolverTab = 'apelacion' | 'descargos' | 'adjuntos';
+interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-resolver',
-  imports: [
-    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent,
-    LucideArrowLeft, LucideScale, LucideCheckCircle2, LucideFileText,
-    LucideSend, LucideInfo, LucideUpload,
-    LucideClock, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff
-  ],
-  templateUrl: './ttaip-resolver.component.html',
-  styleUrl: './ttaip-resolver.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
+    OfficialDocsSectionComponent, OfficialPreviewComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
+    LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
+  templateUrl: './ttaip-resolver.component.html', styleUrl: './ttaip-resolver.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TtaipResolverComponent implements OnInit {
+export class TtaipResolverComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly apelacionService = inject(ApelacionService);
   private readonly ttaipService = inject(TtaipService);
   private readonly documentoService = inject(DocumentoService);
-  private readonly resolucionEstados = new Set<string>(['EN_RESOLUCION']);
-
-  apelacion = signal<Apelacion | null>(null);
-  loading = signal<boolean>(false);
-  loadingApelacion = signal<boolean>(true);
-  error = signal<string>('');
-  mensaje = signal<string>('');
-  confirmModalAbierto = signal<boolean>(false);
-  successModalAbierto = signal<boolean>(false);
-  documentosSeleccionados = signal<File[]>([]);
-
-  activeTab = signal<ResolverTab>('apelacion');
-  selectedDecision = signal<ResolucionDecision | null>(null);
-  causal = signal<CausalAnalisis | null>(null);
-  showPreview = signal<boolean>(false);
-
+  private readonly authService = inject(AuthService);
+  private routeSub = new Subscription();
+  private reads = new Subscription();
+  private writes = new Subscription();
+  private docReads = new Subscription();
+  private downloads = new Subscription();
+  private generation = 0;
+  private initialized = false;
+  private destroyed = false;
+  private requested = '';
+  private session = '';
+  private revision = -1;
+  private previousId: number | null = null;
+  private previousContext = '';
+  private docsLoaded = false;
+  private operation: FinalOperacion | null = null;
+  readonly apelacion = signal<Apelacion | null>(null);
+  readonly loadingApelacion = signal(true);
+  readonly loadError = signal('');
+  readonly loading = signal(false);
+  readonly error = signal('');
+  readonly mensaje = signal('');
+  readonly resultadoIncierto = signal(false);
+  readonly registroObservado = signal<number | null>(null);
+  readonly resultadoConfirmado = signal(false);
+  readonly rechazoBloqueante = signal(false);
+  readonly confirmModalAbierto = signal(false);
+  readonly successModalAbierto = signal(false);
+  readonly activeTab = signal<ResolverTab>('apelacion');
+  readonly selectedDecision = signal<FinalSelection | null>(null);
+  readonly causal = signal<'confirmar' | 'revocar' | null>(null);
+  readonly showPreview = signal(false);
+  readonly documentosSeleccionados = signal<File[]>([]);
+  readonly archivos = signal<ArchivoFinal[]>([]);
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly documentGroups = signal<DocumentGroup[]>([]);
+  readonly loadingDocuments = signal(false);
+  readonly documentError = signal('');
+  readonly downloadError = signal('');
+  readonly downloadingId = signal<number | null>(null);
+  readonly documentSearch = signal('');
+  readonly documentFilter = signal('');
+  readonly closedGroups = signal<Record<string, boolean>>({});
+  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'descargos' as const, label: 'Descargos de la entidad' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
+  readonly options = [...finalOpciones, { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No es resolución final: requiere EN_SUBSANACION, ausencia de recepción y reloj acreditado', accent: 'var(--muted-foreground)' }];
+  readonly selectedOption = computed(() => this.options.find(o => o.id === this.selectedDecision()));
+  readonly primeraRegistro = computed<Apelacion['resolucionPrimeraCalificacion'] | null>(() => this.apelacion()?.resolucionPrimeraCalificacion ?? null);
+  readonly segundaRegistro = computed<Apelacion['resolucionSegundaCalificacion'] | null>(() => this.apelacion()?.resolucionSegundaCalificacion ?? null);
+  readonly admision = computed(() => admisionFinal(this.apelacion()));
+  readonly resolucionRegistrada = computed(() => finalConsultada(this.apelacion()));
+  readonly notificacionesTexto = computed(() => eficaciaAdmision(this.apelacion()));
+  readonly descargos = computed(() => descargosConsultados(this.apelacion()));
+  readonly descargosTexto = computed(() => estadoDescargos(this.apelacion()));
+  readonly showOrden = computed(() => ['fundado', 'fundado_en_parte'].includes(this.selectedDecision() || ''));
+  readonly showNulidad = computed(() => this.selectedDecision() === 'nulidad_del_acto');
+  readonly cedulaVariant = computed<CedulaVariant>(() => cedulaVariantForStage('final', this.selectedDecision() || undefined));
+  readonly docCtx = computed<Partial<DocContext>>(() => ({ expediente: this.apelacion()?.expediente || '', recurrente: this.apelacion()?.ciudadanoNombre || 'No registrado',
+    entidad: this.apelacion()?.entidadNombre || this.apelacion()?.entidadExternaNombre || 'No registrada', sumilla: this.apelacion()?.solicitudAsunto || this.apelacion()?.resumenSolicitudOriginal || 'No informada' }));
+  readonly documentCount = computed(() => this.documentGroups().reduce((sum, group) => sum + group.documents.length, 0));
+  readonly visibleGroups = computed(() => {
+    const norm = (v: string) => v.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es'); const query = norm(this.documentSearch().trim());
+    return this.documentGroups().filter(g => !this.documentFilter() || this.documentFilter() === g.label).map(g => ({ ...g, total: g.documents.length,
+      documents: g.documents.filter(d => !query || norm([d.nombreOriginal, d.tipoDocumento, d.contentType, g.label].filter(Boolean).join(' ')).includes(query)) })).filter(g => g.documents.length > 0);
+  });
   fundamentos = '';
   observacionesResolucion = '';
-  ordenarEntrega = false;
-  plazoDias = '10';
-  iniciarProcesoDisciplinario = false;
   momentoVicio = '';
   actuacionOrdenada = '';
-
-  readonly docCtx = computed<Partial<DocContext>>(() => {
-    const ap = this.apelacion();
-    return {
-      expediente: ap?.expediente || '',
-      recurrente: (ap?.ciudadanoNombre || 'No registrado').toUpperCase(),
-      entidad: ap?.entidadNombre || 'No registrada',
-      correo: (ap as any)?.ciudadanoEmail || (ap as any)?.email || '—',
-      direccionEntidad: '—',
-      sumilla: ap?.solicitudAsunto || ap?.resumenSolicitudOriginal || ap?.fundamentos || 'No registrada',
-    };
-  });
-
-  readonly cedulaVariant = computed<CedulaVariant>(() => {
-    return cedulaVariantForStage('final', this.selectedDecision() || undefined);
-  });
-
-  readonly tabs: ReadonlyArray<{ id: ResolverTab; label: string }> = [
-    { id: 'apelacion', label: 'Apelacion' },
-    { id: 'adjuntos', label: 'Adjuntos' }
-  ];
-
-  readonly causales: ReadonlyArray<{ id: CausalAnalisis; label: string; description: string; accent: string }> = [
-    {
-      id: 'confirmar',
-      label: 'Confirmar',
-      description: 'La causal esta correctamente aplicada',
-      accent: 'var(--success)'
-    },
-    {
-      id: 'revocar',
-      label: 'Revocar',
-      description: 'La causal no corresponde al caso',
-      accent: 'var(--brand-700)'
-    }
-  ];
-
-  readonly options: ReadonlyArray<DecisionOption> = [
-    {
-      id: 'fundado',
-      label: 'FUNDADO',
-      description: 'Se ampara el recurso y se ordena entregar la informacion',
-      accent: 'var(--success)'
-    },
-    {
-      id: 'fundado_en_parte',
-      label: 'FUNDADO EN PARTE',
-      description: 'Amparo parcial con entrega parcial de informacion',
-      accent: 'var(--gold-dark)'
-    },
-    {
-      id: 'infundado',
-      label: 'INFUNDADO',
-      description: 'Se desestima el recurso y se confirma la conducta de la entidad',
-      accent: 'var(--brand-700)'
-    },
-    {
-      id: 'infundado_en_parte',
-      label: 'INFUNDADO EN PARTE',
-      description: 'Se desestima parcialmente y se confirma parte de la conducta',
-      accent: 'var(--warning)'
-    },
-    {
-      id: 'improcedente',
-      label: 'IMPROCEDENTE',
-      description: 'No cumple requisitos formales o de fondo',
-      accent: 'var(--muted-foreground)'
-    },
-    {
-      id: 'sustraccion_materia',
-      label: 'CONCLUSION POR SUSTRACCION',
-      description: 'La entidad entrego la informacion durante el tramite',
-      accent: 'var(--info)'
-    },
-    {
-      id: 'desistimiento',
-      label: 'CONCLUSION POR DESISTIMIENTO',
-      description: 'El ciudadano desiste voluntariamente del recurso',
-      accent: 'var(--muted-foreground)'
-    },
-    {
-      id: 'estese_a_lo_resuelto',
-      label: 'ESTESE A LO RESUELTO',
-      description: 'Existe pronunciamiento previo aplicable al mismo asunto',
-      accent: 'var(--info)'
-    },
-    {
-      id: 'nulidad_del_acto',
-      label: 'NULIDAD DEL ACTO',
-      description: 'Se invalida la respuesta o procedimiento por vicios graves',
-      accent: 'var(--warning)'
-    },
-    {
-      id: 'no_presentado',
-      label: 'TENER POR NO PRESENTADO',
-      description: 'No se subsanó en plazo · el recurso se tiene por no presentado',
-      accent: 'var(--muted-foreground)'
-    }
-  ];
-
-  readonly selectedOption = computed<DecisionOption | undefined>(() => {
-    const current = this.selectedDecision();
-    return this.options.find((option) => option.id === current);
-  });
-
-  readonly showOrden = computed<boolean>(() => {
-    const decision = this.selectedDecision();
-    return decision === 'fundado' || decision === 'fundado_en_parte';
-  });
-
-  readonly showNulidad = computed<boolean>(() => {
-    return this.selectedDecision() === 'nulidad_del_acto';
-  });
-
-  canSubmit(): boolean {
-    if (!this.puedeEmitirResolucion() || !this.selectedDecision() || !this.fundamentos.trim()) {
-      return false;
-    }
-    if (this.selectedDecision() === 'nulidad_del_acto') {
-      return this.momentoVicio.trim().length > 0 && this.actuacionOrdenada.trim().length > 0;
-    }
-    return true;
-  }
-
-  readonly documentosAdjuntos = computed(() => {
-    return this.apelacion()?.documentos ?? [];
-  });
-
-  ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibio expediente para resolver.');
-      this.loadingApelacion.set(false);
-      return;
-    }
-
-    this.cargarApelacion(expediente);
-  }
-
+  iniciarProcesoDisciplinario = false;
+  /** Retained for callers; no local mandate or deadline is transmitted or certified. */
+  ordenarEntrega = false;
+  constructor() { effect(() => { const revision = this.authService.cambiosSesion(); if (this.initialized && revision !== this.revision) untracked(() => this.cargarApelacion(this.requested)); }); }
+  private sessionKey(): string { try { const s = this.authService.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.miembroId]); } catch { return ''; } }
+  contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
+  private current(generation: number): boolean { return generation === this.generation && this.contextoVigente(); }
+  ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => this.cargarApelacion(p.get('expediente') || '')); }
+  ngOnDestroy(): void { this.destroyed = true; this.generation++; this.routeSub.unsubscribe(); this.cancelar(); }
+  private cancelar(): void { for (const s of [this.reads, this.writes, this.docReads, this.downloads]) s.unsubscribe(); this.reads = new Subscription(); this.writes = new Subscription(); this.docReads = new Subscription(); this.downloads = new Subscription(); }
+  private limpiarBorrador(): void { this.selectedDecision.set(null); this.causal.set(null); this.fundamentos = ''; this.observacionesResolucion = ''; this.momentoVicio = ''; this.actuacionOrdenada = ''; this.iniciarProcesoDisciplinario = false; this.documentosSeleccionados.set([]); this.archivos.set([]); }
   cargarApelacion(expediente: string): void {
-    this.loadingApelacion.set(true);
-    this.apelacionService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        this.apelacion.set(data);
-        this.loadingApelacion.set(false);
-      },
-      error: () => {
-        this.error.set('Error al cargar la apelacion.');
-        this.loadingApelacion.set(false);
-      }
-    });
+    if (this.destroyed) return; const same = this.requested === expediente && this.session === this.sessionKey();
+    if (same && this.operation) { if (!this.loading()) this.recuperarResultado(); return; }
+    if (same && this.loadingApelacion() && this.generation > 0) return;
+    this.cancelar(); const generation = ++this.generation; this.requested = expediente; this.session = this.sessionKey(); this.revision = this.authService.cambiosSesion();
+    this.apelacion.set(null); this.loadingApelacion.set(true); this.loadError.set(''); this.error.set(''); this.mensaje.set(''); this.loading.set(false);
+    this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
+    this.documentGroups.set([]); this.documentError.set(''); this.downloadError.set(''); this.loadingDocuments.set(false); this.downloadingId.set(null); this.docsLoaded = false;
+    this.documentSearch.set(''); this.documentFilter.set(''); this.closedGroups.set({}); this.rechazoBloqueante.set(false);
+    if (!same) { this.operation = null; this.resultadoIncierto.set(false); this.resultadoConfirmado.set(false); this.registroObservado.set(null); this.previousId = null; this.previousContext = ''; this.limpiarBorrador(); this.activeTab.set('apelacion'); }
+    let account; try { account = this.authService.obtenerSesion(); } catch { account = null; }
+    if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR'].includes(account.tipoUsuario || '')) { this.loadingApelacion.set(false); this.loadError.set('La sesión no permite consultar el Tribunal. Utilice el acceso interno.'); return; }
+    if (!expediente) { this.loadingApelacion.set(false); this.loadError.set('No se recibió un expediente.'); return; }
+    this.reads.add(this.apelacionService.findByExpediente(expediente).subscribe({ next: ap => {
+      if (!this.current(generation)) return;
+      if (!apelacionCompatible(ap, expediente) || !relacionesFinalCoherentes(ap) || (this.previousId != null && this.previousId !== ap.id)) { this.loadingApelacion.set(false); this.loadError.set('La consulta no identifica la apelación solicitada o contiene asociaciones incompatibles.'); return; }
+      const context = JSON.stringify([ap.resolucionPrimeraCalificacion?.id, ap.resolucionSegundaCalificacion?.id, ap.expedienteTtaip?.id, ap.entidadId, ap.solicitudId]);
+      if (this.previousContext && context !== this.previousContext) this.limpiarBorrador();
+      this.previousId = ap.id; this.previousContext = context; this.apelacion.set(ap); this.loadingApelacion.set(false);
+    }, error: err => { if (this.current(generation)) { this.loadingApelacion.set(false); this.loadError.set(falloConsulta(err, 'la apelación').mensaje); } } }));
   }
-
-  cambiarTab(tab: ResolverTab): void {
-    this.activeTab.set(tab);
+  consultarEstado(): void { if (this.operation) this.recuperarResultado(); else this.cargarApelacion(this.requested); }
+  motivoNoDisponible(): string {
+    if (!this.contextoVigente()) return 'La sesión cambió. Consulte con la cuenta actual.';
+    if (this.loadingApelacion() || this.loadError()) return this.loadError() || 'Cargando antecedentes.';
+    if (this.resultadoIncierto()) return 'Resultado incierto: consulte sin repetir el comando.';
+    if (this.rechazoBloqueante()) return 'El servidor rechazó el acceso o la transición. Consulte nuevamente.';
+    const reason = motivoFinal(this.apelacion()); if (reason) return reason;
+    if (!positiveId(this.authService.obtenerSesion()?.miembroId)) return 'El acceso actual no informa un miembro TTAIP verificable. No se asigna un autor predeterminado desde el formulario.';
+    return '';
   }
-
-  seleccionarCausal(causal: CausalAnalisis): void {
-    if (!this.puedeEmitirResolucion()) {
-      return;
-    }
-
-    this.causal.set(causal);
+  puedeEmitirResolucion(): boolean { return !this.motivoNoDisponible(); }
+  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && !!this.apelacion() && this.apelacion()?.estado === 'EN_RESOLUCION' && !this.resolucionRegistrada() && !this.operation && !this.loading(); }
+  private observacionesTexto(): string | undefined {
+    if (this.showNulidad()) return [this.observacionesResolucion.trim(), `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}`].filter(Boolean).join('\n');
+    return this.selectedDecision() === 'estese_a_lo_resuelto' ? this.observacionesResolucion.trim() || undefined : undefined;
   }
-
-  seleccionarDecision(decision: ResolucionDecision): void {
-    if (!this.puedeEmitirResolucion()) {
-      return;
-    }
-
-    this.selectedDecision.set(decision);
-    this.error.set('');
-
-    if (decision !== 'fundado' && decision !== 'fundado_en_parte') {
-      this.ordenarEntrega = false;
-      this.plazoDias = '10';
-      this.iniciarProcesoDisciplinario = false;
-    }
+  validacionTexto(): string {
+    if (!finalOpciones.some(o => o.id === this.selectedDecision())) return 'Seleccione una decisión final compatible.';
+    if (!this.fundamentos.trim()) return 'Los fundamentos son obligatorios.';
+    if (this.fundamentos.trim().length > 5000) return 'Los fundamentos no pueden exceder 5000 caracteres.';
+    if (this.showNulidad() && (!this.momentoVicio.trim() || !this.actuacionOrdenada.trim())) return 'Indique el momento del vicio y la actuación ordenada.';
+    if ((this.observacionesTexto()?.length || 0) > 5000) return 'Las observaciones no pueden exceder 5000 caracteres en conjunto.';
+    return '';
   }
-
-  togglePreview(): void {
-    this.showPreview.update((value) => !value);
+  canSubmit(): boolean { return this.puedeEmitirResolucion() && !this.operation && !this.loading() && !this.validacionTexto(); }
+  seleccionarCausal(value: 'confirmar' | 'revocar'): void { if (this.puedePrepararBorrador()) this.causal.set(value); }
+  seleccionarDecision(value: FinalSelection): void {
+    if (!this.puedePrepararBorrador() || value === 'no_presentado') return;
+    this.selectedDecision.set(value); this.error.set(''); this.showPreview.set(false); this.confirmModalAbierto.set(false); this.previewTarget.set(null);
+    this.downloads.unsubscribe(); this.downloads = new Subscription(); this.downloadingId.set(null);
+    if (this.loadingDocuments()) { this.docReads.unsubscribe(); this.docReads = new Subscription(); this.loadingDocuments.set(false); this.docsLoaded = false; this.documentGroups.set([]); }
+    if (!this.showOrden()) this.iniciarProcesoDisciplinario = false;
   }
-
-  getInitials(name: string | undefined): string {
-    const source = (name || 'Ciudadano').trim();
-    if (!source) {
-      return 'CI';
-    }
-
-    return source
-      .split(' ')
-      .filter(Boolean)
-      .map((part) => part[0]?.toUpperCase() || '')
-      .join('')
-      .slice(0, 2) || 'CI';
-  }
-
-  getDecisionLabel(decision: string | null): string {
-    const labels: Record<string, string> = {
-      fundado: 'FUNDADO',
-      fundado_en_parte: 'FUNDADO EN PARTE',
-      infundado: 'INFUNDADO',
-      infundado_en_parte: 'INFUNDADO EN PARTE',
-      improcedente: 'IMPROCEDENTE',
-      sustraccion_materia: 'CONCLUSION POR SUSTRACCION DE LA MATERIA',
-      desistimiento: 'CONCLUSION POR DESISTIMIENTO',
-      estese_a_lo_resuelto: 'ESTESE A LO RESUELTO',
-      nulidad_del_acto: 'NULIDAD DEL ACTO',
-      no_presentado: 'TENER POR NO PRESENTADO'
-    };
-
-    if (!decision) {
-      return '[DECISION]';
-    }
-
-    return labels[decision] || '[DECISION]';
-  }
-
-  getDecisionSummary(decision: ResolucionDecision): string {
-    const summaries: Record<ResolucionDecision, string> = {
-      fundado:
-        'Se ampara totalmente el recurso y se ordena a la entidad la entrega de informacion en el plazo establecido.',
-      fundado_en_parte:
-        'Se ampara parcialmente el recurso y se ordena la entrega de la informacion que corresponde.',
-      infundado:
-        'Se desestima el recurso y se confirma la actuacion de la entidad emplazada.',
-      infundado_en_parte:
-        'Se desestima parcialmente el recurso y se confirma parte de la actuacion de la entidad.',
-      improcedente:
-        'El recurso no cumple los requisitos formales o de fondo para emitir pronunciamiento.',
-      sustraccion_materia:
-        'Procede la conclusion por sustraccion de la materia al haberse entregado la informacion durante el tramite.',
-      desistimiento:
-        'Procede la conclusion por desistimiento expreso del ciudadano recurrente.',
-      estese_a_lo_resuelto:
-        'Existe pronunciamiento previo aplicable al mismo asunto, pedido reiterado o caso sustancialmente equivalente.',
-      nulidad_del_acto:
-        'Se invalida la respuesta o procedimiento por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.',
-      no_presentado:
-        'El recurso no fue subsanado dentro del plazo legal; se tiene por no presentado y el expediente queda archivado.'
-    };
-
-    return summaries[decision];
-  }
-
-  private getResolucionRequest(includeDisciplinary: boolean): ResolucionRequest {
-    const request: ResolucionRequest = {
-      fundamentos: this.fundamentos.trim(),
-      iniciarProcesoDisciplinario: includeDisciplinary ? this.iniciarProcesoDisciplinario : undefined
-    };
-
-    if (this.selectedDecision() === 'nulidad_del_acto' && this.momentoVicio.trim()) {
-      const nulidadDetalle = `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}`;
-      request.observaciones = this.observacionesResolucion.trim()
-        ? `${this.observacionesResolucion.trim()} | ${nulidadDetalle}`
-        : nulidadDetalle;
-    } else if (this.observacionesResolucion.trim()) {
-      request.observaciones = this.observacionesResolucion.trim();
-    }
-
-    return request;
-  }
-
-  abrirConfirmacionResolucion(): void {
-    if (!this.validarResolucion()) {
-      return;
-    }
-
-    this.confirmModalAbierto.set(true);
-  }
-
-  seleccionarDocumento(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const filesToAdd: File[] = [];
-      let lastError = '';
-      for (let i = 0; i < input.files.length; i++) {
-        const file = input.files[i];
-        const errorMsg = validarDocumento(file);
-        if (errorMsg) {
-          lastError = errorMsg;
-        } else {
-          filesToAdd.push(file);
-        }
-      }
-      if (lastError) {
-        this.error.set(lastError);
-      } else {
-        this.error.set('');
-      }
-      if (filesToAdd.length > 0) {
-        this.documentosSeleccionados.update(prev => [...prev, ...filesToAdd]);
-      }
-    }
-    input.value = '';
-  }
-
-  removerDocumento(index: number): void {
-    this.documentosSeleccionados.update(prev => prev.filter((_, i) => i !== index));
-    this.error.set('');
-  }
-
-  formatFileSize(size: number): string {
-    return (size / 1024).toFixed(1);
-  }
-
+  togglePreview(): void { if (this.contextoVigente() && finalOpciones.some(o => o.id === this.selectedDecision())) this.showPreview.update(v => !v); }
+  abrirConfirmacionResolucion(): void { if (this.canSubmit()) this.confirmModalAbierto.set(true); else this.error.set(this.motivoNoDisponible() || this.validacionTexto()); }
   enviarResolucion(): void {
-    const currentAppeal = this.apelacion();
-    const decision = this.selectedDecision();
-
-    if (!this.validarResolucion() || !currentAppeal || !decision) {
-      return;
-    }
-
-    // Parche pragmático: mantener el confirm modal abierto durante la carga (submitting)
-    // para evitar el parpadeo del overlay y prevenir interacciones adicionales.
+    if (this.loading() || this.operation || this.destroyed) return;
+    if (!this.canSubmit()) { this.error.set(this.motivoNoDisponible() || this.validacionTexto()); return; }
+    const ap = this.apelacion()!, option = finalOpciones.find(o => o.id === this.selectedDecision())!, generation = this.generation;
+    const op: FinalOperacion = { apelacionId: ap.id, expediente: ap.expediente, decision: option.id, fundamentos: this.fundamentos.trim(), miembroId: this.authService.obtenerSesion()!.miembroId!,
+      ...(this.observacionesTexto() ? { observaciones: this.observacionesTexto() } : {}), ...(this.showOrden() ? { iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario } : {}) };
+    this.operation = op; this.loading.set(true); this.error.set(''); this.archivos.set(this.documentosSeleccionados().map(file => ({ file, estado: 'seleccionado' })));
+    const { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario } = op;
+    this.writes.add(this.ttaipService[option.command](ap.id, { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario }).subscribe({ next: updated => {
+      if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
+      this.confirmModalAbierto.set(false);
+      const id = finalConsultada(updated)?.id;
+      if (!positiveId(id)) { this.marcarIncierto('No se recibió un ID verificable de resolución; consulte el resultado sin repetir el registro.'); return; }
+      const candidate = { ...op, resolucionId: id };
+      if (!finalCompatible(updated, candidate)) { this.marcarIncierto('La respuesta no identifica una resolución compatible con el recurso y contenido enviados. Consulte antes de otra operación.'); return; }
+      op.resolucionId = id; this.consultarOperacion(op, generation);
+    }, error: err => {
+      if (!this.current(generation) || this.operation !== op) return;
+      this.loading.set(false); this.confirmModalAbierto.set(false);
+      if ([400, 401, 403, 404, 409, 422].includes(err?.status)) { this.operation = null; this.archivos.set([]); this.rechazoBloqueante.set([401, 403, 404, 409].includes(err.status)); this.error.set(falloConsulta(err, 'el registro de resolución').mensaje); }
+      else this.marcarIncierto('No se pudo confirmar el registro. El servidor puede haberlo aceptado. Consulte sin repetir la escritura.');
+    } }));
+  }
+  private marcarIncierto(message: string): void { this.loading.set(false); this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.resultadoIncierto.set(true); this.error.set(message); }
+  recuperarResultado(): void { if (this.operation && !this.loading() && this.contextoVigente()) this.consultarOperacion(this.operation, this.generation); }
+  private consultarOperacion(op: FinalOperacion, generation: number): void {
     this.loading.set(true);
-    this.error.set('');
-
-    const includeDisciplinary = decision === 'fundado' || decision === 'fundado_en_parte';
-    const requestWithDisciplinary = this.getResolucionRequest(includeDisciplinary);
-    const requestSimple = this.getResolucionRequest(false);
-
-    const serviceMap: Record<ResolucionDecision, () => void> = {
-      fundado: () =>
-        this.ttaipService.declararFundado(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: async (updated) => await this.handleSuccess('Apelacion declarada FUNDADA.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      fundado_en_parte: () =>
-        this.ttaipService.declararFundadoEnParte(currentAppeal.id, requestWithDisciplinary).subscribe({
-          next: async (updated) => await this.handleSuccess('Apelacion declarada FUNDADA EN PARTE.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      infundado: () =>
-        this.ttaipService.declararInfundado(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Apelacion declarada INFUNDADA.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      infundado_en_parte: () =>
-        this.ttaipService.declararInfundadoEnParte(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Apelacion declarada INFUNDADA EN PARTE.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      improcedente: () =>
-        this.ttaipService.declararImprocedente(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Apelacion declarada IMPROCEDENTE.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      sustraccion_materia: () =>
-        this.ttaipService.declararSustraccionMateria(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Conclusión por sustraccion de la materia emitida.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      desistimiento: () =>
-        this.ttaipService.declararDesistimiento(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Conclusión por desistimiento emitida.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      estese_a_lo_resuelto: () =>
-        this.ttaipService.declararEsteseALoResuelto(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Estese a lo resuelto emitido.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      nulidad_del_acto: () =>
-        this.ttaipService.declararNulidadDelActo(currentAppeal.id, requestSimple).subscribe({
-          next: async (updated) => await this.handleSuccess('Nulidad del acto emitida.', updated),
-          error: (err) => this.handleError(err)
-        }),
-      no_presentado: () =>
-        this.ttaipService.declararNoPresentado(currentAppeal.id, {
-          fundamentos: this.fundamentos.trim()
-        }).subscribe({
-          next: async (updated) => await this.handleSuccess('Recurso declarado TENIDO POR NO PRESENTADO.', updated),
-          error: (err) => this.handleError(err)
-        })
-    };
-
-    serviceMap[decision]();
-  }
-
-  private async handleSuccess(message: string, updated?: Apelacion): Promise<void> {
-    const current = this.apelacion();
-    if (!updated?.id || updated.id !== current?.id || updated.expediente !== current?.expediente) {
+    this.writes.add(this.apelacionService.findByExpediente(op.expediente).subscribe({ next: ap => {
+      if (!this.current(generation) || this.operation !== op) return;
       this.loading.set(false);
-      this.successModalAbierto.set(false);
-      this.confirmModalAbierto.set(false);
-      this.error.set('No se recibió una confirmación verificable del recurso; consulte el expediente antes de repetir la operación.');
-      return;
-    }
-    const nextAppeal = updated;
-    this.apelacion.set(nextAppeal);
-
-    const files = this.documentosSeleccionados();
-    const resolucionId = nextAppeal?.resolucion?.id;
-
-    if (files.length > 0 && resolucionId) {
-      let exitos = 0;
-      const errores: string[] = [];
-
-      for (const file of files) {
-        try {
-          await firstValueFrom(
-            this.documentoService.upload(file, 'RESOLUCION_TTAIP', { resolucionId })
-          );
-          exitos++;
-        } catch (uploadErr: any) {
-          const msg = problemDetailsMessage(uploadErr, 'Error en el servidor');
-          errores.push(`El archivo ${file.name} no pudo subirse: ${msg}`);
-        }
+      if (!apelacionCompatible(ap, op.expediente) || !relacionesFinalCoherentes(ap) || ap.id !== op.apelacionId || this.selectedDecision() !== op.decision) { this.marcarIncierto('La consulta no corresponde al recurso o decisión del envío. No se confirma el registro.'); return; }
+      if (op.resolucionId == null || !finalCompatible(ap, op)) {
+        this.registroObservado.set(finalConsultada(ap)?.id || null);
+        this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin ID devuelto por el envío no se puede atribuir una resolución posterior, aunque coincidan los fundamentos. Revise el expediente.' : 'La resolución recuperada no coincide con el ID y contenido devueltos. No se repite el comando.'); return;
       }
-
-      this.loading.set(false);
-      if (errores.length > 0) {
-        this.mensaje.set(`${message} Se subieron ${exitos} de ${files.length} documentos correctamente. Errores: ${errores.join(' | ')}`);
-      } else {
-        this.mensaje.set(`${message} Todos los documentos de resolución (${files.length}) fueron subidos correctamente.`);
-      }
-      this.successModalAbierto.set(true);
-      this.confirmModalAbierto.set(false);
-    } else {
-      this.loading.set(false);
-      this.mensaje.set(files.length > 0
-        ? `${message} Los archivos seleccionados no se subieron: falta el identificador de resolución. Consulte el expediente.`
-        : message);
-      this.successModalAbierto.set(true);
-      this.confirmModalAbierto.set(false);
-    }
+      this.apelacion.set(ap); this.resultadoIncierto.set(false); this.error.set('');
+      if (!this.resultadoConfirmado()) { this.resultadoConfirmado.set(true); this.subirSiguiente(op, generation); }
+      else { this.mensaje.set('Resolución registrada y recuperada. Consulte por separado el estado de los archivos.'); this.successModalAbierto.set(true); }
+    }, error: () => { if (this.current(generation) && this.operation === op) this.marcarIncierto('No se pudo recuperar la resolución. Se conserva el contenido en memoria; consulte de nuevo sin reenviar.'); } }));
   }
-
-  private handleError(err: unknown): void {
-    this.loading.set(false);
-    this.confirmModalAbierto.set(false);
-    const apiError = err as { error?: { mensaje?: string } };
-    this.error.set(apiError.error?.mensaje || 'Error al procesar la resolucion final.');
+  seleccionarDocumento(event: Event): void {
+    const input = event.target as HTMLInputElement; if (!this.puedePrepararBorrador()) { input.value = ''; return; }
+    const errors: string[] = []; const accepted: File[] = [];
+    for (const file of Array.from(input.files || [])) { const error = validarDocumento(file); if (error) errors.push(error); else accepted.push(file); }
+    this.documentosSeleccionados.update(files => [...files, ...accepted]); this.error.set(errors.join(' ')); input.value = '';
   }
-
-  resolucionConfirmSummary(): ReferenceConfirmSummary[] {
-    const selected = this.selectedOption();
-    const summary: ReferenceConfirmSummary[] = [
-      { label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true },
-      { label: 'Sentido', value: selected?.label || '—' },
-      { label: 'Efecto', value: selected?.description || '—' }
-    ];
-
-    if (this.showOrden() && this.ordenarEntrega) {
-      summary.push({ label: 'Plazo entrega', value: `${this.plazoDias} días hábiles` });
-    }
-
-    summary.push({ label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` });
-    if (this.observacionesResolucion.trim()) {
-      summary.push({ label: 'Sustento específico', value: `${this.observacionesResolucion.trim().length} caracteres` });
-    }
-    const files = this.documentosSeleccionados();
-    if (files.length > 0) {
-      summary.push({ label: 'Resolución PDF', value: files.map(f => f.name).join(', ') });
-    }
-    return summary;
+  removerDocumento(index: number): void { if (this.puedePrepararBorrador()) this.documentosSeleccionados.update(files => files.filter((_, i) => i !== index)); }
+  private updateArchivo(entry: ArchivoFinal, values: Partial<ArchivoFinal>): void { Object.assign(entry, values); this.archivos.update(files => [...files]); }
+  private subirSiguiente(op: FinalOperacion, generation: number): void {
+    if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision || !this.resultadoConfirmado() || !positiveId(op.resolucionId)) return;
+    const entry = this.archivos().find(file => file.estado === 'seleccionado');
+    if (!entry) { this.finalizarArchivos(); return; }
+    this.loading.set(true); this.updateArchivo(entry, { estado: 'enviando' });
+    this.writes.add(this.documentoService.upload(entry.file, 'RESOLUCION_TTAIP', { resolucionId: op.resolucionId }).subscribe({ next: doc => {
+      if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
+      if (!archivoCompatible(doc, op.resolucionId!) || this.archivos().some(other => other !== entry && other.documentoId === doc.id)) { this.updateArchivo(entry, { estado: 'incierto', mensaje: 'La respuesta no acredita un documento distinto de esta resolución. No se repite la subida.' }); this.finalizarArchivos(); return; }
+      this.updateArchivo(entry, { documentoId: doc.id! }); this.verificarArchivo(entry, op, generation, () => this.subirSiguiente(op, generation));
+    }, error: err => {
+      if (!this.current(generation) || this.operation !== op) return;
+      const rejected = [400, 401, 403, 404, 409, 422].includes(err?.status);
+      this.updateArchivo(entry, { estado: rejected ? 'rechazado' : 'incierto', mensaje: rejected ? falloConsulta(err, 'el archivo').mensaje : 'Resultado de subida incierto, sin ID. Consulte los documentos; no se repite automáticamente.' });
+      if (rejected) this.subirSiguiente(op, generation); else this.finalizarArchivos();
+    } }));
   }
-
-  resolucionWarning(): ReferenceConfirmWarning {
-    return {
-      label: 'Última instancia administrativa',
-      detail: 'La resolución pone fin a la vía administrativa y será notificada a todas las partes.'
-    };
+  private verificarArchivo(entry: ArchivoFinal, op: FinalOperacion, generation: number, next: () => void): void {
+    this.writes.add(this.documentoService.getMetadata(entry.documentoId!).subscribe({ next: doc => {
+      if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
+      if (doc?.id === entry.documentoId && archivoCompatible(doc, op.resolucionId!)) this.updateArchivo(entry, { estado: 'registrado', mensaje: 'Documento registrado y recuperado por ID.' });
+      else this.updateArchivo(entry, { estado: 'incierto', mensaje: 'No se pudo comprobar la asociación del documento recuperado. No se repite la subida.' });
+      next();
+    }, error: () => { if (this.current(generation) && this.operation === op) { this.updateArchivo(entry, { estado: 'incierto', mensaje: 'La subida devolvió un ID, pero falló su recuperación. Consulte sin repetir la subida.' }); next(); } } }));
   }
-
-  resolucionSuccessTone(): ReferenceSuccessTone {
-    const decision = this.selectedDecision();
-    if (decision === 'fundado' || decision === 'fundado_en_parte') {
-      return 'success';
-    }
-    if (decision === 'sustraccion_materia') {
-      return 'gold';
-    }
-    if (decision === 'nulidad_del_acto') {
-      return 'gold';
-    }
-    return 'brand';
+  reintentarArchivos(): void {
+    const op = this.operation; if (!op || this.loading() || !this.resultadoConfirmado() || !this.contextoVigente() || this.selectedDecision() !== op.decision) return;
+    this.successModalAbierto.set(false); this.archivos().filter(f => f.estado === 'rechazado').forEach(f => this.updateArchivo(f, { estado: 'seleccionado' })); this.subirSiguiente(op, this.generation);
   }
-
-  resolucionSuccessTitle(): string {
-    return `Recurso declarado ${this.getDecisionLabel(this.selectedDecision())}`;
+  recuperarArchivo(entry: ArchivoFinal): void {
+    const op = this.operation; if (!op || !this.resultadoConfirmado() || this.loading() || !this.contextoVigente() || !positiveId(entry.documentoId) || !this.archivos().includes(entry)) return;
+    this.loading.set(true); this.verificarArchivo(entry, op, this.generation, () => this.finalizarArchivos());
   }
-
-  resolucionSuccessDescription(): string {
-    const decision = this.selectedDecision();
-    if (decision === 'fundado') {
-      return 'Se ampara el recurso. La entidad emplazada deberá entregar la información en el plazo ordenado.';
-    }
-    if (decision === 'fundado_en_parte') {
-      return 'Se ampara parcialmente el recurso. La entidad entregará la parte de información que corresponde.';
-    }
-    if (decision === 'infundado') {
-      return 'Se desestima el recurso. La conducta de la entidad queda confirmada.';
-    }
-    if (decision === 'infundado_en_parte') {
-      return 'Se desestima parcialmente. Se confirma parte de la conducta de la entidad.';
-    }
-    if (decision === 'improcedente') {
-      return 'El recurso resulta improcedente. El expediente queda archivado.';
-    }
-    if (decision === 'sustraccion_materia') {
-      return 'Se concluye por sustracción de la materia: la entidad ya entregó la información durante el trámite.';
-    }
-    if (decision === 'estese_a_lo_resuelto') {
-      return 'Se aplica un pronunciamiento previo al mismo asunto o pedido reiterado. El expediente queda cerrado.';
-    }
-    if (decision === 'nulidad_del_acto') {
-      return 'Se declara la nulidad por vicios graves y se ordena retrotraer o emitir nuevo pronunciamiento.';
-    }
-    if (decision === 'no_presentado') {
-      return 'El recurso no fue subsanado dentro del plazo legal; se tiene por no presentado y el expediente queda archivado.';
-    }
-    return 'Se concluye por desistimiento expreso del ciudadano.';
+  private finalizarArchivos(): void { this.loading.set(false); this.mensaje.set(!this.archivos().length ? 'Resolución registrada y recuperada. No se seleccionaron archivos.' : this.archivos().some(f => f.estado !== 'registrado') ? 'Resolución registrada y recuperada. Hay archivos pendientes o inciertos: no se confirma una recepción documental conjunta.' : 'Resolución registrada y recuperada. Los archivos seleccionados se comprobaron por separado; no es una operación conjunta.'); this.successModalAbierto.set(true); this.docsLoaded = false; }
+  cambiarTab(tab: ResolverTab): void { this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded) this.cargarDocumentos(); }
+  onTabKey(event: KeyboardEvent, tab: ResolverTab): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const index = this.tabs.findIndex(t => t.id === tab);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1 : (index + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length;
+    this.cambiarTab(this.tabs[next].id); this.host.nativeElement.querySelector<HTMLElement>('#final-tab-' + this.tabs[next].id)?.focus();
   }
-
-  resolucionPlazoDias(): number | null {
-    return this.showOrden() && this.ordenarEntrega ? Number.parseInt(this.plazoDias, 10) || 10 : null;
+  cargarDocumentos(): void {
+    const ap = this.apelacion(); if (!ap || !this.contextoVigente() || this.loadingApelacion() || this.loadingDocuments() || this.loadError()) return;
+    const generation = this.generation, groups: Omit<DocumentGroup, 'documents'>[] = [{ label: 'Apelación', relation: { apelacionId: ap.id } }];
+    if (positiveId(ap.solicitudId)) groups.push({ label: 'Solicitud de origen referenciada', relation: { solicitudId: ap.solicitudId } });
+    for (const [label, r] of [['Primera calificación', ap.resolucionPrimeraCalificacion], ['Segunda calificación', ap.resolucionSegundaCalificacion], ['Resolución final', this.resolucionRegistrada()]] as const) if (positiveId(r?.id)) groups.push({ label, relation: { resolucionId: r.id } });
+    if (positiveId(ap.expedienteTtaip?.id) && ap.expedienteTtaip?.numeroExpediente === ap.expediente) groups.push({ label: 'Expediente TTAIP', relation: { expedienteTtaipId: ap.expedienteTtaip.id } });
+    this.docReads.unsubscribe(); this.docReads = new Subscription(); this.documentGroups.set([]); this.documentError.set(''); this.loadingDocuments.set(true); this.previewTarget.set(null);
+    this.docReads.add(forkJoin(groups.map(g => this.documentoService.listByRelation(g.relation))).subscribe({ next: values => {
+      if (!this.current(generation)) return; const result = groups.map((g, i) => ({ ...g, documents: documentosRelacionados(values[i], g.relation) })); const ids = new Set<number>();
+      if (result.some(g => g.documents == null || g.documents.some(d => ids.has(d.id!) || !ids.add(d.id!)))) this.documentError.set('Información documental incompleta o asociada a otro recurso. No se muestran sustitutos.');
+      else { this.documentGroups.set(result as DocumentGroup[]); this.docsLoaded = true; } this.loadingDocuments.set(false);
+    }, error: err => { if (this.current(generation)) { this.loadingDocuments.set(false); this.documentError.set(falloConsulta(err, 'los documentos').mensaje); } } }));
   }
-
-  resolucionPlazoDescripcion(): string {
-    return this.showOrden() && this.ordenarEntrega
-      ? 'Plazo en que la entidad emplazada deberá entregar la información al ciudadano.'
-      : '';
+  private documentoActual(doc: DocumentoMetadata): boolean { return this.contextoVigente() && this.documentGroups().some(g => g.documents.some(d => d === doc && positiveId(d.id))); }
+  verDocumento(doc: DocumentoMetadata): void { if (this.documentoActual(doc)) this.previewTarget.set({ id: doc.id, nombre: doc.nombreOriginal || 'Nombre no informado', tipo: doc.contentType, expediente: this.apelacion()!.expediente }); }
+  descargarDocumento(doc: DocumentoMetadata): void {
+    if (!this.documentoActual(doc) || this.downloadingId() != null) return; const generation = this.generation, decision = this.selectedDecision(); this.downloadingId.set(doc.id!); this.downloadError.set('');
+    this.downloads.add(this.documentoService.download(doc.id!, doc.nombreOriginal || 'documento').subscribe({ next: ({ blob, filename }) => {
+      if (!this.current(generation) || this.selectedDecision() !== decision) return; this.downloadingId.set(null); const url = URL.createObjectURL(blob);
+      try { const a = document.createElement('a'); a.href = url; a.download = filename; a.rel = 'noopener'; a.click(); } finally { URL.revokeObjectURL(url); }
+    }, error: err => { if (this.current(generation)) { this.downloadingId.set(null); this.downloadError.set(falloConsulta(err, 'el documento').mensaje); } } }));
   }
-
-  resolucionSuccessMetadata(): ReferenceSuccessMeta[] {
-    const metadata: ReferenceSuccessMeta[] = [
-      { label: 'Fallo', value: this.getDecisionLabel(this.selectedDecision()) },
-      { label: 'Causal', value: this.causal() === 'confirmar' ? 'Confirmada' : this.causal() === 'revocar' ? 'Revocada' : '—' },
-      { label: 'Mandato y plazo', value: 'Consultar el acto registrado' },
-      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
-    ];
-    const files = this.documentosSeleccionados();
-    if (files.length > 0) {
-      metadata.push({ label: 'Archivos seleccionados (verificar recepción)', value: files.map(f => f.name).join(', ') });
-    }
-    return metadata;
-  }
-
-  resolucionNextSteps(): ReferenceSuccessNextStep[] {
-    const steps: ReferenceSuccessNextStep[] = [
-      { label: 'Notificación al ciudadano y a la entidad emplazada.' }
-    ];
-
-    if (this.showOrden() && this.ordenarEntrega) {
-      steps.push({
-        label: 'La entidad debe cumplir el mandato de entrega.',
-        hint: 'Consultar el mandato y su notificación en el expediente.'
-      });
-    }
-
-    if (this.selectedDecision() === 'nulidad_del_acto') {
-      steps.push({
-        label: 'La entidad deberá atender la orden de retrotraer o emitir nuevo pronunciamiento.'
-      });
-    }
-
-    steps.push({
-      label: 'La resolución agota la vía administrativa. Solo cabe acción contencioso-administrativa.'
-    });
-
-    return steps;
-  }
-
-  irPanelTtaip(): void {
-    this.successModalAbierto.set(false);
-    this.router.navigate(['/ttaip'], { state: { focusStage: 'resueltos' } });
-  }
-
-  puedeEmitirResolucion(): boolean {
-    return this.resolucionEstados.has(this.normalizeEstado(this.apelacion()?.estado));
-  }
-
-  getEstadoDisplay(value: string | undefined): string {
-    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
-  }
-
-  private validarResolucion(): boolean {
-    const currentAppeal = this.apelacion();
-    const decision = this.selectedDecision();
-
-    if (!currentAppeal) {
-      this.error.set('No se encontro la apelacion para resolver.');
-      return false;
-    }
-
-    if (!this.puedeEmitirResolucion()) {
-      this.error.set(`Esta apelacion ya no se encuentra en resolucion final. Estado actual: ${this.getEstadoDisplay(currentAppeal.estado)}.`);
-      return false;
-    }
-
-    if (!decision) {
-      this.error.set('Debe seleccionar una decision final.');
-      return false;
-    }
-
-    if (decision === 'nulidad_del_acto' && (!this.momentoVicio.trim() || !this.actuacionOrdenada.trim())) {
-      this.error.set('Indique el momento del vicio al que se retrotrae y la actuación ordenada.');
-      return false;
-    }
-
-    if (!this.fundamentos.trim()) {
-      this.error.set('Los fundamentos son obligatorios.');
-      return false;
-    }
-
-    this.error.set('');
-    return true;
-  }
-
-  private normalizeEstado(value: string | undefined | null): string {
-    return (value || '').trim().toUpperCase().replaceAll(' ', '_');
-  }
+  groupId(g: DocumentGroup): string { const [key, id] = Object.entries(g.relation)[0]; return 'final-docs-' + key + '-' + id; }
+  groupOpen(label: string): boolean { return !!this.documentSearch().trim() || !!this.documentFilter() || !this.closedGroups()[label]; }
+  toggleGroup(label: string): void { if (!this.documentSearch().trim() && !this.documentFilter()) this.closedGroups.update(g => ({ ...g, [label]: !g[label] })); }
+  getEstadoDisplay(value: string | undefined | null): string { return value?.replaceAll('_', ' ') || 'No informado'; }
+  fechaVisible(value: unknown): string | null { return fechaRegistrada(value) ? value : null; }
+  getInitials(name: string | undefined | null): string { return name?.trim().split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '—'; }
+  getDecisionLabel(decision: string | null): string { return this.options.find(o => o.id === decision)?.label || 'No seleccionada'; }
+  formatFileSize(size: number): string { return (size / 1024).toFixed(1); }
+  resolucionConfirmSummary(): ReferenceConfirmSummary[] { return [{ label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true }, { label: 'Admisión · ID', value: this.admision()?.id?.toString() || 'No identificada', mono: true }, { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) }, { label: 'Fundamentos', value: this.fundamentos.trim().length + ' caracteres' }, { label: 'Archivos seleccionados · subida independiente', value: this.documentosSeleccionados().length.toString() }]; }
+  resolucionWarning(): ReferenceConfirmWarning { return { label: 'Registro y documentos son operaciones distintas', detail: 'El registro no acredita emisión formal, firma, entrega, notificación eficaz ni cumplimiento. Los archivos se suben después; sus errores no revierten la decisión. No repita la decisión para reintentar archivos.' }; }
+  resolucionSuccessTone(): ReferenceSuccessTone { return this.archivos().some(f => f.estado !== 'registrado') ? 'warning' : 'brand'; }
+  resolucionSuccessTitle(): string { return this.resultadoConfirmado() ? 'Resolución registrada y recuperada' : 'Resolución consultada'; }
+  resolucionPlazoDias(): number | null { return null; }
+  resolucionPlazoDescripcion(): string { return ''; }
+  resolucionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.resolucionRegistrada(); return [{ label: 'Resolución · ID', value: r?.id?.toString() || 'No informado', mono: true }, { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' }, { label: 'Archivos comprobados por separado', value: this.archivos().filter(f => f.estado === 'registrado').length + ' de ' + this.archivos().length }]; }
+  resolucionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte los documentos y la evidencia de notificación de esta resolución en el expediente.' }, { label: 'Registro no equivale a entrega, firma ni cumplimiento. La base acreditada del plazo de cumplimiento continúa pendiente; no se calcula aquí.' }]; }
+  verResolucionRegistrada(): void { if (this.contextoVigente() && this.resolucionRegistrada() && !this.loadError()) this.successModalAbierto.set(true); }
+  cerrarResultado(): void { const generation = this.generation; this.successModalAbierto.set(false); queueMicrotask(() => { if (this.current(generation)) this.host.nativeElement.querySelector<HTMLElement>('#final-view-record')?.focus(); }); }
+  irExpediente(): void { if (this.contextoVigente() && this.apelacion()) void this.router.navigate(['/ttaip/apelacion', this.apelacion()!.expediente]); }
+  irPanelTtaip(): void { if (this.contextoVigente()) void this.router.navigate(['/ttaip'], { state: { focusStage: 'resueltos' } }); }
 }

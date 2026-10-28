@@ -23,20 +23,30 @@ describe.each([
 ] as const)('R2: consumidor %s', (_name, type, estado, decision, command, endpoint) => {
   const expediente = '00001-2026-JUS/TTAIP';
   const backend = { admitirApelacion: vi.fn(), declararInfundado: vi.fn() };
+  const admisionFinal = { id: 71, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'ADMISIBLE', fechaResolucion: '2026-10-01T10:00:00',
+    cedulas: [{ id: 61, destinatario: 'CIUDADANO' }, { id: 62, destinatario: 'ENTIDAD_PUBLICA' }] };
+  const notificaciones = [61, 62].map((cedulaId, i) => ({ id: 81 + i, cedulaId, destinatario: i ? 'ENTIDAD_PUBLICA' : 'CIUDADANO',
+    estado: 'ENTREGADA', estadoAcuse: 'ENTREGADO', fechaAcuse: '2026-10-02T10:00:00', acuseAutomatico: 'Acuse sintético', medio: 'CASILLA_ELECTRONICA' }));
   const ap = { id: 1, expediente, estado, ciudadanoNombre: 'Persona sintética', entidadNombre: 'Entidad sintética',
-    tipoOrigen: 'EXTERNA', solicitudId: null, calificacionPrimera: _name === 'segunda' ? 'INADMISIBLE' : null,
-    ...(_name === 'segunda' ? { calificacionSegunda: null } : {}), resoluciones: [],
-    resolucion: _name === 'final' ? { id: 91, numeroResolucion: 'REGISTRADA-91' } : null,
+    tipoOrigen: 'EXTERNA', solicitudId: null, calificacionPrimera: _name === 'segunda' ? 'INADMISIBLE' : _name === 'final' ? 'ADMISIBLE' : null,
+    calificacionSegunda: null, resuelta: false, resultado: null, entidadId: 3, resoluciones: _name === 'final' ? [admisionFinal] : [],
+    resolucion: null,
     resolucionPrimeraCalificacion: _name === 'primera' ? null : _name === 'segunda'
       ? { id: 71, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'INADMISIBLE', observaciones: 'Punto registrado' }
-      : { id: 91, numeroResolucion: 'REGISTRADA-91' },
-    resolucionSegundaCalificacion: _name === 'final' ? { id: 91, numeroResolucion: 'REGISTRADA-91' } : null };
+      : admisionFinal,
+    resolucionSegundaCalificacion: null,
+    ...(_name === 'final' ? { expedienteTtaip: { id: 41, numeroExpediente: expediente, notificaciones,
+      historial: notificaciones.map(n => ({ id: n.id + 100, tipoEvento: 'ACUSE_NOTIFICACION_REGISTRADO', referencia: `NOTIFICACION-${n.id}:ACUSE:ENTREGADO` })),
+      descargosEntidad: [{ id: 51, apelacionId: 1, expedienteTtaipId: 41, numeroExpediente: expediente, entidadId: 3, estadoDescargo: 'PRESENTADO',
+        fechaRequerimiento: '2026-10-02', fechaPresentacion: '2026-10-03', resumenDescargo: 'Descargos registrados' }] } } : {}) };
   const primeraConfirmada = { ...ap, estado: 'EN_RESOLUCION', calificacionPrimera: 'ADMISIBLE',
     resolucionPrimeraCalificacion: { id: 91, numeroResolucion: 'REGISTRADA-91', tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'ADMISIBLE', fundamentos: 'Fundamentos sintéticos del operador' } };
   // Second qualification cannot submit without an institutional receipt read. R2 checks the
   // persisted second act returned by GET, never a simulated successful submission.
   const segundaConsultada = { ...ap, estado: 'NOTIFICACION_SEGUNDA_CALIFICACION', calificacionSegunda: 'ADMITIDO',
     resolucionSegundaCalificacion: { id: 91, numeroResolucion: 'REGISTRADA-91', tipoResolucion: 'SEGUNDA_CALIFICACION', decision: 'ADMITIDO', fundamentos: 'Sustento registrado' } };
+  const finalConfirmada = { ...ap, estado: 'RESUELTO_INFUNDADO', resultado: 'INFUNDADO', resuelta: true,
+    resolucion: { id: 91, numeroResolucion: 'REGISTRADA-91', tipoResolucion: 'RESOLUCION_FINAL', decision: 'INFUNDADO', miembroTTAIPId: 7, fundamentos: 'Fundamentos sintéticos del operador' } };
   const consultas = { findByExpediente: vi.fn() };
   beforeEach(() => {
     vi.resetAllMocks();
@@ -45,7 +55,7 @@ describe.each([
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ expediente }) }, paramMap: of(convertToParamMap({ expediente })) } },
       { provide: ApelacionService, useValue: consultas },
       { provide: SolicitudService, useValue: {} },
-      { provide: AuthService, useValue: { cambiosSesion: signal(0), obtenerSesion: () => ({ usuarioId: 7, token: 'sesion-sintetica', tipoUsuario: 'TTAIP' }) } },
+      { provide: AuthService, useValue: { cambiosSesion: signal(0), obtenerSesion: () => ({ usuarioId: 7, miembroId: 7, token: 'sesion-sintetica', tipoUsuario: 'TTAIP' }) } },
       { provide: TtaipService, useValue: backend },
       { provide: DocumentoService, useValue: { listByRelation: vi.fn(() => of([])) } },
     ] });
@@ -60,6 +70,7 @@ describe.each([
   it('muestra solo la numeración del servidor en la confirmación y no ofrece firmar digitalmente', () => {
     if (_name === 'primera') consultas.findByExpediente.mockReturnValue(of(primeraConfirmada));
     if (_name === 'segunda') consultas.findByExpediente.mockReturnValue(of(segundaConsultada));
+    if (_name === 'final') consultas.findByExpediente.mockReturnValue(of(finalConfirmada));
     const f = pagina();
     f.componentInstance.successModalAbierto.set(true); f.componentInstance.confirmModalAbierto.set(true);
     f.detectChanges();
@@ -89,10 +100,11 @@ describe.each([
     expect(f.componentInstance.fundamentos).toBe('Fundamentos sintéticos del operador');
   });
   it('la actuación consultada o confirmada conserva identificadores del servidor sin acreditar firma', () => {
-    backend[endpoint].mockReturnValue(of(_name === 'primera' ? primeraConfirmada : ap));
+    backend[endpoint].mockReturnValue(of(_name === 'primera' ? primeraConfirmada : _name === 'final' ? finalConfirmada : ap));
     if (_name === 'segunda') consultas.findByExpediente.mockReturnValue(of(segundaConsultada));
     const f = pagina();
     if (_name === 'primera') consultas.findByExpediente.mockReturnValue(of(primeraConfirmada));
+    if (_name === 'final') consultas.findByExpediente.mockReturnValue(of(finalConfirmada));
     if (_name === 'segunda') { f.componentInstance.verActuacionRegistrada(); expect(backend[endpoint]).not.toHaveBeenCalled(); }
     else f.componentInstance[command]();
     f.detectChanges();
