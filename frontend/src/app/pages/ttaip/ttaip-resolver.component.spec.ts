@@ -82,10 +82,50 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   ])('datos incompletos o contradictorios no habilitan resolución: %j', patch => {
     const f = page(appeal(patch)); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false); expect(f.componentInstance.motivoNoDisponible()).not.toBe('');
   });
-  it('la segunda admisión mantiene la limitación de consulta institucional de recepción', () => {
+  it('la segunda admisión no habilita registro mientras la consulta institucional esté pendiente', () => {
     const f = page(appeal({ calificacionPrimera: 'INADMISIBLE', resolucionPrimeraCalificacion: { ...first, decision: 'INADMISIBLE' }, calificacionSegunda: 'ADMITIDO',
       resolucionSegundaCalificacion: { ...first, id: 72, tipoResolucion: 'SEGUNDA_CALIFICACION', decision: 'ADMITIDO' } })); prepare(f);
-    expect(f.componentInstance.motivoNoDisponible()).toContain('consulta institucional de recepción'); f.componentInstance.enviarResolucion(); expect(http.match(req => /recepcion|subsanacion/.test(req.url) || req.method !== 'GET')).toHaveLength(0);
+    expect(f.componentInstance.canSubmit()).toBe(false); f.componentInstance.enviarResolucion(); expect(http.match(req => req.method !== 'GET')).toHaveLength(0);
+    http.expectOne(api + '/ttaip/expedientes/41/requerimientos/71/subsanacion/recepcion').flush(null, { status: 403, statusText: 'Forbidden' });
+    expect(f.componentInstance.recepcion().estado).toBe('error'); expect(f.componentInstance.canSubmit()).toBe(false);
+  });
+
+  const receiptUrl = api + '/ttaip/expedientes/41/requerimientos/71/subsanacion/recepcion';
+  const second = { ...first, id: 72, tipoResolucion: 'SEGUNDA_CALIFICACION', decision: 'ADMITIDO' };
+  function afterSecond(patch: Record<string, unknown> = {}) { return appeal({ calificacionPrimera: 'INADMISIBLE',
+    resolucionPrimeraCalificacion: { ...first, decision: 'INADMISIBLE' }, calificacionSegunda: 'ADMITIDO', resolucionSegundaCalificacion: second,
+    resoluciones: [{ ...first, decision: 'INADMISIBLE' }, second], ...patch }); }
+  const receipt = (patch: Record<string, unknown> = {}) => ({ expedienteTtaipId: 41, apelacionId: 31, requerimientoId: 71, expediente,
+    estado: 'RECIBIDA', recepcionId: 151, fechaRecepcion: '2026-10-28T10:00:00', fundamentosAdicionales: 'Corrección sintética', documentos: [], ...patch });
+  it('segunda admisión con recepción, ambas eficacias y descargos habilita el comando final existente', () => {
+    const f = page(afterSecond()); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+    http.expectOne(receiptUrl).flush(receipt()); f.detectChanges(); expect(f.componentInstance.canSubmit()).toBe(true);
+    f.componentInstance.enviarResolucion(); http.expectOne(api + '/ttaip/resolucion/31/infundado').flush(afterSecond({ estado: 'RESUELTO_INFUNDADO', resuelta: true, resultado: 'INFUNDADO', resolucion: finalRecord }));
+    expect(f.componentInstance.successModalAbierto()).toBe(false);
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(afterSecond({ estado: 'RESUELTO_INFUNDADO', resuelta: true, resultado: 'INFUNDADO', resolucion: finalRecord }));
+    expect(f.componentInstance.resultadoConfirmado()).toBe(true); expect(f.componentInstance.successModalAbierto()).toBe(true);
+  });
+  it.each([
+    { notificaciones: notifications.slice(0, 1) }, { notificaciones: notifications.map(n => ({ ...n, estado: 'FALLIDA' })) },
+    { descargosEntidad: [] }, { descargosEntidad: [{ ...descargo, estadoDescargo: 'REQUERIDO' }] }, { historial: [] }
+  ])('la recepción no sustituye otras precondiciones finales: %j', patch => {
+    const f = page(afterSecond({ expedienteTtaip: { ...appeal().expedienteTtaip, ...patch } })); http.expectOne(receiptUrl).flush(receipt()); prepare(f);
+    expect(f.componentInstance.canSubmit()).toBe(false); f.componentInstance.enviarResolucion(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+  });
+  it.each([
+    { estado: 'AUSENTE', recepcionId: null, fechaRecepcion: null, fundamentosAdicionales: null },
+    { requerimientoId: 999 }, { apelacionId: 999 }, { expedienteTtaipId: 999 }, { documentos: undefined }
+  ])('recepción ausente o incompatible no permite la resolución: %j', patch => {
+    const f = page(afterSecond()); http.expectOne(receiptUrl).flush(receipt(patch)); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+  });
+  it.each([401, 403, 404, 409, 500, 0])('error de consulta institucional %i no es ausencia ni éxito', status => {
+    const f = page(afterSecond()); const r = http.expectOne(receiptUrl); if (status) r.flush(null, { status, statusText: 'Synthetic error' }); else r.error(new ProgressEvent('error'));
+    prepare(f); expect(f.componentInstance.recepcion().estado).toBe('error'); expect(f.componentInstance.canSubmit()).toBe(false); expect(f.componentInstance.successModalAbierto()).toBe(false);
+  });
+  it('cambiar sesión cancela la consulta institucional y limpia la recepción anterior', () => {
+    const f = page(afterSecond()); const r = http.expectOne(receiptUrl); TestBed.inject(AuthService).guardarSesion({ ...session, token: 'otra', usuarioId: 8 }); f.detectChanges();
+    expect(r.cancelled).toBe(true); http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(null, { status: 403, statusText: 'Forbidden' });
+    expect(f.componentInstance.recepcion().datos).toBeUndefined(); expect(f.componentInstance.canSubmit()).toBe(false);
   });
   it.each(['PENDIENTE', 'FALLIDA', 'OBSERVADA', 'ENVIADA'])('notificación %s no equivale a eficacia', estado => {
     const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, notificaciones: notifications.map(n => ({ ...n, estado })) } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);

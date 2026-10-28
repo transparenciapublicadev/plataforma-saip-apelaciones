@@ -3032,6 +3032,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/requerimientos/{requerimientoId}/subsanacion/recepcion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar recepción del requerimiento desde el expediente institucional
+         * @description Solo TTAIP o administrador según la autorización institucional vigente. AUSENTE indica un requerimiento válido sin recepción. Un error de relaciones o almacenamiento nunca significa ausencia. No modifica actuaciones ni acredita notificación, firma o emisión.
+         */
+        get: operations["consultarRecepcionSubsanacionTtaipInstitucional"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4764,6 +4784,23 @@ export interface components {
             /** Format: date-time */
             fechaRecepcion: string;
             respuesta: components["schemas"]["RespuestaDTO"];
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        ConsultaRecepcionSubsanacionTtaipDTO: {
+            /** Format: int64 */
+            expedienteTtaipId: number;
+            /** Format: int64 */
+            apelacionId: number;
+            /** Format: int64 */
+            requerimientoId: number;
+            expediente: string;
+            /** @enum {string} */
+            estado: "AUSENTE" | "RECIBIDA";
+            /** Format: int64 */
+            recepcionId: number | null;
+            /** Format: date-time */
+            fechaRecepcion: string | null;
+            fundamentosAdicionales: string | null;
             documentos: components["schemas"]["DocumentoMetadataDTO"][];
         };
     };
@@ -9935,6 +9972,83 @@ export interface operations {
                 };
             };
             /** @description Fallo interno o de almacenamiento; consultar recepción antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    consultarRecepcionSubsanacionTtaipInstitucional: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                requerimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción persistida o ausencia confirmada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaRecepcionSubsanacionTtaipDTO"];
+                };
+            };
+            /** @description Identificadores inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere TTAIP o administrador */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Expediente o requerimiento inexistente o ajeno al agregado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actuación o relaciones incompatibles */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error de consulta o almacenamiento; no acredita ausencia */
             500: {
                 headers: {
                     [name: string]: unknown;

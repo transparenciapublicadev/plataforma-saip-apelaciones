@@ -7755,6 +7755,108 @@
           }
         }
       }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/requerimientos/{requerimientoId}/subsanacion/recepcion": {
+      "get": {
+        "tags": [
+          "consulta-recepcion-subsanacion-ttaip-rest-controller"
+        ],
+        "summary": "Consultar recepción del requerimiento desde el expediente institucional",
+        "description": "Solo TTAIP o administrador según la autorización institucional vigente. AUSENTE indica un requerimiento válido sin recepción. Un error de relaciones o almacenamiento nunca significa ausencia. No modifica actuaciones ni acredita notificación, firma o emisión.",
+        "operationId": "consultarRecepcionSubsanacionTtaipInstitucional",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "requerimientoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recepción persistida o ausencia confirmada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaRecepcionSubsanacionTtaipDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Identificadores inválidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesión no válida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requiere TTAIP o administrador",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Expediente o requerimiento inexistente o ajeno al agregado",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Actuación o relaciones incompatibles",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error de consulta o almacenamiento; no acredita ausencia",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11893,6 +11995,70 @@
           "id",
           "respuesta",
           "solicitudId"
+        ]
+      },
+      "ConsultaRecepcionSubsanacionTtaipDTO": {
+        "type": "object",
+        "properties": {
+          "expedienteTtaipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "apelacionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requerimientoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "AUSENTE",
+              "RECIBIDA"
+            ]
+          },
+          "recepcionId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "fechaRecepcion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "fundamentosAdicionales": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          }
+        },
+        "required": [
+          "apelacionId",
+          "documentos",
+          "estado",
+          "expediente",
+          "expedienteTtaipId",
+          "fechaRecepcion",
+          "fundamentosAdicionales",
+          "recepcionId",
+          "requerimientoId"
         ]
       }
     },

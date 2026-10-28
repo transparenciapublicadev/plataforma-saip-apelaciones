@@ -2,8 +2,10 @@ import { Apelacion } from '../../models/apelacion.model';
 import { positiveId } from './ttaip-calificar.model';
 
 export type SegundaDecision = 'admitido' | 'improcedente' | 'no_presentado';
-export const RECEPCION_INSTITUCIONAL_NO_DISPONIBLE =
-  'La consulta institucional de recepción por apelación y requerimiento no está disponible en esta pantalla. No se puede comprobar aquí la presentación ni sus anexos. Esto no significa que no exista recepción.';
+export interface SegundaOperacion {
+  apelacionId: number; expediente: string; expedienteTtaipId: number; requerimientoId: number;
+  decision: 'admitido' | 'improcedente'; fundamentos: string; miembroId?: number; resolucionId?: number;
+}
 export const segundaOpciones = [
   { id: 'admitido' as const, label: 'ADMITIDO A TRÁMITE', description: 'Registro de segunda admisión · queda pendiente de notificaciones eficaces', accent: 'var(--success)', command: 'admitir' },
   { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Registro de segunda improcedencia · requiere recepción vinculada y fundamentos', accent: 'var(--muted-foreground)', command: 'inadmitir' },
@@ -22,6 +24,16 @@ export function segundaConsultada(ap: Apelacion | null) {
   return ap && positiveId(r?.id) && r?.tipoResolucion === 'SEGUNDA_CALIFICACION'
     && ['ADMITIDO', 'IMPROCEDENTE'].includes(r.decision || '') && ap.calificacionSegunda === r.decision
     && (extra?.apelacionId == null || extra.apelacionId === ap.id) ? r : null;
+}
+export function segundaCompatible(ap: Apelacion, op: SegundaOperacion): boolean {
+  if (!ap) return false;
+  const r = segundaConsultada(ap);
+  return ap.id === op.apelacionId && ap.expediente === op.expediente && ap.expedienteTtaip?.id === op.expedienteTtaipId
+    && requerimientoConsultado(ap)?.id === op.requerimientoId && !!r && positiveId(r.id)
+    && (op.resolucionId == null || r.id === op.resolucionId)
+    && r.decision === (op.decision === 'admitido' ? 'ADMITIDO' : 'IMPROCEDENTE') && r.fundamentos === op.fundamentos
+    && (op.miembroId == null || r.miembroTTAIPId === op.miembroId)
+    && ap.estado === (op.decision === 'admitido' ? 'NOTIFICACION_SEGUNDA_CALIFICACION' : 'RESUELTO_IMPROCEDENTE');
 }
 export function contextoSegunda(ap: Apelacion | null): 'incompleto' | 'registrada' | 'incompatible' | 'borrador' {
   if (!ap) return 'incompleto';

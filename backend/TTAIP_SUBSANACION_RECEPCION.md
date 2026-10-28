@@ -104,6 +104,45 @@ demuestra que ese flujo Android funcione. Android necesita integrar la extensió
 multipart y la consulta de recepción; esta entrega no declara verificada su
 presentación ni corrige Kotlin.
 
+## Consulta institucional del requerimiento (extensión 2026-10-28)
+
+`GET /api/ttaip/expedientes/{expedienteId}/requerimientos/{requerimientoId}/subsanacion/recepcion`
+es una lectura transaccional para TTAIP/administrador, conforme a la autorización
+institucional vigente. No introduce competencias por sala ni habilita funcionarios
+o ciudadanos en esta ruta. Comprueba agregado, apelación, requerimiento de primera
+calificación INADMISIBLE y asociaciones exclusivas de sus documentos. No crea
+expedientes, recepciones, actuaciones, evidencias ni fechas históricas.
+
+La respuesta `ConsultaRecepcionSubsanacionTtaipDTO` contiene IDs de expediente,
+apelación y requerimiento, código de expediente y estado `AUSENTE` o `RECIBIDA`.
+Incluye ID/fecha/fundamentos de recepción (nulos cuando está ausente) y metadatos
+documentales seguros. No devuelve clave de operación, huella interna ni rutas de
+almacenamiento. Cero archivos es válido para una recepción recibida. La descarga
+sigue usando `/api/documentos/{id}/download` y su autorización existente.
+
+Solo un 200 `AUSENTE` confirma ausencia para un requerimiento válido: 404 indica
+recurso inexistente o relación ajena; 409, actuación/relaciones incompatibles;
+500, fallo de consulta o almacenamiento. Un archivo retirado o físicamente ausente
+no transforma una recepción persistida en ausencia. 401/403 mantienen sus controles.
+La recuperación ciudadana con clave conserva sus reglas de titular/admin; esta
+extensión no permite al Tribunal usarla ni conocer su clave.
+
+Segunda calificación consulta esta recepción antes de ofrecer los comandos
+existentes admitir/inadmitir. Solo confirma con ID devuelto y GET compatible.
+Sin ID tras una respuesta perdida, consulta actuaciones sin atribuirlas por texto
+y bloquea otra escritura. Resolución final utiliza la misma lectura en el recorrido
+de segunda admisión, conservando ambas evidencias de eficacia y descargos, miembro
+de sesión y demás precondiciones. No se modifica la fecha base final pendiente,
+el reloj de subsanación, la recepción coordinada o las defensas transaccionales.
+
+Los snapshots incorporan únicamente esta ruta y su DTO desde el contrato real;
+`DocumentoMetadataDTO` y `ProblemDetail` se contrastan como referencias transitivas.
+No es sincronización global. Android conserva comandos existentes, pero aún no
+implementa esta consulta institucional. Su discrepancia multipart de subsanación
+descrita arriba sigue pendiente; no se modifica Kotlin ni se declara compatibilidad
+ejecutada. Las pruebas de lectura/transiciones con PostgreSQL/LOCAL son distintas
+de HttpTesting/jsdom Angular y de una comprobación de navegador pendiente.
+
 ## Comprobación manual pendiente
 
 1. En un entorno de pruebas con Flyway y LOCAL, iniciar sesión como titular de una

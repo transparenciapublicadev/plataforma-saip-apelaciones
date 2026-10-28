@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, forkJoin } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
+import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion } from '../../models/apelacion.model';
@@ -16,7 +17,9 @@ import { OfficialDocsSectionComponent } from './shared/official-docs-section.com
 import { OfficialPreviewComponent } from './shared/official-preview.component';
 import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
 import { positiveId, apelacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
-import { SegundaDecision, RECEPCION_INSTITUCIONAL_NO_DISPONIBLE, segundaOpciones, requerimientoConsultado, segundaConsultada, contextoSegunda, relojConsultado } from './ttaip-segunda-calificacion.model';
+import { SegundaDecision, SegundaOperacion, segundaCompatible, segundaOpciones, requerimientoConsultado, segundaConsultada, contextoSegunda, relojConsultado } from './ttaip-segunda-calificacion.model';
+import { consultarRecepcionInstitucional, sinConsultaRecepcion, motivoRecepcion } from './recepcion-institucional.model';
+import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { LucideArrowLeft, LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff,
   LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
@@ -24,7 +27,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideArrowLeft,
+    OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
     LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -34,10 +37,13 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly ttaipService = inject(TtaipService);
   private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
   private routeSub = new Subscription();
   private reads = new Subscription();
+  private writes = new Subscription();
+  private operation: SegundaOperacion | null = null;
   private docReads = new Subscription();
   private downloads = new Subscription();
   private generation = 0;
@@ -68,7 +74,12 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   readonly documentError = signal('');
   readonly downloadError = signal('');
   readonly downloadingId = signal<number | null>(null);
-  readonly recepcionNoDisponible = RECEPCION_INSTITUCIONAL_NO_DISPONIBLE;
+  readonly recepcion = signal(sinConsultaRecepcion());
+  readonly loading = signal(false);
+  readonly resultadoIncierto = signal(false);
+  readonly resultadoConfirmado = signal(false);
+  readonly registroObservado = signal<number | null>(null);
+  readonly rechazoBloqueante = signal(false);
   readonly tabs = [{ id: 'subsanacion' as const, label: 'Subsanación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
   readonly options = segundaOpciones;
   readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
@@ -107,21 +118,23 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(params => this.cargarApelacion(params.get('expediente') || '')); }
   ngOnDestroy(): void { this.destroyed = true; this.generation++; this.routeSub.unsubscribe(); this.cancelarLecturas(); }
   private cancelarLecturas(): void {
-    this.reads.unsubscribe(); this.docReads.unsubscribe(); this.downloads.unsubscribe();
-    this.reads = new Subscription(); this.docReads = new Subscription(); this.downloads = new Subscription();
+    this.reads.unsubscribe(); this.writes.unsubscribe(); this.docReads.unsubscribe(); this.downloads.unsubscribe();
+    this.reads = new Subscription(); this.writes = new Subscription(); this.docReads = new Subscription(); this.downloads = new Subscription();
   }
   private limpiarBorrador(): void { this.selectedDecision.set(null); this.fundamentos = ''; this.showPreview.set(false); this.confirmModalAbierto.set(false); }
   cargarApelacion(expediente: string): void {
     if (this.destroyed) return;
     const same = expediente === this.requested && this.session === this.sessionKey();
+    if (same && this.operation) { if (!this.loading()) this.recuperarResultado(); return; }
     if (same && this.loadingApelacion() && this.generation > 0) return;
     this.cancelarLecturas(); const generation = ++this.generation;
     this.requested = expediente; this.session = this.sessionKey(); this.revision = this.authService.cambiosSesion();
-    this.apelacion.set(null); this.loadingApelacion.set(true); this.loadError.set(''); this.error.set('');
+    this.apelacion.set(null); this.recepcion.set(sinConsultaRecepcion()); this.loading.set(false); this.rechazoBloqueante.set(false);
+    this.loadingApelacion.set(true); this.loadError.set(''); this.error.set('');
     this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
     this.documentGroups.set([]); this.documentSearch.set(''); this.documentFilter.set(''); this.closedGroups.set({});
     this.documentError.set(''); this.downloadError.set(''); this.loadingDocuments.set(false); this.downloadingId.set(null); this.docsLoaded = false;
-    if (!same) { this.previousId = null; this.previousRequirement = null; this.limpiarBorrador(); this.activeTab.set('subsanacion'); }
+    if (!same) { this.operation = null; this.resultadoIncierto.set(false); this.resultadoConfirmado.set(false); this.registroObservado.set(null); this.previousId = null; this.previousRequirement = null; this.limpiarBorrador(); this.activeTab.set('subsanacion'); }
     let account; try { account = this.authService.obtenerSesion(); } catch { account = null; }
     if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR'].includes(account.tipoUsuario || '')) {
       this.loadingApelacion.set(false); this.loadError.set('La sesión no permite consultar el Tribunal. Utilice el acceso interno.'); return;
@@ -136,15 +149,23 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
         const requirement = requerimientoConsultado(ap)?.id ?? null;
         if (this.previousRequirement !== requirement) this.limpiarBorrador();
         this.previousId = ap.id; this.previousRequirement = requirement; this.apelacion.set(ap); this.loadingApelacion.set(false);
+        if (requirement != null) this.reads.add(consultarRecepcionInstitucional(this.ttaipService, ap, requirement)
+          .subscribe(value => { if (this.current(generation)) this.recepcion.set(value); }));
       },
       error: err => { if (this.current(generation)) { this.loadError.set(falloConsulta(err, 'la apelación').mensaje); this.loadingApelacion.set(false); } }
     }));
   }
   reintentarConsulta(): void { this.cargarApelacion(this.requested); }
-  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && this.contexto() === 'borrador'; }
-  /** No institutional receipt read exists in the current contract: fail closed instead of guessing. */
-  puedeEmitirSegundaCalificacion(): boolean { return false; }
-  canSubmit(): boolean { return false; }
+  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && this.contexto() === 'borrador' && !this.operation && !this.loading(); }
+  motivoNoDisponible(): string {
+    if (!this.contextoVigente() || this.loadingApelacion() || this.loadError()) return this.loadError() || 'Consulte el contexto actual.';
+    if (this.resultadoIncierto()) return 'Resultado incierto: consulte sin repetir el comando.';
+    if (this.rechazoBloqueante()) return 'El servidor rechazó el acceso o la transición. Consulte nuevamente.';
+    if (this.contexto() !== 'borrador') return this.motivoContexto();
+    return motivoRecepcion(this.apelacion()!, this.requerimiento()!.id!, this.recepcion());
+  }
+  puedeEmitirSegundaCalificacion(): boolean { return !this.motivoNoDisponible(); }
+  canSubmit(): boolean { return this.puedeEmitirSegundaCalificacion() && !this.operation && !this.loading() && !this.validacionBorrador(); }
   seleccionarDecision(decision: SegundaDecision): void {
     if (!this.puedePrepararBorrador() || decision === 'no_presentado') return;
     this.confirmModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
@@ -157,13 +178,52 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
     return this.fundamentos.trim().length <= 5000 ? '' : 'Los fundamentos no pueden exceder 5000 caracteres.';
   }
   abrirConfirmacionCalificacion(): void {
-    if (!this.puedePrepararBorrador() || this.validacionBorrador()) { this.error.set(this.validacionBorrador() || 'Revise el contexto del expediente.'); return; }
+    if (!this.canSubmit()) { this.error.set((this.motivoNoDisponible() || this.validacionBorrador()) + ' No se ha enviado ningún comando; consulte el expediente.'); return; }
     this.confirmModalAbierto.set(true);
   }
   enviarCalificacion(): void {
-    if (this.destroyed) return;
-    this.confirmModalAbierto.set(false);
-    this.error.set('Registro no disponible: falta una consulta institucional de recepción vinculada; consulte el expediente. No se ha enviado ningún comando.');
+    if (this.destroyed || this.loading() || this.operation) return;
+    if (!this.canSubmit()) { this.error.set((this.motivoNoDisponible() || this.validacionBorrador()) + ' No se ha enviado ningún comando; consulte el expediente.'); return; }
+    const ap = this.apelacion()!, decision = this.selectedDecision() as 'admitido' | 'improcedente', generation = this.generation;
+    const miembroId = this.authService.obtenerSesion()?.miembroId;
+    const op: SegundaOperacion = { apelacionId: ap.id, expediente: ap.expediente, expedienteTtaipId: ap.expedienteTtaip!.id!,
+      requerimientoId: this.requerimiento()!.id!, decision, fundamentos: this.fundamentos.trim(), ...(positiveId(miembroId) ? { miembroId } : {}) };
+    this.operation = op; this.loading.set(true); this.error.set('');
+    const payload = { fundamentos: op.fundamentos, ...(op.miembroId != null ? { miembroId: op.miembroId } : {}) };
+    const command = decision === 'admitido' ? this.ttaipService.admitirApelacion(ap.id, payload) : this.ttaipService.inadmitirApelacion(ap.id, payload);
+    this.writes.add(command.subscribe({ next: updated => {
+      if (!this.current(generation) || this.operation !== op) return;
+      this.confirmModalAbierto.set(false);
+      if (!segundaCompatible(updated, op)) { this.marcarIncierto('La respuesta no identifica una segunda actuación compatible. Consulte sin repetir la escritura.'); return; }
+      op.resolucionId = updated.resolucionSegundaCalificacion!.id; this.consultarOperacion(op, generation);
+    }, error: err => {
+      if (!this.current(generation) || this.operation !== op) return;
+      this.loading.set(false); this.confirmModalAbierto.set(false);
+      if ([400, 401, 403, 404, 409, 422].includes(err?.status)) {
+        this.operation = null; this.rechazoBloqueante.set([401, 403, 404, 409].includes(err.status));
+        this.error.set(falloConsulta(err, 'el registro de segunda calificación').mensaje);
+      } else this.marcarIncierto('No se pudo confirmar el registro. El servidor puede haberlo aceptado. Consulte sin repetir la escritura.');
+    } }));
+  }
+  private marcarIncierto(message: string): void {
+    this.loading.set(false); this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.resultadoIncierto.set(true); this.error.set(message);
+  }
+  recuperarResultado(): void { if (this.operation && !this.loading() && this.contextoVigente()) this.consultarOperacion(this.operation, this.generation); }
+  private consultarOperacion(op: SegundaOperacion, generation: number): void {
+    this.loading.set(true);
+    this.writes.add(this.apelacionService.findByExpediente(op.expediente).subscribe({ next: ap => {
+      if (!this.current(generation) || this.operation !== op) return;
+      this.loading.set(false);
+      if (!apelacionCompatible(ap, op.expediente) || ap.id !== op.apelacionId || requerimientoConsultado(ap)?.id !== op.requerimientoId) {
+        this.marcarIncierto('La consulta no corresponde al recurso y requerimiento enviados.'); return;
+      }
+      if (op.resolucionId != null && this.selectedDecision() === op.decision && segundaCompatible(ap, op)) {
+        this.apelacion.set(ap); this.operation = null; this.resultadoIncierto.set(false); this.error.set(''); this.resultadoConfirmado.set(true); this.successModalAbierto.set(true); return;
+      }
+      this.registroObservado.set(segundaConsultada(ap)?.id ?? null);
+      this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin un ID devuelto por el envío no se atribuye una actuación posterior por coincidencia de texto. Revise el expediente.'
+        : 'La actuación recuperada no coincide con el ID y contenido confirmados. No se repite el comando.');
+    }, error: () => { if (this.current(generation) && this.operation === op) this.marcarIncierto('No se pudo recuperar la actuación. Los fundamentos se conservan; consulte sin reenviar.'); } }));
   }
   togglePreview(): void { if (this.contextoVigente() && this.selectedDecision() && this.selectedDecision() !== 'no_presentado') this.showPreview.update(value => !value); }
   getObservaciones(): string[] { const value = this.requerimiento()?.observaciones; return typeof value === 'string' ? value.split(/\r?\n/).map(line => line.trim()).filter(Boolean) : []; }
@@ -175,7 +235,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
     if (this.contexto() === 'registrada') return 'Hay una segunda actuación registrada. No se habilita otra calificación; consulte su ID y sus notificaciones.';
     if (this.contexto() === 'incompleto') return 'Información incompleta o asociaciones incompatibles de primera calificación, requerimiento o segunda actuación.';
     if (this.contexto() === 'incompatible') return 'Estado incompatible con la preparación de segunda calificación: ' + this.getEstadoDisplay(this.apelacion()?.estado) + '.';
-    return 'Preparación local de borradores. El registro sigue no disponible hasta disponer de consulta institucional de recepción.';
+    return 'Revise la recepción del requerimiento antes de registrar la segunda calificación. Los borradores no son documentos emitidos.';
   }
   cambiarTab(tab: 'subsanacion' | 'adjuntos'): void { this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded) this.cargarDocumentos(); }
   onTabKey(event: KeyboardEvent, tab: 'subsanacion' | 'adjuntos'): void {
@@ -234,13 +294,13 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   segundaConfirmSummary(): ReferenceConfirmSummary[] {
     return [{ label: 'Expediente consultado', value: this.apelacion()?.expediente || '—', mono: true },
       { label: 'Requerimiento · ID', value: this.requerimiento()?.id?.toString() || 'No identificado', mono: true },
-      { label: 'Selección local para borrador', value: this.getDecisionLabel(this.selectedDecision()) },
+      { label: 'Decisión que se registrará', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Fundamentos locales', value: String(this.fundamentos.trim().length) + ' caracteres' }];
   }
-  segundaWarning(): ReferenceConfirmWarning { return { label: 'Solo revisión local', detail: 'Cerrar esta revisión no registra ni notifica una actuación. El envío no está disponible; falta consultar la recepción del requerimiento.' }; }
+  segundaWarning(): ReferenceConfirmWarning { return { label: 'Registro de actuación', detail: 'El servidor comprobará las precondiciones. Registrar no acredita notificación eficaz, firma ni emisión documental.' }; }
   verActuacionRegistrada(): void { if (this.contextoVigente() && this.segundaActuacion() && !this.loadError()) this.successModalAbierto.set(true); }
   segundaSuccessTone(): ReferenceSuccessTone { return 'warning'; }
-  segundaSuccessTitle(): string { return 'Segunda calificación consultada · ' + (this.segundaActuacion()?.decision || 'No identificada'); }
+  segundaSuccessTitle(): string { return (this.resultadoConfirmado() ? 'Segunda calificación registrada y recuperada · ' : 'Segunda calificación consultada · ') + (this.segundaActuacion()?.decision || 'No identificada'); }
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.segundaActuacion();
     return [{ label: 'Actuación · ID', value: r?.id?.toString() || 'No informado', mono: true },
