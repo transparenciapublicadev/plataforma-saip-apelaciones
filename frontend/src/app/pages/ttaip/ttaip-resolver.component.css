@@ -1,2 +1,9 @@
-/* Estilos TTAIP resolver */
-
+:host { display: block; }
+.final-page { overflow-wrap: anywhere; }
+.final-page .field-input, .final-page section { min-width: 0; }
+.final-page [hidden] { display: none; }
+.final-page button:focus-visible, .final-page a:focus-visible, .final-page input:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.final-page [aria-pressed="true"]:not(.w-full) { background: var(--brand-subtle); color: var(--brand-700); border-color: var(--brand-700); }
+@media (prefers-reduced-motion: reduce) {
+  .final-page *, .final-page *::before, .final-page *::after { animation: none !important; transition: none !important; }
+}
