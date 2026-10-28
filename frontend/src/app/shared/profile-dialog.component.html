@@ -1,0 +1,45 @@
+<div class="profile-overlay">
+  <section class="profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title"
+    aria-describedby="profile-description" [appModalFocus]="true" (modalEscape)="cerrar()" tabindex="-1">
+    <div class="flex items-start justify-between gap-4 mb-5">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="profile-icon"><svg lucideUserRound class="w-5 h-5" aria-hidden="true"></svg></span>
+        <div><h2 id="profile-title" class="font-display">Mi perfil</h2>
+          <p id="profile-description" class="text-sm text-muted-foreground">Consulta tus datos registrados. Solo lectura.</p></div>
+      </div>
+      <button type="button" class="rounded-md p-1.5 shrink-0" aria-label="Cerrar perfil" (click)="cerrar()"><svg lucideX class="w-5 h-5" aria-hidden="true"></svg></button>
+    </div>
+
+    <div [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <p role="status" class="py-6 text-sm text-muted-foreground">Consultando tu perfil…</p>
+      } @else if (error()) {
+        <div role="alert" class="alert alert-error"><p>{{ error() }}</p>
+          @if (retry()) { <button type="button" class="btn-ghost-brand mt-3" (click)="cargar()">Reintentar consulta</button> }
+        </div>
+      } @else if (perfil(); as p) {
+        <div class="space-y-4">
+          <dl class="profile-summary grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl p-3 text-sm">
+            <div><dt class="text-muted-foreground">DNI registrado</dt><dd class="font-mono font-semibold">{{ p.dni || 'No informado en esta consulta' }}</dd></div>
+            <div><dt class="text-muted-foreground">Cuenta</dt><dd class="font-semibold">Ciudadano</dd></div>
+          </dl>
+          <p class="text-xs text-muted-foreground">Esta consulta no identifica el tipo de persona ni proporciona RUC o datos del representante. No acredita una verificación de identidad.</p>
+          <div class="field"><label class="field-label" for="own-profile-name">Nombre completo</label><input id="own-profile-name" class="field-input" readonly [value]="p.nombre || ''" placeholder="No informado" /></div>
+          <div class="field"><label class="field-label" for="own-profile-email">Correo electrónico</label><input id="own-profile-email" class="field-input" readonly [value]="p.email" /></div>
+          <div class="field"><label class="field-label" for="own-profile-phone">Teléfono</label><input id="own-profile-phone" class="field-input" readonly [value]="p.telefono || ''" placeholder="No informado" /></div>
+          <div class="field"><label class="field-label" for="own-profile-address">Dirección</label><textarea id="own-profile-address" class="field-input" readonly rows="2" [value]="p.direccion || ''" placeholder="No informada"></textarea></div>
+          <p class="text-xs text-muted-foreground">Departamento, provincia y distrito no están disponibles como campos separados en esta consulta.</p>
+        </div>
+      }
+    </div>
+    <div class="profile-limit rounded-xl p-3 mt-4 text-sm" id="profile-limit">
+      <p class="font-semibold">Edición no disponible en este diálogo</p>
+      <p>Puedes consultar tus datos registrados. La actualización de datos de contacto aún no está habilitada desde tu perfil.</p>
+      <p class="mt-2 text-xs text-muted-foreground">Aquí no se cambia el documento, correo ni contraseña, y no se envían mensajes de verificación.</p>
+    </div>
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-6">
+      <button type="button" class="btn-ghost-brand !px-5" (click)="cerrar()">Cerrar</button>
+      <button type="button" class="btn-brand !px-6" disabled aria-describedby="profile-limit">Guardar cambios</button>
+    </div>
+  </section>
+</div>

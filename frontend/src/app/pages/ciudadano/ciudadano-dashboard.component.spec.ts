@@ -74,6 +74,12 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
 
   afterEach(() => { fixture.destroy(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
+  it('opens the shared own-profile consultation from the citizen panel, without a local save', () => {
+    const open = vi.spyOn(component.profileDialog, 'abrir'); fixture.detectChanges();
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent?.trim() === 'Mi perfil')!;
+    expect(button.disabled).toBe(false); expect(button.getAttribute('aria-haspopup')).toBe('dialog'); button.click(); expect(open).toHaveBeenCalledOnce();
+  });
+
   it('recovers after a failed query without preserving the old error', () => {
     find.mockReturnValueOnce(throwError(() => ({ status: 503 })));
     fixture.detectChanges(); expect(component.error()).not.toBe('');

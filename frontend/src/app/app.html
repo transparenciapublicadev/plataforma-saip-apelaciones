@@ -162,6 +162,9 @@
                   </div>
                 </div>
                 <div class="py-1.5 px-1.5">
+                  @if (tipoUsuario() === 'CIUDADANO') {
+                    <button type="button" data-profile-open="desktop" (click)="profileDialog.abrir()" class="dropdown-item w-full" role="menuitem" aria-haspopup="dialog"><svg lucideUserPen class="w-4 h-4" aria-hidden="true"></svg>Mi perfil</button>
+                  }
                   @switch (tipoUsuario()) {
                     @case ('CIUDADANO') {
                       <a routerLink="/ciudadano" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
@@ -314,6 +317,9 @@
             }
           }
           <div class="border-t border-[var(--border)] pt-2 mt-2">
+            @if (tipoUsuario() === 'CIUDADANO') {
+              <button type="button" data-profile-open="mobile" (click)="profileDialog.abrir()" class="mobile-nav-item w-full" aria-haspopup="dialog"><svg lucideUserPen class="w-4 h-4" aria-hidden="true"></svg>Mi perfil</button>
+            }
             <button (click)="logout()" class="mobile-nav-item text-[var(--estado-rojo)] w-full">
               <svg lucideLogOut class="w-4 h-4"></svg>
               Cerrar sesión
@@ -454,6 +460,10 @@
 }
 
 <app-guided-tour />
+
+@if (profileDialog.abierto()) {
+  <app-profile-dialog />
+}
 
 @if (avisoCierreSesion()) {
   <div role="status" aria-live="polite"

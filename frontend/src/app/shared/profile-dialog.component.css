@@ -1,0 +1,11 @@
+:host { display: contents; }
+.profile-overlay { position: fixed; inset: 0; z-index: 100; background: rgb(0 0 0 / .5); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.profile-panel { width: 100%; max-width: 36rem; max-height: 90dvh; overflow-y: auto; border-radius: 1rem; padding: 1.5rem; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg); color: var(--foreground); font-family: Inter, sans-serif; overflow-wrap: anywhere; }
+h2 { font-size: 26px; line-height: 1.1; }
+.profile-icon { width: 2.5rem; height: 2.5rem; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--brand-50, var(--muted)); color: var(--brand-700); }
+.profile-summary, .profile-limit { background: var(--muted); border: 1px solid var(--border); }
+.field-input { width: 100%; min-width: 0; }
+textarea { resize: vertical; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+button:disabled { opacity: .65; cursor: not-allowed; }
+@media (min-width: 768px) { .profile-panel { padding: 2rem; } }
