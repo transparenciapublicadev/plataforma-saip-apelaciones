@@ -1,0 +1,9 @@
+:host { display: block; }
+h2 { font-family: var(--font-serif); font-optical-sizing: auto; font-weight: 500; font-size: 26px; letter-spacing: -.015em; scroll-margin-top: 9rem; }
+.info-card { border-radius: .5rem; padding: 1.25rem; background: var(--card); border: 1px solid var(--border); min-width: 0; }
+.info-card p:not(.text-sm) { font-size: 15px; line-height: 1.625; }
+section { overflow-wrap: anywhere; }
+a:not(.btn-brand):not(.btn-ghost-brand) { color: var(--brand-700); text-decoration: underline; text-underline-offset: 3px; }
+a:focus-visible, h2:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 4px; }
+.info-project-icon { width: 3.5rem; height: 3.5rem; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--gold); }
+@media (prefers-reduced-motion: reduce) { a { transition: none !important; } }

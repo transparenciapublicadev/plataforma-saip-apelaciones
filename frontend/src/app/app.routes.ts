@@ -39,6 +39,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/public/ayuda.component').then(m => m.AyudaComponent)
   },
   {
+    path: 'documentacion',
+    title: 'Documentación | Yaiku',
+    data: { infoPage: 'documentacion' },
+    loadComponent: () => import('./pages/public/info-pages.component').then(m => m.InfoPagesComponent)
+  },
+  {
+    path: 'acerca',
+    title: 'Acerca de Yaiku',
+    data: { infoPage: 'acerca' },
+    loadComponent: () => import('./pages/public/info-pages.component').then(m => m.InfoPagesComponent)
+  },
+  {
     path: 'ciudadano',
     loadComponent: () => import('./pages/ciudadano/ciudadano-dashboard.component').then(m => m.CiudadanoDashboardComponent),
     canActivate: [tipoUsuarioGuard('CIUDADANO')]

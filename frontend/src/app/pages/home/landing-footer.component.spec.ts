@@ -33,9 +33,9 @@ describe('Pie exclusivo de Landing', () => {
     expect(links.some(a => a.getAttribute('href') === '/#estadisticas')).toBe(true);
     expect(links.some(a => a.getAttribute('href') === '#')).toBe(false);
   });
-  it('privacidad, términos, accesibilidad y documentación ausentes se indican sin enlaces falsos', () => {
+  it('privacidad, términos y accesibilidad pendientes siguen sin enlaces falsos', () => {
     const f = page(); const anchors = Array.from(f.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>);
-    expect(anchors.some(a => /Privacidad|Términos|Accesibilidad|Documentación|Acerca/.test(a.textContent ?? ''))).toBe(false);
+    expect(anchors.some(a => /Privacidad|Términos|Accesibilidad/.test(a.textContent ?? ''))).toBe(false);
     expect(f.nativeElement.textContent).toContain('Privacidad — no disponible');
     expect(f.nativeElement.textContent).not.toMatch(/WCAG 2\.[12]/);
   });
