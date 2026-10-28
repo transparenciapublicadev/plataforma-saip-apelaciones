@@ -10,7 +10,7 @@ import {
   LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
   LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
   LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
-  LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu
+  LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
 } from '@lucide/angular';
 
 import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
@@ -18,17 +18,19 @@ import { GuidedTourService } from './core/guided-tour/guided-tour.service';
 import { HostListener, effect } from '@angular/core';
 import { NotificationBellComponent } from './shared/notification-bell.component';
 import { LandingFooterComponent } from './pages/home/landing-footer.component';
+import { ProfileDialogComponent } from './shared/profile-dialog.component';
+import { ProfileDialogService } from './services/profile-dialog.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    GuidedTourComponent, NotificationBellComponent, LandingFooterComponent,
+    GuidedTourComponent, NotificationBellComponent, LandingFooterComponent, ProfileDialogComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
-    LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu
+    LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -43,6 +45,7 @@ export class App {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly mainContent = viewChild<ElementRef<HTMLElement>>('mainContent');
+  readonly profileDialog = inject(ProfileDialogService);
 
   readonly menuAbierto = signal(false);
   readonly mobileMenuAbierto = signal(false);

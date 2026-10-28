@@ -7,6 +7,7 @@ import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
+import { ProfileDialogService } from '../../services/profile-dialog.service';
 import { Solicitud } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { parseISO } from 'date-fns';
@@ -103,6 +104,7 @@ import { PaginationComponent } from '../../shared/pagination.component';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
+  readonly profileDialog = inject(ProfileDialogService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly tourService = inject(GuidedTourService);
   private readonly authService = inject(AuthService);
