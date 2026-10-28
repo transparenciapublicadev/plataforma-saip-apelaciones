@@ -1,4 +1,15 @@
 /* ComplianceTrackingComponent — Seguimiento de Cumplimiento TTAIP */
+:host { display: block; }
+.compliance-page { overflow-wrap: anywhere; }
+.compliance-page aside, .compliance-page section, .compliance-page .form-shell { min-width: 0; }
+.compliance-page :where(button,a,input,textarea,select):focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.compliance-page textarea { min-height: 92px; }
+@media (max-width: 480px) {
+  .compliance-toast { left: 1rem; right: 1rem; bottom: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .compliance-page *, .compliance-page *::before, .compliance-page *::after { animation: none !important; transition: none !important; }
+}
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

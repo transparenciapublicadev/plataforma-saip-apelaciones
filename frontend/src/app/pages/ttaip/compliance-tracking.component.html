@@ -1,10 +1,10 @@
-<div class="min-h-screen bg-background">
+<div class="compliance-page min-h-screen bg-background">
   <!-- Hero / Encabezado institucional con gradiente TTAIP -->
   <div class="relative bg-brand-gradient text-white overflow-hidden">
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-        <svg lucideArrowLeft class="w-4 h-4"></svg>
+        <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>
         Volver al panel TTAIP
       </a>
       <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Seguimiento</span>
@@ -29,7 +29,18 @@
     @if (informacionIncompleta()) {
       <div class="form-shell p-4 mb-4 text-sm" role="status">
         Información incompleta. Faltan datos del servidor; no se confirma la ausencia de actuaciones.
+        @for (fallo of fallosParciales(); track $index) { <p role="alert" class="mt-2">{{ fallo }}</p> }
       </div>
+    }
+    @if (!cargando() && !mensajeConsulta() && expedientesConsultados()) {
+      <p class="text-xs text-muted-foreground mb-4" role="status">Alcance recuperado: {{ expedientesRecuperados() }} de {{ expedientesConsultados() }} expedientes identificados en la consulta de apelaciones resueltas; {{ items().length }} seguimientos verificables. Los indicadores describen esta consulta, no un total histórico universal. Los parciales y cierres operativos conservan su estado propio.</p>
+    }
+    @if (requiereVerificacion()) {
+      <section class="form-shell p-4 mb-4 text-sm" aria-label="Actuación pendiente de comprobar">
+        <p role="alert">Hay una actuación pendiente de comprobar. No se enviarán nuevos comandos hasta reconciliarla. Cancelar una petición del cliente no revierte una escritura aceptada.</p>
+        <button type="button" class="btn-ghost-brand mt-3" [disabled]="enviando()" (click)="recuperarActuacion()">Consultar actuación sin repetirla</button>
+        <p class="text-xs text-muted-foreground mt-2">La observación y el contexto de la operación se conservan solo en memoria. Se pierden al recargar la página, cambiar de sesión o abandonar esta pantalla.</p>
+      </section>
     }
     <!-- Indicadores / KPI Cards -->
     @if (!cargando() && !mensajeConsulta() && !informacionIncompleta()) {
@@ -37,13 +48,13 @@
       <!-- Pendientes -->
       <div class="rounded-lg p-4 flex items-center gap-3 bg-card border border-border">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
-          <svg lucideClock class="w-5 h-5" style="color: var(--warning)"></svg>
+          <svg aria-hidden="true" lucideClock class="w-5 h-5" style="color: var(--warning)"></svg>
         </div>
         <div>
           <div class="font-display text-2xl leading-none" style="color: var(--warning)">
             {{ resumen().pendientes }}
           </div>
-          <div class="eyebrow mt-1">Pendientes</div>
+          <div class="eyebrow mt-1">Pendientes / observados</div>
         </div>
       </div>
 
@@ -53,7 +64,7 @@
         [style.background]="resumen().vencidos > 0 ? 'var(--brand-subtle)' : 'var(--card)'"
         [style.border]="resumen().vencidos > 0 ? '1px solid var(--brand-200)' : '1px solid var(--border)'">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
-          <svg lucideAlertTriangle class="w-5 h-5" style="color: var(--brand-700)"></svg>
+          <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5" style="color: var(--brand-700)"></svg>
         </div>
         <div>
           <div class="font-display text-2xl leading-none" style="color: var(--brand-700)">
@@ -66,7 +77,7 @@
       <!-- Cumplidos / Cerrados -->
       <div class="rounded-lg p-4 flex items-center gap-3 bg-card border border-border">
         <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 bg-card border border-border">
-          <svg lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
+          <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
         </div>
         <div>
           <div class="font-display text-2xl leading-none" style="color: var(--success)">
@@ -94,11 +105,11 @@
       <!-- Estado Vacío -->
       <div class="form-shell p-12 text-center">
         <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-          <svg lucideInbox class="w-7 h-7" style="color: var(--brand-700)"></svg>
+          <svg aria-hidden="true" lucideInbox class="w-7 h-7" style="color: var(--brand-700)"></svg>
         </div>
-        <h3 class="font-display tracking-wide mt-4 text-xl">Sin seguimientos recuperados</h3>
+        <h2 class="font-display tracking-wide mt-4 text-xl">{{ informacionIncompleta() ? 'No hay seguimientos verificables en el resultado recuperado' : 'Sin seguimientos recuperados' }}</h2>
         <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
-          No se recuperaron seguimientos registrados para las apelaciones resueltas consultadas.
+          {{ informacionIncompleta() ? 'La consulta es incompleta; no permite afirmar ausencia de seguimientos.' : 'Las consultas correctas no devolvieron seguimientos para las apelaciones resueltas recuperadas.' }}
           La resolución fundada no equivale a un seguimiento creado. La apertura desde esta pantalla
           no está disponible mientras falte acreditar la base del plazo de cumplimiento.
         </p>
@@ -111,13 +122,15 @@
         <aside class="form-shell h-fit lg:sticky lg:top-28">
           <div class="form-section-header">
             <span class="eyebrow">{{ items().length }} seguimiento{{ items().length === 1 ? '' : 's' }}</span>
-            <h2 class="form-section-title">Resoluciones fundadas</h2>
+            <h2 class="form-section-title">Seguimientos registrados</h2>
           </div>
           <div class="p-3 space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar">
             @for (item of items(); track item.id) {
               <button
                 type="button"
                 (click)="seleccionarItem(item.id)"
+                [attr.aria-pressed]="item.id === selId()"
+                aria-controls="compliance-detail"
                 class="w-full text-left rounded-md p-3 transition-colors cursor-pointer"
                 [style.background]="item.id === sel()?.id ? 'var(--brand-subtle)' : 'var(--card)'"
                 [style.border]="'1px solid ' + (item.id === sel()?.id ? 'var(--brand-200)' : 'var(--border)')">
@@ -125,13 +138,14 @@
                 <div class="flex items-center justify-between gap-2">
                   <div class="font-mono text-[11px]" style="color: var(--brand-700)">
                     {{ item.expedienteTTAIP }}
+                    <span class="block text-muted-foreground">Seguimiento ID {{ item.id }} · Resolución ID {{ item.registro.resolucionId || 'No informada' }}</span>
                   </div>
                   <!-- Badge de Estado -->
-                  <app-status-badge [status]="estadoLabels[item.estado]"></app-status-badge>
+                  <app-status-badge [status]="estadoLabels[item.estado]" [toneOverride]="item.estado === 'cumplido_parcial' ? 'gold' : null"></app-status-badge>
                 </div>
 
-                <div class="text-sm font-medium mt-1 truncate">{{ item.entidad }}</div>
-                <div class="text-xs text-muted-foreground mt-0.5">Límite registrado: {{ item.fechaLimite || 'No informada' }} (registrado)</div>
+                <div class="text-sm font-medium mt-1">{{ item.entidad }}</div>
+                <div class="text-xs text-muted-foreground mt-0.5">Límite registrado: {{ item.fechaLimite || 'No informada' }} </div>
               </button>
             }
           </div>
@@ -139,23 +153,24 @@
 
         <!-- DETALLE DERECHO: Expediente, Cumplimiento y Acciones -->
         @if (sel(); as itemActual) {
-          <div class="space-y-6">
+          <section id="compliance-detail" aria-labelledby="compliance-selection" class="space-y-6 min-w-0">
 
             <!-- Ficha del Expediente -->
             <div class="form-shell p-6 space-y-5 text-sm">
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <span class="eyebrow" style="color: var(--brand-700)">Expediente TTAIP</span>
-                  <div class="font-mono text-sm mt-0.5 font-semibold">{{ itemActual.expedienteTTAIP }}</div>
+                  <div class="font-mono text-sm mt-0.5">{{ itemActual.expedienteTTAIP }}</div>
+                  <h2 id="compliance-selection" class="text-xs text-muted-foreground mt-1" aria-live="polite">Seguimiento ID {{ itemActual.id }}</h2>
                 </div>
 
                 <!-- Badge de Estado -->
-                <app-status-badge [status]="estadoLabels[itemActual.estado]"></app-status-badge>
+                <app-status-badge [status]="estadoLabels[itemActual.estado]" [toneOverride]="itemActual.estado === 'cumplido_parcial' ? 'gold' : null"></app-status-badge>
               </div>
 
               <!-- Banner de Decisión Colegiada -->
               <div class="rounded-md p-4 flex items-start gap-3" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
-                <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
+                <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
                 <div>
                   <div class="font-display tracking-wider font-semibold">
                     RESOLUCIÓN {{ (itemActual.resultado || 'Decisión no informada') | uppercase }}
@@ -243,8 +258,8 @@
               <button
                 type="button"
                 (click)="verResolucion(itemActual.expedienteTTAIP)"
-                class="btn-ghost-brand w-full justify-center !py-2.5 flex items-center gap-2 cursor-pointer">
-                <svg lucideEye class="w-4 h-4"></svg>
+                class="btn-ghost-brand justify-center !py-2.5 flex items-center gap-2 cursor-pointer">
+                <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                 Ver la resolución
               </button>
             </div>
@@ -262,6 +277,7 @@
                 <div class="field">
                   <label for="observacion-cumplimiento" class="field-label">Observaciones (obligatorias para observar)</label>
                   <textarea id="observacion-cumplimiento" maxlength="2000" aria-describedby="resultado-cumplimiento"
+                    [readOnly]="enviando() || requiereVerificacion()"
                     class="field-input"
                     rows="3"
                     style="resize: vertical;"
@@ -270,6 +286,7 @@
                     (ngModelChange)="observacionesInput.set($event)">
                   </textarea>
                 </div>
+                <p class="text-xs text-muted-foreground">El texto permanece solo en memoria mientras se conserva este contexto; no es una actuación registrada.</p>
 
                 <p id="resultado-cumplimiento" role="status" aria-live="polite" class="text-sm text-muted-foreground">
                   {{ enviando() ? 'Registrando y verificando la actuación…' : mensajeAccion() }}
@@ -288,16 +305,16 @@
 
                       @switch (accion.iconName) {
                         @case ('check-circle-2') {
-                          <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                          <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
                         }
                         @case ('alert-triangle') {
-                          <svg lucideAlertTriangle class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                          <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
                         }
                         @case ('refresh-cw') {
-                          <svg lucideRefreshCw class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                          <svg aria-hidden="true" lucideRefreshCw class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
                         }
                         @case ('shield-check') {
-                          <svg lucideShieldCheck class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
+                          <svg aria-hidden="true" lucideShieldCheck class="w-4 h-4 flex-shrink-0" [style.color]="accion.tone"></svg>
                         }
                       }
                       <span>
@@ -312,7 +329,7 @@
 
                 <!-- Alerta Legal Normativa (Art. 4° Ley N.° 27806) -->
                 <div class="rounded-md p-3.5 flex items-start gap-2.5 text-xs" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                  <svg lucideXCircle class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
+                  <svg aria-hidden="true" lucideXCircle class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
                   <span class="text-foreground/80 leading-relaxed">
                     La reiteración y la apertura de un proceso disciplinario no se ejecutan desde esta pantalla.
                     Requieren una actuación y sus precondiciones específicas.
@@ -321,7 +338,7 @@
               </div>
             }
 
-          </div>
+          </section>
         }
 
       </div>
@@ -331,9 +348,9 @@
 
   <!-- Toast Notificación Flotante -->
   @if (toastMensaje(); as msg) {
-    <div class="fixed bottom-6 right-6 z-50 animate-fade-in-up">
+    <div class="compliance-toast fixed bottom-6 right-6 z-50 animate-fade-in-up">
       <div class="rounded-lg shadow-lg px-4 py-3 bg-[var(--brand-800)] text-white text-sm flex items-center gap-2.5 border border-white/10">
-        <svg lucideCheckCircle2 class="w-4 h-4 text-green-400 flex-shrink-0"></svg>
+        <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 text-green-400 flex-shrink-0"></svg>
         <span role="status" aria-live="polite">{{ msg }}</span>
       </div>
     </div>
