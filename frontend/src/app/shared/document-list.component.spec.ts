@@ -1,3 +1,6 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../environments/environment';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
@@ -90,5 +93,45 @@ describe('DocumentListComponent', () => {
     expect(documentoService.download).toHaveBeenCalledWith(9, 'solicitud.pdf');
     expect(fixture.componentInstance.isPreviewOpen()).toBe(true);
     expect(fixture.componentInstance.previewTarget()?.nombre).toBe('solicitud.pdf');
+  });
+});
+
+// Opt-in used by the TTAIP detail, with real HttpClient and synthetic HTTP responses.
+describe('DocumentList — contexto institucional verificado', () => {
+  let http: HttpTestingController;
+  const api = environment.apiUrl;
+  const metadata = { id: 51, apelacionId: 21, nombreOriginal: 'Registrado.pdf', contentType: 'application/pdf', estado: 'ACTIVO' };
+  beforeEach(() => { TestBed.configureTestingModule({ imports: [DocumentListComponent], providers: [provideHttpClient(), provideHttpClientTesting()] }); http = TestBed.inject(HttpTestingController); });
+  afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); vi.restoreAllMocks(); } });
+  function page() { const f = TestBed.createComponent(DocumentListComponent); f.componentRef.setInput('verifiedContext', 1); f.componentRef.setInput('relation', { apelacionId: 21 }); f.componentRef.setInput('documents', [metadata]); f.detectChanges(); return f; }
+  it.each([401, 403, 404, 500])('un fallo %i no reactiva metadatos prefijados ni afirma vacío', status => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush(null, { status, statusText: 'Synthetic failure' }); f.detectChanges();
+    expect(f.componentInstance.displayedDocuments()).toEqual([]); expect(f.nativeElement.textContent).not.toContain('Registrado.pdf'); expect(f.nativeElement.textContent).not.toContain('No hay documentos adjuntos'); expect(f.componentInstance.error()).not.toBe('');
+  });
+  it('una relación contradictoria no habilita descarga y permite reintentar', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([{ ...metadata, apelacionId: 999 }]); expect(f.componentInstance.displayedDocuments()).toEqual([]);
+    f.componentInstance.retry(); http.expectOne(r => r.url === api + '/documentos').flush([metadata]); expect(f.componentInstance.displayedDocuments()).toEqual([metadata]);
+  });
+  it('cambiar contexto cancela una descarga y limpia metadatos, búsquedas y preview', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([metadata]); const c = f.componentInstance; c.download(c.displayedDocuments()[0]); const old = http.expectOne(api + '/documentos/51/download');
+    c.search.set('Anterior'); f.componentRef.setInput('verifiedContext', 2); f.componentRef.setInput('relation', { apelacionId: 22 }); f.detectChanges(); const next = http.expectOne(r => r.url === api + '/documentos'); expect(next.request.params.get('apelacionId')).toBe('22'); next.flush([]);
+    expect(old.cancelled).toBe(true); expect(c.displayedDocuments()).toEqual([]); expect(c.search()).toBe(''); expect(c.previewTarget()).toBeNull();
+  });
+  it('no consulta otra vez por recrear el mismo objeto de relación', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([metadata]); f.componentRef.setInput('relation', { apelacionId: 21 }); f.detectChanges(); expect(http.match(r => r.url === api + '/documentos')).toHaveLength(0);
+  });
+  it('preview utiliza el ID autorizado y un error no descarga un PDF alternativo', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([metadata]); const c = f.componentInstance; c.preview(c.displayedDocuments()[0]); f.detectChanges();
+    http.expectOne(api + '/documentos/51/download').flush(null, { status: 404, statusText: 'Not Found' }); f.detectChanges(); expect(c.previewTarget()?.id).toBe(51); expect(http.match(() => true)).toHaveLength(0);
+  });
+  it('el filtro es local y diferencia coincidencias vacías de lista vacía', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([metadata, ...[52, 53, 54].map(id => ({ ...metadata, id, nombreOriginal: 'Anexo ' + id }))]); f.componentInstance.search.set('ausente'); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Ningún documento coincide'); expect(f.componentInstance.displayedDocuments()).toHaveLength(4); expect(http.match(() => true)).toHaveLength(0);
+  });
+  it('descarta una descarga si los inputs cambiaron antes del siguiente render', () => {
+    const f = page(); http.expectOne(r => r.url === api + '/documentos').flush([metadata]); const c = f.componentInstance;
+    const create = vi.spyOn(URL, 'createObjectURL'); c.download(c.displayedDocuments()[0]); const req = http.expectOne(api + '/documentos/51/download');
+    f.componentRef.setInput('verifiedContext', 2); f.componentRef.setInput('relation', { apelacionId: 22 }); req.flush(new Blob(['PDF sintético'], { type: 'application/pdf' }));
+    expect(create).not.toHaveBeenCalled(); f.detectChanges(); http.expectOne(r => r.url === api + '/documentos').flush([]);
   });
 });

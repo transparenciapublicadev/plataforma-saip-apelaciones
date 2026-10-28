@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
+  ChangeDetectionStrategy, OnDestroy,
   Component,
   computed,
   effect,
@@ -23,6 +23,8 @@ import {
 } from '../models/documento.model';
 import { DocumentoService } from '../services/documento.service';
 import { problemDetailsMessage } from '../utils/problem-details.util';
+import { Subscription } from 'rxjs';
+import { documentosDelRecurso } from './document-relation.util';
 import {
   DocumentPreviewModalComponent,
   DocumentPreviewTarget
@@ -42,8 +44,16 @@ import {
   templateUrl: './document-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DocumentListComponent {
+export class DocumentListComponent implements OnDestroy {
   private readonly documentoService = inject(DocumentoService);
+  /** Opt-in for institutional details: clear, validate and cancel per resource/session. */
+  readonly verifiedContext = input<number | null>(null);
+  private requests = new Subscription();
+  private revision = 0;
+  private context = '';
+  private destroyed = false;
+  private contextMatches(): boolean { return this.verifiedContext() == null || this.context === JSON.stringify([this.relation(), this.verifiedContext()]); }
+  readonly search = signal('');
 
   readonly documents = input<readonly DocumentoListItem[]>([]);
   readonly relation = input<DocumentoRelation | null>(null);
@@ -63,20 +73,42 @@ export class DocumentListComponent {
   readonly displayedDocuments = computed<readonly DocumentoListItem[]>(
     () => this.relatedDocuments() ?? this.documents()
   );
+  readonly visibleDocuments = computed(() => {
+    const docs = this.displayedDocuments();
+    if (this.verifiedContext() == null) return docs;
+    const normalize = (v: string) => v.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
+    const query = normalize(this.search().trim());
+    return docs.filter(d => !query || normalize(this.documentName(d) + ' ' + this.documentType(d)).includes(query));
+  });
 
   constructor() {
     effect(() => {
       const relation = this.relation();
+      const scope = this.verifiedContext();
+      if (scope != null) {
+        const key = JSON.stringify([relation, scope]);
+        if (key === this.context) return;
+        this.context = key; this.revision++;
+        this.requests.unsubscribe(); this.requests = new Subscription();
+        this.relatedDocuments.set([]); this.search.set(''); this.cerrarPreview();
+        this.downloadingId.set(null); this.previewingId.set(null); this.error.set('');
+      }
       if (!relation) {
-        this.relatedDocuments.set(null);
+        this.relatedDocuments.set(scope == null ? null : []);
+        this.loadingDocuments.set(false);
+        if (scope != null) this.error.set('No se ha identificado la relación documental.');
         return;
       }
 
       this.loadRelation(relation);
     });
   }
+  ngOnDestroy(): void { this.destroyed = true; this.revision++; this.requests.unsubscribe(); this.cerrarPreview(); }
+  retry(): void { const relation = this.relation(); if (relation && !this.loadingDocuments()) this.loadRelation(relation); }
+  private usable(doc: DocumentoListItem): boolean { return this.verifiedContext() == null || this.displayedDocuments().some(d => d === doc && Number.isSafeInteger(d.id) && d.id! > 0); }
 
   download(documento: DocumentoListItem): void {
+    if (!this.usable(documento)) { this.error.set('Consulte un documento identificado del recurso actual.'); return; }
     if (!documento.id) {
       this.error.set('Este registro legacy no tiene un identificador disponible para descarga.');
       return;
@@ -84,21 +116,28 @@ export class DocumentListComponent {
 
     this.downloadingId.set(documento.id);
     this.error.set('');
-    this.documentoService.download(documento.id, this.documentName(documento)).subscribe({
+    const revision = this.revision;
+    this.requests.add(this.documentoService.download(documento.id, this.documentName(documento)).subscribe({
       next: ({ blob, filename }) => {
+        if (this.destroyed || revision !== this.revision || !this.contextMatches()) return;
         this.downloadingId.set(null);
         this.saveBlob(blob, filename);
       },
       error: (error) => {
+        if (this.destroyed || revision !== this.revision || !this.contextMatches()) return;
         this.downloadingId.set(null);
         this.error.set(problemDetailsMessage(error, 'No se pudo descargar el documento.'));
       }
-    });
+    }));
   }
 
   preview(documento: DocumentoListItem): void {
+    if (!this.usable(documento)) { this.error.set('Consulte un documento identificado del recurso actual.'); return; }
     const nombre = this.documentName(documento);
     const tipo = this.documentType(documento);
+    if (this.verifiedContext() != null && documento.id) {
+      this.previewTarget.set({ id: documento.id, nombre, tipo }); this.isPreviewOpen.set(true); return;
+    }
 
     if (!documento.id) {
       this.previewTarget.set({
@@ -111,7 +150,7 @@ export class DocumentListComponent {
     }
 
     this.previewingId.set(documento.id);
-    this.documentoService.download(documento.id, nombre).subscribe({
+    this.requests.add(this.documentoService.download(documento.id, nombre).subscribe({
       next: ({ blob, filename }) => {
         this.previewingId.set(null);
         this.previewTarget.set({
@@ -132,7 +171,7 @@ export class DocumentListComponent {
         });
         this.isPreviewOpen.set(true);
       }
-    });
+    }));
   }
 
   cerrarPreview(): void {
@@ -205,17 +244,23 @@ export class DocumentListComponent {
   private loadRelation(relation: DocumentoRelation): void {
     this.loadingDocuments.set(true);
     this.error.set('');
-    this.documentoService.listByRelation(relation).subscribe({
+    if (this.verifiedContext() != null) this.relatedDocuments.set([]);
+    const revision = this.revision;
+    this.requests.add(this.documentoService.listByRelation(relation).subscribe({
       next: (documents) => {
-        this.relatedDocuments.set(documents);
+        if (this.destroyed || revision !== this.revision || !this.contextMatches()) return;
+        const checked = this.verifiedContext() == null ? documents : documentosDelRecurso(documents, relation);
+        if (checked == null) { this.relatedDocuments.set([]); this.error.set('Información documental incompleta o asociada a otro recurso.'); }
+        else this.relatedDocuments.set(checked);
         this.loadingDocuments.set(false);
       },
       error: (error) => {
-        this.relatedDocuments.set(null);
+        if (this.destroyed || revision !== this.revision || !this.contextMatches()) return;
+        this.relatedDocuments.set(this.verifiedContext() == null ? null : []);
         this.loadingDocuments.set(false);
         this.error.set(problemDetailsMessage(error, 'No se pudieron consultar los documentos.'));
       }
-    });
+    }));
   }
 
   private saveBlob(blob: Blob, filename: string): void {

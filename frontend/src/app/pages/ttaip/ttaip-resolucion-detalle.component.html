@@ -1,39 +1,48 @@
-<div class="min-h-screen bg-background">
+<div class="detail-page min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-      <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
-        Volver al panel TTAIP
+      <a [routerLink]="retorno()" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
+        <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
+        Volver al panel institucional
       </a>
 
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <span class="code-chip">{{ expedienteDisplay() }}</span>
         @if (resultadoMeta(); as meta) {
-          <app-status-badge [status]="meta.label"></app-status-badge>
+          <span class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium tracking-wider" [style.background]="'var(--card)'" [style.border]="'1px solid ' + meta.accent" [style.color]="meta.accent">{{ meta.label }}</span>
         }
         <app-status-badge [status]="estadoLabel()"></app-status-badge>
       </div>
 
-      <span class="eyebrow">Tribunal · Detalle de apelacion</span>
+      <span class="eyebrow">Tribunal · Detalle de apelación</span>
       <h1 class="font-display mt-2" style="font-size: clamp(28px, 3.4vw, 42px); line-height: 1.05; letter-spacing: -0.02em">
-        Detalle de <span class="italic" style="color: var(--brand-700)">apelacion</span>
+        Detalle de <span class="italic" style="color: var(--brand-700)">apelación</span>
       </h1>
     </div>
   </div>
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
     @if (loading()) {
-      <div class="text-center py-16">
+      <div role="status" aria-live="polite" class="text-center py-16">
         <div class="spinner spinner-lg mx-auto"></div>
         <p class="mt-4 text-sm text-muted-foreground">Cargando expediente...</p>
       </div>
     } @else if (error()) {
-      <div class="alert alert-error p-6 text-center">
-        <p>{{ error() }}</p>
+      <div role="alert" class="alert alert-error p-6 text-center">
+        <p>{{ error() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarApelacion(expedienteDisplay())">Reintentar consulta</button>
       </div>
     } @else {
+      @if (coleccionesIncompletas().length) { <section class="rounded-lg p-4 border border-border text-sm" aria-label="Información incompleta">@for (issue of coleccionesIncompletas(); track $index) { <p role="status">{{ issue }}</p> }</section> }
+      @if (actionUncertain()) { <section class="rounded-lg p-4 border border-border"><p role="alert" class="text-sm">La actuación tiene resultado incierto. No se repite automáticamente.</p><button type="button" class="btn-ghost-brand mt-2" (click)="recuperarActuacion()">Consultar actuación sin reenviar</button></section> }
+      <section class="rounded-lg p-4 border border-border text-sm space-y-3" aria-label="Contexto y actuaciones disponibles">
+        <p>Apelación ID {{ apelacion()?.id }} · Agregado TTAIP ID {{ expedienteTtaip()?.id || 'No informado' }}. El número de expediente no es un ID de resolución.</p>
+        <p id="detail-clock-debt" class="text-xs text-muted-foreground">Registro, archivo almacenado, envío técnico y notificación eficaz son hechos distintos. Las fechas límite de resolución y cumplimiento conservan una base pendiente de acreditación; no se certifica un vencimiento legal ni se abre seguimiento desde este detalle.</p>
+        <p role="status" class="text-xs text-muted-foreground">Reloj del requerimiento de subsanación: {{ relojTexto() }}. No se usa como plazo de resolución o cumplimiento.</p>
+        <p class="text-xs text-muted-foreground">La consulta institucional de recepción de subsanación no está disponible. No se deduce de textos históricos o archivos ni se habilita segunda calificación por esa inferencia. Los adjuntos de subsanación siguen opcionales.</p>
+        <div class="flex flex-wrap gap-2">@if (navegacionPrimera()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/calificar', expedienteDisplay()]">Ir a primera calificación</a> } @if (navegacionFinal()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/resolver', expedienteDisplay()]">Ir a resolución final</a> } @if (rolInstitucional()) { <a class="btn-ghost-brand" routerLink="/ttaip/cumplimiento">Consultar seguimiento de cumplimiento</a> }</div>
+      </section>
       <div
-        class="grid grid-cols-1 md:grid-cols-4 gap-4"
+        class="grid grid-cols-1 md:grid-cols-3 gap-4"
         data-motion-stagger
         data-motion-y="10"
         data-motion-duration="0.34"
@@ -42,7 +51,6 @@
         @for (stat of [
           { label: 'Expediente SAIP', value: dataView().expedienteSAIP, icon: 'hash', mono: true },
           { label: 'Fecha apelacion', value: (dataView().fechaApelacion | date:'dd/MM/yyyy') || '—', icon: 'calendar', mono: true },
-          { label: 'Sala asignada', value: salaAsignada(), icon: 'entity', mono: false },
           { label: 'Entidad', value: dataView().entidad, icon: 'entity', mono: false }
         ]; track stat.label) {
           <div class="stat-card" data-motion-item>
@@ -50,9 +58,9 @@
             <div class="flex items-start justify-between">
               <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (stat.icon) {
-                  @case ('hash') { <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 9h14M3 15h14M10 3 8 21M16 3l-2 18"/></svg> }
-                  @case ('calendar') { <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
-                  @default { <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l7-4 7 4v14"/></svg> }
+                  @case ('hash') { <svg aria-hidden="true" class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 9h14M3 15h14M10 3 8 21M16 3l-2 18"/></svg> }
+                  @case ('calendar') { <svg aria-hidden="true" class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
+                  @default { <svg aria-hidden="true" class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18"/><path stroke-width="2" d="M5 21V7l7-4 7 4v14"/></svg> }
                 }
               </div>
             </div>
@@ -71,9 +79,9 @@
       >
         <div class="space-y-6">
           <div class="form-shell" data-motion-item>
-            <div class="flex border-b" style="border-color: var(--border)">
+            <div class="detail-tabs flex border-b" role="tablist" aria-label="Secciones del expediente" style="border-color: var(--border)">
               @for (tab of tabs; track tab.id) {
-                <button type="button" (click)="cambiarTab(tab.id)" class="flex-1 px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">
+                <button type="button" role="tab" [id]="'detail-tab-' + tab.id" [attr.aria-controls]="'detail-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (keydown)="onTabKey($event, tab.id)" (click)="cambiarTab(tab.id)" class="flex-1 px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">
                   {{ tab.label }}
                   @if (activeTab() === tab.id) {
                     <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
@@ -83,7 +91,7 @@
             </div>
 
             @if (activeTab() === 'apelacion') {
-              <div class="p-6 space-y-6 text-sm animate-fade-in">
+              <div role="tabpanel" id="detail-panel-apelacion" aria-labelledby="detail-tab-apelacion" class="p-6 space-y-6 text-sm animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <span class="eyebrow">Ciudadano apelante</span>
@@ -110,7 +118,7 @@
                 </div>
 
                 <div>
-                  <span class="eyebrow" style="color: var(--brand-700)">Causal de denegatoria · Entidad</span>
+                  <span class="eyebrow" style="color: var(--brand-700)">Respuesta impugnada · datos de la apelación</span>
                   <div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
                     <div class="font-semibold">{{ dataView().causalDenegatoria }}</div>
                     <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ dataView().fundamentoEntidad }}</p>
@@ -133,7 +141,7 @@
                           <span class="eyebrow">Sala asignada</span>
                           <div class="font-display text-lg mt-1">{{ salaAsignada() }}</div>
                           <div class="text-xs text-muted-foreground mt-0.5">
-                            {{ expediente.sala?.periodoInicio || 'Periodo no registrado' }} · {{ expediente.sala?.periodoFin || 'vigente' }}
+                            {{ expediente.sala?.periodoInicio || 'Periodo no registrado' }} · {{ expediente.sala?.periodoFin || 'Fin no informado' }}
                           </div>
                         </div>
                         <div>
@@ -145,7 +153,7 @@
                                 <span class="font-mono text-muted-foreground shrink-0">{{ miembro.cargo || 'Miembro' }}</span>
                               </div>
                             } @empty {
-                              <div class="text-xs text-muted-foreground">Sin miembros asignados por el backend.</div>
+                              <div class="text-xs text-muted-foreground">{{ expedienteTtaip()?.miembros == null ? 'Miembros no informados.' : 'No se consultaron miembros asignados con ID válido.' }}</div>
                             }
                           </div>
                         </div>
@@ -159,9 +167,9 @@
                     <span class="eyebrow">Resolución final</span>
                     <div class="mt-2 rounded-lg p-5 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.borderLeft]="'3px solid ' + resultadoCajaColor()" data-reveal>
                       @if (resultadoCajaLabel().includes('FUNDADA')) {
-                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" [style.color]="resultadoCajaColor()" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
+                        <svg aria-hidden="true" class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" [style.color]="resultadoCajaColor()" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
                       } @else {
-                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" [style.color]="resultadoCajaColor()" viewBox="0 0 24 24"><path stroke-width="2" d="M6 6l12 12M6 18 18 6"/></svg>
+                        <svg aria-hidden="true" class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" [style.color]="resultadoCajaColor()" viewBox="0 0 24 24"><path stroke-width="2" d="M6 6l12 12M6 18 18 6"/></svg>
                       }
                       <div>
                         <div class="font-display tracking-wider font-semibold">{{ resultadoCajaLabel() }}</div>
@@ -172,26 +180,27 @@
                 }
 
                 <p role="note" class="text-xs text-muted-foreground">La vista y descarga generan un borrador de plantilla, sin emisión ni firma verificada. Los archivos registrados se consultan en las resoluciones y cédulas de la pestaña Notificaciones.</p>
-                @if (draftError()) { <p role="alert" class="text-sm" style="color: var(--danger)">{{ draftError() }}</p> }
+                <div class="field"><label class="field-label" for="detail-selected-act">Actuación para el borrador</label><select id="detail-selected-act" class="field-input" [value]="selectedActId() || ''" (change)="seleccionarActuacion($any($event.target).value)"><option value="">Seleccione una actuación registrada</option>@for (act of resolucionesExpediente(); track act.id) { <option [value]="act.id">ID {{ act.id }} · {{ act.tipoResolucion }} · {{ act.decision || 'Decisión no informada' }}</option> }</select><p class="field-hint">El borrador corresponde al ID elegido, con su tipo, fecha y numeración informados. No representa emisión formal ni firma verificada.</p></div>
+                @if (draftError()) { <p role="alert" class="text-sm text-destructive">{{ draftError() }}</p> }
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <button type="button" (click)="verResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
-                    <svg lucideEye class="w-4 h-4"></svg>
+                  <button type="button" [disabled]="!selectedAct()" (click)="verResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
+                    <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
                     Ver borrador de resolución
                   </button>
-                  <button type="button" (click)="descargarResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
-                    <svg lucideDownload class="w-4 h-4"></svg>
+                  <button type="button" [disabled]="!selectedAct()" (click)="descargarResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
+                    <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
                     Descargar borrador de resolución
                   </button>
                 </div>
               </div>
             } @else if (activeTab() === 'subprocesos') {
-              <div class="p-6 space-y-8 animate-fade-in">
+              <div role="tabpanel" id="detail-panel-subprocesos" aria-labelledby="detail-tab-subprocesos" class="p-6 space-y-8 animate-fade-in">
                 <!-- SECCIÓN A: Traslado, descargos y suspensiones de plazo -->
                 <section class="space-y-4">
                   <div>
                     <span class="eyebrow" style="color: var(--brand-700)">Subproceso A</span>
                     <h3 class="font-display text-base font-semibold flex items-center gap-2 mt-0.5">
-                      <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+                      <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
                       Traslado, descargos y suspensiones de plazo
                     </h3>
                     <p class="text-xs text-muted-foreground mt-0.5">Al admitirse la apelación se corre traslado a la entidad (7 días hábiles). El cómputo se suspende ante requerimiento, informe oral (+3 días) o información complementaria (+3 días).</p>
@@ -199,16 +208,16 @@
 
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                      <span class="eyebrow">Fecha límite resolución</span>
-                      <div class="font-mono text-sm mt-2">{{ expedienteTtaip()?.fechaLimiteResolucion || 'Pendiente de admisión' }}</div>
+                      <span class="eyebrow">Fecha límite de resolución registrada</span>
+                      <div class="font-mono text-sm mt-2">{{ expedienteTtaip()?.fechaLimiteResolucion || 'Fecha no informada' }}</div>
                     </div>
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Descargos registrados</span>
-                      <div class="font-display text-xl mt-2">{{ descargosExpediente().length }}</div>
+                      <div class="font-display text-xl mt-2">{{ detalle().descargosEntidad.error ? 'No informado' : descargosExpediente().length }}</div>
                     </div>
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Días suspendidos</span>
-                      <div class="font-display text-xl mt-2">{{ suspensionesExpediente().length ? suspensionesExpediente()[suspensionesExpediente().length - 1].diasSuspendidos || 0 : 0 }}</div>
+                      <div class="font-display text-xl mt-2">{{ 'Consulte cada actuación' }}</div>
                     </div>
                   </div>
 
@@ -225,8 +234,8 @@
                         <span class="eyebrow" style="color: var(--brand-700)">Requerimiento a entidad pública</span>
                         <p class="text-sm text-foreground/80 mt-1">Al requerir descargos se abre un plazo de 7 días hábiles y se suspende el plazo de resolución final.</p>
                       </div>
-                      <textarea #observacionDescargo rows="3" class="field-input min-h-[92px]" placeholder="Observación o sustento del requerimiento"></textarea>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading()" (click)="requerirDescargos(observacionDescargo.value)">
+                      <textarea aria-label="Observación o sustento del requerimiento" #observacionDescargo rows="3" class="field-input min-h-[92px]" placeholder="Observación o sustento del requerimiento"></textarea>
+                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolInstitucional()" (click)="requerirDescargos(observacionDescargo.value)">
                         Requerir descargos
                       </button>
                     </div>
@@ -240,14 +249,14 @@
                         <span class="pill">{{ active.fechaLimiteDescargo || 'Sin fecha límite' }}</span>
                       </div>
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <textarea #resumenDescargo rows="4" class="field-input min-h-[110px]" placeholder="Resumen del descargo presentado por la entidad"></textarea>
+                        <textarea aria-label="Resumen del descargo presentado por la entidad" #resumenDescargo rows="4" class="field-input min-h-[110px]" placeholder="Resumen del descargo presentado por la entidad"></textarea>
                         <div class="space-y-3">
-                          <input #referenciaDocumento class="field-input" placeholder="Referencia de documento o expediente administrativo" />
-                          <input #responsableEntidad class="field-input" placeholder="Responsable de la entidad" />
-                          <textarea #observacionPresentacion rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                          <input aria-label="Referencia de documento o expediente administrativo" #referenciaDocumento class="field-input" placeholder="Referencia de documento o expediente administrativo" />
+                          <input aria-label="Responsable de la entidad" #responsableEntidad class="field-input" placeholder="Responsable de la entidad" />
+                          <textarea aria-label="Observación adicional" #observacionPresentacion rows="2" class="field-input" placeholder="Observación adicional"></textarea>
                         </div>
                       </div>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading()" (click)="presentarDescargo(active.id, resumenDescargo.value, referenciaDocumento.value, responsableEntidad.value, observacionPresentacion.value)">
+                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolEntidad()" [attr.aria-disabled]="!rolEntidad()" (click)="presentarDescargo(active.id, resumenDescargo.value, referenciaDocumento.value, responsableEntidad.value, observacionPresentacion.value)">
                         Presentar descargo
                       </button>
                     </div>
@@ -259,15 +268,15 @@
                         <span class="eyebrow" style="color: var(--brand-700)">Informe oral</span>
                         <p class="text-sm text-foreground/80 mt-1">Suspende el plazo de resolución por 3 días hábiles.</p>
                       </div>
-                      <select #solicitanteInforme class="field-input">
+                      <select aria-label="Solicitante del informe oral" #solicitanteInforme class="field-input">
                         <option value="CIUDADANO">Ciudadano</option>
                         <option value="ENTIDAD_PUBLICA">Entidad pública</option>
                         <option value="TTAIP">TTAIP</option>
                       </select>
-                      <textarea #motivoInforme rows="3" class="field-input min-h-[92px]" placeholder="Motivo del informe oral"></textarea>
-                      <input #responsableInforme class="field-input" value="Secretaría Técnica TTAIP" placeholder="Responsable" />
-                      <textarea #observacionInforme rows="2" class="field-input" placeholder="Observación adicional"></textarea>
-                      <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading()" (click)="registrarSuspensionAdicional('INFORME_ORAL', solicitanteInforme.value, motivoInforme.value, responsableInforme.value, observacionInforme.value)">
+                      <textarea aria-label="Motivo del informe oral" #motivoInforme rows="3" class="field-input min-h-[92px]" placeholder="Motivo del informe oral"></textarea>
+                      <input aria-label="Responsable" #responsableInforme class="field-input" placeholder="Responsable" />
+                      <textarea aria-label="Observación adicional" #observacionInforme rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                      <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolInstitucional()" (click)="registrarSuspensionAdicional('INFORME_ORAL', solicitanteInforme.value, motivoInforme.value, responsableInforme.value, observacionInforme.value)">
                         Registrar informe oral
                       </button>
                     </div>
@@ -277,15 +286,15 @@
                         <span class="eyebrow" style="color: var(--brand-700)">Información complementaria</span>
                         <p class="text-sm text-foreground/80 mt-1">Suspende el plazo de resolución por 3 días hábiles.</p>
                       </div>
-                      <select #solicitanteInfo class="field-input">
+                      <select aria-label="Solicitante de información complementaria" #solicitanteInfo class="field-input">
                         <option value="TTAIP">TTAIP</option>
                         <option value="ENTIDAD_PUBLICA">Entidad pública</option>
                         <option value="CIUDADANO">Ciudadano</option>
                       </select>
-                      <textarea #motivoInfo rows="3" class="field-input min-h-[92px]" placeholder="Motivo de información complementaria"></textarea>
-                      <input #responsableInfo class="field-input" value="Secretaría Técnica TTAIP" placeholder="Responsable" />
-                      <textarea #observacionInfo rows="2" class="field-input" placeholder="Observación adicional"></textarea>
-                      <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading()" (click)="registrarSuspensionAdicional('INFORMACION_COMPLEMENTARIA', solicitanteInfo.value, motivoInfo.value, responsableInfo.value, observacionInfo.value)">
+                      <textarea aria-label="Motivo de información complementaria" #motivoInfo rows="3" class="field-input min-h-[92px]" placeholder="Motivo de información complementaria"></textarea>
+                      <input aria-label="Responsable" #responsableInfo class="field-input" placeholder="Responsable" />
+                      <textarea aria-label="Observación adicional" #observacionInfo rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                      <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolInstitucional()" (click)="registrarSuspensionAdicional('INFORMACION_COMPLEMENTARIA', solicitanteInfo.value, motivoInfo.value, responsableInfo.value, observacionInfo.value)">
                         Registrar información complementaria
                       </button>
                     </div>
@@ -297,12 +306,12 @@
                       <div class="rounded-md p-3 text-sm" style="background: var(--background); border: 1px solid var(--border)">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                           <div class="font-semibold">{{ descargo.entidadNombre || dataView().entidad }}</div>
-                          <span class="pill">{{ descargo.estadoDescargo || 'REQUERIDO' }}</span>
+                          <span class="pill">{{ descargo.estadoDescargo || 'Estado no informado' }}</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 text-xs">
                           <div><span class="eyebrow">Requerimiento</span><div class="font-mono mt-1">{{ descargo.fechaRequerimiento || '—' }}</div></div>
                           <div><span class="eyebrow">Límite</span><div class="font-mono mt-1">{{ descargo.fechaLimiteDescargo || '—' }}</div></div>
-                          <div><span class="eyebrow">Presentación</span><div class="font-mono mt-1">{{ descargo.fechaPresentacion || 'Pendiente' }}</div></div>
+                          <div><span class="eyebrow">Presentación</span><div class="font-mono mt-1">{{ descargo.fechaPresentacion || 'Fecha no informada' }}</div></div>
                         </div>
                         @if (descargo.resumenDescargo) {
                           <p class="text-xs text-foreground/75 mt-3 leading-relaxed">{{ descargo.resumenDescargo }}</p>
@@ -310,7 +319,7 @@
                       </div>
                     } @empty {
                       <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
-                        Aún no hay requerimientos de descargos registrados.
+                        {{ detalle().descargosEntidad.error || 'La consulta no devuelve requerimientos de descargos registrados.' }}
                       </div>
                     }
                   </div>
@@ -321,23 +330,23 @@
                       <div class="rounded-md p-3 text-xs" style="background: var(--background); border: 1px solid var(--border)">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                           <span class="font-semibold">{{ formatSuspensionLabel(suspension.motivoSuspension) }}</span>
-                          <span class="pill">{{ suspension.estadoSuspension || 'ACTIVA' }}</span>
+                          <span class="pill">{{ suspension.estadoSuspension || 'No informado' }}</span>
                         </div>
                         @if (suspension.solicitante || suspension.responsable) {
                           <div class="mt-2 text-muted-foreground">
-                            {{ suspension.solicitante || 'TTAIP' }} · {{ suspension.responsable || 'Sin responsable registrado' }}
+                            {{ suspension.solicitante || 'Solicitante no informado' }} · {{ suspension.responsable || 'Sin responsable registrado' }}
                           </div>
                         }
                         <div class="font-mono text-muted-foreground mt-2">
-                          {{ suspension.fechaInicioSuspension || '—' }} → {{ suspension.fechaFinSuspension || 'En curso' }} · {{ suspension.diasSuspendidos || 0 }} día(s) hábil(es)
+                          {{ suspension.fechaInicioSuspension || '—' }} → {{ suspension.fechaFinSuspension || 'Fin no informado' }} · {{ suspension.diasSuspendidos ?? 'No informado' }} día(s) hábil(es)
                         </div>
                         @if (suspension.motivoDetalle) {
                           <p class="text-foreground/75 mt-2 leading-relaxed">{{ suspension.motivoDetalle }}</p>
                         }
                         @if (esSuspensionAdicionalActiva(suspension)) {
                           <div class="mt-3 flex flex-col md:flex-row gap-2">
-                            <input #observacionCancelacion class="field-input flex-1" placeholder="Motivo de cancelación" />
-                            <button type="button" class="btn-ghost-brand justify-center" [disabled]="descargoLoading()" (click)="cancelarSuspension(suspension.id, observacionCancelacion.value)">
+                            <input aria-label="Motivo de cancelación" #observacionCancelacion class="field-input flex-1" placeholder="Motivo de cancelación" />
+                            <button type="button" class="btn-ghost-brand justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolInstitucional()" (click)="cancelarSuspension(suspension.id, observacionCancelacion.value)">
                               Cancelar suspensión
                             </button>
                           </div>
@@ -345,7 +354,7 @@
                       </div>
                     } @empty {
                       <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
-                        Sin suspensiones de plazo registradas para este expediente.
+                        {{ detalle().suspensionesPlazo.error || 'Sin suspensiones de plazo registradas para este expediente.' }}
                       </div>
                     }
                   </div>
@@ -358,7 +367,7 @@
                   <div>
                     <span class="eyebrow" style="color: var(--brand-700)">Subproceso B</span>
                     <h3 class="font-display text-base font-semibold flex items-center gap-2 mt-0.5">
-                      <svg lucideShieldCheck class="w-4 h-4" style="color: var(--brand-700)"></svg>
+                      <svg aria-hidden="true" lucideShieldCheck class="w-4 h-4" style="color: var(--brand-700)"></svg>
                       Seguimiento de cumplimiento de resoluciones fundadas
                     </h3>
                     <p class="text-xs text-muted-foreground mt-0.5">Aplica a resoluciones con decisión FUNDADO o FUNDADO EN PARTE. La entidad debe acreditar la entrega en 7 días hábiles.</p>
@@ -367,15 +376,15 @@
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Resolución aplicable</span>
-                      <div class="font-mono text-sm mt-2">{{ resolucionFinalFundada()?.numeroResolucion || 'Sin resolución fundada' }}</div>
+                      <div class="font-mono text-sm mt-2">{{ resolucionFinalFundada()?.numeroResolucion || 'Numeración no informada' }}</div>
                     </div>
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Fecha límite cumplimiento</span>
-                      <div class="font-mono text-sm mt-2">{{ cumplimientoActivo()?.fechaLimiteCumplimiento || 'Pendiente' }}</div>
+                      <div class="font-mono text-sm mt-2">{{ cumplimientoActivo()?.fechaLimiteCumplimiento || 'Fecha no informada' }}</div>
                     </div>
                     <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Seguimientos</span>
-                      <div class="font-display text-xl mt-2">{{ cumplimientosExpediente().length }}</div>
+                      <div class="font-display text-xl mt-2">{{ detalle().cumplimientosResolucion.error ? 'No informado' : cumplimientosExpediente().length }}</div>
                     </div>
                   </div>
 
@@ -393,7 +402,7 @@
                   } @else if (!cumplimientoActivo()) {
                     <div class="rounded-lg p-4 space-y-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <div>
-                        <span class="eyebrow" style="color: var(--brand-700)">Crear seguimiento de cumplimiento</span>
+                        <span class="eyebrow" style="color: var(--brand-700)">Inicio de seguimiento no disponible</span>
                         <p class="text-sm text-foreground/80 mt-1">La entidad pública debe cumplir y comunicar evidencia en un plazo máximo de 7 días hábiles.</p>
                       </div>
                       @if (resolucionFinalFundada(); as resolucionFinal) {
@@ -402,9 +411,9 @@
                           <div class="text-muted-foreground mt-1">{{ resolucionFinal.decision }} · {{ resolucionFinal.fechaResolucion || 'Fecha no registrada' }}</div>
                         </div>
                       }
-                      <textarea #observacionSeguimiento rows="3" class="field-input min-h-[92px]" placeholder="Observación o sustento del requerimiento de cumplimiento"></textarea>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="cumplimientoLoading()" (click)="crearSeguimientoCumplimiento(observacionSeguimiento.value)">
-                        Crear seguimiento
+                      <textarea aria-label="Observación o sustento del requerimiento de cumplimiento" #observacionSeguimiento rows="3" class="field-input min-h-[92px]" placeholder="Observación o sustento del requerimiento de cumplimiento"></textarea>
+                      <button type="button" class="btn-brand w-full justify-center" disabled aria-describedby="detail-clock-debt" (click)="crearSeguimientoCumplimiento(observacionSeguimiento.value)">
+                        Inicio no disponible
                       </button>
                     </div>
                   } @else if (cumplimientoActivo(); as active) {
@@ -414,26 +423,26 @@
                           <span class="eyebrow">Cumplimiento activo</span>
                           <div class="font-display text-lg mt-1">{{ active.entidadNombre || dataView().entidad }}</div>
                         </div>
-                        <span [class]="cumplimientoStatusClass(active)">{{ active.estadoCumplimiento || 'PENDIENTE' }}</span>
+                        <span [class]="cumplimientoStatusClass(active)">{{ active.estadoCumplimiento || 'No informado' }}</span>
                       </div>
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
                         <div><span class="eyebrow">Requerimiento</span><div class="font-mono mt-1">{{ active.fechaRequerimientoCumplimiento || '—' }}</div></div>
                         <div><span class="eyebrow">Límite</span><div class="font-mono mt-1">{{ active.fechaLimiteCumplimiento || '—' }}</div></div>
-                        <div><span class="eyebrow">Comunicación</span><div class="font-mono mt-1">{{ active.fechaCumplimiento || 'Pendiente' }}</div></div>
+                        <div><span class="eyebrow">Comunicación</span><div class="font-mono mt-1">{{ active.fechaCumplimiento || 'Fecha no informada' }}</div></div>
                       </div>
 
                       <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3">
-                        <select #tipoCumplimiento class="field-input">
+                        <select aria-label="Tipo de cumplimiento" #tipoCumplimiento class="field-input">
                           <option value="TOTAL">Cumplimiento total</option>
                           <option value="PARCIAL">Cumplimiento parcial</option>
                           <option value="NO_CUMPLE">No cumple</option>
                         </select>
-                        <input #responsableCumplimiento class="field-input" placeholder="Responsable de la entidad" />
+                        <input aria-label="Responsable de la entidad" #responsableCumplimiento class="field-input" placeholder="Responsable de la entidad" />
                       </div>
-                      <textarea #descripcionCumplimiento rows="4" class="field-input min-h-[110px]" placeholder="Descripción del cumplimiento comunicado por la entidad"></textarea>
-                      <input #evidenciaCumplimiento class="field-input" placeholder="URL o referencia documental de evidencia" />
-                      <textarea #observacionCumplimiento rows="2" class="field-input" placeholder="Observación adicional"></textarea>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="cumplimientoLoading()" (click)="registrarCumplimiento(active.id, tipoCumplimiento.value, descripcionCumplimiento.value, evidenciaCumplimiento.value, responsableCumplimiento.value, observacionCumplimiento.value)">
+                      <textarea aria-label="Descripción del cumplimiento comunicado por la entidad" #descripcionCumplimiento rows="4" class="field-input min-h-[110px]" placeholder="Descripción del cumplimiento comunicado por la entidad"></textarea>
+                      <input aria-label="URL o referencia documental de evidencia" #evidenciaCumplimiento class="field-input" placeholder="URL o referencia documental de evidencia" />
+                      <textarea aria-label="Observación adicional" #observacionCumplimiento rows="2" class="field-input" placeholder="Observación adicional"></textarea>
+                      <button type="button" class="btn-brand w-full justify-center" [disabled]="cumplimientoLoading() || actionUncertain() || !rolEntidad()" (click)="registrarCumplimiento(active.id, tipoCumplimiento.value, descripcionCumplimiento.value, evidenciaCumplimiento.value, responsableCumplimiento.value, observacionCumplimiento.value)">
                         Registrar cumplimiento
                       </button>
 
@@ -441,14 +450,14 @@
 
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div class="space-y-2">
-                          <textarea #observacionTtaip rows="3" class="field-input" placeholder="Sustento para observar el cumplimiento"></textarea>
-                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="cumplimientoLoading()" (click)="observarCumplimiento(active.id, observacionTtaip.value)">
+                          <textarea aria-label="Sustento para observar el cumplimiento" #observacionTtaip rows="3" class="field-input" placeholder="Sustento para observar el cumplimiento"></textarea>
+                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="cumplimientoLoading() || actionUncertain() || !rolInstitucional()" (click)="observarCumplimiento(active.id, observacionTtaip.value)">
                             Observar cumplimiento
                           </button>
                         </div>
                         <div class="space-y-2">
-                          <textarea #observacionCierre rows="3" class="field-input" placeholder="Observación de cierre"></textarea>
-                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="cumplimientoLoading()" (click)="cerrarCumplimiento(active.id, observacionCierre.value)">
+                          <textarea aria-label="Observación de cierre" #observacionCierre rows="3" class="field-input" placeholder="Observación de cierre"></textarea>
+                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="cumplimientoLoading() || actionUncertain() || !rolInstitucional()" (click)="cerrarCumplimiento(active.id, observacionCierre.value)">
                             Cerrar seguimiento
                           </button>
                         </div>
@@ -465,13 +474,13 @@
                             <div class="font-semibold">{{ cumplimiento.entidadNombre || dataView().entidad }}</div>
                             <div class="font-mono text-xs text-muted-foreground mt-0.5">{{ cumplimiento.numeroResolucion || 'Resolución final' }}</div>
                           </div>
-                          <span [class]="cumplimientoStatusClass(cumplimiento)">{{ cumplimiento.estadoCumplimiento || 'PENDIENTE' }}</span>
+                          <span [class]="cumplimientoStatusClass(cumplimiento)">{{ cumplimiento.estadoCumplimiento || 'No informado' }}</span>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mt-3 text-xs">
-                          <div><span class="eyebrow">Tipo</span><div class="mt-1">{{ cumplimiento.tipoCumplimiento || 'Pendiente' }}</div></div>
+                          <div><span class="eyebrow">Tipo</span><div class="mt-1">{{ cumplimiento.tipoCumplimiento || 'No informado' }}</div></div>
                           <div><span class="eyebrow">Requerimiento</span><div class="font-mono mt-1">{{ cumplimiento.fechaRequerimientoCumplimiento || '—' }}</div></div>
                           <div><span class="eyebrow">Límite</span><div class="font-mono mt-1">{{ cumplimiento.fechaLimiteCumplimiento || '—' }}</div></div>
-                          <div><span class="eyebrow">Cumplimiento</span><div class="font-mono mt-1">{{ cumplimiento.fechaCumplimiento || 'Pendiente' }}</div></div>
+                          <div><span class="eyebrow">Cumplimiento</span><div class="font-mono mt-1">{{ cumplimiento.fechaCumplimiento || 'Fecha no informada' }}</div></div>
                         </div>
                         @if (cumplimiento.descripcionCumplimiento || cumplimiento.observacion) {
                           <p class="text-xs text-foreground/75 mt-3 leading-relaxed">{{ cumplimiento.descripcionCumplimiento || cumplimiento.observacion }}</p>
@@ -484,23 +493,23 @@
                       </div>
                     } @empty {
                       <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
-                        Aún no hay seguimientos de cumplimiento registrados.
+                        {{ detalle().cumplimientosResolucion.error || 'La consulta no devuelve seguimientos de cumplimiento registrados.' }}
                       </div>
                     }
                   </div>
                 </section>
               </div>
             } @else if (activeTab() === 'notificaciones') {
-              <div class="p-6 space-y-6 text-sm animate-fade-in">
+              <div role="tabpanel" id="detail-panel-notificaciones" aria-labelledby="detail-tab-notificaciones" class="p-6 space-y-6 text-sm animate-fade-in">
                 <!-- SECCIÓN: Cédulas y Notificaciones Oficiales (DISC-06) -->
                 <div>
                   <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div>
-                      <span class="eyebrow" style="color: var(--brand-700)">Actos y cédulas emitidas</span>
-                      <h3 class="font-display text-base font-semibold">Cédulas de notificación oficial</h3>
+                      <span class="eyebrow" style="color: var(--brand-700)">Actuaciones y cédulas registradas</span>
+                      <h3 class="font-display text-base font-semibold">Cédulas registradas</h3>
                       <p class="text-xs text-muted-foreground mt-0.5">Cédulas generadas para el ciudadano recurrente y la entidad pública bajo la Ley N.° 27806.</p>
                     </div>
-                    <span class="font-mono text-[11px] text-muted-foreground">{{ notificacionesExpediente().length }} notificación(es)</span>
+                    <span class="font-mono text-[11px] text-muted-foreground">{{ detalle().notificaciones.error ? 'No informado' : notificacionesExpediente().length }} notificación(es)</span>
                   </div>
 
                   <div class="space-y-4">
@@ -511,12 +520,12 @@
                             <div class="font-mono text-xs font-semibold">{{ resolucion.numeroResolucion || 'Resolución sin número oficial' }}</div>
                             <div class="text-xs text-muted-foreground mt-0.5">{{ resolucion.tipoResolucion }} · {{ resolucion.decision }}</div>
                           </div>
-                          <span class="pill">{{ resolucion.sala.nombre || salaAsignada() }}</span>
+                          <span class="pill">{{ nombreSalaResolucion(resolucion) }}</span>
                         </div>
 
                         @if (resolucionDocumentoRelation(resolucion.id); as relation) {
                           <div data-testid="ttaip-resolution-documents">
-                            <app-document-list
+                            <app-document-list [verifiedContext]="resourceRevision()"
                               [relation]="relation"
                               [documents]="resolucion.documentos || []"
                               emptyMessage="Esta resolución no tiene documentos adjuntos."
@@ -526,13 +535,13 @@
 
                         <!-- Grid de cédulas de esta resolución -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                          @for (cedula of resolucion.cedulas || []; track cedula.id) {
+                          @for (cedula of cedulasDeResolucion(resolucion.id); track cedula.id) {
                             <div class="rounded-md p-3 text-xs space-y-2" style="background: var(--background); border: 1px solid var(--border)">
                               <div class="flex items-start justify-between gap-2">
                                 <div>
-                                  <div class="font-mono font-semibold">{{ cedula.numeroCedula || cedula.documentoReferencia || 'Cédula sin número' }}</div>
+                                  <div class="font-mono font-semibold">{{ cedula.numeroCedula || 'Sin numeración registrada' }}</div>
                                   <div class="text-muted-foreground mt-0.5">
-                                    {{ cedula.destinatario === 'CIUDADANO' ? 'Ciudadano recurrente' : 'Entidad pública requerida' }}
+                                    {{ cedula.destinatario === 'CIUDADANO' ? 'Ciudadano recurrente' : cedula.destinatario === 'ENTIDAD_PUBLICA' ? 'Entidad pública requerida' : 'Destinatario no informado' }}
                                   </div>
                                 </div>
                                 <span class="pill">{{ cedula.estado || 'Estado no registrado' }}</span>
@@ -541,10 +550,10 @@
                               <div class="flex items-center gap-2 pt-1">
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium" style="background: var(--brand-subtle); color: var(--brand-700)">
                                   @switch (cedula.canal) {
-                                    @case ('CORREO_ELECTRONICO') { <svg lucideMail class="w-3.5 h-3.5"></svg> Correo electrónico }
-                                    @case ('CASILLA_ELECTRONICA') { <svg lucideMonitor class="w-3.5 h-3.5"></svg> Casilla electrónica }
-                                    @case ('FISICA') { <svg lucidePackage class="w-3.5 h-3.5"></svg> Entrega física }
-                                    @default { <svg lucideGlobe class="w-3.5 h-3.5"></svg> Plataforma SAIP }
+                                    @case ('CORREO_ELECTRONICO') { <svg aria-hidden="true" lucideMail class="w-3.5 h-3.5"></svg> Correo electrónico }
+                                    @case ('CASILLA_ELECTRONICA') { <svg aria-hidden="true" lucideMonitor class="w-3.5 h-3.5"></svg> Casilla electrónica }
+                                    @case ('FISICA') { <svg aria-hidden="true" lucidePackage class="w-3.5 h-3.5"></svg> Entrega física }
+                                    @default { <svg aria-hidden="true" lucideGlobe class="w-3.5 h-3.5"></svg> Canal no informado }
                                   }
                                 </span>
                                 @if (cedula.fechaEmision) {
@@ -554,7 +563,7 @@
 
                               @if (cedulaDocumentoRelation(cedula.id); as relation) {
                                 <div data-testid="ttaip-cedula-documents" class="mt-2">
-                                  <app-document-list
+                                  <app-document-list [verifiedContext]="resourceRevision()"
                                     [relation]="relation"
                                     [documents]="cedula.documentos || []"
                                     emptyMessage="La cédula no tiene documentos adjuntos."
@@ -564,14 +573,14 @@
                             </div>
                           } @empty {
                             <div class="col-span-full rounded-md p-3 text-xs text-muted-foreground text-center" style="background: var(--background); border: 1px dashed var(--border)">
-                              Sin cédulas registradas para esta resolución.
+                              {{ detalle().cedulas.error || 'Sin cédulas registradas para esta resolución.' }}
                             </div>
                           }
                         </div>
                       </div>
                     } @empty {
                       <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--background); border: 1px dashed var(--border)">
-                        Sin resoluciones oficiales registradas por el backend.
+                        La consulta no informa actuaciones registradas. Revise también los avisos de información incompleta.
                       </div>
                     }
                   </div>
@@ -603,22 +612,22 @@
                             <div class="font-semibold text-sm">{{ notificacion.destinatario === 'CIUDADANO' ? 'Notificación al ciudadano' : 'Notificación a la entidad pública' }}</div>
                             <div class="font-mono text-muted-foreground mt-0.5">{{ notificacion.numeroCedula || 'Sin cédula asignada' }}</div>
                           </div>
-                          <span [class]="notificationStatusClass(notificacion)">{{ notificacion.estado || 'PENDIENTE' }}</span>
+                          <span [class]="notificationStatusClass(notificacion)">{{ notificacion.estado || 'No informado' }}</span>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
                           <div>
                             <span class="eyebrow">Medio</span>
                             <div class="mt-1 flex items-center gap-1.5">
-                              <svg lucideMail class="w-3.5 h-3.5 text-muted-foreground"></svg>
+                              <svg aria-hidden="true" lucideMail class="w-3.5 h-3.5 text-muted-foreground"></svg>
                               <span>{{ notificacion.medioNotificacion || notificacion.medio || 'CASILLA_ELECTRONICA' }}</span>
                             </div>
                           </div>
                           <div>
                             <span class="eyebrow">Acuse</span>
                             <div class="mt-1 flex items-center gap-1.5">
-                              <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-muted-foreground"></svg>
-                              <span>{{ notificacion.estadoAcuse || 'PENDIENTE' }}</span>
+                              <svg aria-hidden="true" lucideCheckCircle2 class="w-3.5 h-3.5 text-muted-foreground"></svg>
+                              <span>{{ notificacion.estadoAcuse || 'No informado' }}</span>
                             </div>
                           </div>
                           <div>
@@ -627,7 +636,7 @@
                           </div>
                           <div>
                             <span class="eyebrow">Evidencia</span>
-                            <div class="mt-1 truncate">{{ notificationEvidenceLabel(notificacion) }}</div>
+                            <div class="mt-1 truncate">{{ notificationEvidenceLabel(notificacion) }}<p class="mt-1">{{ eficaciaLabel(notificacion) }}</p></div>
                           </div>
                         </div>
 
@@ -646,7 +655,7 @@
                         }
 
                         @if (cedulaDocumentoRelation(notificacion.cedulaId); as relation) {
-                          <app-document-list
+                          <app-document-list [verifiedContext]="resourceRevision()"
                             [relation]="relation"
                             [documents]="notificacion.documentosCedula || []"
                             emptyMessage="La notificación no tiene documentos de cédula asociados."
@@ -656,18 +665,18 @@
                         <div class="grid grid-cols-1 gap-2 pt-2 border-t" style="border-color: var(--border)">
                           <span class="eyebrow">Registrar constancia de envío</span>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <select #medioNotificacion class="field-input">
+                            <select aria-label="Medio de notificación" #medioNotificacion class="field-input">
                               <option value="CORREO_ELECTRONICO">Correo electrónico</option>
                               <option value="CASILLA_ELECTRONICA">Casilla electrónica</option>
                               <option value="PLATAFORMA">Plataforma</option>
                               <option value="FISICA">Física</option>
                             </select>
-                            <input #codigoConstancia class="field-input" placeholder="Código de constancia" />
+                            <input aria-label="Código de constancia" #codigoConstancia class="field-input" placeholder="Código de constancia" />
                           </div>
-                          <input #codigoEnvio class="field-input" placeholder="Código de envío" />
-                          <textarea #constanciaEnvio rows="2" class="field-input" placeholder="Constancia de envío"></textarea>
-                          <input #evidenciaConstancia class="field-input" placeholder="URL o referencia de evidencia" />
-                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="notificacionLoading()" (click)="registrarConstanciaNotificacion(notificacion.id, medioNotificacion.value, codigoEnvio.value, codigoConstancia.value, constanciaEnvio.value, evidenciaConstancia.value)">
+                          <input aria-label="Código de envío" #codigoEnvio class="field-input" placeholder="Código de envío" />
+                          <textarea aria-label="Constancia de envío" #constanciaEnvio rows="2" class="field-input" placeholder="Constancia de envío"></textarea>
+                          <input aria-label="URL o referencia de evidencia" #evidenciaConstancia class="field-input" placeholder="URL o referencia de evidencia" />
+                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="notificacionLoading() || actionUncertain() || !rolInstitucional() || !!detalle().notificaciones.error" (click)="registrarConstanciaNotificacion(notificacion.id, medioNotificacion.value, codigoEnvio.value, codigoConstancia.value, constanciaEnvio.value, evidenciaConstancia.value)">
                             Registrar constancia
                           </button>
                         </div>
@@ -675,39 +684,39 @@
                         <div class="grid grid-cols-1 gap-2 pt-2 border-t" style="border-color: var(--border)">
                           <span class="eyebrow">Registrar acuse de recibo</span>
                           <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <select #estadoAcuse class="field-input">
+                            <select aria-label="Estado del acuse" #estadoAcuse class="field-input">
                               <option value="ENTREGADO">Entregado</option>
                               <option value="FALLIDO">Fallido</option>
                               <option value="NO_RECIBIDO">No recibido</option>
                               <option value="OBSERVADO">Observado</option>
                             </select>
-                            <input #evidenciaAcuse class="field-input" placeholder="Evidencia del acuse" />
+                            <input aria-label="Evidencia del acuse" #evidenciaAcuse class="field-input" placeholder="Evidencia del acuse" />
                           </div>
                           <label class="text-xs text-muted-foreground">Fecha acreditada del acuse (opcional; sin fecha no inicia subsanación)
-                            <input #fechaAcuse type="datetime-local" class="field-input" />
+                            <input aria-label="Fecha acreditada del acuse" #fechaAcuse type="datetime-local" class="field-input" />
                           </label>
-                          <textarea #acuseAutomatico rows="2" class="field-input" placeholder="Detalle del acuse automático"></textarea>
-                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="notificacionLoading()" (click)="registrarAcuseNotificacion(notificacion.id, estadoAcuse.value, acuseAutomatico.value, evidenciaAcuse.value, fechaAcuse.value)">
+                          <textarea aria-label="Detalle del acuse automático" #acuseAutomatico rows="2" class="field-input" placeholder="Detalle del acuse automático"></textarea>
+                          <button type="button" class="btn-ghost-brand w-full justify-center" [disabled]="notificacionLoading() || actionUncertain() || !rolInstitucional() || !!detalle().notificaciones.error" (click)="registrarAcuseNotificacion(notificacion.id, estadoAcuse.value, acuseAutomatico.value, evidenciaAcuse.value, fechaAcuse.value)">
                             Registrar acuse
                           </button>
                         </div>
 
                         <div class="grid grid-cols-1 gap-2 pt-2 border-t" style="border-color: var(--border)">
                           <span class="eyebrow">Validación manual TTAIP</span>
-                          <textarea #observacionValidacion rows="2" class="field-input" placeholder="Sustento de validación manual"></textarea>
-                          <input #evidenciaValidacion class="field-input" placeholder="Evidencia de validación manual" />
+                          <textarea aria-label="Sustento de validación manual" #observacionValidacion rows="2" class="field-input" placeholder="Sustento de validación manual"></textarea>
+                          <input aria-label="Evidencia de validación manual" #evidenciaValidacion class="field-input" placeholder="Evidencia de validación manual" />
                           <label class="text-xs text-muted-foreground">Fecha eficaz acreditada para subsanación TTAIP (opcional)
-                            <input #fechaEficacia type="datetime-local" class="field-input" />
+                            <input aria-label="Fecha eficaz acreditada para subsanación" #fechaEficacia type="datetime-local" class="field-input" />
                           </label>
                           <p class="text-xs text-muted-foreground">La validación no sustituye la fecha eficaz. Sin fecha acreditada, el plazo de subsanación permanece pendiente de inicio. Un reenvío no modifica un inicio ya registrado.</p>
-                          <button type="button" class="btn-brand w-full justify-center" [disabled]="notificacionLoading()" (click)="validarNotificacionManual(notificacion.id, observacionValidacion.value, evidenciaValidacion.value, fechaEficacia.value)">
+                          <button type="button" class="btn-brand w-full justify-center" [disabled]="notificacionLoading() || actionUncertain() || !rolInstitucional() || !!detalle().notificaciones.error" (click)="validarNotificacionManual(notificacion.id, observacionValidacion.value, evidenciaValidacion.value, fechaEficacia.value)">
                             Validar manualmente
                           </button>
                         </div>
                       </div>
                     } @empty {
                       <div class="col-span-full rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
-                        Sin notificaciones registradas para este expediente.
+                        {{ detalle().notificaciones.error || 'Sin notificaciones registradas para este expediente.' }}
                       </div>
                     }
                   </div>
@@ -729,7 +738,7 @@
                           <p class="text-foreground/75 mt-1 leading-relaxed">{{ evento.descripcion || evento.referencia }}</p>
                         </div>
                       } @empty {
-                        <p class="text-xs text-muted-foreground">Sin historial estructurado registrado por el backend.</p>
+                        <p class="text-xs text-muted-foreground">{{ detalle().historial.error || 'La consulta no devuelve eventos de historial.' }}</p>
                       }
                     </div>
                   </div>
@@ -749,24 +758,24 @@
                           <p class="text-foreground/75 mt-1 leading-relaxed">{{ reproceso.observacionReproceso || 'Reproceso registrado por el backend.' }}</p>
                         </div>
                       } @empty {
-                        <p class="text-xs text-muted-foreground">Sin reprocesos registrados para este expediente.</p>
+                        <p class="text-xs text-muted-foreground">{{ detalle().reprocesos.error || 'Sin reprocesos registrados para este expediente.' }}</p>
                       }
                     </div>
                   </div>
                 </div>
               </div>
             } @else {
-              <div class="p-6 space-y-6 animate-fade-in">
+              <div role="tabpanel" id="detail-panel-adjuntos" aria-labelledby="detail-tab-adjuntos" class="p-6 space-y-6 animate-fade-in">
                 @if (documentoRelation(); as relation) {
                   @if (puedeAdjuntarDocumentos()) {
-                    <app-document-upload
+                    <app-document-upload [verifiedContext]="resourceRevision()"
                       heading="Adjuntar documento a la apelación"
                       tipoDocumento="DOCUMENTO_ADJUNTO"
                       [relation]="relation"
                       (uploaded)="onDocumentoSubido()"
                     />
                   }
-                  <app-document-list
+                  <app-document-list [verifiedContext]="resourceRevision()"
                     [relation]="relation"
                     [documents]="apelacion()?.documentosMetadata || apelacion()?.documentos || []"
                     emptyMessage="No hay documentos asociados a la apelación."
@@ -776,14 +785,14 @@
                 @if (expedienteDocumentoRelation(); as relation) {
                   @if (puedeAdjuntarDocumentos()) {
                     <div class="rule-ornament"></div>
-                    <app-document-upload
+                    <app-document-upload [verifiedContext]="resourceRevision()"
                       heading="Adjuntar documento al expediente TTAIP"
                       tipoDocumento="EXPEDIENTE_ADMINISTRATIVO"
                       [relation]="relation"
                       (uploaded)="onDocumentoSubido()"
                     />
                   }
-                  <app-document-list
+                  <app-document-list [verifiedContext]="resourceRevision()"
                     [relation]="relation"
                     [documents]="expedienteTtaip()?.documentos || []"
                     emptyMessage="No hay documentos asociados directamente al expediente TTAIP."
@@ -798,14 +807,14 @@
           <div class="form-section-header">
             <span class="eyebrow">Linea de tiempo</span>
             <h2 class="form-section-title flex items-center gap-2">
-              <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18"/><path stroke-width="2" d="M7 21h10"/><path stroke-width="2" d="M5 7h14"/></svg>
+              <svg aria-hidden="true" lucideScale class="w-4 h-4" style="color: var(--brand-700)"></svg>
               Proceso
             </h2>
           </div>
 
           <div class="p-6">
             <ol class="relative">
-              @for (evento of timeline(); track evento.titulo + evento.fecha; let i = $index) {
+              @for (evento of timeline(); track evento.id; let i = $index) {
                 <li class="relative pl-7 pb-5 last:pb-0" data-table-row>
                   @if (i < timeline().length - 1) {
                     <span class="absolute left-[10px] top-5 bottom-0 border-l border-dashed" style="border-color: var(--brand-200)"></span>
@@ -814,13 +823,13 @@
                   <span class="absolute left-0 top-0 w-[22px] h-[22px] rounded-full flex items-center justify-center" [style.background]="dotColor(evento.icon)" style="box-shadow: 0 0 0 4px var(--brand-50)">
                     @switch (evento.icon) {
                       @case ('x') {
-                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 6l12 12M6 18 18 6"/></svg>
+                        <svg aria-hidden="true" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M6 6l12 12M6 18 18 6"/></svg>
                       }
                       @case ('alert') {
-                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+                        <svg aria-hidden="true" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 9v4"/><path stroke-width="2" d="M12 17h.01"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
                       }
                       @default {
-                        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
+                        <svg aria-hidden="true" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M20 6 9 17l-5-5"/></svg>
                       }
                     }
                   </span>
@@ -838,7 +847,7 @@
   </div>
 
   <app-document-preview-modal
-    [open]="previewModalOpen()"
+    [open]="previewModalOpen() && contextoVigente()" [manageFocus]="true"
     [doc]="previewModalDoc()"
     (close)="cerrarPreviewModal()"
   />
