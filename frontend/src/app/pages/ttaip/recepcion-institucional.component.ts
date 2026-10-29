@@ -7,7 +7,7 @@ import { ConsultaRecepcion } from './recepcion-institucional.model';
   template: `
     <section class="rounded-md p-4 border border-border bg-card" aria-labelledby="institutional-receipt-title" [attr.aria-busy]="consulta().estado === 'cargando'">
       <h2 id="institutional-receipt-title" class="eyebrow">Recepción de subsanación</h2>
-      <p class="text-sm mt-2" [attr.role]="consulta().estado === 'error' || consulta().estado === 'incompatible' ? 'alert' : 'status'">{{ consulta().mensaje }}</p>
+      <p class="text-sm mt-2" [attr.role]="consulta().estado === 'error' || consulta().estado === 'incompatible' || consulta().estado === 'incompleto' ? 'alert' : 'status'">{{ consulta().mensaje }}</p>
       @if (consulta().estado === 'disponible' && consulta().datos; as receipt) {
         <dl class="text-sm grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
           <div><dt class="text-muted-foreground">Recepción · ID</dt><dd class="font-mono">{{ receipt.recepcionId }}</dd></div>
@@ -21,7 +21,7 @@ import { ConsultaRecepcion } from './recepcion-institucional.model';
         } @else { <p class="text-sm mt-2">Recepción sin adjuntos. Los archivos son opcionales.</p> }
         <p class="text-xs text-muted-foreground mt-2">Este registro no acredita entrega, notificación eficaz, firma ni emisión documental.</p>
       }
-      @if (consulta().estado === 'error' || consulta().estado === 'incompatible' || consulta().estado === 'ausente') {
+      @if (consulta().estado === 'error' || consulta().estado === 'incompatible' || consulta().estado === 'incompleto' || consulta().estado === 'ausente') {
         <button type="button" class="btn-ghost-brand mt-3" (click)="reintentar.emit()">Volver a consultar el contexto</button>
       }
     </section>

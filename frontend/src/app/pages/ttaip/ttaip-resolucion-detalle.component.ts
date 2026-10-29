@@ -2,7 +2,9 @@ import { Observable, Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { positiveId, apelacionCompatible, motivoPrimera } from './ttaip-calificar.model';
 import { motivoFinal } from './ttaip-resolver.model';
-import { relojConsultado } from './ttaip-segunda-calificacion.model';
+import { contextoSegunda, relojConsultado, requerimientoConsultado } from './ttaip-segunda-calificacion.model';
+import { ConsultaRecepcion, consultarRecepcionInstitucional, motivoRecepcion, sinConsultaRecepcion } from './recepcion-institucional.model';
+import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { detalleConsultado, eficaciaConsultada, single, DetailCollection } from './ttaip-resolucion-detalle.model';
 import { falloConsulta } from '../../utils/consulta-remota.util';
 import { CommonModule } from '@angular/common';
@@ -50,7 +52,7 @@ interface ResultadoMeta {
   selector: 'app-ttaip-resolucion-detalle',
   imports: [
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
-    DocumentPreviewModalComponent,
+    DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
     LucideEye, LucideDownload, LucideFileText, LucideScale,
     LucideCheckCircle2, LucideMail, LucideGlobe,
     LucideMonitor, LucidePackage, LucideShieldCheck
@@ -69,6 +71,10 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private initialized = false;
   private session = '';
   private revision = -1;
+  private receiptRequests = new Subscription();
+  private receiptGeneration = 0;
+  private receiptOwner: { apelacion: Apelacion; query: number; session: string; revision: number; requerimientoId?: number } | null = null;
+  private readonly receipt = signal<ConsultaRecepcion>(sinConsultaRecepcion());
   readonly resourceRevision = signal(0);
   readonly actionUncertain = signal(false);
   private pendingAction: { collection: DetailCollection; category: 'descargo' | 'notificacion' | 'cumplimiento'; id?: number; result?: Record<string, unknown>; code: string; apelacionId: number } | null = null;
@@ -123,8 +129,37 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly retorno = computed(() => { this.auth.cambiosSesion(); try { return this.auth.obtenerSesion()?.tipoUsuario === 'FUNCIONARIO' ? '/funcionario' : '/ttaip'; } catch { return '/ttaip'; } });
   readonly rolInstitucional = computed(() => { this.auth.cambiosSesion(); try { return ['TTAIP', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
   readonly rolEntidad = computed(() => { this.auth.cambiosSesion(); try { return ['FUNCIONARIO', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
+  readonly requerimiento = computed(() => requerimientoConsultado(this.apelacion()));
+  readonly requiereRecepcion = computed(() => {
+    const ap = this.apelacion();
+    return !!ap && (ap.calificacionPrimera === 'INADMISIBLE' || ap.resolucionPrimeraCalificacion?.decision === 'INADMISIBLE'
+      || ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null
+      || ['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION'].includes(ap.estado));
+  });
+  readonly recepcion = computed<ConsultaRecepcion>(() => {
+    const revision = this.auth.cambiosSesion(); this.resourceRevision();
+    const value = this.receipt(), owner = this.receiptOwner;
+    return owner && this.contextoVigente() && owner.apelacion === this.apelacion() && owner.query === this.documentQuery
+      && owner.revision === revision && owner.session === this.sessionKey() && owner.requerimientoId === this.requerimiento()?.id ? value : sinConsultaRecepcion();
+  });
+  private readonly motivoContextoNavegacion = computed(() => {
+    const revision = this.auth.cambiosSesion(); this.resourceRevision();
+    if (this.revision !== revision || !this.contextoVigente() || this.loading() || this.error() || !this.apelacion()) return 'Consulte el expediente actual antes de continuar.';
+    if (this.auth.obtenerSesion()?.tipoUsuario !== 'TTAIP') return 'El registro de segunda calificación y resolución final requiere el acceso TTAIP.';
+    if (this.actionUncertain()) return 'Recupere la actuación incierta antes de continuar.';
+    return this.detalle().resoluciones.error;
+  });
+  readonly motivoSegunda = computed(() => {
+    const base = this.motivoContextoNavegacion(); if (base) return base;
+    const ap = this.apelacion()!, contexto = contextoSegunda(ap);
+    if (contexto === 'registrada') return 'Ya hay una segunda calificación registrada. Revise la actuación y sus notificaciones; no registre otra.';
+    if (contexto !== 'borrador') return 'Segunda calificación no disponible: ' + (contexto === 'incompleto' ? 'información incompleta de la primera actuación o del requerimiento.' : 'estado incompatible con una segunda calificación.');
+    return motivoRecepcion(ap, this.requerimiento()!.id!, this.recepcion());
+  });
+  readonly motivoResolucionFinal = computed(() => this.motivoContextoNavegacion() || motivoFinal(this.apelacion(), this.recepcion()));
   readonly navegacionPrimera = computed(() => !!this.apelacion() && this.rolInstitucional() && !motivoPrimera(this.apelacion()!));
-  readonly navegacionFinal = computed(() => !!this.apelacion() && this.rolInstitucional() && !motivoFinal(this.apelacion()));
+  readonly navegacionSegunda = computed(() => !this.motivoSegunda());
+  readonly navegacionFinal = computed(() => !this.motivoResolucionFinal());
   readonly coleccionesIncompletas = computed(() => Object.values(this.detalle()).map(c => c.error).filter(Boolean));
   readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || ''));
 
@@ -307,16 +342,23 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   }
 
   private obtenerOfficialStage(): OfficialStage { const type = this.selectedAct()?.tipoResolucion; return type === 'RESOLUCION_FINAL' ? 'final' : type === 'SEGUNDA_CALIFICACION' ? 'segunda' : 'primera'; }
-  constructor() { effect(() => { const rev = this.auth.cambiosSesion(); if (this.initialized && rev !== this.revision) untracked(() => this.cargarApelacion(this.routeExpediente())); }); }
+  constructor() {
+    effect(() => { const rev = this.auth.cambiosSesion(); if (this.initialized && rev !== this.revision) untracked(() => this.cargarApelacion(this.routeExpediente())); });
+    effect(() => {
+      const ap = this.apelacion(); this.auth.cambiosSesion(); this.resourceRevision();
+      if (this.initialized) untracked(() => this.consultarRecepcionActual(ap));
+    });
+  }
   private sessionKey(): string { try { const s = this.auth.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.entidadId]); } catch { return ''; } }
   contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
   private current(query: number): boolean { return query === this.documentQuery && this.contextoVigente(); }
   ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => this.cargarApelacion(p.get('expediente') || '')); }
-  ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
+  ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
   cargarApelacion(expediente: string): void {
     if (this.destroyed) return;
     if (this.pendingAction && expediente === this.routeExpediente() && this.session === this.sessionKey()) { this.recuperarActuacion(); return; }
     this.requests.unsubscribe(); this.requests = new Subscription(); const query = ++this.documentQuery;
+    this.limpiarRecepcion();
     this.routeExpediente.set(expediente); this.session = this.sessionKey(); this.revision = this.auth.cambiosSesion(); this.resourceRevision.update(v => v + 1);
     this.cerrarPreviewModal(); this.draftError.set(''); this.apelacion.set(null); this.selectedActId.set(null); this.error.set(''); this.loading.set(true);
     this.pendingAction = null; this.actionUncertain.set(false);
@@ -335,6 +377,33 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     if (!apelacionCompatible(data, code)) return false; const ap = data as Apelacion;
     if (ap.expedienteTtaip && (!positiveId(ap.expedienteTtaip.id) || ap.expedienteTtaip.numeroExpediente !== code)) return false;
     const s = this.auth.obtenerSesion(); return s?.tipoUsuario !== 'FUNCIONARIO' || (positiveId(s.entidadId) && ap.entidadId === s.entidadId);
+  }
+  private limpiarRecepcion(): void {
+    ++this.receiptGeneration; this.receiptRequests.unsubscribe(); this.receiptRequests = new Subscription();
+    this.receiptOwner = null; this.receipt.set(sinConsultaRecepcion());
+  }
+  private consultarRecepcionActual(ap: Apelacion | null): void {
+    this.limpiarRecepcion();
+    if (!ap || !this.contextoVigente() || !this.rolInstitucional() || !this.requiereRecepcion() || this.loading() || this.error()) return;
+    const req = this.requerimiento(), query = this.documentQuery, generation = this.receiptGeneration, revision = this.auth.cambiosSesion();
+    this.receiptOwner = { apelacion: ap, query, session: this.sessionKey(), revision, requerimientoId: req?.id };
+    if (!Array.isArray(ap.resoluciones) && !Array.isArray(ap.expedienteTtaip?.resoluciones)) {
+      this.receipt.set({ estado: 'incompleto', mensaje: 'No se han recuperado las actuaciones necesarias para identificar el requerimiento.' }); return;
+    }
+    if (this.detalle().resoluciones.error) {
+      this.receipt.set({ estado: 'incompatible', mensaje: this.detalle().resoluciones.error }); return;
+    }
+    if (!req) {
+      this.receipt.set({ estado: 'incompleto', mensaje: 'Información incompleta de la primera calificación INADMISIBLE y de su requerimiento. Consulte nuevamente; no se deduce la recepción del estado.' }); return;
+    }
+    this.receiptRequests.add(consultarRecepcionInstitucional(this.ttaipService, ap, req.id!).subscribe(value => {
+      if (generation === this.receiptGeneration && revision === this.auth.cambiosSesion() && this.current(query) && this.apelacion() === ap && this.requerimiento()?.id === req.id) this.receipt.set(value);
+    }));
+  }
+  reintentarRecepcion(): void { this.cargarApelacion(this.routeExpediente()); }
+  revisarNotificaciones(): void {
+    if (!this.contextoVigente() || this.loading() || this.error()) return;
+    this.cambiarTab('notificaciones'); this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-notificaciones')?.focus();
   }
   seleccionarActuacion(value: string): void { const id = Number(value); this.cerrarPreviewModal(); this.draftError.set(''); this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); }
   onTabKey(event: KeyboardEvent, tab: DetailTab): void { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const i = this.tabs.findIndex(t => t.id === tab); const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1 : (i + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length; this.cambiarTab(this.tabs[next].id); this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-' + this.tabs[next].id)?.focus(); }

@@ -7,7 +7,7 @@ import { documentosRelacionados, positiveId } from './ttaip-calificar.model';
 
 export type RecepcionInstitucional = ConsultaRecepcionSubsanacionTtaipDTO;
 export interface ConsultaRecepcion {
-  estado: 'sin-consultar' | 'cargando' | 'ausente' | 'disponible' | 'incompatible' | 'error';
+  estado: 'sin-consultar' | 'cargando' | 'ausente' | 'disponible' | 'incompleto' | 'incompatible' | 'error';
   datos?: RecepcionInstitucional;
   mensaje: string;
 }
@@ -26,13 +26,21 @@ export function recepcionCompatible(data: RecepcionInstitucional, ap: Apelacion,
 }
 
 export function consultarRecepcionInstitucional(service: TtaipService, ap: Apelacion, req: number): Observable<ConsultaRecepcion> {
-  if (!positiveId(ap.expedienteTtaip?.id) || ap.expedienteTtaip.numeroExpediente !== ap.expediente || !positiveId(req))
-    return of({ estado: 'incompatible', mensaje: 'Información incompleta del expediente o del requerimiento para consultar la recepción.' });
+  if (!positiveId(ap.expedienteTtaip?.id) || !positiveId(req))
+    return of({ estado: 'incompleto', mensaje: 'Información incompleta del expediente o del requerimiento para consultar la recepción.' });
+  if (ap.expedienteTtaip.numeroExpediente !== ap.expediente)
+    return of({ estado: 'incompatible', mensaje: 'El agregado no corresponde al expediente consultado.' });
   return service.consultarRecepcionSubsanacion(ap.expedienteTtaip.id, req).pipe(
-    map((data): ConsultaRecepcion => recepcionCompatible(data, ap, req)
-      ? { estado: data.estado === 'RECIBIDA' ? 'disponible' : 'ausente', datos: data,
+    map((data): ConsultaRecepcion => {
+      if (!data || !positiveId(data.apelacionId) || !positiveId(data.expedienteTtaipId) || !positiveId(data.requerimientoId)
+        || typeof data.expediente !== 'string' || !Array.isArray(data.documentos)
+        || !['RECIBIDA', 'AUSENTE'].includes(data.estado)
+        || data.recepcionId === undefined || data.fechaRecepcion === undefined || data.fundamentosAdicionales === undefined)
+        return { estado: 'incompleto', mensaje: 'La consulta no proporcionó información completa de la recepción.' };
+      return recepcionCompatible(data, ap, req) ? { estado: data.estado === 'RECIBIDA' ? 'disponible' : 'ausente', datos: data,
         mensaje: data.estado === 'RECIBIDA' ? 'Recepción registrada consultada por requerimiento.' : 'El servidor no registra recepción para este requerimiento.' }
-      : { estado: 'incompatible', mensaje: 'La consulta de recepción contiene datos incompletos o relaciones incompatibles.' }),
+        : { estado: 'incompatible', mensaje: 'La consulta de recepción contiene datos incompletos o relaciones incompatibles.' };
+    }),
     catchError(error => of<ConsultaRecepcion>({ estado: 'error', mensaje: falloConsulta(error, 'la recepción de subsanación').mensaje })),
     startWith<ConsultaRecepcion>({ estado: 'cargando', mensaje: 'Consultando la recepción de subsanación…' }),
   );
