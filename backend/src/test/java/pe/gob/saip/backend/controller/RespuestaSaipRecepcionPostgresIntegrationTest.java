@@ -269,7 +269,7 @@ class RespuestaSaipRecepcionPostgresIntegrationTest {
     }
     @Test void contratoYFlywayConValidacionCompleta() throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();assertThat(flyway.info().pending()).isEmpty();
-        assertThat(Arrays.stream(flyway.info().applied()).map(i->i.getVersion().toString())).containsExactly("1","2","3","4","5","6","7","8","9","10");
+        assertThat(Arrays.stream(flyway.info().applied()).map(i->i.getVersion().toString())).containsExactly("1","2","3","4","5","6","7","8","9","10","11");
         String dir=System.getenv("RESPUESTA_POSTGRES_ARTIFACTS");if(dir==null)return;
         var res=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString());
         assertThat(res.statusCode()).isEqualTo(200);Files.writeString(Path.of(dir,"openapi-respuesta.json"),res.body());

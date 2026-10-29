@@ -18,6 +18,8 @@ import {
   SubsanarSolicitudPayload
 } from '../models/solicitud.model';
 import { environment } from '../../environments/environment';
+import type { AltaSaipRecepcionDTO } from '../api/types';
+import type { TipoDocumento } from '../models/documento.model';
 
 export interface ConsultaPublicaSolicitud {
   expediente: string;
@@ -43,6 +45,23 @@ export interface ConsultaPublicaSolicitud {
 export class SolicitudService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/solicitudes`;
+
+  registrarAlta(clave: string, datos: SolicitudCreate, declaraVeracidad: boolean,
+    archivos: readonly { file: File; tipo: TipoDocumento }[]): Observable<AltaSaipRecepcionDTO> {
+    const body = new FormData();
+    body.append('claveOperacion', clave);
+    for (const campo of ['entidadId', 'asunto', 'descripcion', 'tipoInformacion', 'formatoDigital', 'formatoFisico',
+      'copiaSimple', 'copiaCertificada', 'consentimientoDatosPersonales', 'canalNotificacion'] as const) {
+      if (datos[campo] != null) body.append(campo, String(datos[campo]));
+    }
+    body.append('declaraVeracidad', String(declaraVeracidad));
+    for (const archivo of archivos) { body.append('tiposDocumento', archivo.tipo); body.append('archivos', archivo.file, archivo.file.name); }
+    return this.http.post<AltaSaipRecepcionDTO>(`${this.apiUrl}/recepciones`, body);
+  }
+
+  obtenerRecepcionAlta(clave: string): Observable<AltaSaipRecepcionDTO> {
+    return this.http.get<AltaSaipRecepcionDTO>(`${this.apiUrl}/recepciones/${encodeURIComponent(clave)}`);
+  }
 
   findAll(): Observable<Solicitud[]> {
     return this.http.get<Solicitud[]>(this.apiUrl);

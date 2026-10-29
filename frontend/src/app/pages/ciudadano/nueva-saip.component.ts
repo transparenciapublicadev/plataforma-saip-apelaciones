@@ -2,12 +2,11 @@ import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin, Subscription, timeout } from 'rxjs';
+import { Subscription, timeout } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SolicitudService } from '../../services/solicitud.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
-import { DocumentoService } from '../../services/documento.service';
 import { Entidad } from '../../models/entidad.model';
 import { Solicitud, SolicitudCreate } from '../../models/solicitud.model';
 import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
@@ -16,6 +15,7 @@ import { ReferenceSuccessModalComponent, ReferenceSuccessMeta, ReferenceSuccessN
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { GUIA, MODELOS, PLANTILLA_GENERAL } from './saip-form-reference';
+import type { AltaSaipRecepcionDTO } from '../../api/types';
 import { LucideArrowLeft, LucideShieldCheck, LucideCheckCircle2, LucideHelpCircle, LucideInfo,
   LucideUpload, LucideEye, LucideX, LucideSave, LucideSend, LucideFileText, LucideChevronLeft,
   LucideChevronRight, LucideLightbulb, LucideListChecks } from '@lucide/angular';
@@ -34,7 +34,7 @@ interface ArchivoPresentacion {
   file: File; tipo: TipoDocumento; estado: 'seleccionado' | 'subiendo' | 'registrado' | 'rechazado' | 'incierto';
   documento?: DocumentoMetadata;
 }
-interface Envio { datos: SolicitudCreate; archivos: ArchivoPresentacion[]; }
+interface Envio { clave: string; datos: SolicitudCreate; declaraVeracidad: boolean; archivos: ArchivoPresentacion[]; }
 @Component({
   selector: 'app-nueva-saip',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
@@ -47,7 +47,6 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   private readonly solicitudService = inject(SolicitudService);
   private readonly entidadService = inject(EntidadService);
   private readonly authService = inject(AuthService);
-  private readonly documentoService = inject(DocumentoService);
   private readonly router = inject(Router);
   readonly formatos = FORMATOS;
   readonly mediosNotificacion = MEDIOS_NOTIFICACION;
@@ -66,7 +65,11 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly mensaje = signal('');
   readonly errores = signal<Record<string, string>>({});
-  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'parcial' | 'confirmada'>('lista');
+  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'sin-recepcion' | 'confirmada'>('lista');
+  readonly operacionPendiente = signal(false);
+  readonly claveOperacion = signal('');
+  readonly recepcionId = signal<number | null>(null);
+  private recepcionEsperada: AltaSaipRecepcionDTO | null = null;
   readonly confirmModalAbierto = signal(false);
   readonly successModalAbierto = signal(false);
   readonly draftModalAbierto = signal(false);
@@ -83,7 +86,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   readonly docLabel = computed(() => this.esEmpresa() ? 'RUC' : 'DNI');
   readonly docNumero = computed(() => this.esEmpresa() ? this.sesionVisual().ruc : this.sesionVisual().dni);
   readonly correoMask = computed(() => { const [u, d] = this.sesionVisual().email.split('@'); return d ? `${u.slice(0, 2)}***@${d}` : 'No disponible'; });
-  readonly bloqueado = computed(() => this.loading() || !!this.solicitudCreada() || this.estadoEnvio() === 'incierta');
+  readonly bloqueado = computed(() => this.loading() || !!this.solicitudCreada() || this.operacionPendiente());
   readonly accept = DOCUMENTO_ACCEPT;
   readonly adjunto = signal<File | null>(null);
   readonly anexo1 = signal<File | null>(null);
@@ -133,6 +136,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     this.generacion++; this.consultas.unsubscribe(); this.operaciones.unsubscribe();
     this.consultas = new Subscription(); this.operaciones = new Subscription(); this.entidades.set([]);
     this.resetForm(); this.envio = null; this.confirmacion = null; this.solicitudCreada.set(null);
+    this.operacionPendiente.set(false); this.claveOperacion.set(''); this.recepcionId.set(null); this.recepcionEsperada = null;
     this.expedienteCreado.set(''); this.archivosEnviados.set([]); this.documentosConsultados.set(null);
     this.errorRecuperacion.set(''); this.loading.set(false); this.estadoEnvio.set('lista');
     this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.draftModalAbierto.set(false);
@@ -266,11 +270,11 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     if (Object.keys(errors).length) { this.error.set('Revise los campos señalados antes de presentar.'); this.enfocar('saip-errores'); return; }
     this.error.set(''); this.confirmacion = this.capturarEnvio(); this.confirmModalAbierto.set(true);
   }
-  private capturarEnvio(): Envio {
+  private capturarEnvio(clave: string = crypto.randomUUID()): Envio {
     const notas: string[] = [];
     if (this.oficinaDestinataria.trim()) notas.push(`[Oficina destinataria: ${this.oficinaDestinataria.trim()}]`);
     if (this.formatoRespuesta.soporteMagnetico) notas.push('[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]');
-    return { datos: { asunto: this.asunto.trim(), descripcion: [...notas, this.descripcion.trim()].join('\n\n'),
+    return { clave, declaraVeracidad: this.declaraVeracidad, datos: { asunto: this.asunto.trim(), descripcion: [...notas, this.descripcion.trim()].join('\n\n'),
       ciudadanoId: this.authService.obtenerSesion()!.ciudadanoId!, entidadId: this.entidadId!, tipoInformacion: this.temaEfectivo() || undefined,
       formatoDigital: this.formatoRespuesta.correo, formatoFisico: this.formatoRespuesta.copiaSimple || this.formatoRespuesta.copiaCertificada || this.formatoRespuesta.soporteMagnetico,
       copiaSimple: this.formatoRespuesta.copiaSimple, copiaCertificada: this.formatoRespuesta.copiaCertificada,
@@ -281,86 +285,101 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     if (this.bloqueado() || !this.actual()) return;
     const errors = this.validar(4); this.errores.set(errors);
     if (Object.keys(errors).length) { this.error.set('Revise los campos señalados antes de presentar.'); return; }
-    const envio = this.capturarEnvio();
+    const envio = this.capturarEnvio(this.confirmacion?.clave);
     if (this.confirmacion && (JSON.stringify(envio.datos) !== JSON.stringify(this.confirmacion.datos)
-      || envio.archivos.length !== this.confirmacion.archivos.length || envio.archivos.some((a, i) => a.file !== this.confirmacion!.archivos[i].file))) {
+      || envio.declaraVeracidad !== this.confirmacion.declaraVeracidad || envio.archivos.length !== this.confirmacion.archivos.length || envio.archivos.some((a, i) => a.file !== this.confirmacion!.archivos[i].file))) {
       this.confirmModalAbierto.set(false); this.confirmacion = null; this.error.set('El contenido cambió. Revise y confirme nuevamente.'); return;
     }
-    this.envio = envio; const gen = this.generacion;
+    this.envio = envio; this.claveOperacion.set(envio.clave); this.operacionPendiente.set(true); this.recepcionEsperada = null;
+    this.enviarOperacion(envio, this.generacion);
+  }
+  private enviarOperacion(envio: Envio, gen: number): void {
+    if (!this.actual(gen) || this.envio !== envio) return;
     this.archivosEnviados.set(envio.archivos); this.loading.set(true); this.error.set(''); this.mensaje.set('');
-    this.operaciones.add(this.solicitudService.crear(envio.datos).pipe(timeout(30_000)).subscribe({
+    this.estadoEnvio.set('lista');
+    this.operaciones.add(this.solicitudService.registrarAlta(envio.clave, envio.datos, envio.declaraVeracidad, envio.archivos).pipe(timeout(30_000)).subscribe({
       next: respuesta => {
-        if (!this.actual(gen)) return;
+        if (!this.actual(gen) || this.envio !== envio) return;
         this.confirmModalAbierto.set(false);
-        if (!this.respuestaCompatible(respuesta, envio)) { this.incierta('El servidor respondió sin una identidad de solicitud compatible. No repita la creación; revise su panel.'); return; }
-        this.solicitudCreada.set(respuesta); this.expedienteCreado.set(respuesta.expediente); this.subirSiguiente(0, gen);
+        if (!this.recepcionCompatible(respuesta, envio) || !this.mismaRecepcionEsperada(respuesta)) { this.incierta('El servidor no confirmó una recepción compatible. Consulte por la misma operación; no repita la creación a ciegas.'); return; }
+        this.recepcionEsperada = respuesta; this.consultarRecepcion(envio, gen);
       },
       error: error => {
-        if (!this.actual(gen)) return;
+        if (!this.actual(gen) || this.envio !== envio) return;
         this.loading.set(false); this.confirmModalAbierto.set(false);
         if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
-          this.incierta('Resultado incierto: el servidor podría haber registrado la solicitud. No se repetirá el POST. No existe una recuperación inequívoca por operación; revise su panel antes de iniciar otra solicitud.');
+          this.incierta('Resultado incierto: el servidor podría haber registrado la solicitud y sus archivos. Consulte la recepción con la misma clave antes de un reintento explícito. No se repite el POST automáticamente.');
         } else {
           this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
-            : error.status === 403 ? 'No tiene permiso para presentar esta solicitud.' : 'El servidor rechazó la creación. Revise los campos y las condiciones de presentación.');
+            : error.status === 403 ? 'No tiene permiso para presentar esta solicitud.' : error.status === 409
+              ? 'El servidor rechazó la operación por conflicto. Consulte su recepción antes de intentar otro registro.'
+              : 'El servidor rechazó la creación. Revise los campos y las condiciones de presentación.');
+          if (error.status !== 409) { this.operacionPendiente.set(false); this.envio = null; this.confirmacion = null; }
         }
       }
     }));
   }
-  private respuestaCompatible(r: Solicitud | null, envio: Envio): r is Solicitud {
+  private respuestaCompatible(r: AltaSaipRecepcionDTO['solicitud'] | null | undefined, envio: Envio): boolean {
     return !!r && this.idValido(r.id) && !!r.expediente?.trim() && r.ciudadanoId === envio.datos.ciudadanoId && r.entidadId === envio.datos.entidadId
       && r.asunto === envio.datos.asunto && r.descripcion === envio.datos.descripcion
       && r.consentimientoDatosPersonales === envio.datos.consentimientoDatosPersonales
       && r.canalNotificacion === envio.datos.canalNotificacion
       && r.formatoDigital === envio.datos.formatoDigital && r.formatoFisico === envio.datos.formatoFisico
-      && r.copiaSimple === envio.datos.copiaSimple && r.copiaCertificada === envio.datos.copiaCertificada;
+      && r.copiaSimple === envio.datos.copiaSimple && r.copiaCertificada === envio.datos.copiaCertificada
+      && (r.tipoInformacion || undefined) === (envio.datos.tipoInformacion || undefined);
   }
   private incierta(mensaje: string): void { this.loading.set(false); this.confirmModalAbierto.set(false); this.estadoEnvio.set('incierta'); this.error.set(mensaje); }
-  private subirSiguiente(indice: number, gen: number): void {
-    if (!this.actual(gen) || !this.envio || !this.solicitudCreada()) return;
-    const item = this.envio.archivos[indice];
-    if (!item) { this.loading.set(false); this.estadoEnvio.set('confirmada'); this.successModalAbierto.set(true); return; }
-    item.estado = 'subiendo'; this.archivosEnviados.set([...this.envio.archivos]);
-    this.operaciones.add(this.documentoService.upload(item.file, item.tipo, { solicitudId: this.solicitudCreada()!.id }).pipe(timeout(30_000)).subscribe({
-      next: doc => {
-        if (!this.actual(gen)) return;
-        if (!this.documentoCompatible(doc, item)) { item.estado = 'incierto'; this.detenerSubidas('La respuesta documental no acredita el archivo vinculado esperado.'); return; }
-        item.documento = doc; item.estado = 'registrado'; this.archivosEnviados.set([...this.envio!.archivos]); this.subirSiguiente(indice + 1, gen);
-      },
-      error: error => {
-        if (!this.actual(gen)) return;
-        item.estado = error instanceof HttpErrorResponse && error.status > 0 && error.status < 500 ? 'rechazado' : 'incierto';
-        this.detenerSubidas('La solicitud está registrada, pero no se confirmó la vinculación de todos los archivos. No se repiten subidas automáticamente.');
-      }
-    }));
-  }
-  private documentoCompatible(doc: DocumentoMetadata, item: ArchivoPresentacion): boolean {
-    return !!doc && this.idValido(doc.id) && doc.solicitudId === this.solicitudCreada()?.id && doc.tipoDocumento === item.tipo
+  private documentoCompatible(doc: DocumentoMetadata, item: ArchivoPresentacion, solicitudId: number): boolean {
+    return !!doc && this.idValido(doc.id) && doc.solicitudId === solicitudId && doc.tipoDocumento === item.tipo
       && !DOCUMENTO_RELATION_KEYS.some(key => key !== 'solicitudId' && doc[key] != null)
       && doc.estado === 'ACTIVO' && doc.nombreOriginal === item.file.name && doc.sizeBytes === item.file.size
-      && !!doc.hashSha256 && /^[a-f0-9]{64}$/i.test(doc.hashSha256)
-      && !this.archivosEnviados().some(a => a.documento?.id === doc.id);
+      && !!doc.hashSha256 && /^[a-f0-9]{64}$/i.test(doc.hashSha256);
   }
-  private detenerSubidas(mensaje: string): void {
-    this.loading.set(false); this.estadoEnvio.set('parcial'); this.error.set(mensaje); this.archivosEnviados.set([...this.envio!.archivos]);
+  private recepcionCompatible(r: AltaSaipRecepcionDTO | null, envio: Envio): r is AltaSaipRecepcionDTO {
+    return !!r && this.idValido(r.id) && r.claveOperacion === envio.clave && r.declaraVeracidad === envio.declaraVeracidad
+      && typeof r.fechaRecepcion === 'string' && /^\d{4}-\d{2}-\d{2}/.test(r.fechaRecepcion) && Number.isFinite(Date.parse(r.fechaRecepcion))
+      && this.respuestaCompatible(r.solicitud, envio) && Array.isArray(r.documentos) && r.documentos.length === envio.archivos.length
+      && new Set(r.documentos.map(d => d?.id)).size === r.documentos.length
+      && r.documentos.every((d, i) => this.documentoCompatible(d, envio.archivos[i], r.solicitud.id!));
   }
   comprobarRegistro(): void {
-    const creada = this.solicitudCreada(), envio = this.envio;
-    if (!this.actual() || this.loading() || !creada || !envio) return;
-    const gen = this.generacion; this.loading.set(true); this.errorRecuperacion.set(''); this.documentosConsultados.set(null);
-    this.operaciones.add(forkJoin({ solicitud: this.solicitudService.findById(creada.id), documentos: this.documentoService.listByRelation({ solicitudId: creada.id }) }).pipe(timeout(30_000)).subscribe({
-      next: ({ solicitud, documentos }) => {
-        if (!this.actual(gen)) return;
+    if (!this.actual() || this.loading() || !this.envio) return;
+    this.consultarRecepcion(this.envio, this.generacion);
+  }
+  private mismaRecepcionEsperada(r: AltaSaipRecepcionDTO): boolean {
+    const anterior = this.recepcionEsperada;
+    return !anterior || r.id === anterior.id && r.fechaRecepcion === anterior.fechaRecepcion
+      && r.solicitud.id === anterior.solicitud.id && r.documentos.every((d, i) => d.id === anterior.documentos[i]?.id);
+  }
+  reintentarAlta(): void {
+    if (!this.actual() || this.loading() || this.estadoEnvio() !== 'sin-recepcion' || !this.envio) return;
+    this.enviarOperacion(this.envio, this.generacion);
+  }
+  private consultarRecepcion(envio: Envio, gen: number): void {
+    const yaConfirmada = this.estadoEnvio() === 'confirmada';
+    this.loading.set(true); this.errorRecuperacion.set(''); this.documentosConsultados.set(null);
+    this.operaciones.add(this.solicitudService.obtenerRecepcionAlta(envio.clave).pipe(timeout(30_000)).subscribe({
+      next: r => {
+        if (!this.actual(gen) || this.envio !== envio) return;
         this.loading.set(false);
-        if (!this.respuestaCompatible(solicitud, envio) || solicitud.id !== creada.id || solicitud.expediente !== creada.expediente
-          || !Array.isArray(documentos) || new Set(documentos.map(d => d?.id)).size !== documentos.length
-          || documentos.some(d => !this.idValido(d?.id) || d.solicitudId !== creada.id || d.estado !== 'ACTIVO'
-            || DOCUMENTO_RELATION_KEYS.some(key => key !== 'solicitudId' && d[key] != null))) {
-          this.errorRecuperacion.set('La consulta no acredita este recurso y sus documentos. No se confirmó otro registro.'); return;
+        if (!this.recepcionCompatible(r, envio) || !this.mismaRecepcionEsperada(r)) {
+          if (!yaConfirmada) this.incierta('La consulta no acredita la recepción de esta operación y sus documentos. No se confirma otro registro.');
+          this.errorRecuperacion.set('La consulta contiene relaciones o datos incompatibles. No se repite el alta.'); return;
         }
-        this.solicitudCreada.set(solicitud); this.documentosConsultados.set(documentos);
+        this.recepcionEsperada = r; this.recepcionId.set(r.id); this.solicitudCreada.set(r.solicitud as Solicitud); this.expedienteCreado.set(r.solicitud.expediente!);
+        envio.archivos.forEach((a, i) => { a.estado = 'registrado'; a.documento = r.documentos[i]; });
+        this.archivosEnviados.set([...envio.archivos]); this.documentosConsultados.set(r.documentos); this.operacionPendiente.set(false);
+        this.estadoEnvio.set('confirmada'); this.error.set(''); if (!yaConfirmada) this.successModalAbierto.set(true);
       },
-      error: () => { if (this.actual(gen)) { this.loading.set(false); this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. El error no acredita ausencia de archivos.'); } }
+      error: error => { if (this.actual(gen) && this.envio === envio) {
+        this.loading.set(false);
+        if (!yaConfirmada && error?.status === 404) {
+          this.estadoEnvio.set('sin-recepcion'); this.error.set('No hay recepción confirmada para la clave consultada. El envío anterior podría seguir en curso. Solo se permite reintentar explícitamente la misma clave y contenido.');
+        } else {
+          if (!yaConfirmada) this.incierta('No se pudo comprobar la recepción. Un error de consulta no acredita ausencia; conserve el contenido y consulte nuevamente.');
+          this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. El error no acredita ausencia de archivos.');
+        }
+      } }
     }));
   }
   solicitudConfirmSummary(): ReferenceConfirmSummary[] {
@@ -369,8 +388,9 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       { label: 'Notificación', value: this.medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' },
       { label: 'Archivos seleccionados', value: String(this.zonas.filter(z => z.file()).length) }];
   }
-  solicitudWarning(): ReferenceConfirmWarning { return { label: 'Registro y adjuntos', detail: 'La creación y cada archivo se registran por separado. Una subida fallida no revierte la solicitud. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.' }; }
+  solicitudWarning(): ReferenceConfirmWarning { return { label: 'Registro y adjuntos', detail: 'Se enviarán la solicitud y todos los archivos seleccionados en una operación coordinada. Ante incertidumbre consulte la recepción antes de reintentar. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.' }; }
   solicitudSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.solicitudCreada(); return r ? [
+    { label: 'Recepción', value: String(this.recepcionId()), mono: true },
     { label: 'Solicitud', value: String(r.id), mono: true }, { label: 'Entidad', value: r.entidadNombre || this.getEntidadSeleccionadaNombre() },
     { label: 'Fecha registrada', value: r.fechaPresentacion || 'No disponible' }, { label: 'Fecha límite del servidor', value: r.fechaLimite || 'No disponible' },
     { label: 'Documentos vinculados', value: String(this.archivosEnviados().filter(a => a.estado === 'registrado').length) }] : []; }

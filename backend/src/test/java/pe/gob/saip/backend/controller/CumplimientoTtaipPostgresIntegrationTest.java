@@ -209,7 +209,7 @@ class CumplimientoTtaipPostgresIntegrationTest {
     @Test void flywayValidateYContratoCompletoReal() throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success", Long.class)).isEqualTo(10);
+        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success", Long.class)).isEqualTo(11);
         var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v3/api-docs")).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         Path output = Path.of(Objects.requireNonNull(System.getenv("TTAIP_POSTGRES_ARTIFACTS")));

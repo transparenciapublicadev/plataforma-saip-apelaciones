@@ -8,13 +8,21 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { Solicitud, SolicitudCreate } from '../../models/solicitud.model';
+import type { AltaSaipRecepcionDTO } from '../../api/types';
+import type { TipoDocumento } from '../../models/documento.model';
 
 describe('NuevaSaipComponent', () => {
+  let ultimaRecepcion: AltaSaipRecepcionDTO;
   const mockSolicitudService = {
-    crear: vi.fn(() => of({ id: 101, expediente: 'SAIP-2026-00101', ciudadanoId: 5, entidadId: 1, asunto: 'Asunto para envío', descripcion: 'Descripción para envío',
-      consentimientoDatosPersonales: true, canalNotificacion: 'CORREO_ELECTRONICO', formatoDigital: true, formatoFisico: false,
-      copiaSimple: false, copiaCertificada: false } as Partial<Solicitud>))
+    registrarAlta: vi.fn((clave: string, datos: SolicitudCreate, declaraVeracidad: boolean, archivos: { file: File; tipo: TipoDocumento }[]) => {
+      ultimaRecepcion = { id: 201, claveOperacion: clave, declaraVeracidad, fechaRecepcion: '2026-10-28T10:00:00',
+        solicitud: { ...datos, id: 101, expediente: 'SAIP-2026-00101' }, documentos: archivos.map((a, i) => ({
+          id: 99 + i, solicitudId: 101, tipoDocumento: a.tipo, nombreOriginal: a.file.name, estado: 'ACTIVO', sizeBytes: a.file.size, hashSha256: 'a'.repeat(64)
+        })) };
+      return of(ultimaRecepcion);
+    }),
+    obtenerRecepcionAlta: vi.fn(() => of(ultimaRecepcion))
   };
 
   const mockEntidadService = {
@@ -161,7 +169,7 @@ describe('NuevaSaipComponent', () => {
     expect(component.error()).toBe('');
   });
 
-  it('debería registrar solicitud y subir adjuntos en crearSolicitud()', async () => {
+  it('debería registrar solicitud y adjuntos coordinados y recuperar su recepción', async () => {
     const fixture = TestBed.createComponent(NuevaSaipComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
@@ -181,12 +189,10 @@ describe('NuevaSaipComponent', () => {
     // Permitir resolución de microtareas asíncronas
     await fixture.whenStable();
 
-    expect(mockSolicitudService.crear).toHaveBeenCalled();
-    expect(mockDocumentoService.upload).toHaveBeenCalledWith(
-      dummyFile,
-      'SOLICITUD_ORIGINAL',
-      { solicitudId: 101 }
-    );
+    expect(mockSolicitudService.registrarAlta).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ ciudadanoId: 5 }), true,
+      [expect.objectContaining({ file: dummyFile, tipo: 'SOLICITUD_ORIGINAL' })]);
+    expect(mockSolicitudService.obtenerRecepcionAlta).toHaveBeenCalled();
+    expect(mockDocumentoService.upload).not.toHaveBeenCalled();
     expect(component.successModalAbierto()).toBe(true);
     expect(component.expedienteCreado()).toBe('SAIP-2026-00101');
   });

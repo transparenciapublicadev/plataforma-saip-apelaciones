@@ -15,6 +15,7 @@ export type ResolucionDTO = components['schemas']['ResolucionDTO'];
 export type DocumentoDTO = components['schemas']['DocumentoDTO'];
 export type DocumentoMetadataDTO = components['schemas']['DocumentoMetadataDTO'];
 export type ConsultaRecepcionSubsanacionTtaipDTO = components['schemas']['ConsultaRecepcionSubsanacionTtaipDTO'];
+export type AltaSaipRecepcionDTO = components['schemas']['AltaSaipRecepcionDTO'];
 export type CiudadanoDTO = components['schemas']['CiudadanoDTO'];
 export type EntidadDTO = components['schemas']['EntidadDTO'];
 export type FuncionarioDTO = components['schemas']['FuncionarioDTO'];

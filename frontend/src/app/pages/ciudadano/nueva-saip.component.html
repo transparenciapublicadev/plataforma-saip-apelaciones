@@ -29,11 +29,15 @@
           </div>
         }
         @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el resultado de la operación en el servidor…</p> }
-        @if (estadoEnvio() === 'incierta' && !solicitudCreada()) {
+        @if (operacionPendiente() && !solicitudCreada() && !loading()) {
           <section role="status" class="form-shell p-5 space-y-3">
-            <h2 class="form-section-title">Creación con resultado incierto</h2>
-            <p class="text-sm">No se conoce el identificador de una solicitud confirmada. No existe una consulta por operación que permita repetir esta creación con seguridad. No se envía otro POST automáticamente.</p>
-            <p class="text-xs text-muted-foreground">El contenido permanece solo en memoria. Al salir o recargar se pierde; revise sus solicitudes antes de iniciar otro registro. El panel no identifica inequívocamente este envío.</p>
+            <h2 class="form-section-title">Recepción pendiente de confirmación</h2>
+            <p class="text-sm">Consulte esta operación antes de intentar presentarla de nuevo. No se envía otro POST automáticamente.</p>
+            <p class="text-xs font-mono break-all">Clave de operación: {{ claveOperacion() }}</p>
+            <p class="text-xs text-muted-foreground">Pedido, clave y archivos permanecen solo en memoria. Antes de salir o recargar, compruebe el resultado y conserve la clave si necesita consultar la recepción. Tras recargar debe volver a introducir el pedido y seleccionar los archivos; una clave nueva identifica otra operación. El panel no atribuye registros por coincidencia de texto.</p>
+            <button type="button" class="btn-ghost-brand" (click)="comprobarRegistro()">Consultar recepción sin reenviar</button>
+            @if (estadoEnvio() === 'sin-recepcion') { <button type="button" class="btn-brand" (click)="reintentarAlta()">Reintentar la misma operación y archivos</button> }
+            @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
             <a class="btn-ghost-brand" routerLink="/ciudadano">Revisar mis solicitudes</a>
           </section>
         }
@@ -45,8 +49,8 @@
 </div>
             <div class="p-6 space-y-4">
               <p role="status" class="text-sm">Solicitud {{ r.id }} · Estado registrado: {{ r.estado || 'No disponible' }}</p>
+              <p class="text-sm font-mono">Recepción {{ recepcionId() }} · {{ claveOperacion() }}</p>
               <p class="text-sm">Fecha registrada: {{ r.fechaPresentacion || 'No disponible' }} · Fecha límite del servidor: {{ r.fechaLimite || 'No disponible' }}</p>
-              @if (estadoEnvio() === 'parcial') { <p role="status" class="text-sm font-medium">Registro parcial: la solicitud existe, pero no se confirmó la vinculación de todos los archivos seleccionados. Las subidas son operaciones independientes; no se ha revertido la solicitud.</p> }
               @for (item of archivosEnviados(); track item) {
                 <div class="saip-file-row rounded-md p-3 text-sm" style="background:var(--card);border:1px solid var(--border)">
                   <span class="font-medium">{{ item.file.name }}</span>

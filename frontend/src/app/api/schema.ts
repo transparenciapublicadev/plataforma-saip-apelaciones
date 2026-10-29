@@ -3052,6 +3052,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/recepciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir nueva SAIP con todos sus archivos opcionales
+         * @description Identidad derivada del ciudadano autenticado. Misma clave y huella versionada recuperan la misma recepción sin duplicar solicitud ni archivos. Se requiere consentimiento, declaración de veracidad y al menos una modalidad digital/física. Cada archivo exige su tipo en el mismo orden. Rigen los límites multipart y de almacenamiento. No acredita entrega, notificación eficaz, firma o emisión.
+         */
+        post: operations["registrarAltaSaip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/recepciones/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar recepción de alta sin recrear la solicitud
+         * @description Solo el ciudadano original. 404 no descarta un envío en curso: un reintento explícito debe conservar clave y contenido. Un fallo no acredita ausencia. La solicitud anidada refleja el recurso autorizado actual; recepción y manifiesto conservan sus IDs.
+         */
+        get: operations["obtenerRecepcionAltaSaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4801,6 +4841,39 @@ export interface components {
             /** Format: date-time */
             fechaRecepcion: string | null;
             fundamentosAdicionales: string | null;
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        RegistrarAltaSaipRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: int64 */
+            entidadId: number;
+            asunto: string;
+            descripcion: string;
+            tipoInformacion?: string;
+            formatoDigital: boolean;
+            formatoFisico: boolean;
+            copiaSimple: boolean;
+            copiaCertificada: boolean;
+            /** @description Debe ser true: aceptación expresa de tratamiento de datos */
+            consentimientoDatosPersonales: boolean;
+            /** @description Debe ser true: declaración expresa del formulario; no es firma digital */
+            declaraVeracidad: boolean;
+            /** @enum {string} */
+            canalNotificacion: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
+            tiposDocumento?: ("SOLICITUD_ORIGINAL" | "DOCUMENTO_ADJUNTO")[];
+            archivos?: string[];
+        };
+        /** @description Recepción persistida de nueva SAIP y todos sus archivos seleccionados. No acredita entrega, eficacia de notificación, firma ni emisión. */
+        AltaSaipRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            declaraVeracidad: boolean;
+            solicitud: components["schemas"]["SolicitudDTO"];
             documentos: components["schemas"]["DocumentoMetadataDTO"][];
         };
     };
@@ -10049,6 +10122,160 @@ export interface operations {
                 };
             };
             /** @description Error de consulta o almacenamiento; no acredita ausencia */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarAltaSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarAltaSaipRequest"];
+            };
+        };
+        responses: {
+            /** @description Recepción persistida o repetición compatible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Campos, archivos o atributos no permitidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano y actor original de la operación */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Entidad o recepción no encontrada; no descarta una operación todavía en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido incompatible, entidad inactiva o conflicto de persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionAltaSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción y manifiesto disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Campos, archivos o atributos no permitidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano y actor original de la operación */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Entidad o recepción no encontrada; no descarta una operación todavía en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido incompatible, entidad inactiva o conflicto de persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir */
             500: {
                 headers: {
                     [name: string]: unknown;
