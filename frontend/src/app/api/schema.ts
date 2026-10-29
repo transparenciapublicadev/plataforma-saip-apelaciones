@@ -3092,6 +3092,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/apelaciones/recepciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir apelación y manifiesto documental coordinados
+         * @description Parte datos JSON con identidad exclusivamente del ciudadano autenticado. DIRECTA_TTAIP y EXTERNA abren expediente; ANTE_ENTIDAD conserva pendiente de elevación. Cada entrada sin origenId consume el siguiente archivo; un antecedente exige su SHA-256 y relación autorizada a la SAIP/respuesta. Archivos nuevos según requisitos de modalidad. Misma clave y huella recuperan la recepción sin repetir efectos. No acredita admisión, entrega, notificación eficaz, firma ni emisión.
+         */
+        post: operations["registrarAltaApelacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/recepciones/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar recepción sin recrear apelación o documentos
+         * @description Solo el ciudadano original. Un 404 no descarta un envío en curso. Conserve clave y contenido para un reintento explícito. La apelación anidada refleja el recurso actual; recepción, modalidad, IDs y hash aceptado son persistentes.
+         */
+        get: operations["obtenerRecepcionAltaApelacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4875,6 +4915,70 @@ export interface components {
             declaraVeracidad: boolean;
             solicitud: components["schemas"]["SolicitudDTO"];
             documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        AltaApelacionDocumentoDTO: {
+            documento: components["schemas"]["DocumentoMetadataDTO"];
+            /** Format: int64 */
+            origenId: number | null;
+            /** @description SHA-256 de los bytes aceptados al registrar */
+            hashAceptado: string;
+        };
+        /** @description Recepción persistida y manifiesto exacto. La apelación refleja el recurso actual, no una fotografía de todos sus campos mutables. No acredita notificación eficaz, admisión, entrega, firma ni emisión. */
+        AltaApelacionRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            claveOperacion: string;
+            modalidad: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            apelacion: components["schemas"]["ApelacionDTO"];
+            documentos: components["schemas"]["AltaApelacionDocumentoDTO"][];
+        };
+        DocumentoAltaApelacionRequest: {
+            /** @enum {string} */
+            tipoDocumento: "SOLICITUD_ORIGINAL" | "RESPUESTA_ENTIDAD" | "RECURSO_APELACION" | "DOCUMENTO_ADJUNTO";
+            /**
+             * Format: int64
+             * @description Antecedente de la SAIP/respuesta de origen. Ausente consume el siguiente archivo multipart
+             */
+            origenId?: number;
+            /** @description SHA-256 de la versión del antecedente seleccionada, obligatorio con origenId */
+            hashOrigen?: string;
+        };
+        /** @description DIRECTA_TTAIP: solicitudId y copia de SAIP, más respuesta cuando exista. ANTE_ENTIDAD añade fecha no futura y referencia de cargo; fundamentos hasta 5000. EXTERNA: sin solicitudId, entidad de catálogo o declarada, número/fecha/resumen/referencia de SAIP y fundamentos hasta 5000; expresa requiere fecha y resumen o referencia de respuesta, tácita requiere evidencia declarada de silencio. Documentos externos opcionales. No se recibe identidad, estado ni fechas de alta. */
+        RegistrarAltaApelacionRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            /** @enum {string} */
+            modalidad: "DIRECTA_TTAIP" | "ANTE_ENTIDAD" | "EXTERNA";
+            /** Format: int64 */
+            solicitudId?: number;
+            fundamentos: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadExternaNombre?: string;
+            entidadExternaRuc?: string;
+            /** Format: email */
+            entidadExternaEmail?: string;
+            numeroSolicitudExterna?: string;
+            /** Format: date */
+            fechaPresentacionSolicitudExterna?: string;
+            /** Format: date */
+            fechaRespuestaEntidad?: string;
+            /** @enum {string} */
+            tipoDenegatoria?: "EXPRESA" | "TACITA";
+            resumenSolicitudOriginal?: string;
+            resumenRespuestaEntidad?: string;
+            referenciaDocumentoSolicitud?: string;
+            referenciaCargoRecepcion?: string;
+            referenciaRespuestaEntidad?: string;
+            evidenciaSilencioAdministrativo?: string;
+            observacion?: string;
+            /** Format: date */
+            fechaPresentacionAnteEntidad?: string;
+            referenciaCargoPresentacion?: string;
+            documentos: components["schemas"]["DocumentoAltaApelacionRequest"][];
         };
     };
     responses: never;
@@ -10276,6 +10380,172 @@ export interface operations {
                 };
             };
             /** @description Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarAltaApelacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    datos: components["schemas"]["RegistrarAltaApelacionRequest"];
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Recepción persistida o repetición compatible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaApelacionRecepcionDTO"];
+                };
+            };
+            /** @description Datos, modalidad o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor o recurso ajeno */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso o recepción no encontrado; no descarta un envío en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido, versión, asociación o estado incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Rechazo de una precondición de negocio de la modalidad existente */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado; consulte antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionAltaApelacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción y manifiesto disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaApelacionRecepcionDTO"];
+                };
+            };
+            /** @description Datos, modalidad o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor o recurso ajeno */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso o recepción no encontrado; no descarta un envío en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido, versión, asociación o estado incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado; consulte antes de reintentar */
             500: {
                 headers: {
                     [name: string]: unknown;

@@ -514,7 +514,7 @@ class SubsanacionTtaipPostgresIntegrationTest {
     @Test void flywayValidaYExportaContratoCompletoDeInstanciaReal() throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(Arrays.stream(flyway.info().applied()).map(m -> m.getVersion().toString()))
-                .containsExactly("1","2","3","4","5","6","7","8","9","10");
+                .containsExactly("1","2","3","4","5","6","7","8","9","10","11","12");
         Files.writeString(artefactos().resolve("flyway.txt"), jdbc.queryForList("select version,script,checksum,success from flyway_schema_history order by installed_rank").toString());
         try(var client=HttpClient.newHttpClient()) {
             var response=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));

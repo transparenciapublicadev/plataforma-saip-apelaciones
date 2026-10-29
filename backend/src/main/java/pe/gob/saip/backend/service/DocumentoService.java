@@ -157,12 +157,16 @@ public class DocumentoService {
         StorageProvider provider = providerFor(original.getStorageProvider());
         StorageDownloadResult download = provider.download(original.getStorageKey(), original.getContentType());
         StorageUploadResult upload;
+        AtomicBoolean cleanupAttempted;
         try (InputStream content = download.content()) {
             upload = provider.upload(new StorageUploadRequest(
                     original.getNombreOriginal(),
                     original.getContentType(),
                     original.getSizeBytes(),
                     content));
+            // A later receipt/act failure must compensate this copy, never its source.
+            // Register before closing: close itself can fail after upload succeeded.
+            cleanupAttempted = compensarEnRollback(provider, upload.metadata().storageKey());
         } catch (IOException exception) {
             throw new StorageException(
                     StorageException.Reason.IO_ERROR,
@@ -182,10 +186,12 @@ public class DocumentoService {
         try {
             return DocumentoMetadataDTO.from(documentoRepository.save(copia));
         } catch (RuntimeException exception) {
-            try {
-                provider.delete(metadata.storageKey());
-            } catch (RuntimeException cleanupException) {
-                exception.addSuppressed(cleanupException);
+            if (cleanupAttempted.compareAndSet(false, true)) {
+                try {
+                    provider.delete(metadata.storageKey());
+                } catch (RuntimeException cleanupException) {
+                    exception.addSuppressed(cleanupException);
+                }
             }
             throw exception;
         }

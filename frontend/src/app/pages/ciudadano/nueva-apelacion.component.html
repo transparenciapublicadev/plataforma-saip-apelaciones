@@ -38,15 +38,25 @@
         </div></section>
       } @else if (estadoConsulta() === 'vacio' && !errorConsulta()) { <p role="status" class="form-shell p-6">El servidor confirmó una lista vacía de solicitudes para esta cuenta. Puede declarar un origen externo si corresponde.</p> }
     } @else if (solicitud() || esApelacionExterna()) {
-      @if (estadoEnvio() === 'incierta' && !apelacionCreada()) { <section role="status" class="form-shell p-5 space-y-3"><h2 class="form-section-title">Resultado incierto</h2><p class="text-sm">No se conoce el identificador de un registro confirmado. No se buscará una coincidencia por asunto, número declarado o nombre de archivo, ni se repetirá el POST automáticamente.</p><a routerLink="/ciudadano" class="btn-ghost-brand">Revisar mis solicitudes</a></section> }
+      @if (operacionPendiente() && !apelacionCreada() && !loading()) {
+        <section role="status" class="form-shell p-5 space-y-3"><h2 class="form-section-title">Recepción pendiente de confirmación</h2>
+          <p class="text-sm">Consulte por la misma operación antes de reintentar. No se repite el POST automáticamente ni se atribuye un registro por nombre o fecha.</p>
+          <p class="font-mono text-xs break-all">Clave de operación: {{ claveOperacion() }}</p>
+          <p class="text-xs text-muted-foreground">Preparación, clave y archivos permanecen solo en memoria. Compruebe el resultado antes de salir o recargar y conserve la clave si necesita consultar después. Tras recargar debe volver a completar el formulario y seleccionar archivos; una clave nueva identifica otra operación. No se promete restaurar una clave perdida.</p>
+          <button type="button" class="btn-ghost-brand" (click)="comprobarRegistro()">Consultar recepción sin reenviar</button>
+          @if (estadoEnvio() === 'sin-recepcion') { <button type="button" class="btn-brand" (click)="reintentarAlta()">Reintentar la misma operación y documentos</button> }
+          @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
+          <a routerLink="/ciudadano" class="btn-ghost-brand">Revisar mis solicitudes</a>
+        </section>
+      }
       @if (apelacionCreada(); as r) {
         <section id="apelacion-resultado" tabindex="-1" class="form-shell" aria-label="Resultado del registro de apelación"><div class="form-section-header"><span class="eyebrow">Identificación del servidor</span><h2 class="form-section-title">Apelación registrada · {{ r.expediente }}</h2></div><div class="p-6 md:p-8 space-y-4"><p role="status" class="text-sm">ID {{ r.id }} · {{ r.estado || 'Estado no recuperado' }} · {{ r.fechaApelacion || 'Fecha no recuperada' }}</p>
           @if (r.estado === 'PENDIENTE_ELEVACION') { <p class="text-sm">Registro ante entidad pendiente de elevación. La numeración reservada no acredita ingreso efectivo al TTAIP.</p> }
-          @if (estadoEnvio() === 'parcial') { <p role="status" class="text-sm font-medium">Registro con documentos incompletos: la apelación existe; no se confirmó la asociación de todos los archivos o clones. No vuelva a crearla para resolver este fallo.</p> }
+          <p class="font-mono text-xs break-all">Recepción {{ recepcionId() }} · {{ claveOperacion() }}</p>
           @for (doc of documentosEnviados(); track doc) { <div class="appeal-file-row rounded-md p-3 text-sm" style="border:1px solid var(--border)"><span>{{ doc.file?.name || doc.origen?.nombreOriginal }}</span><span>{{ doc.estado === 'registrado' ? 'Asociación confirmada · ID ' + doc.documento?.id : doc.estado === 'pendiente' ? 'Operación no iniciada' : doc.estado === 'incierto' ? 'Resultado incierto' : doc.estado === 'rechazado' ? 'Rechazado por el servidor' : 'En curso' }}</span>@if (doc.documento; as registrado) { <button type="button" class="btn-ghost-brand !text-xs" (click)="descargarRegistrado(registrado)">Descargar documento registrado</button> }</div> }
           <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar apelación y documentos</button>
           @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
-          @if (documentosConsultados(); as docs) { <div role="status" class="space-y-2 text-sm"><p>Documentos asociados consultados: {{ docs.length }}. No se atribuyen operaciones inciertas por nombres coincidentes.</p>@for (d of docs; track d.id) { <div class="appeal-file-row"><span>Documento {{ d.id }} · {{ d.nombreOriginal || 'Nombre no recuperado' }}</span><button type="button" class="btn-ghost-brand !text-xs" (click)="descargarRegistrado(d)">Descargar</button></div> }</div> }
+          @if (documentosConsultados(); as docs) { <div role="status" class="space-y-2 text-sm"><p>Documentos de la recepción consultados: {{ docs.length }}. No se atribuyen operaciones inciertas por nombres coincidentes.</p>@for (d of docs; track d.id) { <div class="appeal-file-row"><span>Documento {{ d.id }} · {{ d.nombreOriginal || 'Nombre no recuperado' }}</span><button type="button" class="btn-ghost-brand !text-xs" (click)="descargarRegistrado(d)">Descargar</button></div> }</div> }
           <p class="text-xs text-muted-foreground">Las referencias declaradas no equivalen a archivos almacenados. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.</p><button type="button" class="btn-brand" (click)="irPanelCiudadano()">Ir a mi panel</button>
         </div></section>
       }
@@ -86,7 +96,7 @@
         }
         <section class="form-shell"><div class="form-section-header flex items-start justify-between gap-4"><div><span class="eyebrow">01 · Archivos y antecedentes reales</span><h2 class="form-section-title">Documentos del recurso</h2></div><span aria-hidden="true" class="appeal-section-number">01</span></div><div class="p-6 md:p-8 space-y-5">
           <div class="rounded-md p-3 flex items-start gap-2.5" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><svg aria-hidden="true" lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5"></svg><p class="text-xs">Un antecedente conserva su relación original. Al presentar se solicitará una copia vinculada a la nueva apelación. Excluirlo de la selección no elimina el archivo del servidor. Un archivo seleccionado todavía no está registrado.</p></div>
-          @if (documentosIncompletos()) { <p role="status" class="text-sm text-muted-foreground">La información de antecedentes está incompleta o contiene relaciones incompatibles. Solo se ofrecen los documentos cuya relación está comprobada.</p> }
+          @if (documentosIncompletos()) { <p role="status" class="text-sm text-muted-foreground">La información de antecedentes está incompleta o contiene relaciones incompatibles. Solo se ofrecen documentos con relación, tamaño y versión identificados. Si falta esa información, seleccione una copia real; no se inventa una versión.</p> }
           @for (item of documentos(); track item.n) {
             <div><div class="flex items-start gap-3 mb-2"><span class="font-mono text-[11px] tracking-widest" style="color:var(--brand-700)">0{{ item.n }}</span><div class="flex-1 min-w-0"><label [for]="'apelacion-file-' + item.n" class="text-sm font-medium">{{ item.label }}</label><p class="text-xs text-muted-foreground">{{ item.desc }}</p></div></div>
               @if (documentoPara(item.n); as doc) {
