@@ -182,6 +182,20 @@ describe('AdminDashboardComponent', () => {
     expect(component.loading()).toBe(false);
   });
 
+  it('V6: cada paso revela una sección real sin borrar filtros, guardar ni exportar', () => {
+    fixture.detectChanges(); component.searchTerm.set('Filtro conservado'); component.entPage.set(2); component.userPage.set(3);
+    for (const step of component.tourSteps) {
+      step.onEnter?.(); fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll(step.selector), step.selector).toHaveLength(1);
+    }
+    expect(component.searchTerm()).toBe('Filtro conservado'); expect(component.entPage()).toBe(2); expect(component.userPage()).toBe(3);
+    expect(entidadServiceMock.crear).not.toHaveBeenCalled(); expect(entidadServiceMock.actualizar).not.toHaveBeenCalled();
+    expect(usuarioServiceMock.crear).not.toHaveBeenCalled(); expect(usuarioServiceMock.actualizar).not.toHaveBeenCalled();
+    expect(reportesServiceMock.getReporteSolicitudes).not.toHaveBeenCalled();
+    TestBed.inject(HttpTestingController).expectNone(req => req.method !== 'GET');
+    const end = vi.spyOn(tourService, 'endTourFor'); fixture.destroy(); expect(end).toHaveBeenCalledWith('saip_tour_admin');
+  });
+
   it('does not present a failed users query as an empty registry and can retry', () => {
     (usuarioServiceMock.findAll as any).mockReturnValue(throwError(() => ({ status: 403 })));
     fixture.detectChanges();

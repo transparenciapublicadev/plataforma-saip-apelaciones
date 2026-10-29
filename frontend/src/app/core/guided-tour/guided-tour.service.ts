@@ -8,24 +8,8 @@ export class GuidedTourService {
   readonly activeStepIndex = signal<number>(0);
   readonly isOpen = signal<boolean>(false);
   readonly steps = signal<TourStep[]>([]);
+  // Historical caller key, used only as an in-memory panel owner. Never persisted.
   readonly currentStorageKey = signal<StorageKey | null>(null);
-
-  private readonly visitedKeys = signal<Set<string>>(this.initVisitedKeys());
-
-  private initVisitedKeys(): Set<string> {
-    const keys: StorageKey[] = ['saip_tour_done', 'saip_tour_funcionario', 'saip_tour_ttaip', 'saip_tour_admin'];
-    const visited = new Set<string>();
-    if (typeof window !== 'undefined') {
-      keys.forEach(k => {
-        try {
-          if (localStorage.getItem(k)) visited.add(k);
-        } catch {
-          /* noop */
-        }
-      });
-    }
-    return visited;
-  }
 
   readonly currentStep = computed(() => {
     const s = this.steps();
@@ -33,49 +17,25 @@ export class GuidedTourService {
     return s[idx] ?? null;
   });
 
-  closeUIOverlays(): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('close-ui-overlays'));
-    }
-  }
-
-  isFirstVisit(key: StorageKey): boolean {
-    return !this.visitedKeys().has(key);
-  }
-
-  markAsVisited(key: StorageKey): void {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(key, '1');
-      } catch {
-        /* noop */
-      }
-    }
-    this.visitedKeys.update(set => {
-      if (set.has(key)) return set;
-      const next = new Set(set);
-      next.add(key);
-      return next;
-    });
-  }
-
+  // Compatibility for panel callers: no automatic opening or first-visit marks.
+  isFirstVisit(_key: StorageKey): boolean { return false; }
   checkAutoStart(_key: StorageKey, _steps: TourStep[], _delayMs = 700): void {
-    // Non-intrusive strategy: Automatic modal popping on page load is eliminated.
-    // First-visit indicator is displayed on the "Ver tutorial" button instead.
   }
 
-  startTour(key: StorageKey, steps: TourStep[]): void {
-    if (typeof window === 'undefined') return;
-    this.markAsVisited(key);
-    this.closeUIOverlays();
-    this.currentStorageKey.set(key);
-    this.steps.set(steps);
-    this.activeStepIndex.set(0);
+  hasBlockingDialog(except?: HTMLElement): boolean {
+    if (typeof document === 'undefined') return false;
+    return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'))
+      .some(el => !except?.contains(el) && !el.closest('[hidden], [aria-hidden="true"]')
+        && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+  }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      this.isOpen.set(true);
-    }, 300);
+  startTour(key: StorageKey, steps: TourStep[]): boolean {
+    if (typeof window === 'undefined' || !steps.length || this.isOpen() || this.hasBlockingDialog()) return false;
+    this.currentStorageKey.set(key);
+    this.steps.set([...steps]);
+    this.activeStepIndex.set(0);
+    this.isOpen.set(true);
+    return true;
   }
 
   nextStep(): void {
@@ -104,15 +64,10 @@ export class GuidedTourService {
 
   endTour(): void {
     this.isOpen.set(false);
-    const key = this.currentStorageKey();
-    if (key) {
-      this.markAsVisited(key);
-    }
-
-    if (typeof window !== 'undefined') {
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 100);
-    }
+    this.steps.set([]);
+    this.activeStepIndex.set(0);
+    this.currentStorageKey.set(null);
   }
+
+  endTourFor(key: StorageKey): void { if (this.currentStorageKey() === key) this.endTour(); }
 }

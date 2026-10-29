@@ -131,7 +131,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     });
   }
   ngOnInit(): void { this.initialized = true; this.cargarSolicitudes(); }
-  ngOnDestroy(): void { this.destroyed = true; this.generation++; this.read.unsubscribe(); }
+  ngOnDestroy(): void { this.tourService.endTourFor('saip_tour_funcionario'); this.destroyed = true; this.generation++; this.read.unsubscribe(); }
   selectBucket(bucket: BucketKey): void { this.selectedBucket.set(bucket); this.paginaActual.set(1); }
   cambiarEstado(value: string): void { this.filtroEstado.set(value); this.paginaActual.set(1); }
   limpiarFiltros(): void { this.busqueda.set(''); this.filtroEstado.set(''); this.selectBucket('todas'); }
@@ -141,6 +141,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   startTour(): void { this.tourService.startTour('saip_tour_funcionario', this.tourSteps); }
 
   cargarSolicitudes(): void {
+    this.tourService.endTourFor('saip_tour_funcionario');
     const revision = this.authService.cambiosSesion();
     if (this.loading() && this.generation > 0 && revision === this.revision) return;
     const changed = revision !== this.revision;

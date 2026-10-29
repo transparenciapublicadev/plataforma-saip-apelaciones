@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, NavigationStart, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { ThemeService } from './services/theme.service';
@@ -66,6 +66,7 @@ export class App {
       const revision = this.authService.cambiosSesion();
       if (revision !== this.sessionRevision) {
         this.sessionRevision = revision;
+        this.guidedTourService.endTour();
         this.menuAbierto.set(false); this.mobileMenuAbierto.set(false);
       }
       if (this.guidedTourService.isOpen()) {
@@ -85,6 +86,10 @@ export class App {
       });
       else this.animateShell();
     });
+
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationStart), takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.guidedTourService.endTour());
 
     this.router.events
       .pipe(

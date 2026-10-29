@@ -477,16 +477,16 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   readonly tourSteps = computed<TourStep[]>(() => {
     const s: TourStep[] = [
       { selector: '[data-tour="nueva"]', title: 'Pedir información', body: 'Aquí presenta una nueva solicitud de acceso a la información (SAIP). Es su punto de partida en la 1ª instancia, ante la entidad pública.' },
-      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: en proceso, respondidas, por apelar, en el Tribunal y con fallo final. Toque una etapa para filtrar la lista de abajo.' },
+      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'Agrupación de sus solicitudes recuperadas por etapa. Seleccione una etapa para filtrar el listado; una consulta fallida no confirma un total de cero.' },
     ];
     if (this.accionPrincipal()) {
-      s.push({ selector: '[data-tour="accion"]', title: 'Solicitud para revisar', body: 'Un resumen para revisar de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
+      s.push({ selector: '[data-tour="accion"]', title: 'Solicitud para revisar', body: 'Acción disponible para una solicitud identificada. Revise su requerimiento y los datos del servidor antes de presentar una precisión o subsanación.' });
     }
     if (this.solicitudPrincipal()) {
-      s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'La línea de tiempo del expediente seleccionado y su ubicación actual: "con la entidad" (1ª instancia) o "en el Tribunal" (2ª instancia). Aquí ve la trazabilidad completa.' });
+      s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'Resumen del recurso seleccionado con sus datos registrados. Consulte el detalle autorizado para revisar actuaciones y documentos; la información ausente no se completa con hitos supuestos.' });
     }
     s.push({ selector: '[data-tour="cola"]', title: 'La lista de la etapa', body: 'Todos los expedientes de la etapa seleccionada, ordenados y con su propio buscador. Toque cualquiera para verlo en detalle arriba, sin desplazarse de más.' });
-    s.push({ selector: '[data-tour="ayuda"]', title: '¿Necesita ayuda?', body: 'Canales de orientación gratuitos. Desde aquí también puede volver a ver este tutorial cuando quiera.' });
+    s.push({ selector: '[data-tour="ayuda"]', title: '¿Necesita ayuda?', body: 'Abra la guía de ayuda disponible. Los canales de contacto o asistencia no configurados se identifican como no disponibles. Puede volver a iniciar este tutorial desde su botón.' });
     return s;
   });
 
@@ -520,6 +520,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.tourService.endTourFor('saip_tour_done');
     this.destroyed = true;
     ++this.generation;
     this.read?.unsubscribe();
@@ -528,6 +529,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   }
 
   cargarDatos(): void {
+    this.tourService.endTourFor('saip_tour_done');
     const generation = ++this.generation;
     this.read?.unsubscribe();
     this.timers.forEach(timer => clearTimeout(timer)); this.timers.clear();

@@ -168,14 +168,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   readonly etapaLabels = ETAPA_LABEL;
 
   readonly tourSteps: TourStep[] = [
-    { selector: '[data-tour="a-kpis"]', title: 'Indicadores principales', body: 'La salud global del sistema de un vistazo: total de solicitudes, usuarios registrados, entidades y tasa de respuesta.' },
-    { selector: '[data-tour="a-status"]', title: 'Estado de las solicitudes', body: 'El desglose por estado: en proceso, respondidas, vencidas y apelaciones en curso.' },
+    { selector: '[data-tour="a-kpis"]', title: 'Indicadores principales', body: 'Totales y tasas informados por las consultas administrativas. Revise su alcance y los estados de carga, error o información no disponible.' },
+    { selector: '[data-tour="a-status"]', title: 'Estado de las solicitudes', body: 'Desglose de los estados registrados por el servidor. No acredita entrega, notificación eficaz ni sanción.' },
     { selector: '[data-tour="a-tabs"]', title: 'Áreas de administración', body: 'Navega entre Resumen, Entidades, Usuarios, Reportes y Configuración. Te mostraremos cada una.' },
-    { selector: '[data-tour="a-overview"]', title: 'Resumen operativo', body: 'Ranking por volumen de solicitudes, entidades con solicitudes vencidas y la actividad reciente del sistema.', align: 'start', onEnter: () => this.cambiarTab('overview') },
-    { selector: '[data-tour="a-entities"]', title: 'Entidades públicas', body: 'Gestiona las entidades: crea, edita o da de baja. Las cargas y el cumplimiento se calculan en vivo.', align: 'start', onEnter: () => this.cambiarTab('entities') },
-    { selector: '[data-tour="a-users"]', title: 'Usuarios del sistema', body: 'Administra ciudadanos, funcionarios y personal del Tribunal, con filtros por tipo y actividad.', align: 'start', onEnter: () => this.cambiarTab('users') },
-    { selector: '[data-tour="a-reports"]', title: 'Reportes exportables', body: 'Genera reportes profesionales en PDF, Excel o CSV de solicitudes, entidades, usuarios, apelaciones y consolidados.', align: 'start', onEnter: () => this.cambiarTab('reports') },
-    { selector: '[data-tour="a-settings"]', title: 'Configuración', body: 'Ajusta plazos legales por etapa y las reglas de notificación del sistema.', align: 'start', onEnter: () => this.cambiarTab('settings') },
+    { selector: '[data-tour="a-overview"]', title: 'Resumen operativo', body: 'Ranking y actividad recuperados del servidor. Cada sección indica si su consulta está disponible; el tutorial no inventa registros.', align: 'start', onEnter: () => this.activeTab.set('overview') },
+    { selector: '[data-tour="a-entities"]', title: 'Entidades públicas', body: 'Listado y operaciones administrativas disponibles según sus permisos. Resaltar esta sección no crea, modifica ni desactiva una entidad.', align: 'start', onEnter: () => this.activeTab.set('entities') },
+    { selector: '[data-tour="a-users"]', title: 'Usuarios del sistema', body: 'Consulta y gestión autorizadas de cuentas. El alta exige una contraseña explícita; el tutorial no crea cuentas ni cambia sus credenciales.', align: 'start', onEnter: () => this.activeTab.set('users') },
+    { selector: '[data-tour="a-reports"]', title: 'Reportes disponibles', body: 'Revise los datos, filtros y formatos habilitados. Los reportes no disponibles se indican como tales; una exportación no equivale a emisión documental oficial.', align: 'start', onEnter: () => this.activeTab.set('reports') },
+    { selector: '[data-tour="a-settings"]', title: 'Configuración consultada', body: 'Consulte los valores recuperados del servidor y las limitaciones indicadas en pantalla. Abrir esta sección no guarda cambios ni acredita el inicio de un plazo.', align: 'start', onEnter: () => this.activeTab.set('settings') },
   ];
 
   readonly pageSize = 8;
@@ -226,6 +226,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.tourService.endTourFor('saip_tour_admin');
     ++this.generation;
     this.reads.unsubscribe();
     this.writes.unsubscribe();
@@ -668,6 +669,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   cargarDatos(): void {
+    this.tourService.endTourFor('saip_tour_admin');
     if (this.saving()) return;
     ++this.generation;
     this.reads.unsubscribe();

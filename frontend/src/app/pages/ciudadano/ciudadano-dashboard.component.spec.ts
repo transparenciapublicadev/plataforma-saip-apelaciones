@@ -15,7 +15,7 @@ describe('Panel ciudadano — inicio acreditado de subsanación TTAIP', () => {
   beforeEach(() => TestBed.configureTestingModule({ imports: [CiudadanoDashboardComponent], providers: [provideRouter([]),
     { provide: SolicitudService, useValue: {} }, { provide: ApelacionService, useValue: {} },
     { provide: AuthService, useValue: { obtenerSesion: () => null, cambiosSesion: signal(0) } },
-    { provide: GuidedTourService, useValue: { isOpen: () => false, isFirstVisit: () => false } }] }));
+    { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false } }] }));
 
   function solicitud(plazo?: NonNullable<Solicitud['apelacion']>['plazoSubsanacion']): Solicitud {
     return { id: 1, expediente: 'SAIP-2026-00001', estado: 'DENEGADA', entidadNombre: 'Entidad sintética',
@@ -67,7 +67,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
       { provide: SolicitudService, useValue: { findByCiudadanoId: find } },
       { provide: ApelacionService, useValue: { findByCiudadanoId: vi.fn().mockReturnValue(of([])) } },
       { provide: AuthService, useValue: { obtenerSesion: () => session, cambiosSesion: revision } },
-      { provide: GuidedTourService, useValue: { isOpen: () => false, isFirstVisit: () => false, checkAutoStart: vi.fn(), startTour: vi.fn() } },
+      { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false, checkAutoStart: vi.fn(), startTour: vi.fn() } },
     ] }).compileComponents();
     fixture = TestBed.createComponent(CiudadanoDashboardComponent); component = fixture.componentInstance;
   });
@@ -78,6 +78,18 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     const open = vi.spyOn(component.profileDialog, 'abrir'); fixture.detectChanges();
     const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent?.trim() === 'Mi perfil')!;
     expect(button.disabled).toBe(false); expect(button.getAttribute('aria-haspopup')).toBe('dialog'); button.click(); expect(open).toHaveBeenCalledOnce();
+  });
+
+  it('V6: los pasos del ciudadano apuntan a su panel real y no prometen soporte o trazabilidad completos', () => {
+    fixture.detectChanges();
+    const steps = component.tourSteps();
+    for (const step of steps) expect(fixture.nativeElement.querySelectorAll(step.selector)).toHaveLength(1);
+    expect(steps.find(step => step.selector === '[data-tour="ayuda"]')!.body).toContain('no disponibles');
+    expect(steps.map(step => step.body).join(' ')).not.toContain('trazabilidad completa');
+    const start = vi.spyOn(TestBed.inject(GuidedTourService), 'startTour'); component.startTour();
+    expect(start).toHaveBeenCalledWith('saip_tour_done', steps);
+    const end = vi.spyOn(TestBed.inject(GuidedTourService), 'endTourFor'); fixture.destroy();
+    expect(end).toHaveBeenCalledWith('saip_tour_done');
   });
 
   it('recovers after a failed query without preserving the old error', () => {

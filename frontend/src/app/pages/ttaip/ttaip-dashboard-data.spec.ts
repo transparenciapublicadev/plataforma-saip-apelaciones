@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TtaipDashboardComponent } from './ttaip-dashboard.component';
 import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
@@ -20,7 +20,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   beforeEach(() => {
     localStorage.clear(); sessionStorage.clear(); TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
       provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
-      { provide: GuidedTourService, useValue: { checkAutoStart() {}, isFirstVisit: () => false, startTour() {} } }] });
+      { provide: GuidedTourService, useValue: { checkAutoStart() {}, endTourFor() {}, isFirstVisit: () => false, startTour() {} } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
   afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); } });
@@ -34,6 +34,14 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   it('no calcula un plazo de etapa desde una fecha de ingreso antigua', () => {
     const f = page(); reply([row({ fechaApelacion: '2000-01-01' })]);
     expect(f.componentInstance.getDiasValor(f.componentInstance.queueItems()[0])).toMatch(/no informado|no disponible/i);
+  });
+
+  it('V6: pasos del Tribunal localizan el panel actual sin transiciones ni consultas nuevas', () => {
+    const f = page(); reply([row()]); f.detectChanges();
+    for (const step of f.componentInstance.tourSteps) expect(f.nativeElement.querySelectorAll(step.selector)).toHaveLength(1);
+    const tour = TestBed.inject(GuidedTourService), start = vi.spyOn(tour, 'startTour'), end = vi.spyOn(tour, 'endTourFor');
+    f.componentInstance.startTour(); expect(start).toHaveBeenCalledWith('saip_tour_ttaip', f.componentInstance.tourSteps);
+    http.expectNone(req => req.method !== 'GET'); end.mockClear(); f.destroy(); expect(end).toHaveBeenCalledWith('saip_tour_ttaip');
   });
   it('un estado desconocido no se clasifica como resuelto', () => {
     const f = page(); reply([row({ estado: 'ESTADO_NO_RECONOCIDO' })]); expect(f.componentInstance.counts().resueltos).toBe(0);
