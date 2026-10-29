@@ -44,7 +44,38 @@
 .saip-institutional-bar-secondary {
   font-size: 10.5px;
   letter-spacing: 0.14em;
-  opacity: 0.7;
+  opacity: 0.9;
+}
+
+.yaiku-header-slogan { font-family: var(--font-serif); font-style: italic; text-transform: none; letter-spacing: normal; }
+.saip-institutional-bar-primary { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.yaiku-institution-context { max-width: 60%; flex-shrink: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; font-size: 11px; font-weight: 500; opacity: .95; margin-left: .75rem; }
+.yaiku-main-nav { height: 72px; gap: .5rem; }
+.auth-header .yaiku-main-nav { height: 64px; }
+.saip-header a:focus-visible, .saip-header button:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+#mobile-navigation-panel { max-height: calc(100dvh - 101px); overflow-y: auto; }
+.saip-header:not(.auth-header) #mobile-navigation-panel { position: absolute; right: 1rem; margin-top: .5rem; width: min(16rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: .5rem; }
+.saip-header:not(.auth-header) #mobile-navigation-panel > div { padding: .375rem; }
+.saip-header:not(.auth-header) .mobile-nav-item { padding: .625rem .75rem; }
+.auth-header #mobile-navigation-panel { max-height: calc(100dvh - 93px); }
+@media (max-width: 480px) { .yaiku-header-slogan { display: none; } }
+
+/* SplashScreen/YaikuLogo reference: 84 px seal, 28 px stacked slogan.
+   Initial-paint branding only; it never gates access to the application. */
+.yaiku-splash { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; color: white; padding: 1.5rem; }
+.yaiku-splash-content { text-align: center; position: relative; z-index: 1; max-width: 100%; }
+.yaiku-splash-paper { position: absolute; inset: 0; opacity: .08; }
+.yaiku-splash-accent { position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, transparent, var(--gold), var(--brand-400), var(--gold), transparent); }
+.yaiku-splash-eyebrow { color: var(--gold-soft); margin-bottom: .75rem; font-size: 11px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; }
+.yaiku-splash-divider { margin: 1.5rem auto; height: 1.5px; width: 4rem; background: var(--gold-soft); }
+.yaiku-splash-slogan { font-family: var(--font-serif); font-size: 28px; font-style: italic; line-height: 1.25; }
+.yaiku-splash-slogan span { display: block; color: rgba(255,255,255,.8); }
+.yaiku-splash-slogan span + span { color: var(--gold-soft); }
+.yaiku-splash-dots { margin-top: 3.5rem; display: flex; justify-content: center; gap: .5rem; }
+.yaiku-splash-dots span { width: .25rem; height: .25rem; border-radius: 50%; background: var(--gold-soft); }
+@media (prefers-reduced-motion: reduce) {
+  .yaiku-splash { display: none; }
+  .saip-header *, .saip-header *::after { animation: none !important; transition: none !important; }
 }
 
 @media (min-width: 768px) {
