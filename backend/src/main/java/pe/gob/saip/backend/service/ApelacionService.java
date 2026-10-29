@@ -1,5 +1,6 @@
 package pe.gob.saip.backend.service;
 
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,16 +19,20 @@ import java.util.Optional;
 @Service
 public class ApelacionService {
 
+    private final EntityManager entityManager;
+
     private final ApelacionRepository apelacionRepository;
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
 
     public ApelacionService(ApelacionRepository apelacionRepository,
                             CiudadanoService ciudadanoService,
-                            EntidadService entidadService) {
+                            EntidadService entidadService,
+                            EntityManager entityManager) {
         this.apelacionRepository = apelacionRepository;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
+        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -120,6 +125,7 @@ public class ApelacionService {
      */
     @Transactional
     public String generarExpediente() {
+        bloquearAlta();
         int year = LocalDate.now().getYear();
         long count = apelacionRepository.count() + 1;
         return String.format("%05d", count) + "-" + year + "-JUS/TTAIP";
@@ -136,6 +142,7 @@ public class ApelacionService {
     @Transactional
     public Apelacion crearExterna(CrearApelacionExternaRequest request) {
         validarApelacionExterna(request);
+        bloquearAlta();
 
         Ciudadano ciudadano = ciudadanoService.findById(request.ciudadanoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -230,6 +237,19 @@ public class ApelacionService {
 
     private boolean esBlanco(String value) {
         return value == null || value.isBlank();
+    }
+
+    /** Same transaction lock for receipt lookup and legacy/new count-based allocation. */
+    @Transactional(propagation=org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void bloquearAlta() {
+        // In-memory/mock tests do not demonstrate PostgreSQL locking.
+        if(entityManager!=null && entityManager.getDelegate() instanceof org.hibernate.Session session) {
+            session.doWork(connection->{
+                if("PostgreSQL".equals(connection.getMetaData().getDatabaseProductName())) {
+                    try(var statement=connection.prepareStatement("SELECT pg_advisory_xact_lock(1396787536, 2)")) {statement.execute();}
+                }
+            });
+        }
     }
 
     private String normalizarNullable(String value) {

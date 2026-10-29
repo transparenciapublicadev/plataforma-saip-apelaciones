@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { combineLatest, forkJoin, Subscription, timeout } from 'rxjs';
+import { combineLatest, Subscription, timeout } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
@@ -22,13 +22,15 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { LucideArrowLeft, LucideArrowRight, LucideScale, LucideSend, LucideInfo, LucideSearch, LucideFileText,
   LucideAlertCircle, LucideEye, LucideDownload, LucideX, LucideUpload, LucideArchive } from '@lucide/angular';
 
+import type { AltaApelacionRecepcionDTO, RegistrarAltaApelacionRequest } from '../../api/types';
+
 type Comando = { modo: 'directa'; datos: ApelacionCreate } | { modo: 'ante-entidad'; datos: ApelacionCreateAnteEntidad }
   | { modo: 'externa'; datos: ApelacionCreateExterna };
 interface DocumentoEnvio {
   label: string; tipo: TipoDocumento; file?: File; origen?: DocumentoMetadata;
   estado: 'pendiente' | 'enviando' | 'registrado' | 'rechazado' | 'incierto'; documento?: DocumentoMetadata;
 }
-interface Intento { comando: Comando; documentos: DocumentoEnvio[]; contexto: string; solicitudExpediente?: string; }
+interface Intento { clave: string; comando: Comando; documentos: DocumentoEnvio[]; contexto: string; solicitudExpediente?: string; }
 @Component({
   selector: 'app-nueva-apelacion', imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent,
     ReferenceSuccessModalComponent, DocumentPreviewModalComponent, StatusBadgeComponent, LucideArrowLeft,
@@ -69,11 +71,15 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   readonly successModalAbierto = signal(false);
   readonly apelacionCreada = signal<Apelacion | null>(null);
   readonly expedienteTtaip = signal('');
-  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'parcial' | 'confirmada'>('lista');
+  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'sin-recepcion' | 'confirmada'>('lista');
+  readonly operacionPendiente = signal(false);
+  readonly claveOperacion = signal('');
+  readonly recepcionId = signal<number | null>(null);
+  private recepcionEsperada: AltaApelacionRecepcionDTO | null = null;
   readonly documentosEnviados = signal<DocumentoEnvio[]>([]);
   readonly documentosConsultados = signal<DocumentoMetadata[] | null>(null);
   readonly errorRecuperacion = signal('');
-  readonly bloqueado = computed(() => this.loading() || !!this.apelacionCreada() || this.estadoEnvio() === 'incierta');
+  readonly bloqueado = computed(() => this.loading() || !!this.apelacionCreada() || this.operacionPendiente());
   readonly file1 = signal<File | null>(null);
   readonly file2 = signal<File | null>(null);
   readonly file3 = signal<File | null>(null);
@@ -160,6 +166,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     this.modoSeleccion.set(true); this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.cerrarPreview();
     this.apelacionCreada.set(null); this.expedienteTtaip.set(''); this.estadoEnvio.set('lista'); this.documentosEnviados.set([]);
     this.documentosConsultados.set(null); this.errorRecuperacion.set(''); this.confirmacion = null; this.intento = null;
+    this.operacionPendiente.set(false); this.claveOperacion.set(''); this.recepcionId.set(null); this.recepcionEsperada = null;
   }
   private cargarEntrada(): void {
     if (this.destruido) return;
@@ -237,6 +244,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   }
   private metadataFuente(d: DocumentoMetadata, tipo: TipoDocumento, key: 'solicitudId' | 'respuestaId', id: number): boolean {
     return !!d && this.idValido(d.id) && d.tipoDocumento === tipo && d.estado === 'ACTIVO' && d[key] === id && !!d.nombreOriginal
+      && typeof d.sizeBytes === 'number' && d.sizeBytes > 0 && !!d.contentType?.trim() && /^[a-f0-9]{64}$/.test(d.hashSha256 || '')
       && DOCUMENTO_RELATION_KEYS.every(k => k === key || d[k] == null);
   }
   private inicializarDocumentos(s: Solicitud): void {
@@ -329,7 +337,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     this.confirmacion = this.capturar(); this.confirmModalAbierto.set(true);
   }
   private contexto(): string { return `${this.tipoOrigen()}:${this.solicitud()?.id ?? ''}:${this.canalPresentacion()}:${this.modoEntidad()}`; }
-  private capturar(): Intento {
+  private capturar(clave: string = crypto.randomUUID()): Intento {
     const ciudadanoId = this.authService.obtenerSesion()!.ciudadanoId!, fundamentos = this.fundamentos.trim();
     let comando: Comando;
     if (this.esApelacionExterna()) comando = { modo: 'externa', datos: { ciudadanoId,
@@ -345,34 +353,60 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     else if (this.esPresentacionAnteEntidad()) comando = { modo: 'ante-entidad', datos: { solicitudId: this.solicitud()!.id, ciudadanoId, fundamentos,
       fechaPresentacionAnteEntidad: this.fechaPresentacionAnteEntidad, referenciaCargoPresentacion: this.referenciaCargoPresentacionEntidad.trim(), observacion: this.observacionPresentacionEntidad.trim() || undefined } };
     else comando = { modo: 'directa', datos: { solicitudId: this.solicitud()!.id, ciudadanoId, fundamentos } };
-    return { comando, contexto: this.contexto(), solicitudExpediente: this.solicitud()?.expediente,
+    return { clave, comando, contexto: this.contexto(), solicitudExpediente: this.solicitud()?.expediente,
       documentos: this.documentos().flatMap(({ n, label }) => {
         const file = this.fileFor(n), origen = file ? null : this.documentoPara(n);
         return file || origen ? [{ label, tipo: (n === 1 ? 'SOLICITUD_ORIGINAL' : n === 3 ? 'RECURSO_APELACION' : this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA' || !this.esApelacionExterna() && !this.requiereRespuesta() ? 'DOCUMENTO_ADJUNTO' : 'RESPUESTA_ENTIDAD') as TipoDocumento,
-          file: file || undefined, origen: origen || undefined, estado: 'pendiente' as const }] : [];
+          file: file || undefined, origen: origen ? { ...origen } : undefined, estado: 'pendiente' as const }] : [];
       }) };
   }
   crearApelacion(): void {
     if (this.bloqueado() || !this.actual()) return;
     const e = this.validar(); this.errores.set(e); if (Object.keys(e).length) { this.error.set('Revise los campos señalados antes de presentar.'); return; }
-    const intento = this.capturar();
+    const intento = this.capturar(this.confirmacion?.clave);
     if (this.confirmacion && (JSON.stringify(intento.comando) !== JSON.stringify(this.confirmacion.comando) || intento.documentos.length !== this.confirmacion.documentos.length
-      || intento.documentos.some((d, i) => d.file !== this.confirmacion!.documentos[i].file || d.origen?.id !== this.confirmacion!.documentos[i].origen?.id))) {
+      || intento.documentos.some((d, i) => d.file !== this.confirmacion!.documentos[i].file || d.origen?.id !== this.confirmacion!.documentos[i].origen?.id || d.origen?.hashSha256 !== this.confirmacion!.documentos[i].origen?.hashSha256))) {
       this.error.set('El contenido cambió. Revise y confirme nuevamente.'); this.confirmModalAbierto.set(false); this.confirmacion = null; return;
     }
-    this.intento = intento; const gen = this.generacion; this.loading.set(true); this.error.set(''); this.documentosEnviados.set(intento.documentos);
-    const c = intento.comando, creacion = c.modo === 'externa' ? this.apelacionService.crearExterna(c.datos) : c.modo === 'ante-entidad' ? this.apelacionService.crearAnteEntidad(c.datos) : this.apelacionService.crear(c.datos);
-    this.operaciones.add(creacion.pipe(timeout(30_000)).subscribe({ next: r => {
-      if (!this.intentoActual(gen)) return;
-      this.confirmModalAbierto.set(false);
-      if (!this.registroCompatible(r, intento, true)) { this.incierta('La respuesta no acredita una apelación compatible con este envío. No se repetirán creación ni archivos.'); return; }
-      this.apelacionCreada.set(r); this.expedienteTtaip.set(r.expediente); this.registrarDocumento(0, gen);
-    }, error: error => {
-      if (!this.intentoActual(gen)) return;
-      this.loading.set(false); this.confirmModalAbierto.set(false);
-      if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) this.incierta('Resultado incierto: la apelación podría estar registrada. No existe recuperación inequívoca por operación; no se repetirá el POST. Revise su panel antes de otro registro.');
-      else { this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.' : error.status === 403 ? 'No tiene permiso para registrar este recurso.' : 'El servidor rechazó el registro. Revise los datos y las condiciones aplicables.'); }
-    } }));
+    this.intento = intento; this.claveOperacion.set(intento.clave); this.operacionPendiente.set(true); this.recepcionEsperada = null;
+    this.enviarOperacion(intento, this.generacion);
+  }
+  private datosRecepcion(i: Intento): RegistrarAltaApelacionRequest {
+    const c = i.comando;
+    const datos: Record<string, unknown> = { claveOperacion: i.clave,
+      modalidad: c.modo === 'externa' ? 'EXTERNA' : c.modo === 'ante-entidad' ? 'ANTE_ENTIDAD' : 'DIRECTA_TTAIP' };
+    for (const key of ['solicitudId', 'fundamentos', 'entidadId', 'entidadExternaNombre', 'entidadExternaRuc', 'entidadExternaEmail',
+      'numeroSolicitudExterna', 'fechaPresentacionSolicitudExterna', 'fechaRespuestaEntidad', 'tipoDenegatoria',
+      'resumenSolicitudOriginal', 'resumenRespuestaEntidad', 'referenciaDocumentoSolicitud', 'referenciaCargoRecepcion',
+      'referenciaRespuestaEntidad', 'evidenciaSilencioAdministrativo', 'observacion', 'fechaPresentacionAnteEntidad', 'referenciaCargoPresentacion']) {
+      const value = (c.datos as unknown as Record<string, unknown>)[key]; if (value != null) datos[key] = value;
+    }
+    datos['documentos'] = i.documentos.map(d => ({ tipoDocumento: d.tipo,
+      ...(d.origen ? { origenId: d.origen.id, hashOrigen: d.origen.hashSha256 } : {}) }));
+    return datos as unknown as RegistrarAltaApelacionRequest;
+  }
+  private enviarOperacion(i: Intento, gen: number): void {
+    if (!this.intentoActual(gen) || this.intento !== i) return;
+    this.loading.set(true); this.error.set(''); this.estadoEnvio.set('lista'); this.documentosEnviados.set(i.documentos);
+    this.operaciones.add(this.apelacionService.registrarAlta(this.datosRecepcion(i), i.documentos.flatMap(d => d.file ? [d.file] : [])).pipe(timeout(30_000)).subscribe({
+      next: r => {
+        if (!this.intentoActual(gen) || this.intento !== i) return;
+        this.confirmModalAbierto.set(false);
+        if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) { this.incierta('El servidor no confirmó una recepción compatible. Consulte la misma operación antes de reintentar.'); return; }
+        this.recepcionEsperada = r; this.consultarRecepcion(i, gen);
+      }, error: error => {
+        if (!this.intentoActual(gen) || this.intento !== i) return;
+        this.loading.set(false); this.confirmModalAbierto.set(false);
+        if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
+          this.incierta('Resultado incierto: el servidor podría haber registrado la apelación y sus documentos. Consulte por la misma clave; no se repite el POST automáticamente.');
+        } else {
+          this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
+            : error.status === 403 ? 'No tiene permiso para registrar este recurso.' : error.status === 409
+              ? 'Conflicto de operación, contenido o recurso. Consulte la recepción antes de otro registro.' : 'El servidor rechazó el registro. Revise los datos y condiciones de presentación.');
+          if (error.status !== 409) { this.operacionPendiente.set(false); this.intento = null; this.confirmacion = null; }
+        }
+      }
+    }));
   }
   private intentoActual(gen: number): boolean { return this.actual(gen) && !!this.intento && this.intento.contexto === this.contexto(); }
   private incierta(mensaje: string): void { this.estadoEnvio.set('incierta'); this.loading.set(false); this.confirmModalAbierto.set(false); this.error.set(mensaje); }
@@ -391,46 +425,77 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
         'referenciaCargoRecepcion', 'fechaRespuestaEntidad', 'resumenRespuestaEntidad', 'referenciaRespuestaEntidad',
         'evidenciaSilencioAdministrativo', 'observacion'] as const).every(key => (r[key] ?? undefined) === c.datos[key]);
   }
-  private registrarDocumento(index: number, gen: number): void {
-    if (!this.intentoActual(gen) || !this.apelacionCreada()) return;
-    const item = this.intento!.documentos[index];
-    if (!item) { this.loading.set(false); this.estadoEnvio.set('confirmada'); this.successModalAbierto.set(true); return; }
-    item.estado = 'enviando'; this.documentosEnviados.set([...this.intento!.documentos]);
-    const relacion = { apelacionId: this.apelacionCreada()!.id };
-    const operacion = item.file ? this.documentoService.upload(item.file, item.tipo, relacion) : this.documentoService.clonar(item.origen!.id!, item.tipo, relacion);
-    this.operaciones.add(operacion.pipe(timeout(30_000)).subscribe({ next: doc => {
-      if (!this.intentoActual(gen)) return;
-      const fuente = item.file ? { nombre: item.file.name, size: item.file.size, hash: null } : { nombre: item.origen!.nombreOriginal, size: item.origen!.sizeBytes, hash: item.origen!.hashSha256 };
-      if (!this.documentoDeApelacion(doc) || doc.tipoDocumento !== item.tipo || doc.nombreOriginal !== fuente.nombre || doc.sizeBytes !== fuente.size
-        || !/^[a-f0-9]{64}$/i.test(doc.hashSha256 || '') || fuente.hash && doc.hashSha256 !== fuente.hash
-        || item.origen && doc.id === item.origen.id || this.documentosEnviados().some(d => d.documento?.id === doc.id)) {
-        item.estado = 'incierto'; this.parcial('La respuesta documental no acredita la asociación esperada.'); return;
-      }
-      item.documento = doc; item.estado = 'registrado'; this.documentosEnviados.set([...this.intento!.documentos]); this.registrarDocumento(index + 1, gen);
-    }, error: error => { if (this.intentoActual(gen)) { item.estado = error instanceof HttpErrorResponse && error.status > 0 && error.status < 500 ? 'rechazado' : 'incierto'; this.parcial('La apelación está registrada, pero no se confirmó la asociación de todos los archivos. No se repiten subidas ni clones automáticamente.'); } } }));
+  private documentoDeApelacion(d: DocumentoMetadata, id = this.apelacionCreada()?.id): boolean {
+    return !!d && this.idValido(d.id) && d.apelacionId === id && d.estado === 'ACTIVO'
+      && DOCUMENTO_RELATION_KEYS.every(k => k === 'apelacionId' || d[k] == null);
   }
-  private documentoDeApelacion(d: DocumentoMetadata): boolean { return !!d && this.idValido(d.id) && d.apelacionId === this.apelacionCreada()?.id && d.estado === 'ACTIVO' && DOCUMENTO_RELATION_KEYS.every(k => k === 'apelacionId' || d[k] == null); }
-  private parcial(mensaje: string): void { this.loading.set(false); this.estadoEnvio.set('parcial'); this.error.set(mensaje); this.documentosEnviados.set([...this.intento!.documentos]); }
+  private recepcionCompatible(r: AltaApelacionRecepcionDTO | null, i: Intento): r is AltaApelacionRecepcionDTO {
+    const modalidad = this.datosRecepcion(i).modalidad;
+    return !!r && this.idValido(r.id) && r.claveOperacion === i.clave && r.modalidad === modalidad
+      && typeof r.fechaRecepcion === 'string' && /^\d{4}-\d{2}-\d{2}/.test(r.fechaRecepcion) && Number.isFinite(Date.parse(r.fechaRecepcion))
+      && this.registroCompatible(r.apelacion as Apelacion, i, false) && r.apelacion.fundamentos === i.comando.datos.fundamentos
+      && (i.comando.modo !== 'ante-entidad' || this.idValido(r.apelacion.elevacion?.id)
+        && r.apelacion.elevacion?.apelacionId === r.apelacion.id
+        && r.apelacion.elevacion?.fechaPresentacionAnteEntidad === i.comando.datos.fechaPresentacionAnteEntidad
+        && r.apelacion.elevacion?.referenciaCargoPresentacion === i.comando.datos.referenciaCargoPresentacion)
+      && Array.isArray(r.documentos) && r.documentos.length === i.documentos.length
+      && new Set(r.documentos.map(d => d?.documento?.id)).size === r.documentos.length
+      && r.documentos.every((item, index) => {
+        const expected = i.documentos[index], doc = item?.documento;
+        return this.documentoDeApelacion(doc, r.apelacion.id) && doc.tipoDocumento === expected.tipo
+          && (item.origenId ?? undefined) === expected.origen?.id && doc.id !== expected.origen?.id
+          && item.hashAceptado === doc.hashSha256 && /^[a-f0-9]{64}$/i.test(item.hashAceptado || '')
+          // Names are descriptive; receipt, IDs and byte version identify uploads and copies.
+          && !!doc.nombreOriginal?.trim()
+          && doc.sizeBytes === (expected.file?.size ?? expected.origen?.sizeBytes)
+          && (!expected.origen || item.hashAceptado === expected.origen.hashSha256);
+      });
+  }
+  private mismaRecepcion(r: AltaApelacionRecepcionDTO): boolean {
+    const prior = this.recepcionEsperada;
+    return !prior || r.id === prior.id && r.fechaRecepcion === prior.fechaRecepcion && r.apelacion.id === prior.apelacion.id
+      && r.documentos.every((d, n) => d.documento.id === prior.documentos[n]?.documento.id);
+  }
   comprobarRegistro(): void {
-    const r = this.apelacionCreada(), i = this.intento; if (!this.actual() || this.loading() || !r || !i) return;
-    const gen = this.generacion; this.loading.set(true); this.documentosConsultados.set(null); this.errorRecuperacion.set('');
-    this.operaciones.add(forkJoin({ apelacion: this.apelacionService.findById(r.id), documentos: this.documentoService.listByRelation({ apelacionId: r.id }) }).pipe(timeout(30_000)).subscribe({ next: resultado => {
-      if (!this.intentoActual(gen)) return;
+    if (!this.actual() || this.loading() || !this.intento) return;
+    this.consultarRecepcion(this.intento, this.generacion);
+  }
+  reintentarAlta(): void {
+    if (!this.actual() || this.loading() || this.estadoEnvio() !== 'sin-recepcion' || !this.intento) return;
+    this.enviarOperacion(this.intento, this.generacion);
+  }
+  private consultarRecepcion(i: Intento, gen: number): void {
+    const confirmada = this.estadoEnvio() === 'confirmada';
+    this.loading.set(true); this.errorRecuperacion.set(''); this.documentosConsultados.set(null);
+    this.operaciones.add(this.apelacionService.obtenerRecepcionAlta(i.clave).pipe(timeout(30_000)).subscribe({ next: r => {
+      if (!this.intentoActual(gen) || this.intento !== i) return;
       this.loading.set(false);
-      if (!this.registroCompatible(resultado.apelacion, i, false) || resultado.apelacion.id !== r.id || resultado.apelacion.expediente !== r.expediente
-        || !Array.isArray(resultado.documentos) || resultado.documentos.some(d => !this.documentoDeApelacion(d)) || new Set(resultado.documentos.map(d => d.id)).size !== resultado.documentos.length) {
-        this.errorRecuperacion.set('La consulta no acredita esta apelación y sus documentos.'); return;
+      if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) {
+        if (!confirmada) this.incierta('La consulta no acredita la recepción de esta operación y sus documentos.');
+        this.errorRecuperacion.set('Datos, procedencia o identificadores incompatibles. No se repite el alta.'); return;
       }
-      this.apelacionCreada.set(resultado.apelacion); this.documentosConsultados.set(resultado.documentos);
-    }, error: () => { if (this.intentoActual(gen)) { this.loading.set(false); this.errorRecuperacion.set('No se pudo comprobar el registro. Este error no acredita ausencia de documentos.'); } } }));
+      this.recepcionEsperada = r; this.recepcionId.set(r.id); this.apelacionCreada.set(r.apelacion as Apelacion); this.expedienteTtaip.set(r.apelacion.expediente!);
+      i.documentos.forEach((d, n) => { d.documento = r.documentos[n].documento; d.estado = 'registrado'; });
+      this.documentosEnviados.set([...i.documentos]); this.documentosConsultados.set(r.documentos.map(d => d.documento));
+      this.operacionPendiente.set(false); this.estadoEnvio.set('confirmada'); this.error.set(''); if (!confirmada) this.successModalAbierto.set(true);
+    }, error: error => {
+      if (!this.intentoActual(gen) || this.intento !== i) return;
+      this.loading.set(false);
+      if (!confirmada && error?.status === 404) {
+        this.estadoEnvio.set('sin-recepcion'); this.error.set('No hay recepción confirmada para esta clave. El envío anterior podría seguir en curso; solo puede reintentar explícitamente la misma operación y contenido.');
+      } else {
+        if (!confirmada) this.incierta('No se pudo comprobar la recepción. El error no acredita ausencia; consulte nuevamente antes de reintentar.');
+        this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. No se confirma ausencia ni otra recepción.');
+      }
+    } }));
   }
   apelacionConfirmSummary(): ReferenceConfirmSummary[] {
     return [{ label: 'Origen', value: this.esApelacionExterna() ? 'Externo, sin SAIP local' : this.solicitud()?.expediente || 'No disponible' },
       { label: 'Entidad', value: this.entidadDisplay() }, { label: 'Ingreso', value: this.esPresentacionAnteEntidad() ? 'Ante la entidad' : 'Directo al TTAIP' },
       { label: 'Documentos seleccionados o antecedentes', value: String([1, 2, 3].filter(n => this.hasDocument(n)).length) }, { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }];
   }
-  apelacionWarning(): ReferenceConfirmWarning { return { label: 'Alcance del registro', detail: 'El alta, cada subida y cada clon son operaciones independientes. No acreditan entrega, notificación eficaz, firma o emisión formal. Un error documental no revierte la apelación.' }; }
-  apelacionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.apelacionCreada(); return r ? [{ label: 'Apelación', value: String(r.id), mono: true }, { label: 'Estado', value: r.estado || 'No disponible' }, { label: 'Fecha registrada', value: r.fechaApelacion || 'No disponible' }, { label: 'Documentos vinculados confirmados', value: String(this.documentosEnviados().filter(d => d.estado === 'registrado').length) }] : []; }
+  apelacionWarning(): ReferenceConfirmWarning { return { label: 'Alcance del registro', detail: 'La operación coordina el alta y todos los archivos y copias seleccionados. Ante incertidumbre consulte la recepción por su clave. Registrar no acredita admisión, entrega, notificación eficaz, firma ni emisión formal.' }; }
+  apelacionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.apelacionCreada(); return r ? [{ label: 'Recepción', value: String(this.recepcionId()), mono: true }, { label: 'Apelación', value: String(r.id), mono: true }, { label: 'Estado', value: r.estado || 'No disponible' }, { label: 'Fecha registrada', value: r.fechaApelacion || 'No disponible' }, { label: 'Documentos vinculados confirmados', value: String(this.documentosEnviados().filter(d => d.estado === 'registrado').length) }] : []; }
   apelacionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte el estado y las actuaciones reales en su panel.' }, { label: 'El registro no certifica admisibilidad, entrega, notificación eficaz, firma ni emisión documental.' }]; }
   entidadDisplay(): string { return !this.esApelacionExterna() ? this.solicitud()?.entidadNombre || 'Nombre no disponible'
     : this.modoEntidad() === 'catalogo' ? this.entidades().find(e => e.id === this.entidadExternaId)?.nombre || 'Entidad no disponible' : this.entidadExternaNombre || 'Nombre declarado no indicado'; }

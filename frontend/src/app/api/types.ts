@@ -45,3 +45,6 @@ export type DecisionResolucion = NonNullable<ResolucionDTO['decision']>;
 
 // ── API Paths & Operations (para uso avanzado) ──────────────────────────
 export type { paths, operations } from './schema';
+
+export type AltaApelacionRecepcionDTO = components['schemas']['AltaApelacionRecepcionDTO'];
+export type RegistrarAltaApelacionRequest = components['schemas']['RegistrarAltaApelacionRequest'];

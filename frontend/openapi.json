@@ -8042,6 +8042,221 @@
           }
         }
       }
+    },
+    "/api/apelaciones/recepciones": {
+      "post": {
+        "tags": [
+          "alta-apelacion-recepcion-rest-controller"
+        ],
+        "summary": "Recibir apelación y manifiesto documental coordinados",
+        "description": "Parte datos JSON con identidad exclusivamente del ciudadano autenticado. DIRECTA_TTAIP y EXTERNA abren expediente; ANTE_ENTIDAD conserva pendiente de elevación. Cada entrada sin origenId consume el siguiente archivo; un antecedente exige su SHA-256 y relación autorizada a la SAIP/respuesta. Archivos nuevos según requisitos de modalidad. Misma clave y huella recuperan la recepción sin repetir efectos. No acredita admisión, entrega, notificación eficaz, firma ni emisión.",
+        "operationId": "registrarAltaApelacion",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "datos": {
+                    "$ref": "#/components/schemas/RegistrarAltaApelacionRequest"
+                  },
+                  "archivos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": [
+                  "datos"
+                ]
+              },
+              "encoding": {
+                "datos": {
+                  "contentType": "application/json"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Recepción persistida o repetición compatible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AltaApelacionRecepcionDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rechazo de una precondición de negocio de la modalidad existente",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos, modalidad o archivos inválidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesión no válida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Actor o recurso ajeno",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso o recepción no encontrado; no descarta un envío en curso",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contenido, versión, asociación o estado incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Resultado no confirmado; consulte antes de reintentar",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apelaciones/recepciones/{claveOperacion}": {
+      "get": {
+        "tags": [
+          "alta-apelacion-recepcion-rest-controller"
+        ],
+        "summary": "Recuperar recepción sin recrear apelación o documentos",
+        "description": "Solo el ciudadano original. Un 404 no descarta un envío en curso. Conserve clave y contenido para un reintento explícito. La apelación anidada refleja el recurso actual; recepción, modalidad, IDs y hash aceptado son persistentes.",
+        "operationId": "obtenerRecepcionAltaApelacion",
+        "parameters": [
+          {
+            "name": "claveOperacion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Datos, modalidad o archivos inválidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesión no válida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Actor o recurso ajeno",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso o recepción no encontrado; no descarta un envío en curso",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contenido, versión, asociación o estado incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Resultado no confirmado; consulte antes de reintentar",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Recepción y manifiesto disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AltaApelacionRecepcionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12372,6 +12587,226 @@
           "fechaRecepcion",
           "id",
           "solicitud"
+        ]
+      },
+      "AltaApelacionDocumentoDTO": {
+        "type": "object",
+        "properties": {
+          "documento": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          },
+          "origenId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "hashAceptado": {
+            "type": "string",
+            "description": "SHA-256 de los bytes aceptados al registrar"
+          }
+        },
+        "required": [
+          "documento",
+          "hashAceptado",
+          "origenId"
+        ]
+      },
+      "AltaApelacionRecepcionDTO": {
+        "type": "object",
+        "description": "Recepción persistida y manifiesto exacto. La apelación refleja el recurso actual, no una fotografía de todos sus campos mutables. No acredita notificación eficaz, admisión, entrega, firma ni emisión.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modalidad": {
+            "type": "string"
+          },
+          "fechaRecepcion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "apelacion": {
+            "$ref": "#/components/schemas/ApelacionDTO"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AltaApelacionDocumentoDTO"
+            }
+          }
+        },
+        "required": [
+          "apelacion",
+          "claveOperacion",
+          "documentos",
+          "fechaRecepcion",
+          "id",
+          "modalidad"
+        ]
+      },
+      "DocumentoAltaApelacionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipoDocumento": {
+            "type": "string",
+            "enum": [
+              "SOLICITUD_ORIGINAL",
+              "RESPUESTA_ENTIDAD",
+              "RECURSO_APELACION",
+              "DOCUMENTO_ADJUNTO"
+            ],
+            "minLength": 1,
+            "pattern": "SOLICITUD_ORIGINAL|RESPUESTA_ENTIDAD|RECURSO_APELACION|DOCUMENTO_ADJUNTO"
+          },
+          "origenId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Antecedente de la SAIP/respuesta de origen. Ausente consume el siguiente archivo multipart",
+            "minimum": 1
+          },
+          "hashOrigen": {
+            "type": "string",
+            "description": "SHA-256 de la versión del antecedente seleccionada, obligatorio con origenId",
+            "pattern": "[a-f0-9]{64}"
+          }
+        },
+        "required": [
+          "tipoDocumento"
+        ]
+      },
+      "RegistrarAltaApelacionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "DIRECTA_TTAIP: solicitudId y copia de SAIP, más respuesta cuando exista. ANTE_ENTIDAD añade fecha no futura y referencia de cargo; fundamentos hasta 5000. EXTERNA: sin solicitudId, entidad de catálogo o declarada, número/fecha/resumen/referencia de SAIP y fundamentos hasta 5000; expresa requiere fecha y resumen o referencia de respuesta, tácita requiere evidencia declarada de silencio. Documentos externos opcionales. No se recibe identidad, estado ni fechas de alta.",
+        "properties": {
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modalidad": {
+            "type": "string",
+            "enum": [
+              "DIRECTA_TTAIP",
+              "ANTE_ENTIDAD",
+              "EXTERNA"
+            ],
+            "minLength": 1,
+            "pattern": "DIRECTA_TTAIP|ANTE_ENTIDAD|EXTERNA"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "fundamentos": {
+            "type": "string",
+            "minLength": 1
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "entidadExternaNombre": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "entidadExternaRuc": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "entidadExternaEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "numeroSolicitudExterna": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "fechaPresentacionSolicitudExterna": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaRespuestaEntidad": {
+            "type": "string",
+            "format": "date"
+          },
+          "tipoDenegatoria": {
+            "type": "string",
+            "enum": [
+              "EXPRESA",
+              "TACITA"
+            ]
+          },
+          "resumenSolicitudOriginal": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "resumenRespuestaEntidad": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "referenciaDocumentoSolicitud": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaCargoRecepcion": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "referenciaRespuestaEntidad": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "evidenciaSilencioAdministrativo": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "fechaPresentacionAnteEntidad": {
+            "type": "string",
+            "format": "date"
+          },
+          "referenciaCargoPresentacion": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoAltaApelacionRequest"
+            }
+          }
+        },
+        "required": [
+          "claveOperacion",
+          "documentos",
+          "fundamentos",
+          "modalidad"
         ]
       }
     },

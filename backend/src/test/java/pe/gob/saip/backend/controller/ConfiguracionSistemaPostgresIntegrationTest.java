@@ -117,8 +117,8 @@ class ConfiguracionSistemaPostgresIntegrationTest {
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("true");
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().applied()).hasSize(11);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class)).isEqualTo(11);
+        assertThat(flyway.info().applied()).hasSize(12);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class)).isEqualTo(12);
         var column = jdbc.queryForMap("""
                 SELECT data_type, numeric_precision, numeric_scale
                 FROM information_schema.columns WHERE table_schema='public'

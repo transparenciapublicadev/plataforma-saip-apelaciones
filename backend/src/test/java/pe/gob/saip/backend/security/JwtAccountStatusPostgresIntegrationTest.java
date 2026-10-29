@@ -72,7 +72,7 @@ class JwtAccountStatusPostgresIntegrationTest extends JwtAccountStatusIntegratio
     void validatesOriginalSchemaAndKeepsTheApiContractUnchanged() throws Exception {
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().applied()).hasSize(11);
+        assertThat(flyway.info().applied()).hasSize(12);
         assertThat(jdbc.queryForObject("SELECT version()", String.class)).startsWith("PostgreSQL");
         var specification = mvc.perform(MockMvcRequestBuilders.get("/v3/api-docs")).andReturn();
         assertThat(specification.getResponse().getStatus()).isEqualTo(200);

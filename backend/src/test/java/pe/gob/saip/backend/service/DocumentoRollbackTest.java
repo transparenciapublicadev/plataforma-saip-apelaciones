@@ -110,6 +110,21 @@ class DocumentoRollbackTest {
                 new DocumentoUploadRequest(Documento.TipoDocumento.SUBSANACION, 10L, null, null, null, null, null));
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints={TransactionSynchronization.STATUS_ROLLED_BACK,TransactionSynchronization.STATUS_COMMITTED,TransactionSynchronization.STATUS_UNKNOWN})
+    void clonedObjectUsesTheSameTransactionOutcomeCompensation(int status) {
+        successfulPersistence();
+        Documento original=new Documento();original.setIdDocumento(20L);original.setSolicitud(solicitudes.findById(10L).orElseThrow());
+        original.setStorageProvider(StorageProviderType.LOCAL);original.setStorageKey("original.txt");original.setNombreOriginal("original.txt");
+        original.setContentType("text/plain");original.setSizeBytes(9L);
+        when(documentos.findByIdDocumentoAndEstado(20L,Documento.EstadoDocumento.ACTIVO)).thenReturn(Optional.of(original));
+        when(storage.download("original.txt","text/plain")).thenReturn(new pe.gob.saip.backend.storage.StorageDownloadResult(
+            new java.io.ByteArrayInputStream("contenido".getBytes()),"text/plain",9));
+        service.clonar(20L,new DocumentoUploadRequest(Documento.TipoDocumento.SOLICITUD_ORIGINAL,10L,null,null,null,null,null));
+        complete(status);
+        verify(storage,times(status==TransactionSynchronization.STATUS_ROLLED_BACK?1:0)).delete("2026/test.txt");
+    }
+
     private void successfulPersistence() {
         when(documentos.save(any())).thenAnswer(inv -> {
             Documento documento = inv.getArgument(0);
