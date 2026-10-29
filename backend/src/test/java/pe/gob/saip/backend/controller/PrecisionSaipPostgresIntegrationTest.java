@@ -98,9 +98,9 @@ class PrecisionSaipPostgresIntegrationTest extends PrecisionSaipIntegrationTest 
     void flywayAppliedOriginalMigrationsAndExportsCompleteContractOverHttp() throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(Arrays.stream(flyway.info().applied()).map(migration -> migration.getVersion().toString()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE success", Integer.class))
-                .isEqualTo(10);
+                .isEqualTo(11);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE checksum IS NULL", Integer.class))
                 .isZero();
         assertThat(jdbc.queryForObject("SELECT version()", String.class)).startsWith("PostgreSQL");

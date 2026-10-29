@@ -711,11 +711,28 @@ public class SolicitudService {
      */
     @Transactional
     public String generarExpediente() {
+        bloquearAlta();
         int year = LocalDate.now().getYear();
         String prefix = "SAIP-" + year + "-";
         Integer maxNum = solicitudRepository.findMaxExpedienteNumber(prefix + "%");
         int nextNum = (maxNum != null ? maxNum : 0) + 1;
         return prefix + String.format("%05d", nextNum);
+    }
+
+    /** Serialize creation before operation lookup and max+1 allocation, through the committing transaction.
+     * PostgreSQL is the supported persistent runtime; in-memory test contexts do not prove this lock.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void bloquearAlta() {
+        if (entityManager.getDelegate() instanceof org.hibernate.Session session) {
+            session.doWork(connection -> {
+                if ("PostgreSQL".equals(connection.getMetaData().getDatabaseProductName())) {
+                    try (var statement = connection.prepareStatement("SELECT pg_advisory_xact_lock(1396787536, 1)")) {
+                        statement.execute();
+                    }
+                }
+            });
+        }
     }
 
     @Transactional

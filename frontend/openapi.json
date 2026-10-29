@@ -7857,6 +7857,191 @@
           }
         }
       }
+    },
+    "/api/solicitudes/recepciones": {
+      "post": {
+        "tags": [
+          "alta-saip-recepcion-rest-controller"
+        ],
+        "summary": "Recibir nueva SAIP con todos sus archivos opcionales",
+        "description": "Identidad derivada del ciudadano autenticado. Misma clave y huella versionada recuperan la misma recepción sin duplicar solicitud ni archivos. Se requiere consentimiento, declaración de veracidad y al menos una modalidad digital/física. Cada archivo exige su tipo en el mismo orden. Rigen los límites multipart y de almacenamiento. No acredita entrega, notificación eficaz, firma o emisión.",
+        "operationId": "registrarAltaSaip",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarAltaSaipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Campos, archivos o atributos no permitidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesión no válida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requiere ciudadano y actor original de la operación",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entidad o recepción no encontrada; no descarta una operación todavía en curso",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contenido incompatible, entidad inactiva o conflicto de persistencia",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Recepción persistida o repetición compatible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AltaSaipRecepcionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/recepciones/{claveOperacion}": {
+      "get": {
+        "tags": [
+          "alta-saip-recepcion-rest-controller"
+        ],
+        "summary": "Recuperar recepción de alta sin recrear la solicitud",
+        "description": "Solo el ciudadano original. 404 no descarta un envío en curso: un reintento explícito debe conservar clave y contenido. Un fallo no acredita ausencia. La solicitud anidada refleja el recurso autorizado actual; recepción y manifiesto conservan sus IDs.",
+        "operationId": "obtenerRecepcionAltaSaip",
+        "parameters": [
+          {
+            "name": "claveOperacion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Campos, archivos o atributos no permitidos",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesión no válida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Requiere ciudadano y actor original de la operación",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entidad o recepción no encontrada; no descarta una operación todavía en curso",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Contenido incompatible, entidad inactiva o conflicto de persistencia",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Recepción y manifiesto disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AltaSaipRecepcionDTO"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12059,6 +12244,134 @@
           "fundamentosAdicionales",
           "recepcionId",
           "requerimientoId"
+        ]
+      },
+      "RegistrarAltaSaipRequest": {
+        "type": "object",
+        "properties": {
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "asunto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          },
+          "descripcion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tipoInformacion": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "formatoDigital": {
+            "type": "boolean"
+          },
+          "formatoFisico": {
+            "type": "boolean"
+          },
+          "copiaSimple": {
+            "type": "boolean"
+          },
+          "copiaCertificada": {
+            "type": "boolean"
+          },
+          "consentimientoDatosPersonales": {
+            "type": "boolean",
+            "description": "Debe ser true: aceptación expresa de tratamiento de datos"
+          },
+          "declaraVeracidad": {
+            "type": "boolean",
+            "description": "Debe ser true: declaración expresa del formulario; no es firma digital"
+          },
+          "canalNotificacion": {
+            "type": "string",
+            "enum": [
+              "CORREO_ELECTRONICO",
+              "CASILLA_ELECTRONICA",
+              "PLATAFORMA",
+              "FISICA"
+            ],
+            "minLength": 1,
+            "pattern": "CORREO_ELECTRONICO|CASILLA_ELECTRONICA|PLATAFORMA|FISICA"
+          },
+          "tiposDocumento": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SOLICITUD_ORIGINAL",
+                "DOCUMENTO_ADJUNTO"
+              ],
+              "pattern": "SOLICITUD_ORIGINAL|DOCUMENTO_ADJUNTO"
+            }
+          },
+          "archivos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "required": [
+          "asunto",
+          "canalNotificacion",
+          "claveOperacion",
+          "consentimientoDatosPersonales",
+          "copiaCertificada",
+          "copiaSimple",
+          "declaraVeracidad",
+          "descripcion",
+          "entidadId",
+          "formatoDigital",
+          "formatoFisico"
+        ]
+      },
+      "AltaSaipRecepcionDTO": {
+        "type": "object",
+        "description": "Recepción persistida de nueva SAIP y todos sus archivos seleccionados. No acredita entrega, eficacia de notificación, firma ni emisión.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "claveOperacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fechaRecepcion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "declaraVeracidad": {
+            "type": "boolean"
+          },
+          "solicitud": {
+            "$ref": "#/components/schemas/SolicitudDTO"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          }
+        },
+        "required": [
+          "claveOperacion",
+          "declaraVeracidad",
+          "documentos",
+          "fechaRecepcion",
+          "id",
+          "solicitud"
         ]
       }
     },
