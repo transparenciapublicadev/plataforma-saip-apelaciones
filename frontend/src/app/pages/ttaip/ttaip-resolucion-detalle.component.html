@@ -38,8 +38,22 @@
         <p>Apelación ID {{ apelacion()?.id }} · Agregado TTAIP ID {{ expedienteTtaip()?.id || 'No informado' }}. El número de expediente no es un ID de resolución.</p>
         <p id="detail-clock-debt" class="text-xs text-muted-foreground">Registro, archivo almacenado, envío técnico y notificación eficaz son hechos distintos. Las fechas límite de resolución y cumplimiento conservan una base pendiente de acreditación; no se certifica un vencimiento legal ni se abre seguimiento desde este detalle.</p>
         <p role="status" class="text-xs text-muted-foreground">Reloj del requerimiento de subsanación: {{ relojTexto() }}. No se usa como plazo de resolución o cumplimiento.</p>
-        <p class="text-xs text-muted-foreground">La consulta institucional de recepción de subsanación no está disponible. No se deduce de textos históricos o archivos ni se habilita segunda calificación por esa inferencia. Los adjuntos de subsanación siguen opcionales.</p>
-        <div class="flex flex-wrap gap-2">@if (navegacionPrimera()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/calificar', expedienteDisplay()]">Ir a primera calificación</a> } @if (navegacionFinal()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/resolver', expedienteDisplay()]">Ir a resolución final</a> } @if (rolInstitucional()) { <a class="btn-ghost-brand" routerLink="/ttaip/cumplimiento">Consultar seguimiento de cumplimiento</a> }</div>
+        @if (rolInstitucional() && requiereRecepcion()) {
+          <p class="text-xs text-muted-foreground">Requerimiento de subsanación · ID {{ requerimiento()?.id || 'Sin identificación coherente' }}. Los adjuntos de la recepción son opcionales.</p>
+          <app-recepcion-institucional [consulta]="recepcion()" (reintentar)="reintentarRecepcion()" />
+        }
+        <p id="detail-navigation-scope" class="text-xs text-muted-foreground">Abrir un formulario permite revisar y preparar el registro: no registra una calificación ni confirma el avance. Los formularios vuelven a consultar sus evidencias y el backend conserva la decisión.</p>
+        @if (rolInstitucional()) {
+          <p class="text-xs text-muted-foreground">La segunda admisión queda pendiente de ambas notificaciones eficaces. Confirmar el avance es una operación del servidor distinta de registrar evidencias o navegar; la resolución final conserva también las precondiciones de descargos. No se elige aquí la fecha base del plazo.</p>
+        }
+        <div class="flex flex-wrap gap-2" aria-describedby="detail-navigation-scope">
+          @if (navegacionPrimera()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/calificar', expedienteDisplay()]">Ir a primera calificación</a> }
+          @if (navegacionSegunda()) { <a class="btn-ghost-brand" aria-describedby="detail-navigation-scope" [routerLink]="['/ttaip/segunda-calificacion', expedienteDisplay()]">Revisar y registrar segunda calificación</a> }
+          @if (navegacionFinal()) { <a class="btn-ghost-brand" aria-describedby="detail-navigation-scope" [routerLink]="['/ttaip/resolver', expedienteDisplay()]">Ir a resolución final</a> }
+          @if (rolInstitucional()) { <button type="button" class="btn-ghost-brand" (click)="revisarNotificaciones()">Revisar evidencias de notificación</button><a class="btn-ghost-brand" routerLink="/ttaip/cumplimiento">Consultar seguimiento de cumplimiento</a> }
+        </div>
+        @if (!navegacionSegunda()) { <p role="status" class="text-xs text-muted-foreground">Segunda calificación: {{ motivoSegunda() }}</p> }
+        @if (!navegacionFinal()) { <p role="status" class="text-xs text-muted-foreground">Resolución final: {{ motivoResolucionFinal() }}</p> }
       </section>
       <div
         class="grid grid-cols-1 md:grid-cols-3 gap-4"

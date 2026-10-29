@@ -119,7 +119,15 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
   afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); } });
-  function page(body = data()) { const f = TestBed.createComponent(TtaipResolucionDetalleComponent); f.detectChanges(); http.expectOne(api + '/apelaciones/expediente/' + code).flush(body); f.detectChanges(); return f; }
+  function page(body = data()) {
+    const f = TestBed.createComponent(TtaipResolucionDetalleComponent); f.detectChanges();
+    http.expectOne(api + '/apelaciones/expediente/' + code).flush(body); f.detectChanges();
+    http.match(api + '/ttaip/expedientes/41/requerimientos/71/subsanacion/recepcion').forEach(r => r.flush({
+      estado: 'RECIBIDA', expedienteTtaipId: 41, apelacionId: body.id, requerimientoId: 71, expediente: body.expediente,
+      recepcionId: 111, fechaRecepcion: '2026-10-02T10:00:00', fundamentosAdicionales: 'Fundamentos registrados', documentos: [],
+    }));
+    f.detectChanges(); return f;
+  }
   it('el número de expediente no se confunde con un ID de apelación ausente', () => { expect(page(data({ id: 0 })).componentInstance.apelacion()).toBeNull(); });
   it('rechaza un agregado perteneciente a otro código', () => { expect(page(data({ expedienteTtaip: { ...data().expedienteTtaip, numeroExpediente: 'AJENO' } })).componentInstance.apelacion()).toBeNull(); });
   it('no atribuye observaciones del Tribunal como causal ni fundamento de la entidad', () => { const view = page().componentInstance.dataView(); expect(view.causalDenegatoria).not.toBe(first.decision); expect(view.fundamentoEntidad).not.toBe(first.observaciones); });
