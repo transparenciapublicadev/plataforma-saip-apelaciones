@@ -1,532 +1,212 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  HostListener,
-  OnInit,
-  computed,
-  effect,
-  inject,
-  input,
-  signal
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRender, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import {
-  LucideAlertTriangle,
-  LucideBell,
-  LucideCheckCheck,
-  LucideCheckCircle2,
-  LucideClock,
-  LucideGavel,
-  LucideHourglass,
-  LucideInbox,
-  LucideScale
-} from '@lucide/angular';
+import { Subscription, forkJoin } from 'rxjs';
+import { LucideBell, LucideInbox, LucideX } from '@lucide/angular';
+import { AuthService } from '../services/auth.service';
 import { SolicitudService } from '../services/solicitud.service';
 import { ApelacionService } from '../services/apelacion.service';
 
-export interface NotificationItem {
-  id: string;
-  iconName: 'alert' | 'scale' | 'gavel' | 'hourglass' | 'check' | 'clock' | 'inbox';
-  titulo: string;
-  detalle: string;
-  fecha?: string;
-  ruta: string;
-  expediente?: string;
-  tone: 'brand' | 'gold' | 'info' | 'success' | 'danger';
-  urgente?: boolean;
+type Rol = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
+type Estado = 'no-disponible' | 'sin-consultar' | 'cargando' | 'disponible' | 'vacio' | 'incompleto' | 'error';
+interface Contexto {
+  usuarioId: number; token: string; rol: Rol;
+  entidadId?: number; funcionarioId?: number; miembroId?: number; administradorId?: number;
+}
+interface Indicadores { solicitudes: number; apelaciones: number; }
+interface Consulta { contexto: Contexto | null; estado: Estado; datos?: Indicadores; mensaje: string; }
+const ROLES: readonly string[] = ['CIUDADANO', 'FUNCIONARIO', 'TTAIP', 'ADMINISTRADOR'];
+const PANELES: Record<Rol, string> = { CIUDADANO: '/ciudadano', FUNCIONARIO: '/funcionario', TTAIP: '/ttaip', ADMINISTRADOR: '/admin' };
+let siguienteCampana = 0;
+
+function mismoContexto(a: Contexto | null, b: Contexto | null): boolean {
+  return a === null || b === null ? a === b : a.usuarioId === b.usuarioId && a.token === b.token
+    && a.rol === b.rol && a.entidadId === b.entidadId && a.funcionarioId === b.funcionarioId
+    && a.miembroId === b.miembroId && a.administradorId === b.administradorId;
+}
+function inicial(contexto: Contexto | null): Consulta {
+  return { contexto, estado: contexto?.rol === 'ADMINISTRADOR' ? 'sin-consultar' : 'no-disponible',
+    mensaje: contexto?.rol === 'ADMINISTRADOR' ? 'Abra la consulta de indicadores administrativos.'
+      : 'Bandeja personal no disponible en esta campana. Consulte las actuaciones desde su panel autorizado.' };
+}
+function total(value: unknown): number | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const n = (value as Record<string, unknown>)['total'];
+  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
+/** Read-only administrative indicators; not a personal notification inbox. */
 @Component({
   selector: 'app-notification-bell',
-  standalone: true,
-  imports: [
-    CommonModule,
-    LucideBell,
-    LucideCheckCheck,
-    LucideInbox,
-    LucideAlertTriangle,
-    LucideScale,
-    LucideGavel,
-    LucideHourglass,
-    LucideCheckCircle2,
-    LucideClock
-  ],
+  imports: [LucideBell, LucideInbox, LucideX],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="relative inline-block text-left" #container>
-      <!-- Botón de la campanita -->
-      <button
-        type="button"
-        (click)="toggleOpen()"
-        class="relative w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-        [attr.aria-expanded]="abierto()"
-        aria-label="Ver notificaciones">
-        <svg lucideBell class="w-4 h-4"></svg>
-
-        <!-- Badge de contador de no leídas -->
-        @if (noLeidasCount() > 0) {
-          <span
-            class="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center animate-pulse"
-            style="background: var(--brand-600); box-shadow: 0 0 0 2px var(--background);">
-            {{ noLeidasCount() > 9 ? '9+' : noLeidasCount() }}
-          </span>
-        }
+    <div class="relative inline-block text-left" (focusout)="alSalirFoco($event)">
+      <button #trigger type="button" (click)="toggleOpen()" aria-label="Abrir avisos e indicadores"
+        aria-haspopup="dialog" [attr.aria-expanded]="panelAbierto()" [attr.aria-controls]="panelAbierto() ? panelId : null"
+        class="relative w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2">
+        <svg lucideBell class="w-4 h-4" aria-hidden="true"></svg>
       </button>
-
-      <!-- Menú desplegable / Popover -->
-      @if (abierto()) {
-        <div
-          class="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden animate-fade-in-down"
-          style="box-shadow: var(--shadow-xl); max-height: 480px; display: flex; flex-direction: column;">
-
-          <!-- Cabecera del popover -->
-          <div class="px-4 py-3 border-b border-border flex items-center justify-between bg-card">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-foreground">Notificaciones</span>
-              @if (noLeidasCount() > 0) {
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" style="background: var(--brand-subtle); color: var(--brand-700); border: 1px solid var(--brand-200)">
-                  {{ noLeidasCount() }} nueva{{ noLeidasCount() === 1 ? '' : 's' }}
-                </span>
-              }
+      @if (panelAbierto()) {
+        @let vista = consultaActual();
+        <section #panel [id]="panelId" role="dialog" aria-modal="false" [attr.aria-labelledby]="panelId + '-titulo'"
+          [attr.aria-describedby]="panelId + '-limite'" tabindex="-1"
+          class="absolute right-0 mt-2 rounded-xl border border-border bg-card shadow-xl z-50 overflow-auto"
+          style="width: min(24rem, calc(100vw - 2rem)); max-height: min(480px, calc(100dvh - 8rem)); box-shadow: var(--shadow-xl)">
+          <header class="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+            <h2 [id]="panelId + '-titulo'" class="text-sm font-semibold">Avisos e indicadores</h2>
+            <button type="button" aria-label="Cerrar avisos e indicadores" (click)="cerrar()"
+              class="w-8 h-8 rounded-md hover:bg-accent inline-flex items-center justify-center shrink-0">
+              <svg lucideX class="w-4 h-4" aria-hidden="true"></svg>
+            </button>
+          </header>
+          <div class="p-4 text-sm space-y-3" [attr.aria-busy]="vista.estado === 'cargando'">
+            <p [id]="panelId + '-limite'" class="text-xs text-muted-foreground">
+              Esta campana no consulta una bandeja de notificaciones personales ni acredita entrega o notificación eficaz. No hay contador de no leídas.
+            </p>
+            <div [attr.role]="vista.estado === 'error' || vista.estado === 'incompleto' ? 'alert' : 'status'" aria-live="polite">
+              @if (vista.estado === 'no-disponible') { <svg lucideInbox class="w-5 h-5 mb-2 text-muted-foreground" aria-hidden="true"></svg> }
+              <p>{{ vista.mensaje }}</p>
             </div>
-
-            @if (noLeidasCount() > 0) {
-              <button
-                type="button"
-                (click)="marcarTodasComoLeidas()"
-                class="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
-                title="Marcar todas como leídas">
-                <svg lucideCheckCheck class="w-3.5 h-3.5"></svg>
-                <span>Leídas</span>
-              </button>
+            @if (vista.datos; as datos) {
+              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-border p-3">
+                <div><dt class="text-xs text-muted-foreground">Solicitudes registradas</dt><dd class="font-mono font-semibold">{{ datos.solicitudes }}</dd></div>
+                <div><dt class="text-xs text-muted-foreground">Apelaciones registradas</dt><dd class="font-mono font-semibold">{{ datos.apelaciones }}</dd></div>
+              </dl>
+              <p class="text-xs text-muted-foreground">Indicadores derivados de las estadísticas administrativas de solicitudes y apelaciones del servidor. Son totales globales de registros, no actividad personal, notificaciones, vencimientos legales ni lecturas pendientes.</p>
+            }
+            @if (puedeConsultar() && vista.estado !== 'cargando') {
+              <button type="button" class="btn-ghost-brand !text-xs" (click)="consultar()">{{ vista.estado === 'error' || vista.estado === 'incompleto' ? 'Reintentar indicadores' : 'Actualizar indicadores' }}</button>
             }
           </div>
-
-          <!-- Listado de notificaciones -->
-          <div class="overflow-y-auto divide-y divide-border/60 max-h-[380px] custom-scrollbar">
-            @if (items().length === 0) {
-              <div class="p-8 text-center">
-                <div class="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3" style="background: var(--brand-subtle)">
-                  <svg lucideInbox class="w-5 h-5" style="color: var(--brand-700)"></svg>
-                </div>
-                <p class="text-sm font-medium text-foreground">Sin notificaciones pendientes</p>
-                <p class="text-xs text-muted-foreground mt-1">Le avisaremos ante cualquier novedad sobre sus expedientes.</p>
-              </div>
-            } @else {
-              @for (notif of items(); track notif.id) {
-                <div
-                  (click)="seleccionarNotificacion(notif)"
-                  class="p-3.5 transition-colors cursor-pointer flex items-start gap-3 hover:bg-[color:var(--brand-subtle)]"
-                  [style.background]="esLeida(notif.id) ? 'var(--card)' : 'color-mix(in srgb, var(--brand-subtle) 40%, var(--card))'">
-
-                  <!-- Ícono temático -->
-                  <div
-                    class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    [style.background]="getToneBg(notif.tone)"
-                    [style.border]="'1px solid ' + getToneBorder(notif.tone)">
-                    @switch (notif.iconName) {
-                      @case ('alert') {
-                        <svg lucideAlertTriangle class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @case ('scale') {
-                        <svg lucideScale class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @case ('gavel') {
-                        <svg lucideGavel class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @case ('hourglass') {
-                        <svg lucideHourglass class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @case ('check') {
-                        <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @case ('inbox') {
-                        <svg lucideInbox class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                      @default {
-                        <svg lucideClock class="w-4 h-4" [style.color]="getToneFg(notif.tone)"></svg>
-                      }
-                    }
-                  </div>
-
-                  <!-- Contenido textual -->
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-1">
-                      <p class="text-xs font-semibold text-foreground truncate" [class.font-bold]="!esLeida(notif.id)">
-                        {{ notif.titulo }}
-                      </p>
-                      @if (!esLeida(notif.id)) {
-                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background: var(--brand-600)"></span>
-                      }
-                    </div>
-
-                    <p class="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                      {{ notif.detalle }}
-                    </p>
-
-                    <div class="flex items-center gap-2 mt-1.5">
-                      @if (notif.urgente) {
-                        <span class="text-[10px] font-semibold px-1.5 py-0.2 rounded" style="background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A">
-                          Plazo en curso
-                        </span>
-                      }
-                      <span class="text-[10.5px] text-muted-foreground font-mono">
-                        {{ notif.fecha || 'Hoy' }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              }
-            }
-          </div>
-
-          <!-- Pie del popover -->
-          <div class="px-4 py-2 border-t border-border bg-card/60 text-center">
-            <span class="text-[10.5px] tracking-wider uppercase text-muted-foreground">
-              Sistema de Alertas SAIP · Ley N° 27806
-            </span>
-          </div>
-        </div>
+          @if (rutaPanel(); as destino) {
+            <footer class="px-4 py-3 border-t border-border">
+              <a [href]="destino" (click)="irAlPanel($event)" class="text-sm underline">Consultar mi panel</a>
+            </footer>
+          }
+        </section>
       }
     </div>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotificationBellComponent implements OnInit {
+export class NotificationBellComponent {
   readonly userType = input<string | null>(null);
-
+  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly elementRef = inject(ElementRef);
-  private readonly solicitudService = inject(SolicitudService, { optional: true });
-  private readonly apelacionService = inject(ApelacionService, { optional: true });
-
-  abierto = signal<boolean>(false);
-  readIds = signal<Set<string>>(new Set());
-
-  // Notificaciones contextuales según el rol
-  items = signal<NotificationItem[]>([]);
-
-  noLeidasCount = computed(() => {
-    const ids = this.readIds();
-    return this.items().filter(i => !ids.has(i.id)).length;
-  });
+  private readonly solicitudes = inject(SolicitudService);
+  private readonly apelaciones = inject(ApelacionService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
+  private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
+  readonly panelId = `saip-avisos-${++siguienteCampana}`;
+  private readonly abierto = signal(false);
+  private readonly apertura = signal<Contexto | null>(null);
+  private readonly consulta = signal<Consulta>(inicial(null));
+  private suscripcion?: Subscription;
+  private generacion = 0;
+  private readonly contexto = computed(() => this.leerContexto());
+  readonly panelAbierto = computed(() => this.abierto() && mismoContexto(this.apertura(), this.contexto()));
+  readonly consultaActual = computed(() => mismoContexto(this.consulta().contexto, this.contexto())
+    ? this.consulta() : inicial(this.contexto()));
+  readonly puedeConsultar = computed(() => this.contexto()?.rol === 'ADMINISTRADOR');
+  readonly rutaPanel = computed(() => { const c = this.contexto(); return c ? PANELES[c.rol] : null; });
 
   constructor() {
     effect(() => {
-      // Reacciona a cambios en userType para regenerar notificaciones contextuales
-      const _ = this.userType();
-      this.cargarEstadoLeidas();
-      this.generarNotificacionesPorRol();
+      const c = this.contexto();
+      this.cancelar();
+      this.abierto.set(false);
+      this.apertura.set(null);
+      this.consulta.set(inicial(c));
     });
+    inject(DestroyRef).onDestroy(() => this.cancelar());
   }
 
-  ngOnInit(): void {
-    this.cargarEstadoLeidas();
-    this.generarNotificacionesPorRol();
-  }
-
-  private getStorageKey(): string {
-    return `saip.notif.read.${this.userType() || 'anon'}`;
-  }
-
-  private cargarEstadoLeidas(): void {
-    if (typeof localStorage === 'undefined') return;
+  private leerContexto(): Contexto | null {
+    this.auth.cambiosSesion();
+    const rolVisible = this.userType();
     try {
-      const raw = localStorage.getItem(this.getStorageKey());
-      if (raw) {
-        this.readIds.set(new Set(JSON.parse(raw)));
-      }
-    } catch {
-      // Ignorar fallo de almacenamiento
-    }
-  }
-
-  private persistirLeidas(s: Set<string>): void {
-    this.readIds.set(new Set(s));
-    if (typeof localStorage === 'undefined') return;
-    try {
-      localStorage.setItem(this.getStorageKey(), JSON.stringify([...s]));
-    } catch {
-      // Ignorar
-    }
+      const s = this.auth.obtenerSesion();
+      if (!s?.token || !Number.isSafeInteger(s.usuarioId) || s.usuarioId! <= 0
+        || !s.tipoUsuario || !ROLES.includes(s.tipoUsuario) || rolVisible !== s.tipoUsuario) return null;
+      return { usuarioId: s.usuarioId!, token: s.token, rol: s.tipoUsuario as Rol,
+        entidadId: s.entidadId, funcionarioId: s.funcionarioId, miembroId: s.miembroId, administradorId: s.administradorId };
+    } catch { return null; }
   }
 
   toggleOpen(): void {
-    this.abierto.set(!this.abierto());
+    if (this.panelAbierto()) { this.cerrar(); return; }
+    const c = this.leerContexto();
+    this.apertura.set(c);
+    this.abierto.set(true);
+    this.consulta.set(inicial(c));
+    this.consultar();
+    afterNextRender(() => {
+      if (this.panelAbierto() && mismoContexto(c, this.leerContexto())) this.panel()?.nativeElement.querySelector<HTMLButtonElement>('button')?.focus();
+    }, { injector: this.injector });
+  }
+
+  cerrar(restaurarFoco = true): void {
+    this.cancelar();
+    this.abierto.set(false);
+    this.consulta.set(inicial(this.leerContexto()));
+    if (restaurarFoco) this.trigger()?.nativeElement.focus();
   }
 
   @HostListener('document:click', ['$event'])
-  onClickOutside(event: MouseEvent): void {
-    if (!this.elementRef.nativeElement.contains(event.target)) {
-      this.abierto.set(false);
+  alClickExterior(event: MouseEvent): void {
+    if (this.panelAbierto() && !this.host.nativeElement.contains(event.target as Node)) this.cerrar(false);
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  alEscape(event: Event): void {
+    if (!this.panelAbierto()) return;
+    event.preventDefault(); event.stopPropagation(); this.cerrar();
+  }
+
+  alSalirFoco(event: FocusEvent): void {
+    if (this.panelAbierto() && event.relatedTarget && !this.host.nativeElement.contains(event.relatedTarget as Node)) this.cerrar(false);
+  }
+
+  irAlPanel(event: MouseEvent): void {
+    const c = this.leerContexto();
+    if (!c || !this.panelAbierto() || !mismoContexto(c, this.apertura())) {
+      event.preventDefault(); this.cerrar(false); return;
     }
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    this.cerrar(false);
+    void this.router.navigate([PANELES[c.rol]]);
   }
 
-  esLeida(id: string): boolean {
-    return this.readIds().has(id);
+  consultar(): void {
+    this.cancelar();
+    const c = this.leerContexto();
+    if (!this.panelAbierto() || c?.rol !== 'ADMINISTRADOR') { this.consulta.set(inicial(c)); return; }
+    const generacion = this.generacion;
+    const vigente = () => generacion === this.generacion && this.panelAbierto() && mismoContexto(c, this.leerContexto());
+    this.consulta.set({ contexto: c, estado: 'cargando', mensaje: 'Consultando indicadores administrativos…' });
+    let recibido = false;
+    this.suscripcion = forkJoin({ solicitudes: this.solicitudes.getEstadisticas(), apelaciones: this.apelaciones.getEstadisticas() }).subscribe({
+      next: datos => {
+        recibido = true;
+        if (!vigente()) return;
+        const solicitudes = total(datos.solicitudes), apelaciones = total(datos.apelaciones);
+        if (solicitudes === null || apelaciones === null) { this.incompleta(c); return; }
+        this.consulta.set({ contexto: c, estado: solicitudes === 0 && apelaciones === 0 ? 'vacio' : 'disponible',
+          datos: { solicitudes, apelaciones }, mensaje: solicitudes === 0 && apelaciones === 0
+            ? 'Sin registros en estos indicadores. Esto no confirma ausencia de notificaciones.'
+            : 'Indicadores derivados del servidor. No representan notificaciones personales.' });
+      },
+      error: () => {
+        if (vigente()) this.consulta.set({ contexto: c, estado: 'error', mensaje: 'No se pudieron consultar los indicadores. No se confirma ausencia de actividad ni de notificaciones.' });
+      },
+      complete: () => { if (!recibido && vigente()) this.incompleta(c); },
+    });
   }
 
-  marcarTodasComoLeidas(): void {
-    const s = new Set(this.readIds());
-    this.items().forEach(i => s.add(i.id));
-    this.persistirLeidas(s);
+  private incompleta(contexto: Contexto): void {
+    this.consulta.set({ contexto, estado: 'incompleto', mensaje: 'Información incompleta: el servidor no proporcionó totales válidos para ambos indicadores. No se sustituyen por cero ni por avisos.' });
   }
-
-  seleccionarNotificacion(n: NotificationItem): void {
-    const s = new Set(this.readIds());
-    s.add(n.id);
-    this.persistirLeidas(s);
-    this.abierto.set(false);
-
-    if (n.expediente) {
-      this.router.navigate([n.ruta, n.expediente]);
-    } else {
-      this.router.navigate([n.ruta]);
-    }
-  }
-
-  private generarNotificacionesPorRol(): void {
-    const rol = (this.userType() || '').toUpperCase();
-
-    if (rol === 'CIUDADANO') {
-      this.items.set([
-        {
-          id: 'notif-ciu-1',
-          iconName: 'alert',
-          titulo: 'Precisión requerida en su solicitud',
-          detalle: 'Ministerio de Educación · Dispone de 2 días hábiles para aclarar su pedido.',
-          fecha: 'Hoy',
-          ruta: '/precision-form',
-          expediente: 'SAIP-2026-00012',
-          tone: 'gold',
-          urgente: true
-        },
-        {
-          id: 'notif-ciu-2',
-          iconName: 'scale',
-          titulo: 'Plazo para apelar disponible',
-          detalle: 'Municipalidad de Lima emitió respuesta parcial. Puede apelar ante el Tribunal.',
-          fecha: 'Ayer',
-          ruta: '/ciudadano/nueva-apelacion',
-          expediente: 'SAIP-2026-00004',
-          tone: 'brand',
-          urgente: true
-        },
-        {
-          id: 'notif-ciu-3',
-          iconName: 'check',
-          titulo: 'Respuesta recibida',
-          detalle: 'SUSALUD ha entregado la documentación solicitada en copia digital.',
-          fecha: 'Hace 3 días',
-          ruta: '/ciudadano/solicitud',
-          expediente: 'SAIP-2026-00002',
-          tone: 'success'
-        }
-      ]);
-    } else if (rol === 'FUNCIONARIO') {
-      this.items.set([
-        {
-          id: 'notif-fun-1',
-          iconName: 'hourglass',
-          titulo: 'Solicitud por vencer (plazo 10 días)',
-          detalle: 'Expediente SAIP-2026-00018 vence en 2 días hábiles. Prepare la respuesta.',
-          fecha: 'Hoy',
-          ruta: '/funcionario/responder',
-          expediente: 'SAIP-2026-00018',
-          tone: 'gold',
-          urgente: true
-        },
-        {
-          id: 'notif-fun-2',
-          iconName: 'gavel',
-          titulo: 'Requerimiento de cumplimiento TTAIP',
-          detalle: 'Tribunal declaró fundada apelación. Plazo legal de 7 días para entregar información.',
-          fecha: 'Ayer',
-          ruta: '/funcionario',
-          tone: 'danger',
-          urgente: true
-        }
-      ]);
-    } else if (rol === 'TTAIP') {
-      this.items.set([
-        {
-          id: 'notif-ttaip-1',
-          iconName: 'scale',
-          titulo: 'Apelación por calificar (1ra calificación)',
-          detalle: 'Expediente 00124-2026-JUS/TTAIP asignado a su sala para evaluación preliminar.',
-          fecha: 'Hoy',
-          ruta: '/ttaip/calificar',
-          expediente: '00124-2026-JUS/TTAIP',
-          tone: 'brand',
-          urgente: true
-        },
-        {
-          id: 'notif-ttaip-2',
-          iconName: 'hourglass',
-          titulo: 'Cumplimiento vencido de entidad',
-          detalle: 'Muni Lima no acreditó entrega en 7 días. Corresponde abrir proceso disciplinario.',
-          fecha: 'Ayer',
-          ruta: '/ttaip/cumplimiento',
-          tone: 'danger',
-          urgente: true
-        }
-      ]);
-    } else if (rol === 'ADMINISTRADOR' || rol === 'ADMIN') {
-      const defaultAdminItems: NotificationItem[] = [
-        {
-          id: 'adm-venc',
-          iconName: 'alert',
-          titulo: 'Solicitudes vencidas',
-          detalle: 'Requieren atención prioritaria en entidades públicas',
-          fecha: 'Hoy',
-          ruta: '/admin',
-          tone: 'danger',
-          urgente: true
-        },
-        {
-          id: 'adm-pend',
-          iconName: 'inbox',
-          titulo: 'Solicitudes pendientes',
-          detalle: 'En bandejas de entidades públicas',
-          fecha: 'Hoy',
-          ruta: '/admin',
-          tone: 'info'
-        },
-        {
-          id: 'adm-apel',
-          iconName: 'scale',
-          titulo: 'Apelaciones en el Tribunal',
-          detalle: 'En trámite ante el TTAIP',
-          fecha: 'Ayer',
-          ruta: '/admin',
-          tone: 'brand'
-        },
-        {
-          id: 'adm-res',
-          iconName: 'check',
-          titulo: 'Apelaciones resueltas',
-          detalle: 'Cerradas por el Tribunal',
-          fecha: 'Hace 2 días',
-          ruta: '/admin',
-          tone: 'success'
-        }
-      ];
-
-      this.items.set(defaultAdminItems);
-
-      if (this.solicitudService && this.apelacionService) {
-        this.solicitudService.getEstadisticas().subscribe({
-          next: (solStats) => {
-            this.apelacionService?.getEstadisticas().subscribe({
-              next: (apelStats) => {
-                const venc = solStats?.vencidas ?? 0;
-                const pend = (solStats?.pendientes ?? 0) + (solStats?.enProceso ?? 0);
-                const apel = (apelStats?.total ?? 0) - (apelStats?.resueltas ?? 0);
-                const res = apelStats?.resueltas ?? 0;
-
-                const liveItems: NotificationItem[] = [];
-                if (venc > 0) {
-                  liveItems.push({
-                    id: 'adm-venc',
-                    iconName: 'alert',
-                    titulo: `${venc} solicitud${venc === 1 ? '' : 'es'} vencida${venc === 1 ? '' : 's'}`,
-                    detalle: 'Requieren atención en entidades',
-                    fecha: 'Hoy',
-                    ruta: '/admin',
-                    tone: 'danger',
-                    urgente: true
-                  });
-                }
-                if (pend > 0) {
-                  liveItems.push({
-                    id: 'adm-pend',
-                    iconName: 'inbox',
-                    titulo: `${pend} solicitud${pend === 1 ? '' : 'es'} pendiente${pend === 1 ? '' : 's'}`,
-                    detalle: 'En bandejas de entidades públicas',
-                    fecha: 'Hoy',
-                    ruta: '/admin',
-                    tone: 'info'
-                  });
-                }
-                if (apel > 0) {
-                  liveItems.push({
-                    id: 'adm-apel',
-                    iconName: 'scale',
-                    titulo: `${apel} apelación${apel === 1 ? '' : 'es'} en el Tribunal`,
-                    detalle: 'En trámite en el TTAIP',
-                    fecha: 'Ayer',
-                    ruta: '/admin',
-                    tone: 'brand'
-                  });
-                }
-                if (res > 0) {
-                  liveItems.push({
-                    id: 'adm-res',
-                    iconName: 'check',
-                    titulo: `${res} apelación${res === 1 ? '' : 'es'} resuelta${res === 1 ? '' : 's'}`,
-                    detalle: 'Cerradas por el Tribunal',
-                    fecha: 'Hace 2 días',
-                    ruta: '/admin',
-                    tone: 'success'
-                  });
-                }
-                if (liveItems.length > 0) {
-                  this.items.set(liveItems);
-                }
-              },
-              error: () => {
-                // Mantener defaultAdminItems
-              }
-            });
-          },
-          error: () => {
-            // Mantener defaultAdminItems
-          }
-        });
-      }
-    } else {
-      this.items.set([
-        {
-          id: 'notif-gen-1',
-          iconName: 'clock',
-          titulo: 'Bienvenido al Sistema SAIP',
-          detalle: 'Consulte el estado de sus trámites o presente una nueva solicitud.',
-          fecha: 'Hoy',
-          ruta: '/ayuda',
-          tone: 'info'
-        }
-      ]);
-    }
-  }
-
-  getToneBg(tone: string): string {
-    switch (tone) {
-      case 'gold': return '#FAF3E2';
-      case 'success': return '#E7F6EC';
-      case 'info': return '#E6EFFE';
-      case 'danger': return '#FCEDF1';
-      default: return 'var(--brand-subtle)';
-    }
-  }
-
-  getToneFg(tone: string): string {
-    switch (tone) {
-      case 'gold': return '#7A5A1F';
-      case 'success': return '#15803D';
-      case 'info': return '#1D4ED8';
-      case 'danger': return '#BE123C';
-      default: return 'var(--brand-700)';
-    }
-  }
-
-  getToneBorder(tone: string): string {
-    switch (tone) {
-      case 'gold': return '#EAD8A8';
-      case 'success': return '#BFE3CB';
-      case 'info': return '#BFD3F8';
-      case 'danger': return '#F1C2D0';
-      default: return 'var(--brand-200)';
-    }
-  }
+  private cancelar(): void { ++this.generacion; this.suscripcion?.unsubscribe(); this.suscripcion = undefined; }
 }
