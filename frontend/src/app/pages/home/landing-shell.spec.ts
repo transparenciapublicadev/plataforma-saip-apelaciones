@@ -36,10 +36,13 @@ describe('Landing dentro del shell compartido', () => {
     expect(f.nativeElement.querySelector('header a[href="/login"]')).not.toBeNull();
     expect(f.nativeElement.querySelector('header')).not.toBeNull();
   });
-  it.each(['/ayuda', '/login'])('el cambio de pie no rediseña el shell de %s', async path => {
-    const f = await page(path); expect(f.nativeElement.querySelector('app-landing-footer')).toBeNull();
+  it.each(['/ayuda', '/login'])('el pie común conserva el contenido y acceso de %s', async path => {
+    const f = await page(path); expect(f.nativeElement.querySelector('app-landing-footer')).not.toBeNull();
     expect(f.nativeElement.querySelectorAll('footer')).toHaveLength(1);
-    expect(f.nativeElement.querySelector('footer.saip-footer')).not.toBeNull();
+    expect(f.nativeElement.querySelector('footer')?.getAttribute('aria-label')).toBe('Pie de Yaiku');
+    expect(f.nativeElement.querySelector('main h1')?.textContent).toBe('Página de prueba');
+    expect(f.nativeElement.querySelector('header a[href="/login"]')).not.toBeNull();
+    expect(f.componentInstance.isAuthRoute()).toBe(path === '/login');
   });
   it('el enlace a estadísticas mueve el foco y no queda sobrescrito por el scroll al inicio del shell', async () => {
     const f = await page(); document.body.appendChild(f.nativeElement);
