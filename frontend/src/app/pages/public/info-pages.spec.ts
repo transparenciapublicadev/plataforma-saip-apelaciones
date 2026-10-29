@@ -178,16 +178,18 @@ describe('Pies y navegación compartida de InfoPages', () => {
     expect(el.querySelector('header a[href="/login"]')).toBeTruthy(); expect(el.querySelector('footer')?.textContent).toContain('Privacidad — no disponible');
     expect(el.querySelector('footer a[href="/privacidad"],footer a[href="#"]')).toBeNull();
   });
-  it('cabecera de marca y pie usan identificadores SVG distintos sin duplicar imágenes externas', async () => {
+  it('cabecera global, marca editorial y pie reutilizan el sello con identificadores distintos', async () => {
     const f = await shell('/acerca'); const logos = Array.from(f.nativeElement.querySelectorAll('app-yaiku-logo [role="img"]') as NodeListOf<HTMLElement>);
-    expect(logos).toHaveLength(2); expect(logos.every(x => x.getAttribute('aria-label') === 'Yaiku')).toBe(true);
+    for (const scope of ['header', 'main', 'footer']) expect(f.nativeElement.querySelectorAll(`${scope} app-yaiku-logo [role="img"]`)).toHaveLength(1);
+    expect(logos.every(x => x.getAttribute('aria-label') === 'Yaiku')).toBe(true);
     const ids = Array.from(f.nativeElement.querySelectorAll('app-yaiku-logo linearGradient[id]') as NodeListOf<Element>).map(x => x.id);
-    expect(new Set(ids).size).toBe(2);
+    expect(new Set(ids).size).toBe(logos.length); expect(f.nativeElement.querySelector('app-yaiku-logo img')).toBeNull();
   });
-  it('el pie legado cambia solo los destinos de documentación, guía y acerca', async () => {
-    const f = await shell('/ayuda'); const footer = f.nativeElement.querySelector('footer.saip-footer') as HTMLElement;
+  it('ayuda utiliza el pie Yaiku compartido y conserva los destinos informativos', async () => {
+    const f = await shell('/ayuda'); const footer = f.nativeElement.querySelector('footer[aria-label="Pie de Yaiku"]') as HTMLElement;
     expect(footer).toBeTruthy(); for (const href of ['/documentacion', '/documentacion#guia', '/acerca']) expect(footer.querySelector(`a[href="${href}"]`)).toBeTruthy();
-    expect(f.nativeElement.querySelector('app-landing-footer')).toBeNull();
+    expect(f.nativeElement.querySelectorAll('app-landing-footer')).toHaveLength(1);
+    expect(footer.querySelector('a[href="#"],a[href^="tel:"],a[href^="mailto:"]')).toBeNull();
   });
 
   it('el shell no sobrescribe el foco del fragmento documental al navegar al mismo recorrido', async () => {

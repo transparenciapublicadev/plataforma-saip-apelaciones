@@ -9,7 +9,6 @@ import { UxMotionService } from './services/ux-motion.service';
 import {
   LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
   LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
-  LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
   LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
 } from '@lucide/angular';
 
@@ -30,7 +29,6 @@ import { YaikuLogoComponent } from './shared/yaiku-logo.component';
     GuidedTourComponent, NotificationBellComponent, LandingFooterComponent, ProfileDialogComponent, YaikuLogoComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
-    LucideMail, LucidePhone, LucideMapPin, LucideArrowUpRight,
     LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
   ],
   templateUrl: './app.html',

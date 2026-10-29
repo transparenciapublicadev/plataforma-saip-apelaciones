@@ -14,4 +14,5 @@ import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
     a:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 4px; }
   `,
 })
+/** Shared Yaiku footer; retains its original selector for existing consumers. */
 export class LandingFooterComponent {}
