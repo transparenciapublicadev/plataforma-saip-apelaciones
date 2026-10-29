@@ -7,14 +7,14 @@ describe('Presentación de diálogos de respuesta SAIP', () => {
   afterEach(() => { TestBed.resetTestingModule(); document.body.innerHTML = ''; vi.restoreAllMocks(); });
 
   for (const component of [ReferenceConfirmModalComponent, ReferenceSuccessModalComponent]) {
-    it(`${component.name}: conserva la presentación de los consumidores existentes`, () => {
+    it(`${component.name}: incorpora Yaiku también en la presentación predeterminada`, () => {
       const f = TestBed.createComponent<any>(component);
       f.componentInstance.open = true; f.detectChanges();
-      expect(document.body.textContent).toContain('TTAIP · República del Perú');
-      expect(document.body.textContent).not.toContain('Pide, sigue y apela. Todo en un solo lugar.');
+      expect(document.body.textContent).not.toContain('TTAIP · República del Perú');
+      expect(document.body.textContent).toContain('Pide, sigue y apela. Todo en un solo lugar.');
     });
 
-    it(`${component.name}: identifica Yaiku solo en la presentación SAIP`, () => {
+    it(`${component.name}: conserva la identidad y el nombre de la presentación SAIP`, () => {
       const f = TestBed.createComponent<any>(component);
       Object.assign(f.componentInstance, { open: true, presentation: 'saip-response', title: 'Registro SAIP' });
       f.detectChanges();

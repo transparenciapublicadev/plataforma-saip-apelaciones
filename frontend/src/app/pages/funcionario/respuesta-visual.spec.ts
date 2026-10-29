@@ -85,7 +85,7 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(root.querySelector('[role="alert"]')?.textContent).toContain('Operación rechazada');
     expect(root.querySelector('label[for="respuesta-descripcion"]')).not.toBeNull();
   });
-  it('presenta la recepción recuperada en Yaiku sin cambiar los diálogos de otras actuaciones', async () => {
+  it('conserva la recepción SAIP y los textos propios al cambiar a un resultado default con marca Yaiku', async () => {
     const h = await RouterTestingHarness.create(); const c = await h.navigateByUrl('/respuesta/SAIP-A', Responder);
     // Render a recovered DTO fixture; persistence is covered by the reception suites.
     c.recepcionRespuesta.set({ id: 15, solicitudId: 1, respuesta: { id: 41, tipoRespuesta: 'ENTREGA_TOTAL' },
@@ -97,8 +97,12 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(dialog.textContent).toContain('informe-real.pdf');
     expect(dialog.textContent).toContain('no acredita por sí solo entrega ni notificación eficaz');
     c.via.set('precision'); h.detectChanges();
-    expect(dialog.textContent).toContain('TTAIP · República del Perú');
-    expect(dialog.textContent).not.toContain('Pide, sigue y apela. Todo en un solo lugar.');
+    expect(dialog.getAttribute('data-presentation')).toBe('default');
+    expect(dialog.textContent).toContain('Yaiku');
+    expect(dialog.textContent).not.toContain('TTAIP · República del Perú');
+    expect(dialog.textContent).toContain('Observación registrada en el expediente');
+    expect(dialog.textContent).toContain('Su notificación y el inicio acreditado del plazo requieren su evidencia correspondiente.');
+    expect(dialog.textContent).not.toContain('15 · respuesta 41');
   });
   it.each([0, 401, 403, 404, 500])('consulta fallida %s sin datos de la solicitud anterior', async status => {
     const h = await RouterTestingHarness.create(); const c = await h.navigateByUrl('/detalle/SAIP-A', Detalle);

@@ -47,25 +47,12 @@ export interface ReferenceConfirmWarning {
               <div class="reference-modal-gold-line"></div>
               <div class="reference-confirm-header-inner">
                 <div class="reference-confirm-icon" aria-hidden="true">
-                  @if (presentation === 'saip-response') {
-                    <svg lucideShieldCheck></svg>
-                  } @else {
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path stroke-width="2" d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3v8Z" />
-                    <path stroke-width="2" d="m9 12 2 2 4-4" />
-                  </svg>
-                  }
+                  <svg lucideShieldCheck></svg>
                 </div>
 
                 <div class="min-w-0">
                   <div class="reference-confirm-eyebrow">
-                    @if (presentation === 'saip-response') {
-                      <svg lucideSparkles></svg>
-                    } @else {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="m12 3 1.9 5.8L20 12l-6.1 3.2L12 21l-1.9-5.8L4 12l6.1-3.2L12 3Z" />
-                    </svg>
-                    }
+                    <svg lucideSparkles></svg>
                     {{ eyebrow }}
                   </div>
                   <h2 class="reference-confirm-title">
@@ -83,16 +70,7 @@ export interface ReferenceConfirmWarning {
               @if (summary.length > 0) {
                 <div>
                   <div class="reference-modal-section-label">
-                    @if (presentation === 'saip-response') {
-                      <svg lucideScrollText></svg>
-                    } @else {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="M8 4h8" />
-                      <path stroke-width="2" d="M8 8h8" />
-                      <path stroke-width="2" d="M8 12h5" />
-                      <rect x="5" y="2" width="14" height="20" rx="2" stroke-width="2" />
-                    </svg>
-                    }
+                    <svg lucideScrollText></svg>
                     Resumen de su solicitud
                   </div>
 
@@ -136,14 +114,7 @@ export interface ReferenceConfirmWarning {
                   class="btn-ghost-brand !py-2.5 flex-1 justify-center"
                   [disabled]="submitting"
                   (click)="close.emit()">
-                  @if (presentation === 'saip-response') {
-                    <svg lucidePencil class="w-4 h-4"></svg>
-                  } @else {
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path stroke-width="2" d="M12 20h9" />
-                    <path stroke-width="2" d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                  }
+                  <svg lucidePencil class="w-4 h-4"></svg>
                   {{ cancelLabel }}
                 </button>
                 <button
@@ -151,28 +122,11 @@ export interface ReferenceConfirmWarning {
                   class="btn-brand !py-2.5 flex-1 justify-center disabled:opacity-60"
                   [disabled]="submitting"
                   (click)="confirm.emit()">
-                  @if (presentation === 'saip-response') {
-                    <span aria-live="polite">{{ submitting ? 'Enviando…' : confirmLabel }}</span>
-                    @if (!submitting) { <svg lucideArrowRight class="w-4 h-4"></svg> }
-                  } @else if (submitting) {
-                    Enviando...
-                  } @else {
-                    {{ confirmLabel }}
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="m9 18 6-6-6-6" />
-                    </svg>
-                  }
+                  <span aria-live="polite">{{ submitting ? 'Enviando…' : confirmLabel }}</span>
+                  @if (!submitting) { <svg lucideArrowRight class="w-4 h-4"></svg> }
                 </button>
               </div>
-              @if (presentation === 'saip-response') {
-                <app-dialog-brand />
-              } @else {
-              <div class="reference-modal-signature">
-                <span></span>
-                TTAIP · República del Perú
-                <span></span>
-              </div>
-              }
+              <app-dialog-brand />
             </footer>
           </section>
         </div>
@@ -224,7 +178,7 @@ export interface ReferenceConfirmWarning {
     .reference-confirm-header {
       position: relative;
       flex-shrink: 0;
-      padding: 24px 28px 18px;
+      padding: 28px 28px 20px;
       border-bottom: 1px solid var(--border);
       background: linear-gradient(180deg, var(--brand-subtle), var(--card));
     }
@@ -276,6 +230,15 @@ export interface ReferenceConfirmWarning {
       color: var(--foreground);
       text-wrap: balance;
     }
+    .reference-confirm-panel[data-presentation="default"] .reference-confirm-title {
+      font-weight: 500;
+      font-optical-sizing: auto;
+    }
+    .reference-confirm-panel[data-presentation="default"] .reference-confirm-eyebrow,
+    .reference-confirm-panel[data-presentation="default"] .reference-modal-section-label,
+    .reference-confirm-panel[data-presentation="default"] .reference-confirm-warning-label {
+      font-weight: 400;
+    }
     .reference-confirm-title em {
       margin-left: 5px;
       color: var(--brand-700);
@@ -297,11 +260,11 @@ export interface ReferenceConfirmWarning {
       scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
-      padding: 18px 28px 24px;
+      padding: 20px 28px;
       scroll-padding-bottom: 16px;
     }
     .reference-confirm-body > * + * {
-      margin-top: 14px;
+      margin-top: 16px;
     }
     .reference-confirm-body::-webkit-scrollbar { width: 8px; }
     .reference-confirm-body::-webkit-scrollbar-track { background: transparent; }
@@ -422,7 +385,7 @@ export interface ReferenceConfirmWarning {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 14px 28px 10px;
+      padding: 16px 28px;
     }
     .reference-modal-signature {
       display: flex;
@@ -448,7 +411,9 @@ export interface ReferenceConfirmWarning {
         flex-direction: column-reverse;
         padding-left: 20px;
         padding-right: 20px;
+        align-items: stretch;
       }
+      .reference-confirm-actions button { width: 100%; flex: 0 0 auto; }
       .reference-confirm-summary-row {
         grid-template-columns: 1fr;
         gap: 4px;

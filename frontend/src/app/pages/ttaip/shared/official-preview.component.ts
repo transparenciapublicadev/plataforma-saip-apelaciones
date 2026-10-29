@@ -5,9 +5,15 @@ import {
   OnChanges,
   SimpleChanges,
   computed,
+  effect,
+  ElementRef,
+  inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { BodyPortalDirective } from '../../../shared/body-portal.directive';
+import { ModalFocusDirective } from '../../../shared/modal-focus.directive';
 import {
   LucideFileText,
   LucideMaximize2,
@@ -33,7 +39,7 @@ type PreviewDocTab = 'resolucion' | 'cedula-recurrente' | 'cedula-entidad';
 @Component({
   selector: 'app-official-preview',
   standalone: true,
-  imports: [CommonModule, LucideFileText, LucideMaximize2, LucideX],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective, LucideFileText, LucideMaximize2, LucideX],
   template: `
     <div class="form-shell overflow-hidden">
       <!-- Header de la sección de vista previa -->
@@ -49,12 +55,16 @@ type PreviewDocTab = 'resolucion' | 'cedula-recurrente' | 'cedula-entidad';
         </div>
 
         <button
+          data-draft-zoom-open
           type="button"
           (click)="toggleZoom()"
           class="w-7 h-7 rounded flex items-center justify-center transition-colors hover:bg-black/10"
           title="Pantalla completa"
+          aria-label="Ampliar borrador"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="isZoomed()"
         >
-          <svg lucideMaximize2 class="w-3.5 h-3.5 text-foreground/80"></svg>
+          <svg aria-hidden="true" lucideMaximize2 class="w-3.5 h-3.5 text-foreground/80"></svg>
         </button>
       </div>
 
@@ -131,29 +141,29 @@ type PreviewDocTab = 'resolucion' | 'cedula-recurrente' | 'cedula-entidad';
 
     <!-- Modal Fullscreen / Zoom -->
     @if (isZoomed()) {
-      <div
-        class="fixed inset-0 z-[70] overflow-auto p-4 md:p-10 bg-black/80 flex items-start justify-center backdrop-blur-xs"
-        (click)="isZoomed.set(false)"
-      >
-        <button
-          type="button"
-          (click)="isZoomed.set(false)"
-          class="fixed top-4 right-4 w-10 h-10 rounded-md flex items-center justify-center z-10 text-white bg-white/20 hover:bg-white/30"
-          title="Cerrar vista completa"
-        >
-          <svg lucideX class="w-5 h-5"></svg>
-        </button>
-
-        <div (click)="$event.stopPropagation()" class="my-auto">
-          <ng-container *ngTemplateOutlet="documentSheet; context: { fullscreen: true }"></ng-container>
+      <ng-container *appBodyPortal>
+        <div class="draft-zoom-overlay" (click)="closeZoom()">
+          <section role="dialog" aria-modal="true" tabindex="-1" class="draft-zoom-dialog"
+            [attr.aria-label]="'Borrador ampliado · ' + getStageTitle() + ' · ' + documentTitle()"
+            [appModalFocus]="true" (modalEscape)="closeZoom()" (click)="$event.stopPropagation()">
+            <div class="draft-zoom-toolbar">
+              <h2>Borrador · {{ getStageTitle() }} · {{ documentTitle() }}</h2>
+              <button type="button" (click)="closeZoom()" class="draft-zoom-close" aria-label="Cerrar borrador ampliado">
+                <svg aria-hidden="true" lucideX class="w-5 h-5"></svg>
+              </button>
+            </div>
+            <div class="draft-zoom-content">
+              <ng-container *ngTemplateOutlet="documentSheet; context: { fullscreen: true }"></ng-container>
+            </div>
+          </section>
         </div>
-      </div>
+      </ng-container>
     }
 
     <!-- Template de la Hoja A4 Reutilizable -->
     <ng-template #documentSheet let-fullscreen="fullscreen">
       <div
-        class="mx-auto bg-white text-black select-text"
+        class="official-draft-sheet mx-auto bg-white text-black select-text"
         [style.maxWidth.px]="760"
         style="
           width: 100%;
@@ -542,6 +552,18 @@ type PreviewDocTab = 'resolucion' | 'cedula-recurrente' | 'cedula-entidad';
       </div>
     </ng-template>
   `,
+  styles: `
+    .draft-zoom-overlay { position: fixed; inset: 0; z-index: 10001; overflow: auto; padding: 16px; background: rgba(0,0,0,.8); display: flex; align-items: flex-start; justify-content: center; }
+    .draft-zoom-dialog { width: 100%; max-width: 760px; min-width: 0; margin: auto 0; outline: none; }
+    .draft-zoom-toolbar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; background: var(--brand-900); color: white; border-bottom: 1px solid var(--gold); }
+    .draft-zoom-toolbar h2 { min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+    .draft-zoom-close { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 6px; background: rgba(255,255,255,.15); color: white; }
+    .draft-zoom-close:hover { background: rgba(255,255,255,.3); }
+    .draft-zoom-close:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 2px; }
+    .draft-zoom-content { overflow-wrap: anywhere; }
+    @media (min-width: 768px) { .draft-zoom-overlay { padding: 40px; } }
+    @media (max-width: 640px) { .draft-zoom-content .official-draft-sheet { padding: 24px 16px !important; } }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OfficialPreviewComponent implements OnChanges {
@@ -555,11 +577,20 @@ export class OfficialPreviewComponent implements OnChanges {
 
   readonly activeDoc = signal<PreviewDocTab>('resolucion');
   readonly isZoomed = signal<boolean>(false);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private zoomDocument: PreviewDocTab = 'resolucion';
 
   readonly draftNotice = DRAFT_NOTICE;
   readonly draftDetails = DRAFT_DETAILS;
 
+  constructor() {
+    effect(() => {
+      const doc = this.activeDoc();
+      untracked(() => { if (this.isZoomed() && doc !== this.zoomDocument) this.closeZoom(); });
+    });
+  }
   ngOnChanges(changes: SimpleChanges): void {
+    if (['ctx', 'stage', 'decision', 'cedulaVariant', 'vistos', 'considerando', 'seResuelve'].some(key => changes[key])) this.closeZoom();
     if (changes['ctx']) {
       this.activeDoc.set('resolucion');
       this.isZoomed.set(false);
@@ -572,8 +603,12 @@ export class OfficialPreviewComponent implements OnChanges {
   }
 
   toggleZoom(): void {
-    this.isZoomed.update((v) => !v);
+    if (this.isZoomed()) { this.closeZoom(); return; }
+    this.host.nativeElement.querySelector<HTMLElement>('[data-draft-zoom-open]')?.focus();
+    this.zoomDocument = this.activeDoc(); this.isZoomed.set(true);
   }
+  closeZoom(): void { this.isZoomed.set(false); }
+  documentTitle(): string { return this.activeDoc() === 'resolucion' ? 'Resolución' : this.activeDoc() === 'cedula-recurrente' ? 'Cédula · Administrado' : 'Cédula · Entidad'; }
 
   getStageTitle(): string {
     return STAGE_LABEL[this.stage];
