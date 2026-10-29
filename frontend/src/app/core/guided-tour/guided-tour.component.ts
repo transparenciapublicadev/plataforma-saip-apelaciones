@@ -3,16 +3,18 @@ import {
   Component,
   ElementRef,
   OnDestroy,
-  OnInit,
   computed,
   effect,
   inject,
   signal,
-  viewChild
+  viewChild,
+  untracked
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GuidedTourService } from './guided-tour.service';
 import { TourStep } from './guided-tour.model';
+import { ModalFocusDirective } from '../../shared/modal-focus.directive';
+import { tourLayout, tourScrollTop } from './guided-tour-layout';
 import {
   LucideCompass,
   LucideX,
@@ -21,18 +23,12 @@ import {
   LucideCheck
 } from '@lucide/angular';
 
-const HEADER_OFFSET = 96;
-const GAP = 24;
-const EDGE = 20;
-const PAD = 8;
-
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
-
 @Component({
   selector: 'app-guided-tour',
   standalone: true,
   imports: [
     CommonModule,
+    ModalFocusDirective,
     LucideCompass,
     LucideX,
     LucideArrowRight,
@@ -43,15 +39,16 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
     @if (tourService.isOpen() && currentStep(); as step) {
       <div class="fixed inset-0 z-[150]" style="overscroll-behavior: contain">
         <!-- Spotlight / Scrim Overlay -->
-        @if (rect(); as r) {
+        @if (spotGeometry(); as spot) {
           <div
             class="absolute rounded-xl pointer-events-none transition-all duration-300 ease-out"
-            [style.top.px]="spotGeometry().top"
-            [style.left.px]="spotGeometry().left"
-            [style.width.px]="spotGeometry().width"
-            [style.height.px]="spotGeometry().height"
+            aria-hidden="true"
+            [style.top.px]="spot.top"
+            [style.left.px]="spot.left"
+            [style.width.px]="spot.width"
+            [style.height.px]="spot.height"
             [style.boxShadow]="spotShadow()"
-            [style.transitionDuration]="instant() ? '0ms' : '300ms'"
+            [style.transitionDuration]="instant() || reducedMotion() ? '0ms' : '300ms'"
           ></div>
         } @else {
           <div
@@ -63,43 +60,53 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
         <!-- Tooltip Card -->
         <div
           #cardRef
-          class="absolute rounded-xl p-5 transition-all duration-300 ease-out border border-amber-500/30 dark:border-amber-400/40 shadow-2xl shadow-black/60 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar"
+          role="dialog" aria-modal="true" aria-labelledby="guided-tour-title" aria-describedby="guided-tour-body"
+          tabindex="-1" [appModalFocus]="true" (modalEscape)="tourService.endTour()" (keydown)="onCardKey($event)"
+          class="guided-tour-card absolute rounded-xl p-5 transition-all duration-300 ease-out overflow-y-auto custom-scrollbar"
           [style.top.px]="placementGeometry().top"
           [style.left.px]="placementGeometry().left"
           [style.width.px]="tipWidth()"
-          [style.transitionDuration]="instant() ? '0ms' : '280ms'"
+          [style.maxHeight.px]="layout().maxHeight"
+          [style.transitionDuration]="instant() || reducedMotion() ? '0ms' : '280ms'"
           style="
             background: var(--card);
             color: var(--card-foreground);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
           "
         >
           <!-- Header -->
           <div class="flex items-center justify-between mb-2">
-            <span class="eyebrow flex items-center gap-1.5" style="color: var(--brand-700)">
-              <svg lucideCompass class="w-3 h-3"></svg> Paso {{ tourService.activeStepIndex() + 1 }} de {{ tourService.steps().length }}
+            <span class="eyebrow flex items-center gap-1.5" style="color: var(--brand-700)" aria-live="polite">
+              <svg aria-hidden="true" lucideCompass class="w-3 h-3"></svg> Paso {{ tourService.activeStepIndex() + 1 }} de {{ tourService.steps().length }}
             </span>
             <button
               type="button"
               (click)="tourService.endTour()"
               class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors"
               title="Cerrar tutorial"
+              aria-label="Cerrar tutorial"
             >
-              <svg lucideX class="w-4 h-4 text-muted-foreground"></svg>
+              <svg aria-hidden="true" lucideX class="w-4 h-4 text-muted-foreground"></svg>
             </button>
           </div>
 
           <!-- Body Title & Text -->
           <div>
-            <h3 class="font-display" style="font-size: 18px; letter-spacing: -0.01em; line-height: 1.2">
+            <h3 id="guided-tour-title" class="font-display" style="font-size: 18px; letter-spacing: -0.01em; line-height: 1.2">
               {{ step.title }}
             </h3>
-            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+            <p id="guided-tour-body" class="text-sm text-muted-foreground mt-1.5 leading-relaxed">
               {{ step.body }}
             </p>
           </div>
 
+          @if (targetMessage()) {
+            <p role="status" aria-live="polite" class="text-xs text-muted-foreground mt-3 p-3 rounded-lg border border-border">{{ targetMessage() }}</p>
+          }
+
           <!-- Progress Pill Dots -->
-          <div class="flex items-center gap-1.5 mt-4">
+          <div class="flex items-center gap-1.5 mt-4" aria-hidden="true">
             @for (s of tourService.steps(); track $index) {
               <span
                 class="h-1.5 rounded-full transition-all duration-300"
@@ -110,11 +117,11 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex items-center justify-between mt-4">
+          <div class="guided-tour-actions flex items-center justify-between mt-4 gap-2 flex-wrap">
             <button
               type="button"
               (click)="tourService.endTour()"
-              class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              class="text-xs min-h-6 px-1 text-muted-foreground hover:text-foreground transition-colors"
             >
               Omitir
             </button>
@@ -126,7 +133,7 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
                   (click)="tourService.prevStep()"
                   class="btn-ghost-brand !px-3 !py-2 !text-[13px] inline-flex items-center gap-1"
                 >
-                  <svg lucideArrowLeft class="w-3.5 h-3.5"></svg> Anterior
+                  <svg aria-hidden="true" lucideArrowLeft class="w-3.5 h-3.5"></svg> Anterior
                 </button>
               }
 
@@ -136,9 +143,9 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
                 class="btn-brand !px-4 !py-2 !text-[13px] inline-flex items-center gap-1"
               >
                 @if (isLastStep()) {
-                  Finalizar <svg lucideCheck class="w-3.5 h-3.5"></svg>
+                  Finalizar <svg aria-hidden="true" lucideCheck class="w-3.5 h-3.5"></svg>
                 } @else {
-                  Siguiente <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+                  Siguiente <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
                 }
               </button>
             </div>
@@ -147,300 +154,153 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v,
       </div>
     }
   `,
+  styles: `
+    .guided-tour-card { overflow-wrap: anywhere; overscroll-behavior: contain; }
+    .guided-tour-actions > div { flex-wrap: wrap; }
+    @media (prefers-reduced-motion: reduce) {
+      .guided-tour-card, .guided-tour-card *, .guided-tour-card ~ * { transition: none !important; animation: none !important; }
+    }
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class GuidedTourComponent implements OnInit, OnDestroy {
+export class GuidedTourComponent implements OnDestroy {
   readonly tourService = inject(GuidedTourService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly cardRef = viewChild<ElementRef<HTMLElement>>('cardRef');
-
   readonly rect = signal<DOMRect | null>(null);
-  readonly vp = signal<{ w: number; h: number }>({
-    w: typeof window !== 'undefined' ? window.innerWidth : 1200,
-    h: typeof window !== 'undefined' ? window.innerHeight : 800
-  });
-  readonly tipSize = signal<{ w: number; h: number }>({ w: 340, h: 210 });
-  readonly isDark = signal<boolean>(false);
-  readonly instant = signal<boolean>(false);
-
+  readonly vp = signal({ w: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    h: typeof window !== 'undefined' ? window.innerHeight : 800 });
+  readonly tipSize = signal({ w: 340, h: 210 });
+  readonly headerBottom = signal(96);
+  readonly isDark = signal(false);
+  readonly reducedMotion = signal(false);
+  readonly instant = signal(false);
+  readonly targetState = signal<'waiting' | 'missing' | 'outside' | 'ready'>('waiting');
   readonly currentStep = computed(() => this.tourService.currentStep());
-  readonly isLastStep = computed(() => {
-    return this.tourService.activeStepIndex() === this.tourService.steps().length - 1;
-  });
-
-  private resizeObserver: ResizeObserver | null = null;
-  private mutationObserver: MutationObserver | null = null;
-  private rafId: number = 0;
-
-  readonly scrimColor = computed(() =>
-    this.isDark() ? 'rgba(2, 6, 23, 0.74)' : 'rgba(9, 14, 26, 0.82)'
-  );
-
-  readonly spotShadow = computed(() => {
-    const scrim = this.scrimColor();
-    if (this.isDark()) {
-      return [
-        '0 0 0 2px rgba(255, 236, 179, 0.95)',
-        '0 0 0 5px #FFC53D',
-        '0 0 18px 3px rgba(255, 197, 61, 0.75)',
-        '0 0 46px 12px rgba(255, 176, 32, 0.70)',
-        '0 0 80px 24px rgba(255, 197, 61, 0.35)',
-        `0 0 0 9999px ${scrim}`
-      ].join(', ');
-    }
-    return [
-      '0 0 0 2px var(--gold)',
-      '0 0 0 5px rgba(212, 168, 83, 0.30)',
-      '0 0 30px 6px rgba(212, 168, 83, 0.30)',
-      `0 0 0 9999px ${scrim}`
-    ].join(', ');
-  });
-
-  readonly spotGeometry = computed(() => {
-    const r = this.rect();
-    const v = this.vp();
-    if (!r) return { top: 0, left: 0, width: 0, height: 0 };
-
-    const top = clamp(r.top - PAD, EDGE, v.h - EDGE);
-    const bottom = clamp(r.top + r.height + PAD, EDGE, v.h - EDGE);
-    const height = Math.max(0, bottom - top);
-    const left = clamp(r.left - PAD, EDGE, v.w - EDGE);
-    const right = clamp(r.left + r.width + PAD, EDGE, v.w - EDGE);
-    const width = Math.max(0, right - left);
-
-    return { top, left, width, height };
-  });
-
-  readonly tipWidth = computed(() => Math.min(340, this.vp().w - EDGE * 2));
-
-  readonly placementGeometry = computed(() => {
-    const spot = this.spotGeometry();
-    const v = this.vp();
-    const r = this.rect();
-    const tipW = this.tipWidth();
-    const tipH = this.tipSize().h;
-
-    if (!r) {
-      const rawTop = v.h / 2 - tipH / 2;
-      const rawLeft = v.w / 2 - tipW / 2;
-      const maxTop = v.h - tipH - 24;
-      const minTop = HEADER_OFFSET;
-      const maxLeft = v.w - tipW - 20;
-      const minLeft = 20;
-      return {
-        top: Math.max(minTop, Math.min(rawTop, maxTop)),
-        left: Math.max(minLeft, Math.min(rawLeft, maxLeft))
-      };
-    }
-
-    const { top, left, width, height } = spot;
-    const cx = left + width / 2;
-    const cy = top + height / 2;
-    const centerLeft = clamp(cx - tipW / 2, EDGE, v.w - tipW - EDGE);
-    const centerTop = clamp(cy - tipH / 2, EDGE, v.h - tipH - EDGE);
-
-    const spaceBelow = v.h - (top + height);
-    const spaceAbove = top - HEADER_OFFSET;
-    const spaceRight = v.w - (left + width);
-    const spaceLeft = left;
-
-    let calculatedTop: number;
-    let calculatedLeft: number;
-
-    // 1. Check Below Target
-    if (spaceBelow >= tipH + GAP + 24) {
-      calculatedTop = top + height + GAP;
-      calculatedLeft = centerLeft;
-    }
-    // 2. Check Above Target (considering fixed header offset)
-    else if (spaceAbove >= tipH + GAP + 24) {
-      calculatedTop = top - tipH - GAP;
-      calculatedLeft = centerLeft;
-    }
-    // 3. Check Right of Target
-    else if (spaceRight >= tipW + GAP + 20) {
-      calculatedTop = centerTop;
-      calculatedLeft = left + width + GAP;
-    }
-    // 4. Check Left of Target
-    else if (spaceLeft >= tipW + GAP + 20) {
-      calculatedTop = centerTop;
-      calculatedLeft = left - tipW - GAP;
-    }
-    // 5. Fallback for Tall / Full-Screen Elements: Place at bottom right without covering spotlight center
-    else {
-      calculatedTop = v.h - tipH - 24;
-      calculatedLeft = v.w - tipW - 20;
-    }
-
-    // Strict Viewport Clamping
-    const maxTop = v.h - tipH - 24; // 24px bottom edge buffer
-    const minTop = HEADER_OFFSET;   // HEADER_OFFSET buffer (96px)
-    const finalTop = Math.max(minTop, Math.min(calculatedTop, maxTop));
-
-    const maxLeft = v.w - tipW - 20;
-    const minLeft = 20;
-    const finalLeft = Math.max(minLeft, Math.min(calculatedLeft, maxLeft));
-
-    return { top: finalTop, left: finalLeft };
-  });
+  readonly isLastStep = computed(() => this.tourService.activeStepIndex() === this.tourService.steps().length - 1);
+  readonly layout = computed(() => tourLayout(this.rect(), this.vp(), this.tipSize().h, this.headerBottom()));
+  readonly spotGeometry = computed(() => this.layout().spot);
+  readonly placementGeometry = computed(() => this.layout().placement);
+  readonly tipWidth = computed(() => this.layout().width);
+  readonly targetMessage = computed(() => this.targetState() === 'ready' ? ''
+    : this.targetState() === 'waiting' ? 'Buscando el elemento de este paso. Puede estar cargando. Puede continuar o cerrar el tutorial.'
+    : this.targetState() === 'outside' ? 'El elemento está fuera de la vista. Desplácese para verlo, continúe o cierre el tutorial.'
+    : 'El elemento de este paso no está visible. Puede estar filtrado, pendiente de carga o en una pestaña cerrada. Puede continuar o cerrar el tutorial.');
+  readonly scrimColor = computed(() => this.isDark() ? 'rgba(2, 6, 23, 0.74)' : 'rgba(9, 14, 26, 0.82)');
+  readonly spotShadow = computed(() => (this.isDark() ? [
+    '0 0 0 2px rgba(255, 236, 179, 0.95)', '0 0 0 5px #FFC53D',
+    '0 0 18px 3px rgba(255, 197, 61, 0.75)', '0 0 46px 12px rgba(255, 176, 32, 0.70)',
+    '0 0 80px 24px rgba(255, 197, 61, 0.35)',
+  ] : ['0 0 0 2px var(--gold)', '0 0 0 5px rgba(212, 168, 83, 0.30)', '0 0 30px 6px rgba(212, 168, 83, 0.30)'])
+    .concat(`0 0 0 9999px ${this.scrimColor()}`).join(', '));
 
   constructor() {
-    effect(() => {
-      const step = this.currentStep();
-      if (step) {
-        this.instant.set(false);
-        step.onEnter?.();
-        this.waitForAndAttachTarget(step);
-      } else {
-        this.rect.set(null);
-      }
+    effect(onCleanup => {
+      const step = this.currentStep(), open = this.tourService.isOpen();
+      if (!open || !step) { this.rect.set(null); return; }
+      untracked(() => this.trackStep(step, onCleanup));
+    });
+    effect(onCleanup => {
+      const card = this.cardRef()?.nativeElement;
+      if (!card) return;
+      untracked(() => this.measureCard());
+      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.measureCard());
+      observer?.observe(card);
+      onCleanup(() => observer?.disconnect());
     });
   }
 
-  ngOnInit(): void {
-    if (typeof document !== 'undefined') {
-      const el = document.documentElement;
-      this.isDark.set(el.classList.contains('dark'));
-      this.mutationObserver = new MutationObserver(() => {
-        this.isDark.set(el.classList.contains('dark'));
-      });
-      this.mutationObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
-    }
+  ngOnDestroy(): void { this.tourService.endTour(); }
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', this.onWinScrollOrResize, true);
-      window.addEventListener('resize', this.onWinScrollOrResize);
-      window.addEventListener('keydown', this.onKeydown);
+  onCardKey(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault(); event.stopPropagation();
+    if (event.key === 'ArrowRight') this.tourService.nextStep(); else this.tourService.prevStep();
+  }
+
+  private measureCard(): void {
+    const box = this.cardRef()?.nativeElement.getBoundingClientRect();
+    if (box && box.width > 0 && box.height > 0
+      && (Math.abs(box.height - this.tipSize().h) > 1 || Math.abs(box.width - this.tipSize().w) > 1)) {
+      this.tipSize.set({ w: box.width, h: box.height });
     }
   }
 
-  ngOnDestroy(): void {
-    this.mutationObserver?.disconnect();
-    this.resizeObserver?.disconnect();
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('scroll', this.onWinScrollOrResize, true);
-      window.removeEventListener('resize', this.onWinScrollOrResize);
-      window.removeEventListener('keydown', this.onKeydown);
-    }
-    if (this.rafId) cancelAnimationFrame(this.rafId);
-  }
-
-  private onKeydown = (e: KeyboardEvent): void => {
-    if (!this.tourService.isOpen()) return;
-    if (e.key === 'Escape') {
-      this.tourService.endTour();
-    } else if (e.key === 'ArrowRight') {
-      this.tourService.nextStep();
-    } else if (e.key === 'ArrowLeft') {
-      this.tourService.prevStep();
-    }
-  };
-
-  private onWinScrollOrResize = (): void => {
-    if (this.rafId) return;
-    this.rafId = requestAnimationFrame(() => {
-      this.rafId = 0;
-      this.instant.set(true);
-      this.remeasure();
-    });
-  };
-
-  private remeasure(): void {
-    const step = this.currentStep();
-    if (!step || typeof document === 'undefined' || typeof window === 'undefined') return;
-    const el = document.querySelector(step.selector) as HTMLElement | null;
-    if (el) {
-      this.rect.set(el.getBoundingClientRect());
-      this.vp.set({ w: window.innerWidth, h: window.innerHeight });
-      this.remeasureCard();
-    }
-  }
-
-  private remeasureCard(): void {
-    if (typeof document === 'undefined') return;
-    const cardEl = this.cardRef()?.nativeElement;
-    if (cardEl) {
-      const cr = cardEl.getBoundingClientRect();
-      if (cr.height > 0 && cr.width > 0) {
-        this.tipSize.set({ w: cr.width, h: cr.height });
-      }
-    }
-  }
-
-  private scrollToEl(targetEl: HTMLElement, step: TourStep): void {
+  private trackStep(step: TourStep, onCleanup: (cleanup: () => void) => void): void {
     if (typeof window === 'undefined') return;
-    const rect = targetEl.getBoundingClientRect();
-    const absoluteTop = window.scrollY + rect.top;
-
-    if (absoluteTop < 300 || step.selector === '[data-tour="nueva"]' || step.selector.includes('hero')) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      const targetScrollY = Math.max(0, absoluteTop - HEADER_OFFSET - 20);
-      window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
-    }
-  }
-
-  private waitForAndAttachTarget(step: TourStep): void {
-    if (typeof document === 'undefined' || typeof window === 'undefined') return;
-    this.resizeObserver?.disconnect();
-
-    let cancelled = false;
-    let raf = 0;
+    this.rect.set(null); this.targetState.set('waiting'); this.instant.set(false);
+    // Panel callbacks only reveal local sections; they must never submit an act.
+    step.onEnter?.();
+    let active = true, firstScroll = true;
+    let target: HTMLElement | null = null, frame = 0, waitFrame = 0;
     const deadline = performance.now() + 1600;
-    const timers: number[] = [];
-
-    const attach = (el: HTMLElement) => {
-      if (cancelled) return;
-      this.scrollToEl(el, step);
-
-      if (typeof window !== 'undefined') {
-        this.rect.set(el.getBoundingClientRect());
-        this.vp.set({ w: window.innerWidth, h: window.innerHeight });
-        this.remeasureCard();
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const valid = () => active && this.tourService.isOpen() && this.currentStep() === step;
+    // Previous disappears on the first step. Recover focus after Angular removes
+    // that control, without stealing it from a newer dialog or abandoned context.
+    queueMicrotask(() => {
+      const card = this.cardRef()?.nativeElement;
+      if (valid() && card && !card.contains(document.activeElement) && !this.tourService.hasBlockingDialog(this.host.nativeElement)) {
+        (card.querySelector<HTMLElement>('button') || card).focus({ preventScroll: true });
       }
-
-      if (typeof ResizeObserver !== 'undefined') {
-        this.resizeObserver = new ResizeObserver(() => {
-          if (!cancelled) {
-            this.rect.set(el.getBoundingClientRect());
-            this.remeasureCard();
-          }
-        });
-        this.resizeObserver.observe(el);
-      }
-
-      [80, 180, 350, 600].forEach(ms => {
-        timers.push(
-          setTimeout(() => {
-            if (!cancelled) {
-              this.rect.set(el.getBoundingClientRect());
-              this.remeasureCard();
-            }
-          }, ms) as unknown as number
-        );
-      });
-    };
-
-    const waitForEl = () => {
-      if (cancelled) return;
-      const el = document.querySelector(step.selector) as HTMLElement | null;
-      if (el) {
-        attach(el);
+    });
+    const motion = () => this.reducedMotion.set(!!media?.matches);
+    motion();
+    const targetObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => schedule());
+    const refresh = () => {
+      if (!valid()) return;
+      if (this.tourService.hasBlockingDialog(this.host.nativeElement)) { this.tourService.endTour(); return; }
+      const nextVp = { w: window.innerWidth, h: window.innerHeight };
+      if (nextVp.w !== this.vp().w || nextVp.h !== this.vp().h) this.vp.set(nextVp);
+      const header = document.querySelector('.saip-header')?.getBoundingClientRect().bottom;
+      this.headerBottom.set(header && header > 0 ? header : 96);
+      this.isDark.set(document.documentElement.classList.contains('dark'));
+      let el: HTMLElement | null = null;
+      try { el = document.querySelector<HTMLElement>(step.selector); } catch { /* Invalid selectors are unavailable targets. */ }
+      const box = el?.getBoundingClientRect();
+      const style = el ? getComputedStyle(el) : null;
+      const visible = !!el && !!box && box.width > 0 && box.height > 0
+        && !el.closest('[hidden], [aria-hidden="true"], [inert]') && style?.display !== 'none' && style?.visibility !== 'hidden';
+      if (!visible) {
+        targetObserver?.disconnect(); target = null; this.rect.set(null);
+        this.targetState.set(performance.now() < deadline ? 'waiting' : 'missing');
         return;
       }
-      if (performance.now() < deadline) {
-        raf = requestAnimationFrame(waitForEl);
-      } else {
-        this.rect.set(null);
+      if (target !== el) { targetObserver?.disconnect(); targetObserver?.observe(el!); target = el; }
+      if (firstScroll) {
+        firstScroll = false;
+        window.scrollTo({ top: tourScrollTop(box!, window.scrollY, nextVp.h, this.headerBottom(), this.tipSize().h, step.align),
+          behavior: this.reducedMotion() ? 'instant' : 'smooth' });
       }
+      const previous = this.rect();
+      if (!previous || previous.top !== box!.top || previous.left !== box!.left
+        || previous.width !== box!.width || previous.height !== box!.height) this.rect.set(box!);
+      this.targetState.set(this.layout().spot ? 'ready' : 'outside');
+      this.measureCard();
     };
-
-    const kickoff = setTimeout(
-      () => {
-        raf = requestAnimationFrame(waitForEl);
-      },
-      step.onEnter ? 90 : 0
-    );
+    const schedule = () => {
+      if (!valid() || frame) return;
+      frame = requestAnimationFrame(() => { frame = 0; this.instant.set(true); refresh(); });
+    };
+    const wait = () => {
+      waitFrame = 0; refresh();
+      if (valid() && !target && performance.now() < deadline) waitFrame = requestAnimationFrame(wait);
+    };
+    const mutations = new MutationObserver(records => {
+      if (records.some(record => !this.host.nativeElement.contains(record.target))) schedule();
+    });
+    mutations.observe(document.documentElement, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'inert', 'open'] });
+    window.addEventListener('scroll', schedule, true); window.addEventListener('resize', schedule);
+    media?.addEventListener?.('change', motion);
+    refresh();
+    if (!target) waitFrame = requestAnimationFrame(wait);
+    onCleanup(() => {
+      active = false; cancelAnimationFrame(frame); cancelAnimationFrame(waitFrame);
+      mutations.disconnect(); targetObserver?.disconnect();
+      window.removeEventListener('scroll', schedule, true); window.removeEventListener('resize', schedule);
+      media?.removeEventListener?.('change', motion);
+    });
   }
 }
-

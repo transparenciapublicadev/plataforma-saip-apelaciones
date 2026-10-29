@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FuncionarioDashboardComponent } from './funcionario-dashboard.component';
 import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
@@ -22,7 +22,7 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     localStorage.clear(); sessionStorage.clear();
     TestBed.configureTestingModule({ imports: [FuncionarioDashboardComponent], providers: [provideRouter([]),
       provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
-      { provide: GuidedTourService, useValue: { checkAutoStart() {}, isFirstVisit: () => false, startTour() {} } }] });
+      { provide: GuidedTourService, useValue: { checkAutoStart() {}, endTourFor() {}, isFirstVisit: () => false, startTour() {} } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
   afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); } });
@@ -38,6 +38,14 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
   it('una respuesta registrada no se utiliza para transformar el estado que informa el servidor', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([{ ...row, respuesta: { id: 8, tipoRespuesta: 'ENTREGA_TOTAL' } }]); f.detectChanges();
     expect(f.componentInstance.solicitudes()[0].estado).toBe('EN_REVISION');
+  });
+
+  it('V6: tutorial institucional usa objetivos presentes y no activa escrituras; destruirlo cancela su ámbito', () => {
+    const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([row]); f.detectChanges();
+    for (const step of f.componentInstance.tourSteps) expect(f.nativeElement.querySelectorAll(step.selector)).toHaveLength(1);
+    const tour = TestBed.inject(GuidedTourService), start = vi.spyOn(tour, 'startTour'), end = vi.spyOn(tour, 'endTourFor');
+    f.componentInstance.startTour(); expect(start).toHaveBeenCalledWith('saip_tour_funcionario', f.componentInstance.tourSteps);
+    http.expectNone(req => req.method !== 'GET'); end.mockClear(); f.destroy(); expect(end).toHaveBeenCalledWith('saip_tour_funcionario');
   });
   it('un saldo ausente no se calcula con fecha límite ni se convierte en hoy', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([{ ...row, diasRestantes: null }]); f.detectChanges();

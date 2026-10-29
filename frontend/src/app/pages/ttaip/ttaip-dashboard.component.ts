@@ -134,8 +134,9 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   cambiarItemsPorPagina(size: number): void { if ([4, 8, 12].includes(size)) { this.itemsPorPagina.set(size); this.paginaActual.set(1); } }
   limpiarFiltros(): void { this.search.set(''); this.salaFiltro.set('TODAS'); this.estadoFiltro.set(''); this.selectStage('todos'); }
   ngOnInit(): void { this.initialized = true; this.cargarDashboard(); }
-  ngOnDestroy(): void { this.destroyed = true; this.generation++; this.query.unsubscribe(); }
+  ngOnDestroy(): void { this.tourService.endTourFor('saip_tour_ttaip'); this.destroyed = true; this.generation++; this.query.unsubscribe(); }
   cargarDashboard(): void {
+    this.tourService.endTourFor('saip_tour_ttaip');
     if (this.destroyed) return;
     const revision = this.authService.cambiosSesion?.() ?? 0;
     if (this.loading() && this.generation > 0 && revision === this.revision) return;
