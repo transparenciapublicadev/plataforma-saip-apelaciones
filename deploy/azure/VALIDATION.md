@@ -148,6 +148,11 @@ pendiente conforme aCOSTS; no se eligió otroSKU por estas mediciones.
 Al terminar: seis servicios propios detenidos, puertos loopback cerrados,
 tres volúmenes propios y ambas DB conservados. Imágenes/CA/dump/binarios/fixtures
 privados retenidos para reproducción; no down-v, prune ni servicios ajenos tocados.
+Inspección posterior a la parada: backend salió con143; proxy/DB/SMTP con0;
+frontend y S3 local con137. Todos con `OOMKilled=false`, `RestartCount=0` y sin
+error de estado Docker. No se presenta el137 como OOM ni cierre limpio: queda
+pendiente revisar el cierre por señal del SSR y del proveedor de prueba. No se
+reinició el conjunto para investigar fuera de esta validación.
 Sin navegador, Azure, Android ni despliegue. Pendientes antes de aprobar producción:
 resolver el500 del detalle, Supabase/SMTP externos autorizados, TLS/dominio real,
 backup externo/recuperación operada, dimensionamiento y presupuesto aceptados.
