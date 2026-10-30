@@ -1,5 +1,76 @@
 # Preparación Azure: evidencia y límites
 
+## Revisión 2026-10-30 sobre el candidato60cb405
+
+Rama `daniel/feat-public-portal-and-registro-alignment`,
+HEAD inicial `60cb4059fe356a263300cba77aeae4848f376e77`; índice y árbol versionables
+inicialmente limpios. Se preserva lo publicado y la evidencia nativa anterior.
+No herramientas Serena/grafo disponibles en esta sesión; lectura directa de
+configuración/documentación. No recursos Azure/DNS/buckets ni despliegue.
+
+### Motor: comprobación previa fallida, sin builds
+
+| Operación acotada | Resultado actual |
+|---|---|
+| Archivo cliente Docker | Metadatos de `docker.exe`:29.9.2; no asumir la29.5.3 histórica |
+| `docker --version` / `docker compose version` | Cada consulta agotó20s; versión efectiva Compose actual no confirmada |
+| `docker context show` | `desktop-linux`, exit0 |
+| `docker context inspect desktop-linux --format '{{.Endpoints.docker.Host}}'` | Pipe local `npipe:////./pipe/dockerDesktopLinuxEngine`, exit0 |
+| `docker version --format '{{json .Server}}'` | Exit1, Server=null, pipe ausente: `open //./pipe/dockerDesktopLinuxEngine: El sistema no puede encontrar el archivo especificado` |
+| Comprobación tras cambio externo de estado | Aparecieron procesos Docker Desktop/backend; una única consulta explícita al contexto local agotó20s. No se atribuye el cambio al agente |
+| Recursos del daemon | No se pudo obtener CPU/RAM/arquitectura; `docker info` no ejecutado después del fallo del gate |
+| Builds e inspección de las tres imágenes | No ejecutados. Sin digest nuevo, inventario ni inspección de contenido acreditados |
+| Compose/`prod`, secretos no root, Flyway/validate | No ejecutados en Docker en esta revisión |
+| `nginx -t`, TLS, login/API, deep links, Host/no-store/multipart | Bloqueados en el conjunto; no sustituir por HTTP nativo histórico |
+| S3/SMTP local, recepción/bytes/hash | No proveedores ni proyecto Compose iniciados; no bucket externo usado. No LOCAL/MOCK para aparentar aprobación de `prod` |
+| Reinicio, volumen, backup/restore mediante `stack.py` | Bloqueados en Docker. La restauración nativa anterior no cuenta como ejecución nueva de esos scripts sobre Compose |
+
+No reinicio global de Docker/WSL, prune, eliminación de volúmenes, cambio de
+permisos/configuración ni despliegue en Azure para sortearlo. No se arrancó ningún
+servicio propio ni se detuvieron servicios ajenos. No nuevas suites Angular,
+backend o PostgreSQL: no cambios de producto que las justifiquen.
+
+**Acción requerida del dueño del equipo:** revisar Docker Desktop ya abierto,
+completar el arranque del motor Linux y obtener el estado Engine running con los
+controles actuales. Coordinar primero cualquier intervención con los otros
+proyectos. Si queda Starting/Error, registrar el mensaje de la interfaz/diagnóstico
+antes de decidir una reparación; no factory reset, eliminación de discos ni prune.
+Después, comprobar que los dos comandos siguientes responden correctamente; su
+salida confirma salud/contexto, no aprobación del stack:
+
+```powershell
+docker --context desktop-linux version
+docker --context desktop-linux info --format 'Version={{.ServerVersion}} Arch={{.Architecture}} CPU={{.NCPU}} RAM={{.MemTotal}}'
+```
+
+Solo con ese gate aprobado, repetir la construcción/ejecución propia descrita al
+final del informe. No iniciar builds mientras el motor no responde.
+
+### Corrección económica y pruebas acotadas
+
+[COSTS.md](COSTS.md) sustituye la conclusión anterior: fijo anual101.40USD y
+121.37USD/año a480h/año, antes de exclusiones. Tarifas públicas refrescadas al
+2026-10-30, sin consulta de beneficios acreditada. `az.cmd` está ahora presente;
+la lectura de sesión agotó25s. No se ejecutó login ni mutación de cuenta.
+
+`pricing.py` publica fijo/total/horas anuales antes del redondeo, conserva los dos
+discos y exige opt-in separado de grantsACA y PG; horas facturadas de IP son un
+escenario explícito, nunca eliminación automática. Una reproducción RED mostró
+el descuento implícito de ACA y la ausencia de los campos anuales. Los nuevos
+casos verifican importes, límites y semántica del CLI; son cálculo local sin Azure.
+Ejecución final única:
+`python -B -m unittest discover -s deploy/azure -p 'test_*.py' -v`:
+**19/19**,0 fallos/omitidas,0.696s (7 de cálculo y12 operacionales existentes).
+No se suman las ejecuciones RED/GREEN previas. Los comandos Docker del script
+operacional están mockeados; integridad/retención usa archivos temporales reales.
+No son pruebas de contenedores, seguridad backend, PostgreSQL/S3 o Azure.
+Los cuatro ejemplos CLI de COSTS se verificaron contra las tablas; links locales
+y `git diff --check` correctos. Sin nueva suite nativa o Angular.
+
+---
+
+## Evidencia histórica de la preparación anterior (no repetida)
+
 Revisión 2026-10-29/30, base `36b974d27995dd70cc3914442252b1c23c6e9ce3`.
 No recursos Azure, DNS, buckets ni servicios externos creados/modificados.
 No despliegue. Secretos, bases, certificados y logs de prueba permanecen privados.
