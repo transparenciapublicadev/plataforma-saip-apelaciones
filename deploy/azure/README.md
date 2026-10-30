@@ -9,9 +9,10 @@ es una alternativa evaluada, no un segundo despliegue ya implementado.
 incluso desasignada. Esta configuración no cumple un año con100USD; las alternativas
 de [COSTS.md](COSTS.md) requieren validación y no cambian el stack automáticamente.
 
-**Pendiente de ejecutar el stack final:** el daemon Docker local dejó de responder
-durante los builds. Las pruebas nativas no sustituyen esa verificación; ver
-[resultados y bloqueos](VALIDATION.md) antes de autorizar un despliegue.
+**Stack local ejecutado; despliegue bloqueado:** imágenes, transporte y persistencia
+ya se comprobaron en Docker. El detalle privado SAIP devuelve 500 con el perfil
+`prod`; proveedores externos, dimensionamiento Azure y presupuesto siguen pendientes.
+Ver [resultados y bloqueos](VALIDATION.md) antes de autorizar recursos.
 
 Se conservan Angular22/TypeScript6, SSR/Express, API, autenticación pública/interna,
 transiciones y recepciones. Browser usa `/api`; solo SSR resuelve ese prefijo a
@@ -110,8 +111,15 @@ o activar logs de cuerpos/tokens. Scripts nunca hacen `source`/`shell=True`.
 
 `PUBLIC_ORIGIN` debe ser HTTPS de origen único, y se usa como allowlist CORS
 sin comodines y como hostname explícito del motor SSR. Solo se añaden localhost
-y 127.0.0.1 para health checks internos; hosts ajenos conservan el rechazo400.
+y 127.0.0.1 para health checks internos; el motor SSR conserva su rechazo 400
+para hosts ajenos cuando se consulta directamente dentro de su red.
 No desactivar la validación SSRF ni usar `NG_ALLOWED_HOSTS=*`.
+El proxy también exige ese origen al arrancar y permite únicamente su hostname en
+el listener TLS: un Host ajeno recibe 421 tanto en HTML como en `/api`. El health
+check 8081 sigue interno. La plantilla se genera en `/tmp` con raíz de solo lectura;
+`nginx -t` utiliza ese mismo archivo. No se confía en un Host del visitante para
+generar configuración ni elegir upstream. Se probó entrada por IPv4 loopback;
+la validación sintáctica de IPv6 no acredita conectividad IPv6 real.
 `API_INTERNAL_ORIGIN` es solo del contenedor SSR; no aparece en
 configuración pública y no sustituye el control de autorización Spring.
 
@@ -267,6 +275,8 @@ existentes para pruebas. Pendientes para autorizar creación/despliegue:
 4. Aportar S3 privado de prueba/producción, política de proyecto y respaldo binario.
 5. Aprobar dominio/TLS/renovación, CIDRSSH/admin y datos iniciales sin seed compartido.
 6. Revisar las imágenes/candidato validado, pendientes demostrados y plan de recuperación.
+7. Corregir y verificar el DTO del detalle SAIP con el contexto transaccional
+   apropiado: no habilitar OSIV ni ocultar su 500 para aprobar producción.
 
 Gobernanza personal/Serena/design-reference/evidencias no se publican. No se cambian
 Kotlin, contratos, migraciones ni reglas funcionales. La fidelidad visual y Android
