@@ -88,19 +88,13 @@ public class SolicitudRestController {
     @Operation(summary = "Obtener solicitud por ID")
     @GetMapping("/{id}")
     public ResponseEntity<SolicitudDTO> obtenerPorId(@Parameter(description = "ID de la solicitud") @PathVariable Long id) {
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
-        return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+        return ResponseEntity.ok(solicitudService.obtenerDetalle(id));
     }
 
     @Operation(summary = "Obtener solicitud por expediente", description = "Busca por formato SAIP-AAAA-NNNNN")
     @GetMapping("/expediente/{expediente}")
     public ResponseEntity<SolicitudDTO> obtenerPorExpediente(@Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
-        Solicitud solicitud = solicitudService.findByExpediente(expediente)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
-        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
-        return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+        return ResponseEntity.ok(solicitudService.obtenerDetallePorExpediente(expediente));
     }
 
     @SecurityRequirements

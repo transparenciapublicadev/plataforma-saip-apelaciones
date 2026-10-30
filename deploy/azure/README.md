@@ -9,9 +9,10 @@ es una alternativa evaluada, no un segundo despliegue ya implementado.
 incluso desasignada. Esta configuración no cumple un año con100USD; las alternativas
 de [COSTS.md](COSTS.md) requieren validación y no cambian el stack automáticamente.
 
-**Stack local ejecutado; despliegue bloqueado:** imágenes, transporte y persistencia
-ya se comprobaron en Docker. El detalle privado SAIP devuelve 500 con el perfil
-`prod`; proveedores externos, dimensionamiento Azure y presupuesto siguen pendientes.
+**Stack local ejecutado; despliegue pendiente:** imágenes, transporte y persistencia
+ya se comprobaron en Docker. El detalle privado SAIP se corrigió y verificó con
+`prod` y OSIV deshabilitado, también sobre la DB restaurada propia. Proveedores
+externos, dimensionamiento Azure y presupuesto siguen pendientes.
 Ver [resultados y bloqueos](VALIDATION.md) antes de autorizar recursos.
 
 Se conservan Angular22/TypeScript6, SSR/Express, API, autenticación pública/interna,
@@ -275,8 +276,8 @@ existentes para pruebas. Pendientes para autorizar creación/despliegue:
 4. Aportar S3 privado de prueba/producción, política de proyecto y respaldo binario.
 5. Aprobar dominio/TLS/renovación, CIDRSSH/admin y datos iniciales sin seed compartido.
 6. Revisar las imágenes/candidato validado, pendientes demostrados y plan de recuperación.
-7. Corregir y verificar el DTO del detalle SAIP con el contexto transaccional
-   apropiado: no habilitar OSIV ni ocultar su 500 para aprobar producción.
+7. Conservar la regresión del detalle SAIP con OSIV deshabilitado en futuras
+   releases; su corrección local no acredita los demás requisitos de producción.
 
 Gobernanza personal/Serena/design-reference/evidencias no se publican. No se cambian
 Kotlin, contratos, migraciones ni reglas funcionales. La fidelidad visual y Android

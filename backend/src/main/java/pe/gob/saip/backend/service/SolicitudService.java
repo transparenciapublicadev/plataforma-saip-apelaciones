@@ -165,6 +165,29 @@ public class SolicitudService {
         return solicitudRepository.findById(id);
     }
 
+    /** Map the authorized aggregate before the read transaction closes, without OSIV. */
+    @Transactional(readOnly = true)
+    public SolicitudDTO obtenerDetalle(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
+        return mapearDetalleAutorizado(solicitud);
+    }
+
+    /** The private expediente alias has the same authorization and mapping boundary. */
+    @Transactional(readOnly = true)
+    public SolicitudDTO obtenerDetallePorExpediente(String expediente) {
+        Solicitud solicitud = solicitudRepository.findByExpediente(expediente)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
+        return mapearDetalleAutorizado(solicitud);
+    }
+
+    private SolicitudDTO mapearDetalleAutorizado(Solicitud solicitud) {
+        // Do not initialize detail collections until the current actor is authorized.
+        // Map one request, not a list: each required LAZY collection is read in this session.
+        autorizacion.verificarSolicitudAccesible(solicitud);
+        return SolicitudDTO.from(solicitud);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Solicitud> obtenerSolicitudPorExpediente(String expediente) {
         return solicitudRepository.findByExpediente(expediente);

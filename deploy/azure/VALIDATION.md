@@ -1,5 +1,112 @@
 # Preparación Azure: evidencia y límites
 
+## Detalle SAIP con OSIV deshabilitado — 2026-10-30, base cfc9e0c
+
+**El 500 del detalle se reprodujo y corrigió en la nueva imagen backend.**
+Esta revisión actualiza ese bloqueo; conserva las evidencias históricas siguientes.
+No acredita producción completa, proveedores externos ni capacidad económica/Azure.
+
+### Causa y frontera de lectura
+
+Árbol/índice iniciales limpios en `cfc9e0c5c0f7d7505c6e47e712b51c466898593b`,
+rama autorizada. Se reutilizó exclusivamente el proyecto Docker propio y sintético.
+Login real y GET por Nginx/HTTPS con CA explícita reprodujeron 500 tanto por ID
+como por el alias privado de expediente en la imagen anterior. La excepción fue
+`LazyInitializationException` de `Solicitud.documentos` en `SolicitudDTO.from`:
+la transacción de `SolicitudService.findById` ya había terminado cuando el
+controlador autorizaba y construía el DTO. No se registraron tokens.
+
+`SolicitudService.obtenerDetalle` y `obtenerDetallePorExpediente` ahora consultan,
+autorizan y mapean el agregado dentro de una transacción de lectura. El controlador
+recibe el DTO terminado. Se reutiliza la autorización por actor/titularidad/entidad;
+las colecciones del detalle se recorren después de autorizar. El DTO conserva su
+función de mapeo, sin consultas ni lógica de persistencia añadidas.
+
+Se revisaron documentos propios y de respuesta, observaciones, ampliaciones y
+cronograma, encauzamientos, liquidaciones y resumen/requerimiento de apelación.
+No cambian relaciones, repositorios, EAGER global, OSIV, configuración de carga
+fuera de transacción, calendarios ni contratos. No joins entre múltiples colecciones
+ni consulta global para completar el recurso. La prueba de cardinalidad comprueba
+igual número de sentencias al pasar de 3 a 23 documentos; no constituye un benchmark
+de todos los agregados/listados. Otros endpoints que mapean entidades quedan fuera
+de esta corrección y no se declaran verificados por este resultado.
+
+### Pruebas backend
+
+Nueva `SolicitudDetallePostgresIntegrationTest`: HTTP real en puerto aleatorio,
+login/JWT/filtro/autorización/JPA/PostgreSQL reales, OSIV explícitamente false,
+Flyway original sin seed y `ddl-auto=validate`. Fixtures confirmadas mediante
+transacciones separadas; ninguna transacción de test mantiene abierta la sesión
+HTTP. LOCAL/MOCK solo en esa suite, con push apagado, no como validación prod.
+
+RED: 1 caso ejecutado, 1 fallo esperado (200 requerido, 500 recibido). El primer
+intento sobre el target preexistente y su reintento sin compilación incremental no
+pudieron compilar varias clases y no acreditan comportamiento. Se preservó ese
+árbol y se usó una copia sin target heredado; sin cambiar dependencias/configuración.
+Las fuentes probadas coinciden byte a byte con el candidato del repositorio.
+
+Comando final en la copia de backend: `./mvnw.cmd -o test`, con
+`RUN_DETAIL_POSTGRES_TESTS=true` y `DETAIL_POSTGRES_URL` apuntando a una DB nueva
+propia loopback `yaiku_e11_closeout_<32 hex>` (usuario de prueba `yaiku_e11_test`).
+Una única ejecución: **484 casos, 275 aprobados, 0 fallos, 0 errores, 209 omitidos**,
+51 archivos de informe, 4:32 min. Los omitidos corresponden a condiciones/opt-ins
+ajenos no activados; no se cuentan como aprobados. Los 6 nuevos casos están incluidos:
+
+- Detalle sin documentos para titular y funcionario de su entidad.
+- Documentos activos y metadatos por ID/relación, sin duplicados ni documentos
+  eliminados/ajenos; respuesta con sus propios archivos, observación, apelación con
+  requerimiento sin reloj iniciado y ampliación/cronograma.
+- 401 anónimo, 403 ciudadano/funcionario ajenos antes de cargar colecciones y 404
+  inexistente, sin filtrar contenido privado en errores.
+- Alias privado autorizado y conservación de la proyección pública minimizada.
+- Número de consultas independiente del crecimiento de documentos probado.
+- Validación de las 11 migraciones originales y ausencia de sesión de test abierta.
+
+El resto de la suite mezcla unidades con Mockito e integración H2/HTTP/MockMvc;
+no se presenta como PostgreSQL completo. No suites Angular ni Android repetidas.
+
+### Imagen final y comprobación Docker por HTTPS
+
+Solo backend reconstruido, linux/amd64, usuario `10001:10001`:
+`yaiku-local-backend:detail-cfc9e0c-eb018668`.
+ID **`sha256:4cf31bf6a4547772343431113c8080fe028250e19ad576ea3e62040dc9f45cb1`**, 454339511 bytes, build 180.25 s; `RepoDigests=[]` local, sin publicar registry.
+JAR inspeccionado: 11 migraciones byte a byte, sin seed/fallback JWT ni secretos
+sintéticos; `open-in-view=false` y `validate` conservados.
+Frontend `sha256:2922a5a989de9f62a8db31003c58fe5f520f66f766672af793f1ab001c1bc3c3`
+y proxy `sha256:a08c65a90308ab04e390f753a10d48729e01a4e21779f23e7571316c8a9856cc`
+se reutilizaron sin reconstrucción.
+
+Con prod, PostgreSQL/Flyway/validate, S3/SMTP locales TLS de prueba y push apagado:
+arranque separado en DB propia original y DB restaurada conservada, sin sobrescribir
+ninguna. La restaurada procede del dump probado en la entrega anterior; esta vez
+se comprueba su arranque/lectura, no se atribuye otra ejecución de backup/restore.
+En ambas bases, Nginx/TLS y login reales confirmaron:
+
+| Comprobación | Resultado en ambas DB |
+|---|---|
+| Detalle por ID y alias privado | 200, IDs originales y 3 documentos correctos |
+| Titular / funcionario de la entidad | 200, Cache-Control no-store |
+| Ciudadano / funcionario de otra entidad | 403 |
+| Anónimo / recurso inexistente | 401 / 404 |
+| Alta sintética sin adjuntos y lectura de su detalle | 200, ambas listas documentales vacías |
+| Recepción previa recuperada | Misma recepción, sin recrearla |
+| Descarga de los 3 documentos previos | Bytes/SHA-256 del manifiesto original coinciden |
+| Consulta pública sin Bearer | Sin asunto, descripción ni documentos privados |
+| Esquema e historial | Arranque validate, 11 migraciones originales |
+
+No navegador ni cambios de pantallas, migraciones, Kotlin o snapshots API. No
+modificación de roles, estados, recepción ni autorización documental. Pruebas
+externas, cierres 137, dimensionamiento Azure y presupuesto continúan separados.
+Los datos/evidencias/secretos permanecen privados; procedimiento local de arranque
+identifica la nueva imagen y el override, sin contaminar configuración publicada.
+
+Finalización comprobada: seis servicios del proyecto propio y PostgreSQL de test
+separado detenidos; puertos de prueba cerrados, tres volúmenes principales y datos
+de test conservados. Sin OOM ni reinicios automáticos. Frontend/S3 volvieron a salir
+137 al detenerlos; no se investigó ni corrigió ese pendiente en esta entrega.
+
+---
+
 ## Stack Docker local — 2026-10-30, base143216e
 
 **Arranque y escenarios locales comprobados; no listo para producción.**
