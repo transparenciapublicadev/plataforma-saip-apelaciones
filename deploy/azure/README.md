@@ -5,6 +5,10 @@ NginxTLS → Angular SSRNode24 → Spring Boot4/Java25 → PostgreSQL18 y S3 pri
 externo desde backend. [Comparación económica](COSTS.md). La opción Container Apps
 es una alternativa evaluada, no un segundo despliegue ya implementado.
 
+**Decisión económica pendiente:** los dos discos e IPv4 retenida suman101.40USD/año
+incluso desasignada. Esta configuración no cumple un año con100USD; las alternativas
+de [COSTS.md](COSTS.md) requieren validación y no cambian el stack automáticamente.
+
 **Pendiente de ejecutar el stack final:** el daemon Docker local dejó de responder
 durante los builds. Las pruebas nativas no sustituyen esa verificación; ver
 [resultados y bloqueos](VALIDATION.md) antes de autorizar un despliegue.
