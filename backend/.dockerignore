@@ -1,0 +1,14 @@
+# Allowlist: production build context only. No seed, tests, local files or agents.
+**
+!Dockerfile
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.properties
+!mvnw
+!pom.xml
+!src/
+!src/main/
+!src/main/**
+src/main/resources/db/seed/**
+src/main/resources/application-ci.properties
+src/main/resources/application-staging.properties
