@@ -1,5 +1,160 @@
 # Preparación Azure: evidencia y límites
 
+## Stack Docker local — 2026-10-30, base143216e
+
+**Arranque y escenarios locales comprobados; no listo para producción.**
+La aceptación económica no cambió. No recursos Azure/DNS ni proveedores/buckets
+externos utilizados. El bucket S3 de esta prueba es local, privado y sintético.
+
+Rama `daniel/feat-public-portal-and-registro-alignment`, HEAD inicial
+`143216e3a59699f0a8079a30b8d3b295c7186c81`, árbol/índice inicialmente limpios.
+Se preservó el candidato publicado. Serena apareció en catálogo, pero su llamada
+inicial no devolvió instrucciones; se usó lectura directa. Sin grafo MCP disponible.
+No se repitió el diagnóstico histórico del motor, ni se hicieron cambios globales.
+
+### Imágenes y contenido final
+
+Un único gate confirmó Client/Server29.9.2, contexto localdesktop-linux,
+Linux/amd64,4CPU y8278065152bytes RAM. Inventario inicial:0contenedores,
+0proyectosCompose,2imágenes. No se modificaron imágenes previas ni servicios ajenos.
+Builds secuenciales: backend239.05s, frontend437.93s y luego proxy. El proxy se
+reconstruyó después del defecto Host demostrado, sin reconstruir backend/frontend.
+Los IDs siguientes son locales; `RepoDigests=[]` para imágenes construidas:
+no se publicaron imágenes en un registry ni se atribuye un digest de registry.
+
+| Imagen final linux/amd64 | ID | Tamaño bytes (no espacio exclusivo) |
+|---|---|---:|
+| backend | `sha256:bf49e4d1d819b405429946a450d316710fb11411901e78065eb5f24a166c3fb7` | 454339255 |
+| frontend | `sha256:2922a5a989de9f62a8db31003c58fe5f520f66f766672af793f1ab001c1bc3c3` | 414462863 |
+| proxy | `sha256:a08c65a90308ab04e390f753a10d48729e01a4e21779f23e7571316c8a9856cc` | 62099370 |
+
+Se conservaron los tags preparados: Temurin25 resolvió25.0.5; Node24.22.1,
+Angular22.1.5/SSR22.1.7 y pnpm12.3.4 congelado real en builder. PostgreSQL18.4
+permanece fijado; Nginx1.28.3 observado. El JAR final contiene V1,V3–V12 originales byte a byte, sin seed,
+perfilesCI/staging ni fallbackJWT. Se inspeccionaron propiedades, manifiesto y149
+archivos del outputfrontend: sin secretos de las fixtures, rutas privadas del host,
+gobernanza personal, Serena o design-reference. Allowlist de contextos conservada.
+No equivale a una auditoría de vulnerabilidades de todas las dependencias/base OS.
+
+Usuarios observados: JavaUID10001, NodeUID1000, PostgreSQLUID999. Nginx conserva
+masterUID0 y workersnginx; no afirmar que todo el conjunto es no root. Java pudo
+leer los cinco secretos montados y no recibió DB_ADMIN_PASSWORD. Backend/frontend/
+proxy con raíz de solo lectura. Ningún secreto sintético/JWT apareció en los logs
+inspeccionados. Secretos, CA/truststore, cuentas, dumps y resultados detallados
+permanecen fuera del repositorio y de los contextos Docker.
+
+### Perfil prod y proveedores de prueba
+
+Orden: proveedores locales aislados, PostgreSQL → backend → SSR → Nginx.
+`prod`, Flyway original y `ddl-auto=validate`, rol app sin SUPERUSER/CREATEDB/
+CREATEROLE, pool5 y límites preparados; no LOCAL/MOCK, seeds ni controles relajados.
+Al terminar Flyway había11migraciones correctas y0cuentas/0entidades, antes de las
+fixtures operadas. Las cuentas únicas se registraron porHTTP; los funcionarios y
+el catálogo se prepararon como datos sintéticos aislados, nunca cuentas reales.
+
+S3 local: SeaweedFS4.51 con credenciales propias y TLS; acceso anónimo403.
+SMTP: Mailpit1.32.0 con STARTTLS requerido y autenticación; un comando institucional
+real de Spring produjo1mensaje capturado. No relay ni destinatarios reales.
+CA de prueba confiada explícitamente por el cliente y por un truststore privado
+solo del backend; confianza por defecto rechazó el certificado. No `--insecure`,
+`NODE_TLS_REJECT_UNAUTHORIZED=0`, importación global o bucket público.
+Esto valida transportes/adaptadores locales, **no Supabase ni entrega externa SMTP**.
+La configuración de prueba/CA no se incorpora al Compose de producción ni imágenes.
+
+### Escenarios reales (HTTP, seguridad, JPA y almacenamiento)
+
+| Escenario | Resultado final y alcance |
+|---|---|
+| `nginx -t`, health y HTTPS | Correctos; configuración comprobada es la generada y usada por el master |
+| Home/documentación/login/acceso interno/deep link ciudadano |200HTML con no-store; Node/SSR real y modos Prerender/Client existentes. No navegador ni guard evaluado porDOM |
+| API bajo mismo origen | Ayuda200, acceso sinBearer401, Swagger404. TLS válido con confianza explícita |
+| Host ajeno |421 en HTML yAPI tras corrección; origen legítimo200 |
+| Login y autorización | JWT real; metadatos/descarga del titular y funcionario de su entidad200; ciudadano/entidad ajenos403. No usar esto para dar por aprobado el detalle genérico fallido |
+| JWT manipulado / logout individual |401; logout204 y otra sesión del mismo usuario permanece válida |
+| Recepción coordinada con3archivos |1solicitud/1recepción/3documentos, IDs y asociaciones explícitas; bytes ySHA256 descargados coinciden |
+| Recuperación/repetición/conflicto | GET y POST compatible mantienen IDs; contenido incompatible409;3repeticiones concurrentes conservan1:3:1. No es una nueva prueba de carrera de alta inicial ni de corteHTTP poscommit |
+| Límites multipart | Archivo>10MiB y petición>11MiB rechazados413, sin escrituras nuevas |
+| Denegación real de escritura S3 |500 y recepción404, sin nuevos registros ni objetos. Se restauró el permiso del proveedor de prueba; no se modificó autorización de la aplicación |
+| Backup binario separado |3objetos copiados/verificados;1retirado intencionalmente produjo404 sin sustituto, restaurado bajo la misma key eID con bytes/hash correctos. No reparación duradera automática |
+| Parada deliberada backend |Quedóexited conRestartCount0;API502 y datos intactos. No reenvíos del proxy ni escrituras duplicadas observadas; no cliente Angular/browser activo probado |
+| `stack.py backup` y `restore` |Dumpcustom/SHA256, DB nueva propia;11versiones/checksums idénticos; backend arrancó convalidate sobre la restaurada y recuperó misma recepción/3descargas. S3 estaba disponible por separado |
+| Parada/arranque PostgreSQL |Volumen conservado, mismo1:3:1 y recepción recuperable. No reinicio global del daemon ni simulación de pérdida de VM |
+| **Detalle privado SAIP** |**FALLIDO:500**, reproducido también después de restaurar. No ocultado ni corregido fuera de alcance |
+
+Se conservaron evidencias negativas de la preparación: la restricción adicional
+`internal:true` del harness impedía entrada loopback aunque los listeners internos
+estuvieran listos; al volver a la redapplication del Compose preparado funcionó.
+Solo se recreó el proyecto propio, sin borrar volúmenes. No defecto del Composebase.
+Una fixture SQL omitió `estado=Activa`; el servidor la rechazó409 sin efectos.
+Se corrigió únicamente esa fixture según `Entidad.onCreate`. Tras reiniciar S3,
+una lectura demasiado temprana fallóTLS; se esperó su disponibilidad conGET seguros,
+sin repetir escrituras ni desactivar validación. No se cuentan como éxitos originales.
+
+### Defecto demostrado y corrección de despliegue
+
+Antes de corregir, `Host: untrusted.test` devolvía400 enHTML pero200 enAPI: la
+allowlist de Angular no protegía las rutas proxy/backend. Nginx ahora genera una
+allowlist exacta desde PUBLIC_ORIGIN al arrancar, sin usar cabeceras del visitante
+como configuración. Rechaza entradas inseguras y Host ajeno con421 en todo el
+listenerTLS; health8081 permanece interno. No se cambiaron contratos de operaciones
+válidas, autenticación ni upstreams. La plantilla y el entrypoint de la imagen final
+se compararon byte a byte con las fuentes revisadas; LF garantizado por atributos.
+
+Ejecución final única, con el opt-in de imagen construido:
+
+```sh
+RUN_PROXY_IMAGE_TESTS=true PROXY_TEST_IMAGE=yaiku-local-proxy:RELEASE \
+  python -B -m unittest discover -s deploy/azure -p 'test_*.py' -v -f
+```
+
+**23/23**,0fallos/omitidos,85.868s:4pruebas Docker reales del entrypoint (con
+subcasos de origen/puerto/inyección/raíz read-only) y19locales de cálculo/operación
+con mocksCLI y archivos temporales. Sin opt-in, las4deimagen se omiten y deben
+reportarse como tales. Las comprobaciones HTTP anteriores son casos de scripts
+privados, con reejecuciones explícitas; no se suman como una suite general nueva.
+No suites Angular/backend nativas repetidas: su código/contratos no cambiaron.
+
+### Bloqueo de aplicación que conserva el control prod
+
+`GET /api/solicitudes/{id}` del titular devuelve500:
+`LazyInitializationException: Solicitud.documentos (no session)` en
+[SolicitudDTO.from](../../backend/src/main/java/pe/gob/saip/backend/model/dto/SolicitudDTO.java),
+llamado desde
+[obtenerPorId](../../backend/src/main/java/pe/gob/saip/backend/controller/SolicitudRestController.java).
+El perfilprod publicado ya contiene `open-in-view=false`; esos archivos Java y
+propiedades no cambiaron en esta entrega. El DTO se construye fuera de la sesión
+que necesita la colección. No es un fallo de proxy, TLS o esquema validate.
+Se requiere una corrección transaccional/proyección acotada con sus pruebas de
+seguridad y persistencia en una entrega de backend. No se habilitó OSIV, se cambió
+el DTO, se fabricó expediente ni se degradó la validación para conseguir200.
+
+### Recursos observados y finalización
+
+Docker Desktop4CPU/8278065152bytes. 143muestras de servicios propios durante
+arranque y operaciones: máximo concurrente observado de623.7MiB para los4
+principales y701.3MiB conS3/SMTP. Pico de sumaCPU340.55% (aprox.3.41núcleos).
+Son muestras de `docker stats`, no suma de máximos individuales ni carga sostenida.
+`memory.peak` actual y OOM/restarts se guardaron por contenedor; no OOM ni reinicios
+automáticos observados. Dataset mínimo:4cuentas,1solicitud,3documentos.
+
+DBorigen10778303bytes, restaurada10819263bytes; cluster PostgreSQL76MiB
+y almacenamiento S3 alrededor de340KiB en ese instante. No tamaño previsto de
+producción ni dimensionamiento deWAL/backups/crecimiento. Las tallas de imágenes
+no son espacio exclusivo por compartir capas. No se redujeron límites/discos.
+**No acredita una VM Azure2vCPU/4GiB**, su OS/daemon, CPU burst, arranque bajo carga,
+fallos de disco, RPO/RTO ni recuperación ante crash. La aceptación económica sigue
+pendiente conforme aCOSTS; no se eligió otroSKU por estas mediciones.
+
+Al terminar: seis servicios propios detenidos, puertos loopback cerrados,
+tres volúmenes propios y ambas DB conservados. Imágenes/CA/dump/binarios/fixtures
+privados retenidos para reproducción; no down-v, prune ni servicios ajenos tocados.
+Sin navegador, Azure, Android ni despliegue. Pendientes antes de aprobar producción:
+resolver el500 del detalle, Supabase/SMTP externos autorizados, TLS/dominio real,
+backup externo/recuperación operada, dimensionamiento y presupuesto aceptados.
+
+---
+
+
 ## Revisión 2026-10-30 sobre el candidato60cb405
 
 Rama `daniel/feat-public-portal-and-registro-alignment`,

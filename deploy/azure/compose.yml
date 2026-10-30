@@ -99,6 +99,8 @@ services:
     platform: linux/amd64
     image: ${PROXY_IMAGE:-yaiku-proxy:prepared}
     build: { context: ./nginx }
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?HTTPS origin required for proxy host validation}
     # Loopback until a reviewed deployment explicitly selects a public bind.
     ports: ['${WEB_BIND_ADDRESS:-127.0.0.1}:${HTTPS_PORT:-9443}:8443']
     networks: [application]
