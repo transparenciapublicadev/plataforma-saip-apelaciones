@@ -1,0 +1,2 @@
+# Linux PostgreSQL entrypoint, including checkouts made with core.autocrlf=true.
+postgres/*.sh text eol=lf
