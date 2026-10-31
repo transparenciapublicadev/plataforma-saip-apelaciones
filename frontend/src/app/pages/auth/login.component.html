@@ -6,17 +6,9 @@
 
     <div class="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
       <div>
-        <a routerLink="/" class="flex items-center gap-3">
-          <div
-            class="w-11 h-11 rounded-lg flex items-center justify-center"
-            style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18)"
-          >
-            <svg lucideScale class="w-5 h-5 text-white"></svg>
-          </div>
-          <div>
-            <div class="font-display text-white" style="font-size: 18px; letter-spacing: -0.01em">SAIP</div>
-            <div class="text-[10px] tracking-[0.22em] uppercase opacity-65">TTAIP · República del Perú</div>
-          </div>
+        <a routerLink="/" class="inline-flex flex-col items-start">
+          <app-yaiku-logo [height]="40" tone="dark" gradientId="login-yaiku-seal" />
+          <div class="font-display italic text-white/90 text-sm mt-1">Pide, sigue y apela. Todo en un solo lugar.</div>
         </a>
       </div>
 
@@ -44,7 +36,7 @@
         <div class="opacity-40">·</div>
         <div>Datos encriptados</div>
         <div class="opacity-40">·</div>
-        <div>WCAG 2.1 AA</div>
+        <div>WCAG 2.2 AA</div>
       </div>
     </div>
   </div>
@@ -89,65 +81,67 @@
         </div>
       }
 
-      <!-- Acceso rápido demo (Credenciales de prueba) -->
-      <div class="rounded-lg px-3.5 py-3 mb-5" style="background: var(--muted); border: 1px solid var(--border)">
-        <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
-          Acceso rápido demo
-        </div>
-        <div class="flex flex-wrap gap-2">
-          @if (isCitizenPortal()) {
-            <button
-              type="button"
-              (click)="fillDemo('70000001', 'Saip2026*')"
-              class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-              style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-            >
-              Ciudadano (DNI 70000001)
-            </button>
-            <button
-              type="button"
-              (click)="fillDemo('ciudadano01@gmail.com', 'Saip2026*')"
-              class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-              style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-            >
-              Ciudadano (Correo)
-            </button>
-          } @else {
-            @switch (requiredRole()) {
-              @case ('FUNCIONARIO') {
-                <button
-                  type="button"
-                  (click)="fillDemo('func.minedu@minedu.gob.pe', 'Saip2026*')"
-                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                >
-                  Funcionario MINEDU
-                </button>
-              }
-              @case ('TTAIP') {
-                <button
-                  type="button"
-                  (click)="fillDemo('tvalverde@minjus.gob.pe', 'Saip2026*')"
-                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                >
-                  Vocal TTAIP
-                </button>
-              }
-              @case ('ADMINISTRADOR') {
-                <button
-                  type="button"
-                  (click)="fillDemo('admin@saip.gob.pe', 'Saip2026*')"
-                  class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                  style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                >
-                  Administrador
-                </button>
+      <!-- Acceso rápido demo: solo visible con ?acceso-rapido en la URL -->
+      @if (showQuickAccess()) {
+        <div class="rounded-lg px-3.5 py-3 mb-5" style="background: var(--muted); border: 1px solid var(--border)">
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
+            Acceso rápido demo
+          </div>
+          <div class="flex flex-wrap gap-2">
+            @if (isCitizenPortal()) {
+              <button
+                type="button"
+                (click)="fillDemo('70000001', 'Saip2026*')"
+                class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+              >
+                Ciudadano (DNI 70000001)
+              </button>
+              <button
+                type="button"
+                (click)="fillDemo('ciudadano01@gmail.com', 'Saip2026*')"
+                class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+              >
+                Ciudadano (Correo)
+              </button>
+            } @else {
+              @switch (requiredRole()) {
+                @case ('FUNCIONARIO') {
+                  <button
+                    type="button"
+                    (click)="fillDemo('func.minedu@minedu.gob.pe', 'Saip2026*')"
+                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                  >
+                    Funcionario MINEDU
+                  </button>
+                }
+                @case ('TTAIP') {
+                  <button
+                    type="button"
+                    (click)="fillDemo('tvalverde@minjus.gob.pe', 'Saip2026*')"
+                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                  >
+                    Vocal TTAIP
+                  </button>
+                }
+                @case ('ADMINISTRADOR') {
+                  <button
+                    type="button"
+                    (click)="fillDemo('admin@saip.gob.pe', 'Saip2026*')"
+                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
+                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
+                  >
+                    Administrador
+                  </button>
+                }
               }
             }
-          }
+          </div>
         </div>
-      </div>
+      }
 
       <!-- Form -->
       <form (ngSubmit)="login()" class="space-y-5">

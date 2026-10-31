@@ -684,24 +684,17 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     this.enfocarSolicitud(solicitudId);
   }
 
-  esSolicitudAtendida(solicitud: Solicitud | null): boolean {
-    if (!solicitud || solicitud.apelacion) return false;
+  puedePresentarApelacion(solicitud: Solicitud | null): boolean {
+    if (!solicitud) return false;
+    if (this.tieneApelacionActiva(solicitud) || this.esApelacionResuelta(solicitud) || !!solicitud.apelacion?.expediente || !!solicitud.apelacion?.id) {
+      return false;
+    }
     const estado = (solicitud.estado || '').toUpperCase();
-    const estadosAtendidas = new Set([
-      'RESPONDIDA',
-      'CON_RESPUESTA',
-      'ENTREGADA',
-      'DENEGADA',
-      'ENTREGA_PARCIAL',
-      'ENTREGA_TOTAL',
-      'PUEDE_APELAR',
-      'OBSERVADA',
-      'VENCIDA',
-      'ATENDIDA',
-      'FINALIZADA',
-      'RESUELTA'
-    ]);
-    return estadosAtendidas.has(estado);
+    return estado === 'DENEGADA' || estado === 'VENCIDA';
+  }
+
+  esSolicitudAtendida(solicitud: Solicitud | null): boolean {
+    return this.puedePresentarApelacion(solicitud);
   }
 
   apelarSolicitud(solicitud: Solicitud): void {
