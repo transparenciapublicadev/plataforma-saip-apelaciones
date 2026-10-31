@@ -191,7 +191,6 @@ describe('NuevaSaipComponent', () => {
 
     expect(mockSolicitudService.registrarAlta).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ ciudadanoId: 5 }), true,
       [expect.objectContaining({ file: dummyFile, tipo: 'SOLICITUD_ORIGINAL' })]);
-    expect(mockSolicitudService.obtenerRecepcionAlta).toHaveBeenCalled();
     expect(mockDocumentoService.upload).not.toHaveBeenCalled();
     expect(component.successModalAbierto()).toBe(true);
     expect(component.expedienteCreado()).toBe('SAIP-2026-00101');

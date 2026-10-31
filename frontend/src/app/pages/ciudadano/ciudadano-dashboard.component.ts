@@ -345,12 +345,12 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       proceso: activos.filter(s => {
         const st = (s.estado || '').toUpperCase();
         return (st === 'RECEPCIONADA' || st === 'EN_PROCESO' || st === 'EN_REVISION' || st === 'PENDIENTE_INFORMACION' || st === 'ENCAUZADA')
-          && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
+          && !this.tieneApelacionActiva(s) && !this.requiereAccion(s) && !this.esSilencioAdministrativo(s);
       }),
       respondidas: historicos1,
       apelar: activos.filter(s => {
         const st = (s.estado || '').toUpperCase();
-        return (st === 'DENEGADA' || st === 'VENCIDA') && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
+        return (st === 'DENEGADA' || st === 'VENCIDA' || this.esSilencioAdministrativo(s)) && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
       }),
       tribunal: activos.filter(s => this.tieneApelacionActiva(s) && !this.requiereSubsanacionTTAIP(s)),
       resueltas: historicos2,
@@ -690,7 +690,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return false;
     }
     const estado = (solicitud.estado || '').toUpperCase();
-    return estado === 'DENEGADA' || estado === 'VENCIDA';
+    return estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud);
   }
 
   esSolicitudAtendida(solicitud: Solicitud | null): boolean {
@@ -794,7 +794,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
     }
     const estado = (s.estado || '').toUpperCase();
-    if (estado === 'EN_PRECISION') {
+    if (estado === 'EN_PRECISION' || (estado === 'PENDIENTE_INFORMACION' && s.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION'))) {
       return { label: 'Debe precisar su solicitud', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'alertTriangle' };
     }
     if (estado === 'POR_RECOGER') {
@@ -809,7 +809,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     if (estado === 'DENEGADA') {
       return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
     }
-    if (estado === 'VENCIDA') {
+    if (estado === 'VENCIDA' || this.esSilencioAdministrativo(s)) {
       return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
     }
     return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
@@ -824,10 +824,23 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         : { value: Math.max(0, dias), unit: 'días háb. para subsanar', tone: 'var(--brand-700)' };
     }
     if (this.tieneApelacionActiva(s)) return { value: 'En trámite', unit: 'consulte la actuación registrada', tone: 'var(--info)' };
-    if (estado === 'DENEGADA' || estado === 'VENCIDA') return { value: 'No disponible', unit: 'plazo de apelación no informado', tone: 'var(--muted-foreground)' };
+    if (estado === 'PENDIENTE_INFORMACION') {
+      return { value: 2, unit: 'días háb. para precisar', tone: 'var(--brand-700)' };
+    }
+    if (estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(s)) {
+      return { value: 'No disponible', unit: 'días para apelar', tone: 'var(--gold-dark)' };
+    }
     if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(s);
-      return { value: dias ?? 'No disponible', unit: 'saldo de plazo informado', tone: 'var(--info)' };
+      if (dias === null) {
+        return { value: 'No disponible', unit: 'días háb. para que la entidad responda', tone: 'var(--info)' };
+      }
+      const val = Math.max(0, dias);
+      return {
+        value: val,
+        unit: val === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda',
+        tone: val <= 2 ? 'var(--brand-700)' : 'var(--info)'
+      };
     }
     return null;
   }
@@ -933,14 +946,14 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   private calcularEstadisticas(solicitudes: Solicitud[]): void {
     this.totalSolicitudes.set(solicitudes.length);
-    this.enProceso.set(solicitudes.filter((solicitud) => this.estadosEnProceso.has((solicitud.estado || '').toUpperCase())).length);
+    this.enProceso.set(solicitudes.filter((solicitud) => this.estadosEnProceso.has((solicitud.estado || '').toUpperCase()) && !this.esSilencioAdministrativo(solicitud)).length);
     this.respondidas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'RESPONDIDA').length);
     this.denegadas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'DENEGADA').length);
-    this.vencidas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'VENCIDA').length);
+    this.vencidas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)).length);
 
     this.tieneApelables.set(solicitudes.some((solicitud) => {
       const estado = (solicitud.estado || '').toUpperCase();
-      return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA';
+      return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud);
     }));
   }
 
@@ -1020,15 +1033,15 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         ctaLabel: 'Revisar precisión', route: ['/ciudadano/precision', expediente], icon: 'alert',
         toneColor: 'var(--brand-700)', toneBg: 'var(--brand-subtle)', toneSoft: 'var(--brand-200)', expediente, entidad };
     }
-    if (estado === 'DENEGADA' || estado === 'VENCIDA') {
+    if (estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
       return {
         eyebrow: 'Consulta de apelación',
         titulo: 'Revise las opciones de apelación',
-        detalle: estado === 'VENCIDA'
-          ? 'La entidad no respondio dentro del plazo legal. Puede presentar apelacion por silencio administrativo negativo.'
-          : 'La entidad denego su solicitud. Puede presentar apelacion dentro del plazo legal aplicable.',
+        detalle: (estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud))
+          ? 'La entidad no respondió dentro del plazo legal. Puede presentar apelación por silencio administrativo negativo.'
+          : 'La entidad denegó su solicitud. Puede presentar apelación dentro del plazo legal aplicable.',
         metricValue: 'No disponible',
-        metricUnit: 'plazo de apelación no informado',
+        metricUnit: 'días para apelar',
         ctaLabel: 'Apelar al Tribunal',
         route: ['/ciudadano/nueva-apelacion'],
         queryParams: { solicitudId: solicitud.id },
@@ -1061,12 +1074,13 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
     if (!this.estadosEnProceso.has(estado)) return null;
     const diasEntidad = this.diasRestantesParaEntidad(solicitud);
+    const diasVal = diasEntidad === null ? 'No disponible' : String(Math.max(0, diasEntidad));
     return {
       eyebrow: 'Seguimiento de solicitud',
       titulo: 'Consulte su solicitud en la entidad',
       detalle: `Consulte el estado y las actuaciones registradas por ${entidad}.`,
-      metricValue: diasEntidad === null ? 'No disponible' : String(diasEntidad),
-      metricUnit: 'días informados por el servidor',
+      metricValue: diasVal,
+      metricUnit: diasVal === '1' ? 'día hábil para responder' : 'días hábiles para responder',
       ctaLabel: 'Ver mi solicitud',
       route: ['/ciudadano/solicitud', expediente],
       icon: 'clock',
@@ -1092,13 +1106,18 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const estado = (solicitud.estado || '').toUpperCase();
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
-    if (this.estadosEnProceso.has(estado)) {
+    if (estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+      steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
+      steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
+      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+    } else if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(solicitud);
       const vencimiento = this.formatDate(solicitud.fechaLimite);
+      const diasLabel = dias === null ? 'Plazo en evaluación' : `${Math.max(0, dias)} días hábiles`;
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
-        meta: `${dias === null ? 'Saldo de plazo no disponible' : dias + 'd informados'}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`,
+        meta: `${diasLabel}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`,
         status: 'active'
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
@@ -1114,10 +1133,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     } else if (estado === 'DENEGADA') {
       steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', status: 'done' });
       steps.push({ key: 'respuesta', label: 'Denegada por la entidad', date: this.formatDate(solicitud.respuesta?.fechaRespuesta), status: 'done' });
-      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
-    } else if (estado === 'VENCIDA') {
-      steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
-      steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
       steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
     }
 

@@ -29,53 +29,6 @@
           </div>
         }
         @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el resultado de la operación en el servidor…</p> }
-        @if (operacionPendiente() && !solicitudCreada() && !loading()) {
-          <section role="status" class="form-shell p-5 space-y-3">
-            <h2 class="form-section-title">Recepción pendiente de confirmación</h2>
-            <p class="text-sm">Consulte esta operación antes de intentar presentarla de nuevo. No se envía otro POST automáticamente.</p>
-            <p class="text-xs font-mono break-all">Clave de operación: {{ claveOperacion() }}</p>
-            <p class="text-xs text-muted-foreground">Pedido, clave y archivos permanecen solo en memoria. Antes de salir o recargar, compruebe el resultado y conserve la clave si necesita consultar la recepción. Tras recargar debe volver a introducir el pedido y seleccionar los archivos; una clave nueva identifica otra operación. El panel no atribuye registros por coincidencia de texto.</p>
-            <button type="button" class="btn-ghost-brand" (click)="comprobarRegistro()">Consultar recepción sin reenviar</button>
-            @if (estadoEnvio() === 'sin-recepcion') { <button type="button" class="btn-brand" (click)="reintentarAlta()">Reintentar la misma operación y archivos</button> }
-            @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
-            <a class="btn-ghost-brand" routerLink="/ciudadano">Revisar mis solicitudes</a>
-          </section>
-        }
-        @if (solicitudCreada(); as r) {
-          <section id="saip-resultado" tabindex="-1" class="form-shell" aria-label="Resultado del registro">
-            <div class="form-section-header">
-<span class="eyebrow">Evidencia del servidor</span>
-<h2 class="form-section-title">Solicitud registrada · {{ r.expediente }}</h2>
-</div>
-            <div class="p-6 space-y-4">
-              <p role="status" class="text-sm">Solicitud {{ r.id }} · Estado registrado: {{ r.estado || 'No disponible' }}</p>
-              <p class="text-sm font-mono">Recepción {{ recepcionId() }} · {{ claveOperacion() }}</p>
-              <p class="text-sm">Fecha registrada: {{ r.fechaPresentacion || 'No disponible' }} · Fecha límite del servidor: {{ r.fechaLimite || 'No disponible' }}</p>
-              @for (item of archivosEnviados(); track item) {
-                <div class="saip-file-row rounded-md p-3 text-sm" style="background:var(--card);border:1px solid var(--border)">
-                  <span class="font-medium">{{ item.file.name }}</span>
-                  @switch (item.estado) {
-                    @case ('registrado') { <span>Vinculación confirmada · documento {{ item.documento?.id }}</span> }
-                    @case ('subiendo') { <span>Subida en curso, sin confirmación todavía</span> }
-                    @case ('rechazado') { <span>Subida rechazada por el servidor</span> }
-                    @case ('incierto') { <span>Subida con resultado incierto; no se repetirá automáticamente</span> }
-                    @default { <span>Seleccionado en memoria; subida no iniciada</span> }
-                  }
-                </div>
-              } @empty { <p class="text-sm text-muted-foreground">Esta creación se presentó sin adjuntos.</p> }
-              <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar solicitud y documentos</button>
-              @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
-              @if (documentosConsultados(); as docs) {
-                <div role="status" class="text-sm">
-                  <p>Documentos vinculados recuperados del servidor: {{ docs.length }}. Esta consulta no atribuye un archivo incierto a un envío por su nombre.</p>
-                  @for (doc of docs; track doc.id) { <p>Documento {{ doc.id }} · {{ doc.nombreOriginal || 'Nombre no registrado' }}</p> }
-                </div>
-              }
-              <p class="text-xs text-muted-foreground">El registro no acredita entrega, notificación eficaz, firma ni emisión formal. No se vuelven a crear la solicitud ni sus adjuntos desde este resultado.</p>
-              <button type="button" class="btn-brand" (click)="verSolicitudCreada()">Ver solicitud registrada</button>
-            </div>
-          </section>
-        }
         <nav aria-label="Pasos de la solicitud">
           <ol class="flex items-start gap-2">
             @for (paso of pasos; track paso.short; let i = $index) {
@@ -383,17 +336,17 @@
 <svg aria-hidden="true" lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5">
 </svg>
 <div>
-<div class="eyebrow !text-[10px] mb-1.5">Plazos y actuaciones</div>
-<p class="text-sm">Consulte las fechas y condiciones registradas por el servidor. El formulario no calcula vencimientos, presume notificación eficaz ni fija ampliaciones.</p>
+<div class="eyebrow !text-[10px] mb-1.5">Plazos legales</div>
+<p class="text-sm text-foreground/85 leading-snug">La entidad tiene 10 días hábiles para responder. Si no responde en ese plazo, aplica el Silencio Administrativo Negativo y podrá apelar ante el Tribunal.</p>
 </div>
 </div>
       </div>
 </aside>
     </div>
   </div>
-  <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su solicitud" titleLead="Confirme" titleEmphasis="su solicitud" eyebrow="Revisión final · SAIP" description="Antes de enviar, revise la información y los archivos seleccionados." [summary]="solicitudConfirmSummary()" [warning]="solicitudWarning()" confirmLabel="Confirmar y enviar" cancelLabel="Volver a revisar" (close)="confirmModalAbierto.set(false)" (confirm)="crearSolicitud()">
+  <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su solicitud" titleLead="Confirme" titleEmphasis="su solicitud" eyebrow="Revisión final · SAIP" description="Antes de enviar, revise que la información esté correcta. Si algo no le convence, puede volver al formulario para editarlo." [summary]="solicitudConfirmSummary()" [warning]="solicitudWarning()" confirmLabel="Confirmar y enviar" cancelLabel="Volver a revisar" (close)="confirmModalAbierto.set(false)" (confirm)="crearSolicitud()">
 </app-reference-confirm-modal>
-  <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Registro confirmado" title="Su SAIP fue registrada" description="El servidor identificó la solicitud y confirmó la vinculación de los archivos enviados, si los seleccionó." [expediente]="expedienteCreado()" expedienteHint="Identificador devuelto por el servidor" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver solicitud" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
+  <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Solicitud presentada" title="Tu SAIP fue registrada" [description]="solicitudSuccessDescription()" [expediente]="expedienteCreado()" [expedienteHint]="solicitudSuccessHint()" [plazoDias]="10" plazoTipo="hábiles" plazoDescripcion="La entidad debe responder dentro de este plazo. Puede ampliarse 5 días con justificación." plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
 </app-reference-success-modal>
   <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solo en memoria" title="Borrador en esta pantalla" description="El contenido permanece en memoria al avanzar y retroceder. No se ha guardado en el servidor ni en el almacenamiento del navegador. Se pierde al salir, recargar o cambiar de sesión." confirmLabel="Continuar editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
   <app-reference-confirm-modal [open]="!!modeloPendiente()" [manageFocus]="true" presentation="saip-response" title="Reemplazar descripción" description="El modelo sustituirá el texto que ya escribió. Revíselo y adapte sus ejemplos antes de presentar." confirmLabel="Usar modelo" (close)="modeloPendiente.set(null)" (confirm)="confirmarModelo()">

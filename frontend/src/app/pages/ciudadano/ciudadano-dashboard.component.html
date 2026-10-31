@@ -404,11 +404,11 @@
                   <svg lucideClock class="w-5 h-5 shrink-0" [style.color]="plazo.tone"></svg>
                   <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
-                      <span class="text-sm font-medium">Plazo informado por el servidor</span>
-                      <span class="font-mono text-xs" [style.color]="plazo.tone">{{ plazo.restantes === null ? 'No disponible' : plazo.restantes + ' días informados' }}</span>
+                      <span class="text-sm font-medium">Plazo de respuesta</span>
+                      <span class="font-mono text-xs" [style.color]="plazo.tone">{{ plazo.restantes === null ? 'No disponible' : (plazo.restantes <= 0 ? 'Plazo vencido' : plazo.restantes + (plazo.restantes === 1 ? ' día hábil restante' : ' días hábiles restantes')) }}</span>
                     </div>
                     @if (plazo.fechaLimite) {
-                      <div class="text-[11px] text-[var(--muted-foreground)] mt-1">Fecha límite registrada: {{ plazo.fechaLimite }}</div>
+                      <div class="text-[11px] text-[var(--muted-foreground)] mt-1">Fecha límite: {{ plazo.fechaLimite }}</div>
                     }
                   </div>
                 </div>

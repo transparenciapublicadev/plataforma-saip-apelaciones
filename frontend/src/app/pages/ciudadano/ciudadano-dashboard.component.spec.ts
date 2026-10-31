@@ -294,6 +294,9 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     const inProcess = { ...request(97, 'EN_REVISION'), apelacion: null } as unknown as Solicitud;
     expect(component.puedePresentarApelacion(inProcess)).toBe(false);
 
+    const sanRequest = { ...request(96, 'EN_REVISION'), diasRestantes: -60, apelacion: null } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(sanRequest)).toBe(true);
+
     const responded = { ...request(98, 'RESPONDIDA'), apelacion: null } as unknown as Solicitud;
     expect(component.puedePresentarApelacion(responded)).toBe(false);
 
@@ -301,6 +304,56 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(component.puedePresentarApelacion(alreadyAppealed)).toBe(false);
 
     expect(component.puedePresentarApelacion(null)).toBe(false);
+  });
+
+  it('aplica silencio administrativo negativo y no muestra saldo defensivo cuando el plazo legal ha vencido', () => {
+    const sanRequest = {
+      ...request(100, 'EN_REVISION'),
+      diasRestantes: -60,
+      fechaLimite: '2026-08-01',
+      apelacion: null
+    } as unknown as Solicitud;
+
+    expect(component.esSilencioAdministrativo(sanRequest)).toBe(true);
+    expect(component.puedePresentarApelacion(sanRequest)).toBe(true);
+
+    const urgencia = component.filaUrgencia(sanRequest);
+    expect(urgencia?.unit).toBe('días para apelar');
+    expect(urgencia?.unit).not.toContain('saldo');
+    expect(String(urgencia?.value)).not.toContain('-60');
+
+    component.todasSolicitudes.set([sanRequest]);
+    component.selectedSolicitudId.set(100);
+    const accion = component.accionPrincipal();
+    expect(accion?.ctaLabel).toBe('Apelar al Tribunal');
+    expect(accion?.detalle).toContain('silencio administrativo negativo');
+    expect(accion?.metricUnit).toBe('días para apelar');
+
+    const timeline = (component as any).buildTimeline(sanRequest);
+    const sanStep = timeline.find((t: any) => t.key === 'plazo-entidad');
+    expect(sanStep?.label).toBe('Plazo vencido - SAN');
+    expect(sanStep?.meta).toContain('Silencio administrativo negativo');
+    expect(timeline.some((t: any) => (t.meta || '').includes('saldo'))).toBe(false);
+
+    expect(component.pipeline().find(p => p.key === 'apelar')?.count).toBe(1);
+    expect(component.pipeline().find(p => p.key === 'proceso')?.count).toBe(0);
+  });
+
+  it('muestra unidades oficiales y limpias de plazos sin texto de saldo en solicitudes en proceso', () => {
+    const enProceso5 = { ...request(101, 'EN_REVISION'), diasRestantes: 5 } as unknown as Solicitud;
+    const urgencia5 = component.filaUrgencia(enProceso5);
+    expect(urgencia5?.value).toBe(5);
+    expect(urgencia5?.unit).toBe('días háb. para que la entidad responda');
+
+    const enProceso1 = { ...request(102, 'EN_REVISION'), diasRestantes: 1 } as unknown as Solicitud;
+    const urgencia1 = component.filaUrgencia(enProceso1);
+    expect(urgencia1?.value).toBe(1);
+    expect(urgencia1?.unit).toBe('día háb. para que la entidad responda');
+
+    const precision = { ...request(103, 'PENDIENTE_INFORMACION') } as unknown as Solicitud;
+    const urgenciaPrec = component.filaUrgencia(precision);
+    expect(urgenciaPrec?.value).toBe(2);
+    expect(urgenciaPrec?.unit).toBe('días háb. para precisar');
   });
 });
 

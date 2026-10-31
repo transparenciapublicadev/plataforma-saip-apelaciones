@@ -606,7 +606,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   puedeApelar(): boolean {
     const sol = this.solicitud();
-    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA') && !this.enApelacion();
+    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA' || this.esSilencioAdministrativo()) && !this.enApelacion();
   }
 
   esSilencioAdministrativo(): boolean {
