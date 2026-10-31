@@ -301,8 +301,22 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       next: respuesta => {
         if (!this.actual(gen) || this.envio !== envio) return;
         this.confirmModalAbierto.set(false);
-        if (!this.recepcionCompatible(respuesta, envio) || !this.mismaRecepcionEsperada(respuesta)) { this.incierta('El servidor no confirmó una recepción compatible. Consulte por la misma operación; no repita la creación a ciegas.'); return; }
-        this.recepcionEsperada = respuesta; this.consultarRecepcion(envio, gen);
+        if (!this.recepcionCompatible(respuesta, envio) || !this.mismaRecepcionEsperada(respuesta)) {
+          this.incierta('El servidor no confirmó una recepción compatible. Consulte por la misma operación; no repita la creación a ciegas.');
+          return;
+        }
+        this.recepcionEsperada = respuesta;
+        this.recepcionId.set(respuesta.id);
+        this.solicitudCreada.set(respuesta.solicitud as Solicitud);
+        this.expedienteCreado.set(respuesta.solicitud.expediente!);
+        envio.archivos.forEach((a, i) => { a.estado = 'registrado'; a.documento = respuesta.documentos[i]; });
+        this.archivosEnviados.set([...envio.archivos]);
+        this.documentosConsultados.set(respuesta.documentos);
+        this.operacionPendiente.set(false);
+        this.loading.set(false);
+        this.estadoEnvio.set('confirmada');
+        this.error.set('');
+        this.successModalAbierto.set(true);
       },
       error: error => {
         if (!this.actual(gen) || this.envio !== envio) return;
@@ -320,13 +334,20 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     }));
   }
   private respuestaCompatible(r: AltaSaipRecepcionDTO['solicitud'] | null | undefined, envio: Envio): boolean {
-    return !!r && this.idValido(r.id) && !!r.expediente?.trim() && r.ciudadanoId === envio.datos.ciudadanoId && r.entidadId === envio.datos.entidadId
-      && r.asunto === envio.datos.asunto && r.descripcion === envio.datos.descripcion
-      && r.consentimientoDatosPersonales === envio.datos.consentimientoDatosPersonales
-      && r.canalNotificacion === envio.datos.canalNotificacion
-      && r.formatoDigital === envio.datos.formatoDigital && r.formatoFisico === envio.datos.formatoFisico
-      && r.copiaSimple === envio.datos.copiaSimple && r.copiaCertificada === envio.datos.copiaCertificada
-      && (r.tipoInformacion || undefined) === (envio.datos.tipoInformacion || undefined);
+    if (!r || !this.idValido(r.id) || !r.expediente?.trim()) return false;
+    const sesionId = this.authService.obtenerSesion()?.ciudadanoId;
+    const cIdOk = !envio.datos.ciudadanoId || r.ciudadanoId === envio.datos.ciudadanoId || (!!sesionId && r.ciudadanoId === sesionId);
+    if (!cIdOk) return false;
+    if (r.entidadId !== envio.datos.entidadId) return false;
+    const norm = (s: string | null | undefined) => (s ?? '').replace(/\r\n/g, '\n').trim();
+    if (norm(r.asunto) !== norm(envio.datos.asunto)) return false;
+    if (norm(r.descripcion) !== norm(envio.datos.descripcion)) return false;
+    if (r.consentimientoDatosPersonales !== envio.datos.consentimientoDatosPersonales) return false;
+    if (r.canalNotificacion !== envio.datos.canalNotificacion) return false;
+    if (r.formatoDigital !== envio.datos.formatoDigital || r.formatoFisico !== envio.datos.formatoFisico) return false;
+    if (r.copiaSimple !== envio.datos.copiaSimple || r.copiaCertificada !== envio.datos.copiaCertificada) return false;
+    if ((r.tipoInformacion || undefined) !== (envio.datos.tipoInformacion || undefined)) return false;
+    return true;
   }
   private incierta(mensaje: string): void { this.loading.set(false); this.confirmModalAbierto.set(false); this.estadoEnvio.set('incierta'); this.error.set(mensaje); }
   private documentoCompatible(doc: DocumentoMetadata, item: ArchivoPresentacion, solicitudId: number): boolean {
@@ -348,7 +369,11 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   }
   private mismaRecepcionEsperada(r: AltaSaipRecepcionDTO): boolean {
     const anterior = this.recepcionEsperada;
-    return !anterior || r.id === anterior.id && r.fechaRecepcion === anterior.fechaRecepcion
+    if (!anterior) return true;
+    const f1 = Date.parse(r.fechaRecepcion);
+    const f2 = Date.parse(anterior.fechaRecepcion);
+    const fechasCoinciden = r.fechaRecepcion === anterior.fechaRecepcion || (!isNaN(f1) && !isNaN(f2) && f1 === f2);
+    return r.id === anterior.id && fechasCoinciden
       && r.solicitud.id === anterior.solicitud.id && r.documentos.every((d, i) => d.id === anterior.documentos[i]?.id);
   }
   reintentarAlta(): void {
@@ -383,20 +408,67 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     }));
   }
   solicitudConfirmSummary(): ReferenceConfirmSummary[] {
-    return [{ label: 'Solicitante', value: this.sesionVisual().nombre || 'Nombre no disponible' }, { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() },
-      { label: 'Asunto', value: this.asunto.trim() }, { label: 'Modalidad', value: this.formatosSeleccionadosLabels().join(', ') },
-      { label: 'Notificación', value: this.medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' },
-      { label: 'Archivos seleccionados', value: String(this.zonas.filter(z => z.file()).length) }];
+    const s = this.sesionVisual();
+    const items: ReferenceConfirmSummary[] = [
+      { label: 'Solicitante', value: s.nombre || '—' },
+      { label: this.docLabel(), value: this.docNumero() || '—', mono: true },
+      { label: 'Entidad', value: this.getEntidadSeleccionadaNombre() || '—' }
+    ];
+    if (this.temaEfectivo()) {
+      items.push({ label: 'Tema o materia', value: this.temaEfectivo() });
+    }
+    if (this.oficinaDestinataria.trim()) {
+      items.push({ label: 'Oficina destinataria', value: this.oficinaDestinataria.trim() });
+    }
+    items.push(
+      { label: 'Asunto', value: this.asunto.trim() || '—' },
+      { label: 'Modalidad de entrega', value: this.formatosSeleccionadosLabels().join(', ') || '—' },
+      { label: 'Medio de notificación', value: this.medioNotificacion === 'fisica' ? 'Notificación física' : 'Correo electrónico' }
+    );
+    if (this.zonas.some(z => z.file())) {
+      items.push({ label: 'Archivos seleccionados', value: String(this.zonas.filter(z => z.file()).length) });
+    }
+    return items;
   }
-  solicitudWarning(): ReferenceConfirmWarning { return { label: 'Registro y adjuntos', detail: 'Se enviarán la solicitud y todos los archivos seleccionados en una operación coordinada. Ante incertidumbre consulte la recepción antes de reintentar. Registrar no acredita entrega, notificación eficaz, firma ni emisión formal.' }; }
-  solicitudSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.solicitudCreada(); return r ? [
-    { label: 'Recepción', value: String(this.recepcionId()), mono: true },
-    { label: 'Solicitud', value: String(r.id), mono: true }, { label: 'Entidad', value: r.entidadNombre || this.getEntidadSeleccionadaNombre() },
-    { label: 'Fecha registrada', value: r.fechaPresentacion || 'No disponible' }, { label: 'Fecha límite del servidor', value: r.fechaLimite || 'No disponible' },
-    { label: 'Documentos vinculados', value: String(this.archivosEnviados().filter(a => a.estado === 'registrado').length) }] : []; }
-  solicitudNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte el recurso y sus documentos por sus identificadores persistidos.' },
-    { label: 'El registro no acredita entrega, notificación eficaz, firma ni emisión formal.' }]; }
-  cerrarResultado(): void { this.successModalAbierto.set(false); this.enfocar('saip-resultado'); }
+  solicitudWarning(): ReferenceConfirmWarning {
+    return {
+      label: 'Plazo legal',
+      detail: 'La entidad tendrá 10 días hábiles para responder desde la fecha de envío (Ley N° 27806).'
+    };
+  }
+  solicitudSuccessDescription(): string {
+    const ent = this.getEntidadSeleccionadaNombre();
+    return `Su solicitud fue recibida por ${ent}. La entidad cuenta con un plazo legal para emitir respuesta.`;
+  }
+  solicitudSuccessHint(): string {
+    const r = this.solicitudCreada();
+    const fecha = r?.fechaPresentacion ? new Date(r.fechaPresentacion).toLocaleDateString('es-PE') : 'hoy';
+    const email = this.sesionVisual().email || 'su correo';
+    return `Generado el ${fecha} · Notificaciones a ${email}`;
+  }
+  solicitudSuccessMetadata(): ReferenceSuccessMeta[] {
+    const r = this.solicitudCreada();
+    const s = this.sesionVisual();
+    return [
+      { label: 'Entidad receptora', value: r?.entidadNombre || this.getEntidadSeleccionadaNombre() || '—' },
+      { label: 'Asunto', value: r?.asunto || this.asunto.trim() || '—' },
+      { label: 'Modalidad', value: this.formatosSeleccionadosLabels().join(', ') || 'No definida' },
+      { label: 'Solicitante', value: s.nombre || '—' },
+      { label: 'Fecha registrada', value: r?.fechaPresentacion || 'No disponible' },
+      { label: 'Fecha límite del servidor', value: r?.fechaLimite || 'No disponible' }
+    ];
+  }
+  solicitudNextSteps(): ReferenceSuccessNextStep[] {
+    return [
+      { label: 'La entidad evaluará su solicitud y emitirá respuesta.', hint: 'Recibirá notificación por correo cuando exista una decisión.' },
+      { label: 'Si no recibe respuesta en 10 días hábiles, podrá apelar ante el TTAIP.', hint: 'Silencio Administrativo Negativo' },
+      { label: 'Puede consultar el estado en cualquier momento desde su panel.' }
+    ];
+  }
+  cerrarResultado(): void {
+    this.successModalAbierto.set(false);
+    this.resetForm();
+  }
   irPanelCiudadano(): void { if (this.actual()) this.router.navigate(['/ciudadano']); }
   verSolicitudCreada(): void { const r = this.solicitudCreada(); if (this.actual() && r && this.idValido(r.id) && r.expediente) this.router.navigate(['/ciudadano/solicitud', r.expediente]); }
 }

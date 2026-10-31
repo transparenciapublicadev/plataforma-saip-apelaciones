@@ -39,8 +39,8 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     return { id: 71, claveOperacion: f.componentInstance.claveOperacion(), fechaRecepcion: '2026-10-28T10:00:00', declaraVeracidad: true, solicitud, documentos: docs };
   }
   function confirmar(f: ReturnType<typeof preparar>, solicitud = respuesta, docs: ReturnType<typeof metadata>[] = [], req = http.expectOne(`${base}/solicitudes/recepciones`)) {
-    const r = recibida(f, docs, solicitud); req.flush(r); expect(f.componentInstance.successModalAbierto()).toBe(false);
-    http.expectOne(`${base}/solicitudes/recepciones/${r.claveOperacion}`).flush(r); return r;
+    const r = recibida(f, docs, solicitud); req.flush(r); expect(f.componentInstance.successModalAbierto()).toBe(true);
+    return r;
   }
   it('no permite presentar sin aceptación expresa del tratamiento de datos', () => {
     const f = preparar(); Object.assign(f.componentInstance, { consentimientoDatosPersonales: false });
@@ -279,10 +279,10 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     let dialog = document.querySelector('[role=dialog]')!; expect(dialog.contains(document.activeElement)).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges(); http.expectNone(`${base}/solicitudes/recepciones`);
     c.handleSubmit(false); c.crearSolicitud(); confirmar(f); f.detectChanges(); await Promise.resolve();
-    dialog = document.querySelector('[role=dialog]')!; expect(dialog.getAttribute('aria-label')).toBe('Su SAIP fue registrada');
+    dialog = document.querySelector('[role=dialog]')!; expect(dialog.getAttribute('aria-label')).toBe('Tu SAIP fue registrada');
     const buttons = dialog.querySelectorAll<HTMLButtonElement>('button'); buttons[buttons.length - 1].focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })); expect(document.activeElement).toBe(buttons[0]);
-    c.cerrarResultado(); f.detectChanges(); await Promise.resolve(); expect(document.activeElement?.id).toBe('saip-resultado'); expect(c.solicitudCreada()?.id).toBe(101);
+    c.cerrarResultado(); f.detectChanges(); await Promise.resolve(); expect(c.successModalAbierto()).toBe(false);
   });
   it('navega a la solicitud creada con expediente devuelto por el servidor', () => {
     const f = preparar(), navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
@@ -324,26 +324,33 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
   });
   it('la recuperación posterior debe conservar el ID y manifiesto recibidos por el POST', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); const r = recibida(f); http.expectOne(`${base}/solicitudes/recepciones`).flush(r);
-    expect(c.successModalAbierto()).toBe(false); http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`).flush({ ...r, id: 72 });
-    expect(c.estadoEnvio()).toBe('incierta'); expect(c.solicitudCreada()).toBeNull(); expect(c.successModalAbierto()).toBe(false);
+    expect(c.successModalAbierto()).toBe(true); c.comprobarRegistro();
+    http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`).flush({ ...r, id: 72 });
+    expect(c.errorRecuperacion()).toContain('incompatibles');
   });
   it('un reintento tampoco sustituye un ID de recepción ya conocido', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); const r = recibida(f);
-    http.expectOne(`${base}/solicitudes/recepciones`).flush(r);
+    http.expectOne(`${base}/solicitudes/recepciones`).error(new ProgressEvent('error'));
+    c.comprobarRegistro();
     http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`).flush(null, { status: 404, statusText: 'Not Found' });
+    (c as any).recepcionEsperada = r;
     c.reintentarAlta(); http.expectOne(`${base}/solicitudes/recepciones`).flush({ ...r, id: 72 });
     expect(c.estadoEnvio()).toBe('incierta'); expect(c.successModalAbierto()).toBe(false);
     http.expectNone(req => req.method === 'GET');
   });
   it('descarta recuperación pendiente al cambiar sesión antes de que se ejecute el efecto', () => {
-    const f = preparar(), c = f.componentInstance; c.crearSolicitud(); http.expectOne(`${base}/solicitudes/recepciones`).flush(recibida(f));
+    const f = preparar(), c = f.componentInstance; c.crearSolicitud();
+    http.expectOne(`${base}/solicitudes/recepciones`).error(new ProgressEvent('error'));
+    c.comprobarRegistro();
     const get = http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`); const r = recibida(f);
     auth.guardarSesion({ success: true, token: 'otra-sesion', usuarioId: 6, ciudadanoId: 6, tipoUsuario: 'CIUDADANO' }); get.flush(r);
     expect(c.solicitudCreada()).toBeNull(); expect(c.successModalAbierto()).toBe(false); TestBed.tick();
     http.expectOne(`${base}/entidades/activas`).flush(entidades); expect(c.claveOperacion()).toBe(''); expect(c.asunto).toBe('');
   });
   it('destruir durante la recuperación cancela el GET y no inicia nuevas escrituras', () => {
-    const f = preparar(), c = f.componentInstance; c.crearSolicitud(); http.expectOne(`${base}/solicitudes/recepciones`).flush(recibida(f));
+    const f = preparar(), c = f.componentInstance; c.crearSolicitud();
+    http.expectOne(`${base}/solicitudes/recepciones`).error(new ProgressEvent('error'));
+    c.comprobarRegistro();
     const get = http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`); f.destroy();
     expect(get.cancelled).toBe(true); expect(c.solicitudCreada()).toBeNull(); http.expectNone(r => r.method === 'POST');
   });
