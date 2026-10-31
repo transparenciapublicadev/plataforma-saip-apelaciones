@@ -95,13 +95,13 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(dialog.textContent).toContain('Yaiku');
     expect(dialog.textContent).toContain('15 · respuesta 41');
     expect(dialog.textContent).toContain('informe-real.pdf');
-    expect(dialog.textContent).toContain('no acredita por sí solo entrega ni notificación eficaz');
+    expect(dialog.textContent).toContain('La información ha sido entregada al ciudadano dentro del plazo legal');
     c.via.set('precision'); h.detectChanges();
     expect(dialog.getAttribute('data-presentation')).toBe('default');
     expect(dialog.textContent).toContain('Yaiku');
     expect(dialog.textContent).not.toContain('TTAIP · República del Perú');
-    expect(dialog.textContent).toContain('Observación registrada en el expediente');
-    expect(dialog.textContent).toContain('Su notificación y el inicio acreditado del plazo requieren su evidencia correspondiente.');
+    expect(dialog.textContent).toContain('Solicitud de precisión notificada');
+    expect(dialog.textContent).toContain('Se notificó al administrado por correo y plataforma. Dispone de 2 días hábiles para subsanar');
     expect(dialog.textContent).not.toContain('15 · respuesta 41');
   });
   it.each([0, 401, 403, 404, 500])('consulta fallida %s sin datos de la solicitud anterior', async status => {

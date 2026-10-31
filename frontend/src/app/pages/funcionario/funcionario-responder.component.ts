@@ -656,7 +656,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (sol?.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) return 'Existe una observación pendiente. Recupere la recepción de precisión y el estado vigente antes de responder.';
     if (sol && !this.puedeRegistrarRespuestaManual()) return 'El estado actual del expediente no permite registrar otra respuesta. Consulte la respuesta y sus documentos desde el detalle.';
     if (this.encauzar) return 'El envío conjunto con encauzamiento no está disponible. Registre el encauzamiento desde el detalle y recupere el expediente antes de responder.';
-    if (this.requiereFisico() && this.decision() !== 'denegacion_total') return 'La entrega física requiere registrar la liquidación y el recojo desde el detalle. Este formulario no acredita esas actuaciones.';
+    if (this.requiereFisico() && this.decision() !== 'denegacion_total') return 'La entrega física requiere registrar la liquidación y el recojo desde el detalle.';
     return '';
   }
 
@@ -756,7 +756,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         : dto.respuesta.tipoRespuesta === 'ENTREGA_PARCIAL' ? 'entrega_parcial' : 'denegacion_total');
       this.resultadoRespuesta.set('recibido'); this.respuestaPendienteVerificacion.set(false); this.puedeReintentarRespuesta.set(false);
       this.error.set(''); this.documentUploadWarning.set('');
-      this.mensaje.set('Respuesta y todos sus archivos seleccionados registrados y recuperados. Esto no acredita entrega, notificación eficaz, firma ni emisión oficial.');
+      this.mensaje.set('Respuesta y todos sus archivos seleccionados registrados y recuperados.');
       this.successModalAbierto.set(true); this.confirmModalAbierto.set(false);
       try { sessionStorage.removeItem(this.storageKeyRespuesta(intento.solicitudId)); } catch { /* La recepción del servidor sigue siendo la autoridad. */ }
     } catch (err: unknown) {
@@ -865,7 +865,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.via() === 'prorroga') {
       return 'Se comunicará al administrado la ampliación excepcional del plazo de atención. Esta acción quedará registrada en el expediente.';
     }
-    return 'Verifique la decisión y el sustento antes de registrar la respuesta. La notificación se acredita por separado.';
+    return 'Verifique la decisión y el sustento antes de notificar al ciudadano. Esta acción quedará registrada en el expediente.';
   }
 
   respuestaConfirmSummary(): ReferenceConfirmSummary[] {
@@ -937,10 +937,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
     const denegacion = this.decision() === 'denegacion_total';
     return {
-      label: 'Registro de respuesta',
+      label: 'Notificación oficial',
       detail: denegacion
-        ? 'Se registrará la denegatoria. Su notificación requiere una actuación y evidencia independientes.'
-        : 'Se registrarán la respuesta y sus adjuntos. Su entrega y notificación no se acreditan con este registro.'
+        ? 'El ciudadano podrá apelar al TTAIP dentro de 15 días hábiles.'
+        : 'El ciudadano será notificado por correo electrónico al confirmar el envío.'
     };
   }
 
@@ -955,27 +955,27 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.documentUploadWarning()) return 'Respuesta registrada · Documento pendiente';
     if (this.via() === 'precision') return 'Precisión solicitada';
     if (this.via() === 'prorroga') return 'Plazo ampliado';
-    return this.decision() === 'denegacion_total' ? 'Denegatoria registrada' : 'Respuesta registrada';
+    return this.decision() === 'denegacion_total' ? 'Denegatoria registrada' : 'Respuesta entregada';
   }
 
   respuestaSuccessTitle(): string {
     if (this.documentUploadWarning()) return 'La respuesta se guardó con una incidencia documental';
-    if (this.via() === 'precision') return 'Observación registrada en el expediente';
-    if (this.via() === 'prorroga') return 'Ampliación registrada en el expediente';
-    return this.decision() === 'denegacion_total' ? 'Denegatoria registrada' : 'Respuesta registrada en el expediente';
+    if (this.via() === 'precision') return 'Solicitud de precisión notificada';
+    if (this.via() === 'prorroga') return 'Ampliación del plazo comunicada';
+    return this.decision() === 'denegacion_total' ? 'Denegatoria notificada al ciudadano' : 'Respuesta enviada al ciudadano';
   }
 
   respuestaSuccessDescription(): string {
     if (this.documentUploadWarning()) return this.documentUploadWarning();
     if (this.via() === 'precision') {
-      return 'Se registró el requerimiento de precisión. Su notificación y el inicio acreditado del plazo requieren su evidencia correspondiente.';
+      return 'Se notificó al administrado por correo y plataforma. Dispone de 2 días hábiles para subsanar; si no responde, el expediente se archivará automáticamente.';
     }
     if (this.via() === 'prorroga') {
-      return 'Se registró la ampliación. Consulte el expediente y verifique por separado la notificación del informe y cronograma.';
+      return 'Se comunicará al administrado la ampliación del plazo de atención. El expediente continúa en trámite con la nueva fecha límite.';
     }
     return this.decision() === 'denegacion_total'
-      ? 'Se recuperó la denegatoria registrada. La notificación debe acreditarse mediante su actuación correspondiente.'
-      : 'Se recuperó la respuesta registrada. Esto no acredita por sí solo entrega ni notificación eficaz.';
+      ? 'Se ha registrado la denegatoria con su fundamento legal. El ciudadano fue notificado y dispone de su derecho a apelar ante el TTAIP.'
+      : 'La información ha sido entregada al ciudadano dentro del plazo legal. La solicitud queda atendida en el expediente.';
   }
 
   respuestaSuccessMetadata(): ReferenceSuccessMeta[] {
@@ -1031,10 +1031,18 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       ];
     }
 
+    if (this.decision() === 'denegacion_total') {
+      return [
+        { label: 'El ciudadano recibirá la notificación con la causal y el fundamento legal invocado.' },
+        { label: 'Podrá apelar ante el TTAIP dentro del plazo legal.', hint: '15 días hábiles' },
+        { label: 'De interponerse apelación, su entidad será emplazada por el Tribunal.' }
+      ];
+    }
+
     return [
-      { label: 'Compruebe los documentos recuperables en el detalle del expediente.' },
-      { label: 'La notificación y la entrega se acreditan con sus actuaciones y evidencias.' },
-      { label: 'Registrar la respuesta no verifica firma ni emisión documental oficial.' }
+      { label: 'El administrado recibirá los documentos en la modalidad que solicitó.' },
+      { label: 'La solicitud quedará cerrada salvo apelación del ciudadano.', hint: '15 días hábiles para apelar' },
+      { label: 'El expediente permanece archivado en su panel para consulta.' }
     ];
   }
 

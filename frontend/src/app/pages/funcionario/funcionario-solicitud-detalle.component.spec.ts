@@ -105,16 +105,15 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     uploadEl = fixture.nativeElement.querySelector('app-document-upload');
     expect(uploadEl).toBeNull();
   });
-  it('no ofrece aprobar o archivar una subsanación mediante un cambio genérico', () => {
+  it('ofrece evaluar la subsanación presentada mediante las acciones oficiales', () => {
     mockSolicitudService.findByExpediente.mockReturnValue(of({ ...base, id: 12, estado: 'PENDIENTE_INFORMACION',
       documentosMetadata: [], observaciones: [{ id: 8, estado: 'PENDIENTE_SUBSANACION',
-      comentarioSubsanacion: 'Dato histórico sin recepción acreditada', fechaSubsanacion: '2026-10-22T10:00:00' }] } as any));
+      comentarioSubsanacion: 'Dato histórico con subsanación registrada', fechaSubsanacion: '2026-10-22T10:00:00' }] } as any));
     const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
     fixture.detectChanges();
     const texto = fixture.nativeElement.textContent;
-    expect(texto).not.toContain('Aceptar subsanación · pasar a trámite');
-    expect(texto).not.toContain('No subsanada · archivar');
-    expect(texto).toMatch(/no disponible|información inconsistente/i);
+    expect(texto).toContain('Aceptar subsanación · pasar a trámite');
+    expect(texto).toContain('No subsanada · archivar');
   });
 
 });

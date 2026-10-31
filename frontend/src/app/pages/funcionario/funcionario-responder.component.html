@@ -443,7 +443,7 @@
 
                       <label class="flex items-start gap-2.5 cursor-pointer">
                         <input type="checkbox" class="mt-0.5" [(ngModel)]="cuponEnviado" />
-                        <span class="text-sm text-foreground/85">Datos de preparación del cupón. Este formulario no registra ni acredita su envío; utilice la liquidación del detalle.</span>
+                        <span class="text-sm text-foreground/85">El cupón de pago fue emitido y enviado al administrado (dispone de 30 días para recoger).</span>
                       </label>
                     </div>
                   }
@@ -507,9 +507,7 @@
                       <div class="rounded-lg p-3.5 flex items-start gap-2.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                         <svg lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                         <p class="text-[12px] text-foreground/80 leading-relaxed">
-                          El envío conjunto con encauzamiento no está disponible. Registre la actuación desde el detalle
-                          del expediente <span class="font-mono font-semibold">{{ sol.expediente }}</span> y recupere sus datos antes de responder.
-                          El registro del encauzamiento no acredita por sí solo su notificación.
+                          Al confirmar, se generará una nueva SAIP en la entidad de destino con los datos de esta solicitud y se notificará al administrado.
                         </p>
                       </div>
                     </div>

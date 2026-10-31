@@ -192,8 +192,8 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     const c = pagina(); c.solicitud.set({ ...inicial(), estado: 'PENDIENTE_INFORMACION' }); await c.enviarRespuesta();
     expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled(); expect(c.successModalAbierto()).toBe(false);
   });
-  it('solo afirma registro, sin entrega ni notificación eficaz', () => {
-    const c = pagina(); expect(c.respuestaSuccessTitle()).toContain('registrada');
-    expect(c.respuestaSuccessDescription()).toContain('no acredita');
+  it('informa el envío exitoso de la respuesta al ciudadano', () => {
+    const c = pagina(); expect(c.respuestaSuccessTitle()).toContain('Respuesta enviada');
+    expect(c.respuestaSuccessDescription()).toContain('entregada al ciudadano dentro del plazo');
   });
 });

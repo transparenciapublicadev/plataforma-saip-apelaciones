@@ -1,6 +1,6 @@
 import { Solicitud } from '../../models/solicitud.model';
 
-export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas' | 'otras';
+export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
 export interface QueueItem {
   solicitud: Solicitud;
   bucket: Exclude<BucketKey, 'todas'>;
@@ -30,11 +30,17 @@ export function readInstitutionList(value: unknown, entidad: number): Solicitud[
 
 export function queueItem(solicitud: Solicitud): QueueItem {
   const days = Number.isSafeInteger(solicitud.diasRestantes) ? solicitud.diasRestantes : null;
-  let bucket: QueueItem['bucket'] = 'otras';
-  if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA') bucket = 'respondidas';
-  else if (solicitud.estado === 'VENCIDA') bucket = 'san';
-  else if ((solicitud.estado === 'RECEPCIONADA' || solicitud.estado === 'EN_REVISION') && days !== null && days >= 0) {
-    bucket = days <= 1 ? 'hoy' : days <= 5 ? 'semana' : 'plazo';
+  let bucket: QueueItem['bucket'] = 'plazo';
+  if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA' || solicitud.respuesta != null) {
+    bucket = 'respondidas';
+  } else if (solicitud.estado === 'VENCIDA' || (days !== null && days < 0)) {
+    bucket = 'san';
+  } else if (days !== null && days <= 1) {
+    bucket = 'hoy';
+  } else if (days !== null && days <= 5) {
+    bucket = 'semana';
+  } else {
+    bucket = 'plazo';
   }
   const nombre = typeof solicitud.ciudadanoNombre === 'string' ? solicitud.ciudadanoNombre.trim() : '';
   const prioridad = typeof solicitud.prioridad === 'string' && ['ALTA', 'MEDIA', 'BAJA', 'NORMAL', 'URGENTE'].includes(solicitud.prioridad) ? solicitud.prioridad : null;
@@ -43,10 +49,12 @@ export function queueItem(solicitud: Solicitud): QueueItem {
     prioridad, tema: typeof solicitud.tipoInformacion === 'string' && solicitud.tipoInformacion.trim() ? solicitud.tipoInformacion.trim() : null };
 }
 
-// Only navigation is enabled here. The specific backend command remains authoritative at submission.
+// Navigation is enabled for active un-responded requests that are not in precision
 export function canNavigateToResponse(solicitud: Solicitud): boolean {
-  return ['RECEPCIONADA', 'EN_REVISION', 'VENCIDA'].includes(solicitud.estado)
-    && Object.hasOwn(solicitud, 'respuesta') && solicitud.respuesta === null
-    && Array.isArray(solicitud.observaciones)
-    && solicitud.observaciones.every(item => item && typeof item.estado === 'string' && item.estado !== 'PENDIENTE_SUBSANACION');
+  if (!solicitud) return false;
+  if (['CONCLUIDA', 'PENDIENTE_INFORMACION', 'RESPONDIDA', 'DENEGADA'].includes(solicitud.estado)) return false;
+  if (solicitud.respuesta !== null) return false;
+  if (!Array.isArray(solicitud.observaciones)) return false;
+  if (solicitud.observaciones.some(item => !item || typeof item !== 'object' || item.estado === 'PENDIENTE_SUBSANACION')) return false;
+  return true;
 }
