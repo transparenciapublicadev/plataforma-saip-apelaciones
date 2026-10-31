@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Ciudadano;
@@ -31,6 +32,9 @@ class ApelacionServiceTest {
 
     @Mock
     EntidadService entidadService;
+
+    @Mock
+    AutorizacionRecursosService autorizacion;
 
     @InjectMocks
     ApelacionService apelacionService;
@@ -268,5 +272,68 @@ class ApelacionServiceTest {
 
         verifyNoInteractions(ciudadanoService, entidadService);
         verify(apelacionRepository, never()).save(any());
+    }
+
+    @Test
+    void listarTodasAccesibles_debeFiltrarYMapearDTO() {
+        var a1 = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+        when(apelacionRepository.findAll()).thenReturn(List.of(a1));
+        when(autorizacion.filtrarApelacionesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<ApelacionDTO> resultado = apelacionService.listarTodasAccesibles();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        assertThat(resultado.get(0).expediente()).isEqualTo("00001-2025-JUS/TTAIP");
+        verify(autorizacion).filtrarApelacionesAccesibles(anyList());
+    }
+
+    @Test
+    void listarPorCiudadano_debeVerificarAutorizacionYMapearDTO() {
+        var a1 = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+        when(apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(10L)).thenReturn(List.of(a1));
+
+        List<ApelacionDTO> resultado = apelacionService.listarPorCiudadano(10L);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).verificarCiudadanoActualOPrivilegiado(10L);
+    }
+
+    @Test
+    void listarPorEstado_debeFiltrarYMapearDTO() {
+        var a1 = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.EN_CALIFICACION_1);
+        when(apelacionRepository.findByEstadoOrderByFechaApelacionDesc(Apelacion.EstadoApelacion.EN_CALIFICACION_1)).thenReturn(List.of(a1));
+        when(autorizacion.filtrarApelacionesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<ApelacionDTO> resultado = apelacionService.listarPorEstado(Apelacion.EstadoApelacion.EN_CALIFICACION_1);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).filtrarApelacionesAccesibles(anyList());
+    }
+
+    @Test
+    void obtenerDetalle_debeVerificarAutorizacionYMapearDTO() {
+        var a1 = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+        when(apelacionRepository.findByIdWithDetails(1L)).thenReturn(Optional.of(a1));
+
+        ApelacionDTO resultado = apelacionService.obtenerDetalle(1L);
+
+        assertThat(resultado).isNotNull();
+        assertThat(resultado.id()).isEqualTo(1L);
+        verify(autorizacion).verificarApelacionAccesible(a1);
+    }
+
+    @Test
+    void obtenerDetallePorExpediente_debeVerificarAutorizacionYMapearDTO() {
+        var a1 = crearApelacion(1L, "00001-2025-JUS/TTAIP", Apelacion.EstadoApelacion.PENDIENTE_ELEVACION);
+        when(apelacionRepository.findByExpedienteWithDetails("00001-2025-JUS/TTAIP")).thenReturn(Optional.of(a1));
+
+        ApelacionDTO resultado = apelacionService.obtenerDetallePorExpediente("00001-2025-JUS/TTAIP");
+
+        assertThat(resultado).isNotNull();
+        assertThat(resultado.expediente()).isEqualTo("00001-2025-JUS/TTAIP");
+        verify(autorizacion).verificarApelacionAccesible(a1);
     }
 }

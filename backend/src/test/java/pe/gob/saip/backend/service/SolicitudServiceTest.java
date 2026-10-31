@@ -11,6 +11,7 @@ import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
+import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
@@ -825,5 +826,56 @@ class SolicitudServiceTest {
         assertThat(resultado.fechaVencimiento()).isEqualTo(fechaVencimiento);
         assertThat(resultado.enSilencioAdministrativo()).isFalse();
         assertThat(resultado.diasRestantes()).isGreaterThanOrEqualTo(0);
+    }
+
+    @Test
+    void listarTodasAccesibles_debeFiltrarYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findAll()).thenReturn(List.of(s));
+        when(autorizacion.filtrarSolicitudesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<SolicitudDTO> resultado = solicitudService.listarTodasAccesibles();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        assertThat(resultado.get(0).expediente()).isEqualTo("SAIP-2026-00001");
+        verify(autorizacion).filtrarSolicitudesAccesibles(anyList());
+    }
+
+    @Test
+    void listarPorCiudadano_debeVerificarAutorizacionYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByCiudadano_IdUsuarioOrderByFechaPresentacionDesc(9L)).thenReturn(List.of(s));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorCiudadano(9L);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).verificarCiudadanoActualOPrivilegiado(9L);
+    }
+
+    @Test
+    void listarPorEntidad_debeVerificarAutorizacionYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByEntidad_IdEntidadOrderByFechaPresentacionDesc(5L)).thenReturn(List.of(s));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorEntidad(5L);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).verificarEntidadInstitucional(5L);
+    }
+
+    @Test
+    void listarPorEstado_debeFiltrarYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByEstado(Solicitud.EstadoSolicitud.RECEPCIONADA)).thenReturn(List.of(s));
+        when(autorizacion.filtrarSolicitudesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).filtrarSolicitudesAccesibles(anyList());
     }
 }

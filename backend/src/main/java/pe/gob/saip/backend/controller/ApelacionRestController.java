@@ -67,12 +67,7 @@ public class ApelacionRestController {
     @Operation(summary = "Listar todas las apelaciones")
     @GetMapping
     public ResponseEntity<List<ApelacionDTO>> listar() {
-        List<ApelacionDTO> apelaciones = autorizacionRecursosService
-                .filtrarApelacionesAccesibles(apelacionService.findAll())
-                .stream()
-                .map(ApelacionDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(apelaciones);
+        return ResponseEntity.ok(apelacionService.listarTodasAccesibles());
     }
 
     @Operation(summary = "Listar apelaciones TTAIP con paginación y DTO liviano")
@@ -88,16 +83,13 @@ public class ApelacionRestController {
     @Operation(summary = "Obtener apelación por ID")
     @GetMapping("/{id}")
     public ResponseEntity<ApelacionDTO> obtenerPorId(@Parameter(description = "ID de la apelación") @PathVariable Long id) {
-        Apelacion apelacion = apelacionService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
-        autorizacionRecursosService.verificarApelacionAccesible(apelacion);
-        return ResponseEntity.ok(ApelacionDTO.from(apelacion));
+        return ResponseEntity.ok(apelacionService.obtenerDetalle(id));
     }
 
     @Operation(summary = "Obtener apelación por expediente TTAIP", description = "Formato: NNNNN-AAAA-JUS/TTAIP")
     @GetMapping("/expediente")
     public ResponseEntity<ApelacionDTO> obtenerPorExpedienteQuery(@RequestParam("numero") String expediente) {
-        return ResponseEntity.ok(ApelacionDTO.from(obtenerApelacionPorExpediente(expediente)));
+        return ResponseEntity.ok(apelacionService.obtenerDetallePorExpediente(expediente));
     }
 
     @Operation(summary = "Obtener apelación por expediente TTAIP", description = "Formato: NNNNN-AAAA-JUS/TTAIP")
@@ -106,19 +98,7 @@ public class ApelacionRestController {
             @Parameter(description = "Número de expediente TTAIP") @PathVariable(required = false) String expediente,
             HttpServletRequest request) {
         String expedienteResuelto = resolverExpediente(expediente, request);
-        return ResponseEntity.ok(ApelacionDTO.from(obtenerApelacionPorExpediente(expedienteResuelto)));
-    }
-
-    private Apelacion obtenerApelacionPorExpediente(String expediente) {
-        if (expediente == null || expediente.trim().isEmpty()) {
-            throw new IllegalArgumentException("El expediente es obligatorio");
-        }
-
-        String expedienteNormalizado = expediente.trim();
-        Apelacion apelacion = apelacionService.findByExpediente(expedienteNormalizado)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con expediente: " + expedienteNormalizado));
-        autorizacionRecursosService.verificarApelacionAccesible(apelacion);
-        return apelacion;
+        return ResponseEntity.ok(apelacionService.obtenerDetallePorExpediente(expedienteResuelto));
     }
 
     private String resolverExpediente(String expediente, HttpServletRequest request) {
@@ -146,23 +126,13 @@ public class ApelacionRestController {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Estado no válido: " + estado);
         }
-        List<ApelacionDTO> apelaciones = autorizacionRecursosService
-                .filtrarApelacionesAccesibles(apelacionService.obtenerApelacionesPorEstado(estadoEnum))
-                .stream()
-                .map(ApelacionDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(apelaciones);
+        return ResponseEntity.ok(apelacionService.listarPorEstado(estadoEnum));
     }
 
     @Operation(summary = "Listar apelaciones por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}")
     public ResponseEntity<List<ApelacionDTO>> listarPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
-        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
-        List<ApelacionDTO> apelaciones = apelacionService.findByCiudadanoId(ciudadanoId)
-                .stream()
-                .map(ApelacionDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(apelaciones);
+        return ResponseEntity.ok(apelacionService.listarPorCiudadano(ciudadanoId));
     }
 
     @Operation(summary = "Listar apelaciones por estado con paginación y DTO liviano")

@@ -66,6 +66,9 @@ public record ApelacionDTO(
     PlazoSubsanacionTtaipDTO plazoSubsanacion
 ) {
     public static ApelacionDTO from(Apelacion a) {
+        if (a == null) {
+            return null;
+        }
         return new ApelacionDTO(
             a.getId(),
             a.getExpediente(),

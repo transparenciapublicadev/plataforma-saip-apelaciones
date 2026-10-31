@@ -67,12 +67,7 @@ public class SolicitudRestController {
     @Operation(summary = "Listar todas las solicitudes SAIP")
     @GetMapping
     public ResponseEntity<List<SolicitudDTO>> listar() {
-        List<SolicitudDTO> solicitudes = autorizacionRecursosService
-                .filtrarSolicitudesAccesibles(solicitudService.obtenerTodasLasSolicitudes())
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarTodasAccesibles());
     }
 
     @Operation(summary = "Listar solicitudes SAIP con paginación y DTO liviano")
@@ -110,12 +105,7 @@ public class SolicitudRestController {
     @Operation(summary = "Listar solicitudes por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
-        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
-        List<SolicitudDTO> solicitudes = solicitudService.findByCiudadanoId(ciudadanoId)
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorCiudadano(ciudadanoId));
     }
 
     @Operation(summary = "Listar solicitudes SAIP de un ciudadano con paginación y DTO liviano")
@@ -135,12 +125,7 @@ public class SolicitudRestController {
     @Operation(summary = "Listar solicitudes por entidad")
     @GetMapping("/entidad/{entidadId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
-        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
-        List<SolicitudDTO> solicitudes = solicitudService.findByEntidadId(entidadId)
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorEntidad(entidadId));
     }
 
     @Operation(summary = "Listar solicitudes SAIP de una entidad con paginación y DTO liviano")
@@ -167,12 +152,7 @@ public class SolicitudRestController {
             throw new IllegalArgumentException("Estado no válido: " + estado);
         }
 
-        List<SolicitudDTO> solicitudes = autorizacionRecursosService
-                .filtrarSolicitudesAccesibles(solicitudService.obtenerSolicitudesPorEstado(estadoEnum))
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorEstado(estadoEnum));
     }
 
     @Operation(summary = "Listar solicitudes por estado con paginación y DTO liviano")
