@@ -142,6 +142,10 @@
                       </a>
                     }
                   }
+                  <a routerLink="/ayuda" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                    <svg lucideHelpCircle class="w-4 h-4 opacity-70"></svg>
+                    Ayuda y guía de uso
+                  </a>
                 </div>
                 <div class="border-t border-[var(--border)] py-1.5 px-1.5">
                   <button (click)="logout()" class="dropdown-item dropdown-item-danger w-full" role="menuitem">
@@ -289,12 +293,8 @@
             <svg lucideHelpCircle class="w-4 h-4 text-muted-foreground"></svg>
             Ayuda
           </a>
-          <div class="border-t border-[var(--border)] pt-3 mt-3 space-y-2">
+          <div class="border-t border-[var(--border)] pt-3 mt-3">
             <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-brand w-full justify-center" style="height: 44px">
-              <svg lucidePlus class="w-4 h-4"></svg>
-              Pedir información
-            </a>
-            <a routerLink="/login" (click)="toggleMobileMenu()" class="btn-ghost-brand w-full justify-center" style="height: 44px">
               Iniciar sesión
             </a>
           </div>

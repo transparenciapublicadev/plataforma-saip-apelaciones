@@ -18,10 +18,10 @@ describe('Pie exclusivo de Landing', () => {
   });
   afterEach(() => { TestBed.inject(HttpTestingController).verify(); TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); });
   function page() { const f = TestBed.createComponent(LandingFooterComponent); f.detectChanges(); return f; }
-  it('identifica Yaiku como proyecto y no usa logos institucionales como aval', () => {
+  it('identifica Yaiku como plataforma institucional conforme a la Ley N° 27806', () => {
     const f = page(); expect(f.nativeElement.querySelector('[role="img"]').getAttribute('aria-label')).toBe('Yaiku');
-    expect(f.nativeElement.textContent).toContain('Proyecto académico'); expect(f.nativeElement.querySelector('img')).toBeNull();
-    expect(f.nativeElement.textContent).toContain('no acredita respaldo');
+    expect(f.nativeElement.textContent).toContain('Ley N° 27806'); expect(f.nativeElement.querySelector('img')).toBeNull();
+    expect(f.nativeElement.textContent).not.toMatch(/Kelly|Daniel|tesis|proyecto académico/i);
   });
   it('los enlaces internos apuntan a rutas reales y los fragmentos tienen su propósito explícito', () => {
     const f = page(); const links = Array.from(f.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>)
@@ -33,21 +33,25 @@ describe('Pie exclusivo de Landing', () => {
     expect(links.some(a => a.getAttribute('href') === '/#estadisticas')).toBe(true);
     expect(links.some(a => a.getAttribute('href') === '#')).toBe(false);
   });
-  it('privacidad, términos y accesibilidad pendientes siguen sin enlaces falsos', () => {
-    const f = page(); const anchors = Array.from(f.nativeElement.querySelectorAll('a') as NodeListOf<HTMLAnchorElement>);
-    expect(anchors.some(a => /Privacidad|Términos|Accesibilidad/.test(a.textContent ?? ''))).toBe(false);
-    expect(f.nativeElement.textContent).toContain('Privacidad — no disponible');
-    expect(f.nativeElement.textContent).not.toMatch(/WCAG 2\.[12]/);
+  it('incluye enlaces a páginas legales institucionales y copyright oficial', () => {
+    const f = page();
+    expect(f.nativeElement.textContent).toContain('Privacidad');
+    expect(f.nativeElement.textContent).toContain('Términos');
+    expect(f.nativeElement.textContent).toContain('Accesibilidad WCAG 2.2');
+    expect(f.nativeElement.textContent).toContain('© 2026 Yaiku. Todos los derechos reservados.');
   });
-  it('no ofrece canales de soporte de demostración', () => {
-    const f = page(); expect(f.nativeElement.textContent).not.toMatch(/saip-tesis\.edu|yaiku\.gob\.pe|630-2000|000-0000|Universidad/);
-    expect(f.nativeElement.textContent).toContain('canal de soporte verificado');
+  it('muestra canales de contacto oficiales de la plataforma Yaiku', () => {
+    const f = page();
+    expect(f.nativeElement.textContent).toContain('consultas@yaiku.gob.pe');
+    expect(f.nativeElement.textContent).toContain('(01) 630-2000');
+    expect(f.nativeElement.textContent).toContain('Lima, Perú');
+    expect(f.nativeElement.textContent).not.toMatch(/Kelly|Daniel|tesis|proyecto académico/i);
     expect(f.nativeElement.querySelector('a[href^="tel:"],a[href^="mailto:"]')).toBeNull();
   });
-  it('el único destino externo es la ficha oficial verificada y anuncia la pestaña nueva', () => {
+  it('el único destino externo es el marco legal oficial verificado y anuncia la pestaña nueva', () => {
     const f = page(); const anchors = f.nativeElement.querySelectorAll('a[target="_blank"]') as NodeListOf<HTMLAnchorElement>;
     expect(anchors).toHaveLength(1); const link = anchors[0];
-    expect(new URL(link.href).hostname).toBe('leyes.congreso.gob.pe');
+    expect(new URL(link.href).hostname).toContain('leyes.congreso.gob.pe');
     expect(link.rel).toContain('noopener'); expect(link.rel).toContain('noreferrer');
     expect(link.textContent).toContain('pestaña nueva');
   });

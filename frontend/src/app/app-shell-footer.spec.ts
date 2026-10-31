@@ -37,16 +37,20 @@ describe('V2: pie compartido Yaiku', () => {
   it.each(['/', '/documentacion', '/acerca', '/consultar', '/ayuda', '/ciudadano', '/funcionario', '/ttaip', '/admin',
     '/ciudadano/solicitud/SYNTHETIC', '/ttaip/apelacion/SYNTHETIC', '/funcionario/solicitud/31',
     '/login', '/registro', '/acceso-funcionario', '/acceso-ttaip', '/acceso-admin'])(
-    '%s compone un solo pie con datos honestos y legales pendientes, sin nueva consulta', url => {
+    '%s compone un solo pie institucional con datos y enlaces legales oficiales, sin nueva consulta', url => {
       const f=page(url), footer=f.nativeElement.querySelector('footer');
       expect(f.nativeElement.querySelectorAll('footer')).toHaveLength(1);
       expect(footer.getAttribute('aria-label')).toBe('Pie de Yaiku');
       expect(footer.querySelector('[role="img"][aria-label="Yaiku"]')).not.toBeNull();
       expect(footer.querySelector('a[href="#"],a[href^="mailto:"],a[href^="tel:"]')).toBeNull();
-      expect(footer.textContent).not.toMatch(/saip-tesis\.edu|000-0000|Universidad|2025 SAIP|WCAG/);
-      expect(footer.textContent).toContain('Privacidad — no disponible');
-      expect(footer.textContent).toContain('Términos — no disponibles');
-      expect(footer.textContent).toContain('Accesibilidad — página no disponible');
+      expect(footer.textContent).not.toMatch(/saip-tesis\.edu|000-0000|Universidad|2025 SAIP|Kelly|Daniel|tesis|proyecto académico/i);
+      expect(footer.textContent).toContain('consultas@yaiku.gob.pe');
+      expect(footer.textContent).toContain('(01) 630-2000');
+      expect(footer.textContent).toContain('Lima, Perú');
+      expect(footer.textContent).toContain('© 2026 Yaiku. Todos los derechos reservados.');
+      expect(footer.textContent).toContain('Privacidad');
+      expect(footer.textContent).toContain('Términos');
+      expect(footer.textContent).toContain('Accesibilidad WCAG 2.2');
       TestBed.inject(HttpTestingController).expectNone(() => true);
     });
   it.each([
@@ -64,7 +68,7 @@ describe('V2: pie compartido Yaiku', () => {
     const links=Array.from(footer.querySelectorAll('a[href]')) as HTMLAnchorElement[];
     for(const link of links) {
       const href=link.getAttribute('href')!;
-      if(href.startsWith('https://')) { expect(new URL(href).hostname).toBe('leyes.congreso.gob.pe'); expect(link.rel).toContain('noopener'); continue; }
+      if(href.startsWith('https://')) { expect(new URL(href).hostname).toContain('leyes.congreso.gob.pe'); expect(link.rel).toContain('noopener'); continue; }
       expect(routes.some(r => '/' + r.path === href.split('#')[0])).toBe(true);
       expect(href).not.toMatch(/^\/(privacidad|terminos|accesibilidad)/);
     }

@@ -141,14 +141,14 @@ describe('Documentación y acerca — navegación y contenido respaldado', () =>
     expect(document.activeElement).toBe(body().querySelector('h1'));
   });
 
-  it('el retorno explícito vuelve al inicio y restaura el título previo para rutas sin título', async () => {
+  it('el retorno explícito vuelve al inicio y actualiza el título oficial', async () => {
     await page('/documentacion'); body().querySelector<HTMLAnchorElement>('a[href="/"]')!.click(); await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/'); expect(TestBed.inject(Title).getTitle()).toBe('Título previo sintético');
+    expect(TestBed.inject(Router).url).toBe('/'); expect(TestBed.inject(Title).getTitle()).toBe('Yaiku — Inicio | Plataforma Integral SAIP y Apelaciones');
   });
 
-  it('una entrada SSR con título informativo no deja ese título en una ruta sin título', async () => {
+  it('una entrada SSR con título informativo actualiza al título oficial al navegar al inicio', async () => {
     TestBed.inject(Title).setTitle('Acerca de Yaiku'); await page('/acerca'); await harness.navigateByUrl('/', ExistingDestination);
-    expect(TestBed.inject(Title).getTitle()).toBe('TTAIP - Sistema de Acceso a la Información Pública');
+    expect(TestBed.inject(Title).getTitle()).toBe('Yaiku — Inicio | Plataforma Integral SAIP y Apelaciones');
   });
 
   it('presentar SAIP conserva el guard y acceso ciudadano sin crear una sesión', async () => {
@@ -172,10 +172,11 @@ describe('Pies y navegación compartida de InfoPages', () => {
   async function shell(url: string) {
     const f = TestBed.createComponent(App); f.detectChanges(); await TestBed.inject(Router).navigateByUrl(url); f.detectChanges(); await f.whenStable(); return f;
   }
-  it.each(['/documentacion', '/acerca'])('%s utiliza un solo pie Yaiku y conserva accesos y destinos pendientes', async url => {
+  it.each(['/documentacion', '/acerca'])('%s utiliza un solo pie Yaiku y conserva accesos y enlaces legales', async url => {
     const f = await shell(url); const el = f.nativeElement as HTMLElement;
     expect(el.querySelectorAll('footer')).toHaveLength(1); expect(el.querySelector('app-landing-footer')).toBeTruthy();
-    expect(el.querySelector('header a[href="/login"]')).toBeTruthy(); expect(el.querySelector('footer')?.textContent).toContain('Privacidad — no disponible');
+    expect(el.querySelector('header a[href="/login"]')).toBeTruthy(); expect(el.querySelector('footer')?.textContent).toContain('© 2026 Yaiku. Todos los derechos reservados.');
+    expect(el.querySelector('footer')?.textContent).toContain('Privacidad');
     expect(el.querySelector('footer a[href="/privacidad"],footer a[href="#"]')).toBeNull();
   });
   it('cabecera global, marca editorial y pie reutilizan el sello con identificadores distintos', async () => {

@@ -258,7 +258,49 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('a[href^="tel:"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href^="mailto:"]')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Edición no disponible');
+    expect(fixture.nativeElement.querySelector('#profile-readonly')).toBeNull();
     expect(fixture.nativeElement.querySelector('a[href="/ayuda"]')).not.toBeNull();
   });
+
+  it('no muestra botón apelar en hero header y alinea acción secundaria presentar apelación en timeline', () => {
+    component.tieneApelables.set(true);
+    fixture.detectChanges();
+    const heroApelar = Array.from(fixture.nativeElement.querySelectorAll('.citizen-actions a, .citizen-actions button') as NodeListOf<HTMLElement>)
+      .find(el => el.textContent?.trim() === 'Apelar');
+    expect(heroApelar).toBeUndefined();
+    expect(fixture.nativeElement.querySelector('.citizen-actions .animate-ping')).toBeNull();
+
+    const denied = { ...request(95, 'DENEGADA'), apelacion: null } as unknown as Solicitud;
+    component.todasSolicitudes.set([denied]);
+    component.selectedSolicitudId.set(95);
+    fixture.detectChanges();
+
+    expect(component.puedePresentarApelacion(denied)).toBe(true);
+    const timelineAppealBtn = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find(b => b.textContent?.includes('Presentar apelación'));
+    expect(timelineAppealBtn).toBeDefined();
+    expect(timelineAppealBtn?.classList.contains('btn-ghost-brand')).toBe(true);
+    expect(timelineAppealBtn?.classList.contains('bg-amber-600')).toBe(false);
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    timelineAppealBtn?.click();
+    expect(navigate).toHaveBeenCalledWith(['/ciudadano/nueva-apelacion'], {
+      queryParams: { solicitudId: 95 }
+    });
+
+    const vencida = { ...request(96, 'VENCIDA'), apelacion: null } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(vencida)).toBe(true);
+
+    const inProcess = { ...request(97, 'EN_REVISION'), apelacion: null } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(inProcess)).toBe(false);
+
+    const responded = { ...request(98, 'RESPONDIDA'), apelacion: null } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(responded)).toBe(false);
+
+    const alreadyAppealed = { ...request(99, 'DENEGADA'), apelacion: { id: 12, expediente: 'TTAIP-0012' } } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(alreadyAppealed)).toBe(false);
+
+    expect(component.puedePresentarApelacion(null)).toBe(false);
+  });
 });
+

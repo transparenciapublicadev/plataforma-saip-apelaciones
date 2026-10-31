@@ -6,8 +6,9 @@ import { LoginRequest } from '../../models/usuario.model';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
-  LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
+  LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
 } from '@lucide/angular';
+import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
 
 type TipoUsuarioRole = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
 type InternalRole = Exclude<TipoUsuarioRole, 'CIUDADANO'>;
@@ -19,7 +20,8 @@ type AccessMode = 'citizen' | 'internal';
   imports: [
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideLogIn,
-    LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
+    LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
+    YaikuLogoComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -39,6 +41,7 @@ export class LoginComponent implements OnInit {
   loading = signal<boolean>(false);
   error = signal<string>('');
   mensaje = signal<string>('');
+  readonly showQuickAccess = signal<boolean>(false);
 
   fillDemo(id: string, pass: string): void {
     this.email = id;
@@ -67,8 +70,19 @@ export class LoginComponent implements OnInit {
   constructor() {}
 
   ngOnInit(): void {
-    const accessModeData = this.route.snapshot.data['accessMode'];
-    const requiredRoleData = this.route.snapshot.data['requiredRole'];
+    const snapQp = this.route.snapshot?.queryParams;
+    if (snapQp && this.hasAccesoRapido(snapQp)) {
+      this.showQuickAccess.set(true);
+    }
+
+    if (this.route.queryParams) {
+      this.route.queryParams.subscribe(params => {
+        this.showQuickAccess.set(this.hasAccesoRapido(params));
+      });
+    }
+
+    const accessModeData = this.route.snapshot?.data?.['accessMode'];
+    const requiredRoleData = this.route.snapshot?.data?.['requiredRole'];
     const requiredRole = this.toInternalRole(requiredRoleData);
 
     if (accessModeData === 'internal' && requiredRole) {
@@ -82,6 +96,13 @@ export class LoginComponent implements OnInit {
     if (this.authService.estaLogueado()) {
       this.redirigirSegunTipo();
     }
+  }
+
+  private hasAccesoRapido(params: Record<string, any> | undefined | null): boolean {
+    if (!params) return false;
+    if (!('acceso-rapido' in params)) return false;
+    const val = params['acceso-rapido'];
+    return val !== 'false' && val !== false;
   }
 
   navigateToHome(): void {
