@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Ciudadano;
@@ -24,15 +25,80 @@ public class ApelacionService {
     private final ApelacionRepository apelacionRepository;
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
+    private final AutorizacionRecursosService autorizacion;
 
     public ApelacionService(ApelacionRepository apelacionRepository,
                             CiudadanoService ciudadanoService,
                             EntidadService entidadService,
-                            EntityManager entityManager) {
+                            EntityManager entityManager,
+                            AutorizacionRecursosService autorizacion) {
         this.apelacionRepository = apelacionRepository;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
         this.entityManager = entityManager;
+        this.autorizacion = autorizacion;
+    }
+
+    /**
+     * Map all accessible apelaciones to DTO within a read-only transactional boundary.
+     */
+    @Transactional(readOnly = true)
+    public List<ApelacionDTO> listarTodasAccesibles() {
+        return autorizacion.filtrarApelacionesAccesibles(apelacionRepository.findAll())
+                .stream()
+                .map(ApelacionDTO::from)
+                .toList();
+    }
+
+    /**
+     * Map authorized citizen apelaciones to DTO within a read-only transactional boundary.
+     */
+    @Transactional(readOnly = true)
+    public List<ApelacionDTO> listarPorCiudadano(Long ciudadanoId) {
+        autorizacion.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
+        return apelacionRepository.findByCiudadano_IdUsuarioOrderByFechaApelacionDesc(ciudadanoId)
+                .stream()
+                .map(ApelacionDTO::from)
+                .toList();
+    }
+
+    /**
+     * Map authorized apelaciones by state to DTO within a read-only transactional boundary.
+     */
+    @Transactional(readOnly = true)
+    public List<ApelacionDTO> listarPorEstado(Apelacion.EstadoApelacion estado) {
+        return autorizacion.filtrarApelacionesAccesibles(apelacionRepository.findByEstadoOrderByFechaApelacionDesc(estado))
+                .stream()
+                .map(ApelacionDTO::from)
+                .toList();
+    }
+
+    /**
+     * Map authorized detail by id within a read-only transactional boundary.
+     */
+    @Transactional(readOnly = true)
+    public ApelacionDTO obtenerDetalle(Long id) {
+        Apelacion apelacion = apelacionRepository.findByIdWithDetails(id)
+                .or(() -> apelacionRepository.findById(id))
+                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + id));
+        autorizacion.verificarApelacionAccesible(apelacion);
+        return ApelacionDTO.from(apelacion);
+    }
+
+    /**
+     * Map authorized detail by expediente within a read-only transactional boundary.
+     */
+    @Transactional(readOnly = true)
+    public ApelacionDTO obtenerDetallePorExpediente(String expediente) {
+        if (expediente == null || expediente.trim().isEmpty()) {
+            throw new IllegalArgumentException("El expediente es obligatorio");
+        }
+        String normalizado = expediente.trim();
+        Apelacion apelacion = apelacionRepository.findByExpedienteWithDetails(normalizado)
+                .or(() -> apelacionRepository.findByExpediente(normalizado))
+                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con expediente: " + normalizado));
+        autorizacion.verificarApelacionAccesible(apelacion);
+        return ApelacionDTO.from(apelacion);
     }
 
     @Transactional(readOnly = true)

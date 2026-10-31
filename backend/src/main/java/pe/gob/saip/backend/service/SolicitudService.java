@@ -188,6 +188,44 @@ public class SolicitudService {
         return SolicitudDTO.from(solicitud);
     }
 
+    /** Map authorized accessible solicitudes to DTO within a read-only transactional boundary. */
+    @Transactional(readOnly = true)
+    public List<SolicitudDTO> listarTodasAccesibles() {
+        return autorizacion.filtrarSolicitudesAccesibles(solicitudRepository.findAll())
+                .stream()
+                .map(SolicitudDTO::from)
+                .toList();
+    }
+
+    /** Map authorized citizen solicitudes to DTO within a read-only transactional boundary. */
+    @Transactional(readOnly = true)
+    public List<SolicitudDTO> listarPorCiudadano(Long ciudadanoId) {
+        autorizacion.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
+        return findByCiudadanoId(ciudadanoId)
+                .stream()
+                .map(SolicitudDTO::from)
+                .toList();
+    }
+
+    /** Map authorized institutional entity solicitudes to DTO within a read-only transactional boundary. */
+    @Transactional(readOnly = true)
+    public List<SolicitudDTO> listarPorEntidad(Long entidadId) {
+        autorizacion.verificarEntidadInstitucional(entidadId);
+        return findByEntidadId(entidadId)
+                .stream()
+                .map(SolicitudDTO::from)
+                .toList();
+    }
+
+    /** Map authorized solicitudes filtered by state to DTO within a read-only transactional boundary. */
+    @Transactional(readOnly = true)
+    public List<SolicitudDTO> listarPorEstado(Solicitud.EstadoSolicitud estado) {
+        return autorizacion.filtrarSolicitudesAccesibles(solicitudRepository.findByEstado(estado))
+                .stream()
+                .map(SolicitudDTO::from)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public Optional<Solicitud> obtenerSolicitudPorExpediente(String expediente) {
         return solicitudRepository.findByExpediente(expediente);

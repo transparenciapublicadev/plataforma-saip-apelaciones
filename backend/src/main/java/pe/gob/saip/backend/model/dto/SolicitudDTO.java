@@ -53,6 +53,9 @@ public record SolicitudDTO(
     List<LiquidacionCostoSolicitudDTO> liquidacionesCosto
 ) {
     public static SolicitudDTO from(Solicitud s) {
+        if (s == null) {
+            return null;
+        }
         return new SolicitudDTO(
             s.getId(),
             s.getExpediente(),
