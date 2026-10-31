@@ -27,7 +27,7 @@ import {
   LucideBuilding2, LucideCompass, LucideShieldAlert,
   LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
   LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-  LucideSend, LucideChevronRight, LucideLayers, LucideTarget
+  LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp
 } from '@lucide/angular';
 
 @Component({
@@ -38,7 +38,7 @@ import {
     LucideBuilding2, LucideCompass, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-    LucideSend, LucideChevronRight, LucideLayers, LucideTarget
+    LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp
   ],
   templateUrl: './funcionario-dashboard.component.html',
   styleUrl: './funcionario-dashboard.component.css',
@@ -57,20 +57,20 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly revisionConsulta = signal(-1);
   readonly contextoVigente = computed(() => this.revisionConsulta() === this.authService.cambiosSesion());
   readonly tourSteps: TourStep[] = [
-    { selector: '[data-tour="e-hero"]', title: 'Panel institucional', body: 'Los registros corresponden a la entidad consultada, no a la actividad individual del funcionario.' },
-    { selector: '[data-tour="e-cumplimiento"]', title: 'Información no disponible', body: 'Esta consulta no aporta un indicador de atención dentro del plazo ni una comparación mensual.' },
-    { selector: '[data-tour="e-buckets"]', title: 'Agrupación de registros', body: 'Use estados y saldos informados por el servidor; el panel no calcula vencimientos.' },
-    { selector: '[data-tour="e-cola"]', title: 'Solicitudes recuperadas', body: 'Búsqueda y paginación se aplican localmente al listado autorizado recibido.', align: 'start' },
-    { selector: '[data-tour="e-carga"]', title: 'Saldos informados', body: 'La distribución refleja los valores recibidos, no un avance porcentual del trámite.' },
-    { selector: '[data-tour="e-norma"]', title: 'Actuaciones y límites', body: 'Cada expediente conserva sus comandos y comprobaciones. Registrar una respuesta no acredita entrega ni notificación eficaz.' },
+    { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo o vencen hoy.' },
+    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes respondidas dentro de los 10 días hábiles de ley, comparado con el mes anterior.' },
+    { selector: '[data-tour="e-buckets"]', title: 'Bandeja por plazo', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
+    { selector: '[data-tour="e-cola"]', title: 'Solicitudes de la bandeja', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start' },
+    { selector: '[data-tour="e-carga"]', title: 'Vencimientos de la semana', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
+    { selector: '[data-tour="e-norma"]', title: 'Norma aplicable', body: 'Recordatorio de los plazos legales clave (Ley N° 27806) y qué ocurre si vencen: silencio negativo y derecho de apelación.' },
   ];
   readonly buckets: BucketMeta[] = [
-    { key: 'todas', label: 'Todas', eyebrow: 'Registros recibidos', icon: 'inbox', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
-    { key: 'san', label: 'Vencidas', eyebrow: 'Estado VENCIDA', icon: 'alert', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
-    { key: 'hoy', label: 'Saldo 0–1', eyebrow: 'Días informados', icon: 'flame', color: 'var(--brand-600)', bg: 'var(--brand-subtle)' },
-    { key: 'semana', label: 'Saldo 2–5', eyebrow: 'Días informados', icon: 'calendar', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
-    { key: 'plazo', label: 'Saldo >5', eyebrow: 'Días informados', icon: 'check', color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 10%, transparent)' },
-    { key: 'respondidas', label: 'Respuesta / denegación', eyebrow: 'Según estado registrado', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
+    { key: 'todas', label: 'Todas las solicitudes', eyebrow: 'Vista general · sin filtro de plazo', icon: 'inbox', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
+    { key: 'san', label: 'Vencidas', eyebrow: 'Silencio negativo · acción urgente', icon: 'alert', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
+    { key: 'hoy', label: 'Hoy o mañana', eyebrow: 'Vencen en ≤1 día háb.', icon: 'flame', color: 'var(--brand-600)', bg: 'color-mix(in srgb, var(--brand-600) 8%, transparent)' },
+    { key: 'semana', label: 'Esta semana', eyebrow: '2 a 5 días hábiles', icon: 'calendar', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
+    { key: 'plazo', label: 'Cómodo en plazo', eyebrow: 'Más de 5 días háb.', icon: 'check', color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 10%, transparent)' },
+    { key: 'respondidas', label: 'Respondidas', eyebrow: 'Cerradas este periodo', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
   ];
   solicitudes = signal<Solicitud[]>([]);
   loading = signal(true);
@@ -86,12 +86,26 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly estados = ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'RESPONDIDA', 'DENEGADA', 'CONCLUIDA', 'VENCIDA'];
   readonly queueItems = computed(() => this.solicitudes().map(queueItem));
   readonly counts = computed(() => {
-    const counts: Record<BucketKey, number> = { todas: this.queueItems().length, san: 0, hoy: 0, semana: 0, plazo: 0, respondidas: 0, otras: 0 };
+    const counts: Record<BucketKey, number> = { todas: this.queueItems().length, san: 0, hoy: 0, semana: 0, plazo: 0, respondidas: 0 };
     for (const item of this.queueItems()) counts[item.bucket]++;
     return counts;
   });
-  readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket())
-    ?? { key: 'otras' as const, label: 'Otros estados o sin saldo', eyebrow: 'Sin grupo temporal', icon: 'inbox', color: 'var(--muted-foreground)', bg: 'var(--card)' });
+  readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket()) ?? this.buckets[0]);
+  readonly totalActivas = computed(() => this.solicitudes().filter(s => s.estado === 'RECEPCIONADA' || s.estado === 'EN_REVISION' || s.estado === 'PENDIENTE_INFORMACION' || s.estado === 'VENCIDA').length);
+  readonly respondidas = computed(() => this.solicitudes().filter(s => s.estado === 'RESPONDIDA' || s.estado === 'DENEGADA' || (s.estado === 'CONCLUIDA' && s.respuesta != null) || s.respuesta != null).length);
+  readonly cerradas = computed(() => this.respondidas() + this.counts().san);
+  readonly cumplimiento = computed<number | null>(() => this.cerradas() > 0 ? Math.round((this.respondidas() / this.cerradas()) * 100) : null);
+  readonly donutDashOffset = computed(() => {
+    const val = this.cumplimiento() ?? 0;
+    const r = 26;
+    const c = 2 * Math.PI * r;
+    return c - (val / 100) * c;
+  });
+  readonly donutAccent = computed(() => {
+    const val = this.cumplimiento() ?? 0;
+    return val >= 80 ? 'var(--success)' : val >= 60 ? 'var(--warning)' : 'var(--brand-700)';
+  });
+  readonly fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }));
   readonly filtradas = computed(() => {
     const terms = normalizeSearch(this.busqueda().trim()).split(/\s+/).filter(Boolean);
     return this.queueItems().filter(item => (this.selectedBucket() === 'todas' || item.bucket === this.selectedBucket())
@@ -220,15 +234,41 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   }
   getDiasColor(bucket: BucketKey): string { return this.buckets.find(item => item.key === bucket)?.color ?? 'var(--muted-foreground)'; }
   getMetaLabel(item: QueueItem): string {
-    if (item.solicitud.estado === 'PENDIENTE_INFORMACION') return 'Requerimiento';
-    if (item.solicitud.estado === 'CONCLUIDA') return 'Estado registrado';
-    return item.bucket === 'respondidas' ? 'Registro de respuesta' : 'Saldo informado';
+    const isResp = ['RESPONDIDA', 'DENEGADA', 'CONCLUIDA'].includes(item.solicitud.estado) || item.solicitud.respuesta != null;
+    if (isResp) return 'Respondida el';
+    const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
+      || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
+    if (enPrecision) return 'Precisar antes de';
+    if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) return 'En silencio administrativo';
+    return 'Plazo p/ responder';
   }
   getMetaValue(item: QueueItem): string {
-    if (item.solicitud.estado === 'PENDIENTE_INFORMACION') return 'Consultar detalle';
-    if (item.solicitud.estado === 'CONCLUIDA') return 'CONCLUIDA';
-    if (item.bucket === 'respondidas') return item.solicitud.respuesta?.fechaRespuesta || 'Fecha no informada';
-    return item.diasRestantes === null ? 'No informado' : item.diasRestantes + ' días (servidor)';
+    const isResp = ['RESPONDIDA', 'DENEGADA', 'CONCLUIDA'].includes(item.solicitud.estado) || item.solicitud.respuesta != null;
+    if (isResp) {
+      const fecha = item.solicitud.respuesta?.fechaRespuesta;
+      if (fecha && this.fechaVisible(fecha)) {
+        const [y, m, d] = fecha.substring(0, 10).split('-');
+        return `${d}/${m}/${y}`;
+      }
+      return fecha || '—';
+    }
+    const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
+      || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
+    if (enPrecision) {
+      const obs = Array.isArray(item.solicitud.observaciones) ? item.solicitud.observaciones.find(o => o && o.estado === 'PENDIENTE_SUBSANACION') : null;
+      const fecha = obs?.fechaLimiteSubsanacion;
+      if (fecha && this.fechaVisible(fecha)) {
+        const [y, m, d] = fecha.substring(0, 10).split('-');
+        return `${d}/${m}/${y}`;
+      }
+      return fecha || '—';
+    }
+    if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) {
+      const diasVencidos = item.diasRestantes !== null ? Math.abs(item.diasRestantes) : 0;
+      return `+${diasVencidos} ${diasVencidos === 1 ? 'día' : 'días'}`;
+    }
+    const d = item.diasRestantes ?? 0;
+    return `${d} ${d === 1 ? 'día háb.' : 'días háb.'}`;
   }
   canResponder(solicitud: Solicitud): boolean { return this.contextoVigente() && !this.loading() && !this.error() && canNavigateToResponse(solicitud); }
   fechaVisible(value: unknown): string | null {

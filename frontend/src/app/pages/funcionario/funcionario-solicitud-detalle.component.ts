@@ -81,10 +81,26 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly entidadService = inject(EntidadService);
 
+  readonly Math = Math;
+
   solicitud = signal<Solicitud | null>(null);
   plazoSeguimiento = signal<PlazoSeguimientoDTO | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
+
+  evaluarSubsanacion(observacion: ObservacionSolicitud, aceptada: boolean): void {
+    const sol = this.solicitud();
+    if (!sol?.id) return;
+    const nuevoEstado = aceptada ? 'EN_REVISION' : 'CONCLUIDA';
+    this.solicitudService.cambiarEstado(sol.id, nuevoEstado).subscribe({
+      next: () => {
+        if (sol.expediente) this.cargarSolicitud(sol.expediente);
+      },
+      error: () => {
+        if (sol.expediente) this.cargarSolicitud(sol.expediente);
+      }
+    });
+  }
   reintentable = signal(false);
   previasError = signal('');
   previasLoading = signal(false);
@@ -498,7 +514,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
           next: plazo => {
             if (!vigente()) return;
             if (plazo && Number.isSafeInteger(plazo.diasRestantes)) this.plazoSeguimiento.set(plazo);
-            else this.plazoError.set('Seguimiento del plazo incompleto. No se calcula un saldo sustituto.');
+            else this.plazoError.set('Seguimiento del plazo incompleto.');
           },
           error: () => { if (vigente()) this.plazoError.set('Seguimiento del plazo no disponible. Se conserva la fecha límite registrada.'); }
         }));
@@ -724,7 +740,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.ampliacionInforme.set('');
         this.ampliacionFechaNotificacion.set('');
         this.ampliacionCronograma.set([this.crearEntregaForm(1)]);
-        this.ampliacionSuccess.set('Ampliación registrada; el registro no acredita notificación eficaz.');
+        this.ampliacionSuccess.set('Ampliación registrada.');
         this.ampliacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'ampliacion');
       },
@@ -1066,10 +1082,6 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null;
   }
 
-  readonly plazosDiscordantes = computed(() => {
-    const detalle = this.solicitud()?.diasRestantes, seguimiento = this.plazoSeguimiento()?.diasRestantes;
-    return Number.isSafeInteger(detalle) && Number.isSafeInteger(seguimiento) && detalle !== seguimiento;
-  });
 
   private cargarEntidadesActivas(): void {
     this.entidadService.findActivas().subscribe({

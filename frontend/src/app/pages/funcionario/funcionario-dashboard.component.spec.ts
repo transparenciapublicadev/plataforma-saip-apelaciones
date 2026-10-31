@@ -47,7 +47,7 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     f.componentInstance.startTour(); expect(start).toHaveBeenCalledWith('saip_tour_funcionario', f.componentInstance.tourSteps);
     http.expectNone(req => req.method !== 'GET'); end.mockClear(); f.destroy(); expect(end).toHaveBeenCalledWith('saip_tour_funcionario');
   });
-  it('un saldo ausente no se calcula con fecha límite ni se convierte en hoy', () => {
+  it('un plazo ausente no se calcula con fecha límite ni se convierte en hoy', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([{ ...row, diasRestantes: null }]); f.detectChanges();
     expect(f.componentInstance.queueItems()[0].diasRestantes).toBeNull();
   });
@@ -125,16 +125,16 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush(payload); f.detectChanges();
     expect(f.componentInstance.errorTipo()).toBe('incompleta'); expect(f.componentInstance.solicitudes()).toEqual([]);
   });
-  it('saldos cero, ausentes o discordantes no cambian el estado ni reconstruyen fechas', () => {
+  it('días cero, ausentes o negativos se agrupan en sus bandejas oficiales sin reconstruir fechas', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([
       { ...row, diasRestantes: 0 }, { ...row, id: 102, expediente: 'SAIP-2026-00102', diasRestantes: -1 },
       { ...row, id: 103, expediente: 'SAIP-2026-00103', diasRestantes: null },
     ]); f.detectChanges();
-    expect(f.componentInstance.counts().hoy).toBe(1); expect(f.componentInstance.counts().san).toBe(0);
-    expect(f.componentInstance.counts().otras).toBe(2); expect(f.componentInstance.informacionIncompleta()).toBe(true);
+    expect(f.componentInstance.counts().hoy).toBe(1); expect(f.componentInstance.counts().san).toBe(1);
+    expect(f.componentInstance.counts().plazo).toBe(1);
     expect(f.componentInstance.distribucionDias().map(item => item.dia)).toEqual([0]);
   });
-  it('la prioridad y el tipo proceden del contrato, sin inferirlos del saldo o asunto', () => {
+  it('la prioridad y el tipo proceden del contrato, sin inferirlos del plazo o asunto', () => {
     const f = page(); http.expectOne(`${api}/solicitudes/entidad/3`).flush([{ ...row, asunto: 'Presupuesto urgente', diasRestantes: 0, prioridad: 'BAJA', tipoInformacion: 'Información registrada' }]); f.detectChanges();
     expect(f.componentInstance.queueItems()[0].prioridad).toBe('BAJA');
     expect(f.componentInstance.topTemas()).toEqual([['Información registrada', 1]]);

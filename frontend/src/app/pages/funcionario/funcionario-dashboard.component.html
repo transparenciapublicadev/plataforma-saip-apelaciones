@@ -23,22 +23,34 @@
             </button>
           </div>
           <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
-            Bandeja — <span class="italic" style="color: var(--brand-700)">SAIP</span>
+            Tu día — <span class="italic" style="color: var(--brand-700)">{{ fechaHoy() }}</span>
           </h1>
           <p class="text-muted-foreground mt-1.5 text-sm" role="status" aria-live="polite" aria-atomic="true">
-            @if (!loading() && !error() && contextoVigente()) {
-              <span class="font-mono font-semibold text-foreground">{{ counts().todas }}</span> registros recuperados de la entidad.
-            } @else { Información institucional no disponible todavía. }
-            La bandeja no representa la actividad individual del funcionario.
+            <span class="font-mono font-semibold text-foreground">{{ totalActivas() }}</span> solicitudes en bandeja ·
+            @if (counts().san > 0) {
+              <span class="font-mono font-semibold" style="color: var(--brand-700)">{{ counts().san }} en SAN</span> ·
+            }
+            @if (counts().hoy > 0) {
+              <span class="font-mono font-semibold" style="color: var(--brand-600)">{{ counts().hoy }} para hoy</span>
+            }
           </p>
         </div>
 
         <div data-tour="e-cumplimiento" class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
-          <div class="w-[70px] h-[70px] rounded-full flex items-center justify-center shrink-0 font-display text-muted-foreground text-2xl" style="border: 6px solid var(--muted)" aria-hidden="true">—</div>
-          <div class="min-w-0 max-w-[240px]">
-            <span class="eyebrow">Atención dentro de plazo</span>
-            <p class="font-display text-lg">Indicador no disponible</p>
-            <p class="text-xs text-muted-foreground mt-1">La consulta no informa atención a tiempo ni comparación mensual.</p>
+          <div class="relative w-[70px] h-[70px] shrink-0">
+            <svg width="70" height="70" viewBox="0 0 70 70">
+              <circle cx="35" cy="35" r="26" fill="none" stroke="var(--muted)" stroke-width="6" />
+              <circle cx="35" cy="35" r="26" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.36" [attr.stroke-dashoffset]="donutDashOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center font-display text-sm" [style.color]="donutAccent()" style="letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
+          </div>
+          <div class="min-w-[140px]">
+            <span class="eyebrow">Cumplimiento del plazo legal</span>
+            <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
+            <div class="flex items-center gap-1 text-xs mt-0.5 text-muted-foreground">
+              <svg aria-hidden="true" lucideTrendingUp class="w-3 h-3"></svg>
+              {{ respondidas() }} de {{ cerradas() }} atendidas a tiempo
+            </div>
           </div>
         </div>
       </div>
@@ -54,10 +66,6 @@
         <button type="button" (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
-      <p class="text-xs text-muted-foreground mb-4">Entidad #{{ entidadId() }} informada en la ficha del funcionario. Búsqueda, filtros y páginas son locales al listado autorizado recibido. Los conteos describen este listado, no una medición individual o por periodo.</p>
-      @if (informacionIncompleta()) {
-        <p role="status" class="rounded-lg border border-border p-4 mb-4 text-sm text-muted-foreground">Algunos registros tienen información incompleta o discordante. Se conservan sus estados originales; no se calculan fechas ni saldos sustitutos.</p>
-      }
       @if (counts().san > 0) {
         <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex flex-wrap md:flex-nowrap items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
@@ -65,11 +73,11 @@
             <svg aria-hidden="true" lucideShieldAlert class="w-5 h-5 text-white"></svg>
           </div>
           <div class="flex-1 min-w-0">
-            <span class="eyebrow" style="color: var(--brand-700)">Estado informado por el servidor</span>
+            <span class="eyebrow" style="color: var(--brand-700)">Silencio administrativo negativo</span>
             <h2 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
-              {{ counts().san }} registros en estado VENCIDA
+              {{ counts().san }} solicitud{{ counts().san !== 1 ? 'es' : '' }} en SAN
             </h2>
-            <p class="text-sm text-muted-foreground mt-0.5">Revise las actuaciones de cada expediente. Esta agrupación usa el estado registrado y no acredita por sí sola notificación, entrega ni una sanción.</p>
+            <p class="text-sm text-muted-foreground mt-0.5">El plazo legal venció. Cada día sin respuesta puede originar sanción para la entidad y derecho de apelación del ciudadano.</p>
           </div>
           <button type="button" (click)="selectBucket('san')" class="btn-brand !px-5 self-center w-full md:w-auto">
             Atender ahora
@@ -80,8 +88,8 @@
 
       <div class="mb-6" data-tour="e-buckets">
         <div class="flex items-baseline justify-between mb-3">
-          <span class="eyebrow">Bandejas por estado y saldo informado</span>
-          <span class="text-xs text-muted-foreground hidden md:inline">Click una columna para enfocar</span>
+          <span class="eyebrow">Bandeja por plazo</span>
+          <span class="text-xs text-muted-foreground hidden md:inline">Seleccione una bandeja para ver sus solicitudes</span>
         </div>
 
         <div
@@ -119,7 +127,6 @@
       </div>
 
       <div class="flex items-center flex-wrap gap-3 mb-5">
-        <button type="button" class="btn-ghost-brand" [attr.aria-pressed]="selectedBucket() === 'otras'" (click)="selectBucket('otras')">Otros estados o sin saldo · {{ counts().otras }}</button>
         <label for="entity-state" class="text-xs text-muted-foreground">Estado registrado</label>
         <select id="entity-state" class="field-input w-auto" [ngModel]="filtroEstado()" (ngModelChange)="cambiarEstado($event)">
           <option value="">Todos los estados</option>
@@ -161,7 +168,7 @@
               </div>
             </div>
 
-            <p role="status" aria-live="polite" aria-atomic="true" class="px-4 pt-3 text-xs text-muted-foreground">{{ filtradas().length }} coincidencias entre {{ counts().todas }} registros recuperados. Orden de presentación recibido del servidor.</p>
+            <p role="status" aria-live="polite" aria-atomic="true" class="px-4 pt-3 text-xs text-muted-foreground">{{ filtradas().length }} coincidencias entre {{ counts().todas }} solicitudes.</p>
             <div class="p-3 md:p-4 space-y-2">
               @if (filtradas().length === 0) {
                 <div class="text-center py-12">
@@ -169,7 +176,7 @@
                     <svg aria-hidden="true" lucideInbox class="w-5 h-5" style="color: var(--muted-foreground)"></svg>
                   </div>
                   <p class="text-sm text-foreground/85 font-medium">{{ busqueda().trim() ? 'Sin resultados para su búsqueda' : 'Sin solicitudes en esta bandeja' }}</p>
-                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Seleccione otra bandeja o limpie los filtros. Este resultado corresponde solo a la consulta recibida.' }}</p>
+                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Disfrute la calma o explore otra cola arriba.' }}</p>
                 </div>
               } @else {
                 <div role="list" aria-label="Solicitudes de la entidad" class="space-y-2">
@@ -242,23 +249,23 @@
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
                 <svg aria-hidden="true" lucideLayers class="w-3 h-3"></svg>
-                Distribución de carga
+                Vencimientos de la semana
               </span>
-              <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Saldos de atención informados</h2>
+              <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos próximos</h2>
             </div>
             <div class="p-4 space-y-1.5">
               @for (row of distribucionDias(); track row.dia) {
                 <div class="flex items-center gap-2.5" data-table-row>
-                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia + 'd' }}</span>
+                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia === 0 ? 'hoy' : row.dia + 'd' }}</span>
                   <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: var(--muted)">
                     <div class="h-full rounded-full transition-all" [style.width.%]="row.width" [style.background]="row.count === 0 ? 'var(--border-strong)' : row.color" [style.opacity]="row.count === 0 ? 0.4 : 1"></div>
                   </div>
                   <span class="font-mono text-[11px] w-5 text-right" [style.color]="row.count > 0 ? row.color : 'var(--muted-foreground)'">{{ row.count }}</span>
                 </div>
               }
-              @if (distribucionDias().length === 0) { <p class="text-xs text-muted-foreground">No hay saldos de atención agrupables en esta consulta.</p> }
+              @if (distribucionDias().length === 0) { <p class="text-xs text-muted-foreground">Sin vencimientos pendientes en esta consulta.</p> }
               <p class="text-[11px] text-muted-foreground pt-3 border-t border-border mt-3">
-                Se agrupan solo saldos recibidos en estados de atención. La longitud compara cantidades, no avance del trámite. No se recalculan plazos.
+                Vencimientos por días hábiles restantes.
               </p>
             </div>
           </div>
@@ -285,22 +292,18 @@
                   </div>
                 }
                 <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
-                  Tipos informados por el servidor en los registros recuperados; no se infieren del asunto ni habilitan respuestas masivas.
+                  Considere preparar respuestas tipo para los temas recurrentes.
                 </p>
               </div>
             </div>
           }
 
-          <div class="form-shell p-4 text-sm text-muted-foreground">
-            <h2 class="font-display text-lg text-foreground">Asignaciones y operaciones masivas</h2>
-            <p class="mt-2">La asignación de área o funcionario no está disponible en este panel. Revise cada expediente por separado; no se guardan asignaciones locales ni se presentan lotes como registrados.</p>
-          </div>
           <div class="rounded-lg p-4" data-tour="e-norma" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)" data-reveal>
-            <span class="eyebrow" style="color: var(--info)">Actuaciones y límites</span>
+            <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
             <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
-              <li>Revise los estados, fechas y requerimientos que constan en cada expediente.</li>
-              <li>Una respuesta registrada no acredita entrega ni notificación eficaz o firma.</li>
-              <li>Las fechas ausentes o discordantes requieren revisión; aquí no se elige un calendario.</li>
+              <li><span class="font-mono font-semibold">10 días hábiles</span> para responder · Ley N° 27806.</li>
+              <li>Vencido el plazo aplica <span class="font-semibold">silencio administrativo negativo</span>.</li>
+              <li>El administrado puede apelar en <span class="font-mono font-semibold">15 días hábiles</span> ante el Tribunal.</li>
             </ul>
           </div>
         </aside>

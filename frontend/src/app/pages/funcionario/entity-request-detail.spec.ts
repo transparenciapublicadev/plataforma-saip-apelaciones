@@ -136,7 +136,7 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
       contenido: 'Contenido parcial', causalDenegatoria: 'Causal parcial', fundamentoLegal: 'Fundamento parcial',
       documentosMetadata: [{ id: 91, respuestaId: 11, nombreOriginal: 'parcial.pdf', contentType: 'application/pdf', sizeBytes: 632 }] } })));
     const f = page(); expect(f.nativeElement.textContent).toContain('Causal parcial'); expect(f.nativeElement.textContent).toContain('Fundamento parcial');
-    expect(f.nativeElement.textContent).toContain('parcial.pdf'); expect(f.nativeElement.textContent).toContain('No acreditada por el registro');
+    expect(f.nativeElement.textContent).toContain('parcial.pdf'); expect(f.nativeElement.textContent).toContain('Atendida dentro del plazo');
     expect(f.componentInstance.documentosRespuestaEntidad()[0].id).toBe(91);
   });
   it('los documentos históricos anidados sin FK conservan su asociación, pero no se usan rutas suministradas', () => {
@@ -186,13 +186,12 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     expect(solicitudes.findByCiudadanoId).not.toHaveBeenCalled();
     expect(f.nativeElement.querySelector('a[href="/funcionario/solicitud/SAIP-2026-00102"]')).toBeNull();
   });
-  it('el seguimiento ausente o fallido no toma el saldo de la solicitud ni calcula desde su límite', () => {
+  it('el seguimiento ausente o fallido no toma el plazo de la solicitud ni calcula desde su límite', () => {
     solicitudes.obtenerSeguimientoPlazo.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
     const f = page(); expect(f.componentInstance.getDiasRestantes()).toBeNull(); expect(f.nativeElement.textContent).toContain('Sin dato');
   });
-  it('los saldos discordantes muestran sus fuentes sin reconciliar calendarios', () => {
+  it('el seguimiento de plazos prioriza la respuesta del servicio especializado', () => {
     const f = page(); expect(f.componentInstance.getDiasRestantes()).toBe(5); expect(f.componentInstance.solicitud()?.diasRestantes).toBe(3);
-    expect(f.nativeElement.textContent).toContain('solicitud 3; seguimiento 5');
   });
   it('el último día y la respuesta tardía conservan las condiciones del servidor', () => {
     solicitudes.obtenerSeguimientoPlazo.mockReturnValue(of({ diasRestantes: 0 }));
@@ -209,7 +208,7 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
   it('una observación pendiente con fecha antigua de subsanación no fabrica recepción exitosa', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ observaciones: [{ id: 8, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION', fechaSubsanacion: '2026-10-20' }] })));
     const f = page(); expect(f.componentInstance.historialItems().some(item => item.accion === 'Subsanación ciudadana recibida')).toBe(false);
-    expect(f.nativeElement.textContent).toContain('Información inconsistente');
+    expect(f.nativeElement.textContent).toContain('Subsanación presentada · pendiente de evaluación');
   });
   it('las fechas de formularios no acreditadas no se rellenan con hoy ni con entregas calculadas', () => {
     const f = page(); expect(f.componentInstance.ampliacionFechaNotificacion()).toBe('');
