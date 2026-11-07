@@ -1,287 +1,128 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
 import { provideRouter, Router, ActivatedRoute } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { BehaviorSubject, of } from 'rxjs';
+import { of, throwError, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../services/auth.service';
-import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
 
-describe('LoginComponent — Identidad visual, accesibilidad y acceso rápido', () => {
-  let queryParamsSubject: BehaviorSubject<Record<string, any>>;
-  let mockRoute: any;
-  let mockAuthService: any;
+type Role = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
+const entries = [
+  { role: 'CIUDADANO', route: '/login' },
+  { role: 'FUNCIONARIO', route: '/acceso-funcionario' },
+  { role: 'TTAIP', route: '/acceso-ttaip' },
+  { role: 'ADMINISTRADOR', route: '/acceso-admin' }
+] as const;
+
+describe('Login: separate portals, manual credentials and reference presentation', () => {
+  let auth: { estaLogueado: ReturnType<typeof vi.fn>; login: ReturnType<typeof vi.fn>; guardarSesion: ReturnType<typeof vi.fn>; obtenerSesion: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    globalThis.localStorage?.clear?.();
-    globalThis.sessionStorage?.clear?.();
-    queryParamsSubject = new BehaviorSubject<Record<string, any>>({});
-
-    mockRoute = {
-      snapshot: {
-        data: {},
-        queryParams: {}
-      },
-      queryParams: queryParamsSubject.asObservable()
-    };
-
-    mockAuthService = {
-      estaLogueado: vi.fn().mockReturnValue(false),
-      login: vi.fn(),
-      guardarSesion: vi.fn(),
-      obtenerSesion: vi.fn().mockReturnValue(null),
-      cerrarSesion: vi.fn()
-    };
+    auth = { estaLogueado: vi.fn(() => false), login: vi.fn(), guardarSesion: vi.fn(), obtenerSesion: vi.fn(() => null) };
   });
+  afterEach(() => TestBed.resetTestingModule());
 
-  afterEach(() => {
-    TestBed.resetTestingModule();
-    globalThis.localStorage?.clear?.();
-    globalThis.sessionStorage?.clear?.();
-  });
-
-  async function createComponent(customRoute?: any) {
-    await TestBed.configureTestingModule({
-      imports: [LoginComponent],
-      providers: [
-        provideRouter([]),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: customRoute || mockRoute },
-        { provide: AuthService, useValue: mockAuthService }
-      ]
-    }).compileComponents();
-
-    const fixture = TestBed.createComponent(LoginComponent);
-    fixture.detectChanges();
-    return fixture;
+  async function create(role: Role = 'CIUDADANO', params: Record<string, unknown> = {}): Promise<ComponentFixture<LoginComponent>> {
+    await TestBed.configureTestingModule({ imports: [LoginComponent], providers: [
+      provideRouter([]), { provide: AuthService, useValue: auth },
+      { provide: ActivatedRoute, useValue: {
+        snapshot: { data: role === 'CIUDADANO' ? { accessMode: 'citizen' } : { accessMode: 'internal', requiredRole: role }, queryParams: params }, queryParams: of(params)
+      } }
+    ] }).compileComponents();
+    const fixture = TestBed.createComponent(LoginComponent); fixture.detectChanges(); return fixture;
   }
 
-  describe('Identidad visual y slogan oficial', () => {
-    it('muestra el componente app-yaiku-logo con tono dark en el panel institucional', async () => {
-      const fixture = await createComponent();
-      const logoEl = fixture.nativeElement.querySelector('app-yaiku-logo');
-      expect(logoEl).not.toBeNull();
-
-      const logoDebugEl = fixture.debugElement.query(By.directive(YaikuLogoComponent));
-      expect(logoDebugEl).not.toBeNull();
-      const logoComponent = logoDebugEl.componentInstance as YaikuLogoComponent;
-      expect(logoComponent).toBeDefined();
-      expect(logoComponent.tone()).toBe('dark');
-      expect(logoComponent.height()).toBe(40);
-      expect(logoComponent.gradientId()).toBe('login-yaiku-seal');
-
-      const linearGrad = fixture.nativeElement.querySelector('#login-yaiku-seal');
-      expect(linearGrad).not.toBeNull();
-      expect(linearGrad.tagName.toLowerCase()).toBe('lineargradient');
-
-      const brandSpan = fixture.nativeElement.querySelector('.yaiku-brand');
-      expect(brandSpan).not.toBeNull();
-      expect(brandSpan.getAttribute('role')).toBe('img');
-      expect(brandSpan.getAttribute('aria-label')).toBe('Yaiku');
-    });
-
-    it('muestra el lema oficial de producto exactamente debajo del logo', async () => {
-      const fixture = await createComponent();
-      const textContent = fixture.nativeElement.textContent;
-      expect(textContent).toContain('Pide, sigue y apela. Todo en un solo lugar.');
-
-      const sloganEl = fixture.nativeElement.querySelector('.font-display.italic');
-      expect(sloganEl).not.toBeNull();
-      expect(sloganEl.textContent.trim()).toBe('Pide, sigue y apela. Todo en un solo lugar.');
-    });
-
-    it('no contiene el SVG de balanza genérico anterior', async () => {
-      const fixture = await createComponent();
-      expect(fixture.nativeElement.querySelector('svg[lucideScale]')).toBeNull();
-      expect(fixture.nativeElement.textContent).not.toContain('TTAIP · República del Perú');
-    });
-
-    it('el logo y slogan enlazan con la ruta raíz /', async () => {
-      const fixture = await createComponent();
-      const brandLink = fixture.nativeElement.querySelector('a[routerLink="/"]');
-      expect(brandLink).not.toBeNull();
-      expect(brandLink.contains(fixture.nativeElement.querySelector('app-yaiku-logo'))).toBe(true);
+  describe('Security: manual credentials only', () => {
+    it.each(entries)('does not expose demo access on $role even with the URL activator', async entry => {
+      const fixture = await create(entry.role, { 'acceso-rapido': 'true' });
+      expect(fixture.nativeElement.textContent).not.toMatch(/Acceso rápido|MINEDU|\bdemo\b/i);
+      expect(fixture.componentInstance.email).toBe('');
+      expect(fixture.componentInstance.password).toBe('');
+      expect(auth.login).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelectorAll('input[autocomplete="current-password"]')).toHaveLength(1);
     });
   });
 
-  describe('Distintivos de confianza y accesibilidad', () => {
-    it('muestra el distintivo oficial WCAG 2.2 AA alineado con design-reference', async () => {
-      const fixture = await createComponent();
-      const text = fixture.nativeElement.textContent;
-      expect(text).toContain('WCAG 2.2 AA');
-      expect(text).not.toContain('WCAG 2.1 AA');
-    });
-
-    it('muestra los distintivos de conexión segura y datos encriptados', async () => {
-      const fixture = await createComponent();
-      const text = fixture.nativeElement.textContent;
-      expect(text).toContain('Conexión SSL');
-      expect(text).toContain('Datos encriptados');
-    });
+  it.each(entries)('uses $route as a real separate entry with $role fixed by route data', async entry => {
+    const fixture = await create(entry.role); const host = fixture.nativeElement as HTMLElement;
+    const links = [...host.querySelectorAll<HTMLAnchorElement>('nav a')];
+    expect(links.map(a => a.getAttribute('href'))).toEqual(entries.map(e => e.route));
+    expect(links.filter(a => a.getAttribute('aria-current') === 'page').map(a => a.getAttribute('href'))).toEqual([entry.route]);
+    expect(host.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(fixture.componentInstance.isCitizenPortal()).toBe(entry.role === 'CIUDADANO');
+    expect(host.querySelector('a[href="/registro"]') !== null).toBe(entry.role === 'CIUDADANO');
+    expect(auth.login).not.toHaveBeenCalled();
   });
 
-  describe('Condicionamiento de credenciales demo (showQuickAccess)', () => {
-    it('oculta el bloque de acceso rápido demo por defecto cuando no hay query param', async () => {
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-      expect(fixture.nativeElement.textContent).not.toContain('Acceso rápido demo');
-      expect(fixture.nativeElement.querySelector('button[type="button"]')?.textContent).not.toContain('Ciudadano (DNI');
-    });
-
-    it('muestra el bloque de acceso rápido demo cuando el query param acceso-rapido está presente', async () => {
-      mockRoute.snapshot.queryParams = { 'acceso-rapido': '' };
-      queryParamsSubject.next({ 'acceso-rapido': '' });
-
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(true);
-      expect(fixture.nativeElement.textContent).toContain('Acceso rápido demo');
-      expect(fixture.nativeElement.textContent).toContain('Ciudadano (DNI 70000001)');
-    });
-
-    it('muestra el bloque de acceso rápido demo con acceso-rapido=true', async () => {
-      mockRoute.snapshot.queryParams = { 'acceso-rapido': 'true' };
-      queryParamsSubject.next({ 'acceso-rapido': 'true' });
-
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(true);
-      expect(fixture.nativeElement.textContent).toContain('Acceso rápido demo');
-    });
-
-    it('mantiene oculto el bloque de acceso rápido cuando acceso-rapido es false', async () => {
-      mockRoute.snapshot.queryParams = { 'acceso-rapido': 'false' };
-      queryParamsSubject.next({ 'acceso-rapido': 'false' });
-
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-      expect(fixture.nativeElement.textContent).not.toContain('Acceso rápido demo');
-    });
-
-    it('permite rellenar credenciales demo cuando el bloque está activo', async () => {
-      mockRoute.snapshot.queryParams = { 'acceso-rapido': '' };
-      queryParamsSubject.next({ 'acceso-rapido': '' });
-
-      const fixture = await createComponent();
-      fixture.detectChanges();
-
-      const demoBtn = Array.from(fixture.nativeElement.querySelectorAll('button') as HTMLButtonElement[])
-        .find(b => b.textContent?.includes('70000001'));
-      expect(demoBtn).toBeDefined();
-
-      demoBtn!.click();
-      fixture.detectChanges();
-
-      expect(fixture.componentInstance.email).toBe('70000001');
-      expect(fixture.componentInstance.password).toBe('Saip2026*');
-    });
-
-    it('oculta el bloque de acceso rápido cuando hay parámetros irrelevantes (?tab=ciudadano&returnUrl=%2F)', async () => {
-      mockRoute.snapshot.queryParams = { tab: 'ciudadano', returnUrl: '%2F' };
-      queryParamsSubject.next({ tab: 'ciudadano', returnUrl: '%2F' });
-
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-      expect(fixture.nativeElement.textContent).not.toContain('Acceso rápido demo');
-    });
-
-    it('respeta la distinción de mayúsculas/minúsculas y no activa con parámetros distintos (?ACCESO-RAPIDO=true)', async () => {
-      mockRoute.snapshot.queryParams = { 'ACCESO-RAPIDO': 'true' };
-      queryParamsSubject.next({ 'ACCESO-RAPIDO': 'true' });
-
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-      expect(fixture.nativeElement.textContent).not.toContain('Acceso rápido demo');
-    });
-
-    it('maneja de forma segura rutas con snapshot o queryParams nulo o indefinido', async () => {
-      const nullRoute = {
-        snapshot: null,
-        queryParams: of({})
-      };
-      const fixture = await createComponent(nullRoute);
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-    });
-
-    it('actualiza dinámicamente el estado al cambiar los queryParams durante la navegación reactiva', async () => {
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-
-      queryParamsSubject.next({ 'acceso-rapido': '' });
-      fixture.detectChanges();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(true);
-      expect(fixture.nativeElement.textContent).toContain('Acceso rápido demo');
-
-      queryParamsSubject.next({});
-      fixture.detectChanges();
-      expect(fixture.componentInstance.showQuickAccess()).toBe(false);
-      expect(fixture.nativeElement.textContent).not.toContain('Acceso rápido demo');
-    });
+  it('retains an accessible brand/home link, headings and honest capability labels', async () => {
+    const fixture = await create(); const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('a[aria-label="Yaiku, volver al inicio"] app-yaiku-logo')).not.toBeNull();
+    expect(host.querySelector('#login-title')?.textContent).toContain('Bienvenido de vuelta');
+    expect(host.querySelectorAll('h1')).toHaveLength(1);
+    expect(host.textContent).toContain('Pide, sigue y apela.');
+    expect(host.textContent).toContain('Todo en un solo lugar.');
+    expect(host.textContent).not.toMatch(/WCAG|Datos encriptados|Plataforma oficial|mesa de ayuda institucional/i);
+    expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.disabled).toBe(true);
+    expect(host.querySelector('#login-unavailable')?.textContent).toContain('no están disponibles');
   });
 
-  describe('Preservación funcional de portales y autenticación', () => {
-    it('configura el portal del administrado en modo público citizen por defecto', async () => {
-      const fixture = await createComponent();
-      expect(fixture.componentInstance.isCitizenPortal()).toBe(true);
-      expect(fixture.componentInstance.portalTitle()).toBe('Acceso para Administrados');
-      expect(fixture.nativeElement.textContent).toContain('Crear cuenta (Ciudadano / Empresa)');
-      expect(fixture.nativeElement.textContent).toContain('Portal del administrado');
-    });
+  it('labels both inputs and toggles the password with an accessible pressed state', async () => {
+    const fixture = await create(); const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('label[for="login-email"]')).not.toBeNull();
+    expect(host.querySelector('label[for="login-password"]')).not.toBeNull();
+    const password = host.querySelector<HTMLInputElement>('#login-password')!;
+    const toggle = host.querySelector<HTMLButtonElement>('button[aria-label="Mostrar contraseña"]')!;
+    expect(password.type).toBe('password'); toggle.click(); fixture.detectChanges();
+    expect(password.type).toBe('text'); expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toBe('Ocultar contraseña');
+    toggle.click(); fixture.detectChanges(); expect(password.type).toBe('password');
+  });
 
-    it('configura el portal institucional cuando accessMode es internal con rol asignado', async () => {
-      const internalRoute = {
-        snapshot: {
-          data: { accessMode: 'internal', requiredRole: 'FUNCIONARIO' },
-          queryParams: { 'acceso-rapido': '' }
-        },
-        queryParams: of({ 'acceso-rapido': '' })
-      };
+  it('validates required fields without a request and links the announced error', async () => {
+    const fixture = await create(); fixture.componentInstance.login(); fixture.detectChanges();
+    expect(auth.login).not.toHaveBeenCalled();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('#login-error[role="alert"]')?.textContent).toContain('complete todos los campos');
+    expect(host.querySelector('#login-email')?.getAttribute('aria-describedby')).toContain('login-error');
+    expect(host.querySelector('#login-password')?.getAttribute('aria-invalid')).toBe('true');
+  });
 
-      const fixture = await createComponent(internalRoute);
-      expect(fixture.componentInstance.isCitizenPortal()).toBe(false);
-      expect(fixture.componentInstance.portalTitle()).toBe('Acceso Funcionario');
-      expect(fixture.nativeElement.textContent).toContain('Portal institucional');
-      expect(fixture.nativeElement.textContent).toContain('Funcionario MINEDU');
-    });
+  it.each(entries)('saves only a successful $role response and navigates to its existing module', async entry => {
+    const redirects = { CIUDADANO: ['/ciudadano/dashboard', '/ciudadano'], FUNCIONARIO: ['/entidad/dashboard', '/funcionario'], TTAIP: ['/ttaip/dashboard', '/ttaip'], ADMINISTRADOR: ['/admin/dashboard', '/admin'] };
+    const fixture = await create(entry.role); const comp = fixture.componentInstance;
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const response = { success: true, tipoUsuario: entry.role, token: 'synthetic-mocked-token' };
+    auth.login.mockReturnValue(of(response)); auth.obtenerSesion.mockReturnValue({ redirectUrl: redirects[entry.role][0] });
+    comp.email = '  synthetic@example.invalid  '; comp.password = 'manual-test-input'; comp.login();
+    expect(auth.login).toHaveBeenCalledWith({ identificador: 'synthetic@example.invalid', password: 'manual-test-input' });
+    expect(auth.guardarSesion).toHaveBeenCalledWith(response);
+    expect(nav).toHaveBeenCalledWith([redirects[entry.role][1]]);
+  });
 
-    it('valida campos obligatorios antes de llamar al servicio de autenticación', async () => {
-      const fixture = await createComponent();
-      const comp = fixture.componentInstance;
+  it.each(entries)('rejects credentials of a different role at $route without saving a session', async entry => {
+    const fixture = await create(entry.role); const comp = fixture.componentInstance;
+    auth.login.mockReturnValue(of({ success: true, tipoUsuario: entry.role === 'CIUDADANO' ? 'ADMINISTRADOR' : 'CIUDADANO', token: 'synthetic-mocked-token' }));
+    const nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    comp.email = 'synthetic@example.invalid'; comp.password = 'manual-test-input'; comp.login(); fixture.detectChanges();
+    expect(auth.guardarSesion).not.toHaveBeenCalled(); expect(nav).not.toHaveBeenCalled(); expect(comp.error()).not.toBe('');
+  });
 
-      comp.email = '';
-      comp.password = '';
-      comp.login();
+  it.each([401, 403, 500, 0])('keeps manual input after HTTP %s without reporting success', async status => {
+    const fixture = await create(); const comp = fixture.componentInstance;
+    auth.login.mockReturnValue(throwError(() => ({ status })));
+    comp.email = 'synthetic@example.invalid'; comp.password = 'manual-test-input'; comp.login(); fixture.detectChanges();
+    expect(auth.guardarSesion).not.toHaveBeenCalled(); expect(comp.loading()).toBe(false);
+    expect(comp.password).toBe('manual-test-input'); expect(comp.error()).not.toBe('');
+    expect(fixture.nativeElement.querySelector('#login-error[role="alert"]')).not.toBeNull();
+  });
 
-      expect(comp.error()).toBe('Por favor complete todos los campos');
-      expect(mockAuthService.login).not.toHaveBeenCalled();
-    });
-
-    it('realiza login contra AuthService y gestiona respuesta exitosa', async () => {
-      const fixture = await createComponent();
-      const comp = fixture.componentInstance;
-      const router = TestBed.inject(Router);
-      const navigateSpy = vi.spyOn(router, 'navigate');
-
-      mockAuthService.login.mockReturnValue(of({
-        success: true,
-        tipoUsuario: 'CIUDADANO',
-        token: 'token-jwt-real'
-      }));
-      mockAuthService.obtenerSesion.mockReturnValue({
-        redirectUrl: '/ciudadano/dashboard'
-      });
-
-      comp.email = '70000001';
-      comp.password = 'Saip2026*';
-      comp.login();
-
-      expect(mockAuthService.login).toHaveBeenCalledWith({
-        identificador: '70000001',
-        password: 'Saip2026*'
-      });
-      expect(mockAuthService.guardarSesion).toHaveBeenCalled();
-      expect(navigateSpy).toHaveBeenCalledWith(['/ciudadano']);
-    });
+  it('shows pending status and disables submit until the real service response arrives', async () => {
+    const pending = new Subject<any>(); auth.login.mockReturnValue(pending);
+    const fixture = await create(); fixture.componentInstance.email = 'synthetic@example.invalid'; fixture.componentInstance.password = 'manual-test-input';
+    fixture.componentInstance.login(); fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    expect(host.querySelector('form')?.getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Iniciando sesión');
+    expect(auth.guardarSesion).not.toHaveBeenCalled(); pending.error({ status: 0 });
   });
 });

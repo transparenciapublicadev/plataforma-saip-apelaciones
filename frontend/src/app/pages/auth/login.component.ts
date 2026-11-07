@@ -6,7 +6,8 @@ import { LoginRequest } from '../../models/usuario.model';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
-  LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
+  LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
+  LucideUser, LucideBuilding2, LucideScale, LucideSettings, LucideLock, LucideBadgeCheck
 } from '@lucide/angular';
 import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
 
@@ -21,6 +22,7 @@ type AccessMode = 'citizen' | 'internal';
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideLogIn,
     LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
+    LucideUser, LucideBuilding2, LucideScale, LucideSettings, LucideLock, LucideBadgeCheck,
     YaikuLogoComponent
   ],
   templateUrl: './login.component.html',
@@ -41,13 +43,6 @@ export class LoginComponent implements OnInit {
   loading = signal<boolean>(false);
   error = signal<string>('');
   mensaje = signal<string>('');
-  readonly showQuickAccess = signal<boolean>(false);
-
-  fillDemo(id: string, pass: string): void {
-    this.email = id;
-    this.password = pass;
-    this.error.set('');
-  }
 
   portalTitle = computed(() => {
     if (this.accessMode() === 'citizen') return 'Acceso para Administrados';
@@ -66,21 +61,18 @@ export class LoginComponent implements OnInit {
   identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'correo@ejemplo.com, DNI (8 dígitos) o RUC (11 dígitos)' : 'Usuario o correo institucional');
 
   isCitizenPortal = computed(() => this.accessMode() === 'citizen');
+  readonly activePortalRole = computed(() => this.isCitizenPortal() ? 'CIUDADANO' : this.requiredRole());
+  readonly portalEntries = [
+    { role: 'CIUDADANO', label: 'Administrado', description: 'Presento solicitudes', route: '/login' },
+    { role: 'FUNCIONARIO', label: 'Funcionario', description: 'Respondo solicitudes', route: '/acceso-funcionario' },
+    { role: 'TTAIP', label: 'Personal TTAIP', description: 'Resuelvo apelaciones', route: '/acceso-ttaip' },
+    { role: 'ADMINISTRADOR', label: 'Administrador', description: 'Gestiono el sistema', route: '/acceso-admin' }
+  ] as const;
+
 
   constructor() {}
 
   ngOnInit(): void {
-    const snapQp = this.route.snapshot?.queryParams;
-    if (snapQp && this.hasAccesoRapido(snapQp)) {
-      this.showQuickAccess.set(true);
-    }
-
-    if (this.route.queryParams) {
-      this.route.queryParams.subscribe(params => {
-        this.showQuickAccess.set(this.hasAccesoRapido(params));
-      });
-    }
-
     const accessModeData = this.route.snapshot?.data?.['accessMode'];
     const requiredRoleData = this.route.snapshot?.data?.['requiredRole'];
     const requiredRole = this.toInternalRole(requiredRoleData);
@@ -96,13 +88,6 @@ export class LoginComponent implements OnInit {
     if (this.authService.estaLogueado()) {
       this.redirigirSegunTipo();
     }
-  }
-
-  private hasAccesoRapido(params: Record<string, any> | undefined | null): boolean {
-    if (!params) return false;
-    if (!('acceso-rapido' in params)) return false;
-    const val = params['acceso-rapido'];
-    return val !== 'false' && val !== false;
   }
 
   navigateToHome(): void {

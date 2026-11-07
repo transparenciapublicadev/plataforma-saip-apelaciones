@@ -51,13 +51,11 @@
 .saip-institutional-bar-primary { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .yaiku-institution-context { max-width: 60%; flex-shrink: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; font-size: 11px; font-weight: 500; opacity: .95; margin-left: .75rem; }
 .yaiku-main-nav { height: 72px; gap: .5rem; }
-.auth-header .yaiku-main-nav { height: 64px; }
 .saip-header a:focus-visible, .saip-header button:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
 #mobile-navigation-panel { max-height: calc(100dvh - 101px); overflow-y: auto; }
-.saip-header:not(.auth-header) #mobile-navigation-panel { position: absolute; right: 1rem; margin-top: .5rem; width: min(16rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: .5rem; }
-.saip-header:not(.auth-header) #mobile-navigation-panel > div { padding: .375rem; }
-.saip-header:not(.auth-header) .mobile-nav-item { padding: .625rem .75rem; }
-.auth-header #mobile-navigation-panel { max-height: calc(100dvh - 93px); }
+.saip-header #mobile-navigation-panel { position: absolute; right: 1rem; margin-top: .5rem; width: min(16rem, calc(100vw - 2rem)); border: 1px solid var(--border); border-radius: .5rem; }
+.saip-header #mobile-navigation-panel > div { padding: .375rem; }
+.saip-header .mobile-nav-item { padding: .625rem .75rem; }
 @media (max-width: 480px) { .yaiku-header-slogan { display: none; } }
 
 /* SplashScreen/YaikuLogo reference: 84 px seal, 28 px stacked slogan.

@@ -1,263 +1,109 @@
 <div class="min-h-screen grid lg:grid-cols-2 bg-background">
-  <!-- === Editorial brand panel (left, desktop only) === -->
-  <div class="relative hidden lg:flex bg-brand-mesh text-white overflow-hidden">
-    <div class="absolute inset-0 bg-paper opacity-[0.07] pointer-events-none"></div>
-    <div class="absolute top-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), var(--gold), transparent)"></div>
-
-    <div class="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
-      <div>
-        <a routerLink="/" class="inline-flex flex-col items-start">
-          <app-yaiku-logo [height]="40" tone="dark" gradientId="login-yaiku-seal" />
-          <div class="font-display italic text-white/90 text-sm mt-1">Pide, sigue y apela. Todo en un solo lugar.</div>
-        </a>
-      </div>
-
+  <aside class="relative hidden lg:flex bg-brand-mesh text-white overflow-hidden" aria-label="Yaiku">
+    <div class="absolute inset-0 bg-paper opacity-[0.07] pointer-events-none" aria-hidden="true"></div>
+    <div class="login-brand-rule absolute top-0 left-0 right-0 h-[3px]" aria-hidden="true"></div>
+    <div class="login-brand-halo absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full pointer-events-none" aria-hidden="true"></div>
+    <div class="relative z-10 flex flex-col justify-center w-full px-12 xl:px-16 pt-28 pb-12">
+      <a routerLink="/" class="flex flex-col items-start gap-4 mb-14" aria-label="Yaiku, volver al inicio">
+        <app-yaiku-logo [height]="40" tone="dark" gradientId="login-yaiku-seal" />
+        <p class="login-slogan font-serif italic leading-[1.25]">
+          <span class="block text-white/80">Pide, sigue y apela.</span>
+          <span class="block text-[var(--gold-soft)]">Todo en un solo lugar.</span>
+        </p>
+      </a>
       <div class="max-w-lg">
-        <div class="eyebrow mb-4" style="color: var(--gold-soft); letter-spacing: 0.32em">
-          Acceso institucional
-        </div>
-        <h2 class="font-display text-balance" style="font-size: clamp(40px, 4vw, 56px); line-height: 1.04; letter-spacing: -0.025em">
+        <div class="eyebrow mb-4 login-eyebrow">Acceso institucional</div>
+        <h2 class="font-display text-balance login-hero-title">
           El acceso a la información
-          <span class="block italic" style="color: var(--gold-soft)">fortalece la democracia.</span>
+          <span class="block italic text-[var(--gold-soft)]">fortalece la democracia.</span>
         </h2>
-        <div class="mt-8 mb-8 h-[1.5px] w-20" style="background: var(--gold-soft)"></div>
-        <p class="text-white/75 text-pretty leading-relaxed" style="font-size: 16px">
-          Plataforma oficial para gestionar solicitudes de acceso a la información pública,
-          apelaciones ante el Tribunal y trazabilidad de expedientes en cumplimiento de la
-          Ley N° 27806.
+        <div class="mt-6 mb-6 h-[1.5px] w-16 bg-[var(--gold-soft)]" aria-hidden="true"></div>
+        <p class="text-white/75 text-pretty leading-relaxed login-brand-description">
+          Plataforma para gestionar solicitudes de acceso a la información pública,
+          apelaciones ante el Tribunal y trazabilidad de expedientes en cumplimiento de la Ley N.º 27806.
         </p>
       </div>
-
-      <div class="flex items-center gap-6 text-xs text-white/55">
-        <div class="flex items-center gap-1.5">
-          <svg lucideShield class="w-3.5 h-3.5" style="color: var(--gold-soft)"></svg>
-          Conexión SSL
-        </div>
-        <div class="opacity-40">·</div>
-        <div>Datos encriptados</div>
-        <div class="opacity-40">·</div>
-        <div>WCAG 2.2 AA</div>
+      <div class="flex flex-wrap items-center gap-2 mt-10" aria-label="Acceso al sistema">
+        <span class="login-capability"><svg lucideShield aria-hidden="true"></svg> Acceso autenticado</span>
+        <span class="login-capability"><svg lucideLock aria-hidden="true"></svg> Sesiones independientes</span>
+        <span class="login-capability"><svg lucideBadgeCheck aria-hidden="true"></svg> Entradas por perfil</span>
       </div>
     </div>
-  </div>
+  </aside>
 
-  <!-- === Form panel (right) === -->
-  <div class="relative flex items-center justify-center px-6 py-16 lg:py-12 bg-paper">
-    <div class="w-full max-w-md hero-animate">
-      <a
-        routerLink="/"
-        class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-8 transition-colors cursor-pointer"
-      >
-        <svg lucideArrowLeft class="w-4 h-4"></svg>
-        Volver al inicio
+  <section class="relative flex items-center justify-center px-6 py-24 lg:py-12 bg-paper" aria-labelledby="login-title">
+    <div class="w-full max-w-md login-form-enter">
+      <a routerLink="/" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-8 transition-colors">
+        <svg lucideArrowLeft class="w-4 h-4" aria-hidden="true"></svg> Volver al inicio
       </a>
-
-      <div class="mb-8">
+      <div class="mb-6">
         <span class="eyebrow">Iniciar sesión</span>
-        <h2 class="font-display mt-2" style="font-size: 36px; line-height: 1.1; letter-spacing: -0.02em">
-          {{ portalTitle() }}
-        </h2>
-        <p class="mt-2" style="color: var(--muted-foreground); font-size: 14.5px">
-          {{ portalSubtitle() }}
-        </p>
+        <h1 id="login-title" class="font-display mt-2 login-form-title">Bienvenido de vuelta</h1>
+        <p class="text-muted-foreground mt-1.5 login-subtitle">Identifíquese para continuar con sus trámites.</p>
       </div>
 
-      <!-- Alerts -->
-      @if (error()) {
-        <div
-          class="rounded-lg px-4 py-3 text-sm mb-5"
-          style="background: var(--brand-50); border: 1px solid var(--brand-200); color: var(--brand-800)"
-        >
-          {{ error() }}
-        </div>
-      }
-
-      @if (mensaje()) {
-        <div
-          class="rounded-lg px-4 py-3 text-sm mb-5"
-          style="background: var(--success-subtle); border: 1px solid rgba(21,128,61,0.25); color: var(--success)"
-        >
-          {{ mensaje() }}
-        </div>
-      }
-
-      <!-- Acceso rápido demo: solo visible con ?acceso-rapido en la URL -->
-      @if (showQuickAccess()) {
-        <div class="rounded-lg px-3.5 py-3 mb-5" style="background: var(--muted); border: 1px solid var(--border)">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
-            Acceso rápido demo
-          </div>
-          <div class="flex flex-wrap gap-2">
-            @if (isCitizenPortal()) {
-              <button
-                type="button"
-                (click)="fillDemo('70000001', 'Saip2026*')"
-                class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-              >
-                Ciudadano (DNI 70000001)
-              </button>
-              <button
-                type="button"
-                (click)="fillDemo('ciudadano01@gmail.com', 'Saip2026*')"
-                class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-              >
-                Ciudadano (Correo)
-              </button>
-            } @else {
-              @switch (requiredRole()) {
-                @case ('FUNCIONARIO') {
-                  <button
-                    type="button"
-                    (click)="fillDemo('func.minedu@minedu.gob.pe', 'Saip2026*')"
-                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                  >
-                    Funcionario MINEDU
-                  </button>
+      <form (ngSubmit)="login()" class="space-y-5" [attr.aria-busy]="loading()">
+        <div class="field">
+          <span class="field-label" id="login-portals-label">Perfil de usuario</span>
+          <nav class="grid grid-cols-2 gap-2" aria-labelledby="login-portals-label">
+            @for (entry of portalEntries; track entry.role) {
+              <a [routerLink]="entry.route" class="login-portal relative text-left rounded-lg p-3 transition-all duration-200"
+                [class.login-portal-active]="activePortalRole() === entry.role"
+                [attr.aria-current]="activePortalRole() === entry.role ? 'page' : null">
+                @switch (entry.role) {
+                  @case ('CIUDADANO') { <svg lucideUser class="w-4 h-4 mb-1.5" aria-hidden="true"></svg> }
+                  @case ('FUNCIONARIO') { <svg lucideBuilding2 class="w-4 h-4 mb-1.5" aria-hidden="true"></svg> }
+                  @case ('TTAIP') { <svg lucideScale class="w-4 h-4 mb-1.5" aria-hidden="true"></svg> }
+                  @case ('ADMINISTRADOR') { <svg lucideSettings class="w-4 h-4 mb-1.5" aria-hidden="true"></svg> }
                 }
-                @case ('TTAIP') {
-                  <button
-                    type="button"
-                    (click)="fillDemo('tvalverde@minjus.gob.pe', 'Saip2026*')"
-                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                  >
-                    Vocal TTAIP
-                  </button>
-                }
-                @case ('ADMINISTRADOR') {
-                  <button
-                    type="button"
-                    (click)="fillDemo('admin@saip.gob.pe', 'Saip2026*')"
-                    class="text-[12px] rounded-md px-2.5 py-1 transition-colors cursor-pointer hover:bg-[var(--accent)]"
-                    style="background: var(--card); border: 1px solid var(--border); color: var(--brand-700)"
-                  >
-                    Administrador
-                  </button>
-                }
-              }
+                <span class="block text-sm font-medium text-foreground">{{ entry.label }}</span>
+                <span class="block text-[11px] mt-0.5 text-muted-foreground">{{ entry.description }}</span>
+              </a>
             }
-          </div>
-        </div>
-      }
-
-      <!-- Form -->
-      <form (ngSubmit)="login()" class="space-y-5">
-        <div class="field">
-          <label class="field-label" for="login-email">
-            {{ identifierLabel() }} <span class="req">*</span>
-          </label>
-          <input
-            id="login-email"
-            type="text"
-            [(ngModel)]="email"
-            name="email"
-            class="field-input"
-            [placeholder]="identifierPlaceholder()"
-            autocomplete="username"
-          />
+          </nav>
+          <p id="login-portal-context" class="field-hint">{{ portalTitle() }}. {{ portalSubtitle() }}</p>
         </div>
 
         <div class="field">
-          <label class="field-label" for="login-password">Contraseña <span class="req">*</span></label>
+          <label class="field-label" for="login-email">{{ identifierLabel() }} <span class="req" aria-hidden="true">*</span></label>
+          <input id="login-email" type="text" [(ngModel)]="email" name="email" class="field-input"
+            [placeholder]="identifierPlaceholder()" autocomplete="username" aria-required="true"
+            [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="error() ? 'login-portal-context login-error' : 'login-portal-context'" />
+          @if (isCitizenPortal()) { <span class="field-hint">Los ciudadanos usan su DNI y las empresas su RUC. También puede utilizar su correo.</span> }
+        </div>
+        <div class="field">
+          <label class="field-label" for="login-password">Contraseña <span class="req" aria-hidden="true">*</span></label>
           <div class="relative">
-            <input
-              id="login-password"
-              [type]="showPassword() ? 'text' : 'password'"
-              [(ngModel)]="password"
-              name="password"
-              class="field-input pr-11"
-              placeholder="Ingrese su contraseña"
-              autocomplete="current-password"
-            />
-            <button
-              type="button"
-              (click)="togglePasswordVisibility()"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-            >
-              @if (showPassword()) {
-                <svg lucideEyeOff class="w-4 h-4"></svg>
-              } @else {
-                <svg lucideEye class="w-4 h-4"></svg>
-              }
+            <input id="login-password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password"
+              class="field-input pr-11" placeholder="Ingrese su contraseña" autocomplete="current-password" aria-required="true"
+              [attr.aria-invalid]="error() ? 'true' : null" [attr.aria-describedby]="error() ? 'login-error' : null" />
+            <button type="button" (click)="togglePasswordVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+              [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword()">
+              @if (showPassword()) { <svg lucideEyeOff class="w-4 h-4" aria-hidden="true"></svg> }
+              @else { <svg lucideEye class="w-4 h-4" aria-hidden="true"></svg> }
             </button>
           </div>
         </div>
 
-        <div class="flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm cursor-pointer select-none" style="color: var(--muted-foreground)">
-            <input type="checkbox" class="rounded border-[var(--border)]" />
-            Recordarme
-          </label>
-          <button
-            type="button"
-            class="text-sm font-medium hover:underline cursor-pointer"
-            style="color: var(--brand-700)"
-          >
-            ¿Olvidó su contraseña?
-          </button>
+        @if (error()) {
+          <div id="login-error" role="alert" class="rounded-lg px-4 py-3 text-sm login-error">{{ error() }}</div>
+        }
+        @if (mensaje()) { <p role="status" class="rounded-lg px-4 py-3 text-sm login-message">{{ mensaje() }}</p> }
+        <div class="flex items-center justify-between gap-3 flex-wrap text-sm text-muted-foreground">
+          <label class="flex items-center gap-2"><input type="checkbox" disabled aria-describedby="login-unavailable" /> Recordarme</label>
+          <button type="button" disabled aria-describedby="login-unavailable" class="font-medium disabled:cursor-not-allowed">¿Olvidó su contraseña?</button>
         </div>
-
-        <button
-          type="submit"
-          [disabled]="loading()"
-          class="btn-brand w-full disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          style="height: 48px; font-size: 15px"
-        >
-          @if (loading()) {
-            <svg lucideLoaderCircle class="w-5 h-5 animate-spin"></svg>
-            Ingresando...
-          } @else {
-            <svg lucideLogIn class="w-4 h-4"></svg>
-            Iniciar sesión
-            <svg lucideArrowRight class="w-4 h-4 ml-1"></svg>
-          }
+        <p id="login-unavailable" class="field-hint">La opción Recordarme y la recuperación de contraseña no están disponibles.</p>
+        <button type="submit" [disabled]="loading()" class="btn-brand w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed">
+          @if (loading()) { <svg lucideLoaderCircle class="w-4 h-4 animate-spin" aria-hidden="true"></svg><span role="status">Iniciando sesión…</span> }
+          @else { <svg lucideLogIn class="w-4 h-4" aria-hidden="true"></svg> Iniciar sesión <svg lucideArrowRight class="w-4 h-4 ml-1" aria-hidden="true"></svg> }
         </button>
+        @if (isCitizenPortal()) {
+          <div class="rule-ornament my-6" aria-hidden="true"><span class="text-xs uppercase tracking-widest">o</span></div>
+          <a routerLink="/registro" class="btn-ghost-brand w-full justify-center !py-3">Crear cuenta como administrado</a>
+        }
       </form>
-
-      <!-- Footer -->
-      <div class="mt-6 pt-5 border-t border-[var(--border)] text-center">
-        @if (isCitizenPortal()) {
-          <div class="rule-ornament my-4"><span class="text-xs uppercase tracking-widest">o</span></div>
-          <a routerLink="/registro" class="btn-ghost-brand w-full justify-center text-center inline-flex items-center" style="padding: 11px 16px">
-            Crear cuenta (Ciudadano / Empresa)
-          </a>
-        } @else {
-          <p class="text-[12px]" style="color: var(--muted-foreground)">Si tienes inconvenientes, contacta a la mesa de ayuda institucional.</p>
-        }
-      </div>
-
-      <div class="mt-8 p-5 rounded-lg" style="background: var(--card); border: 1px dashed var(--border-strong)">
-        @if (isCitizenPortal()) {
-          <div class="eyebrow mb-2" style="color: var(--gold)">Portal del administrado</div>
-          <p class="text-xs leading-relaxed mb-3" style="color: var(--muted-foreground)">
-            Esta entrada pública es para ciudadanos (persona natural) y empresas (persona jurídica).
-          </p>
-          <div class="pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
-            <span>¿Acceso institucional?</span>
-            <div class="mt-1.5 flex flex-wrap gap-2 font-medium">
-              <a routerLink="/acceso-funcionario" class="hover:underline" style="color: var(--brand-700)">Funcionario</a>
-              <span>·</span>
-              <a routerLink="/acceso-ttaip" class="hover:underline" style="color: var(--brand-700)">Personal TTAIP</a>
-              <span>·</span>
-              <a routerLink="/acceso-admin" class="hover:underline" style="color: var(--brand-700)">Administración</a>
-            </div>
-          </div>
-        } @else {
-          <div class="eyebrow mb-2" style="color: var(--gold)">Portal institucional</div>
-          <p class="text-xs leading-relaxed mb-3" style="color: var(--muted-foreground)">
-            Acceso reservado para personal autorizado. Si tienes inconvenientes, contacta a la mesa de ayuda institucional.
-          </p>
-          <div class="pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
-            <span>¿Es ciudadano o empresa?</span>
-            <a routerLink="/login" class="font-medium hover:underline ml-1.5" style="color: var(--brand-700)">Ir a portal público</a>
-          </div>
-        }
-      </div>
     </div>
-  </div>
-
+  </section>
 </div>
