@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import pe.gob.saip.backend.config.StorageProperties;
@@ -36,6 +38,13 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 })
 @ActiveProfiles("staging")
 class S3CompatibleStorageProviderStagingTest {
+
+    @DynamicPropertySource
+    static void isolatedJwt(DynamicPropertyRegistry registry) {
+        String key = java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID();
+        registry.add("JWT_SECRET", () -> key);
+    }
+
 
     @Autowired
     private S3CompatibleStorageProvider s3StorageProvider;
