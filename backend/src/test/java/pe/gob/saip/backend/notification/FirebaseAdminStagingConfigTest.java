@@ -11,6 +11,8 @@ import org.mockito.MockedStatic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.model.entity.DispositivoNotificacionPush;
 import pe.gob.saip.backend.model.entity.DispositivoNotificacionPush.EstadoDispositivo;
@@ -35,6 +37,13 @@ import java.util.Optional;
 @ActiveProfiles("staging")
 @Transactional
 public class FirebaseAdminStagingConfigTest {
+
+    @DynamicPropertySource
+    static void isolatedJwt(DynamicPropertyRegistry registry) {
+        String key = java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID();
+        registry.add("JWT_SECRET", () -> key);
+    }
+
 
     @Autowired
     private FcmPushProveedorNotificacion pushProveedor;

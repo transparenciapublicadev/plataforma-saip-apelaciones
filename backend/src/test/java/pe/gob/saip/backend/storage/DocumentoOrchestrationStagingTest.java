@@ -20,6 +20,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,6 +48,13 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 @ActiveProfiles("staging")
 @AutoConfigureMockMvc(addFilters = false)
 class DocumentoOrchestrationStagingTest {
+
+    @DynamicPropertySource
+    static void isolatedJwt(DynamicPropertyRegistry registry) {
+        String key = java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID();
+        registry.add("JWT_SECRET", () -> key);
+    }
+
 
     @Autowired
     private MockMvc mockMvc;
