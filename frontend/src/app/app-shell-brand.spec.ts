@@ -45,9 +45,9 @@ describe('V1: identidad del shell Yaiku', () => {
     first.focus(); first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();
     expect(f.componentInstance.menuAbierto()).toBe(false); expect(document.activeElement).toBe(trigger);
   });
-  it.each(['/login', '/registro', '/acceso-funcionario', '/acceso-ttaip', '/acceso-admin'])('preserva la variante compacta y acceso público en %s', url => {
+  it.each(['/login', '/registro', '/acceso-funcionario', '/acceso-ttaip', '/acceso-admin'])('comparte la cabecera de referencia sin unificar accesos en %s', url => {
     const f = page(url); expect(f.componentInstance.isAuthRoute()).toBe(true);
-    expect(getComputedStyle(f.nativeElement.querySelector('.yaiku-main-nav')).height).toBe('64px');
+    expect(getComputedStyle(f.nativeElement.querySelector('.yaiku-main-nav')).height).toBe('72px');
     expect(f.nativeElement.querySelector('main')?.style.paddingTop).toBe('');
     expect(f.nativeElement.querySelector('header a[href="/login"]')).not.toBeNull();
   });

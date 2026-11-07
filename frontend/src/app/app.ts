@@ -231,7 +231,7 @@ export class App {
     const element = document.getElementById(sectionId);
     if (!element) return;
 
-    const offset = (this.host.nativeElement.querySelector('[data-main-nav]')?.getBoundingClientRect().bottom || (this.isAuthRoute() ? 92 : 100)) + 8;
+    const offset = (this.host.nativeElement.querySelector('[data-main-nav]')?.getBoundingClientRect().bottom || 100) + 8;
     const elementPosition = element.getBoundingClientRect().top;
     window.scrollTo({
       top: elementPosition + window.pageYOffset - offset,
