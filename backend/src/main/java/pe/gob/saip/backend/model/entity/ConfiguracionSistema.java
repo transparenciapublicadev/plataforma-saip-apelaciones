@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.model.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -61,4 +62,50 @@ public class ConfiguracionSistema {
     // Tarifas
     @Column(name = "costo_por_copia", nullable = false, precision = 10, scale = 2)
     private BigDecimal costoPorCopia = new BigDecimal("0.10");
+
+    @Column(name = "copia_certificada", nullable = false, precision = 10, scale = 2)
+    private BigDecimal copiaCertificada = new BigDecimal("0.50");
+
+    @Column(name = "soporte_digital", nullable = false, precision = 10, scale = 2)
+    private BigDecimal soporteDigital = new BigDecimal("1.00");
+
+    // Calendario Oficial y Mapa Integral
+    @Column(name = "semana_santa", nullable = false)
+    private Boolean semanaSanta = true;
+
+    @Column(name = "plazo_saip_observacion", nullable = false)
+    private Integer plazoSaipObservacion = 2;
+
+    @Column(name = "plazo_saip_prorroga_comunicacion", nullable = false)
+    private Integer plazoSaipProrrogaComunicacion = 2;
+
+    @Column(name = "plazo_saip_cronograma_umbral", nullable = false)
+    private Integer plazoSaipCronogramaUmbral = 30;
+
+    @Column(name = "plazo_saip_encauzamiento", nullable = false)
+    private Integer plazoSaipEncauzamiento = 4;
+
+    @Column(name = "plazo_saip_liquidacion_pago", nullable = false)
+    private Integer plazoSaipLiquidacionPago = 30;
+
+    @Column(name = "plazo_ttaip_elevacion", nullable = false)
+    private Integer plazoTtaipElevacion = 2;
+
+    @Column(name = "plazo_ttaip_descargos", nullable = false)
+    private Integer plazoTtaipDescargos = 7;
+
+    @Column(name = "plazo_ttaip_informe_oral", nullable = false)
+    private Integer plazoTtaipInformeOral = 3;
+
+    @Column(name = "plazo_ttaip_info_complementaria", nullable = false)
+    private Integer plazoTtaipInfoComplementaria = 3;
+
+    @Column(name = "plazo_ttaip_cumplimiento", nullable = false)
+    private Integer plazoTtaipCumplimiento = 7;
+
+    @Column(name = "calendario_actualizado_en")
+    private LocalDateTime calendarioActualizadoEn;
+
+    @Column(name = "calendario_actualizado_por", length = 100)
+    private String calendarioActualizadoPor;
 }

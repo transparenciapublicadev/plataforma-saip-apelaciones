@@ -161,7 +161,7 @@
     }
     <!-- Pestañas Principales (DISC-04) -->
     <div class="form-shell p-1 mb-6" data-tour="a-tabs">
-      <div class="grid grid-cols-5 gap-1">
+      <div class="grid grid-cols-3 sm:grid-cols-6 gap-1">
         <button
           type="button"
           aria-label="Resumen" [attr.aria-pressed]="activeTab() === 'overview'" (click)="cambiarTab('overview')"
@@ -215,6 +215,17 @@
           [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'settings'">
           <svg lucideSettings class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Configurac.</span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Plazos y Calendario" [attr.aria-pressed]="activeTab() === 'plazos'" (click)="cambiarTab('plazos')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'plazos' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'plazos' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'plazos'">
+          <svg lucideCalendar class="w-4 h-4"></svg>
+          <span class="hidden sm:inline">Plazos</span>
         </button>
       </div>
     </div>
@@ -1268,6 +1279,15 @@
               </button>
             </div>
           </div>
+        </div>
+      }
+
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 6: PLAZOS Y CALENDARIO OFICIAL                             -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'plazos') {
+        <div data-tour="a-plazos">
+          <app-admin-plazos-calendario></app-admin-plazos-calendario>
         </div>
       }
     </div>

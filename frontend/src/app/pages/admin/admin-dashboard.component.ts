@@ -1,4 +1,5 @@
 import { AdminUserCreateFormComponent } from './admin-user-create-form.component';
+import { AdminPlazosCalendarioComponent } from './admin-plazos-calendario.component';
 import { Component, ChangeDetectionStrategy, DestroyRef, OnInit, OnDestroy, computed, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subscription, finalize } from 'rxjs';
@@ -139,7 +140,7 @@ function hasNumbers(value: unknown, keys: string[]): boolean {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    AdminUserCreateFormComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective,
+    AdminUserCreateFormComponent, AdminPlazosCalendarioComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective,
     LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
     LucideClock, LucideCheckCircle, LucideAlertTriangle,
     LucideScale, LucideBarChart3, LucideDownload, LucideSettings,
@@ -170,12 +171,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   readonly tourSteps: TourStep[] = [
     { selector: '[data-tour="a-kpis"]', title: 'Indicadores principales', body: 'Totales y tasas informados por las consultas administrativas. Revise su alcance y los estados de carga, error o información no disponible.' },
     { selector: '[data-tour="a-status"]', title: 'Estado de las solicitudes', body: 'Desglose de los estados registrados por el servidor. No acredita entrega, notificación eficaz ni sanción.' },
-    { selector: '[data-tour="a-tabs"]', title: 'Áreas de administración', body: 'Navega entre Resumen, Entidades, Usuarios, Reportes y Configuración. Te mostraremos cada una.' },
+    { selector: '[data-tour="a-tabs"]', title: 'Áreas de administración', body: 'Navega entre Resumen, Entidades, Usuarios, Reportes, Configuración y Plazos y Calendario. Te mostraremos cada una.' },
     { selector: '[data-tour="a-overview"]', title: 'Resumen operativo', body: 'Ranking y actividad recuperados del servidor. Cada sección indica si su consulta está disponible; el tutorial no inventa registros.', align: 'start', onEnter: () => this.activeTab.set('overview') },
     { selector: '[data-tour="a-entities"]', title: 'Entidades públicas', body: 'Listado y operaciones administrativas disponibles según sus permisos. Resaltar esta sección no crea, modifica ni desactiva una entidad.', align: 'start', onEnter: () => this.activeTab.set('entities') },
     { selector: '[data-tour="a-users"]', title: 'Usuarios del sistema', body: 'Consulta y gestión autorizadas de cuentas. El alta exige una contraseña explícita; el tutorial no crea cuentas ni cambia sus credenciales.', align: 'start', onEnter: () => this.activeTab.set('users') },
     { selector: '[data-tour="a-reports"]', title: 'Reportes disponibles', body: 'Revise los datos, filtros y formatos habilitados. Los reportes no disponibles se indican como tales; una exportación no equivale a emisión documental oficial.', align: 'start', onEnter: () => this.activeTab.set('reports') },
     { selector: '[data-tour="a-settings"]', title: 'Configuración consultada', body: 'Consulte los valores recuperados del servidor y las limitaciones indicadas en pantalla. Abrir esta sección no guarda cambios ni acredita el inicio de un plazo.', align: 'start', onEnter: () => this.activeTab.set('settings') },
+    { selector: '[data-tour="a-plazos"]', title: 'Plazos y Calendario Oficial', body: 'Gestión del calendario oficial de días hábiles, feriados nacionales, días no laborables y auditoría de plazos legales según Ley 27806 y TUO LPAG.', align: 'start', onEnter: () => this.activeTab.set('plazos') },
   ];
 
   readonly pageSize = 8;

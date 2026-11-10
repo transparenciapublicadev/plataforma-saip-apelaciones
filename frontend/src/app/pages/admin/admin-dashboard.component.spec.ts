@@ -102,6 +102,7 @@ describe('AdminDashboardComponent', () => {
   beforeEach(async () => {
     entidadServiceMock = {
       findAll: vi.fn().mockReturnValue(of(mockEntidades)),
+      findActivas: vi.fn().mockReturnValue(of(mockEntidades)),
       crear: vi.fn().mockImplementation((ent) => of({ id: 99, ...ent, activa: true })),
       actualizar: vi.fn().mockImplementation((id, ent) => of({ id, ...ent, activa: true })),
       cambiarEstado: vi.fn().mockImplementation((id, estado) => of({ id, estado, activa: estado === 'Activa' })),
