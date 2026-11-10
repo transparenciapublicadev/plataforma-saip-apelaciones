@@ -345,4 +345,27 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
     localStorage.setItem('usuario', '{'); const f = TestBed.createComponent(TtaipResolverComponent); expect(() => f.detectChanges()).not.toThrow();
     expect(f.componentInstance.apelacion()).toBeNull(); expect(f.componentInstance.loadError()).toContain('acceso interno'); expect(http.match(() => true)).toHaveLength(0);
   });
+  it('permite seleccionar etapa de retroacción cuando la decisión es nulidad_del_acto e incorpora la etapa en las observaciones', () => {
+    const f = page(); const c = f.componentInstance;
+    c.selectedDecision.set('nulidad_del_acto');
+    c.fundamentos = 'Fundamento válido';
+    c.momentoVicio = 'Al denegar sin motivar';
+    c.actuacionOrdenada = 'Emitir nueva respuesta';
+    c.retrotraeA = 'entidad_respuesta';
+    expect(c.showNulidad()).toBe(true);
+    expect(c.validacionTexto()).toBe('');
+    const obs = (c as any).observacionesTexto();
+    expect(obs).toContain('Momento del vicio: Al denegar sin motivar');
+    expect(obs).toContain('Actuación ordenada: Emitir nueva respuesta');
+    expect(obs).toContain('Retroacción ordenada: Entidad · nueva respuesta de fondo');
+  });
+  it('permite configurar orden de entrega y plazo de 7 días hábiles por defecto para resoluciones fundadas', () => {
+    const f = page(); const c = f.componentInstance;
+    c.selectedDecision.set('fundado');
+    expect(c.showOrden()).toBe(true);
+    expect(c.ordenarEntrega).toBe(true);
+    expect(c.plazoDias).toBe(7);
+    const obs = (c as any).observacionesTexto();
+    expect(obs).toContain('Mandato: Entrega de información ordenada a la entidad en un plazo de 7 días hábiles');
+  });
 });

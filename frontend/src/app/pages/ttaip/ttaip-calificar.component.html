@@ -108,7 +108,7 @@
                     </div>
                   }
                   <button type="button" (click)="addObs()" [disabled]="!puedeCalificar() || loading()" class="btn-ghost-brand !py-2 !px-4 !text-[13px]"><svg aria-hidden="true" lucidePlus class="w-3.5 h-3.5"></svg>Agregar observación</button>
-                  <p class="text-xs text-muted-foreground mt-3">Duración prevista: {{ diasSubsanacion }} días hábiles según la regla vigente. No es una cuenta regresiva: el inicio requiere notificación eficaz acreditada al recurrente. Los adjuntos de su subsanación siguen opcionales.</p>
+                  <p class="text-xs text-muted-foreground mt-3">Plazo perentorio de {{ diasSubsanacion }} días hábiles bajo apercibimiento expreso de tenerse por no presentado el recurso conforme al Art. 211.2 de la Ley 27444. Notificación exclusiva al recurrente.</p>
                 </div>
               }
               <div class="field"><label for="qualification-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="qualification-grounds" [(ngModel)]="fundamentos" [disabled]="!puedeCalificar() || loading()" aria-required="true" aria-describedby="grounds-hint qualification-validation" [attr.aria-invalid]="validationAttempted() && (!fundamentos.trim() || fundamentos.trim().length > 5000)" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos legales y fácticos de la calificación…"></textarea><p id="grounds-hint" class="field-hint font-mono">{{ fundamentos.length }} / 5000 caracteres. Son obligatorios también al requerir subsanación.</p></div>

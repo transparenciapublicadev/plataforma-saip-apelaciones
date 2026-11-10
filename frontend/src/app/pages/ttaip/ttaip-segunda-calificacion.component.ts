@@ -165,43 +165,96 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
     return motivoRecepcion(this.apelacion()!, this.requerimiento()!.id!, this.recepcion());
   }
   puedeEmitirSegundaCalificacion(): boolean { return !this.motivoNoDisponible(); }
-  canSubmit(): boolean { return this.puedeEmitirSegundaCalificacion() && !this.operation && !this.loading() && !this.validacionBorrador(); }
+
+  esApercibimiento(): boolean {
+    const ap = this.apelacion();
+    if (!ap) return false;
+    const p = ap.plazoSubsanacion;
+    const r = this.recepcion();
+    if (ap.estado === 'EN_SUBSANACION' && p?.estado === 'VENCIDO') return true;
+    if (r.estado === 'ausente' && p?.estado === 'VENCIDO') return true;
+    return false;
+  }
+
+  isOptionDisabled(optionId: SegundaDecision): boolean {
+    if (!this.puedePrepararBorrador()) return true;
+    const apercibimiento = this.esApercibimiento();
+    if (optionId === 'no_presentado') {
+      return !apercibimiento;
+    }
+    return apercibimiento;
+  }
+
+  getOptionDisabledReason(optionId: SegundaDecision): string {
+    const apercibimiento = this.esApercibimiento();
+    if (optionId === 'no_presentado') {
+      if (apercibimiento) return 'Causal de apercibimiento legal acreditada por vencimiento del plazo sin recepción.';
+      return 'Requiere vencimiento acreditado del plazo de subsanación sin recepción.';
+    }
+    if (apercibimiento) return 'Inaplicable: El plazo venció sin recepción. Corresponde apercibimiento de tener por no presentado.';
+    return '';
+  }
+
+  canSubmit(): boolean {
+    if (!this.puedePrepararBorrador() || this.operation || this.loading()) return false;
+    const dec = this.selectedDecision();
+    if (!dec || this.isOptionDisabled(dec)) return false;
+    if (this.validacionBorrador()) return false;
+    if (dec === 'no_presentado') return this.esApercibimiento();
+    return this.puedeEmitirSegundaCalificacion();
+  }
+
   seleccionarDecision(decision: SegundaDecision): void {
-    if (!this.puedePrepararBorrador() || decision === 'no_presentado') return;
+    if (!this.puedePrepararBorrador() || this.isOptionDisabled(decision)) return;
     this.confirmModalAbierto.set(false); this.showPreview.set(false); this.previewTarget.set(null);
     this.downloads.unsubscribe(); this.downloads = new Subscription(); this.downloadingId.set(null);
     this.selectedDecision.set(decision); this.error.set('');
   }
+
   validacionBorrador(): string {
-    if (!this.selectedDecision() || this.selectedDecision() === 'no_presentado') return 'Seleccione una opción de segunda calificación para el borrador.';
-    if (!this.fundamentos.trim()) return 'Complete los fundamentos de revisión local.';
+    if (!this.selectedDecision()) return 'Seleccione una opción de segunda calificación para el borrador.';
+    if (this.isOptionDisabled(this.selectedDecision()!)) return 'La opción seleccionada no está habilitada para el estado actual del recurso.';
+    if (!this.fundamentos.trim()) return 'Complete los fundamentos de la decisión.';
     return this.fundamentos.trim().length <= 5000 ? '' : 'Los fundamentos no pueden exceder 5000 caracteres.';
   }
+
   abrirConfirmacionCalificacion(): void {
     if (!this.canSubmit()) { this.error.set((this.motivoNoDisponible() || this.validacionBorrador()) + ' No se ha enviado ningún comando; consulte el expediente.'); return; }
     this.confirmModalAbierto.set(true);
   }
+
   enviarCalificacion(): void {
     if (this.destroyed || this.loading() || this.operation) return;
     if (!this.canSubmit()) { this.error.set((this.motivoNoDisponible() || this.validacionBorrador()) + ' No se ha enviado ningún comando; consulte el expediente.'); return; }
-    const ap = this.apelacion()!, decision = this.selectedDecision() as 'admitido' | 'improcedente', generation = this.generation;
+    const ap = this.apelacion()!, decision = this.selectedDecision()!, generation = this.generation;
     const miembroId = this.authService.obtenerSesion()?.miembroId;
     const op: SegundaOperacion = { apelacionId: ap.id, expediente: ap.expediente, expedienteTtaipId: ap.expedienteTtaip!.id!,
       requerimientoId: this.requerimiento()!.id!, decision, fundamentos: this.fundamentos.trim(), ...(positiveId(miembroId) ? { miembroId } : {}) };
     this.operation = op; this.loading.set(true); this.error.set('');
-    const payload = { fundamentos: op.fundamentos, ...(op.miembroId != null ? { miembroId: op.miembroId } : {}) };
-    const command = decision === 'admitido' ? this.ttaipService.admitirApelacion(ap.id, payload) : this.ttaipService.inadmitirApelacion(ap.id, payload);
+    const payload = {
+      fundamentos: op.fundamentos,
+      ...(decision === 'no_presentado' ? { observaciones: op.fundamentos } : {}),
+      ...(op.miembroId != null ? { miembroId: op.miembroId } : {})
+    };
+    const command = decision === 'admitido'
+      ? this.ttaipService.admitirApelacion(ap.id, payload)
+      : decision === 'no_presentado'
+      ? this.ttaipService.declararNoPresentado(ap.id, payload)
+      : this.ttaipService.inadmitirApelacion(ap.id, payload);
     this.writes.add(command.subscribe({ next: updated => {
       if (!this.current(generation) || this.operation !== op) return;
       this.confirmModalAbierto.set(false);
-      if (!segundaCompatible(updated, op)) { this.marcarIncierto('La respuesta no identifica una segunda actuación compatible. Consulte sin repetir la escritura.'); return; }
-      op.resolucionId = updated.resolucionSegundaCalificacion!.id; this.consultarOperacion(op, generation);
+      if (!segundaCompatible(updated, op)) { this.marcarIncierto('La respuesta no identifica una actuación compatible. Consulte sin repetir la escritura.'); return; }
+      op.resolucionId = decision === 'no_presentado'
+        ? (updated.resoluciones?.find(r => r.decision === 'TENER_POR_NO_PRESENTADO')?.id || updated.resolucionPrimeraCalificacion?.id)
+        : updated.resolucionSegundaCalificacion!.id;
+      this.consultarOperacion(op, generation);
     }, error: err => {
       if (!this.current(generation) || this.operation !== op) return;
       this.loading.set(false); this.confirmModalAbierto.set(false);
       if ([400, 401, 403, 404, 409, 422].includes(err?.status)) {
         this.operation = null; this.rechazoBloqueante.set([401, 403, 404, 409].includes(err.status));
-        this.error.set(falloConsulta(err, 'el registro de segunda calificación').mensaje);
+        this.error.set(falloConsulta(err, 'el registro de actuación').mensaje);
       } else this.marcarIncierto('No se pudo confirmar el registro. El servidor puede haberlo aceptado. Consulte sin repetir la escritura.');
     } }));
   }
@@ -225,7 +278,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
         : 'La actuación recuperada no coincide con el ID y contenido confirmados. No se repite el comando.');
     }, error: () => { if (this.current(generation) && this.operation === op) this.marcarIncierto('No se pudo recuperar la actuación. Los fundamentos se conservan; consulte sin reenviar.'); } }));
   }
-  togglePreview(): void { if (this.contextoVigente() && this.selectedDecision() && this.selectedDecision() !== 'no_presentado') this.showPreview.update(value => !value); }
+  togglePreview(): void { if (this.contextoVigente() && this.selectedDecision()) this.showPreview.update(value => !value); }
   getObservaciones(): string[] { const value = this.requerimiento()?.observaciones; return typeof value === 'string' ? value.split(/\r?\n/).map(line => line.trim()).filter(Boolean) : []; }
   getOriginalFundamentos(): string { return this.apelacion()?.fundamentos || ''; }
   getDecisionLabel(value: string | null): string { return this.options.find(option => option.id === value)?.label || 'Decisión local no seleccionada'; }
@@ -300,7 +353,12 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   segundaWarning(): ReferenceConfirmWarning { return { label: 'Registro de actuación', detail: 'El servidor comprobará las precondiciones. Registrar no acredita notificación eficaz, firma ni emisión documental.' }; }
   verActuacionRegistrada(): void { if (this.contextoVigente() && this.segundaActuacion() && !this.loadError()) this.successModalAbierto.set(true); }
   segundaSuccessTone(): ReferenceSuccessTone { return 'warning'; }
-  segundaSuccessTitle(): string { return (this.resultadoConfirmado() ? 'Segunda calificación registrada y recuperada · ' : 'Segunda calificación consultada · ') + (this.segundaActuacion()?.decision || 'No identificada'); }
+  segundaSuccessTitle(): string {
+    if (this.selectedDecision() === 'no_presentado' || this.apelacion()?.estado === 'TENER_POR_NO_PRESENTADO') {
+      return (this.resultadoConfirmado() ? 'Apercibimiento registrado y recuperado · ' : 'Actuación consultada · ') + 'TENER POR NO PRESENTADO';
+    }
+    return (this.resultadoConfirmado() ? 'Segunda calificación registrada y recuperada · ' : 'Segunda calificación consultada · ') + (this.segundaActuacion()?.decision || 'No identificada');
+  }
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.segundaActuacion();
     return [{ label: 'Actuación · ID', value: r?.id?.toString() || 'No informado', mono: true },
@@ -308,6 +366,10 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
       { label: 'Estado del expediente', value: this.apelacion()?.estado || 'No informado' }];
   }
   segundaNextSteps(): ReferenceSuccessNextStep[] {
+    if (this.selectedDecision() === 'no_presentado' || this.apelacion()?.estado === 'TENER_POR_NO_PRESENTADO') return [
+      { label: 'Se notifica al recurrente el apercibimiento de tener por no presentado el recurso.' },
+      { label: 'El expediente queda concluido y archivado por falta de subsanación en plazo perentorio.' }
+    ];
     if (this.segundaActuacion()?.decision === 'IMPROCEDENTE') return [
       { label: 'Improcedencia registrada en segunda calificación. No acredita emisión documental, firma ni notificación eficaz.' },
       { label: 'Consulte las actuaciones y las notificaciones del expediente; no se habilita otra segunda calificación.' }

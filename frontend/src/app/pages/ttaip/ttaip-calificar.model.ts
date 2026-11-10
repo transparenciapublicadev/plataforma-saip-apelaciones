@@ -12,9 +12,9 @@ export interface CalificacionOperacion {
 }
 export const positiveId = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
 export const calificacionOpciones = [
-  { id: 'admisible' as const, label: 'ADMISIBLE', description: 'Admisión registrada · no acredita notificación eficaz', accent: 'var(--success)', decision: 'ADMISIBLE', estado: 'EN_RESOLUCION', command: 'admitir' },
-  { id: 'inadmisible' as const, label: 'INADMISIBLE', description: 'Requerimiento de subsanación · inicio sujeto a eficacia acreditada', accent: 'var(--warning)', decision: 'INADMISIBLE', estado: 'EN_SUBSANACION', command: 'subsanar' },
-  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Cierre por primera calificación · sin pronunciamiento sobre el fondo', accent: 'var(--muted-foreground)', decision: 'IMPROCEDENTE', estado: 'RESUELTO_IMPROCEDENTE', command: 'inadmitir' },
+  { id: 'admisible' as const, label: 'ADMISIBLE', description: 'Admisión a trámite · traslado de descargos a la entidad pública emplazada (7 días hábiles / perentorio 3d)', accent: 'var(--success)', decision: 'ADMISIBLE', estado: 'EN_RESOLUCION', command: 'admitir' },
+  { id: 'inadmisible' as const, label: 'INADMISIBLE', description: 'Requerimiento de subsanación (2 días hábiles) bajo apercibimiento de tener por no presentado el recurso', accent: 'var(--warning)', decision: 'INADMISIBLE', estado: 'EN_SUBSANACION', command: 'subsanar' },
+  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Rechazo liminar de plano por causal insubsanable · archivo definitivo', accent: 'var(--muted-foreground)', decision: 'IMPROCEDENTE', estado: 'RESUELTO_IMPROCEDENTE', command: 'inadmitir' },
 ];
 export function apelacionCompatible(value: unknown, expediente: string): value is Apelacion {
   const ap = value as Apelacion | null;

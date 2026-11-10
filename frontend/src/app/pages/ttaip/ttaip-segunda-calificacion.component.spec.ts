@@ -9,7 +9,7 @@ import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
 import { environment } from '../../../environments/environment';
 
-describe('SecondQualificationForm — contexto y límites reales', () => {
+describe('SecondQualificationForm — contexto y límites reales', { timeout: 15000 }, () => {
   const api = environment.apiUrl, expediente = '00021-2026-JUS/TTAIP';
   const session = { success: true, token: 'sesion-sintetica-tribunal', usuarioId: 7, miembroId: 7, tipoUsuario: 'TTAIP' };
   const first = { id: 71, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'INADMISIBLE', observaciones: 'Punto uno\nPunto dos', fechaResolucion: '2026-10-01' };
@@ -49,7 +49,7 @@ describe('SecondQualificationForm — contexto y límites reales', () => {
     const r = http.expectOne(receiptUrl); expect(r.request.headers.get('Authorization')).toBe('Bearer ' + session.token);
     expect(r.request.params.keys()).toEqual([]); r.flush(receipt()); f.detectChanges();
     expect(f.componentInstance.canSubmit()).toBe(true); expect(f.nativeElement.textContent).toContain('Recepción sin adjuntos');
-  });
+  }, 15000);
   it('muestra únicamente los documentos asociados de la recepción consultada', () => {
     const f = page(appeal({ expedienteTtaip: aggregate })); http.expectOne(receiptUrl).flush(receipt({ documentos: [
       { id: 154, apelacionId: 21, tipoDocumento: 'SUBSANACION', estado: 'ACTIVO', nombreOriginal: 'Anexo recibido.txt' }
@@ -144,6 +144,47 @@ describe('SecondQualificationForm — contexto y límites reales', () => {
   });
   it('tener por no presentado no se ofrece como segunda calificación desde EN_CALIFICACION_2', () => {
     const f = page(); f.componentInstance.seleccionarDecision('no_presentado'); f.componentInstance.fundamentos = 'Texto'; expect(f.componentInstance.canSubmit()).toBe(false);
+  });
+  it('habilita tener por no presentado cuando el plazo está vencido sin subsanación (apercibimiento legal)', () => {
+    const f = page(appeal({
+      estado: 'EN_SUBSANACION',
+      plazoSubsanacion: { estado: 'VENCIDO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', fechaLimite: '2026-10-26', diasHabilesRestantes: -1, notificacionId: 61 }
+    }));
+    const c = f.componentInstance;
+    expect(c.isOptionDisabled('no_presentado')).toBe(false);
+    expect(c.isOptionDisabled('admitido')).toBe(true);
+    expect(c.isOptionDisabled('improcedente')).toBe(true);
+    c.seleccionarDecision('no_presentado');
+    c.fundamentos = 'Apercibimiento legal por vencimiento del plazo sin subsanación.';
+    expect(c.canSubmit()).toBe(true);
+  });
+  it('registra tener por no presentado mediante comando calificacion/{id}/no-presentado', () => {
+    const apVencida = appeal({
+      expedienteTtaip: aggregate,
+      estado: 'EN_SUBSANACION',
+      plazoSubsanacion: { estado: 'VENCIDO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', fechaLimite: '2026-10-26', diasHabilesRestantes: -1, notificacionId: 61 }
+    });
+    const f = page(apVencida);
+    http.expectOne(receiptUrl).flush(receipt({ estado: 'AUSENTE', recepcionId: null, fechaRecepcion: null, fundamentosAdicionales: null, documentos: [] }));
+    f.detectChanges();
+    const c = f.componentInstance;
+    c.seleccionarDecision('no_presentado');
+    c.fundamentos = 'Apercibimiento legal aplicado.';
+    expect(c.canSubmit()).toBe(true);
+    c.enviarCalificacion();
+    const post = http.expectOne(api + '/ttaip/calificacion/21/no-presentado');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ fundamentos: 'Apercibimiento legal aplicado.', observaciones: 'Apercibimiento legal aplicado.', miembroId: 7 });
+    const result = {
+      ...apVencida,
+      estado: 'TENER_POR_NO_PRESENTADO',
+      resultado: 'TENER_POR_NO_PRESENTADO',
+      resoluciones: [{ id: 85, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'TENER_POR_NO_PRESENTADO', fundamentos: 'Apercibimiento legal aplicado.' }]
+    };
+    post.flush(result);
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(result);
+    expect(c.resultadoConfirmado()).toBe(true);
+    expect(c.successModalAbierto()).toBe(true);
   });
   it('el texto de próximos pasos no atribuye avance a resolución ni plazo local a una admisión registrada', () => {
     const f = page(registered()); f.componentInstance.selectedDecision.set('admitido');

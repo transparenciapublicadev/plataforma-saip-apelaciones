@@ -48,11 +48,15 @@ interface ResultadoMeta {
   accent: string;
 }
 
+import { TtaipInformeOralComponent } from './ttaip-informe-oral.component';
+import { AudienciaInformeOral } from './ttaip-informe-oral.model';
+import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
+
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
   imports: [
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
-    DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
+    DocumentPreviewModalComponent, RecepcionInstitucionalComponent, TtaipInformeOralComponent,
     LucideEye, LucideDownload, LucideFileText, LucideScale,
     LucideCheckCircle2, LucideMail, LucideGlobe,
     LucideMonitor, LucidePackage, LucideShieldCheck
@@ -268,13 +272,14 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly mostrarCajaResultado = computed(() => {
     const id = this.apelacion()?.resolucion?.id;
     const resultado = this.resolucionesExpediente().some(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL') ? this.resultadoNormalizado() : '';
-    return resultado.startsWith('FUNDADO') || resultado.startsWith('INFUNDADO');
+    return resultado.startsWith('FUNDADO') || resultado.startsWith('INFUNDADO') || resultado.includes('NULIDAD');
   });
 
   readonly resultadoCajaLabel = computed(() => {
     const resultado = this.resultadoNormalizado();
     if (resultado.startsWith('FUNDADO')) return 'APELACION FUNDADA';
     if (resultado.startsWith('INFUNDADO')) return 'APELACION INFUNDADA';
+    if (resultado.includes('NULIDAD')) return 'NULIDAD DEL ACTO APELADO';
     return 'APELACION RESUELTA';
   });
 
@@ -286,7 +291,9 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
 
   readonly resultadoCajaColor = computed(() => {
     const resultado = this.apelacion()?.resolucion?.tipoResolucion === 'RESOLUCION_FINAL' ? this.resultadoNormalizado() : '';
-    return resultado.startsWith('FUNDADO') ? 'var(--success)' : 'var(--brand-700)';
+    if (resultado.startsWith('FUNDADO')) return 'var(--success)';
+    if (resultado.includes('NULIDAD')) return 'var(--warning)';
+    return 'var(--brand-700)';
   });
 
   readonly docCtx = computed<Partial<DocContext>>(() => {
@@ -425,7 +432,18 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
       : category === 'notificacion' ? { busy: this.notificacionLoading, message: this.notificacionMessage, error: this.notificacionError }
       : { busy: this.cumplimientoLoading, message: this.cumplimientoMessage, error: this.cumplimientoError };
   }
-  private actorLabel(): string { const s = this.auth.obtenerSesion(); return s?.nombre?.trim() || `Usuario ID ${s?.usuarioId}`; }
+  actorLabel(): string { const s = this.auth.obtenerSesion(); return s?.nombre?.trim() || `Usuario ID ${s?.usuarioId}`; }
+  onAudienciaCambio(_audiencia: AudienciaInformeOral): void {
+    // Si la audiencia fue actualizada localmente, se sincroniza el estado de la vista
+  }
+
+  onSolicitarSuspensionInformeOral(payload: RegistrarSuspensionTtaipPayload): void {
+    this.registrarSuspensionAdicional('INFORME_ORAL', payload.solicitante, payload.motivo, payload.responsable, payload.observacion || '');
+  }
+
+  onCancelarSuspensionInformeOral(suspensionId: number): void {
+    this.cancelarSuspension(suspensionId, 'Cancelación de suspensión por conclusión de informe oral');
+  }
   private allowed(category: 'descargo' | 'notificacion' | 'cumplimiento', collection: DetailCollection, target?: number, entity = false): boolean {
     const f = this.flags(category), ap = this.apelacion();
     if (!this.contextoVigente() || !ap || this.loading() || this.error() || this.pendingAction) return false;

@@ -65,8 +65,79 @@
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Análisis preliminar</span><h2 class="form-section-title">Causal invocada</h2></div><div class="p-6 space-y-4"><div class="rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><h3 class="eyebrow">Respuesta de la entidad</h3><p class="text-sm mt-1 whitespace-pre-wrap">{{ ap.resumenRespuestaEntidad || 'La consulta no informa la causal concreta. No se deduce del estado.' }}</p></div><p class="text-xs text-muted-foreground">Selección de análisis local: no hay un campo de causal confirmada o revocada en el comando. Incluya el sustento que corresponda en los fundamentos.</p><div role="group" aria-label="Análisis local de la causal" class="grid grid-cols-1 sm:grid-cols-2 gap-2">@for (item of ['confirmar', 'revocar']; track item) { <button type="button" class="rounded-lg p-3 text-left transition-all border border-border" [disabled]="!puedePrepararBorrador()" [attr.aria-pressed]="causal() === item" (click)="seleccionarCausal(item === 'confirmar' ? 'confirmar' : 'revocar')"><span class="font-display text-sm font-semibold">{{ item === 'confirmar' ? 'Confirmar' : 'Revocar' }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ item === 'confirmar' ? 'La causal es aplicable' : 'No es aplicable' }}</span></button> }</div></div></section>
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">02 · Sentido del fallo</span><h2 id="final-options" class="form-section-title">Decisión final</h2></div><div class="p-6 space-y-2.5" role="group" aria-labelledby="final-options">@for (option of options; track option.id) { <button type="button" (click)="seleccionarDecision(option.id)" [disabled]="!puedePrepararBorrador() || option.id === 'no_presentado'" [attr.aria-pressed]="selectedDecision() === option.id" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">@if (option.id === 'fundado' || option.id === 'fundado_en_parte') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @else if (option.id === 'sustraccion_materia' || option.id === 'desistimiento' || option.id === 'estese_a_lo_resuelto') { <svg aria-hidden="true" lucideMinusCircle class="w-5 h-5"></svg> } @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }</span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span></button> }</div></section>
           @if (selectedOption(); as option) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + option.accent"><svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" [style.color]="option.accent"></svg><p>Selección para revisión: {{ option.label }}. No es una actuación registrada hasta comprobar la respuesta y su recuperación.</p></div> }
-          @if (showOrden()) { <section class="form-shell" style="border-color: color-mix(in srgb, var(--success) 35%, transparent)"><div class="form-section-header" style="border-left: 3px solid var(--success); background: color-mix(in srgb, var(--success) 4%, transparent)"><span class="eyebrow" style="color: var(--success)">Mandato de entrega</span><h2 class="form-section-title">Registro y cumplimiento</h2></div><div class="p-6 space-y-4"><p class="text-sm text-muted-foreground">El registro conserva la decisión y sus fundamentos. La configuración del plazo y la acreditación del inicio de cumplimiento no están disponibles desde este formulario. Consulte el mandato y sus notificaciones en el expediente.</p><label class="flex items-start gap-3 text-sm"><input id="final-disciplinary" type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--brand-700)]"/><span>Registrar indicación de proceso disciplinario<span class="block text-xs text-muted-foreground mt-1">Solo conserva el indicador de la resolución; no abre ni remite automáticamente un proceso.</span></span></label></div></section> }
-          @if (showNulidad()) { <section class="form-shell" style="border-color: color-mix(in srgb, var(--warning) 35%, transparent)"><div class="form-section-header" style="border-left: 3px solid var(--warning)"><span class="eyebrow" style="color: var(--warning)">Retroacción</span><h2 class="form-section-title">Nulidad · momento del vicio</h2></div><div class="p-6 space-y-4"><div class="field"><label for="final-defect" class="field-label">Momento del vicio <span class="req">*</span></label><input id="final-defect" type="text" class="field-input" [(ngModel)]="momentoVicio" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-special-hint"/></div><div class="field"><label for="final-ordered-act" class="field-label">Actuación ordenada <span class="req">*</span></label><textarea id="final-ordered-act" class="field-input" rows="3" [(ngModel)]="actuacionOrdenada" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-special-hint"></textarea></div><p id="final-special-hint" class="field-hint">Se registran como observaciones de la decisión especial, junto con el sustento adicional; máximo conjunto 5000 caracteres.</p></div></section> }
+          @if (showOrden()) {
+            <section class="form-shell" style="border-color: color-mix(in srgb, var(--success) 35%, transparent)">
+              <div class="form-section-header" style="border-left: 3px solid var(--success); background: color-mix(in srgb, var(--success) 4%, transparent)">
+                <span class="eyebrow" style="color: var(--success)">Mandato a la entidad</span>
+                <h2 class="form-section-title">Entrega de información y plazo</h2>
+              </div>
+              <div class="p-6 space-y-4">
+                <label class="flex items-start gap-3 text-sm cursor-pointer">
+                  <input id="final-order-delivery" type="checkbox" [(ngModel)]="ordenarEntrega" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--success)]" />
+                  <div>
+                    <span class="font-semibold text-foreground">Ordenar a la entidad la entrega de la información</span>
+                    <p class="text-xs text-muted-foreground mt-0.5">Establece el mandato formal de entrega bajo apercibimiento legal.</p>
+                  </div>
+                </label>
+
+                @if (ordenarEntrega) {
+                  <div class="p-3.5 rounded-lg border border-border bg-card/60 space-y-2">
+                    <label for="final-delivery-days" class="field-label !text-xs uppercase tracking-wider">Plazo de cumplimiento · días hábiles</label>
+                    <div class="flex items-center gap-3">
+                      <input id="final-delivery-days" type="number" min="1" max="30" [(ngModel)]="plazoDias" [disabled]="!puedePrepararBorrador()" class="field-input !w-24 text-center font-bold" />
+                      <span class="text-xs text-muted-foreground leading-snug">días hábiles desde la notificación eficaz de la resolución (7 días hábiles por defecto de ley, máx. 30).</span>
+                    </div>
+                  </div>
+                }
+
+                <div class="rule-ornament" aria-hidden="true"></div>
+
+                <label class="flex items-start gap-3 text-sm cursor-pointer">
+                  <input id="final-disciplinary" type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--brand-700)]" />
+                  <div>
+                    <span class="font-semibold text-foreground">Registrar indicación de proceso disciplinario</span>
+                    <p class="text-xs text-muted-foreground mt-0.5">Conserva el indicador en la resolución; remite reporte para conocimiento de la STPAD.</p>
+                  </div>
+                </label>
+              </div>
+            </section>
+          }
+          @if (showNulidad()) {
+            <section class="form-shell" style="border-color: color-mix(in srgb, var(--warning) 35%, transparent)">
+              <div class="form-section-header" style="border-left: 3px solid var(--warning)">
+                <span class="eyebrow" style="color: var(--warning)">Efectos de la nulidad y retroacción</span>
+                <h2 class="form-section-title">Determinación del vicio y etapa de retroacción</h2>
+              </div>
+              <div class="p-6 space-y-4">
+                <div class="field">
+                  <label for="final-defect" class="field-label">Momento del vicio incurrido <span class="req">*</span></label>
+                  <input id="final-defect" type="text" class="field-input" [(ngModel)]="momentoVicio" [disabled]="!puedePrepararBorrador()" placeholder="Ej: Al momento de denegar la solicitud sin motivar excepciones del art. 15..." aria-required="true" />
+                </div>
+
+                <div class="field">
+                  <label for="final-ordered-act" class="field-label">Actuación ordenada a la entidad <span class="req">*</span></label>
+                  <textarea id="final-ordered-act" class="field-input" rows="3" [(ngModel)]="actuacionOrdenada" [disabled]="!puedePrepararBorrador()" placeholder="Ej: Emitir nueva respuesta motivada precisando el sustento de confidencialidad o entregar la información..." aria-required="true"></textarea>
+                </div>
+
+                <div class="field">
+                  <label class="field-label mb-2">Etapa a la que se retrotrae el procedimiento</label>
+                  <div class="space-y-2" role="radiogroup" aria-label="Etapa de retroacción">
+                    @for (etapa of etapasRetroaccion; track etapa.id) {
+                      <label class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/60 hover:bg-card cursor-pointer transition-colors" [style.borderColor]="retrotraeA === etapa.id ? 'var(--warning)' : null">
+                        <input type="radio" name="etapa_retroaccion" [value]="etapa.id" [(ngModel)]="retrotraeA" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--warning)]" />
+                        <div>
+                          <span class="text-sm font-semibold text-foreground">{{ etapa.label }}</span>
+                          <p class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ etapa.desc }}</p>
+                        </div>
+                      </label>
+                    }
+                  </div>
+                </div>
+
+                <p id="final-special-hint" class="field-hint">Se registran como observaciones de la resolución especial; máximo conjunto 5000 caracteres.</p>
+              </div>
+            </section>
+          }
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">03 · Motivación</span><h2 class="form-section-title">Fundamentos de la resolución</h2></div><div class="p-6 space-y-4"><div class="field"><label for="final-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="final-grounds" class="field-input" rows="8" style="resize: vertical; min-height: 160px" [(ngModel)]="fundamentos" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-grounds-hint final-validation" [attr.aria-invalid]="fundamentos.trim().length > 5000"></textarea><p id="final-grounds-hint" class="field-hint font-mono">{{ fundamentos.trim().length }} / 5000 caracteres</p></div>@if (showNulidad() || selectedDecision() === 'estese_a_lo_resuelto') { <div class="field"><label for="final-observations" class="field-label">Sustento específico o referencia al pronunciamiento previo</label><textarea id="final-observations" class="field-input" rows="3" [(ngModel)]="observacionesResolucion" [disabled]="!puedePrepararBorrador()" aria-describedby="final-validation"></textarea></div> }<p id="final-validation" role="status" class="field-hint">{{ validacionTexto() }}</p></div></section>
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">04 · Archivos seleccionados</span><h2 class="form-section-title">Adjuntos opcionales · subida independiente</h2></div><div class="p-6 space-y-3"><label for="final-files" class="field-label">Seleccionar archivos</label><input id="final-files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.txt" [disabled]="!puedePrepararBorrador()" (change)="seleccionarDocumento($event)" class="field-input text-sm" aria-describedby="final-files-hint"/><p id="final-files-hint" class="field-hint">Solo en memoria hasta la subida. Se registra primero la decisión; después se sube y comprueba cada archivo. Una subida fallida no revierte la resolución. Recargar obliga a seleccionar de nuevo; no repita la decisión para reintentar archivos.</p>@if (!archivos().length) { @for (file of documentosSeleccionados(); track file; let i = $index) { <div class="rounded-md p-3 flex gap-3 items-center border border-border"><svg aria-hidden="true" lucideFileText class="w-4 h-4 shrink-0 text-muted-foreground"></svg><p class="flex-1 min-w-0 text-sm">{{ file.name }} <span class="font-mono text-xs text-muted-foreground">{{ formatFileSize(file.size) }} KB · seleccionado</span></p><button type="button" class="btn-ghost-brand !p-2" [disabled]="!puedePrepararBorrador()" [attr.aria-label]="'Quitar ' + file.name" (click)="removerDocumento(i)"><svg aria-hidden="true" lucideXCircle class="w-4 h-4"></svg></button></div> }} @for (item of archivos(); track item.file) { <div class="rounded-md p-3 border border-border text-sm"><p class="font-medium">{{ item.file.name }}</p><p role="status" class="text-xs mt-1">{{ getEstadoDisplay(item.estado) }}{{ item.documentoId ? ' · Documento ID ' + item.documentoId : '' }}</p><p class="text-xs text-muted-foreground mt-1">{{ item.mensaje || 'La selección local no acredita almacenamiento.' }}</p>@if (item.estado === 'incierto' && item.documentoId) { <button type="button" class="btn-ghost-brand mt-2" [disabled]="loading()" (click)="recuperarArchivo(item)">Consultar este documento sin subir de nuevo</button> }</div> }@if (resultadoConfirmado() && archivos().length) { <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="reintentarArchivos()">Subir solo pendientes o rechazados</button><p class="field-hint">No repite la resolución ni los archivos registrados o inciertos. Una subida incierta sin ID requiere revisar el expediente.</p> }</div></section>
           <app-official-docs-section [expediente]="ap.expediente" stage="final" [decision]="selectedDecision()" [ctx]="docCtx()"></app-official-docs-section>

@@ -19,7 +19,29 @@ export const finalOpciones = [
 ] as const;
 export type FinalDecision = typeof finalOpciones[number]['id'];
 export type FinalSelection = FinalDecision | 'no_presentado';
-export interface FinalOperacion { apelacionId: number; expediente: string; decision: FinalDecision; fundamentos: string; observaciones?: string; miembroId: number; iniciarProcesoDisciplinario?: boolean; resolucionId?: number; }
+
+export const ETAPAS_RETROACCION = [
+  { id: '', label: 'Sin retroacción específica (solo anula el acto)', desc: 'No reinicia plazos de etapas previas' },
+  { id: 'entidad_requisitos', label: 'Entidad · revisión de requisitos', desc: 'Retrotrae la solicitud ciudadana a "Recepcionada" y reinicia el plazo legal de 10 días para calificar o requerir subsanación' },
+  { id: 'entidad_respuesta', label: 'Entidad · nueva respuesta de fondo', desc: 'Retrotrae la solicitud a "En Proceso" con plazo legal de 10 días para emitir pronunciamiento motivado' },
+  { id: 'ttaip_calificacion', label: 'Tribunal · nueva calificación', desc: 'Retrotrae la apelación a "En 1ra Calificación" para subsanar vicio formal en el trámite recursal' },
+  { id: 'ttaip_resolucion', label: 'Tribunal · nuevo pronunciamiento', desc: 'Reabre la etapa de resolución para nuevo análisis de fondo o actuación probatoria' },
+] as const;
+export type EtapaRetroaccionId = typeof ETAPAS_RETROACCION[number]['id'];
+
+export interface FinalOperacion {
+  apelacionId: number;
+  expediente: string;
+  decision: FinalDecision;
+  fundamentos: string;
+  observaciones?: string;
+  miembroId: number;
+  iniciarProcesoDisciplinario?: boolean;
+  ordenarEntrega?: boolean;
+  plazoDias?: number;
+  retrotraeA?: EtapaRetroaccionId;
+  resolucionId?: number;
+}
 export type ArchivoEstado = 'seleccionado' | 'enviando' | 'registrado' | 'rechazado' | 'incierto';
 export interface ArchivoFinal { file: File; estado: ArchivoEstado; documentoId?: number; mensaje?: string; }
 const text = (v: unknown): v is string => typeof v === 'string' && !!v.trim();
