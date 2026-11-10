@@ -123,7 +123,7 @@
           </div>
 
           <!-- BUSCADOR GLOBAL — independiente del filtro de etapa -->
-          <div class="relative mt-3">
+          <div id="buscador-global-container" class="relative mt-3">
             <div
               class="rounded-xl flex items-center gap-3 px-4 py-3.5 transition-shadow"
               [style.background]="'var(--card)'"
@@ -167,7 +167,7 @@
                 </div>
               } @else {
                 <span class="code-chip shrink-0 hidden sm:inline-flex" style="font-size: 11px">
-                  {{ todasSolicitudes().length }} en total
+                  {{ resumen()?.total ?? todasSolicitudes().length }} en total
                 </span>
               }
             </div>
@@ -232,9 +232,9 @@
             <div class="mb-3">
               <span class="eyebrow flex items-center gap-1.5">
                 <svg lucideSparkles class="w-3 h-3" style="color: var(--gold)"></svg>
-                Solicitud para revisar
+                Lo que debe hacer hoy
               </span>
-              <p class="text-xs text-muted-foreground mt-1">La gestion mas urgente entre todas sus solicitudes. Atienda esto primero.</p>
+              <p class="text-xs text-muted-foreground mt-1">La gestión más urgente entre todas sus solicitudes. Atienda esto primero.</p>
             </div>
             <section id="lo-que-debe-hacer-hoy" class="relative overflow-hidden rounded-xl" [class.action-focus-pulse]="accionResaltada()" [style.background]="accion.toneBg" [style.border]="'1px solid ' + accion.toneSoft" style="box-shadow: var(--shadow-sm)">
               <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="'linear-gradient(180deg, ' + accion.toneColor + ', var(--gold))'"></span>
@@ -252,14 +252,10 @@
                 </div>
 
                 <div class="min-w-0">
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <span class="bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 font-bold text-xs px-2.5 py-1 rounded-md border border-red-300 dark:border-red-800 inline-block mb-1">PLAZO VENCIDO</span>
-                  } @else {
-                    <span class="eyebrow flex items-center gap-2" [style.color]="accion.toneColor">
-                      <svg lucideBell class="w-3 h-3"></svg>
-                      {{ accion.eyebrow }}
-                    </span>
-                  }
+                  <span class="eyebrow flex items-center gap-2" [style.color]="accion.toneColor">
+                    <svg lucideBell class="w-3 h-3"></svg>
+                    {{ accion.eyebrow }}
+                  </span>
                   <h2 class="font-display mt-1.5" style="font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -0.02em; line-height: 1.15">{{ accion.titulo }}</h2>
                   <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <!-- SAIP chip -->
@@ -277,31 +273,18 @@
                     <span class="text-xs text-[var(--muted-foreground)]">·</span>
                     <span class="text-sm text-foreground/85 truncate">{{ accion.entidad }}</span>
                   </div>
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">El plazo legal de 2 días hábiles ha vencido. Su recurso de apelación se resolverá como tener por no presentado.</p>
-                  } @else {
-                    <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
-                  }
+                  <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
                 </div>
 
                 <div class="flex items-center gap-5 md:flex-col md:items-end md:gap-3">
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <div class="text-right md:order-2">
-                      <span class="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Plazo Vencido</span>
-                    </div>
-                    <button disabled class="opacity-50 cursor-not-allowed bg-slate-500 text-white font-medium px-4 py-2 rounded-lg text-sm inline-flex items-center gap-2 md:order-1 whitespace-nowrap">
-                      <span>Plazo Vencido</span>
-                    </button>
-                  } @else {
-                    <div class="text-right md:order-2">
-                      <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
-                      <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
-                    </div>
-                    <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap inline-flex items-center gap-2">
-                      {{ accion.ctaLabel }}
-                      <svg lucideArrowRight class="w-4 h-4"></svg>
-                    </a>
-                  }
+                  <div class="text-right md:order-2">
+                    <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
+                    <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
+                  </div>
+                  <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap inline-flex items-center gap-2">
+                    {{ accion.ctaLabel }}
+                    <svg lucideArrowRight class="w-4 h-4"></svg>
+                  </a>
                 </div>
               </div>
             </section>
@@ -492,6 +475,7 @@
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (selectedStageMeta().iconName) {
                   @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('alertTriangle') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }

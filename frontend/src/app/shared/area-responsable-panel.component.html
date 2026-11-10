@@ -1,0 +1,10 @@
+<section class="form-shell" aria-label="Área responsable de su atención">
+  <div class="form-section-header">
+    <span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideBuilding2 class="w-3 h-3"></svg>Atención interna</span>
+    <h2 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Área responsable de su atención</h2>
+  </div>
+  <div class="p-5 text-sm">
+    @if (entidad()) { <p class="font-medium mb-2">Entidad: {{ entidad() }}</p> }
+    <p class="text-muted-foreground" role="status">El expediente no proporciona una asignación interna de área responsable. No es posible consultar ni guardar esa asignación desde esta pantalla.</p>
+  </div>
+</section>

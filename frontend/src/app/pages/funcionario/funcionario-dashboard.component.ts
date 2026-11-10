@@ -2,9 +2,9 @@ import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, 
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { SolicitudService } from '../../services/solicitud.service';
+import { PanelQueryService } from '../../services/panel-query.service';
+import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
 import { FuncionarioService } from '../../services/funcionario.service';
 import { Subscription } from 'rxjs';
 import { BucketKey, QueueItem, positiveId, normalizeSearch, queueItem, readInstitutionList, canNavigateToResponse } from './funcionario-dashboard.model';
@@ -27,7 +27,8 @@ import {
   LucideBuilding2, LucideCompass, LucideShieldAlert,
   LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
   LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-  LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp
+  LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp,
+  LucideFileChartColumn
 } from '@lucide/angular';
 
 @Component({
@@ -38,14 +39,15 @@ import {
     LucideBuilding2, LucideCompass, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-    LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp
+    LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp,
+    LucideFileChartColumn
   ],
   templateUrl: './funcionario-dashboard.component.html',
   styleUrl: './funcionario-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
-  private readonly solicitudService = inject(SolicitudService);
+  private readonly panelService = inject(PanelQueryService);
   private readonly funcionarioService = inject(FuncionarioService);
   private readonly authService = inject(AuthService);
   private readonly tourService = inject(GuidedTourService);
@@ -58,7 +60,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly contextoVigente = computed(() => this.revisionConsulta() === this.authService.cambiosSesion());
   readonly tourSteps: TourStep[] = [
     { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo o vencen hoy.' },
-    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes respondidas dentro de los 10 días hábiles de ley, comparado con el mes anterior.' },
+    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes atendidas dentro del plazo legal (10 días hábiles, o el ampliado por prórroga).' },
     { selector: '[data-tour="e-buckets"]', title: 'Bandeja por plazo', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
     { selector: '[data-tour="e-cola"]', title: 'Solicitudes de la bandeja', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start' },
     { selector: '[data-tour="e-carga"]', title: 'Vencimientos de la semana', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
@@ -74,6 +76,11 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   ];
   solicitudes = signal<Solicitud[]>([]);
   loading = signal(true);
+  readonly queryLoading = signal(false);
+  readonly pagina = signal<PanelPage<Solicitud> | null>(null);
+  readonly resumen = signal<PanelSummary | null>(null);
+  readonly orden = signal<'recientes' | 'antiguas'>('recientes');
+  private searchTimer?: ReturnType<typeof setTimeout>;
   error = signal('');
   errorTipo = signal<'sesion' | 'validacion' | 'autenticacion' | 'autorizacion' | 'no-encontrado' | 'red' | 'servidor' | 'incompleta' | null>(null);
   informacionIncompleta = signal(false);
@@ -85,16 +92,21 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   entidadId = signal(0);
   readonly estados = ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'RESPONDIDA', 'DENEGADA', 'CONCLUIDA', 'VENCIDA'];
   readonly queueItems = computed(() => this.solicitudes().map(queueItem));
-  readonly counts = computed(() => {
-    const counts: Record<BucketKey, number> = { todas: this.queueItems().length, san: 0, hoy: 0, semana: 0, plazo: 0, respondidas: 0 };
-    for (const item of this.queueItems()) counts[item.bucket]++;
-    return counts;
-  });
+  readonly counts = computed(() => ({ todas: this.resumen()?.total ?? 0,
+    san: this.resumen()?.porEtapa['san'] ?? 0, hoy: this.resumen()?.porEtapa['hoy'] ?? 0,
+    semana: this.resumen()?.porEtapa['semana'] ?? 0, plazo: this.resumen()?.porEtapa['plazo'] ?? 0,
+    respondidas: this.resumen()?.porEtapa['respondidas'] ?? 0 }));
   readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket()) ?? this.buckets[0]);
-  readonly totalActivas = computed(() => this.solicitudes().filter(s => s.estado === 'RECEPCIONADA' || s.estado === 'EN_REVISION' || s.estado === 'PENDIENTE_INFORMACION' || s.estado === 'VENCIDA').length);
-  readonly respondidas = computed(() => this.solicitudes().filter(s => s.estado === 'RESPONDIDA' || s.estado === 'DENEGADA' || (s.estado === 'CONCLUIDA' && s.respuesta != null) || s.respuesta != null).length);
+  readonly totalActivas = computed(() => ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
+    .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0));
+  readonly respondidas = computed(() => this.resumen()?.porEtapa['respondidas'] ?? 0);
+  // Registration alone cannot prove timely delivery or effective notification.
   readonly cerradas = computed(() => this.respondidas() + this.counts().san);
-  readonly cumplimiento = computed<number | null>(() => this.cerradas() > 0 ? Math.round((this.respondidas() / this.cerradas()) * 100) : null);
+  readonly cumplimiento = computed<number | null>(() => {
+    const cerradas = this.cerradas();
+    if (cerradas === 0) return 100;
+    return Math.round((this.respondidas() / cerradas) * 100);
+  });
   readonly donutDashOffset = computed(() => {
     const val = this.cumplimiento() ?? 0;
     const r = 26;
@@ -106,72 +118,113 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     return val >= 80 ? 'var(--success)' : val >= 60 ? 'var(--warning)' : 'var(--brand-700)';
   });
   readonly fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }));
-  readonly filtradas = computed(() => {
-    const terms = normalizeSearch(this.busqueda().trim()).split(/\s+/).filter(Boolean);
-    return this.queueItems().filter(item => (this.selectedBucket() === 'todas' || item.bucket === this.selectedBucket())
-      && (!this.filtroEstado() || item.solicitud.estado === this.filtroEstado())
-      && terms.every(term => normalizeSearch([item.solicitud.expediente, item.solicitud.ciudadanoNombre, item.solicitud.ciudadanoDni, item.solicitud.asunto,
-        item.tema, item.solicitud.estado].filter(value => typeof value === 'string').join(' ')).includes(term)));
-    // Preserve the backend's fechaPresentacion DESC order; do not reconstruct dates or urgency.
-  });
+  readonly filtradas = computed(() => this.queueItems());
   readonly distribucionDias = computed(() => {
-    const groups = new Map<number, number>();
-    for (const item of this.queueItems()) {
-      if (['hoy', 'semana', 'plazo'].includes(item.bucket) && item.diasRestantes !== null) groups.set(item.diasRestantes, (groups.get(item.diasRestantes) ?? 0) + 1);
-    }
-    const max = Math.max(1, ...groups.values());
-    return [...groups.entries()].sort(([a], [b]) => a - b).map(([dia, count]) => ({ dia, count, width: count / max * 100,
-      color: dia <= 1 ? 'var(--brand-700)' : dia <= 5 ? 'var(--warning)' : 'var(--success)' }));
+    const groups = Object.entries(this.resumen()?.porDiasRestantes ?? {}).map(([day, count]) => [Number(day), count] as const);
+    const max = Math.max(1, ...groups.map(([, n]) => n));
+    return groups.filter(([day]) => Number.isSafeInteger(day) && day >= 0).sort(([a], [b]) => a - b)
+      .map(([dia, count]) => ({ dia, count, width: count / max * 100, color: dia <= 1 ? 'var(--brand-700)' : dia <= 5 ? 'var(--warning)' : 'var(--success)' }));
   });
-  readonly topTemas = computed(() => {
-    const groups = new Map<string, number>();
-    for (const item of this.queueItems()) if (item.tema) groups.set(item.tema, (groups.get(item.tema) ?? 0) + 1);
-    return [...groups.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
-  });
+  readonly topTemas = computed(() => Object.entries(this.resumen()?.porTipoInformacion ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4));
   readonly paginaActual = signal(1);
   readonly itemsPorPagina = signal(4);
-  readonly totalRegistros = computed(() => this.filtradas().length);
+  readonly totalRegistros = computed(() => this.pagina()?.totalElementos ?? 0);
   readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.itemsPorPagina())));
   readonly paginaSegura = computed(() => Math.min(this.paginaActual(), this.totalPaginas()));
   readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.itemsPorPagina() + 1 : 0);
   readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.itemsPorPagina(), this.totalRegistros()));
-  readonly filtradasVisibles = computed(() => this.filtradas().slice((this.paginaSegura() - 1) * this.itemsPorPagina(), this.paginaSegura() * this.itemsPorPagina()));
+  readonly filtradasVisibles = computed(() => this.filtradas());
   get busquedaModel(): string { return this.busqueda(); }
-  set busquedaModel(value: string) { this.busqueda.set(value); this.paginaActual.set(1); }
+  set busquedaModel(value: string) { this.busqueda.set(value.slice(0, 120)); this.paginaActual.set(1); clearTimeout(this.searchTimer); this.read.unsubscribe(); this.generation++; this.solicitudes.set([]); this.queryLoading.set(true); this.searchTimer = setTimeout(() => this.cargarSolicitudes(false), 250); }
+  readonly areasAsignadas = signal<Record<string, { area: string; responsable?: string; fecha: string }>>({});
+  private readonly areaListener = () => this.recargarAreas();
+
+  limpiarBusqueda(): void {
+    if (this.busqueda()) {
+      this.busqueda.set('');
+      this.paginaActual.set(1);
+      this.cargarSolicitudes(false);
+    }
+  }
+
+  private recargarAreas(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const data = JSON.parse(localStorage.getItem('saip_area_responsable') || '{}');
+      this.areasAsignadas.set(data);
+    } catch {
+      this.areasAsignadas.set({});
+    }
+  }
+
+  getArea(expediente: string): { area: string; responsable?: string; fecha: string } | null {
+    return this.areasAsignadas()[expediente] || null;
+  }
+
+  getAreaLabel(expediente: string): string {
+    const a = this.getArea(expediente);
+    return a ? a.area : 'Sin asignar';
+  }
+
   constructor() {
     effect(() => {
       const revision = this.authService.cambiosSesion();
       if (this.initialized && revision !== this.revision) untracked(() => this.cargarSolicitudes());
     });
   }
-  ngOnInit(): void { this.initialized = true; this.cargarSolicitudes(); }
-  ngOnDestroy(): void { this.tourService.endTourFor('saip_tour_funcionario'); this.destroyed = true; this.generation++; this.read.unsubscribe(); }
-  selectBucket(bucket: BucketKey): void { this.selectedBucket.set(bucket); this.paginaActual.set(1); }
-  cambiarEstado(value: string): void { this.filtroEstado.set(value); this.paginaActual.set(1); }
-  limpiarFiltros(): void { this.busqueda.set(''); this.filtroEstado.set(''); this.selectBucket('todas'); }
-  cambiarPagina(page: number): void { if (Number.isSafeInteger(page) && page >= 1 && page <= this.totalPaginas()) this.paginaActual.set(page); }
-  cambiarItemsPorPagina(size: number): void { if ([4, 8, 12].includes(size)) { this.itemsPorPagina.set(size); this.paginaActual.set(1); } }
+  ngOnInit(): void {
+    this.initialized = true;
+    this.recargarAreas();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('saip-area-responsable', this.areaListener);
+      window.addEventListener('storage', this.areaListener);
+    }
+    this.cargarSolicitudes();
+  }
+  ngOnDestroy(): void {
+    this.tourService.endTourFor('saip_tour_funcionario');
+    this.destroyed = true;
+    this.generation++;
+    this.read.unsubscribe();
+    clearTimeout(this.searchTimer);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('saip-area-responsable', this.areaListener);
+      window.removeEventListener('storage', this.areaListener);
+    }
+  }
+  selectBucket(bucket: BucketKey): void {
+    if (this.selectedBucket() === bucket) return;
+    if (bucket !== 'todas' && this.counts()[bucket] === 0) return;
+    this.selectedBucket.set(bucket);
+    this.paginaActual.set(1);
+    this.cargarSolicitudes(false);
+  }
+  cambiarEstado(value: string): void { this.filtroEstado.set(value); this.paginaActual.set(1); this.cargarSolicitudes(false); }
+  cambiarOrden(value: 'recientes' | 'antiguas'): void { this.orden.set(value); this.paginaActual.set(1); this.cargarSolicitudes(false); }
+  limpiarFiltros(): void { this.busqueda.set(''); this.filtroEstado.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); this.cargarSolicitudes(false); }
+  cambiarPagina(page: number): void { if (Number.isSafeInteger(page) && page >= 1 && page <= this.totalPaginas() && page !== this.paginaActual()) { this.paginaActual.set(page); this.cargarSolicitudes(false); } }
+  cambiarItemsPorPagina(size: number): void { if ([4, 8, 12].includes(size)) { this.itemsPorPagina.set(size); this.paginaActual.set(1); this.cargarSolicitudes(false); } }
   get isFirstVisit(): boolean { return this.tourService.isFirstVisit('saip_tour_funcionario'); }
   startTour(): void { this.tourService.startTour('saip_tour_funcionario', this.tourSteps); }
 
-  cargarSolicitudes(): void {
+  cargarSolicitudes(reloadContext = true): void {
+    clearTimeout(this.searchTimer);
+    if (this.destroyed) return;
     this.tourService.endTourFor('saip_tour_funcionario');
     const revision = this.authService.cambiosSesion();
-    if (this.loading() && this.generation > 0 && revision === this.revision) return;
     const changed = revision !== this.revision;
     this.read.unsubscribe(); this.read = new Subscription();
     const generation = ++this.generation;
     this.revision = revision; this.revisionConsulta.set(revision);
-    this.solicitudes.set([]); this.error.set(''); this.errorTipo.set(null); this.loading.set(true); this.informacionIncompleta.set(false);
-    this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0);
-    if (changed) this.limpiarFiltros();
+    this.solicitudes.set([]); this.pagina.set(null); this.error.set(''); this.errorTipo.set(null); this.loading.set(changed || !this.resumen()); this.queryLoading.set(true); this.informacionIncompleta.set(false);
+    if (changed) { this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0); this.resumen.set(null); this.busqueda.set(''); this.filtroEstado.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); }
     let session: ReturnType<AuthService['obtenerSesion']> = null;
     try { session = this.authService.obtenerSesion(); } catch { /* No query for malformed local session. */ }
     if (!session?.token || session.tipoUsuario !== 'FUNCIONARIO' || !positiveId(session.funcionarioId)
       || !positiveId(session.usuarioId) || session.usuarioId !== session.funcionarioId) {
       this.error.set('Su sesión de funcionario está incompleta. Inicie sesión mediante el acceso interno.');
       this.errorTipo.set('sesion');
-      this.loading.set(false); return;
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); return;
     }
     const actor = session.funcionarioId, token = session.token;
     const current = () => {
@@ -191,42 +244,40 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
       };
       this.error.set(messages[err.status ?? 0] ?? (err.status === 0 ? 'No hay conexión con el servidor. Puede reintentar.' : 'No se pudo consultar la información institucional. Puede reintentar.'));
       this.errorTipo.set(err.status === 400 || err.status === 422 ? 'validacion' : err.status === 401 ? 'autenticacion' : err.status === 403 ? 'autorizacion' : err.status === 404 ? 'no-encontrado' : err.status === 0 ? 'red' : 'servidor');
-      this.loading.set(false);
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null);
     };
+    const loadPage = (entidad: number) => {
+      const page = this.paginaActual() - 1, size = this.itemsPorPagina();
+      this.read.add(this.panelService.solicitudes({ pagina: page, tamano: size, busqueda: this.busqueda().trim(),
+        estado: this.filtroEstado(), etapa: this.selectedBucket(), orden: this.orden() }).subscribe({
+        next: data => {
+          if (!current()) return;
+          const verified = validPanelPage<Solicitud>(data, page, size) ? readInstitutionList(data.contenido, entidad) : null;
+          if (!verified) { this.error.set('La respuesta está incompleta o no permite verificar la entidad y los recursos solicitados.');
+            this.errorTipo.set('incompleta'); this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); return; }
+          this.pagina.set(data); this.resumen.set(data.resumen); this.solicitudes.set(verified);
+          this.informacionIncompleta.set(verified.some(item => !this.estados.includes(item.estado)
+            || !item.asunto || !this.fechaVisible(item.fechaPresentacion) || !Number.isSafeInteger(item.diasRestantes)));
+          this.loading.set(false); this.queryLoading.set(false);
+        }, error: failure,
+      }));
+    };
+    if (!reloadContext && !changed && positiveId(this.entidadId())) { loadPage(this.entidadId()); return; }
     this.read.add(this.funcionarioService.findById(actor).subscribe({
       next: funcionario => {
         if (!current()) return;
         if (!funcionario || funcionario.id !== actor || !positiveId(funcionario.entidadId) || funcionario.activo !== true) {
           this.error.set('La información del funcionario o su entidad está incompleta. Reintente la consulta.');
-          this.errorTipo.set('incompleta');
-          this.loading.set(false); return;
+          this.errorTipo.set('incompleta'); this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); return;
         }
-        const entidad = funcionario.entidadId;
-        this.entidadId.set(entidad);
+        this.entidadId.set(funcionario.entidadId);
         this.nombreEntidad.set(typeof funcionario.entidadNombre === 'string' ? funcionario.entidadNombre.trim() : '');
         this.nombreFuncionario.set(typeof funcionario.nombreCompleto === 'string' ? funcionario.nombreCompleto.trim() : '');
-        this.read.add(this.solicitudService.findByEntidadId(entidad).subscribe({
-          next: data => {
-            if (!current()) return;
-            const verified = readInstitutionList(data, entidad);
-            if (!verified) {
-              this.error.set('La respuesta está incompleta o no permite verificar la entidad y los recursos solicitados.');
-              this.errorTipo.set('incompleta');
-              this.loading.set(false); return;
-            }
-            this.solicitudes.set(verified);
-            this.informacionIncompleta.set(verified.some(item => !this.estados.includes(item.estado)
-              || !item.asunto || !this.fechaVisible(item.fechaPresentacion) || !Number.isSafeInteger(item.diasRestantes)
-              || (item.estado !== 'VENCIDA' && item.diasRestantes < 0 && ['RECEPCIONADA', 'EN_REVISION'].includes(item.estado))));
-            this.loading.set(false);
-            this.tourService.checkAutoStart('saip_tour_funcionario', this.tourSteps);
-          },
-          error: failure,
-        }));
-      },
-      error: failure,
+        loadPage(funcionario.entidadId);
+      }, error: failure,
     }));
   }
+
   getEstadoDisplay(solicitud: Solicitud): string { return solicitud.estado || 'SIN_ESTADO'; }
   getPrioridadClass(priority: string | null): string {
     if (!priority) return 'pill';
@@ -264,10 +315,12 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
       return fecha || '—';
     }
     if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) {
-      const diasVencidos = item.diasRestantes !== null ? Math.abs(item.diasRestantes) : 0;
-      return `+${diasVencidos} ${diasVencidos === 1 ? 'día' : 'días'}`;
+      if (item.diasRestantes === null) return 'Días no informados';
+      const diasVencidos = Math.abs(item.diasRestantes);
+      return `+${diasVencidos} ${diasVencidos === 1 ? 'día háb.' : 'días háb.'}`;
     }
-    const d = item.diasRestantes ?? 0;
+    if (item.diasRestantes === null) return 'Plazo no informado';
+    const d = item.diasRestantes;
     return `${d} ${d === 1 ? 'día háb.' : 'días háb.'}`;
   }
   canResponder(solicitud: Solicitud): boolean { return this.contextoVigente() && !this.loading() && !this.error() && canNavigateToResponse(solicitud); }

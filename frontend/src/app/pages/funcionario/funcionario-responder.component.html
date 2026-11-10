@@ -55,6 +55,8 @@
 
       <app-response-context />
 
+      <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre"></app-area-responsable-panel>
+
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
         <div class="stat-card" data-motion-item>
           <span class="stat-card-bar" style="background: var(--info)"></span>
@@ -138,7 +140,7 @@
               @if (yaPreciso()) {
                 <div class="mt-3 rounded-lg p-3 flex items-start gap-2.5 text-xs text-foreground/80" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
                   <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-                  <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">resolver el fondo</span>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
+                  <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">brindar respuesta a la SAIP</span>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
                 </div>
               }
 
@@ -150,7 +152,7 @@
                   <div class="flex items-start gap-2.5">
                     <svg lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="via() === 'responder' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
                     <div>
-                      <div class="text-sm font-semibold text-foreground">Resolver el fondo</div>
+                      <div class="text-sm font-semibold text-foreground">Brindar respuesta a la SAIP</div>
                       <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Emitir la decisión: entrega total, parcial o denegación.</div>
                     </div>
                   </div>
@@ -220,33 +222,76 @@
                   <span class="eyebrow">01 · Ampliación del plazo de atención</span>
                   <h2 class="form-section-title">Prórroga excepcional</h2>
                 </div>
+
+                @if (!prorrogaPermitida()) {
+                  <div role="alert" class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+                    <p class="text-sm text-foreground/85">
+                      Ya venció el 2.° día hábil para comunicar la prórroga (han transcurrido {{ diasTranscurridos() }} días hábiles). Corresponde atender la solicitud dentro del plazo vigente{{ sol.fechaLimite ? ' (hasta el ' + (sol.fechaLimite | date:'dd/MM/yyyy') + ')' : '' }}.
+                    </p>
+                  </div>
+                }
+
                 <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.06); border: 1px solid rgba(217,119,6,0.25); border-left: 3px solid var(--gold, #d97706)">
                   <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold, #d97706)"></svg>
                   <p class="text-sm text-foreground/85">La prórroga debe comunicarse al administrado <span class="font-semibold">hasta el 2° día hábil</span>. Si el cronograma de entrega supera los <span class="font-mono font-semibold">30 días hábiles</span>, es obligatorio detallar el cronograma (ampliación <span class="font-semibold">programada</span>); en caso contrario, es una ampliación <span class="font-semibold">registrada</span>.</p>
                 </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="field">
                     <label class="field-label">Días hábiles adicionales <span class="req">*</span></label>
-                    <input type="number" min="1" max="90" class="field-input" [(ngModel)]="prorrogaDias" />
+                    <input type="number" min="1" max="90" class="field-input" [(ngModel)]="prorrogaDias" [disabled]="!prorrogaPermitida()" />
                     <span class="field-hint">Tipo: <span class="font-semibold">{{ prorrogaTipo() === 'programada' ? 'Programada (con cronograma)' : 'Registrada' }}</span></span>
                   </div>
+                  <div class="rounded-md p-3 self-start" style="background: var(--paper); border: 1px solid var(--border)">
+                    <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Nueva fecha límite</div>
+                    <div class="font-display mt-0.5" style="font-size: 19px; color: var(--brand-700)">{{ nuevaFechaLimiteDMY() }}</div>
+                    <div class="text-[11px] text-muted-foreground">Calculada con el calendario oficial de días hábiles</div>
+                  </div>
                 </div>
+
                 <div class="field">
                   <label class="field-label">Motivo de la ampliación <span class="req">*</span></label>
                   <textarea class="field-input" rows="4" style="resize: vertical; min-height: 110px"
                     placeholder="Justifique la necesidad de ampliar el plazo (volumen, complejidad, ubicación de la información en archivo central, etc.)…"
-                    [(ngModel)]="prorrogaMotivo"></textarea>
+                    [(ngModel)]="prorrogaMotivo" [disabled]="!prorrogaPermitida()"></textarea>
                   <span class="field-hint">Mínimo 10 caracteres.</span>
                 </div>
-                @if (prorrogaTipo() === 'programada') {
-                  <div class="field">
-                    <label class="field-label">Cronograma de entrega <span class="req">*</span></label>
-                    <textarea class="field-input" rows="4" style="resize: vertical; min-height: 110px"
-                      placeholder="Detalle las etapas y fechas de entrega parcial/total del cronograma…"
-                      [(ngModel)]="prorrogaCronograma"></textarea>
-                    <span class="field-hint">Obligatorio cuando la ampliación supera 30 días hábiles.</span>
+
+                <label class="flex items-start gap-2.5 cursor-pointer">
+                  <input type="checkbox" class="mt-0.5" [checked]="usarCronograma() || prorrogaDiasNum() > 30"
+                    [disabled]="prorrogaDiasNum() > 30 || !prorrogaPermitida()"
+                    (change)="usarCronograma.set($any($event.target).checked)" />
+                  <span class="text-sm text-foreground/85">Entregar con <span class="font-semibold">cronograma de entregas parciales</span>{{ prorrogaDiasNum() > 30 ? ' (obligatorio: supera 30 días hábiles)' : '' }}</span>
+                </label>
+
+                @if (usarCronograma() || prorrogaDiasNum() > 30) {
+                  <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
+                    <span class="eyebrow">Cronograma de entrega <span class="req">*</span></span>
+                    @for (h of hitos(); track $index) {
+                      <div class="grid grid-cols-[160px_1fr_auto] gap-2 items-end">
+                        <div class="field">
+                          <label class="field-label">Fecha {{ $index + 1 }}</label>
+                          <input type="date" class="field-input font-mono !py-[9px]" [value]="h.fecha" (input)="actualizarHitoFecha($index, $any($event.target).value)" />
+                        </div>
+                        <div class="field">
+                          <label class="field-label">Entregable</label>
+                          <input class="field-input" placeholder="Ej.: Contratos de 2024 (folios 1-200)" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" />
+                        </div>
+                        <button type="button" (click)="quitarHito($index)" [disabled]="hitos().length === 1" class="btn-ghost-brand !px-3 !py-[9px] disabled:opacity-40">Quitar</button>
+                      </div>
+                    }
+                    <button type="button" (click)="agregarHito()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px]">Añadir entrega</button>
+                    <div class="field">
+                      <label class="field-label">Nota del cronograma (opcional)</label>
+                      <textarea class="field-input" rows="2" style="resize: vertical" placeholder="Precisiones sobre la forma de entrega de cada parte…" [(ngModel)]="prorrogaCronograma"></textarea>
+                    </div>
+                    @if (errorHitos()) {
+                      <p class="text-xs" style="color: var(--brand-700)">{{ errorHitos() }}</p>
+                    }
                   </div>
                 }
+
                 <button type="button" (click)="handleSubmit()" [disabled]="!canSubmit()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                   <svg lucideSend class="w-4 h-4"></svg>
                   Comunicar ampliación del plazo
@@ -541,7 +586,7 @@
                     <ul class="text-sm text-foreground/80 space-y-1.5 mt-2 list-disc list-inside leading-relaxed">
                       <li><span class="font-mono font-semibold">10 días hábiles</span> para responder.</li>
                       <li>Si deniega, debe fundamentar legalmente (Art. 17° Ley 27806).</li>
-                      <li>El ciudadano puede apelar en <span class="font-mono font-semibold">15 días calendario</span> ante el TTAIP.</li>
+                      <li>El ciudadano puede apelar en <span class="font-mono font-semibold">15 días hábiles</span> ante el TTAIP.</li>
                       <li>Sin respuesta en plazo: silencio administrativo negativo.</li>
                     </ul>
                   </div>
@@ -764,7 +809,7 @@
     [expediente]="solicitud()?.expediente || ''"
     [expedienteHint]="'Respuesta registrada · ' + (solicitud()?.entidadNombre || 'Entidad pública')"
     [plazoDias]="15"
-    plazoTipo="calendario"
+    plazoTipo="hábiles"
     plazoDescripcion="Plazo en que el ciudadano puede interponer recurso de apelación ante el TTAIP si no está conforme con la respuesta."
     plazoNorma="Ley N° 27806"
     [metadata]="respuestaSuccessMetadata()"

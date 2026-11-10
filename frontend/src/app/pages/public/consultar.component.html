@@ -46,10 +46,12 @@
               (input)="onQueryInput($event)"
             />
           </div>
+          <!-- Honeypot anti-bots: invisible y fuera del orden de tabulacion -->
+          <input type="text" name="sitio_web" [value]="trampa()" (input)="trampa.set($any($event.target).value)" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0" />
           <button
             type="submit"
             class="btn-brand !px-6 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="buscando()"
+            [disabled]="buscando() || !query().trim() || !prueba()"
           >
             @if (buscando()) {
               <span aria-hidden="true" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
@@ -62,6 +64,15 @@
         </div>
         <p id="expediente-hint" class="field-hint">Ingrese el expediente SAIP completo. No se solicita DNI, RUC ni otro dato de identificación. Este buscador no admite el número propio de una apelación TTAIP.</p>
         <p id="expediente-error" class="field-hint text-destructive" role="alert">{{ errorValidacion() }}</p>
+        <div class="mt-4">
+          <app-captcha-pow (pruebaChange)="prueba.set($event)" [reinicio]="reinicio()"></app-captcha-pow>
+        </div>
+        @if (aviso()) {
+          <p role="alert" class="mt-3 text-sm flex items-start gap-2" style="color: var(--brand-700)">
+            <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 mt-0.5 shrink-0"></svg>
+            {{ aviso() }}
+          </p>
+        }
       </form>
     </section>
 

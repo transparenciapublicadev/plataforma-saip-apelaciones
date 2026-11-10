@@ -16,7 +16,13 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     ampliacionesPlazo: [], encauzamientos: [], liquidacionesCosto: [] };
   const mockSolicitudService = {
     findByExpediente: vi.fn(),
-    obtenerSeguimientoPlazo: vi.fn(() => of({} as any))
+    obtenerSeguimientoPlazo: vi.fn(() => of({} as any)),
+    actualizarLiquidacion: vi.fn((_id: number, liq: number, payload: any) => of({
+      id: liq,
+      solicitudId: 12,
+      estadoLiquidacion: payload?.estado || 'CANCELADA'
+    } as any)),
+    cambiarEstado: vi.fn(() => of({} as any))
   };
   const mockAuthService = {
     obtenerSesion: vi.fn(() => ({ id: 1, rol: 'FUNCIONARIO' }))
@@ -114,6 +120,92 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
     const texto = fixture.nativeElement.textContent;
     expect(texto).toContain('Aceptar subsanación · pasar a trámite');
     expect(texto).toContain('No subsanada · archivar');
+  });
+
+  it('debería incluir el panel de área responsable con el expediente de la solicitud', () => {
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const areaPanel = fixture.nativeElement.querySelector('app-area-responsable-panel');
+    expect(areaPanel).not.toBeNull();
+  });
+
+  it('registra entrega física (recojo) con comprobante y documento de identidad pasando a estado RESPONDIDA', () => {
+    const mockLiq = {
+      id: 55,
+      codigoLiquidacion: 'LIQ-001',
+      monto: 15.50,
+      estado: 'PAGADA',
+      fechaEmision: '2026-10-15',
+      fechaLimiteRecojo: '2026-11-20'
+    };
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'EN_REVISION',
+      liquidacionesCosto: [mockLiq]
+    } as any));
+
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    comp.activeTab.set('liquidacion');
+    fixture.detectChanges();
+
+    comp.confirmarRecojoFisico(mockLiq as any);
+    expect(comp.liquidacionError()).toContain('comprobante de pago y el documento de identidad');
+    expect(mockSolicitudService.actualizarLiquidacion).not.toHaveBeenCalled();
+
+    comp.archivoComprobante.set(new File(['voucher'], 'voucher.pdf', { type: 'application/pdf' }));
+    comp.archivoIdentidad.set(new File(['dni'], 'dni.pdf', { type: 'application/pdf' }));
+    comp.confirmarRecojoFisico(mockLiq as any);
+
+    expect(mockSolicitudService.actualizarLiquidacion).toHaveBeenCalledWith(12, 55, expect.objectContaining({
+      estado: 'RECOGIDA'
+    }));
+    expect(mockSolicitudService.cambiarEstado).toHaveBeenCalledWith(12, 'RESPONDIDA');
+  });
+
+  it('cancelar liquidación no envía una observación fáctica inventada', () => {
+    const expiredLiq = {
+      id: 60,
+      codigoLiquidacion: 'LIQ-EXP',
+      monto: 20.00,
+      estado: 'NOTIFICADA',
+      fechaEmision: '2026-09-01',
+      fechaLimiteRecojo: '2026-10-01'
+    };
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'EN_REVISION',
+      liquidacionesCosto: [expiredLiq]
+    } as any));
+
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    comp.activeTab.set('liquidacion');
+    fixture.detectChanges();
+
+    expect(comp.isRecojoVencido(expiredLiq as any)).toBe(true);
+
+    comp.motivoArchivo.set('NO_RECOJO');
+    comp.archivarLiquidacion(expiredLiq as any);
+    expect(mockSolicitudService.actualizarLiquidacion).toHaveBeenCalledWith(12, 60, expect.objectContaining({
+      estado: 'CANCELADA',
+      responsable: expect.any(String),
+      observacion: 'No recogió la información — Vencimiento de 30 días calendario'
+    }));
+    expect(comp.liquidacionSuccess()).toBe('Liquidación archivada por vencimiento del plazo de 30 días.');
+
+    // Verificación de causal SIN_ACREDITACION_DE_PAGO
+    comp.motivoArchivo.set('SIN_ACREDITACION_DE_PAGO');
+    comp.archivarLiquidacion(expiredLiq as any);
+    expect(mockSolicitudService.actualizarLiquidacion).toHaveBeenCalledWith(12, 60, expect.objectContaining({
+      estado: 'CANCELADA',
+      responsable: expect.any(String),
+      observacion: 'No acreditó el pago — Vencimiento de 30 días calendario'
+    }));
   });
 
 });

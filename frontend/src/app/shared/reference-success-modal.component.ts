@@ -254,6 +254,16 @@ export interface ReferenceSuccessNextStep {
 
           <footer class="reference-success-footer">
             <div class="reference-success-actions">
+              @if (variant === 'saip-creada' || variant === 'borrador-guardado') {
+                <button
+                  type="button"
+                  class="text-[13px] tracking-wide font-medium hover:underline px-3 py-2 transition-colors order-last sm:order-first whitespace-nowrap"
+                  style="color: var(--muted-foreground)"
+                  title="Volver al formulario para presentar otra solicitud"
+                  (click)="close.emit()">
+                  Presentar otra solicitud
+                </button>
+              }
               @if (secondaryLabel) {
                 <button type="button" class="btn-ghost-brand !py-2.5 flex-1 justify-center" (click)="secondary.emit()">
                   {{ secondaryLabel }}

@@ -84,6 +84,10 @@ export const serverRoutes: ServerRoute[] = [
     path: 'funcionario/apelaciones/:expediente',
     renderMode: RenderMode.Client
   },
+  {
+    path: 'funcionario/reportes',
+    renderMode: RenderMode.Client
+  },
   // TTAIP routes (auth-protected)
   {
     path: 'ttaip',
@@ -102,7 +106,7 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
-    path: 'ttaip/resolucion/:id',
+    path: 'ttaip/resolucion/:expediente',
     renderMode: RenderMode.Client
   },
   {
@@ -119,6 +123,10 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'ttaip/compliance',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'ttaip/reportes',
     renderMode: RenderMode.Client
   },
   {

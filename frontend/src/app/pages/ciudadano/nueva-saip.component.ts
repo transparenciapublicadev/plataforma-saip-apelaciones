@@ -135,12 +135,8 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   private limpiarContexto(): void {
     this.generacion++; this.consultas.unsubscribe(); this.operaciones.unsubscribe();
     this.consultas = new Subscription(); this.operaciones = new Subscription(); this.entidades.set([]);
-    this.resetForm(); this.envio = null; this.confirmacion = null; this.solicitudCreada.set(null);
-    this.operacionPendiente.set(false); this.claveOperacion.set(''); this.recepcionId.set(null); this.recepcionEsperada = null;
-    this.expedienteCreado.set(''); this.archivosEnviados.set([]); this.documentosConsultados.set(null);
-    this.errorRecuperacion.set(''); this.loading.set(false); this.estadoEnvio.set('lista');
-    this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.draftModalAbierto.set(false);
-    this.modeloPendiente.set(null); this.cerrarPreview();
+    this.successModalAbierto.set(false);
+    this.resetForm();
   }
   private cargarSesionVisual(): void {
     const s = this.authService.obtenerSesion();
@@ -262,6 +258,23 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     this.consentimientoDatosPersonales = false; this.declaraVeracidad = false;
     for (const z of this.zonas) { z.file.set(null); z.warning.set(null); z.dragging.set(false); }
     this.step.set(1); this.errores.set({}); this.error.set(''); this.mensaje.set('');
+    this.solicitudCreada.set(null);
+    this.expedienteCreado.set('');
+    this.estadoEnvio.set('lista');
+    this.operacionPendiente.set(false);
+    this.loading.set(false);
+    this.claveOperacion.set('');
+    this.recepcionId.set(null);
+    this.recepcionEsperada = null;
+    this.envio = null;
+    this.confirmacion = null;
+    this.archivosEnviados.set([]);
+    this.documentosConsultados.set(null);
+    this.errorRecuperacion.set('');
+    this.confirmModalAbierto.set(false);
+    this.draftModalAbierto.set(false);
+    this.modeloPendiente.set(null);
+    this.cerrarPreview();
   }
   handleSubmit(isDraft: boolean): void {
     if (isDraft) { this.guardarBorrador(); return; }
@@ -467,6 +480,9 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   }
   cerrarResultado(): void {
     this.successModalAbierto.set(false);
+    this.solicitudCreada.set(null);
+    this.expedienteCreado.set('');
+    this.estadoEnvio.set('lista');
     this.resetForm();
   }
   irPanelCiudadano(): void { if (this.actual()) this.router.navigate(['/ciudadano']); }

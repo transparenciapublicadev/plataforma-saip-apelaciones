@@ -22,8 +22,8 @@ public class AyudaPublicaRestController {
                 obtenerCategorias(),
                 new AyudaPublicaDTO.ContactoAyudaDTO(
                         "(01) 630-2000",
-                        "contacto@saip-tesis.edu",
-                        "Universidad · Lima"
+                        "contacto@yaiku.gob.pe",
+                        "Lima, Perú"
                 )
         ));
     }

@@ -1,6 +1,9 @@
+import '@angular/compiler';
+import '../../../test-setup';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { TestBed, getTestBed } from '@angular/core/testing';
+import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -12,9 +15,15 @@ import { RespuestaService, RespuestaSaipRecepcion } from '../../services/respues
 import { SolicitudService } from '../../services/solicitud.service';
 import { FuncionarioResponderComponent } from './funcionario-responder.component';
 
+try {
+  getTestBed().initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
+} catch {
+  // already initialized
+}
+
 /** HTTP/storage are mocked here. PostgreSQL/LOCAL and rollback have a separate real integration suite. */
 describe('FuncionarioResponderComponent recepción coordinada', () => {
-  const solicitudes = { findByExpediente: vi.fn() };
+  const solicitudes = { findByExpediente: vi.fn(), registrarAmpliacion: vi.fn() };
   const respuestas = { registrarConDocumentos: vi.fn(), consultarRecepcion: vi.fn(),
     crear: vi.fn(), aceptarSolicitud: vi.fn(), denegarSolicitud: vi.fn(), getCausalesDenegacion: vi.fn() };
   const documentos = { upload: vi.fn() };
@@ -195,5 +204,54 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
   it('informa el envío exitoso de la respuesta al ciudadano', () => {
     const c = pagina(); expect(c.respuestaSuccessTitle()).toContain('Respuesta enviada');
     expect(c.respuestaSuccessDescription()).toContain('entregada al ciudadano dentro del plazo');
+  });
+  it('valida que la prórroga solo se permita dentro de los primeros 2 días hábiles y bloquee envío si venció', () => {
+    const c = pagina();
+    c.via.set('prorroga');
+    const today = new Date().toISOString().split('T')[0];
+    c.solicitud.set({ ...inicial(), fechaPresentacion: today, fechaLimite: '2026-11-20' });
+    expect(c.prorrogaPermitida()).toBe(true);
+
+    c.solicitud.set({ ...inicial(), fechaPresentacion: '2026-10-01', fechaLimite: '2026-10-15' });
+    expect(c.prorrogaPermitida()).toBe(false);
+    expect(c.canSubmit()).toBe(false);
+  });
+  it('calcula la nueva fecha límite proyectando días hábiles', () => {
+    const c = pagina();
+    c.via.set('prorroga');
+    c.solicitud.set({ ...inicial(), fechaLimite: '2026-11-02' });
+    c.prorrogaDias = '5';
+    expect(c.nuevaFechaLimite()).toBeTruthy();
+    expect(c.nuevaFechaLimiteDMY()).toBeTruthy();
+  });
+  it('gestiona y valida cronograma estructurado de hitos para prórroga', () => {
+    const c = pagina();
+    c.via.set('prorroga');
+    const today = new Date().toISOString().split('T')[0];
+    c.solicitud.set({ ...inicial(), fechaPresentacion: today, fechaLimite: '2026-11-20' });
+    c.prorrogaMotivo = 'Búsqueda compleja de acervo documental';
+    c.prorrogaDias = '5';
+    c.usarCronograma.set(true);
+
+    c.hitos.set([]);
+    expect(c.errorHitos()).toContain('al menos una entrega');
+    expect(c.canSubmit()).toBe(false);
+
+    c.agregarHito();
+    expect(c.hitos().length).toBe(1);
+    const limite = c.nuevaFechaLimite() || today;
+    c.actualizarHitoFecha(0, limite);
+    c.actualizarHitoEntregable(0, 'Revisión en archivo central');
+    expect(c.errorHitos()).toBeNull();
+    expect(c.canSubmit()).toBe(true);
+
+    c.agregarHito();
+    expect(c.hitos().length).toBe(2);
+    expect(c.errorHitos()).toBe('Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.');
+    expect(c.canSubmit()).toBe(false);
+    c.quitarHito(1);
+    expect(c.hitos().length).toBe(1);
+    expect(c.errorHitos()).toBeNull();
+    expect(c.canSubmit()).toBe(true);
   });
 });
