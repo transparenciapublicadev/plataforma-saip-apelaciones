@@ -204,11 +204,101 @@ describe('NuevaSaipComponent', () => {
     component.entidadId = 1;
     component.asunto = 'Texto';
     component.descripcion = 'Texto';
+    component.solicitudCreada.set({ id: 101, expediente: 'SAIP-2026-00101' } as any);
+    component.expedienteCreado.set('SAIP-2026-00101');
+    component.estadoEnvio.set('confirmada');
+
     component.resetForm();
 
     expect(component.entidadId).toBeNull();
     expect(component.asunto).toBe('');
     expect(component.descripcion).toBe('');
     expect(component.adjunto()).toBeNull();
+    expect(component.solicitudCreada()).toBeNull();
+    expect(component.expedienteCreado()).toBe('');
+    expect(component.estadoEnvio()).toBe('lista');
+    expect(component.bloqueado()).toBe(false);
+  });
+
+  it('debería limpiar señales de creación y desbloquear el formulario (bloqueado === false) en cerrarResultado()', () => {
+    const fixture = TestBed.createComponent(NuevaSaipComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    // Simular estado posterior a una creación confirmada
+    component.successModalAbierto.set(true);
+    component.solicitudCreada.set({ id: 101, expediente: 'SAIP-2026-00101' } as unknown as Solicitud);
+    component.expedienteCreado.set('SAIP-2026-00101');
+    component.estadoEnvio.set('confirmada');
+    component.step.set(4);
+
+    expect(component.bloqueado()).toBe(true);
+    expect(component.successModalAbierto()).toBe(true);
+
+    // Invocar cerrarResultado (activado por botón terciario "Presentar otra solicitud")
+    component.cerrarResultado();
+
+    // Verificaciones de desbloqueo y limpieza
+    expect(component.successModalAbierto()).toBe(false);
+    expect(component.solicitudCreada()).toBeNull();
+    expect(component.expedienteCreado()).toBe('');
+    expect(component.estadoEnvio()).toBe('lista');
+    expect(component.step()).toBe(1);
+    expect(component.bloqueado()).toBe(false);
+  });
+
+  it('permite registrar una segunda solicitud consecutiva tras cerrarResultado() sin aborto silencioso', async () => {
+    const fixture = TestBed.createComponent(NuevaSaipComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    // --- Primer Envío ---
+    component.entidadId = 1;
+    component.asunto = 'Primera solicitud de acceso';
+    component.descripcion = 'Requiero presupuestos de la entidad';
+    component.formatoRespuesta.correo = true;
+    component.medioNotificacion = 'correo';
+    component.aceptaCorreo = true;
+    component.consentimientoDatosPersonales = true;
+    component.declaraVeracidad = true;
+
+    component.crearSolicitud();
+    await fixture.whenStable();
+
+    expect(mockSolicitudService.registrarAlta).toHaveBeenCalledTimes(1);
+    expect(component.successModalAbierto()).toBe(true);
+    expect(component.bloqueado()).toBe(true);
+
+    // --- Cierre de Modal / Preparación de Nueva Solicitud ---
+    component.cerrarResultado();
+    expect(component.bloqueado()).toBe(false);
+    expect(component.step()).toBe(1);
+
+    // --- Segundo Envío ---
+    component.entidadId = 2;
+    component.asunto = 'Segunda solicitud de acceso';
+    component.descripcion = 'Requiero auditorías de la entidad';
+    component.formatoRespuesta.correo = true;
+    component.medioNotificacion = 'correo';
+    component.aceptaCorreo = true;
+    component.consentimientoDatosPersonales = true;
+    component.declaraVeracidad = true;
+
+    // Verificar que canSubmit() es true y no está bloqueado
+    expect(component.bloqueado()).toBe(false);
+    expect(component.canSubmit()).toBe(true);
+
+    component.crearSolicitud();
+    await fixture.whenStable();
+
+    // El servicio debe haber sido invocado dos veces (no hubo aborto silencioso)
+    expect(mockSolicitudService.registrarAlta).toHaveBeenCalledTimes(2);
+    expect(mockSolicitudService.registrarAlta).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ asunto: 'Segunda solicitud de acceso', entidadId: 2 }),
+      true,
+      []
+    );
+    expect(component.successModalAbierto()).toBe(true);
   });
 });

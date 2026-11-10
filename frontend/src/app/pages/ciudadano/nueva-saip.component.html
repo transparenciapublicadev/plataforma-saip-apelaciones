@@ -279,6 +279,32 @@
                 <p class="text-xs text-muted-foreground">La declaración se comprueba en este formulario; el contrato persiste el consentimiento, pero no un campo independiente de declaración de veracidad.</p>
               </div>
             </section>
+
+            <!-- Disposiciones complementarias (según Ley N° 27806) -->
+            <div class="rounded-lg p-5" style="background: var(--muted); border: 1px solid var(--border)">
+              <div class="eyebrow !text-[10px] mb-2.5" style="color: var(--brand-700)">Disposiciones complementarias · Notas</div>
+              <ol class="list-decimal pl-5 space-y-2 text-xs text-muted-foreground leading-relaxed">
+                <li>
+                  La entrega de los documentos solicitados se hará a la persona o representante de la empresa que
+                  solicitó la información. De no poder concurrir éste, la misma podrá ser entregada a un tercero que
+                  deberá contar con carta poder simple.
+                </li>
+                <li>
+                  Cuando el/la solicitante incumple con cancelar el costo de reproducción, o el pedido cancelado no
+                  se apersona a la entidad a recoger la información solicitada, dentro del plazo de treinta (30) días
+                  calendario contados a partir del día siguiente de la notificación de la liquidación o puesta a su
+                  disposición, su solicitud es archivada.
+                </li>
+                <li>
+                  Tomar en consideración que la solicitud de información no implica la obligación de las entidades de
+                  la Administración Pública de crear o producir información con la que no cuente o no tenga obligación
+                  de contar al momento de efectuarse el pedido; tampoco permite que los solicitantes exijan a las
+                  entidades que efectúen evaluaciones o análisis de la información que posean, en conformidad con lo
+                  señalado en el artículo 13° del T.U.O. de la Ley N° 27806, aprobado mediante el Decreto Supremo
+                  N° 021-2019-JUS.
+                </li>
+              </ol>
+            </div>
           }
           <div class="flex flex-col sm:flex-row gap-3">
             @if (step() > 1) { <button type="button" class="btn-ghost-brand justify-center !py-3" (click)="irPaso(step() - 1)">

@@ -9,7 +9,8 @@ import { UxMotionService } from './services/ux-motion.service';
 import {
   LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
   LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
-  LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
+  LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen,
+  LucideBarChart3
 } from '@lucide/angular';
 
 import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
@@ -29,7 +30,8 @@ import { YaikuLogoComponent } from './shared/yaiku-logo.component';
     GuidedTourComponent, NotificationBellComponent, LandingFooterComponent, ProfileDialogComponent, YaikuLogoComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
-    LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen
+    LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen,
+    LucideBarChart3
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',

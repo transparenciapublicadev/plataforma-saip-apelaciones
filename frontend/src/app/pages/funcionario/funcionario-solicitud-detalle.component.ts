@@ -54,10 +54,12 @@ interface HistorialItem {
 }
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
 import {
   LucideArrowLeft, LucideSend, LucideClock,
   LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
-  LucideScale, LucideChevronRight, LucideEye, LucideDownload, LucideBuilding2
+  LucideScale, LucideChevronRight, LucideEye, LucideDownload,
+  LucideArchive, LucidePackageCheck
 } from '@lucide/angular';
 
 @Component({
@@ -66,9 +68,11 @@ import {
     CommonModule, FormsModule, RouterLink, DocumentUploadComponent, ResponseContextComponent, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
+    AreaResponsablePanelComponent,
     LucideArrowLeft, LucideSend, LucideClock,
     LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
-    LucideScale, LucideChevronRight, LucideEye, LucideDownload, LucideBuilding2
+    LucideScale, LucideChevronRight, LucideEye, LucideDownload,
+    LucideArchive, LucidePackageCheck
   ],
   templateUrl: './funcionario-solicitud-detalle.component.html',
   styleUrl: './funcionario-solicitud-detalle.component.css',
@@ -144,6 +148,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.liquidacionCodigo.set(''); this.liquidacionMonto.set(''); this.liquidacionConcepto.set(''); this.liquidacionObservacion.set('');
     this.liquidacionFechaNotificacion.set('');
     this.liquidacionError.set(''); this.liquidacionSuccess.set(''); this.liquidacionLoading.set(false); this.liquidacionUpdateLoading.set(false);
+    this.archivoComprobante.set(null); this.archivoIdentidad.set(null); this.motivoArchivo.set('NO_RECOJO');
   }
   ngOnDestroy(): void { this.destruido = true; this.generacion++; this.consultas.unsubscribe(); this.navegacion?.unsubscribe(); }
   reintentarConsulta(): void { if (this.reintentable()) this.cargarSolicitud(this.expedienteActual); }
@@ -179,6 +184,9 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   liquidacionError = signal<string>('');
   liquidacionSuccess = signal<string>('');
   liquidacionUpdateLoading = signal<boolean>(false);
+  archivoComprobante = signal<File | null>(null);
+  archivoIdentidad = signal<File | null>(null);
+  motivoArchivo = signal<'NO_RECOJO' | 'SIN_ACREDITACION_DE_PAGO'>('NO_RECOJO');
 
   previewTarget = signal<DocumentPreviewTarget | null>(null);
 
@@ -872,6 +880,126 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       error: (error) => {
         if (!vigente()) return;
         this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo actualizar la liquidación.');
+        this.liquidacionUpdateLoading.set(false);
+      }
+    }));
+  }
+
+  onComprobantePagoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] || null;
+    this.archivoComprobante.set(file);
+    if (file) {
+      this.liquidacionError.set('');
+    }
+  }
+
+  onDocumentoIdentidadSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] || null;
+    this.archivoIdentidad.set(file);
+    if (file) {
+      this.liquidacionError.set('');
+    }
+  }
+
+  isRecojoVencido(liq: LiquidacionCostoSolicitud): boolean {
+    if (!liq.fechaLimiteRecojo) return false;
+    let limitDate: Date;
+    if (/^\d{4}-\d{2}-\d{2}/.test(liq.fechaLimiteRecojo)) {
+      limitDate = new Date(liq.fechaLimiteRecojo);
+    } else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(liq.fechaLimiteRecojo)) {
+      const [d, m, y] = liq.fechaLimiteRecojo.split('/');
+      limitDate = new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    } else {
+      const ms = Date.parse(liq.fechaLimiteRecojo);
+      if (Number.isNaN(ms)) return false;
+      limitDate = new Date(ms);
+    }
+    limitDate.setHours(23, 59, 59, 999);
+    return limitDate.getTime() < Date.now();
+  }
+
+  confirmarRecojoFisico(liquidacion: LiquidacionCostoSolicitud): void {
+    if (!this.contextoVigente() || this.liquidacionUpdateLoading() || !this.liquidaciones().some(item => item.id === liquidacion.id)) return;
+    if (!this.archivoComprobante() || !this.archivoIdentidad()) {
+      this.liquidacionError.set('Adjunte el comprobante de pago y el documento de identidad.');
+      return;
+    }
+    const vigente = this.operacionVigente();
+    const sol = this.solicitud();
+    if (!sol) return;
+
+    this.liquidacionUpdateLoading.set(true);
+    this.liquidacionError.set('');
+    this.liquidacionSuccess.set('');
+
+    this.consultas.add(this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
+      estado: 'RECOGIDA',
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
+    }).subscribe({
+      next: () => {
+        if (!vigente()) return;
+        this.solicitudService.cambiarEstado(sol.id, 'RESPONDIDA').subscribe({
+          next: () => {
+            if (!vigente()) return;
+            this.liquidacionSuccess.set('Entrega física registrada. La información fue recogida y el expediente queda atendido.');
+            this.liquidacionUpdateLoading.set(false);
+            this.archivoComprobante.set(null);
+            this.archivoIdentidad.set(null);
+            this.cargarSolicitud(sol.expediente);
+          },
+          error: () => {
+            if (!vigente()) return;
+            this.liquidacionSuccess.set('Entrega física registrada; consulte el estado del expediente.');
+            this.liquidacionUpdateLoading.set(false);
+            this.archivoComprobante.set(null);
+            this.archivoIdentidad.set(null);
+            this.cargarSolicitud(sol.expediente);
+          }
+        });
+      },
+      error: (error) => {
+        if (!vigente()) return;
+        this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la entrega física.');
+        this.liquidacionUpdateLoading.set(false);
+      }
+    }));
+  }
+
+  archivarLiquidacion(liquidacion: LiquidacionCostoSolicitud): void {
+    if (!this.contextoVigente() || this.liquidacionUpdateLoading() || !this.liquidaciones().some(item => item.id === liquidacion.id)) return;
+    const vigente = this.operacionVigente();
+    const sol = this.solicitud();
+    if (!sol) return;
+
+    this.liquidacionUpdateLoading.set(true);
+    this.liquidacionError.set('');
+    this.liquidacionSuccess.set('');
+
+    const observacionLegal = this.motivoArchivo() === 'SIN_ACREDITACION_DE_PAGO'
+      ? 'No acreditó el pago — Vencimiento de 30 días calendario'
+      : 'No recogió la información — Vencimiento de 30 días calendario';
+
+    this.consultas.add(this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
+      estado: 'CANCELADA',
+      responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad',
+      observacion: observacionLegal
+    }).subscribe({
+      next: registrada => {
+        if (!vigente()) return;
+        if (registrada.id !== liquidacion.id || registrada.solicitudId !== sol.id || registrada.estadoLiquidacion !== 'CANCELADA') {
+          this.liquidacionError.set('No se pudo verificar el archivo de esta liquidación. Consulte el expediente antes de repetir.');
+          this.liquidacionUpdateLoading.set(false);
+          return;
+        }
+        this.cargarSolicitud(sol.expediente);
+        this.liquidacionSuccess.set('Liquidación archivada por vencimiento del plazo de 30 días.');
+        this.liquidacionUpdateLoading.set(false);
+      },
+      error: (error) => {
+        if (!vigente()) return;
+        this.liquidacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo archivar la liquidación.');
         this.liquidacionUpdateLoading.set(false);
       }
     }));

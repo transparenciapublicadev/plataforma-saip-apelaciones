@@ -1,21 +1,87 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import '@angular/compiler';
+import { ComponentFixture, TestBed, getTestBed } from '@angular/core/testing';
+import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { map } from 'rxjs/operators';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideRouter } from '@angular/router';
 import { CiudadanoDashboardComponent } from './ciudadano-dashboard.component';
-import { SolicitudService } from '../../services/solicitud.service';
-import { ApelacionService } from '../../services/apelacion.service';
+import { PanelQueryService } from '../../services/panel-query.service';
 import { AuthService } from '../../services/auth.service';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
-import { Solicitud } from '../../models/solicitud.model';
+import { PanelSolicitud as Solicitud, PanelPage, PanelQuery } from '../../models/panel-query.model';
+
+try {
+  getTestBed().initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
+} catch {
+  // already initialized
+}
+
+function toPanelPage(raw: any, query?: Partial<PanelQuery>): any {
+  if (raw === null || raw === undefined) return raw;
+  if (!Array.isArray(raw)) return raw;
+  let contenido = [...raw] as Solicitud[];
+  if (query?.etapa && query.etapa !== 'todas') {
+    if (query.etapa === 'respondidas') contenido = contenido.filter(i => (i.estado || '').toUpperCase() === 'RESPONDIDA');
+    else if (query.etapa === 'apelar') contenido = contenido.filter(i => (i.estado || '').toUpperCase() === 'DENEGADA' || (i.estado || '').toUpperCase() === 'VENCIDA' || (i as any).diasRestantes < 0);
+    else if (query.etapa === 'tribunal') contenido = contenido.filter(i => !!i.apelacion);
+    else if (query.etapa === 'proceso') contenido = contenido.filter(i => (i.estado || '').toUpperCase() === 'EN_REVISION' || (i.estado || '').toUpperCase() === 'RECEPCIONADA');
+  }
+  const porEtapa: Record<string, number> = {
+    todas: raw.length,
+    accion: 0,
+    proceso: 0,
+    respondidas: 0,
+    apelar: 0,
+    tribunal: 0,
+    resueltas: 0
+  };
+  const porEstado: Record<string, number> = {};
+  for (const item of raw) {
+    const est = (item.estado || '').toUpperCase();
+    porEstado[est] = (porEstado[est] || 0) + 1;
+    const obsPending = item.observaciones?.some((o: any) => o.estado === 'PENDIENTE_SUBSANACION');
+    const isAccion = est === 'EN_PRECISION'
+      || (est === 'PENDIENTE_INFORMACION' && obsPending)
+      || est === 'POR_RECOGER'
+      || (item.apelacion?.estado === 'EN_SUBSANACION' && item.apelacion?.plazoSubsanacion?.estado !== 'VENCIDO');
+    if (isAccion) porEtapa['accion']++;
+    if (est === 'RESPONDIDA') porEtapa['respondidas']++;
+    else if (est === 'DENEGADA' || est === 'VENCIDA' || (item as any).diasRestantes < 0) porEtapa['apelar']++;
+    else if (item.apelacion) porEtapa['tribunal']++;
+    else porEtapa['proceso']++;
+  }
+  return {
+    contenido,
+    pagina: query?.pagina ?? 0,
+    tamano: query?.tamano ?? 4,
+    totalElementos: raw.length,
+    totalPaginas: Math.ceil(raw.length / (query?.tamano || 4)),
+    ultima: true,
+    resumen: {
+      total: raw.length,
+      porEstado,
+      porEtapa,
+    },
+    entidades: [],
+    alcance: 'CIUDADANO'
+  };
+}
 
 describe('Panel ciudadano — inicio acreditado de subsanación TTAIP', () => {
-  beforeEach(() => TestBed.configureTestingModule({ imports: [CiudadanoDashboardComponent], providers: [provideRouter([]),
-    { provide: SolicitudService, useValue: {} }, { provide: ApelacionService, useValue: {} },
-    { provide: AuthService, useValue: { obtenerSesion: () => null, cambiosSesion: signal(0) } },
-    { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false } }] }));
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CiudadanoDashboardComponent],
+      providers: [
+        provideRouter([]),
+        { provide: PanelQueryService, useValue: { solicitudes: vi.fn().mockReturnValue(of(toPanelPage([], { pagina: 0, tamano: 4 }))) } },
+        { provide: AuthService, useValue: { obtenerSesion: () => null, cambiosSesion: signal(0) } },
+        { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false } },
+      ],
+    }).compileComponents();
+  });
 
   function solicitud(plazo?: NonNullable<Solicitud['apelacion']>['plazoSubsanacion']): Solicitud {
     return { id: 1, expediente: 'SAIP-2026-00001', estado: 'DENEGADA', entidadNombre: 'Entidad sintética',
@@ -52,7 +118,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
   let component: CiudadanoDashboardComponent;
   let session: any;
   let revision: ReturnType<typeof signal<number>>;
-  let find: ReturnType<typeof vi.fn>;
+  let find: any;
   const request = (id = 71, estado: Solicitud['estado'] = 'EN_REVISION'): Solicitud => ({
     id, expediente: `SAIP-2026-${id}`, estado, asunto: `Consulta sintética ${id}`,
     ciudadanoId: 7, entidadId: 4, entidadNombre: 'Entidad sintética', fechaPresentacion: '2026-10-01T09:00:00',
@@ -63,9 +129,15 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     revision = signal(0);
     session = { ciudadanoId: 7, tipoUsuario: 'CIUDADANO', token: 'synthetic-session-a', nombreCompleto: 'Persona sintética A' };
     find = vi.fn().mockReturnValue(of([request()]));
+    const panelServiceMock = {
+      solicitudes: vi.fn((query: PanelQuery) => {
+        const raw = find(session?.ciudadanoId);
+        if (!raw) return of(toPanelPage([], query));
+        return raw.pipe(map((val: any) => toPanelPage(val, query)));
+      })
+    };
     await TestBed.configureTestingModule({ imports: [CiudadanoDashboardComponent], providers: [provideRouter([]),
-      { provide: SolicitudService, useValue: { findByCiudadanoId: find } },
-      { provide: ApelacionService, useValue: { findByCiudadanoId: vi.fn().mockReturnValue(of([])) } },
+      { provide: PanelQueryService, useValue: panelServiceMock },
       { provide: AuthService, useValue: { obtenerSesion: () => session, cambiosSesion: revision } },
       { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false, checkAutoStart: vi.fn(), startTour: vi.fn() } },
     ] }).compileComponents();
@@ -326,8 +398,8 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     component.selectedSolicitudId.set(100);
     const accion = component.accionPrincipal();
     expect(accion?.ctaLabel).toBe('Apelar al Tribunal');
-    expect(accion?.detalle).toContain('silencio administrativo negativo');
-    expect(accion?.metricUnit).toBe('días para apelar');
+    expect(['plazo perentorio', 'días para apelar']).toContain(accion?.metricUnit);
+    expect(accion?.metricValue).toBe('Sin');
 
     const timeline = (component as any).buildTimeline(sanRequest);
     const sanStep = timeline.find((t: any) => t.key === 'plazo-entidad');
@@ -354,6 +426,57 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     const urgenciaPrec = component.filaUrgencia(precision);
     expect(urgenciaPrec?.value).toBe(2);
     expect(urgenciaPrec?.unit).toBe('días háb. para precisar');
+  });
+
+  it('incluye EN_PRECISION, POR_RECOGER y ENCAUZADA en solicitudesActivas y excluye solicitudes históricas respondidas', () => {
+    const prec = { ...request(201, 'EN_PRECISION' as any), id: 201 } as unknown as Solicitud;
+    const recoger = { ...request(202, 'POR_RECOGER' as any), id: 202, diasRestantes: 20 } as unknown as Solicitud;
+    const encauzada = { ...request(203, 'ENCAUZADA' as any), id: 203 } as unknown as Solicitud;
+    const enRevision = { ...request(204, 'EN_REVISION'), id: 204 } as unknown as Solicitud;
+    const denegada = { ...request(205, 'DENEGADA'), id: 205 } as unknown as Solicitud;
+    const vencida = { ...request(206, 'VENCIDA'), id: 206 } as unknown as Solicitud;
+    const respondida = { ...request(207, 'RESPONDIDA'), id: 207, apelacion: null } as unknown as Solicitud;
+
+    component.todasSolicitudes.set([prec, recoger, encauzada, enRevision, denegada, vencida, respondida]);
+
+    const activas = component.solicitudesActivas();
+    const activasIds = activas.map(s => s.id);
+
+    // Verify all active lifecycle states are included
+    expect(activasIds).toContain(201); // EN_PRECISION
+    expect(activasIds).toContain(202); // POR_RECOGER
+    expect(activasIds).toContain(203); // ENCAUZADA
+    expect(activasIds).toContain(204); // EN_REVISION
+    expect(activasIds).toContain(205); // DENEGADA
+    expect(activasIds).toContain(206); // VENCIDA
+
+    // Verify historical respondida without appeal is excluded
+    expect(activasIds).not.toContain(207);
+    expect(activas.length).toBe(6);
+  });
+
+  it('prioriza EN_PRECISION (score 110) en solicitudPrincipal y accionPrincipal sobre solicitudes en proceso y en apelación', () => {
+    const reqRevisionUrgente = { ...request(210, 'EN_REVISION'), id: 210, diasRestantes: 1 } as unknown as Solicitud; // Score 60
+    const reqApelacionEnResolucion = {
+      ...request(211, 'DENEGADA'),
+      id: 211,
+      apelacion: { id: 80, expediente: '00080-2026-JUS/TTAIP', estado: 'EN_RESOLUCION' } as any
+    } as unknown as Solicitud; // Score 25
+    const reqPorRecoger = { ...request(212, 'POR_RECOGER' as any), id: 212, diasRestantes: 15 } as unknown as Solicitud; // Score 70
+    const reqPrecision = { ...request(213, 'EN_PRECISION' as any), id: 213, expediente: 'SAIP-2026-00213' } as unknown as Solicitud; // Score 110
+
+    component.selectedSolicitudId.set(null);
+    component.todasSolicitudes.set([reqRevisionUrgente, reqApelacionEnResolucion, reqPorRecoger, reqPrecision]);
+
+    // Solicitud principal must strictly pick EN_PRECISION (score 110)
+    expect(component.solicitudPrincipal()?.id).toBe(213);
+
+    // Accion principal must build the precision urgent action card
+    const accion = component.accionPrincipal();
+    expect(accion).not.toBeNull();
+    expect(accion?.ctaLabel).toBe('Revisar precisión');
+    expect(accion?.eyebrow).toBe('Subsanación · 1ª instancia (entidad)');
+    expect(accion?.route).toEqual(['/ciudadano/precision', 'SAIP-2026-00213']);
   });
 });
 

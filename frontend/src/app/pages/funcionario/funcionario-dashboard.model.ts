@@ -1,4 +1,4 @@
-import { Solicitud } from '../../models/solicitud.model';
+import { PanelSolicitud as Solicitud } from '../../models/panel-query.model';
 
 export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
 export interface QueueItem {
@@ -29,10 +29,12 @@ export function readInstitutionList(value: unknown, entidad: number): Solicitud[
 }
 
 export function queueItem(solicitud: Solicitud): QueueItem {
-  const days = Number.isSafeInteger(solicitud.diasRestantes) ? solicitud.diasRestantes : null;
+  const days = Number.isSafeInteger(solicitud.diasRestantes) ? solicitud.diasRestantes! : null;
   let bucket: QueueItem['bucket'] = 'plazo';
   if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA' || solicitud.respuesta != null) {
     bucket = 'respondidas';
+  } else if (solicitud.estado === 'PENDIENTE_INFORMACION') {
+    bucket = 'plazo';
   } else if (solicitud.estado === 'VENCIDA' || (days !== null && days < 0)) {
     bucket = 'san';
   } else if (days !== null && days <= 1) {
@@ -56,5 +58,5 @@ export function canNavigateToResponse(solicitud: Solicitud): boolean {
   if (solicitud.respuesta !== null) return false;
   if (!Array.isArray(solicitud.observaciones)) return false;
   if (solicitud.observaciones.some(item => !item || typeof item !== 'object' || item.estado === 'PENDIENTE_SUBSANACION')) return false;
-  return true;
+  return ['RECEPCIONADA', 'EN_REVISION', 'VENCIDA'].includes(solicitud.estado);
 }

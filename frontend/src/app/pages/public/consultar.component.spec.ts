@@ -27,7 +27,7 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     try { http.verify({ ignoreCancelled: true }); }
     finally { TestBed.resetTestingModule(); vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); }
   });
-  function pagina() { const f = TestBed.createComponent(ConsultarComponent); f.detectChanges(); f.componentInstance.query.set(expediente); return f; }
+  function pagina() { const f = TestBed.createComponent(ConsultarComponent); f.componentInstance.tiempoMinimoMs = 0; f.componentInstance.validarPoW = false; f.detectChanges(); f.componentInstance.query.set(expediente); return f; }
   function escribir(c: ConsultarComponent, value: string) { c.onQueryInput({ target: { value } } as unknown as Event); }
   it('un error 5xx no afirma que la solicitud no existe', () => {
     const c = pagina().componentInstance; c.buscar(); http.expectOne(url).flush(null, { status: 503, statusText: 'Unavailable' });
@@ -88,7 +88,7 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
   it('la búsqueda no se hidrata desde la sesión ni guarda código/resultados en URL o almacenamiento', () => {
     TestBed.inject(AuthService).guardarSesion({ success: true, token: 'sesion-sintetica', usuarioId: 5, ciudadanoId: 5, tipoUsuario: 'CIUDADANO' });
     const previous = localStorage.getItem('usuario'), location = window.location.href;
-    const localWrites = vi.spyOn(Storage.prototype, 'setItem'); const f = TestBed.createComponent(ConsultarComponent); f.detectChanges();
+    const localWrites = vi.spyOn(Storage.prototype, 'setItem'); const f = pagina(); f.componentInstance.query.set('');
     expect(f.componentInstance.query()).toBe(''); expect(f.componentInstance.resultado()).toBeNull(); http.expectNone(() => true);
     escribir(f.componentInstance, expediente); f.componentInstance.buscar(); http.expectOne(url).flush(resumen);
     expect(window.location.href).toBe(location); expect(localWrites).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(0); expect(localStorage.getItem('usuario')).toBe(previous);
@@ -209,5 +209,51 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     expect(JSON.stringify(c.resultado())).not.toContain('MARCADOR_PERSONAL_SINTETICO');
     expect(f.nativeElement.textContent).not.toContain('MARCADOR_PERSONAL_SINTETICO'); expect(c.resultado()).not.toHaveProperty('asunto');
     http.expectNone(() => true);
+  });
+
+  it('F20 anti-abuso: trampa honeypot bloquea la consulta y muestra aviso', () => {
+    const f = pagina(), c = f.componentInstance;
+    c.trampa.set('bot-spam');
+    c.buscar();
+    expect(c.aviso()).toContain('Espere un momento');
+    http.expectNone(() => true);
+  });
+
+  it('F20 anti-abuso: tiempo de estancia inferior al umbral bloquea la consulta', () => {
+    const f = TestBed.createComponent(ConsultarComponent);
+    f.componentInstance.tiempoMinimoMs = 5000;
+    f.detectChanges();
+    f.componentInstance.query.set(expediente);
+    f.componentInstance.buscar();
+    expect(f.componentInstance.aviso()).toContain('Espere un momento');
+    http.expectNone(() => true);
+  });
+
+  it('F20 anti-abuso: validación PoW requiere token activo', () => {
+    const f = TestBed.createComponent(ConsultarComponent);
+    f.componentInstance.tiempoMinimoMs = 0;
+    f.componentInstance.validarPoW = true;
+    f.detectChanges();
+    f.componentInstance.query.set(expediente);
+    f.componentInstance.prueba.set(null);
+    f.componentInstance.buscar();
+    expect(f.componentInstance.aviso()).toContain('anti-bots');
+    http.expectNone(() => true);
+  });
+
+  it('F20 anti-abuso: ráfaga superior a 8 consultas en 60s es bloqueada', () => {
+    const f = pagina(), c = f.componentInstance;
+    for (let i = 0; i < 8; i++) {
+      c.query.set(`SAIP-2026-0000${i + 1}`);
+      c.buscar();
+      const req = http.expectOne(`${environment.apiUrl}/solicitudes/publica/expediente/SAIP-2026-0000${i + 1}`);
+      req.flush(resumen);
+    }
+    expect(c.aviso()).toBeNull();
+    // Intento 9 dentro del minuto
+    c.query.set('SAIP-2026-00009');
+    c.buscar();
+    expect(c.aviso()).toContain('muchas consultas seguidas');
+    http.expectNone(`${environment.apiUrl}/solicitudes/publica/expediente/SAIP-2026-00009`);
   });
 });

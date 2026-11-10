@@ -160,7 +160,7 @@
   --duration-slow: 400ms;
 }
 
-html.dark {
+.dark, html.dark {
   --background: #0F1115;
   --foreground: #F2F4F7;
   --card: #181A1F;
@@ -669,6 +669,35 @@ html.dark {
     color: var(--accent-bar, var(--brand-600));
     opacity: 0.95;
   }
+
+  /* ── Botón «Volver» uniforme en formularios y páginas ─────────────── */
+  .back-link {
+    display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 10px;
+    min-height: 40px; padding: 6px 16px 6px 6px; margin: 0 0 24px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--card); color: var(--foreground);
+    font-size: 13.5px; font-weight: 500; line-height: 1.2; white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .2s, background-color .2s, transform .2s;
+  }
+  .back-link:hover { border-color: var(--brand-700); transform: translateX(-2px); }
+  .back-link > svg {
+    flex-shrink: 0; width: 28px !important; height: 28px !important; padding: 6px;
+    border-radius: 999px; background: var(--brand-subtle); color: var(--brand-700);
+  }
+  .back-link--dark {
+    background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); color: #fff; box-shadow: none;
+  }
+  .back-link--dark:hover { background: rgba(255,255,255,0.14); border-color: var(--gold-soft); }
+  .back-link--dark > svg { background: rgba(255,255,255,0.14); color: var(--gold-soft); }
+  .back-link:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 2px; }
+  .back-link--dark:focus-visible { outline-color: var(--gold-soft); }
+  /* Al pulsar: se mantiene igual (sin parpadeo gris) mientras cambia la página. */
+  .back-link:disabled { cursor: default; opacity: 1; transform: none; }
+  /* Rótulos largos en pantallas pequeñas: se recortan con puntos suspensivos. */
+  @media (max-width: 480px) {
+    .back-link { overflow: hidden; text-overflow: ellipsis; }
+  }
 }
 
 /* ================================================================
@@ -679,9 +708,20 @@ html.dark {
   border-color: var(--border);
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+  border: 2px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--brand-600); }
+
 html {
   font-size: var(--font-size);
   scroll-behavior: smooth;
+  scroll-padding-top: 88px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1468,22 +1508,27 @@ textarea.input {
    17. UX LAYER — Shell & Accessibility
    ================================================================ */
 
+.skip-link,
 .saip-skip-link {
   position: fixed;
-  top: 0;
-  left: 1rem;
-  transform: translateY(-140%);
-  z-index: 100;
-  background: var(--carbon);
-  color: var(--blanco);
-  padding: 0.625rem 1.25rem;
-  border-radius: 0 0 var(--radius) var(--radius);
-  font-size: 0.875rem;
-  font-weight: 700;
-  transition: transform 0.2s var(--ease-out-expo);
+  top: 8px;
+  left: 8px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--brand-700);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
   box-shadow: var(--shadow-lg);
 }
 
+.skip-link:focus,
+.skip-link:focus-visible,
+.saip-skip-link:focus,
 .saip-skip-link:focus-visible {
   transform: translateY(0);
 }
@@ -1538,11 +1583,15 @@ textarea.input {
    18. FOCUS & ACCESSIBILITY
    ================================================================ */
 
-:focus-visible {
-  outline: 2px solid var(--peru-rojo);
+:where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand-600);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--peru-rojo-glow);
   border-radius: 4px;
+}
+
+.dark :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible,
+html.dark :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: var(--gold-soft);
 }
 
 /* High contrast text on colored backgrounds */

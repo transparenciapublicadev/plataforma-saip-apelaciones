@@ -137,6 +137,13 @@ export const routes: Routes = [
     canActivate: [tipoUsuarioGuard('FUNCIONARIO')]
   },
   {
+    path: 'funcionario/reportes',
+    title: 'Reportes ANTAIP | Yaiku Funcionario',
+    loadComponent: () => import('./pages/reportes/reportes-institucionales.component').then(m => m.ReportesInstitucionalesComponent),
+    canActivate: [tipoUsuarioGuard('FUNCIONARIO')],
+    data: { reportMode: 'entidad', tipos: ['FUNCIONARIO'], title: 'Reportes ANTAIP' }
+  },
+  {
     path: 'ttaip',
     title: 'Bandeja de apelaciones | Yaiku Tribunal',
     loadComponent: () => import('./pages/ttaip/ttaip-dashboard.component').then(m => m.TtaipDashboardComponent),
@@ -189,6 +196,13 @@ export const routes: Routes = [
     title: 'Seguimiento de cumplimiento | Yaiku Tribunal',
     loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent),
     canActivate: [tipoUsuarioGuard('TTAIP')]
+  },
+  {
+    path: 'ttaip/reportes',
+    title: 'Reportes ANTAIP | Yaiku Tribunal',
+    loadComponent: () => import('./pages/reportes/reportes-institucionales.component').then(m => m.ReportesInstitucionalesComponent),
+    canActivate: [tipoUsuarioGuard('TTAIP')],
+    data: { reportMode: 'ttaip', tipos: ['TTAIP'], title: 'Reportes ANTAIP' }
   },
   {
     path: 'compliance',

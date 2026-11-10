@@ -1,4 +1,4 @@
-<a class="saip-skip-link" href="#main-content">Saltar al contenido principal</a>
+<a class="skip-link saip-skip-link" href="#main-content">Saltar al contenido principal</a>
 
 @if (showSplash()) {
   <div class="yaiku-splash bg-brand-mesh" aria-label="Presentación de Yaiku">
@@ -54,11 +54,19 @@
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi panel
               </a>
+              <a routerLink="/funcionario/reportes" routerLinkActive="active" class="nav-link-desktop">
+                <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                Reportes ANTAIP
+              </a>
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideScale class="w-4 h-4 opacity-70"></svg>
                 Mi panel
+              </a>
+              <a routerLink="/ttaip/reportes" routerLinkActive="active" class="nav-link-desktop">
+                <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                Reportes ANTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
@@ -128,11 +136,19 @@
                         <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                         Mi panel
                       </a>
+                      <a routerLink="/funcionario/reportes" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                        Reportes ANTAIP
+                      </a>
                     }
                     @case ('TTAIP') {
                       <a routerLink="/ttaip" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideScale class="w-4 h-4 text-[var(--niebla)]"></svg>
                         Mi panel
+                      </a>
+                      <a routerLink="/ttaip/reportes" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
+                        <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                        Reportes ANTAIP
                       </a>
                     }
                     @case ('ADMINISTRADOR') {
@@ -257,11 +273,19 @@
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi panel
               </a>
+              <a routerLink="/funcionario/reportes" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                Reportes ANTAIP
+              </a>
             }
             @case ('TTAIP') {
               <a routerLink="/ttaip" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideScale class="w-4 h-4 text-muted-foreground"></svg>
                 Mi panel
+              </a>
+              <a routerLink="/ttaip/reportes" (click)="toggleMobileMenu()" class="mobile-nav-item">
+                <svg lucideBarChart3 class="w-4 h-4 opacity-70"></svg>
+                Reportes ANTAIP
               </a>
             }
             @case ('ADMINISTRADOR') {
@@ -275,6 +299,10 @@
             @if (tipoUsuario() === 'CIUDADANO') {
               <button type="button" data-profile-open="mobile" (click)="profileDialog.abrir()" class="mobile-nav-item w-full" aria-haspopup="dialog"><svg lucideUserPen class="w-4 h-4" aria-hidden="true"></svg>Mi perfil</button>
             }
+            <a routerLink="/ayuda" (click)="toggleMobileMenu()" class="mobile-nav-item">
+              <svg lucideHelpCircle class="w-4 h-4 opacity-70"></svg>
+              Ayuda y guía de uso
+            </a>
             <button (click)="logout()" class="mobile-nav-item text-[var(--estado-rojo)] w-full">
               <svg lucideLogOut class="w-4 h-4"></svg>
               Cerrar sesión

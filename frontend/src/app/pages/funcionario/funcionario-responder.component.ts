@@ -43,6 +43,12 @@ import {
   DocumentPreviewModalComponent,
   DocumentPreviewTarget
 } from '../../shared/document-preview-modal.component';
+import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
+
+export interface HitoCronogramaItem {
+  fecha: string;
+  entregable: string;
+}
 import {
   LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
   LucideFileText, LucideInfo, LucideCheckCircle2,
@@ -100,6 +106,7 @@ export const CAUSALES_DENEGATORIA = [
     ReferenceComboboxComponent,
     MultiFileUploadZoneComponent,
     DocumentPreviewModalComponent,
+    AreaResponsablePanelComponent,
     LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
     LucideFileText, LucideInfo, LucideCheckCircle2,
     LucideSend, LucideUser, LucideScale,
@@ -173,8 +180,27 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   // Vía de prórroga / ampliación
   prorrogaDias = '5';
+  readonly prorrogaDiasNum = computed(() => parseInt(this.prorrogaDias) || 0);
   prorrogaMotivo = '';
   prorrogaCronograma = '';
+  hitos = signal<HitoCronogramaItem[]>([{ fecha: '', entregable: '' }]);
+  usarCronograma = signal<boolean>(false);
+
+  agregarHito(): void {
+    this.hitos.update(prev => [...prev, { fecha: '', entregable: '' }]);
+  }
+
+  quitarHito(index: number): void {
+    this.hitos.update(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }
+
+  actualizarHitoFecha(index: number, fecha: string): void {
+    this.hitos.update(prev => prev.map((h, i) => i === index ? { ...h, fecha } : h));
+  }
+
+  actualizarHitoEntregable(index: number, entregable: string): void {
+    this.hitos.update(prev => prev.map((h, i) => i === index ? { ...h, entregable } : h));
+  }
 
   // Decisión de fondo
   descripcionAceptacion = '';
@@ -233,18 +259,112 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   readonly diasTranscurridos = computed(() => {
     const sol = this.solicitud();
-    if (!sol) return 0;
-    const [d, m, y] = (sol.fechaPresentacion || '').split('/').map(Number);
-    if (!d || !m || !y) return 0;
-    const cur = new Date(y, m - 1, d);
+    if (!sol || !sol.fechaPresentacion) return 0;
+
+    let cur: Date | null = null;
+    const raw = String(sol.fechaPresentacion).trim();
+
+    if (raw.includes('/')) {
+      const parts = raw.split(/[/\sT]/);
+      const d = Number(parts[0]);
+      const m = Number(parts[1]);
+      const y = Number(parts[2]);
+      if (d && m && y && !isNaN(d) && !isNaN(m) && !isNaN(y)) {
+        cur = new Date(y, m - 1, d, 0, 0, 0, 0);
+      }
+    } else {
+      const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (match) {
+        const y = Number(match[1]);
+        const m = Number(match[2]);
+        const d = Number(match[3]);
+        cur = new Date(y, m - 1, d, 0, 0, 0, 0);
+      } else {
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) {
+          cur = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
+        }
+      }
+    }
+
+    if (!cur || isNaN(cur.getTime())) return 0;
+
     const fin = new Date();
+    fin.setHours(0, 0, 0, 0);
+
+    if (cur >= fin) return 0;
+
     let count = 0;
-    while (cur < fin) {
-      cur.setDate(cur.getDate() + 1);
-      const dow = cur.getDay();
+    const temp = new Date(cur);
+    while (temp < fin) {
+      temp.setDate(temp.getDate() + 1);
+      const dow = temp.getDay();
       if (dow !== 0 && dow !== 6) count++;
     }
     return count;
+  });
+
+  readonly prorrogaPermitida = computed(() => {
+    return this.diasTranscurridos() <= 2;
+  });
+
+  readonly nuevaFechaLimite = computed<string | null>(() => {
+    const sol = this.solicitud();
+    const dias = parseInt(this.prorrogaDias) || 0;
+    if (dias <= 0) return null;
+
+    let base: Date;
+    if (sol?.fechaLimite) {
+      base = sol.fechaLimite.includes('/')
+        ? new Date(sol.fechaLimite.split('/').reverse().join('-'))
+        : new Date(sol.fechaLimite);
+    } else {
+      base = new Date();
+    }
+    if (isNaN(base.getTime())) base = new Date();
+
+    const fecha = new Date(base);
+    let agregados = 0;
+    while (agregados < dias) {
+      fecha.setDate(fecha.getDate() + 1);
+      const dow = fecha.getDay();
+      if (dow !== 0 && dow !== 6) agregados++;
+    }
+    return fecha.toISOString().slice(0, 10);
+  });
+
+  readonly nuevaFechaLimiteDMY = computed<string>(() => {
+    const iso = this.nuevaFechaLimite();
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  });
+
+  readonly hitosValidos = computed(() => {
+    return this.hitos().filter(h => h.fecha && h.entregable.trim().length > 0);
+  });
+
+  readonly errorHitos = computed<string | null>(() => {
+    const dias = parseInt(this.prorrogaDias) || 0;
+    const cronogramaObligatorio = dias > 30 || this.usarCronograma();
+    if (!cronogramaObligatorio) return null;
+
+    const todos = this.hitos();
+    const validos = this.hitosValidos();
+    if (validos.length === 0) return 'Registre al menos una entrega con fecha y descripción.';
+
+    if (todos.some(h => !h.fecha || h.entregable.trim().length === 0)) {
+      return 'Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.';
+    }
+
+    const hoyISO = new Date().toISOString().slice(0, 10);
+    if (validos.some(h => h.fecha < hoyISO)) return 'Las fechas del cronograma no pueden ser anteriores a hoy.';
+
+    const limite = this.nuevaFechaLimite();
+    if (limite && validos.some(h => h.fecha > limite)) {
+      return `Las entregas deben programarse hasta la nueva fecha límite (${this.nuevaFechaLimiteDMY()}).`;
+    }
+    return null;
   });
 
   readonly dentroPlazoEncauzamiento = computed(() => {
@@ -419,7 +539,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     {
       id: 'denegacion_total',
       title: 'Denegación total',
-      description: 'Requiere causal y fundamento legal. Los adjuntos son opcionales.',
+      description: 'Requiere causal legal y evidencia documental.',
       accent: 'var(--brand-700)'
     }
   ];
@@ -544,10 +664,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (this.via() === 'prorroga') {
+      if (!this.prorrogaPermitida()) return false;
       const dias = parseInt(this.prorrogaDias) || 0;
       const motivoOk = this.prorrogaMotivo.trim().length >= 10;
-      if (dias > 30 || this.prorrogaCronograma.trim().length > 0) {
-        return dias >= 1 && motivoOk && this.prorrogaCronograma.trim().length >= 10;
+      const cronogramaRequerido = dias > 30 || this.usarCronograma();
+      if (cronogramaRequerido) {
+        return dias >= 1 && motivoOk && !this.errorHitos();
       }
       return dias >= 1 && motivoOk;
     }
@@ -620,21 +742,34 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (this.via() === 'prorroga') {
-      this.loading.set(true);
       const dias = parseInt(this.prorrogaDias) || 5;
-      const fechaProg = new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10);
+      const cronogramaReq = dias > 30 || this.usarCronograma();
+      if (cronogramaReq && this.errorHitos()) {
+        this.loading.set(false);
+        this.error.set(this.errorHitos()!);
+        return;
+      }
+      this.loading.set(true);
+      const hitosAEnviar = cronogramaReq && this.hitosValidos().length > 0
+        ? this.hitosValidos().map((h, i) => ({
+            numeroEntrega: i + 1,
+            descripcion: h.entregable.trim(),
+            fechaProgramada: h.fecha,
+            observacion: this.prorrogaCronograma.trim() || undefined
+          }))
+        : [{
+            numeroEntrega: 1,
+            descripcion: 'Entrega de información en plazo ampliado',
+            fechaProgramada: this.nuevaFechaLimite() || new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10),
+            observacion: this.prorrogaMotivo.trim()
+          }];
+
       this.solicitudService.registrarAmpliacion(sol.id, {
         motivoAmpliacion: this.prorrogaMotivo.trim(),
         informeAmpliacion: this.prorrogaCronograma.trim() || this.prorrogaMotivo.trim(),
         fechaNotificacionAmpliacion: new Date().toISOString().slice(0, 10),
-        cronograma: [
-          {
-            numeroEntrega: 1,
-            descripcion: 'Entrega programada',
-            fechaProgramada: fechaProg,
-            observacion: this.prorrogaCronograma.trim() || 'Atención en fecha ampliada'
-          }
-        ]
+        responsable: sesion.nombre || 'Funcionario responsable',
+        cronograma: hitosAEnviar
       }).subscribe({
         next: () => {
           this.loading.set(false);
@@ -653,10 +788,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   motivoRespuestaNoDisponible(): string {
     const sol = this.solicitud();
+    if (this.encauzar) return 'El compuesto con encauzamiento no está disponible de forma simultánea. Registre el encauzamiento desde su sección correspondiente.';
     if (sol?.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) return 'Existe una observación pendiente. Recupere la recepción de precisión y el estado vigente antes de responder.';
     if (sol && !this.puedeRegistrarRespuestaManual()) return 'El estado actual del expediente no permite registrar otra respuesta. Consulte la respuesta y sus documentos desde el detalle.';
-    if (this.encauzar) return 'El envío conjunto con encauzamiento no está disponible. Registre el encauzamiento desde el detalle y recupere el expediente antes de responder.';
-    if (this.requiereFisico() && this.decision() !== 'denegacion_total') return 'La entrega física requiere registrar la liquidación y el recojo desde el detalle.';
     return '';
   }
 

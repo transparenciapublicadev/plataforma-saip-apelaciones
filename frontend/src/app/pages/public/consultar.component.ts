@@ -9,6 +9,7 @@ import {
 import { ConsultaPublicaSolicitud, SolicitudService } from '../../services/solicitud.service';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
+import { CaptchaPoWComponent } from '../../shared/captcha-pow.component';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 
 type EstadoPublico = ConsultaPublicaSolicitud['estado'];
@@ -35,7 +36,7 @@ interface ConsultaResultado {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAlertTriangle, LucideArchive, LucideArrowLeft, LucideArrowRight,
     LucideBuilding2, LucideCalendar, LucideCheckCircle2, LucideClock, LucideEye,
-    LucideFileText, LucideSearch, LucideShield, LucideXCircle, StatusBadgeComponent, TimelineComponent],
+    LucideFileText, LucideSearch, LucideShield, LucideXCircle, StatusBadgeComponent, TimelineComponent, CaptchaPoWComponent],
   templateUrl: './consultar.component.html',
   styleUrl: './consultar.component.css',
 })
@@ -49,6 +50,16 @@ export class ConsultarComponent implements OnDestroy {
   readonly mensaje = signal('');
   readonly errorValidacion = signal('');
   readonly reintentable = signal(false);
+
+  // Anti-abuso: PoW, honeypot, rate limiting
+  readonly prueba = signal<string | null>(null);
+  readonly reinicio = signal<number>(0);
+  readonly trampa = signal<string>('');
+  readonly aviso = signal<string | null>(null);
+  tiempoMinimoMs = 1200;
+  validarPoW = true;
+  private readonly montado = Date.now();
+  private recientes: number[] = [];
   private consulta = new Subscription();
   private generacion = 0;
   private destruido = false;
@@ -59,18 +70,44 @@ export class ConsultarComponent implements OnDestroy {
     if (value === this.query()) return;
     this.cancelarConsulta();
     this.query.set(value);
+    this.aviso.set(null);
   }
 
   onSubmit(event: Event): void { event.preventDefault(); this.buscar(); }
 
   buscar(): void {
     if (this.destruido) return;
+
+    // 1. Honeypot y tiempo mínimo (1200ms)
+    if (this.trampa() || (this.tiempoMinimoMs > 0 && Date.now() - this.montado < this.tiempoMinimoMs)) {
+      this.aviso.set('Espere un momento e inténtelo nuevamente.');
+      return;
+    }
+
+    // 2. Limitador local de ráfagas (máximo 8 consultas / 60 segundos)
+    const ahora = Date.now();
+    this.recientes = this.recientes.filter((t) => ahora - t < 60000);
+    if (this.recientes.length >= 8) {
+      this.aviso.set('Ha realizado muchas consultas seguidas. Espere un minuto.');
+      return;
+    }
+
+    // 3. Verificación Proof-of-Work
+    if (this.validarPoW && !this.prueba()) {
+      this.aviso.set('Espere a que termine la verificación anti-bots.');
+      return;
+    }
+
+    this.recientes.push(ahora);
+    this.aviso.set(null);
+
     const codigo = this.query().trim().toUpperCase();
     if (this.buscando() && codigo === this.codigoConsultado) return;
     this.cancelarConsulta();
     this.query.set(codigo);
     // Published SAIP format; five is a minimum width in SolicitudService.generarExpediente.
     if (!/^SAIP-\d{4}-\d{5,}$/.test(codigo) || codigo.length > 50) {
+      this.consumirPrueba();
       this.estadoConsulta.set('validacion');
       this.errorValidacion.set('Ingrese el expediente SAIP completo, por ejemplo SAIP-2026-00001. Esta consulta no busca números TTAIP.');
       this.enfocar('expediente');
@@ -81,6 +118,7 @@ export class ConsultarComponent implements OnDestroy {
     this.estadoConsulta.set('cargando');
     this.consulta = this.solicitudService.consultarPublicamente(codigo).subscribe({
       next: data => {
+        this.consumirPrueba();
         if (!this.actual(gen, codigo)) return;
         const resultado = this.convertir(data, codigo);
         if (!resultado) {
@@ -95,6 +133,7 @@ export class ConsultarComponent implements OnDestroy {
         this.enfocar('consulta-resultado');
       },
       error: error => {
+        this.consumirPrueba();
         if (!this.actual(gen, codigo)) return;
         const fallo = falloConsulta(error, 'el resumen público');
         this.estadoConsulta.set(fallo.estado);
@@ -105,6 +144,11 @@ export class ConsultarComponent implements OnDestroy {
         this.enfocar('consulta-feedback');
       },
     });
+  }
+
+  private consumirPrueba(): void {
+    this.prueba.set(null);
+    this.reinicio.update(n => n + 1);
   }
 
   limpiarBusqueda(): void {

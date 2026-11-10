@@ -41,3 +41,20 @@ if (!globalThis.localStorage || typeof globalThis.localStorage.clear !== 'functi
     value: createMemoryStorage(),
   });
 }
+
+try {
+  globalThis.sessionStorage?.getItem('test');
+} catch {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+}
+if (!globalThis.sessionStorage || typeof globalThis.sessionStorage.clear !== 'function') {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+}
