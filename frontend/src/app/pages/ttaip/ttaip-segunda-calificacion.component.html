@@ -65,7 +65,36 @@
           @if (segundaActuacion(); as act) { <section class="form-shell p-5"><h2 class="font-display text-xl">Segunda actuación consultada</h2><p class="font-mono text-xs mt-2">ID {{ act.id }} · {{ act.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ act.decision }} · {{ getEstadoDisplay(ap.estado) }}</p><p class="text-xs text-muted-foreground mt-2">Esta consulta acredita una actuación registrada, no confirma un envío anterior cuyo resultado siga incierto. No se identifica una operación por coincidencia de fundamentos.</p><button id="second-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verActuacionRegistrada()">Ver actuación registrada</button></section> }
           <div class="rounded-lg p-4 text-sm border border-border"><h2 class="font-semibold">Admisión y notificación son actuaciones distintas</h2><p class="text-xs text-muted-foreground mt-2">ADMITIDO queda en NOTIFICACION_SEGUNDA_CALIFICACION. El avance exige ambas notificaciones eficaces de esa actuación y su comando específico. Envío técnico, archivo o etiqueta de proveedor no bastan. La fecha base del plazo final sigue pendiente.</p><a class="btn-ghost-brand mt-3" [routerLink]="['/ttaip/apelacion', ap.expediente]">Consultar expediente y notificaciones</a><p class="text-xs text-muted-foreground mt-1">Abra la pestaña Notificaciones para revisar o registrar la evidencia mediante los controles existentes. No se ejecuta el avance desde este formulario.</p></div>
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Resultado para revisión local</span><h2 id="second-options" class="form-section-title">Verificación</h2></div><div class="p-6 space-y-3" role="group" aria-labelledby="second-options">
-            @for (option of options; track option.id) { <button type="button" (click)="seleccionarDecision(option.id)" [disabled]="!puedePrepararBorrador() || option.id === 'no_presentado'" [attr.aria-pressed]="selectedDecision() === option.id" aria-describedby="second-registry-unavailable" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">@if (option.id === 'admitido') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }</span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span></button> }
+            @for (option of options; track option.id) {
+              <button type="button"
+                      (click)="seleccionarDecision(option.id)"
+                      [disabled]="isOptionDisabled(option.id)"
+                      [attr.aria-pressed]="selectedDecision() === option.id"
+                      [attr.aria-describedby]="'second-option-hint-' + option.id"
+                      class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed"
+                      [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                      [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')"
+                      [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
+                <span class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0"
+                        [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'"
+                        [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')"
+                        [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">
+                    @if (option.id === 'admitido') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> }
+                    @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }
+                  </span>
+                  <span class="flex-1 min-w-0">
+                    <span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span>
+                    <span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span>
+                    @if (getOptionDisabledReason(option.id); as reason) {
+                      <span [id]="'second-option-hint-' + option.id" class="block text-[11px] font-mono mt-1" [style.color]="isOptionDisabled(option.id) ? 'var(--muted-foreground)' : option.accent">
+                        {{ reason }}
+                      </span>
+                    }
+                  </span>
+                </span>
+              </button>
+            }
           </div></section>
           @if (selectedOption(); as selected) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent"><svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" [style.color]="selected.accent"></svg><p>Selección local para borrador: {{ selected.label }}. No constituye una decisión registrada ni una evaluación acreditada de la recepción.</p></div> }
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">02 · Sustento local</span><h2 class="form-section-title">Fundamentos de la verificación</h2></div><div class="p-6"><div class="field"><label for="second-grounds" class="field-label">Fundamentos para revisión local <span class="req">*</span></label><textarea id="second-grounds" [(ngModel)]="fundamentos" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="second-grounds-hint second-registry-unavailable" [attr.aria-invalid]="fundamentos.trim().length > 5000" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos de la segunda calificación…"></textarea><p id="second-grounds-hint" class="field-hint font-mono">{{ fundamentos.trim().length }} / 5000 caracteres</p></div></div></section>

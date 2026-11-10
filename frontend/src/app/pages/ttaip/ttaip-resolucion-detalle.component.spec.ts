@@ -202,6 +202,18 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   it('un estado FUNDADO sin resolución identificada no crea una resolución final', () => {
     const c = page(data({ estado: 'RESUELTO_FUNDADO', resultado: 'FUNDADO' })).componentInstance; expect(c.mostrarCajaResultado()).toBe(false); expect(c.resolucionFinalFundada()).toBeNull();
   });
+  it('una resolución con resultado NULIDAD_DEL_ACTO muestra caja de resultado de nulidad', () => {
+    const resFinal = { id: 77, tipoResolucion: 'RESOLUCION_FINAL', decision: 'NULIDAD_DEL_ACTO', fundamentos: 'Vicio en motivación' };
+    const c = page(data({
+      estado: 'RESUELTO_NULIDAD_ACTO',
+      resultado: 'NULIDAD_DEL_ACTO',
+      resolucion: resFinal,
+      resoluciones: [resFinal]
+    })).componentInstance;
+    expect(c.mostrarCajaResultado()).toBe(true);
+    expect(c.resultadoCajaLabel()).toBe('NULIDAD DEL ACTO APELADO');
+    expect(c.resultadoCajaColor()).toBe('var(--warning)');
+  });
   it('un descargo de otra apelación no se ofrece como activo ni permite presentación', () => {
     const c = page(data({ expedienteTtaip: { ...data().expedienteTtaip, descargosEntidad: [{ id: 81, expedienteTtaipId: 41, apelacionId: 999, entidadId: 3, numeroExpediente: code, estadoDescargo: 'REQUERIDO' }] } })).componentInstance;
     expect(c.descargoActivo()).toBeNull(); expect(c.detalle().descargosEntidad.error).not.toBe('');

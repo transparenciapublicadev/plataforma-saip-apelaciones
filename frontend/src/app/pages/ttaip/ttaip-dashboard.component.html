@@ -1,132 +1,444 @@
 <div class="ttaip-dashboard min-h-screen bg-background">
+  <!-- HERO Tribunal -->
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div aria-hidden="true" class="absolute top-0 right-0 w-[480px] h-[480px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
     <div aria-hidden="true" class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero data-tour="t-hero">
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-tour="t-hero">
       <div class="flex items-start gap-5 flex-wrap">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
           <svg aria-hidden="true" lucideGavel class="w-7 h-7 text-white"></svg>
         </div>
         <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between gap-3"><span class="eyebrow">Mesa del Tribunal · TTAIP</span>
-            <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap" title="Ver tutorial guiado"><svg aria-hidden="true" lucideCompass class="w-3.5 h-3.5"></svg>Ver tutorial</button>
+          <div class="flex items-start justify-between gap-3">
+            <span class="eyebrow">Mesa del Secretario Técnico · TTAIP</span>
+            <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap" title="Ver tutorial guiado">
+              <svg aria-hidden="true" lucideCompass class="w-3.5 h-3.5"></svg> Ver tutorial
+            </button>
           </div>
-          <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">Tribunal de <span class="italic" style="color: var(--brand-700)">Transparencia</span></h1>
-          <p class="text-muted-foreground mt-1.5 text-sm" role="status" aria-live="polite">
-            @if (!loading() && !error() && contextoVigente()) { <span class="font-mono font-semibold text-foreground">{{ totalExpedientes() }}</span> registros recuperados. }
-            @else { Información del Tribunal todavía no disponible. }
-            Sin asignación individual ni periodo de medición implícitos.
-          </p>
+          <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
+            Tribunal de <span class="italic" style="color: var(--brand-700)">Transparencia</span>
+          </h1>
+          @if (!loading()) {
+            <p class="text-muted-foreground mt-1.5 text-sm capitalize" role="status" aria-live="polite">
+              {{ fechaHoy }} · <span class="font-mono font-semibold text-foreground">{{ totalExpedientes() }}</span> expedientes en trámite ·
+              @if (riesgo().length > 0) {
+                <span class="font-mono font-semibold" style="color: var(--brand-700)">{{ riesgo().length }} crítico{{ riesgo().length !== 1 ? 's' : '' }}</span>
+              } @else {
+                <span class="font-mono font-semibold" style="color: var(--success)">sin críticos</span>
+              }
+            </p>
+          }
         </div>
+
+        <!-- Indicador Hero Tasa Fundadas -->
         <div data-tour="t-tasa" class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
           @if (!loading() && !error() && contextoVigente() && tasaFundadas() !== null) {
             <div class="relative shrink-0 w-[70px] h-[70px]" aria-hidden="true">
-              <svg width="70" height="70" viewBox="0 0 70 70"><circle cx="35" cy="35" r="26" fill="none" stroke="var(--muted)" stroke-width="6"/><circle cx="35" cy="35" r="26" fill="none" stroke="var(--success)" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.3628" [attr.stroke-dashoffset]="163.3628 * (1 - tasaFundadas()! / 100)" transform="rotate(-90 35 35)"/></svg>
-              <div class="absolute inset-0 flex items-center justify-center font-display text-sm">{{ tasaFundadas() }}%</div>
+              <svg width="70" height="70" viewBox="0 0 70 70">
+                <circle cx="35" cy="35" r="26" fill="none" stroke="var(--muted)" stroke-width="6"/>
+                <circle cx="35" cy="35" r="26" fill="none" stroke="var(--success)" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.3628" [attr.stroke-dashoffset]="163.3628 * (1 - tasaFundadas()! / 100)" transform="rotate(-90 35 35)"/>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="font-display text-sm" style="color: var(--success); letter-spacing: -0.02em">{{ tasaFundadas() }}%</span>
+                <span class="text-[8px] uppercase tracking-wider text-muted-foreground">fundadas</span>
+              </div>
             </div>
-            <div class="min-w-0 max-w-[240px]"><span class="eyebrow">Fundadas · decisión final</span><p class="font-display text-2xl" style="color: var(--success)">{{ tasaFundadas() }}%</p><p class="text-xs text-muted-foreground">{{ fundadasCount() }} de {{ finales().length }} registros finales identificados. Fundado en parte se cuenta por separado.</p></div>
-          } @else {
+            <div class="min-w-[140px]">
+              <span class="eyebrow">Tasa de fundadas</span>
+              <div class="font-display text-2xl" style="color: var(--success); line-height: 1.1; letter-spacing: -0.02em">{{ tasaFundadas() }}%</div>
+              <div class="text-xs text-muted-foreground mt-0.5">{{ fundadasCount() }} de {{ totalFinales() }} resoluciones</div>
+            </div>
+          } @else if (!loading()) {
             <div aria-hidden="true" class="w-[70px] h-[70px] rounded-full shrink-0 flex items-center justify-center font-display text-2xl text-muted-foreground" style="border: 6px solid var(--muted)">—</div>
-            <div class="min-w-0 max-w-[240px]"><span class="eyebrow">Fundadas · decisión final</span><p class="font-display text-lg">Indicador no disponible</p><p class="text-xs text-muted-foreground">Requiere registros recuperados con resolución final y decisión identificadas.</p></div>
+            <div class="min-w-[140px]">
+              <span class="eyebrow">Tasa de fundadas</span>
+              <div class="font-display text-lg">Sin resoluciones</div>
+              <div class="text-xs text-muted-foreground mt-0.5">En espera de fallos finales</div>
+            </div>
           }
         </div>
       </div>
     </div>
   </div>
+
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-8">
-    @if (loading()) { <div class="text-center py-16" role="status" aria-live="polite"><div class="spinner spinner-lg mx-auto" aria-hidden="true"></div><p class="mt-4 text-sm text-muted-foreground">Cargando expedientes del Tribunal…</p></div> }
-    @else if (error() || !contextoVigente()) {
-      <div class="alert alert-error p-6 text-center" role="alert"><p>{{ error() || 'La sesión cambió. Consulte de nuevo con la cuenta actual.' }}</p><a routerLink="/acceso-ttaip" class="text-sm underline inline-block mt-2">Acceso interno TTAIP</a>@if (reintentable()) { <button type="button" (click)="cargarDashboard()" class="btn-brand mt-4">Reintentar</button> }</div>
-    } @else {
-      <p class="text-xs text-muted-foreground mb-4">Conteos sobre el listado autorizado recibido, con búsqueda, filtros y paginación locales. No representan actividad de una sala o miembro ni resultados de un mes.</p>
-      @if (informacionIncompleta()) { <p role="status" class="rounded-lg border border-border p-4 mb-4 text-sm text-muted-foreground">Hay información incompleta o estados sin agrupación conocida. Se mantienen los registros identificados sin inventar datos o actuaciones.</p> }
-      <div class="rounded-lg p-5 mb-6 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-        <svg aria-hidden="true" lucideHourglass class="w-5 h-5 shrink-0" style="color: var(--brand-700)"></svg>
-        <p class="text-sm text-muted-foreground">Solo subsanación dispone aquí de un reloj acreditado por el servidor. Los plazos de otras etapas y el promedio de atención no están disponibles en esta consulta. La fecha base de resolución y el plazo de cumplimiento requieren su revisión propia.</p>
+    @if (loading()) {
+      <div class="text-center py-16" role="status" aria-live="polite">
+        <div class="spinner spinner-lg mx-auto" aria-hidden="true"></div>
+        <p class="mt-4 text-sm text-muted-foreground">Cargando expedientes del Tribunal…</p>
       </div>
-      <div class="mb-6" data-tour="t-pipeline">
-        <div class="flex items-baseline justify-between mb-3"><span class="eyebrow">Etapas según estado registrado</span><span class="text-xs text-muted-foreground hidden md:inline">Seleccione una etapa para enfocar</span></div>
+    } @else if (error() || !contextoVigente()) {
+      <div class="alert alert-error p-6 text-center" role="alert">
+        <p>{{ error() || 'La sesión cambió. Consulte de nuevo con la cuenta actual.' }}</p>
+        <a routerLink="/acceso-ttaip" class="text-sm underline inline-block mt-2">Acceso interno TTAIP</a>
+        @if (reintentable()) {
+          <button type="button" (click)="cargarDashboard()" class="btn-brand mt-4">Reintentar</button>
+        }
+      </div>
+    } @else {
+      <!-- Banner de Riesgo Crítico Global -->
+      @if (riesgo().length > 0) {
+        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
+          <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
+          <div class="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style="background: var(--brand-700); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20)">
+            <svg aria-hidden="true" lucideShieldAlert class="w-5 h-5 text-white"></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <span class="eyebrow" style="color: var(--brand-700)">Riesgo de incumplimiento</span>
+            <h3 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
+              {{ riesgo().length }} expediente{{ riesgo().length !== 1 ? 's' : '' }} con plazo crítico
+            </h3>
+            <p class="text-sm text-muted-foreground mt-0.5">
+              Tienen <span class="font-mono font-semibold text-foreground">≤1 día hábil</span> en su etapa actual conforme al Reglamento del Tribunal.
+            </p>
+            <div class="flex items-center gap-2 mt-3 flex-wrap">
+              @for (item of riesgo().slice(0, 3); track item.apelacion.expediente) {
+                <a [routerLink]="item.action.route" class="code-chip hover:bg-[color:var(--brand-100)] transition-colors">
+                  {{ item.apelacion.expediente }}
+                </a>
+              }
+              @if (riesgo().length > 3) {
+                <span class="text-xs text-muted-foreground">+{{ riesgo().length - 3 }} más</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- PIPELINE: Etapas del Proceso TTAIP -->
+      <div data-tour="t-pipeline" class="mb-6">
+        <div class="flex items-baseline justify-between mb-3">
+          <span class="eyebrow flex items-center gap-2">Etapas del proceso · Reglamento TTAIP</span>
+          <span class="text-xs text-muted-foreground hidden md:inline">Seleccione una etapa para enfocar su cola</span>
+        </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-          @for (stage of stages; track stage.key) {
-            <button type="button" (click)="selectStage(stage.key)" [attr.aria-pressed]="stageKey() === stage.key" class="relative rounded-lg p-4 text-left overflow-hidden transition-colors" [style.background]="stageKey() === stage.key ? stage.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (stageKey() === stage.key ? stage.color : 'var(--border)')" [style.box-shadow]="stageKey() === stage.key ? '0 0 0 3px ' + stage.bg : 'none'">
-              @if (stageKey() === stage.key) { <span aria-hidden="true" class="absolute left-0 top-0 bottom-0 w-1" [style.background]="stage.color"></span> }
-              <div class="flex items-start justify-between mb-1.5"><span class="font-mono text-[11px] tracking-widest" [style.color]="stage.color">{{ stage.num }}</span>
-                @switch (stage.icon) {
-                  @case ('scale') { <svg aria-hidden="true" lucideScale class="w-4 h-4" [style.color]="stage.color"></svg> }
-                  @case ('hourglass') { <svg aria-hidden="true" lucideHourglass class="w-4 h-4" [style.color]="stage.color"></svg> }
-                  @case ('gavel') { <svg aria-hidden="true" lucideGavel class="w-4 h-4" [style.color]="stage.color"></svg> }
-                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" [style.color]="stage.color"></svg> }
-                  @case ('inbox') { <svg aria-hidden="true" lucideInbox class="w-4 h-4" [style.color]="stage.color"></svg> }
-                  @default { <svg aria-hidden="true" lucideLayers class="w-4 h-4" [style.color]="stage.color"></svg> }
+          @for (s of stages; track s.key; let idx = $index; let last = $last) {
+            <button type="button" (click)="selectStage(s.key)" [attr.aria-pressed]="stageKey() === s.key"
+                    class="relative rounded-lg p-4 text-left overflow-hidden transition-all group"
+                    [style.background]="stageKey() === s.key ? s.bg : 'var(--card)'"
+                    [style.border]="'1.5px solid ' + (stageKey() === s.key ? s.color : 'var(--border)')"
+                    [style.box-shadow]="stageKey() === s.key ? '0 0 0 3px ' + s.bg : 'none'">
+              @if (!last) {
+                <span class="hidden lg:flex absolute top-1/2 -right-[10px] -translate-y-1/2 z-10 w-5 h-5 rounded-full items-center justify-center bg-background border border-border">
+                  <svg aria-hidden="true" lucideChevronRight class="w-3 h-3 text-muted-foreground"></svg>
+                </span>
+              }
+              @if (stageKey() === s.key) {
+                <span aria-hidden="true" class="absolute left-0 top-0 bottom-0 w-1" [style.background]="s.color"></span>
+              }
+              <div class="flex items-start justify-between mb-1.5">
+                <span class="font-mono text-[11px] tracking-widest font-semibold" [style.color]="s.color">{{ s.num }}</span>
+                @switch (s.icon) {
+                  @case ('scale') { <svg aria-hidden="true" lucideScale class="w-4 h-4" [style.color]="s.color"></svg> }
+                  @case ('hourglass') { <svg aria-hidden="true" lucideHourglass class="w-4 h-4" [style.color]="s.color"></svg> }
+                  @case ('gavel') { <svg aria-hidden="true" lucideGavel class="w-4 h-4" [style.color]="s.color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" [style.color]="s.color"></svg> }
+                  @case ('inbox') { <svg aria-hidden="true" lucideInbox class="w-4 h-4" [style.color]="s.color"></svg> }
+                  @default { <svg aria-hidden="true" lucideLayers class="w-4 h-4" [style.color]="s.color"></svg> }
                 }
               </div>
-              <div class="font-display" [style.color]="stage.color" style="font-size: 26px; line-height: 1; letter-spacing: -0.025em">{{ counts()[stage.key].toString().padStart(2, '0') }}</div>
-              <div class="text-xs font-semibold mt-1.5">{{ stage.shortLabel }}</div><div class="text-[10px] text-muted-foreground mt-0.5 font-mono">{{ stage.plazoLabel }}</div>
+              <div class="font-display text-[26px] leading-none" [style.color]="counts()[s.key] > 0 ? s.color : 'var(--muted-foreground)'" style="letter-spacing: -0.025em">
+                {{ counts()[s.key].toString().padStart(2, '0') }}
+              </div>
+              <div class="text-xs font-semibold mt-1.5" [style.color]="stageKey() === s.key ? s.color : 'var(--foreground)'">{{ s.shortLabel }}</div>
+              <div class="text-[10px] text-muted-foreground mt-0.5 font-mono">{{ s.plazoLabel }}</div>
             </button>
           }
         </div>
       </div>
+
+      <!-- Barra de Filtros -->
       <div class="flex items-center flex-wrap gap-3 mb-5">
-        <button type="button" class="btn-ghost-brand" [attr.aria-pressed]="stageKey() === 'otras'" (click)="selectStage('otras')">Otros estados · {{ counts().otras }}</button>
-        <label for="tribunal-state" class="text-xs text-muted-foreground">Estado</label><select id="tribunal-state" class="field-input w-auto" [ngModel]="estadoFiltro()" (ngModelChange)="cambiarEstado($event)"><option value="">Todos los estados</option>@for (state of estados(); track state) { <option [value]="state">{{ state }}</option> }</select>
-        <label for="tribunal-sala" class="text-xs text-muted-foreground">Sala registrada</label><select id="tribunal-sala" class="field-input w-auto" [ngModel]="salaFiltro()" (ngModelChange)="cambiarSala($event)"><option value="TODAS">Todas</option><option value="SIN_SALA">Sin sala acreditada</option>@for (sala of salas(); track sala.id) { <option [ngValue]="sala.id">{{ sala.nombre }}</option> }</select>
+        <label for="tribunal-order" class="text-xs text-muted-foreground">Orden</label>
+        <select id="tribunal-order" class="field-input w-auto" [ngModel]="orden()" (ngModelChange)="cambiarOrden($event)">
+          <option value="recientes">Más recientes</option>
+          <option value="antiguas">Más antiguas</option>
+        </select>
+
+        <label for="tribunal-sala" class="text-xs text-muted-foreground">Vocalía / Sala</label>
+        <select id="tribunal-sala" class="field-input w-auto" [ngModel]="salaFiltro()" (ngModelChange)="cambiarSala($event)">
+          <option value="TODAS">Todas las salas</option>
+          <option value="SIN_SALA">Sin sala asignada</option>
+          @for (sala of salas(); track sala.id) {
+            <option [ngValue]="sala.id">{{ sala.nombre }}</option>
+          }
+        </select>
+
+        <label for="tribunal-state" class="text-xs text-muted-foreground">Estado legal</label>
+        <select id="tribunal-state" class="field-input w-auto" [ngModel]="estadoFiltro()" (ngModelChange)="cambiarEstado($event)">
+          <option value="">Todos los estados</option>
+          @for (state of estados(); track state) {
+            <option [value]="state">{{ state }}</option>
+          }
+        </select>
+
+        <label for="tribunal-page-size" class="text-xs text-muted-foreground">Por página</label>
+        <select id="tribunal-page-size" class="field-input w-auto" [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)">
+          <option [ngValue]="4">4 por página</option>
+          <option [ngValue]="8">8 por página</option>
+          <option [ngValue]="12">12 por página</option>
+        </select>
+
         <button type="button" class="btn-ghost-brand" (click)="limpiarFiltros()">Limpiar filtros</button>
       </div>
+
+      <!-- MAIN: Cola de Etapa + Sidebar -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-8">
-          <div class="form-shell" data-tour="t-cola">
+        <!-- Cola del Secretario Técnico -->
+        <div class="lg:col-span-8" data-tour="t-cola">
+          <div class="form-shell">
             <div class="form-section-header flex items-center gap-3 flex-wrap">
-              <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" [style.background]="activeStage().bg" [style.border]="'1px solid ' + activeStage().color"><svg aria-hidden="true" lucideLayers class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg></div>
-              <div class="flex-1 min-w-0"><span class="eyebrow">Etapa enfocada</span><h2 class="font-display" style="font-size: 19px; letter-spacing: -0.015em">{{ activeStage().label }} <span class="font-mono text-sm text-muted-foreground">· {{ filtered().length }}</span></h2></div>
-              <div class="relative w-full md:w-[300px] md:shrink-0"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg><label for="tribunal-search" class="sr-only">Buscar en registros recuperados</label><input id="tribunal-search" type="search" class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar expediente, administrado o asunto…" [(ngModel)]="searchModel"/></div>
+              <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" [style.background]="activeStage().bg" [style.border]="'1px solid ' + activeStage().color">
+                @switch (activeStage().icon) {
+                  @case ('scale') { <svg aria-hidden="true" lucideScale class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                  @case ('hourglass') { <svg aria-hidden="true" lucideHourglass class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                  @case ('gavel') { <svg aria-hidden="true" lucideGavel class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                  @case ('inbox') { <svg aria-hidden="true" lucideInbox class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                  @default { <svg aria-hidden="true" lucideLayers class="w-4.5 h-4.5" [style.color]="activeStage().color"></svg> }
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="eyebrow">Etapa enfocada</span>
+                <h2 class="font-display flex items-baseline gap-2 flex-wrap" style="font-size: 19px; letter-spacing: -0.015em">
+                  {{ activeStage().label }}
+                  <span class="font-mono text-sm text-muted-foreground">· {{ totalRegistros() }}</span>
+                  <span class="font-mono text-[11px] text-muted-foreground tracking-wider">· {{ activeStage().plazoLabel }}</span>
+                </h2>
+              </div>
+              <div class="relative w-full md:w-[300px] md:shrink-0">
+                <label for="tribunal-search" class="sr-only">Buscar por entidad, administrado o N° de expediente</label>
+                <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+                <input id="tribunal-search" type="search" class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar entidad, administrado o N°…" [(ngModel)]="searchModel" maxlength="120"/>
+              </div>
             </div>
-            <p role="status" aria-live="polite" class="px-4 pt-3 text-xs text-muted-foreground">{{ filtered().length }} coincidencias entre {{ totalExpedientes() }} registros. Orden por fecha registrada de ingreso, sin estimar vencimientos.</p>
-            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar" role="list" aria-label="Apelaciones recuperadas">
-              @for (item of filteredVisibles(); track item.apelacion.id) {
-                <div role="listitem" class="tribunal-row rounded-lg p-4 flex items-center gap-4 hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.border-left]="'3px solid ' + (item.stageKey === 'subsanacion' ? 'var(--gold-dark)' : 'var(--brand-700)')">
-                  <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap"><a class="code-chip" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]" [attr.aria-label]="'Ver detalle de ' + item.apelacion.expediente">{{ item.apelacion.expediente }}</a><app-status-badge [status]="item.apelacion.estado"></app-status-badge></div>
-                    <h3 class="text-sm font-medium mt-1.5 break-words">{{ item.descripcion }}</h3>
-                    <p class="text-xs text-muted-foreground mt-0.5">{{ item.ciudadano }} · {{ item.entidad }} · ingreso {{ (fechaVisible(item.apelacion.fechaApelacion) | date:'dd/MM/yyyy') || 'No informado' }}</p>
-                    <p class="text-xs text-muted-foreground mt-1">Sala: {{ nombreSala(item.apelacion) }} · Prioridad y materia: no informadas por este contrato</p>
-                    @if (getActionReason(item)) { <p class="text-xs text-muted-foreground mt-1" [id]="'action-reason-' + item.apelacion.id">{{ getActionReason(item) }}</p> }
-                    @if (item.stageKey === 'subsanacion') { <p class="text-xs mt-1" role="status">Subsanación · {{ getDiasValor(item) }}</p> }
-                    @if (item.resultado) { <p class="text-xs mt-1">Decisión final registrada: {{ getResultadoLabel(item.resultado) }}</p> }
+
+            <!-- Aviso para Etapa de Subsanación (Espera Externa) -->
+            @if (activeStage().esperaExterna) {
+              <div class="px-6 pt-5 pb-1">
+                <div class="rounded-md p-3 flex items-start gap-3" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.30); border-left: 3px solid var(--gold-dark)">
+                  <svg aria-hidden="true" lucideHourglass class="w-4 h-4 shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
+                  <p class="text-xs text-foreground/85 leading-relaxed">
+                    <span class="font-semibold">Espera externa.</span> El Tribunal aguarda los documentos del administrado. Sin acción del Secretario Técnico salvo notificación de vencimiento.
+                  </p>
+                </div>
+              </div>
+            }
+
+            <!-- Lista de Expedientes -->
+            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar" role="list">
+              @if (queryLoading()) {
+                <p role="status" class="text-center py-12 text-sm text-muted-foreground">Consultando expedientes del Tribunal…</p>
+              }
+              @for (item of queueItems(); track item.apelacion.id) {
+                <div role="listitem" class="tribunal-row rounded-lg p-4 flex items-center gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
+                     style="background: var(--card); border: 1px solid var(--border)"
+                     [style.border-left]="'3px solid ' + toneColor(item.status.tone)">
+                  <!-- Avatar Iniciales -->
+                  <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+                    {{ item.iniciales }}
                   </div>
-                  <div class="flex items-center gap-1.5 shrink-0"><a [routerLink]="getActionRoute(item)" class="btn-brand !px-4 !py-2 !text-[13px]" [attr.aria-describedby]="getActionReason(item) ? 'action-reason-' + item.apelacion.id : null">{{ getActionLabel(item) }}<svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg></a></div>
+
+                  <!-- Datos del Expediente -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <a class="code-chip" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]">
+                        {{ item.apelacion.expediente }}
+                      </a>
+                      <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                            [style.background]="item.stage.bg" [style.color]="item.stage.color" [style.border]="'1px solid ' + item.stage.color">
+                        {{ item.stage.shortLabel }}
+                      </span>
+                      <app-status-badge [status]="item.apelacion.estado"></app-status-badge>
+                      @if (item.resultado) {
+                        <app-status-badge [status]="item.resultado"></app-status-badge>
+                      }
+                    </div>
+                    <h3 class="text-sm font-medium mt-1.5 break-words">{{ item.descripcion }}</h3>
+                    <p class="text-xs text-muted-foreground mt-0.5">
+                      {{ item.ciudadano }} · {{ item.entidad }} · Sala: {{ nombreSala(item.apelacion) }} · ingresó {{ (fechaVisible(item.apelacion.fechaApelacion) | date:'dd/MM/yyyy') || 'No informado' }}
+                    </p>
+                  </div>
+
+                  <!-- Bloque Métrico de Plazo (10 días con suspensión) -->
+                  @if (!item.stage.isResolved) {
+                    <div class="hidden md:flex flex-col items-end gap-1.5 min-w-[120px]">
+                      <div class="text-right">
+                        <div class="font-display text-[22px] leading-none" [style.color]="toneColor(item.status.tone)">
+                          {{ item.status.restantes }}d
+                        </div>
+                        <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1 font-mono">
+                          {{ item.status.suspendido > 0 ? 'efectivos' : 'restantes' }}
+                        </div>
+                      </div>
+                      <div class="w-full h-1 rounded-full overflow-hidden bg-muted">
+                        <div class="h-full rounded-full transition-all" [style.width.%]="item.status.pct" [style.background]="toneColor(item.status.tone)"></div>
+                      </div>
+                      @if (item.status.suspendido > 0) {
+                        <div class="inline-flex items-center gap-1 text-[10px] font-medium" style="color: var(--gold-dark)" title="El contador de 10 días se suspende durante descargos, informe oral e información complementaria.">
+                          <svg aria-hidden="true" lucidePauseCircle class="w-3 h-3"></svg>
+                          <span>suspendido {{ item.status.suspendido }}d</span>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <!-- Botón de Acción Operativa -->
+                  <div class="flex items-center gap-2 shrink-0">
+                    @if (item.stage.esperaExterna) {
+                      <span class="hidden lg:inline-flex items-center gap-1.5 text-xs text-gold-dark bg-[rgba(176,136,66,0.10)] px-3 py-1.5 rounded-lg border border-dashed border-gold-dark">
+                        <svg aria-hidden="true" lucideHourglass class="w-3.5 h-3.5"></svg> Esperando administrado
+                      </span>
+                    }
+                    <a [routerLink]="item.action.route" [class]="item.action.primary ? 'btn-brand !px-4 !py-2 !text-[13px]' : 'btn-ghost-brand !px-3 !py-2 !text-[12px]'">
+                      {{ item.action.label }}
+                      <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
+                    </a>
+                  </div>
                 </div>
               } @empty {
-                <div class="text-center py-12"><svg aria-hidden="true" lucideInbox class="w-5 h-5 mx-auto mb-3 text-muted-foreground"></svg><p class="text-sm">Sin coincidencias en los registros recuperados.</p><p class="text-xs text-muted-foreground mt-1">Puede limpiar los filtros. Este resultado no acredita ausencia de actuaciones fuera de esta consulta.</p></div>
+                @if (!queryLoading()) {
+                  <div class="text-center py-12">
+                    <svg aria-hidden="true" lucideInbox class="w-5 h-5 mx-auto mb-3 text-muted-foreground"></svg>
+                    <p class="text-sm font-medium">Sin coincidencias en esta etapa.</p>
+                  </div>
+                }
               }
             </div>
-            @if (totalRegistros() > 0) { <div class="px-4 pb-4"><label for="tribunal-page-size" class="text-xs text-muted-foreground">Registros por página local</label><select id="tribunal-page-size" class="field-input w-auto" [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)">@for (size of [4, 8, 12]; track size) { <option [ngValue]="size">{{ size }}</option> }</select><app-pagination [page]="paginaSegura()" [totalPages]="totalPaginas()" [total]="totalRegistros()" [rangeFrom]="inicioRegistro()" [rangeTo]="finRegistro()" (goTo)="cambiarPagina($event)"/></div> }
+
+            <!-- Paginación -->
+            @if (totalRegistros() > 0) {
+              <div class="px-4 pb-4 border-t border-border pt-3">
+                <app-pagination [page]="paginaSegura()" [totalPages]="totalPaginas()" [total]="totalRegistros()"
+                                [rangeFrom]="inicioRegistro()" [rangeTo]="finRegistro()" (goTo)="cambiarPagina($event)"/>
+              </div>
+            }
           </div>
         </div>
+
+        <!-- SIDEBAR Institucional -->
         <aside class="lg:col-span-4 space-y-5">
-          <section class="form-shell" data-tour="t-estadistica">
-            <div class="form-section-header"><span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideActivity class="w-3 h-3"></svg>Resultados recuperados</span><h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Decisiones finales identificadas</h2></div>
+          <!-- Estadística Institucional (Resoluciones del Periodo) -->
+          <div data-tour="t-estadistica" class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideActivity class="w-3 h-3"></svg> Estadística institucional</span>
+              <div class="font-display text-base" style="letter-spacing: -0.01em">Resoluciones del periodo</div>
+            </div>
             <div class="p-4 space-y-3">
               @for (stat of resultados(); track stat.decision) {
-                <div><div class="flex items-baseline justify-between gap-3 text-xs mb-1"><span>{{ getResultadoLabel(stat.decision) }}</span><span class="font-mono text-muted-foreground">{{ stat.count }}</span></div><div aria-hidden="true" class="h-1.5 rounded-full overflow-hidden bg-muted"><div class="h-full rounded-full transition-all" [style.width.%]="stat.percentage" [style.background]="getResultadoColor(stat.decision)"></div></div></div>
-              } @empty { <p class="text-xs text-muted-foreground">No hay decisiones finales identificadas en la consulta recibida.</p> }
-              <p class="text-xs text-muted-foreground">Distribución sobre {{ finales().length }} decisiones finales identificadas, sin periodo declarado.</p>
-              <p class="text-xs text-muted-foreground">Resueltas/concluidas: {{ resueltas().length }}. Sin decisión final verificable en el resumen: {{ resueltas().length - finales().length }}. Un cierre no acredita cumplimiento.</p>
+                <div>
+                  <div class="flex items-baseline justify-between text-xs mb-1">
+                    <span class="text-foreground/85">{{ getResultadoLabel(stat.decision) }}</span>
+                    <span class="font-mono text-muted-foreground">{{ stat.count }} · {{ stat.percentage | number:'1.0-0' }}%</span>
+                  </div>
+                  <div class="h-1.5 rounded-full overflow-hidden bg-muted">
+                    <div class="h-full rounded-full transition-all" [style.width.%]="stat.percentage" [style.background]="getResultadoColor(stat.decision)"></div>
+                  </div>
+                </div>
+              } @empty {
+                <p class="text-xs text-muted-foreground">No hay resoluciones emitidas en el periodo registrado.</p>
+              }
             </div>
-          </section>
-          <section class="form-shell" data-tour="t-concentracion">
-            <div class="form-section-header"><span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideBuilding2 class="w-3 h-3"></svg>Concentración de registros</span><h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Entidades registradas más frecuentes</h2></div>
-            <div class="p-4 space-y-2.5">@for (entidad of topEntidades(); track entidad.id) { <div><div class="flex justify-between gap-3 text-xs"><span>{{ entidad.nombre }}</span><span class="font-mono">{{ entidad.count }}</span></div><div aria-hidden="true" class="h-1 rounded-full mt-1 bg-muted"><div class="h-full rounded-full" [style.width.%]="getTopEntidadWidth(entidad.count)" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div></div></div> } @empty { <p class="text-xs text-muted-foreground">No hay entidades con ID informado para esta agrupación.</p> }<p class="text-[11px] text-muted-foreground pt-2 border-t border-border">Solo IDs de entidad registrados. Las entidades externas sin ID no se agrupan por nombre; no mide denegaciones recurrentes.</p></div>
-          </section>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg p-3 border border-border bg-card"><div class="flex items-center gap-1.5 mb-0.5"><svg aria-hidden="true" lucideClock class="w-3 h-3" style="color: var(--success)"></svg><span class="text-[10px] uppercase tracking-wider text-muted-foreground">Tiempo prom.</span></div><p class="font-display text-lg leading-tight">No disponible</p><p class="text-[10px] text-muted-foreground mt-1">No se calcula desde ingreso.</p></div>
-            <div class="rounded-lg p-3 border border-border bg-card"><div class="flex items-center gap-1.5 mb-0.5"><svg aria-hidden="true" lucideFileText class="w-3 h-3" style="color: var(--info)"></svg><span class="text-[10px] uppercase tracking-wider text-muted-foreground">Carga recibida</span></div><p class="font-display text-[22px] leading-none" style="color: var(--info)">{{ totalExpedientes() }}</p><p class="text-[10px] text-muted-foreground mt-1">Registros de la consulta.</p></div>
-            <div class="rounded-lg p-3 border border-border bg-card"><div class="flex items-center gap-1.5 mb-0.5"><svg aria-hidden="true" lucideHourglass class="w-3 h-3" style="color: var(--brand-700)"></svg><span class="text-[10px] uppercase tracking-wider text-muted-foreground">Riesgo por etapa</span></div><p class="font-display text-lg leading-tight">No disponible</p><p class="text-[10px] text-muted-foreground mt-1">Sin reloj acreditado global.</p></div>
-            <div class="rounded-lg p-3 border border-border bg-card"><div class="flex items-center gap-1.5 mb-0.5"><svg aria-hidden="true" lucideActivity class="w-3 h-3" style="color: var(--gold-dark)"></svg><span class="text-[10px] uppercase tracking-wider text-muted-foreground">Finales identificadas</span></div><p class="font-display text-[22px] leading-none" style="color: var(--gold-dark)">{{ finales().length }}</p><p class="text-[10px] text-muted-foreground mt-1">Sin periodo declarado.</p></div>
           </div>
-          <a routerLink="/ttaip/cumplimiento" class="rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] border border-border bg-card" style="border-left: 3px solid var(--success)"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: color-mix(in srgb, var(--success) 12%, transparent)"><svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" style="color: var(--success)"></svg></span><span class="flex-1 min-w-0"><span class="eyebrow block" style="color: var(--success)">Seguimiento</span><span class="text-sm font-medium">Cumplimiento de resoluciones</span></span><svg aria-hidden="true" lucideArrowRight class="w-4 h-4 shrink-0 text-muted-foreground"></svg></a>
-          <a routerLink="/ttaip/procesos-disciplinarios" class="rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] border border-border bg-card" style="border-left: 3px solid var(--gold-dark)"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: color-mix(in srgb, var(--gold-dark) 12%, transparent)"><svg aria-hidden="true" lucideGavel class="w-4 h-4" style="color: var(--gold-dark)"></svg></span><span class="flex-1 min-w-0"><span class="eyebrow block" style="color: var(--gold-dark)">Procedimiento</span><span class="text-sm font-medium">Consultar procesos disciplinarios</span></span><svg aria-hidden="true" lucideArrowRight class="w-4 h-4 shrink-0 text-muted-foreground"></svg></a>
-          <p class="text-xs text-muted-foreground rounded-lg p-4 border border-border">Asignación de sala o miembros, actuaciones masivas, reiteración y emisión formal no están disponibles desde este panel. No se abren seguimientos ni procesos disciplinarios de forma automática.</p>
+
+          <!-- Entidades Más Apeladas -->
+          <div data-tour="t-concentracion" class="form-shell">
+            <div class="form-section-header">
+              <span class="eyebrow flex items-center gap-2"><svg aria-hidden="true" lucideBuilding2 class="w-3 h-3"></svg> Concentración</span>
+              <div class="font-display text-base" style="letter-spacing: -0.01em">Entidades más apeladas</div>
+            </div>
+            <div class="p-4 space-y-2.5">
+              @for (ent of topEntidades(); track ent.id) {
+                <div>
+                  <div class="flex items-baseline justify-between mb-1">
+                    <span class="text-xs text-foreground/85 truncate" [title]="ent.nombre">{{ ent.nombre }}</span>
+                    <span class="font-mono text-[10px] text-muted-foreground">{{ ent.count }}</span>
+                  </div>
+                  <div class="h-1 rounded-full overflow-hidden bg-muted">
+                    <div class="h-full rounded-full" [style.width.%]="getTopEntidadWidth(ent.count)" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
+                  </div>
+                </div>
+              } @empty {
+                <p class="text-xs text-muted-foreground">Sin registros de concentración institucional.</p>
+              }
+              <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
+                Permite identificar patrones de denegación recurrente.
+              </p>
+            </div>
+          </div>
+
+          <!-- 4 Mini-Tarjetas Estadísticas -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-lg p-3 bg-card border border-border">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <svg aria-hidden="true" lucideClock class="w-3 h-3 text-success"></svg>
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Tiempo prom.</span>
+              </div>
+              <div class="font-display text-2xl text-success leading-none">{{ tiempoPromedio() }}</div>
+              <div class="text-[10px] text-muted-foreground mt-1">ingreso → resolución</div>
+            </div>
+
+            <div class="rounded-lg p-3 bg-card border border-border">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <svg aria-hidden="true" lucideFileText class="w-3 h-3 text-info"></svg>
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Carga total</span>
+              </div>
+              <div class="font-display text-2xl text-info leading-none">{{ totalExpedientes() }}</div>
+              <div class="text-[10px] text-muted-foreground mt-1">expedientes activos</div>
+            </div>
+
+            <div class="rounded-lg p-3" [style.background]="riesgo().length > 0 ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1px solid ' + (riesgo().length > 0 ? 'var(--brand-200)' : 'var(--border)')">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <svg aria-hidden="true" lucideAlertTriangle class="w-3 h-3" style="color: var(--brand-700)"></svg>
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Riesgo críti.</span>
+              </div>
+              <div class="font-display text-2xl leading-none" style="color: var(--brand-700)">{{ riesgo().length }}</div>
+              <div class="text-[10px] text-muted-foreground mt-1">≤1 día hábil</div>
+            </div>
+
+            <div class="rounded-lg p-3 bg-card border border-border">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <svg aria-hidden="true" lucideTrendingUp class="w-3 h-3 text-gold-dark"></svg>
+                <span class="text-[10px] uppercase tracking-wider text-muted-foreground">Resol. mes</span>
+              </div>
+              <div class="font-display text-2xl text-gold-dark leading-none">{{ resolucionesMes() }}</div>
+              <div class="text-[10px] text-muted-foreground mt-1">emitidas en el mes</div>
+            </div>
+          </div>
+
+          <!-- Accesos Institucionales -->
+          <a routerLink="/ttaip/reportes" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] bg-card border border-border" style="border-left: 3px solid var(--brand-700)">
+            <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-[var(--brand-subtle)]">
+              <svg aria-hidden="true" lucideActivity class="w-4 h-4 text-brand-700"></svg>
+            </div>
+            <div class="flex-1 text-left">
+              <span class="eyebrow block" style="color: var(--brand-700)">ANTAIP</span>
+              <div class="text-sm font-medium">Reportes del Tribunal</div>
+            </div>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4 text-muted-foreground"></svg>
+          </a>
+
+          <a routerLink="/ttaip/cumplimiento" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] bg-card border border-border" style="border-left: 3px solid var(--success)">
+            <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-[rgba(5,150,105,0.12)]">
+              <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 text-success"></svg>
+            </div>
+            <div class="flex-1 text-left">
+              <span class="eyebrow block text-success">Seguimiento</span>
+              <div class="text-sm font-medium">Cumplimiento de resoluciones</div>
+            </div>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4 text-muted-foreground"></svg>
+          </a>
+
+          <a routerLink="/ttaip/procesos-disciplinarios" class="w-full rounded-lg p-4 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] bg-card border border-border" style="border-left: 3px solid var(--gold-dark)">
+            <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-[rgba(176,136,66,0.12)]">
+              <svg aria-hidden="true" lucideGavel class="w-4 h-4 text-gold-dark"></svg>
+            </div>
+            <div class="flex-1 text-left">
+              <span class="eyebrow block text-gold-dark">Procedimiento</span>
+              <div class="text-sm font-medium">Procesos disciplinarios</div>
+            </div>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4 text-muted-foreground"></svg>
+          </a>
         </aside>
       </div>
     }

@@ -16,7 +16,7 @@ import { OfficialDocsSectionComponent } from './shared/official-docs-section.com
 import { OfficialPreviewComponent } from './shared/official-preview.component';
 import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
 import { positiveId, apelacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
-import { finalOpciones, FinalSelection, FinalOperacion, ArchivoFinal, finalConsultada, admisionFinal, motivoFinal, eficaciaAdmision, descargosConsultados, estadoDescargos, finalCompatible, archivoCompatible, fechaRegistrada, relacionesFinalCoherentes } from './ttaip-resolver.model';
+import { finalOpciones, FinalSelection, FinalOperacion, ArchivoFinal, finalConsultada, admisionFinal, motivoFinal, eficaciaAdmision, descargosConsultados, estadoDescargos, finalCompatible, archivoCompatible, fechaRegistrada, relacionesFinalCoherentes, ETAPAS_RETROACCION, EtapaRetroaccionId } from './ttaip-resolver.model';
 import { falloConsulta } from '../../utils/consulta-remota.util';
 import { requerimientoConsultado } from './ttaip-segunda-calificacion.model';
 import { consultarRecepcionInstitucional, sinConsultaRecepcion } from './recepcion-institucional.model';
@@ -109,8 +109,10 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   momentoVicio = '';
   actuacionOrdenada = '';
   iniciarProcesoDisciplinario = false;
-  /** Retained for callers; no local mandate or deadline is transmitted or certified. */
-  ordenarEntrega = false;
+  readonly etapasRetroaccion = ETAPAS_RETROACCION;
+  retrotraeA: EtapaRetroaccionId = '';
+  plazoDias = 7;
+  ordenarEntrega = true;
   constructor() { effect(() => { const revision = this.authService.cambiosSesion(); if (this.initialized && revision !== this.revision) untracked(() => this.cargarApelacion(this.requested)); }); }
   private sessionKey(): string { try { const s = this.authService.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.miembroId]); } catch { return ''; } }
   contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
@@ -118,7 +120,20 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => this.cargarApelacion(p.get('expediente') || '')); }
   ngOnDestroy(): void { this.destroyed = true; this.generation++; this.routeSub.unsubscribe(); this.cancelar(); }
   private cancelar(): void { for (const s of [this.reads, this.writes, this.docReads, this.downloads]) s.unsubscribe(); this.reads = new Subscription(); this.writes = new Subscription(); this.docReads = new Subscription(); this.downloads = new Subscription(); }
-  private limpiarBorrador(): void { this.selectedDecision.set(null); this.causal.set(null); this.fundamentos = ''; this.observacionesResolucion = ''; this.momentoVicio = ''; this.actuacionOrdenada = ''; this.iniciarProcesoDisciplinario = false; this.documentosSeleccionados.set([]); this.archivos.set([]); }
+  private limpiarBorrador(): void {
+    this.selectedDecision.set(null);
+    this.causal.set(null);
+    this.fundamentos = '';
+    this.observacionesResolucion = '';
+    this.momentoVicio = '';
+    this.actuacionOrdenada = '';
+    this.retrotraeA = '';
+    this.ordenarEntrega = true;
+    this.plazoDias = 7;
+    this.iniciarProcesoDisciplinario = false;
+    this.documentosSeleccionados.set([]);
+    this.archivos.set([]);
+  }
   cargarApelacion(expediente: string): void {
     if (this.destroyed) return; const same = this.requested === expediente && this.session === this.sessionKey();
     if (same && this.operation) { if (!this.loading()) this.recuperarResultado(); return; }
@@ -157,7 +172,20 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   puedeEmitirResolucion(): boolean { return !this.motivoNoDisponible(); }
   puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && !!this.apelacion() && this.apelacion()?.estado === 'EN_RESOLUCION' && !this.resolucionRegistrada() && !this.operation && !this.loading(); }
   private observacionesTexto(): string | undefined {
-    if (this.showNulidad()) return [this.observacionesResolucion.trim(), `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}`].filter(Boolean).join('\n');
+    if (this.showNulidad()) {
+      const etapaObj = ETAPAS_RETROACCION.find(e => e.id === this.retrotraeA);
+      const retroStr = etapaObj && etapaObj.id ? `Retroacción ordenada: ${etapaObj.label}` : 'Sin retroacción específica';
+      return [
+        this.observacionesResolucion.trim(),
+        `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}; ${retroStr}`
+      ].filter(Boolean).join('\n');
+    }
+    if (this.showOrden() && this.ordenarEntrega) {
+      return [
+        this.observacionesResolucion.trim(),
+        `Mandato: Entrega de información ordenada a la entidad en un plazo de ${this.plazoDias} días hábiles contados desde la notificación eficaz.`
+      ].filter(Boolean).join('\n');
+    }
     return this.selectedDecision() === 'estese_a_lo_resuelto' ? this.observacionesResolucion.trim() || undefined : undefined;
   }
   validacionTexto(): string {
@@ -183,8 +211,16 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     if (this.loading() || this.operation || this.destroyed) return;
     if (!this.canSubmit()) { this.error.set(this.motivoNoDisponible() || this.validacionTexto()); return; }
     const ap = this.apelacion()!, option = finalOpciones.find(o => o.id === this.selectedDecision())!, generation = this.generation;
-    const op: FinalOperacion = { apelacionId: ap.id, expediente: ap.expediente, decision: option.id, fundamentos: this.fundamentos.trim(), miembroId: this.authService.obtenerSesion()!.miembroId!,
-      ...(this.observacionesTexto() ? { observaciones: this.observacionesTexto() } : {}), ...(this.showOrden() ? { iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario } : {}) };
+    const op: FinalOperacion = {
+      apelacionId: ap.id,
+      expediente: ap.expediente,
+      decision: option.id,
+      fundamentos: this.fundamentos.trim(),
+      miembroId: this.authService.obtenerSesion()!.miembroId!,
+      ...(this.observacionesTexto() ? { observaciones: this.observacionesTexto() } : {}),
+      ...(this.showOrden() ? { iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario, ordenarEntrega: this.ordenarEntrega, plazoDias: this.plazoDias } : {}),
+      ...(this.showNulidad() && this.retrotraeA ? { retrotraeA: this.retrotraeA } : {})
+    };
     this.operation = op; this.loading.set(true); this.error.set(''); this.archivos.set(this.documentosSeleccionados().map(file => ({ file, estado: 'seleccionado' })));
     const { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario } = op;
     this.writes.add(this.ttaipService[option.command](ap.id, { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario }).subscribe({ next: updated => {

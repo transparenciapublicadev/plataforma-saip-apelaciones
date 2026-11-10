@@ -11,6 +11,7 @@ import { environment } from '../../../environments/environment';
 
 describe('TTAIPDashboard — datos y etapas respaldados', () => {
   const api = environment.apiUrl;
+  const panelRequest = (req: { url: string }) => req.url === `${api}/panel/apelaciones`;
   const session = { success: true, token: 'sesion-sintetica-tribunal', usuarioId: 7, miembroId: 7, tipoUsuario: 'TTAIP', nombre: 'Operador sintético' };
   const row = (patch: Record<string, unknown> = {}) => ({ id: 21, expediente: '00021-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1',
     fechaApelacion: '2026-10-01', ciudadanoId: 4, ciudadanoNombre: 'Persona sintética', entidadId: 3, entidadNombre: 'Entidad sintética',
@@ -25,11 +26,28 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   });
   afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); } });
   function page() { const f = TestBed.createComponent(TtaipDashboardComponent); f.detectChanges(); return f; }
-  // Allows RED against the published five-query flow; the final implementation uses one authorized list.
-  function reply(rows: ReturnType<typeof row>[]) {
-    const all = http.match(`${api}/apelaciones`); if (all.length) { all.forEach(req => req.flush(rows)); return; }
-    const paths = ['en-calificacion', 'subsanacion', 'segunda-calificacion', 'en-resolucion', 'resueltas'];
-    paths.forEach((path, index) => http.match(`${api}/ttaip/${path}`).forEach(req => req.flush(index === 0 ? rows : [])));
+  // Synthetic server pages: summaries describe the authorized aggregate, not the visible page.
+  function payload(rows: ReturnType<typeof row>[], page = 0, size = 4, visible = rows) {
+    const counts: Record<string, number> = {}, states: Record<string, number> = {}, results: Record<string, number> = {}, entities: Record<string, number> = {};
+    const stage: Record<string, string> = { PENDIENTE_ELEVACION: 'elevacion', EN_CALIFICACION_1: 'calificacion1', EN_SUBSANACION: 'subsanacion', EN_CALIFICACION_2: 'calificacion2', NOTIFICACION_SEGUNDA_CALIFICACION: 'calificacion2', EN_RESOLUCION: 'resolucion' };
+    for (const r of rows) {
+      states[r.estado] = (states[r.estado] ?? 0) + 1;
+      const key = stage[r.estado] ?? (/^(RESUELTO|CONCLUSION)/.test(r.estado) ? 'resueltos' : 'otras');
+      counts[key] = (counts[key] ?? 0) + 1;
+      const resolution = r.resolucion as { tipoResolucion?: string; decision?: string } | null;
+      if (resolution?.tipoResolucion === 'RESOLUCION_FINAL' && resolution.decision) results[resolution.decision] = (results[resolution.decision] ?? 0) + 1;
+      if (r.entidadId) entities[r.entidadId] = (entities[r.entidadId] ?? 0) + 1;
+    }
+    return { contenido: visible.slice(page * size, (page + 1) * size), pagina: page, tamano: size,
+      totalElementos: visible.length, totalPaginas: Math.ceil(visible.length / size), ultima: (page + 1) * size >= visible.length,
+      resumen: { total: rows.length, porEstado: states, porEtapa: counts, porResultado: results, porEntidad: entities },
+      entidades: [{ id: 3, nombre: 'Entidad sintética' }, { id: 5, nombre: 'Entidad sintética' }],
+      salas: [{ id: 8, nombre: 'Sala 1' }, { id: 9, nombre: 'Sala 1' }], alcance: 'Tribunal autorizado' };
+  }
+  function reply(rows: ReturnType<typeof row>[], visible = rows) {
+    const req = http.expectOne(panelRequest);
+    req.flush(payload(rows, Number(req.request.params.get('pagina')), Number(req.request.params.get('tamano')), visible));
+    return req;
   }
   it('no calcula un plazo de etapa desde una fecha de ingreso antigua', () => {
     const f = page(); reply([row({ fechaApelacion: '2000-01-01' })]);
@@ -47,7 +65,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     const f = page(); reply([row({ estado: 'ESTADO_NO_RECONOCIDO' })]); expect(f.componentInstance.counts().resueltos).toBe(0);
   });
   it('una sala ausente no se atribuye a la primera sala', () => {
-    const f = page(); reply([row()]); f.componentInstance.cambiarSala('PRIMERA'); expect(f.componentInstance.filtered()).toEqual([]);
+    const f = page(); reply([row()]); f.componentInstance.cambiarSala('SIN_SALA'); const req = reply([row()], [row()]); expect(req.request.params.get('sala')).toBe('SIN_SALA'); expect(f.componentInstance.nombreSala(f.componentInstance.apelaciones()[0])).toBe('No informada');
   });
   it('fundado en parte no se suma a fundado total', () => {
     const f = page(); reply([row({ estado: 'RESUELTO_FUNDADO_EN_PARTE', resultado: 'FUNDADO_EN_PARTE',
@@ -68,7 +86,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   });
   it('cambiar la búsqueda vuelve a la primera página', () => {
     const f = page(); reply(Array.from({ length: 12 }, (_, index) => row({ id: 21 + index, expediente: `EXP-${21 + index}` })));
-    f.componentInstance.cambiarPagina(2); f.componentInstance.searchModel = 'EXP-21'; expect(f.componentInstance.paginaActual()).toBe(1);
+    f.componentInstance.cambiarPagina(2); const old = http.expectOne(panelRequest); f.componentInstance.searchModel = 'EXP-21'; expect(old.cancelled).toBe(true); expect(f.componentInstance.paginaActual()).toBe(1); f.destroy();
   });
   it('notificación de segunda calificación pendiente navega al detalle, sin adelantar el comando', () => {
     const f = page(); reply([row({ estado: 'NOTIFICACION_SEGUNDA_CALIFICACION', calificacionSegunda: 'ADMITIDO' })]);
@@ -78,8 +96,8 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     const f = page(); reply([row({ estado: 'PENDIENTE_ELEVACION' })]); expect(f.componentInstance.queueItems().length).toBe(1);
   });
   it('consulta una sola lista autorizada con Bearer y no combina subconjuntos de estado', () => {
-    const f = page(); const req = http.expectOne(`${api}/apelaciones`);
-    expect(req.request.headers.get('Authorization')).toBe(`Bearer ${session.token}`); req.flush([row()]);
+    const f = page(); const req = http.expectOne(panelRequest);
+    expect(req.request.headers.get('Authorization')).toBe(`Bearer ${session.token}`); req.flush(payload([row()]));
     expect(f.componentInstance.counts().todos).toBe(1); http.expectNone(req => req.url.includes('/ttaip/'));
   });
   it('no consulta con una sesión que no corresponde al Tribunal', () => {
@@ -93,48 +111,54 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   });
   it.each([400, 401, 403, 404, 422, 500, 503])('HTTP %i presenta error, sin datos anteriores ni vacío confirmado', status => {
     const f = page(); reply([row()]); f.componentInstance.cargarDashboard();
-    http.expectOne(`${api}/apelaciones`).flush({ detail: 'detalle interno no publicable' }, { status, statusText: 'Failure' }); f.detectChanges();
+    http.expectOne(panelRequest).flush({ detail: 'detalle interno no publicable' }, { status, statusText: 'Failure' }); f.detectChanges();
     expect(f.nativeElement.querySelector('[role=alert]')).not.toBeNull(); expect(f.nativeElement.querySelector('[role=list]')).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('Persona sintética'); expect(f.nativeElement.textContent).not.toContain('detalle interno');
     expect(f.nativeElement.textContent).not.toContain('Sin coincidencias'); expect(f.componentInstance.reintentable()).toBe(status >= 500);
   });
   it('un fallo de red conserva reintento manual y la recuperación no duplica consultas', () => {
-    const f = page(); http.expectOne(`${api}/apelaciones`).error(new ProgressEvent('error')); f.detectChanges();
+    const f = page(); http.expectOne(panelRequest).error(new ProgressEvent('error')); f.detectChanges();
     const retry = [...f.nativeElement.querySelectorAll('button')].find((node: any) => node.textContent.trim() === 'Reintentar') as HTMLButtonElement;
-    retry.click(); f.detectChanges(); http.expectOne(`${api}/apelaciones`).flush([row()]); f.detectChanges();
+    retry.click(); f.detectChanges(); http.expectOne(panelRequest).flush(payload([row()])); f.detectChanges();
     expect(f.componentInstance.error()).toBe(''); expect(f.nativeElement.textContent).toContain('Persona sintética');
   });
   it.each([null, { content: [], totalElements: 50 }, [row(), row()], [row({ id: null })], [row({ ciudadanoNombre: {} })]].map(payload => [payload]))('no interpreta una respuesta incompatible como lista completa: %j', payload => {
-    const f = page(); http.expectOne(`${api}/apelaciones`).flush(payload); f.detectChanges();
+    const f = page(); http.expectOne(panelRequest).flush(Array.isArray(payload) ? { ...{ contenido: payload, pagina: 0, tamano: 4, totalElementos: payload.length, totalPaginas: 1, ultima: true, resumen: { total: payload.length, porEstado: {}, porEtapa: {} }, entidades: [], alcance: 'Tribunal' } } : payload); f.detectChanges();
     expect(f.componentInstance.error()).toContain('incompleta'); expect(f.componentInstance.apelaciones()).toEqual([]);
   });
   it('cuenta todas las etapas, incluida notificación, y conserva un estado desconocido en Otros', () => {
     const states = ['PENDIENTE_ELEVACION', 'EN_CALIFICACION_1', 'EN_SUBSANACION', 'EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION', 'EN_RESOLUCION', 'RESUELTO', 'ESTADO_NO_RECONOCIDO'];
     const f = page(); reply(states.map((estado, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}`, estado })));
     expect(f.componentInstance.counts()).toMatchObject({ todos: 8, elevacion: 1, calificacion1: 1, subsanacion: 1, calificacion2: 2, resolucion: 1, resueltos: 1, otras: 1 });
-    f.componentInstance.selectStage('otras'); expect(f.componentInstance.filtered()[0].apelacion.estado).toBe('ESTADO_NO_RECONOCIDO');
+    f.componentInstance.selectStage('otras'); const req = reply(states.map((estado, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}`, estado })), [row({ estado: 'ESTADO_NO_RECONOCIDO' })]); expect(req.request.params.get('etapa')).toBe('otras'); expect(f.componentInstance.filtered()[0].apelacion.estado).toBe('ESTADO_NO_RECONOCIDO');
   });
-  it('combina etapa, búsqueda normalizada, estado y sala por ID sin nuevas peticiones', () => {
-    const f = page(); reply([row({ ciudadanoNombre: 'Ángela Pérez', expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala A' } } }),
-      row({ id: 22, expediente: 'EXP-22', estado: 'EN_SUBSANACION', ciudadanoNombre: 'Ángela Pérez', expedienteTtaip: { id: 52, sala: { id: 9, nombre: 'Sala B' } } })]);
-    const c = f.componentInstance; c.selectStage('todos'); c.searchModel = 'angela informacion'; c.cambiarSala(8); c.cambiarEstado('EN_CALIFICACION_1');
+  it('combina etapa, búsqueda, estado y sala mediante la consulta autorizada del servidor', () => {
+    const rows = [row({ ciudadanoNombre: 'Ángela Pérez', expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala A' } } }), row({ id: 22, expediente: 'EXP-22', estado: 'EN_SUBSANACION' })];
+    const f = page(); reply(rows); const c = f.componentInstance;
+    c.searchModel = 'angela informacion'; c.cambiarSala(8); const pending = http.expectOne(panelRequest);
+    c.cambiarEstado('EN_CALIFICACION_1'); expect(pending.cancelled).toBe(true);
+    const req = reply(rows, [rows[0]]);
+    expect(req.request.params.get('busqueda')).toBe('angela informacion'); expect(req.request.params.get('sala')).toBe('8');
+    expect(req.request.params.get('estado')).toBe('EN_CALIFICACION_1');
     expect(c.filtered().map(item => item.apelacion.id)).toEqual([21]); expect(c.counts().todos).toBe(2);
-    c.limpiarFiltros(); expect(c.filtered().length).toBe(2); expect(c.search()).toBe(''); http.expectNone(req => req.url.startsWith(api));
+    c.limpiarFiltros(); reply(rows); expect(c.filtered().length).toBe(2); expect(c.search()).toBe('');
   });
-  it('no confunde salas con el mismo nombre ni registros sin asignación', () => {
-    const f = page(); reply([row({ expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala 1' } } }), row({ id: 22, expediente: 'EXP-22', expedienteTtaip: { id: 52, sala: { id: 9, nombre: 'Sala 1' } } }), row({ id: 23, expediente: 'EXP-23' })]);
-    const c = f.componentInstance; c.cambiarSala(9); expect(c.filtered().map(item => item.apelacion.id)).toEqual([22]);
-    c.cambiarSala('SIN_SALA'); expect(c.filtered().map(item => item.apelacion.id)).toEqual([23]); expect(c.salas().length).toBe(2);
+  it('consulta salas por ID aunque compartan nombre y permite SIN_SALA', () => {
+    const rows = [row({ expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala 1' } } }), row({ id: 22, expediente: 'EXP-22', expedienteTtaip: { id: 52, sala: { id: 9, nombre: 'Sala 1' } } }), row({ id: 23, expediente: 'EXP-23' })];
+    const f = page(); reply(rows); const c = f.componentInstance;
+    c.cambiarSala(9); expect(reply(rows, [rows[1]]).request.params.get('sala')).toBe('9'); expect(c.filtered().map(item => item.apelacion.id)).toEqual([22]);
+    c.cambiarSala('SIN_SALA'); expect(reply(rows, [rows[2]]).request.params.get('sala')).toBe('SIN_SALA'); expect(c.filtered().map(item => item.apelacion.id)).toEqual([23]); expect(c.salas().length).toBe(2);
   });
   it('la página no modifica el alcance de indicadores y búsqueda reinicia el rango', () => {
-    const f = page(); reply(Array.from({ length: 10 }, (_, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}` })));
-    const c = f.componentInstance; c.cambiarPagina(3); expect(c.filteredVisibles().length).toBe(2); expect(c.totalExpedientes()).toBe(10);
-    expect(c.inicioRegistro()).toBe(9); c.searchModel = 'EXP-21'; expect(c.inicioRegistro()).toBe(1); expect(c.totalExpedientes()).toBe(10);
-    c.limpiarFiltros(); c.cambiarItemsPorPagina(8); expect(c.filteredVisibles().length).toBe(8);
+    const rows = Array.from({ length: 10 }, (_, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}` }));
+    const f = page(); reply(rows); const c = f.componentInstance;
+    c.cambiarPagina(3); expect(reply(rows).request.params.get('pagina')).toBe('2'); expect(c.filteredVisibles().length).toBe(2); expect(c.totalExpedientes()).toBe(10);
+    expect(c.inicioRegistro()).toBe(9); c.searchModel = 'EXP-21'; expect(c.paginaActual()).toBe(1); expect(c.apelaciones()).toEqual([]);
+    c.limpiarFiltros(); reply(rows); c.cambiarItemsPorPagina(8); expect(reply(rows).request.params.get('tamano')).toBe('8'); expect(c.filteredVisibles().length).toBe(8);
   });
   it('distingue resuelta/concluida de resolución final identificada y de cumplimiento', () => {
     const f = page(); reply([row({ estado: 'RESUELTO', resultado: 'FUNDADO' }), row({ id: 22, expediente: 'EXP-22', estado: 'CONCLUSION_DESISTIMIENTO' })]);
-    expect(f.componentInstance.resueltas().length).toBe(2); expect(f.componentInstance.finales().length).toBe(0); expect(f.componentInstance.tasaFundadas()).toBeNull();
+    expect(f.componentInstance.counts().resueltos).toBe(2); expect(f.componentInstance.resultados().length).toBe(0); expect(f.componentInstance.tasaFundadas()).toBeNull();
   });
   it('la distribución separa total, parcial y decisiones restantes con denominador explícito', () => {
     const f = page(); const decisions = ['FUNDADO', 'FUNDADO_EN_PARTE', 'INFUNDADO', 'IMPROCEDENTE'];
@@ -143,7 +167,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   });
   it('un resultado de primera calificación no alimenta decisiones finales', () => {
     const f = page(); reply([row({ estado: 'RESUELTO', resolucion: { id: 41, tipoResolucion: 'PRIMERA_CALIFICACION', decision: 'IMPROCEDENTE' } })]);
-    expect(f.componentInstance.finales()).toEqual([]);
+    expect(f.componentInstance.resultados()).toEqual([]);
   });
   it('agrupa entidades por ID, no por nombres coincidentes o entidades externas sin ID', () => {
     const f = page(); reply([row(), row({ id: 22, expediente: 'EXP-22', entidadId: 5 }), row({ id: 23, expediente: 'EXP-23', entidadId: null, entidadExternaNombre: 'Entidad sintética' })]);
@@ -177,30 +201,37 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(f.componentInstance.getActionRoute(f.componentInstance.queueItems()[0])[0]).toBe('/ttaip/apelacion');
   });
   it('un cambio de sesión cancela la lectura anterior y retira datos y filtros', () => {
-    const f = page(); const old = http.expectOne(`${api}/apelaciones`); f.componentInstance.searchModel = 'dato anterior';
+    const f = page(); const old = http.expectOne(panelRequest); f.componentInstance.searchModel = 'dato anterior';
     TestBed.inject(AuthService).guardarSesion({ ...session, token: 'sesion-nueva', usuarioId: 8, miembroId: 8 }); f.detectChanges();
     expect(old.cancelled).toBe(true); expect(f.componentInstance.search()).toBe('');
-    http.expectOne(`${api}/apelaciones`).flush([row({ id: 22, expediente: 'EXP-22', ciudadanoNombre: 'Otro operador' })]); f.detectChanges();
+    http.expectOne(panelRequest).flush(payload([row({ id: 22, expediente: 'EXP-22', ciudadanoNombre: 'Otro operador' })])); f.detectChanges();
     expect(f.nativeElement.textContent).not.toContain('Persona sintética'); expect(f.nativeElement.textContent).toContain('EXP-22');
   });
   it('cierre en otra pestaña retira el listado sin mantener métricas ni identidad previas', () => {
     const f = page(); reply([row()]); f.detectChanges(); localStorage.removeItem('usuario'); window.dispatchEvent(new StorageEvent('storage', { key: 'usuario' })); f.detectChanges();
     expect(f.componentInstance.apelaciones()).toEqual([]); expect(f.nativeElement.querySelector('[role=list]')).toBeNull();
   });
-  it('no duplica lecturas al pulsar recarga durante carga ni al filtrar', () => {
-    const f = page(); f.componentInstance.cargarDashboard(); f.componentInstance.cargarDashboard(); http.expectOne(`${api}/apelaciones`).flush([row()]);
-    f.componentInstance.searchModel = 'persona'; f.componentInstance.selectStage('todos'); http.expectNone(req => req.url.startsWith(api));
+  it('cancela lecturas sustituidas y consolida la búsqueda antes de consultar', () => {
+    vi.useFakeTimers();
+    try {
+      const f = page(); const old = http.expectOne(panelRequest); f.componentInstance.cargarDashboard(); expect(old.cancelled).toBe(true); reply([row()]);
+      f.componentInstance.searchModel = 'per'; f.componentInstance.searchModel = 'persona'; http.expectNone(panelRequest);
+      vi.advanceTimersByTime(250); expect(reply([row()]).request.params.get('busqueda')).toBe('persona'); f.destroy();
+    } finally { vi.useRealTimers(); }
   });
-  it('los controles nativos de búsqueda y etapa filtran por el recurso sin escribir estados', () => {
-    const f = page(); reply([row(), row({ id: 22, expediente: 'EXP-22', estado: 'EN_SUBSANACION' })]); f.detectChanges();
-    const all = [...f.nativeElement.querySelectorAll('button')].find((button: any) => button.textContent.includes('Todos')) as HTMLButtonElement;
-    all.click(); f.detectChanges();
-    const search = f.nativeElement.querySelector('#tribunal-search') as HTMLInputElement;
-    search.value = 'EXP-22'; search.dispatchEvent(new Event('input')); f.detectChanges();
-    expect(f.componentInstance.filtered().map(item => item.apelacion.id)).toEqual([22]);
-    expect(f.nativeElement.querySelectorAll('[role=listitem]').length).toBe(1);
-    expect(f.nativeElement.querySelector('[role=listitem] .code-chip').getAttribute('href')).toBe('/ttaip/apelacion/EXP-22');
-    http.expectNone(req => req.url.startsWith(api));
+  it('los controles nativos consultan el recurso sin escribir estados', () => {
+    vi.useFakeTimers();
+    try {
+      const rows = [row(), row({ id: 22, expediente: 'EXP-22', estado: 'EN_SUBSANACION' })];
+      const f = page(); reply(rows); f.detectChanges();
+      const search = f.nativeElement.querySelector('#tribunal-search') as HTMLInputElement;
+      search.value = 'EXP-22'; search.dispatchEvent(new Event('input')); f.detectChanges(); vi.advanceTimersByTime(250);
+      expect(reply(rows, [rows[1]]).request.params.get('busqueda')).toBe('EXP-22'); f.detectChanges();
+      expect(f.componentInstance.filtered().map(item => item.apelacion.id)).toEqual([22]);
+      expect(f.nativeElement.querySelectorAll('[role=listitem]').length).toBe(1);
+      expect(f.nativeElement.querySelector('[role=listitem] .code-chip').getAttribute('href')).toBe('/ttaip/apelacion/EXP-22');
+      http.expectNone(req => req.method !== 'GET'); f.destroy();
+    } finally { vi.useRealTimers(); }
   });
   it('expone etiquetas, selección, nombres largos y enlaces de consulta sin almacenar búsquedas', () => {
     const f = page(); reply([row({ solicitudAsunto: 'Asunto extenso '.repeat(40) })]); f.detectChanges();

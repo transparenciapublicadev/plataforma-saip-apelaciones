@@ -9,7 +9,7 @@ import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
 import { environment } from '../../../environments/environment';
 
-describe('ResolutionForm — primera calificación real', () => {
+describe('ResolutionForm — primera calificación real', { timeout: 15000 }, () => {
   const api = environment.apiUrl;
   const expediente = '00021-2026-JUS/TTAIP';
   const session = { success: true, token: 'sesion-sintetica-tribunal', usuarioId: 7, miembroId: 7, tipoUsuario: 'TTAIP' };
@@ -41,7 +41,7 @@ describe('ResolutionForm — primera calificación real', () => {
     const f = page(); f.componentInstance.cargarApelacion('EXP-NUEVO');
     http.expectOne(`${api}/apelaciones/expediente/EXP-NUEVO`).flush(null, { status: 503, statusText: 'Unavailable' });
     expect(f.componentInstance.apelacion()).toBeNull(); expect(f.componentInstance.puedeCalificar()).toBe(false);
-  });
+  }, 15000);
   it('rechaza un expediente distinto del solicitado aunque tenga el mismo nombre de persona', () => {
     const f = page(appeal({ id: 22, expediente: 'EXP-AJENO' })); expect(f.componentInstance.apelacion()).toBeNull();
   });

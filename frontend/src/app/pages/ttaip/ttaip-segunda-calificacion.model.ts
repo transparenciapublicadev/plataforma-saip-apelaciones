@@ -4,12 +4,12 @@ import { positiveId } from './ttaip-calificar.model';
 export type SegundaDecision = 'admitido' | 'improcedente' | 'no_presentado';
 export interface SegundaOperacion {
   apelacionId: number; expediente: string; expedienteTtaipId: number; requerimientoId: number;
-  decision: 'admitido' | 'improcedente'; fundamentos: string; miembroId?: number; resolucionId?: number;
+  decision: 'admitido' | 'improcedente' | 'no_presentado'; fundamentos: string; miembroId?: number; resolucionId?: number;
 }
 export const segundaOpciones = [
-  { id: 'admitido' as const, label: 'ADMITIDO A TRÁMITE', description: 'Registro de segunda admisión · queda pendiente de notificaciones eficaces', accent: 'var(--success)', command: 'admitir' },
-  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Registro de segunda improcedencia · requiere recepción vinculada y fundamentos', accent: 'var(--muted-foreground)', command: 'inadmitir' },
-  { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No corresponde a segunda calificación de una recepción: exige EN_SUBSANACION y ausencia acreditada de presentación', accent: 'var(--warning)', command: 'no-presentado' },
+  { id: 'admitido' as const, label: 'ADMITIDO A TRÁMITE', description: 'Admisión a trámite · verifica subsanación ciudadana y remisión de descargos/rebeldía de la entidad', accent: 'var(--success)', command: 'admitir' },
+  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Segunda improcedencia · subsanación extemporánea o manifiestamente insuficiente', accent: 'var(--muted-foreground)', command: 'inadmitir' },
+  { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'Apercibimiento legal por vencimiento del plazo de subsanación de 2 días hábiles', accent: 'var(--warning)', command: 'no-presentado' },
 ];
 export function requerimientoConsultado(ap: Apelacion | null) {
   const r = ap?.resolucionPrimeraCalificacion;
@@ -27,6 +27,12 @@ export function segundaConsultada(ap: Apelacion | null) {
 }
 export function segundaCompatible(ap: Apelacion, op: SegundaOperacion): boolean {
   if (!ap) return false;
+  if (op.decision === 'no_presentado') {
+    const r = ap.resoluciones?.find(x => x?.decision === 'TENER_POR_NO_PRESENTADO') || ap.resolucionPrimeraCalificacion;
+    return ap.id === op.apelacionId && ap.expediente === op.expediente
+      && ap.estado === 'TENER_POR_NO_PRESENTADO'
+      && (op.resolucionId == null || r?.id === op.resolucionId);
+  }
   const r = segundaConsultada(ap);
   return ap.id === op.apelacionId && ap.expediente === op.expediente && ap.expedienteTtaip?.id === op.expedienteTtaipId
     && requerimientoConsultado(ap)?.id === op.requerimientoId && !!r && positiveId(r.id)
@@ -38,10 +44,10 @@ export function segundaCompatible(ap: Apelacion, op: SegundaOperacion): boolean 
 export function contextoSegunda(ap: Apelacion | null): 'incompleto' | 'registrada' | 'incompatible' | 'borrador' {
   if (!ap) return 'incompleto';
   if (ap.expedienteTtaip && (!positiveId(ap.expedienteTtaip.id) || ap.expedienteTtaip.numeroExpediente !== ap.expediente)) return 'incompleto';
-  if (segundaConsultada(ap)) return 'registrada';
+  if (segundaConsultada(ap) || ap.estado === 'TENER_POR_NO_PRESENTADO') return 'registrada';
   if (ap.calificacionSegunda != null || ap.resolucionSegundaCalificacion != null
     || (Array.isArray(ap.resoluciones) && ap.resoluciones.some(r => r?.tipoResolucion === 'SEGUNDA_CALIFICACION'))) return 'incompleto';
-  if (ap.estado !== 'EN_CALIFICACION_2') return 'incompatible';
+  if (ap.estado !== 'EN_CALIFICACION_2' && !(ap.estado === 'EN_SUBSANACION' && ap.plazoSubsanacion?.estado === 'VENCIDO')) return 'incompatible';
   const r = requerimientoConsultado(ap);
   if (!r || ap.calificacionSegunda !== null || ap.resolucionSegundaCalificacion !== null || !Array.isArray(ap.resoluciones)
     || (ap.plazoSubsanacion?.requerimientoId != null && ap.plazoSubsanacion.requerimientoId !== r.id)) return 'incompleto';
