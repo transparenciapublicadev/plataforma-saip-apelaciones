@@ -1,0 +1,732 @@
+<div class="space-y-5">
+  <!-- Feedback alerts -->
+  @if (mensajeExito()) {
+    <div role="status" class="rounded-lg p-4 flex items-center gap-3 bg-[color:var(--brand-subtle)] border border-[color:var(--brand-200)] text-sm animate-fade-in-up">
+      <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5 shrink-0" style="color: var(--success)"></svg>
+      <span class="text-foreground">{{ mensajeExito() }}</span>
+    </div>
+  }
+  @if (mensajeError()) {
+    <div role="alert" class="rounded-lg p-4 flex items-center gap-3 bg-[color:var(--brand-subtle)] border border-[color:var(--brand-200)] text-sm animate-fade-in-up">
+      <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 shrink-0" style="color: var(--brand-700)"></svg>
+      <span class="text-[color:var(--brand-700)] font-medium">{{ mensajeError() }}</span>
+    </div>
+  }
+
+  <!-- Header info notice -->
+  <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+    <svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+    <p class="text-sm text-foreground/85 leading-relaxed">
+      Este calendario es la <span class="font-semibold">fuente única</span> para el cómputo de días hábiles: plazo de atención de la SAIP, silencio administrativo, prórrogas, cupones de pago, apelación y la regla del contador del Tribunal. Si el Estado declara un nuevo feriado o un día no laborable, regístrelo aquí y la plataforma recalculará todos los vencimientos.
+    </p>
+  </div>
+
+  <!-- 1. Calendario Oficial Anual -->
+  <section class="form-shell">
+    <div class="form-section-header flex items-center gap-3 flex-wrap">
+      <svg aria-hidden="true" lucideCalendar class="w-5 h-5" style="color: var(--brand-700)"></svg>
+      <div>
+        <span class="eyebrow">Calendario oficial</span>
+        <div class="form-section-title">Días hábiles {{ anio() }}</div>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <label for="cal-anio-select" class="sr-only">Seleccionar año</label>
+        <select
+          id="cal-anio-select"
+          class="field-input !h-auto !py-[6px] !px-3 font-mono font-medium text-sm w-[110px]"
+          [value]="anio()"
+          (change)="setAnio($any($event.target).value)"
+        >
+          @for (y of aniosDisponibles(); track y) {
+            <option [value]="y">{{ y }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="p-5 md:p-6 space-y-5">
+      <!-- 4 Metric Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-lg p-3" style="background: var(--paper); border: 1px solid var(--border)">
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Días hábiles del año</div>
+          <div class="font-display mt-1" style="font-size: 24px; color: var(--success); letter-spacing: -0.02em">
+            {{ habilesAnio() }}
+          </div>
+        </div>
+        <div class="rounded-lg p-3" style="background: var(--paper); border: 1px solid var(--border)">
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Feriados en día laboral</div>
+          <div class="font-display mt-1" [style.color]="tipoColors['feriado']" style="font-size: 24px; letter-spacing: -0.02em">
+            {{ conteoTipo('feriado') }}
+          </div>
+        </div>
+        <div class="rounded-lg p-3" style="background: var(--paper); border: 1px solid var(--border)">
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">No laborables</div>
+          <div class="font-display mt-1" [style.color]="tipoColors['no_laborable']" style="font-size: 24px; letter-spacing: -0.02em">
+            {{ conteoTipo('no_laborable') }}
+          </div>
+        </div>
+        <div class="rounded-lg p-3" style="background: var(--paper); border: 1px solid var(--border)">
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Días con plazos suspendidos</div>
+          <div class="font-display mt-1" [style.color]="tipoColors['suspension']" style="font-size: 24px; letter-spacing: -0.02em">
+            {{ conteoTipo('suspension') }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Leyenda -->
+      <div class="flex flex-wrap gap-4 text-xs text-muted-foreground" aria-hidden="true">
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-sm" [style.background]="tipoColors['feriado']"></span> Feriado nacional
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-sm" [style.background]="tipoColors['no_laborable']"></span> Día no laborable (sector público)
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-sm" [style.background]="tipoColors['suspension']"></span> Suspensión de plazos
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-sm" style="background: var(--muted)"></span> Fin de semana
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded-sm" style="border: 2px solid var(--info)"></span> Hoy
+        </span>
+      </div>
+
+      <!-- Cuadrícula 12 Meses -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (nombreMes of mesesNombres; track nombreMes; let mi = $index) {
+          <div class="rounded-lg p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="text-xs font-semibold mb-2 text-foreground">{{ nombreMes }}</div>
+            <div class="grid grid-cols-7 gap-0.5 text-center">
+              @for (d of diasNombres; track $index) {
+                <span class="text-[9px] text-muted-foreground font-mono">{{ d }}</span>
+              }
+              @for (v of crearArray(obtenerOffsetDelMes(mi)); track $index) {
+                <span></span>
+              }
+              @for (item of obtenerDiasDelMes(mi); track item.iso) {
+                <button
+                  type="button"
+                  (click)="seleccionarFechaEnGrid(item.iso)"
+                  [title]="item.inhabil ? (item.inhabil.nombre + ' · ' + obtenerTipoLabel(item.inhabil.tipo)) : item.esFinde ? 'Fin de semana' : 'Día hábil'"
+                  [attr.aria-label]="item.iso + (item.inhabil ? ' ' + item.inhabil.nombre : item.esFinde ? ' fin de semana' : ' día hábil')"
+                  class="text-[10px] font-mono rounded-sm leading-5 transition-transform hover:scale-110 focus:outline-none"
+                  [style.background]="item.inhabil ? obtenerTipoColor(item.inhabil.tipo) : item.esFinde ? 'var(--muted)' : 'transparent'"
+                  [style.color]="item.inhabil ? 'white' : item.esFinde ? 'var(--muted-foreground)' : 'var(--foreground)'"
+                  [style.outline]="item.esHoy ? '2px solid var(--info)' : 'none'"
+                  style="outline-offset: -1px"
+                >
+                  {{ item.dia }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <p class="text-xs text-muted-foreground">Pulse un día para usarlo en el formulario de registro de día inhábil.</p>
+    </div>
+  </section>
+
+  <!-- 2. Días Inhábiles y Formulario de Alta -->
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <!-- Tabla de días registrados (3 cols) -->
+    <section class="form-shell lg:col-span-3">
+      <div class="form-section-header flex items-center gap-3 flex-wrap">
+        <svg aria-hidden="true" lucideCalendar class="w-5 h-5" style="color: var(--gold-dark)"></svg>
+        <div>
+          <span class="eyebrow" style="color: var(--gold-dark)">Días inhábiles</span>
+          <div class="form-section-title">Registrados para {{ anio() }}</div>
+        </div>
+        <button
+          type="button"
+          (click)="restaurarNacionales()"
+          class="ml-auto btn-ghost-brand !px-3 !py-1.5 !text-[12px] flex items-center gap-1.5"
+        >
+          <svg aria-hidden="true" lucideRotateCcw class="w-3.5 h-3.5"></svg>
+          Restaurar nacionales
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="data-table" [attr.aria-label]="'Días inhábiles ' + anio()">
+          <thead>
+            <tr>
+              <th scope="col">Fecha</th>
+              <th scope="col">Motivo</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Base legal</th>
+              <th scope="col" class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Feriados móviles Semana Santa -->
+            @for (d of moviles(); track d.fecha) {
+              <tr>
+                <td class="font-mono text-xs whitespace-nowrap">{{ formatearFechaCorta(d.fecha) }}</td>
+                <td class="text-sm">
+                  {{ d.nombre }}
+                  <span class="text-[10px] uppercase tracking-wider text-muted-foreground">· móvil</span>
+                </td>
+                <td class="text-xs" [style.color]="tipoColors['feriado']">{{ tipoLabels['feriado'] }}</td>
+                <td class="text-xs text-muted-foreground">{{ d.baseLegal }}</td>
+                <td class="text-right text-[11px] text-muted-foreground">Automático</td>
+              </tr>
+            }
+            <!-- Feriados y suspensiones registrados -->
+            @for (f of listaAnio(); track f.id) {
+              <tr [style.opacity]="f.activo ? 1 : 0.5">
+                <td class="font-mono text-xs whitespace-nowrap">
+                  @if (f.recurrente) {
+                    {{ f.mmdd?.slice(3) }}/{{ f.mmdd?.slice(0, 2) }} · cada año
+                  } @else {
+                    {{ formatearFechaCorta(f.fecha) }}{{ f.hasta ? ' – ' + formatearFechaCorta(f.hasta) : '' }}
+                  }
+                </td>
+                <td class="text-sm">
+                  {{ f.nombre }}
+                  @if (!f.activo) {
+                    <span class="text-[10px] uppercase tracking-wider text-muted-foreground"> · inactivo</span>
+                  }
+                  @if (f.entidades && f.entidades.length > 0) {
+                    <span class="block text-[11px] text-muted-foreground">
+                      Solo: {{ f.entidades[0].nombre }}@if (f.entidades.length > 1) { +{{ f.entidades.length - 1 }} más }
+                    </span>
+                  }
+                </td>
+                <td class="text-xs" [style.color]="obtenerTipoColor(f.tipo)">{{ obtenerTipoLabel(f.tipo) }}</td>
+                <td class="text-xs text-muted-foreground">{{ f.baseLegal || '—' }}</td>
+                <td class="text-right">
+                  <div class="inline-flex gap-1">
+                    <button
+                      type="button"
+                      (click)="alternarFeriado(f.id)"
+                      [title]="f.activo ? 'Desactivar' : 'Activar'"
+                      class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)]"
+                    >
+                      @if (f.activo) {
+                        <svg aria-hidden="true" lucideEyeOff class="w-3.5 h-3.5" style="color: var(--gold-dark)"></svg>
+                      } @else {
+                        <svg aria-hidden="true" lucideEye class="w-3.5 h-3.5" style="color: var(--success)"></svg>
+                      }
+                    </button>
+                    @if (f.origen === 'admin') {
+                      <button
+                        type="button"
+                        (click)="quitarFeriado(f.id)"
+                        title="Eliminar"
+                        class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)]"
+                      >
+                        <svg aria-hidden="true" lucideTrash2 class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <label class="flex items-center gap-2 px-5 py-4 border-t border-border text-sm cursor-pointer hover:bg-muted/30">
+        <input
+          type="checkbox"
+          [checked]="cal().semanaSanta"
+          (change)="setSemanaSanta($any($event.target).checked)"
+        />
+        Calcular automáticamente Jueves y Viernes Santo cada año
+      </label>
+    </section>
+
+    <!-- Formulario de Alta (2 cols) -->
+    <section class="form-shell lg:col-span-2">
+      <div class="form-section-header flex items-center gap-3">
+        <svg aria-hidden="true" lucidePlus class="w-5 h-5" style="color: var(--brand-700)"></svg>
+        <div>
+          <span class="eyebrow">Registrar</span>
+          <div class="form-section-title">Nuevo día inhábil</div>
+        </div>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <div class="field">
+          <label class="field-label" for="cal-form-tipo">Tipo</label>
+          <select
+            id="cal-form-tipo"
+            class="field-input !h-auto !py-[9px] !px-3 font-medium text-sm"
+            [value]="formTipo()"
+            (change)="formTipo.set($any($event.target).value)"
+          >
+            <option value="feriado">Feriado nacional</option>
+            <option value="no_laborable">Día no laborable (sector público)</option>
+            <option value="suspension">Suspensión de plazos</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cal-nombre">Motivo</label>
+          <input
+            id="cal-nombre"
+            type="text"
+            class="field-input"
+            [value]="formNombre()"
+            (input)="formNombre.set($any($event.target).value)"
+            [placeholder]="formTipo() === 'suspension' ? 'Ej.: Falla de sistemas o emergencia' : 'Ej.: Día no laborable compensable'"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="field">
+            <label class="field-label" for="cal-fecha">
+              {{ formTipo() === 'suspension' ? 'Desde' : 'Fecha' }}
+            </label>
+            <input
+              id="cal-fecha"
+              type="date"
+              class="field-input font-mono !py-[8px]"
+              [value]="formFecha()"
+              (input)="formFecha.set($any($event.target).value)"
+            />
+          </div>
+          @if (formTipo() === 'suspension') {
+            <div class="field">
+              <label class="field-label" for="cal-hasta">Hasta</label>
+              <input
+                id="cal-hasta"
+                type="date"
+                class="field-input font-mono !py-[8px]"
+                [value]="formHasta()"
+                [min]="formFecha() || undefined"
+                (input)="formHasta.set($any($event.target).value)"
+              />
+            </div>
+          }
+        </div>
+
+        <!-- Ámbito solo si es suspensión -->
+        @if (formTipo() === 'suspension') {
+          <fieldset class="field">
+            <legend class="field-label">Ámbito de la suspensión</legend>
+            <div class="flex gap-4 text-sm mt-1">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="cal-ambito"
+                  [checked]="ambito() === 'nacional'"
+                  (change)="ambito.set('nacional')"
+                />
+                Todas las entidades
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="cal-ambito"
+                  [checked]="ambito() === 'entidades'"
+                  (change)="ambito.set('entidades')"
+                />
+                Entidades específicas
+              </label>
+            </div>
+
+            @if (ambito() === 'entidades') {
+              <div class="mt-2 rounded-md" style="border: 1px solid var(--border)">
+                <input
+                  type="text"
+                  aria-label="Buscar entidad"
+                  class="field-input !rounded-b-none !border-0 !border-b text-xs"
+                  style="border-bottom: 1px solid var(--border)"
+                  [value]="buscaEntidad()"
+                  (input)="buscaEntidad.set($any($event.target).value)"
+                  placeholder="Buscar por nombre o acrónimo"
+                />
+                <ul class="max-h-40 overflow-y-auto p-1 space-y-1">
+                  @if (entidadesFiltradas().length === 0) {
+                    <li class="text-xs text-muted-foreground px-2 py-1.5">Sin coincidencias.</li>
+                  }
+                  @for (e of entidadesFiltradas(); track e.id) {
+                    <li>
+                      <label class="flex items-center gap-2 text-xs px-2 py-1 rounded cursor-pointer hover:bg-[color:var(--brand-subtle)]">
+                        <input
+                          type="checkbox"
+                          [checked]="estaEntidadSeleccionada(e.id)"
+                          (change)="alternarEntidad(e)"
+                        />
+                        <span class="truncate">{{ e.nombre }}{{ e.acronimo ? ' · ' + e.acronimo : '' }}</span>
+                      </label>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+            <span class="field-hint">
+              {{ ambito() === 'entidades'
+                ? entidadesSel().length + ' entidad(es) seleccionada(s): solo sus plazos se suspenden.'
+                : 'Suspende los plazos a nivel nacional para todas las entidades y el Tribunal.' }}
+            </span>
+          </fieldset>
+        }
+
+        @if (fechaFinDeSemana()) {
+          <p class="text-xs flex items-center gap-1.5" style="color: var(--warning)">
+            <svg aria-hidden="true" lucideAlertTriangle class="w-3.5 h-3.5"></svg>
+            La fecha cae en fin de semana: no altera el cómputo de días hábiles.
+          </p>
+        }
+
+        @if (formTipo() === 'feriado') {
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              [checked]="formRecurrente()"
+              (change)="formRecurrente.set($any($event.target).checked)"
+            />
+            Se repite todos los años (feriado por ley)
+          </label>
+        }
+
+        <div class="field">
+          <label class="field-label" for="cal-base">Base legal</label>
+          <input
+            id="cal-base"
+            type="text"
+            class="field-input"
+            [value]="formBaseLegal()"
+            (input)="formBaseLegal.set($any($event.target).value)"
+            placeholder="Ley / D.S. N.° ...-PCM / Resolución"
+          />
+        </div>
+
+        <button
+          type="button"
+          (click)="agregar()"
+          class="btn-brand w-full justify-center flex items-center gap-2 mt-2"
+        >
+          <svg aria-hidden="true" lucidePlus class="w-4 h-4"></svg>
+          Agregar al calendario
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 3. Catálogo de Plazos Procesales (1ª y 2ª Instancia) -->
+  <section class="form-shell">
+    <div class="form-section-header flex items-center gap-3">
+      <svg aria-hidden="true" lucideScale class="w-5 h-5" style="color: var(--brand-700)"></svg>
+      <div>
+        <span class="eyebrow">Plazos · 1ª instancia</span>
+        <div class="form-section-title">Entidad pública (SAIP)</div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data-table" aria-label="Plazos de la 1ª instancia">
+        <thead>
+          <tr>
+            <th scope="col">Plazo</th>
+            <th scope="col">Naturaleza</th>
+            <th scope="col">Dónde rige</th>
+            <th scope="col" class="w-[170px]">Días</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of plazosMeta; track m.clave) {
+            @if (m.instancia === 'primera') {
+              <tr [style.background]="valorPlazo(m.clave) !== valorGuardado(m.clave) ? 'color-mix(in srgb, var(--gold) 10%, transparent)' : 'transparent'">
+                <td class="max-w-[360px]">
+                  <div class="text-sm font-medium text-foreground">{{ m.etiqueta }}</div>
+                  <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ m.descripcion }}</div>
+                  <div class="text-[10px] text-muted-foreground mt-1 font-mono">{{ m.referencia }}</div>
+                </td>
+                <td>
+                  <span
+                    class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    [style.color]="naturalezaMap[m.naturaleza].color"
+                    [style.background]="'color-mix(in srgb, ' + naturalezaMap[m.naturaleza].color + ' 12%, transparent)'"
+                  >
+                    {{ naturalezaMap[m.naturaleza].label }}
+                  </span>
+                </td>
+                <td class="text-xs text-muted-foreground max-w-[220px]">{{ m.aplicaEn }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      [min]="m.min"
+                      [max]="m.max"
+                      class="field-input font-mono !py-[6px] w-[74px]"
+                      [value]="valorPlazo(m.clave)"
+                      (change)="setPlazo(m.clave, $any($event.target).value)"
+                    />
+                    <span class="text-[11px] text-muted-foreground leading-tight">
+                      {{ m.unidad === 'habiles' ? 'hábiles' : 'calendario' }}<br />
+                      def. {{ m.porDefecto }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="form-shell">
+    <div class="form-section-header flex items-center gap-3">
+      <svg aria-hidden="true" lucideGavel class="w-5 h-5" style="color: var(--brand-700)"></svg>
+      <div>
+        <span class="eyebrow">Plazos · 2ª instancia</span>
+        <div class="form-section-title">Tribunal de Transparencia (TTAIP)</div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="data-table" aria-label="Plazos de la 2ª instancia">
+        <thead>
+          <tr>
+            <th scope="col">Plazo</th>
+            <th scope="col">Naturaleza</th>
+            <th scope="col">Dónde rige</th>
+            <th scope="col" class="w-[170px]">Días</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of plazosMeta; track m.clave) {
+            @if (m.instancia === 'segunda') {
+              <tr [style.background]="valorPlazo(m.clave) !== valorGuardado(m.clave) ? 'color-mix(in srgb, var(--gold) 10%, transparent)' : 'transparent'">
+                <td class="max-w-[360px]">
+                  <div class="text-sm font-medium text-foreground">{{ m.etiqueta }}</div>
+                  <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">{{ m.descripcion }}</div>
+                  <div class="text-[10px] text-muted-foreground mt-1 font-mono">{{ m.referencia }}</div>
+                </td>
+                <td>
+                  <span
+                    class="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    [style.color]="naturalezaMap[m.naturaleza].color"
+                    [style.background]="'color-mix(in srgb, ' + naturalezaMap[m.naturaleza].color + ' 12%, transparent)'"
+                  >
+                    {{ naturalezaMap[m.naturaleza].label }}
+                  </span>
+                </td>
+                <td class="text-xs text-muted-foreground max-w-[220px]">{{ m.aplicaEn }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      [min]="m.min"
+                      [max]="m.max"
+                      class="field-input font-mono !py-[6px] w-[74px]"
+                      [value]="valorPlazo(m.clave)"
+                      (change)="setPlazo(m.clave, $any($event.target).value)"
+                    />
+                    <span class="text-[11px] text-muted-foreground leading-tight">
+                      {{ m.unidad === 'habiles' ? 'hábiles' : 'calendario' }}<br />
+                      def. {{ m.porDefecto }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. Tarifas y Simulador -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Tarifas TUPA -->
+    <section class="form-shell">
+      <div class="form-section-header flex items-center gap-3">
+        <svg aria-hidden="true" lucideReceipt class="w-5 h-5" style="color: var(--gold-dark)"></svg>
+        <div>
+          <span class="eyebrow" style="color: var(--gold-dark)">TUPA</span>
+          <div class="form-section-title">Costos de reproducción</div>
+        </div>
+      </div>
+      <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="field">
+          <label class="field-label" for="tar-copia-simple">Copia simple</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">S/</span>
+            <input
+              id="tar-copia-simple"
+              type="number"
+              step="0.01"
+              min="0"
+              class="field-input font-mono pl-8"
+              [value]="cal().tarifas.copiaSimple"
+              (change)="actualizarTarifa('copiaSimple', $any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="tar-copia-cert">Copia certificada</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">S/</span>
+            <input
+              id="tar-copia-cert"
+              type="number"
+              step="0.01"
+              min="0"
+              class="field-input font-mono pl-8"
+              [value]="cal().tarifas.copiaCertificada"
+              (change)="actualizarTarifa('copiaCertificada', $any($event.target).value)"
+            />
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="tar-soporte-dig">Soporte digital</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">S/</span>
+            <input
+              id="tar-soporte-dig"
+              type="number"
+              step="0.01"
+              min="0"
+              class="field-input font-mono pl-8"
+              [value]="cal().tarifas.soporteDigital"
+              (change)="actualizarTarifa('soporteDigital', $any($event.target).value)"
+            />
+          </div>
+        </div>
+        <p class="sm:col-span-3 text-xs text-muted-foreground">La entidad parte de estas tarifas al emitir la liquidación del costo de reproducción (Mapa Integral pág. 3).</p>
+      </div>
+    </section>
+
+    <!-- Simulador -->
+    <section class="form-shell">
+      <div class="form-section-header flex items-center gap-3">
+        <svg aria-hidden="true" lucideCalculator class="w-5 h-5" style="color: var(--info)"></svg>
+        <div>
+          <span class="eyebrow" style="color: var(--info)">Verificación</span>
+          <div class="form-section-title">Simulador de vencimientos</div>
+        </div>
+      </div>
+      <div class="p-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="field">
+            <label class="field-label" for="sim-inicio-input">Fecha de inicio</label>
+            <input
+              id="sim-inicio-input"
+              type="date"
+              class="field-input font-mono !py-[8px]"
+              [value]="simInicio()"
+              (input)="simInicio.set($any($event.target).value)"
+            />
+          </div>
+          <div class="field">
+            <label class="field-label" for="sim-plazo-select">Plazo</label>
+            <select
+              id="sim-plazo-select"
+              class="field-input !h-auto !py-[8px] !px-3 font-medium text-sm"
+              [value]="simClave()"
+              (change)="simClave.set($any($event.target).value)"
+            >
+              @for (m of plazosMeta; track m.clave) {
+                @if (m.naturaleza !== 'umbral') {
+                  <option [value]="m.clave">{{ m.etiqueta }}</option>
+                }
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="rounded-lg p-4" style="background: var(--paper); border: 1px solid var(--border)" aria-live="polite">
+          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Vence el</div>
+          <div class="font-display mt-1 text-lg font-semibold" style="color: var(--brand-700)">
+            {{ simVenceLargo() }}
+          </div>
+          <div class="text-xs text-muted-foreground mt-1">
+            {{ valorPlazo(simClave()) }} días {{ simMeta().unidad === 'habiles' ? 'hábiles' : 'calendario' }} contados desde el día siguiente · con el borrador actual
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 5. Historial de Cambios -->
+  <section class="form-shell">
+    <div class="form-section-header flex items-center gap-3">
+      <svg aria-hidden="true" lucideHistory class="w-5 h-5" style="color: var(--brand-700)"></svg>
+      <div>
+        <span class="eyebrow">Trazabilidad</span>
+        <div class="form-section-title">Historial de cambios del calendario</div>
+      </div>
+      @if (guardado().actualizado) {
+        <span class="ml-auto text-xs text-muted-foreground">
+          Última actualización: {{ guardado().actualizado?.fecha?.slice(0, 10) }}
+        </span>
+      }
+    </div>
+    <div class="p-2">
+      @if (guardado().historial.length === 0) {
+        <p class="text-sm text-muted-foreground px-4 py-5">
+          Aún no hay cambios registrados; rigen los valores oficiales del Mapa Integral.
+        </p>
+      } @else {
+        @for (h of guardado().historial.slice(0, 10); track $index) {
+          <div class="px-4 py-3 flex items-start gap-3 border-t first:border-t-0 border-border">
+            <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success)"></svg>
+            <div class="min-w-0">
+              <p class="text-sm text-foreground/85">{{ h.detalle }}</p>
+              <p class="text-xs text-muted-foreground font-mono mt-0.5">
+                {{ h.fecha.slice(0, 10) }}{{ h.usuario ? ' · ' + h.usuario : '' }}{{ h.norma ? ' · ' + h.norma : '' }}
+              </p>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </section>
+
+  <!-- 6. Barra Fija de Guardado (Sticky Bottom Bar) -->
+  <div class="form-shell sticky bottom-4 z-10" style="box-shadow: var(--shadow-md)">
+    <div class="p-4 flex flex-col md:flex-row md:items-end gap-3">
+      <div class="flex-1">
+        @if (cambiosLegales().length > 0) {
+          <div class="field">
+            <label class="field-label" for="cal-norma">
+              Norma que sustenta el cambio de plazo legal <span class="req text-destructive">*</span>
+            </label>
+            <input
+              id="cal-norma"
+              type="text"
+              class="field-input"
+              [value]="norma()"
+              (input)="norma.set($any($event.target).value)"
+              placeholder="Ej.: D.S. N.° 0XX-2027-JUS que modifica el Reglamento de la Ley N.° 27806"
+            />
+            <span class="field-hint text-xs">
+              Modifica: @for (m of cambiosLegales(); track m.clave; let last = $last) {
+                {{ m.etiqueta }}{{ !last ? ', ' : '' }}
+              }
+            </span>
+          </div>
+        } @else {
+          <p class="text-sm text-muted-foreground flex items-center gap-2">
+            <svg aria-hidden="true" lucideClock class="w-4 h-4"></svg>
+            {{ sucio() ? 'Hay cambios sin guardar en el calendario o en los plazos.' : 'El calendario vigente está guardado.' }}
+          </p>
+        }
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button
+          type="button"
+          (click)="descartar()"
+          [disabled]="!sucio() || guardando()"
+          class="btn-ghost-brand disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Descartar
+        </button>
+        <button
+          type="button"
+          (click)="guardar()"
+          [disabled]="!sucio() || guardando()"
+          class="btn-brand disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <svg aria-hidden="true" lucideSave class="w-4 h-4"></svg>
+          {{ guardando() ? 'Guardando…' : 'Guardar y aplicar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
