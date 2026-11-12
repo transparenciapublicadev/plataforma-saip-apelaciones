@@ -16,9 +16,6 @@ import {
   LucideDownload,
   LucideTrash2,
   LucidePlus,
-  LucideX,
-  LucideArrowLeft,
-  LucideChevronRight,
 } from '@lucide/angular';
 import {
   DocContext,
@@ -58,23 +55,15 @@ export interface DocEntry {
     LucideDownload,
     LucideTrash2,
     LucidePlus,
-    LucideX,
-    LucideArrowLeft,
-    LucideChevronRight,
   ],
   template: `
     <section class="form-shell">
       <div class="form-section-header">
-        <span class="eyebrow">Plantillas documentales</span>
-        <h2 class="form-section-title">Borradores para revisión</h2>
+        <span class="eyebrow">Documentos oficiales</span>
+        <h2 class="form-section-title">Numeración y archivo</h2>
       </div>
 
       <div class="p-5 space-y-3">
-        <p id="emision-no-disponible" role="note" class="text-sm text-muted-foreground">
-          Borradores locales sin emisión ni firma verificada. Reservar numeración, emitir y archivar
-          una versión final no está disponible: falta una operación documental persistida y verificable.
-          Los archivos registrados se consultan en los documentos de cada resolución o cédula.
-        </p>
         @if (draftError()) {
           <p role="alert" class="text-sm" style="color: var(--danger)">{{ draftError() }}</p>
         }
@@ -83,8 +72,7 @@ export interface DocEntry {
             class="rounded-md p-3 text-sm text-muted-foreground"
             style="background: var(--muted); border: 1px dashed var(--border)"
           >
-            Seleccione una decisión para que se preparen borradores de cédula, o agregue
-            documentos manualmente.
+            Aún no hay documentos. Elija un documento en la lista y presione «Agregar» para preparar su borrador.
           </div>
         }
 
@@ -126,16 +114,13 @@ export interface DocEntry {
                       {{ entry.destinatario === 'recurrente' ? 'Administrado' : 'Entidad' }}
                     </span>
                   }
-                  <span
-                    class="text-[10px] px-1.5 py-0.5 rounded uppercase tracking-widest font-semibold"
-                    [style.background]="getEstadoBadgeBg(entry.estado)"
-                    [style.color]="getEstadoColor(entry.estado)"
-                  >
-                    {{ getEstadoLabel(entry.estado) }}
-                  </span>
                 </div>
 
-                <div class="text-[11px] text-muted-foreground mt-0.5">Sin numeración oficial asignada</div>
+                @if (entry.numeroCompleto) {
+                  <div class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ entry.numeroCompleto }}</div>
+                } @else {
+                  <div class="text-[11px] text-muted-foreground mt-0.5">Número pendiente de reserva</div>
+                }
               </div>
 
               @if (entry.estado === 'borrador' && !entry.isAutoAdded) {
@@ -151,293 +136,73 @@ export interface DocEntry {
               }
             </div>
 
-            <!-- Selector de Sala colegiada (solo en resolución pendiente) -->
             @if (entry.tipo === 'resolucion' && entry.estado === 'borrador') {
               <div class="space-y-1.5">
-                <span class="eyebrow">Sala del borrador (selección local)</span>
+                <span class="eyebrow">Sala colegiada <span style="color: var(--brand-600)">*</span></span>
                 <div class="flex gap-2">
-                  <button
-                    type="button"
-                    (click)="seleccionarSala('primera_sala')"
-                    class="flex-1 rounded-md py-2 text-[13px] font-medium transition-all"
-                    [style.background]="
-                      selectedSala() === 'primera_sala' ? 'var(--brand-subtle)' : 'var(--card)'
-                    "
-                    [style.border]="
-                      '1.5px solid ' +
-                      (selectedSala() === 'primera_sala' ? 'var(--brand-700)' : 'var(--border)')
-                    "
-                    [style.color]="
-                      selectedSala() === 'primera_sala'
-                        ? 'var(--brand-700)'
-                        : 'var(--muted-foreground)'
-                    "
-                  >
-                    Primera Sala
-                  </button>
-
-                  <button
-                    type="button"
-                    (click)="seleccionarSala('segunda_sala')"
-                    class="flex-1 rounded-md py-2 text-[13px] font-medium transition-all"
-                    [style.background]="
-                      selectedSala() === 'segunda_sala' ? 'var(--brand-subtle)' : 'var(--card)'
-                    "
-                    [style.border]="
-                      '1.5px solid ' +
-                      (selectedSala() === 'segunda_sala' ? 'var(--brand-700)' : 'var(--border)')
-                    "
-                    [style.color]="
-                      selectedSala() === 'segunda_sala'
-                        ? 'var(--brand-700)'
-                        : 'var(--muted-foreground)'
-                    "
-                  >
-                    Segunda Sala
-                  </button>
+                  @for (sala of salas; track sala.id) {
+                    <button
+                      type="button"
+                      (click)="seleccionarSala(entry.localId, sala.id)"
+                      class="flex-1 rounded-md py-2 text-[13px] font-medium transition-all"
+                      [style.background]="entry.sala === sala.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                      [style.border]="'1.5px solid ' + (entry.sala === sala.id ? 'var(--brand-700)' : 'var(--border)')"
+                      [style.color]="entry.sala === sala.id ? 'var(--brand-700)' : 'var(--muted-foreground)'"
+                    >{{ sala.label }}</button>
+                  }
                 </div>
               </div>
             }
 
-            <div class="flex items-center gap-2 flex-wrap pt-1">
-              <button type="button" disabled aria-describedby="emision-no-disponible"
-                class="btn-brand !py-1.5 !px-3 !text-[13px] disabled:opacity-50">Reservar N.°</button>
+            <div class="flex items-center gap-2 flex-wrap">
+              @if (!entry.numeroCompleto) {
+                <button type="button" disabled title="La reserva del correlativo requiere la operación documental persistida"
+                  class="btn-brand !py-1.5 !px-3 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">Reservar N.°</button>
+              }
               <button type="button" (click)="descargarPdf(entry)"
                 class="btn-ghost-brand !py-1.5 !px-3 !text-[13px] inline-flex items-center gap-1.5"
-                title="Descargar borrador PDF sin emisión ni firma verificada">
-                <svg lucideDownload class="w-3.5 h-3.5"></svg> PDF borrador
+                title="Descargar PDF">
+                <svg lucideDownload class="w-3.5 h-3.5"></svg> PDF
               </button>
               <button type="button" (click)="descargarWord(entry)"
                 class="btn-ghost-brand !py-1.5 !px-3 !text-[13px] inline-flex items-center gap-1.5"
-                title="Descargar borrador Word editable">
-                <svg lucideFileText class="w-3.5 h-3.5"></svg> Word borrador
+                title="Descargar formato Word editable">
+                <svg lucideFileText class="w-3.5 h-3.5"></svg> Word
               </button>
-              <button type="button" disabled aria-describedby="emision-no-disponible"
-                class="btn-brand !py-1.5 !px-3 !text-[13px] disabled:opacity-50">Emitir</button>
             </div>
           </div>
         }
 
-        <!-- Botón para modal Agregar borrador -->
-        <button
-          type="button"
-          (click)="abrirAddModal()"
-          class="btn-ghost-brand !py-2 !text-[13px] w-full justify-center inline-flex items-center gap-1.5"
-        >
-          <svg lucidePlus class="w-4 h-4"></svg>
-          Agregar borrador
-        </button>
-      </div>
-    </section>
-
-    <!-- Modal "Agregar borrador" -->
-    @if (showAddModal()) {
-      <div
-        class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/55 backdrop-blur-xs"
-        (click)="cerrarAddModal()"
-      >
-        <div
-          class="w-full max-w-sm rounded-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95"
-          style="
-            background: var(--card);
-            border: 1px solid var(--border);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-          "
-          (click)="$event.stopPropagation()"
-        >
-          <!-- Header Modal -->
-          <div
-            class="flex items-center justify-between gap-3 px-5 py-4 border-b"
-            style="border-color: var(--border)"
-          >
-            <div class="flex items-center gap-2.5">
-              @if (addModalStep() !== 'select') {
-                <button
-                  type="button"
-                  (click)="addModalStep.set('select')"
-                  class="w-7 h-7 rounded-md flex items-center justify-center"
-                  style="border: 1px solid var(--border)"
-                  title="Volver"
-                >
-                  <svg lucideArrowLeft class="w-3.5 h-3.5"></svg>
-                </button>
-              }
-              <span class="text-sm font-semibold">
-                {{
-                  addModalStep() === 'select'
-                    ? 'Agregar borrador'
-                    : addModalStep() === 'carta'
-                      ? 'Nueva Carta'
-                      : 'Nuevo Oficio'
-                }}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              (click)="cerrarAddModal()"
-              class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[color:var(--muted)]"
-              style="border: 1px solid var(--border)"
-              title="Cerrar"
-            >
-              <svg lucideX class="w-3.5 h-3.5"></svg>
-            </button>
-          </div>
-
-          <!-- Contenido Modal -->
-          @if (addModalStep() === 'select') {
-            <div class="p-4 space-y-2">
-              <button
-                type="button"
-                [disabled]="tieneResolucion()"
-                (click)="agregarResolucionManual()"
-                class="w-full rounded-lg p-3.5 text-left flex items-center gap-3 transition-colors hover:bg-[color:var(--muted)] disabled:opacity-50"
-                style="background: var(--background); border: 1px solid var(--border)"
-              >
-                <div
-                  class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                  style="background: rgba(139,26,26,0.12); border: 1px solid rgba(139,26,26,0.25)"
-                >
-                  <svg lucideGavel class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium">Resolución</div>
-                  <div class="text-[11px] text-muted-foreground mt-0.5">
-                    {{
-                      tieneResolucion()
-                        ? 'La resolución ya fue creada'
-                        : 'Resolución colegiada del acto'
-                    }}
-                  </div>
-                </div>
-                <svg lucideChevronRight class="w-4 h-4 text-muted-foreground"></svg>
-              </button>
-
-              <button
-                type="button"
-                [disabled]="tieneCedulaRecurrente()"
-                (click)="agregarCedulaManual('recurrente')"
-                class="w-full rounded-lg p-3.5 text-left flex items-center gap-3 transition-colors hover:bg-[color:var(--muted)] disabled:opacity-50"
-                style="background: var(--background); border: 1px solid var(--border)"
-              >
-                <div
-                  class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                  style="background: rgba(176,136,66,0.12); border: 1px solid rgba(176,136,66,0.25)"
-                >
-                  <svg lucideMail class="w-4 h-4" style="color: var(--gold-dark)"></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium">Cédula · Administrado</div>
-                  <div class="text-[11px] text-muted-foreground mt-0.5">
-                    Cédula de notificación al ciudadano recurrente
-                  </div>
-                </div>
-                <svg lucideChevronRight class="w-4 h-4 text-muted-foreground"></svg>
-              </button>
-
-              @if (!esInadmisible()) {
-                <button
-                  type="button"
-                  [disabled]="tieneCedulaEntidad()"
-                  (click)="agregarCedulaManual('entidad')"
-                  class="w-full rounded-lg p-3.5 text-left flex items-center gap-3 transition-colors hover:bg-[color:var(--muted)] disabled:opacity-50"
-                  style="background: var(--background); border: 1px solid var(--border)"
-                >
-                  <div
-                    class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                    style="
-                      background: rgba(176,136,66,0.12);
-                      border: 1px solid rgba(176,136,66,0.25);
-                    "
-                  >
-                    <svg lucideMail class="w-4 h-4" style="color: var(--gold-dark)"></svg>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm font-medium">Cédula · Entidad</div>
-                    <div class="text-[11px] text-muted-foreground mt-0.5">
-                      Cédula de notificación a la entidad emplazada
-                    </div>
-                  </div>
-                  <svg lucideChevronRight class="w-4 h-4 text-muted-foreground"></svg>
-                </button>
-              }
-
-              <button
-                type="button"
-                (click)="addModalStep.set('carta')"
-                class="w-full rounded-lg p-3.5 text-left flex items-center gap-3 transition-colors hover:bg-[color:var(--muted)]"
-                style="background: var(--background); border: 1px solid var(--border)"
-              >
-                <div
-                  class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                  style="background: rgba(29,78,216,0.12); border: 1px solid rgba(29,78,216,0.25)"
-                >
-                  <svg lucideFileText class="w-4 h-4" style="color: var(--info)"></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium">Carta</div>
-                  <div class="text-[11px] text-muted-foreground mt-0.5">
-                    Comunicación complementaria
-                  </div>
-                </div>
-                <svg lucideChevronRight class="w-4 h-4 text-muted-foreground"></svg>
-              </button>
-
-              <button
-                type="button"
-                (click)="addModalStep.set('oficio')"
-                class="w-full rounded-lg p-3.5 text-left flex items-center gap-3 transition-colors hover:bg-[color:var(--muted)]"
-                style="background: var(--background); border: 1px solid var(--border)"
-              >
-                <div
-                  class="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-                  style="background: rgba(29,78,216,0.12); border: 1px solid rgba(29,78,216,0.25)"
-                >
-                  <svg lucideFileText class="w-4 h-4" style="color: var(--info)"></svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium">Oficio</div>
-                  <div class="text-[11px] text-muted-foreground mt-0.5">
-                    Requerimiento formal institucional
-                  </div>
-                </div>
-                <svg lucideChevronRight class="w-4 h-4 text-muted-foreground"></svg>
-              </button>
-            </div>
-          } @else {
-            <div class="p-4 space-y-3">
-              <div class="field">
-                <label class="field-label">Asunto <span class="req">*</span></label>
-                <input
-                  type="text"
-                  class="field-input w-full"
-                  placeholder="Ej. Solicitud de información complementaria"
-                  [(ngModel)]="addFormAsunto"
-                />
-              </div>
-
-              <div class="field">
-                <label class="field-label">Destinatario <span class="req">*</span></label>
-                <input
-                  type="text"
-                  class="field-input w-full"
-                  placeholder="Ej. Entidad emplazada / Órgano de Control"
-                  [(ngModel)]="addFormDestinatario"
-                />
-              </div>
-
-              <button
-                type="button"
-                (click)="confirmarAgregarCartaOficio()"
-                class="btn-brand w-full !py-2.5 justify-center mt-2"
-              >
-                Agregar borrador
-              </button>
-            </div>
+        <div class="rounded-lg p-3 flex flex-wrap items-end gap-3" style="background: var(--muted); border: 1px dashed var(--border)">
+          <label class="flex flex-col gap-1 min-w-[200px] flex-1">
+            <span class="eyebrow">Documento</span>
+            <select class="field-input !py-2 !text-[13px]" [ngModel]="pickTipo()" (ngModelChange)="elegirTipo($event)" name="documento-oficial">
+              <option value="">Seleccione un documento…</option>
+              <option value="resolucion">Resolución</option>
+              <option value="cedula_recurrente">Cédula — Administrado</option>
+              @if (!esInadmisible()) { <option value="cedula_entidad">Cédula — Entidad</option> }
+              <option value="carta">Carta</option>
+              <option value="oficio">Oficio</option>
+            </select>
+          </label>
+          @if (pickTipo() === 'resolucion') {
+            <label class="flex flex-col gap-1 min-w-[160px]">
+              <span class="eyebrow">Sala <span style="color: var(--brand-600)">*</span></span>
+              <select class="field-input !py-2 !text-[13px]" [ngModel]="pickSala()" (ngModelChange)="elegirSala($event)" name="sala-oficial">
+                <option value="">Seleccione…</option>
+                <option value="primera_sala">Primera Sala</option>
+                <option value="segunda_sala">Segunda Sala</option>
+              </select>
+            </label>
           }
+          <button type="button" (click)="agregarSeleccionado()" [disabled]="!puedeAgregar()"
+            class="btn-brand !py-2 !px-3 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
+            <svg lucidePlus class="w-4 h-4"></svg>
+            Agregar
+          </button>
         </div>
       </div>
-    }
+    </section>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -447,11 +212,14 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   @Input() decision: string | null | undefined = null;
   @Input() ctx: Partial<DocContext> = {};
 
-  readonly selectedSala = signal<'primera_sala' | 'segunda_sala'>('segunda_sala');
+  readonly salas = [
+    { id: 'primera_sala' as const, label: 'Primera Sala' },
+    { id: 'segunda_sala' as const, label: 'Segunda Sala' },
+  ];
+  readonly pickTipo = signal<'' | 'resolucion' | 'cedula_recurrente' | 'cedula_entidad' | 'carta' | 'oficio'>('');
+  readonly pickSala = signal<'' | 'primera_sala' | 'segunda_sala'>('');
   readonly entries = signal<DocEntry[]>([]);
   readonly draftError = signal('');
-  readonly showAddModal = signal<boolean>(false);
-  readonly addModalStep = signal<'select' | 'carta' | 'oficio'>('select');
 
   addFormAsunto = '';
   addFormDestinatario = '';
@@ -463,47 +231,62 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     this.draftError.set('');
     if (changes['expediente'] || changes['stage']) {
-      this.cerrarAddModal();
       this.addFormAsunto = '';
       this.addFormDestinatario = '';
-      this.selectedSala.set('segunda_sala');
+      this.pickTipo.set('');
+      this.pickSala.set('');
       this.rebuildDefaultEntries();
     } else if (changes['decision']) {
       this.syncEntriesWithDecision();
     }
   }
 
-  seleccionarSala(sala: 'primera_sala' | 'segunda_sala'): void {
-    this.selectedSala.set(sala);
+  seleccionarSala(localId: string, sala: 'primera_sala' | 'segunda_sala'): void {
+    this.entries.update((list) => list.map((entry) => entry.localId === localId ? { ...entry, sala } : entry));
+  }
+
+  elegirTipo(valor: string): void {
+    const tipo = valor === 'resolucion' || valor === 'cedula_recurrente' || valor === 'cedula_entidad' || valor === 'carta' || valor === 'oficio' ? valor : '';
+    this.pickTipo.set(tipo);
+    this.pickSala.set('');
+  }
+
+  elegirSala(valor: string): void {
+    this.pickSala.set(valor === 'primera_sala' || valor === 'segunda_sala' ? valor : '');
+  }
+
+  puedeAgregar(): boolean {
+    const tipo = this.pickTipo();
+    if (tipo === 'resolucion') return this.pickSala() !== '' && !this.tieneResolucion();
+    if (tipo === 'cedula_recurrente') return !this.tieneCedulaRecurrente();
+    if (tipo === 'cedula_entidad') return !this.esInadmisible() && !this.tieneCedulaEntidad();
+    return tipo === 'carta' || tipo === 'oficio';
+  }
+
+  agregarSeleccionado(): void {
+    if (!this.puedeAgregar()) return;
+    const tipo = this.pickTipo();
+    if (tipo === 'resolucion') {
+      const sala = this.pickSala();
+      if (sala !== 'primera_sala' && sala !== 'segunda_sala') return;
+      this.entries.update((list) => [...list, {
+        localId: this.generarId(), tipo: 'resolucion', sala, estado: 'borrador', isAutoAdded: false,
+      }]);
+    } else if (tipo === 'cedula_recurrente') {
+      this.agregarCedulaManual('recurrente');
+    } else if (tipo === 'cedula_entidad') {
+      this.agregarCedulaManual('entidad');
+    } else if (tipo === 'carta' || tipo === 'oficio') {
+      this.entries.update((list) => [...list, {
+        localId: this.generarId(), tipo, destinatario: 'general', estado: 'borrador',
+      }]);
+    }
+    this.pickTipo.set('');
+    this.pickSala.set('');
   }
 
   eliminarEntry(localId: string): void {
     this.entries.set(this.entries().filter((e) => e.localId !== localId));
-  }
-
-  abrirAddModal(): void {
-    this.addModalStep.set('select');
-    this.addFormAsunto = '';
-    this.addFormDestinatario = '';
-    this.showAddModal.set(true);
-  }
-
-  cerrarAddModal(): void {
-    this.showAddModal.set(false);
-  }
-
-  agregarResolucionManual(): void {
-    this.entries.update((p) => [
-      ...p,
-      {
-        localId: this.generarId(),
-        tipo: 'resolucion',
-        sala: this.selectedSala(),
-        estado: 'borrador',
-        isAutoAdded: false,
-      },
-    ]);
-    this.cerrarAddModal();
   }
 
   agregarCedulaManual(destinatario: 'recurrente' | 'entidad'): void {
@@ -517,24 +300,6 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
         isAutoAdded: false,
       },
     ]);
-    this.cerrarAddModal();
-  }
-
-  confirmarAgregarCartaOficio(): void {
-    if (!this.addFormAsunto.trim() || !this.addFormDestinatario.trim()) return;
-    const tipo = this.addModalStep() as 'carta' | 'oficio';
-    this.entries.update((p) => [
-      ...p,
-      {
-        localId: this.generarId(),
-        tipo,
-        destinatario: 'general',
-        asunto: this.addFormAsunto.trim(),
-        destinatarioNombre: this.addFormDestinatario.trim(),
-        estado: 'borrador',
-      },
-    ]);
-    this.cerrarAddModal();
   }
 
   descargarPdf(entry: DocEntry): void {
@@ -596,7 +361,6 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
       {
         localId: this.generarId(),
         tipo: 'resolucion',
-        sala: this.selectedSala(),
         estado: 'borrador',
         isAutoAdded: true,
       },
@@ -629,7 +393,6 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
       next.unshift({
         localId: this.generarId(),
         tipo: 'resolucion',
-        sala: this.selectedSala(),
         estado: 'borrador',
         isAutoAdded: true,
       });
@@ -672,7 +435,7 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
       // No registered numbers are assigned to a new draft or another document type.
       resolucionNro: undefined,
       cedulaNro: undefined,
-      sala: this.selectedSala(),
+      sala: entry.sala,
       sumilla: entry.asunto || this.ctx.sumilla,
       destinatarioDocumento: entry.destinatarioNombre,
     };
@@ -703,9 +466,9 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   getTipoLabel(tipo: DocEntry['tipo']): string {
     switch (tipo) {
       case 'resolucion':
-        return 'Resolución TTAIP';
+        return 'Resolución';
       case 'cedula':
-        return 'Cédula de Notificación';
+        return 'Cédula';
       case 'carta':
         return 'Carta';
       case 'oficio':
