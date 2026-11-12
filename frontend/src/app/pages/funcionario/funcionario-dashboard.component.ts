@@ -79,13 +79,11 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly queryLoading = signal(false);
   readonly pagina = signal<PanelPage<Solicitud> | null>(null);
   readonly resumen = signal<PanelSummary | null>(null);
-  readonly orden = signal<'recientes' | 'antiguas'>('recientes');
   private searchTimer?: ReturnType<typeof setTimeout>;
   error = signal('');
   errorTipo = signal<'sesion' | 'validacion' | 'autenticacion' | 'autorizacion' | 'no-encontrado' | 'red' | 'servidor' | 'incompleta' | null>(null);
   informacionIncompleta = signal(false);
   selectedBucket = signal<BucketKey>('todas');
-  filtroEstado = signal('');
   busqueda = signal('');
   nombreEntidad = signal('');
   nombreFuncionario = signal('');
@@ -104,7 +102,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly cerradas = computed(() => this.respondidas() + this.counts().san);
   readonly cumplimiento = computed<number | null>(() => {
     const cerradas = this.cerradas();
-    if (cerradas === 0) return 100;
+    if (cerradas === 0) return null;
     return Math.round((this.respondidas() / cerradas) * 100);
   });
   readonly donutDashOffset = computed(() => {
@@ -127,12 +125,12 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   });
   readonly topTemas = computed(() => Object.entries(this.resumen()?.porTipoInformacion ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4));
   readonly paginaActual = signal(1);
-  readonly itemsPorPagina = signal(4);
+  private readonly pageSize = 4;
   readonly totalRegistros = computed(() => this.pagina()?.totalElementos ?? 0);
-  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.itemsPorPagina())));
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.pageSize)));
   readonly paginaSegura = computed(() => Math.min(this.paginaActual(), this.totalPaginas()));
-  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.itemsPorPagina() + 1 : 0);
-  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.itemsPorPagina(), this.totalRegistros()));
+  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.pageSize + 1 : 0);
+  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.pageSize, this.totalRegistros()));
   readonly filtradasVisibles = computed(() => this.filtradas());
   get busquedaModel(): string { return this.busqueda(); }
   set busquedaModel(value: string) { this.busqueda.set(value.slice(0, 120)); this.paginaActual.set(1); clearTimeout(this.searchTimer); this.read.unsubscribe(); this.generation++; this.solicitudes.set([]); this.queryLoading.set(true); this.searchTimer = setTimeout(() => this.cargarSolicitudes(false), 250); }
@@ -199,11 +197,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     this.paginaActual.set(1);
     this.cargarSolicitudes(false);
   }
-  cambiarEstado(value: string): void { this.filtroEstado.set(value); this.paginaActual.set(1); this.cargarSolicitudes(false); }
-  cambiarOrden(value: 'recientes' | 'antiguas'): void { this.orden.set(value); this.paginaActual.set(1); this.cargarSolicitudes(false); }
-  limpiarFiltros(): void { this.busqueda.set(''); this.filtroEstado.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); this.cargarSolicitudes(false); }
   cambiarPagina(page: number): void { if (Number.isSafeInteger(page) && page >= 1 && page <= this.totalPaginas() && page !== this.paginaActual()) { this.paginaActual.set(page); this.cargarSolicitudes(false); } }
-  cambiarItemsPorPagina(size: number): void { if ([4, 8, 12].includes(size)) { this.itemsPorPagina.set(size); this.paginaActual.set(1); this.cargarSolicitudes(false); } }
   get isFirstVisit(): boolean { return this.tourService.isFirstVisit('saip_tour_funcionario'); }
   startTour(): void { this.tourService.startTour('saip_tour_funcionario', this.tourSteps); }
 
@@ -217,7 +211,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     const generation = ++this.generation;
     this.revision = revision; this.revisionConsulta.set(revision);
     this.solicitudes.set([]); this.pagina.set(null); this.error.set(''); this.errorTipo.set(null); this.loading.set(changed || !this.resumen()); this.queryLoading.set(true); this.informacionIncompleta.set(false);
-    if (changed) { this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0); this.resumen.set(null); this.busqueda.set(''); this.filtroEstado.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); }
+    if (changed) { this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0); this.resumen.set(null); this.busqueda.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); }
     let session: ReturnType<AuthService['obtenerSesion']> = null;
     try { session = this.authService.obtenerSesion(); } catch { /* No query for malformed local session. */ }
     if (!session?.token || session.tipoUsuario !== 'FUNCIONARIO' || !positiveId(session.funcionarioId)
@@ -247,9 +241,9 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
       this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null);
     };
     const loadPage = (entidad: number) => {
-      const page = this.paginaActual() - 1, size = this.itemsPorPagina();
+      const page = this.paginaActual() - 1, size = this.pageSize;
       this.read.add(this.panelService.solicitudes({ pagina: page, tamano: size, busqueda: this.busqueda().trim(),
-        estado: this.filtroEstado(), etapa: this.selectedBucket(), orden: this.orden() }).subscribe({
+        etapa: this.selectedBucket() }).subscribe({
         next: data => {
           if (!current()) return;
           const verified = validPanelPage<Solicitud>(data, page, size) ? readInstitutionList(data.contenido, entidad) : null;
@@ -321,6 +315,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     }
     if (item.diasRestantes === null) return 'Plazo no informado';
     const d = item.diasRestantes;
+    if (d === 0) return 'Vence hoy';
     return `${d} ${d === 1 ? 'día háb.' : 'días háb.'}`;
   }
   canResponder(solicitud: Solicitud): boolean { return this.contextoVigente() && !this.loading() && !this.error() && canNavigateToResponse(solicitud); }

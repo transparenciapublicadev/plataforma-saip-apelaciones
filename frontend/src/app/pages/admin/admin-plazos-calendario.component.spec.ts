@@ -138,6 +138,20 @@ describe('AdminPlazosCalendarioComponent — Gestión Oficial de Plazos y Calend
     expect(component.sucio()).toBe(false);
   });
 
+  it('un fallo del servidor no marca el calendario como guardado', () => {
+    component.setPlazo('SAIP_ATENCION', '12');
+    component.norma.set('D.S. 025-2026-PCM');
+    component.guardar();
+
+    const req = httpTesting.expectOne(`${environment.apiUrl}/calendario`);
+    req.flush({ title: 'No disponible' }, { status: 503, statusText: 'Unavailable' });
+
+    expect(component.mensajeExito()).toBeNull();
+    expect(component.mensajeError()).toContain('no se guardó');
+    expect(component.sucio()).toBe(true);
+    expect(component.norma()).toBe('D.S. 025-2026-PCM');
+  });
+
   it('descartar restaura el estado previo al último guardado', () => {
     const cantidadOriginal = component.cal().feriados.length;
     component.formNombre.set('Feriado Descartable');

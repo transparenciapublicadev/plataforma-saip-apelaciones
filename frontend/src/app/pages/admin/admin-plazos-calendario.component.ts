@@ -254,37 +254,25 @@ export class AdminPlazosCalendarioComponent implements OnInit {
   }
 
   cargarCalendario(): void {
-    // 1. Cargar almacenamiento local si existe
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(this.STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const norm = normalizarCalendario(parsed);
+    if (!this.http) {
+      this.mostrarError('No hay conexión con el calendario del servidor. Lo que se ve no está confirmado.');
+      return;
+    }
+    this.http.get<CalendarioConfig>(this.apiUrl).subscribe({
+      next: (data) => {
+        if (data && typeof data === 'object') {
+          const norm = normalizarCalendario(data);
           this.guardado.set(norm);
           this.cal.set(norm);
+          this.persistirLocal(norm);
+        } else {
+          this.mostrarError('La respuesta del calendario está incompleta. No se aplicó como calendario vigente.');
         }
-      } catch {}
-    }
-
-    // 2. Sincronizar desde backend
-    if (this.http) {
-      this.http.get<CalendarioConfig>(this.apiUrl).subscribe({
-        next: (data) => {
-          if (data && typeof data === 'object') {
-            const norm = normalizarCalendario(data);
-            this.guardado.set(norm);
-            this.cal.set(norm);
-            if (typeof localStorage !== 'undefined') {
-              try {
-                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(norm));
-              } catch {}
-            }
-          }
-        },
-        error: () => {}
-      });
-    }
+      },
+      error: () => {
+        this.mostrarError('No se pudo leer el calendario del servidor. Los valores en pantalla no están confirmados.');
+      }
+    });
   }
 
   conteoTipo(t: TipoInhabil): number {
@@ -531,24 +519,13 @@ export class AdminPlazosCalendarioComponent implements OnInit {
           this.mostrarExito('Calendario y plazos oficiales actualizados y vigentes.');
         },
         error: () => {
-          // Si el servidor falla o no responde, persistimos localmente
-          const vigente = normalizarCalendario(nuevo);
-          this.guardado.set(vigente);
-          this.cal.set(vigente);
-          this.norma.set('');
           this.guardando.set(false);
-          this.persistirLocal(vigente);
-          this.mostrarExito('Cambios aplicados localmente en esta sesión.');
+          this.mostrarError('El calendario no se guardó en el servidor. El borrador sigue aquí; consulte antes de volver a intentar.');
         }
       });
     } else {
-      const vigente = normalizarCalendario(nuevo);
-      this.guardado.set(vigente);
-      this.cal.set(vigente);
-      this.norma.set('');
       this.guardando.set(false);
-      this.persistirLocal(vigente);
-      this.mostrarExito('Calendario guardado localmente.');
+      this.mostrarError('No hay conexión con el calendario del servidor.');
     }
   }
 

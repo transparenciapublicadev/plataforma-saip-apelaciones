@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,8 +14,11 @@ import { PaginationComponent } from '../../shared/pagination.component';
 import {
   StageKey, StageMeta, stages, positiveId, stageOf, readAppeals, recordedDate,
   computePlazoStatus, PlazoStatusResult, actionFor, finalDecision, clockText,
+  decisionLista, decisionLabels, stagesConPlazos,
   habilesEntreFechas, finalStates
 } from './ttaip-dashboard.model';
+import { CalendarioConfig, hoyLima, normalizarCalendario } from '../../models/calendario.model';
+import { environment } from '../../../environments/environment';
 import {
   LucideGavel, LucideCompass, LucideLayers, LucideScale, LucideHourglass, LucideCheckCircle2,
   LucideSearch, LucideInbox, LucideArrowRight, LucideBuilding2, LucideActivity, LucideClock,
@@ -37,19 +41,23 @@ import {
 })
 export class TtaipDashboardComponent implements OnInit, OnDestroy {
   private readonly panelService = inject(PanelQueryService);
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly tourService = inject(GuidedTourService);
 
   private query = new Subscription();
+  private calendarQuery = new Subscription();
   private generation = 0;
+  private calendarGeneration = 0;
   private destroyed = false;
   private initialized = false;
   private revision = -1;
   private loadedSession = '';
   private focusStageFromState: StageKey | null = null;
 
-  readonly stages = stages;
+  readonly stageCatalog = signal<StageMeta[]>(stagesConPlazos(null));
+  private readonly calendario = signal<CalendarioConfig | null>(null);
   readonly apelaciones = signal<Apelacion[]>([]);
   readonly loading = signal(true);
   readonly error = signal('');
@@ -58,16 +66,13 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   readonly pagina = signal<PanelPage<Apelacion> | null>(null);
   readonly resumen = signal<PanelSummary | null>(null);
   readonly queryLoading = signal(false);
-  readonly orden = signal<'recientes' | 'antiguas'>('recientes');
 
   private searchTimer?: ReturnType<typeof setTimeout>;
   readonly search = signal('');
-  readonly salaFiltro = signal<number | string>('TODAS');
-  readonly estadoFiltro = signal('');
+  private readonly pageSize = 4;
   readonly paginaActual = signal(1);
-  readonly itemsPorPagina = signal(4);
 
-  readonly hoyISO = new Date().toISOString().slice(0, 10);
+  readonly hoyISO = signal(hoyLima());
   readonly fechaHoy = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 
   readonly tourSteps: TourStep[] = [
@@ -96,8 +101,9 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   contextoVigente(): boolean { return !this.destroyed && this.loadedSession === this.sessionKey(); }
 
   readonly queueItems = computed(() => this.apelaciones().map(apelacion => {
-    const stage = stages.find(s => s.key === stageOf(apelacion.estado)) ?? stages[0];
-    const status = computePlazoStatus(apelacion, stage, this.hoyISO);
+    const catalog = this.stageCatalog();
+    const stage = catalog.find(s => s.key === stageOf(apelacion.estado)) ?? catalog[0];
+    const status = computePlazoStatus(apelacion, stage, this.hoyISO(), this.calendario());
     return {
       apelacion,
       stageKey: stageOf(apelacion.estado),
@@ -108,6 +114,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
       descripcion: apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Sin descripción informada',
       iniciales: apelacion.ciudadanoNombre?.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '—',
       resultado: finalDecision(apelacion),
+      decision: decisionLista(apelacion),
       action: actionFor(apelacion)
     };
   }));
@@ -123,17 +130,15 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
     otras: this.resumen()?.porEtapa['otras'] ?? 0
   }));
 
-  readonly activeStage = computed<StageMeta>(() => stages.find(s => s.key === this.stageKey())
+  readonly activeStage = computed<StageMeta>(() => this.stageCatalog().find(s => s.key === this.stageKey())
     ?? { ...stages[0], key: 'otras' as const, label: 'Otros estados', shortLabel: 'Otros' });
-  readonly estados = computed(() => Object.keys(this.resumen()?.porEstado ?? {}).sort());
-  readonly salas = computed(() => this.pagina()?.salas ?? []);
   readonly filtered = computed(() => this.queueItems());
   readonly filteredVisibles = computed(() => this.filtered());
   readonly totalRegistros = computed(() => this.pagina()?.totalElementos ?? 0);
-  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.itemsPorPagina())));
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.pageSize)));
   readonly paginaSegura = computed(() => Math.min(this.paginaActual(), this.totalPaginas()));
-  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.itemsPorPagina() + 1 : 0);
-  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.itemsPorPagina(), this.totalRegistros()));
+  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.pageSize + 1 : 0);
+  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.pageSize, this.totalRegistros()));
   readonly totalExpedientes = computed(() => this.resumen()?.total ?? 0);
   readonly totalResueltas = computed(() => this.counts().resueltos);
   readonly totalFinales = computed(() => Object.values(this.resumen()?.porResultado ?? {}).reduce((sum, n) => sum + n, 0));
@@ -154,7 +159,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly resolucionesMes = computed(() => {
-    const mesActual = this.hoyISO.slice(0, 7);
+    const mesActual = this.hoyISO().slice(0, 7);
     return this.resoluciones().filter(r => {
       const fin = recordedDate(r.resolucion?.fechaResolucion ?? (r as any).fechaResolucion ?? (r.expedienteTtaip as any)?.fechaResolucionFinal)?.slice(0, 10);
       return fin != null && fin.startsWith(mesActual);
@@ -166,7 +171,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
 
   readonly riesgo = computed(() => this.queueItems().filter(item => {
     if (item.stage.isResolved || item.stage.esperaExterna) return false;
-    return item.status.restantes <= 1;
+    return item.status.informado && item.status.restantes <= 1;
   }));
 
   readonly resultados = computed(() => Object.entries(this.resumen()?.porResultado ?? {})
@@ -197,27 +202,8 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   }
 
   selectStage(stage: StageKey): void {
-    if (this.stageKey() === stage) return;
+    if ((this.counts()[stage] ?? 0) === 0 || this.stageKey() === stage) return;
     this.stageKey.set(stage);
-    this.paginaActual.set(1);
-    this.cargarDashboard();
-  }
-
-  cambiarSala(value: number | string): void {
-    if (value !== 'TODAS' && value !== 'SIN_SALA' && !positiveId(value)) return;
-    this.salaFiltro.set(value);
-    this.paginaActual.set(1);
-    this.cargarDashboard();
-  }
-
-  cambiarEstado(value: string): void {
-    this.estadoFiltro.set(value);
-    this.paginaActual.set(1);
-    this.cargarDashboard();
-  }
-
-  cambiarOrden(value: 'recientes' | 'antiguas'): void {
-    this.orden.set(value);
     this.paginaActual.set(1);
     this.cargarDashboard();
   }
@@ -229,31 +215,37 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  cambiarItemsPorPagina(size: number): void {
-    if ([4, 8, 12].includes(size)) {
-      this.itemsPorPagina.set(size);
-      this.paginaActual.set(1);
-      this.cargarDashboard();
-    }
-  }
-
-  limpiarFiltros(): void {
-    this.search.set('');
-    this.salaFiltro.set('TODAS');
-    this.estadoFiltro.set('');
-    this.stageKey.set('todos');
-    this.paginaActual.set(1);
-    this.cargarDashboard();
-  }
-
   ngOnInit(): void { this.initialized = true; this.cargarDashboard(); }
 
   ngOnDestroy(): void {
     this.tourService.endTourFor('saip_tour_ttaip');
     this.destroyed = true;
     this.generation++;
+    this.calendarGeneration++;
     this.query.unsubscribe();
+    this.calendarQuery.unsubscribe();
     clearTimeout(this.searchTimer);
+  }
+
+  private cargarPlazos(): void {
+    this.calendarQuery.unsubscribe();
+    this.calendario.set(null);
+    this.stageCatalog.set(stagesConPlazos(null));
+    const gen = ++this.calendarGeneration;
+    this.calendarQuery = this.http.get<unknown>(`${environment.apiUrl}/calendario`).subscribe({
+      next: body => {
+        if (this.destroyed || gen !== this.calendarGeneration) return;
+        const cfg = body && typeof body === 'object' ? normalizarCalendario(body as Partial<CalendarioConfig>) : null;
+        this.calendario.set(cfg);
+        this.stageCatalog.set(stagesConPlazos(cfg ? cfg.plazos as Record<string, unknown> : null));
+      },
+      error: () => {
+        if (!this.destroyed && gen === this.calendarGeneration) {
+          this.calendario.set(null);
+          this.stageCatalog.set(stagesConPlazos(null));
+        }
+      }
+    });
   }
 
   cargarDashboard(): void {
@@ -277,8 +269,6 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
       this.pagina.set(null);
       this.resumen.set(null);
       this.search.set('');
-      this.salaFiltro.set('TODAS');
-      this.estadoFiltro.set('');
       this.stageKey.set(this.focusStageFromState ?? 'todos');
       this.focusStageFromState = null;
       this.paginaActual.set(1);
@@ -291,18 +281,16 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
       this.queryLoading.set(false);
       return;
     }
+    if (changed) this.cargarPlazos();
 
     const current = () => !this.destroyed && gen === this.generation && session === this.sessionKey() && revision === (this.authService.cambiosSesion?.() ?? 0);
-    const page = this.paginaActual() - 1, size = this.itemsPorPagina();
+    const page = this.paginaActual() - 1, size = this.pageSize;
 
     this.query.add(this.panelService.apelaciones({
       pagina: page,
       tamano: size,
       busqueda: this.search().trim(),
-      estado: this.estadoFiltro(),
-      etapa: this.stageKey(),
-      orden: this.orden(),
-      sala: this.salaFiltro() === 'TODAS' ? undefined : this.salaFiltro() as number | 'SIN_SALA'
+      etapa: this.stageKey()
     }).subscribe({
       next: value => {
         if (!current()) return;
@@ -348,10 +336,28 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   }
 
   getDiasValor(item: { apelacion: Apelacion }): string { return clockText(item.apelacion); }
+  plazoLista(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
+    if (!item.status.informado) return '—';
+    if (item.status.vencido) return 'Vencido';
+    return item.status.restantes === 0 ? 'Hoy' : `${item.status.restantes}d`;
+  }
+  plazoListaCaption(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
+    if (!item.status.informado) return 'plazo no informado';
+    if (item.status.vencido) return 'plazo vencido';
+    if (item.status.restantes === 0) return 'vence hoy';
+    return item.status.suspendido > 0 ? 'efectivos' : 'restantes';
+  }
+  fechaLimiteVisible(item: { status: PlazoStatusResult; apelacion: Apelacion }): string | null {
+    return item.status.limite ? this.formatearFecha(item.status.limite) : null;
+  }
+  private formatearFecha(value: string): string {
+    const [y, m, d] = value.slice(0, 10).split('-');
+    return `${d}/${m}/${y}`;
+  }
   getActionRoute(item: { apelacion: Apelacion }): string[] { return actionFor(item.apelacion).route; }
   getActionLabel(item: { apelacion: Apelacion }): string { return actionFor(item.apelacion).label; }
   getActionReason(item: { apelacion: Apelacion }): string { return actionFor(item.apelacion).reason; }
-  getResultadoLabel(value: string | null): string { return value?.replaceAll('_', ' ') || 'Decisión no informada'; }
+  getResultadoLabel(value: string | null): string { return value ? (decisionLabels[value] ?? 'Decisión no informada') : 'Decisión no informada'; }
   getResultadoColor(value: string): string { return value === 'FUNDADO' ? 'var(--success)' : value === 'IMPROCEDENTE' ? 'var(--gold-dark)' : 'var(--brand-700)'; }
   getTopEntidadWidth(count: number): number { return this.topEntidades().length ? (count / this.topEntidades()[0].count) * 100 : 0; }
   fechaVisible(value: unknown): string | null { return recordedDate(value); }

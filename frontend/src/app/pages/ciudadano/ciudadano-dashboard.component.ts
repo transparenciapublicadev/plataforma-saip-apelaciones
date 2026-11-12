@@ -182,7 +182,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   readonly globalLoading = signal(false);
   readonly globalError = signal('');
   readonly globalTotal = signal(0);
-  readonly orden = signal<'recientes' | 'antiguas'>('recientes');
 
   private generation = 0;
   private initialized = false;
@@ -583,7 +582,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     };
     const page = this.stagePage() - 1;
     this.read = this.panelService.solicitudes({ pagina: page, tamano: this.PER_PAGE, etapa: this.selectedStageKey(),
-      busqueda: this.stageSearch().trim(), orden: this.orden() }).subscribe({
+      busqueda: this.stageSearch().trim() }).subscribe({
       next: data => {
         if (!current()) return;
         if (!validPanelPage<Solicitud>(data, page, this.PER_PAGE) || !this.validarSolicitudes(data.contenido, citizen)) {
@@ -813,8 +812,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   }
 
   clearStageSearch(): void { this.stageSearch.set(''); this.stagePage.set(1); this.cargarDatos(false); }
-  cambiarOrden(value: 'recientes' | 'antiguas'): void { this.orden.set(value); this.stagePage.set(1); this.cargarDatos(false); }
-
   padCount(count: number): string {
     return String(count).padStart(2, '0');
   }
@@ -1010,13 +1007,13 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
 
     if (estado === 'POR_RECOGER') {
-      const diasCalendario = typeof solicitud.diasRestantes === 'number' ? Math.max(0, solicitud.diasRestantes) : 30;
+      const diasCalendario = typeof solicitud.diasRestantes === 'number' ? Math.max(0, solicitud.diasRestantes) : null;
       return {
         eyebrow: 'Listo para recoger · entrega física',
         titulo: 'Recoja su información en la entidad',
         detalle: `Su información está lista. Presente su comprobante de pago y documento de identidad en ${entidad} para el recojo presencial.`,
-        metricValue: `${diasCalendario}`,
-        metricUnit: 'días calendario',
+        metricValue: diasCalendario !== null ? `${diasCalendario}` : 'Consultar',
+        metricUnit: diasCalendario !== null ? 'días calendario' : 'plazo no informado',
         ctaLabel: 'Ver cupón de pago',
         route: ['/ciudadano/solicitud', expediente],
         icon: 'check',

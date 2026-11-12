@@ -404,11 +404,9 @@ export function normalizarCalendario(raw?: Partial<CalendarioConfig> | null): Ca
   const base = configPorDefecto();
   if (!raw || typeof raw !== 'object') return base;
 
-  const guardados = Array.isArray(raw.feriados)
+  const feriados = Array.isArray(raw.feriados)
     ? raw.feriados.filter((f) => f && typeof f.nombre === 'string')
-    : [];
-  const ids = new Set(guardados.map((f) => f.id));
-  const feriados = [...guardados, ...base.feriados.filter((f) => !ids.has(f.id))];
+    : base.feriados;
 
   const plazos: Partial<Record<PlazoClave, number>> = {};
   for (const m of PLAZOS_META) {
