@@ -73,5 +73,12 @@ describe('Auth Guards', () => {
       expect(result).toBe(false);
       expect(router.navigate).toHaveBeenCalledWith(['/login']);
     });
+
+    it('should accept any of the declared roles', () => {
+      localStorage.setItem('usuario', JSON.stringify({ token: 't', tipoUsuario: 'ADMINISTRADOR' }));
+      const guard = tipoUsuarioGuard('TTAIP', 'ADMINISTRADOR');
+      const result = TestBed.runInInjectionContext(() => guard(mockRoute, mockState));
+      expect(result).toBe(true);
+    });
   });
 });
