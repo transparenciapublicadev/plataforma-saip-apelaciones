@@ -1,36 +1,75 @@
 <div class="reportes-page">
   <section class="reportes-hero">
     <div class="reportes-container">
-      <a [routerLink]="panel" class="reportes-back"><svg lucideArrowLeft class="w-[15px] h-[15px]" aria-hidden="true"></svg> Volver al panel</a>
+      <a [routerLink]="panel" class="reportes-back"><svg lucideArrowLeft size="15" color="currentColor" aria-hidden="true"></svg> Volver al panel</a>
       <div class="reportes-title-row">
-        <span class="reportes-symbol"><svg lucideFileChartColumn class="w-7 h-7 text-white" aria-hidden="true"></svg></span>
-        <div class="reportes-title"><span class="eyebrow">{{ modo === 'entidad' ? 'Reportes de la entidad' : 'Reportes del Tribunal' }}</span><h1>{{ titulo }}</h1><p>Información del periodo, detalle de expedientes y preparación del informe.</p></div>
-        @if (resumen()?.entidad; as entidad) { <span class="reportes-entity">{{ entidad }}</span> }
+        <span class="reportes-symbol"><svg lucideFileBarChart size="28" color="#ffffff" aria-hidden="true"></svg></span>
+        <div class="reportes-title">
+          <span class="eyebrow">{{ eyebrow }}</span>
+          <p class="reportes-kicker">
+            @if (modo === 'entidad') { <svg lucideBuilding2 size="16" color="currentColor" aria-hidden="true"></svg> }
+            @else { <svg lucideGavel size="16" color="currentColor" aria-hidden="true"></svg> }
+            {{ ambitoVisible }}
+          </p>
+          <h1>@if (modo === 'entidad') { Informe de <em>solicitudes</em> } @else { Estadística del <em>Tribunal</em> }</h1>
+          <p>{{ descripcion }}</p>
+        </div>
+        <div class="reportes-hero-actions">
+          <button type="button" class="btn-ghost-brand" (click)="exportar('excel')" [disabled]="!puedeExportar()" [attr.title]="puedeExportar() ? 'Descarga las cifras del periodo consultado' : 'Consulta un periodo para descargar'"><svg lucideFileSpreadsheet size="16" color="currentColor" aria-hidden="true"></svg> Excel</button>
+          <button type="button" class="btn-brand" (click)="exportar('pdf')" [disabled]="!puedeExportar()" [attr.title]="puedeExportar() ? 'Descarga las cifras del periodo consultado' : 'Consulta un periodo para descargar'"><svg lucideFileDown size="16" color="currentColor" aria-hidden="true"></svg> Descargar PDF</button>
+        </div>
       </div>
     </div>
   </section>
   <main class="reportes-container reportes-body">
-    <form class="reportes-period form-shell" (ngSubmit)="cargar()" aria-label="Periodo del reporte">
-      <svg lucideCalendarRange class="w-5 h-5 text-[color:var(--brand-700)]" aria-hidden="true"></svg>
-      <div class="field"><label for="reporte-desde" class="field-label">Desde</label><input id="reporte-desde" name="desde" type="date" [(ngModel)]="desde" class="field-input" required [disabled]="guardando() || incierto()" /></div>
-      <div class="field"><label for="reporte-hasta" class="field-label">Hasta</label><input id="reporte-hasta" name="hasta" type="date" [(ngModel)]="hasta" class="field-input" required [disabled]="guardando() || incierto()" /></div>
-      <button type="submit" class="btn-brand" [disabled]="guardando() || incierto()">Consultar periodo</button>
-      <p class="reportes-hint">Hasta 367 días por consulta. El periodo filtra la fecha de registro; no modifica los plazos de los expedientes.</p>
+    <form class="reportes-period form-shell" (ngSubmit)="consultarPeriodo()" aria-label="Periodo del reporte">
+      <div class="reportes-period-head">
+        <svg lucideCalendarRange size="20" color="currentColor" aria-hidden="true"></svg>
+        <div>
+          <span class="eyebrow">Periodo</span>
+          <div class="reportes-period-name">{{ etiquetaPeriodo }}</div>
+          <div class="reportes-period-dates">{{ formato(desde) }} – {{ formato(hasta) }}</div>
+        </div>
+      </div>
+      <div class="reportes-period-types" role="radiogroup" aria-label="Tipo de periodo">
+        @for (tipo of tiposPeriodo; track tipo.id) {
+          <button type="button" role="radio" [attr.aria-checked]="tipoPeriodo === tipo.id" (click)="cambiarTipo(tipo.id)" [disabled]="guardando() || incierto()">{{ tipo.label }}</button>
+        }
+      </div>
+      @if (tipoPeriodo !== 'rango') {
+        <div class="field">
+          <label for="reporte-anio" class="field-label">Año</label>
+          <select id="reporte-anio" name="anio" class="field-input" [ngModel]="anio" (ngModelChange)="cambiarAnio($event)" [disabled]="guardando() || incierto()">
+            @for (y of anios; track y) { <option [ngValue]="y">{{ y }}</option> }
+          </select>
+        </div>
+        @if (tipoPeriodo !== 'anio') {
+          <div class="field">
+            <label for="reporte-subperiodo" class="field-label">{{ tipoPeriodo === 'mes' ? 'Mes' : tipoPeriodo === 'trimestre' ? 'Trimestre' : 'Semestre' }}</label>
+            <select id="reporte-subperiodo" name="subperiodo" class="field-input" [ngModel]="indice" (ngModelChange)="cambiarIndice($event)" [disabled]="guardando() || incierto()">
+              @for (op of subperiodos; track op.value) { <option [ngValue]="op.value">{{ op.label }}</option> }
+            </select>
+          </div>
+        }
+      } @else {
+        <div class="field"><label for="reporte-desde" class="field-label">Desde</label><input id="reporte-desde" name="desde" type="date" [(ngModel)]="desde" class="field-input" required [disabled]="guardando() || incierto()" /></div>
+        <div class="field"><label for="reporte-hasta" class="field-label">Hasta</label><input id="reporte-hasta" name="hasta" type="date" [(ngModel)]="hasta" class="field-input" required [disabled]="guardando() || incierto()" /></div>
+        <button type="submit" class="btn-brand" [disabled]="guardando() || incierto()">Consultar periodo</button>
+      }
     </form>
     @if (estado() === 'carga') { <div class="form-shell reportes-state" role="status">Consultando el reporte institucional…</div> }
     @else if (estado() === 'error') { <div class="form-shell reportes-state" role="alert"><svg lucideAlertTriangle class="w-6 h-6" aria-hidden="true"></svg><p>{{ error() }}</p><button type="button" class="btn-ghost-brand" (click)="cargar()">Reintentar consulta</button></div> }
     @else if (resumen(); as r) {
-      <div class="reportes-scope"><svg lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true"></svg><p>{{ r.alcance }} Consulta: {{ r.consultado | date:'dd/MM/yyyy HH:mm' }}.</p></div>
       <div class="reportes-tabs" role="tablist" aria-label="Secciones del reporte">
         @for (item of tabs; track item.id; let i = $index) {
-          <button type="button" role="tab" [id]="'reporte-tab-' + item.id" [attr.aria-controls]="'reporte-panel-' + item.id" [attr.aria-selected]="tab() === item.id" [tabIndex]="tab() === item.id ? 0 : -1" (click)="tab.set(item.id)" (keydown)="seleccionarTab($event, i)">
+          <button type="button" role="tab" [id]="'reporte-tab-' + item.id" [attr.aria-controls]="'reporte-panel-' + item.id" [attr.aria-selected]="tab() === item.id" [attr.aria-label]="item.label" [tabIndex]="tab() === item.id ? 0 : -1" (click)="tab.set(item.id)" (keydown)="seleccionarTab($event, i)">
             @switch (item.id) {
-              @case ('resumen') { <svg lucideFileChartColumn class="w-4 h-4" aria-hidden="true"></svg> }
-              @case ('informe') { <svg lucideFileText class="w-4 h-4" aria-hidden="true"></svg> }
-              @case ('detalle') { <svg lucideLayers class="w-4 h-4" aria-hidden="true"></svg> }
-              @case ('historial') { <svg lucideHistory class="w-4 h-4" aria-hidden="true"></svg> }
+              @case ('resumen') { <svg lucideFileBarChart size="16" color="currentColor" aria-hidden="true"></svg> }
+              @case ('informe') { <svg lucideClipboardCheck size="16" color="currentColor" aria-hidden="true"></svg> }
+              @case ('detalle') { <svg lucideSearch size="16" color="currentColor" aria-hidden="true"></svg> }
+              @case ('historial') { <svg lucideHistory size="16" color="currentColor" aria-hidden="true"></svg> }
             }
-            {{ item.label }}
+            <span class="tab-label">{{ item.label }}</span>
           </button>
         }
       </div>
@@ -38,10 +77,17 @@
         @switch (tab()) {
           @case ('resumen') {
             <div class="reportes-stats">
-              <article class="stat-card"><span class="stat-card-accent"></span><div class="stat-card-eyebrow">{{ modo === 'entidad' ? 'Recibidas' : 'Ingresos' }}</div><div class="stat-card-value">{{ r.total }}</div><div class="stat-card-meta">Registros del periodo completo</div></article>
-              <article class="stat-card"><span class="stat-card-accent success"></span><div class="stat-card-eyebrow">{{ modo === 'entidad' ? 'Con respuesta registrada' : 'Con resolución final registrada' }}</div><div class="stat-card-value">{{ r.conActuacion }}</div><div class="stat-card-meta">No acredita entrega ni notificación eficaz</div></article>
-              <article class="stat-card"><span class="stat-card-accent info"></span><div class="stat-card-eyebrow">En plazo legal</div><div class="stat-card-value unavailable">No disponible</div><div class="stat-card-meta">No se calcula sin una base temporal acreditada</div></article>
-              <article class="stat-card"><span class="stat-card-accent gold"></span><div class="stat-card-eyebrow">Tiempo promedio</div><div class="stat-card-value unavailable">No disponible</div><div class="stat-card-meta">No se sustituye por días desde la creación</div></article>
+              @if (modo === 'entidad') {
+                <article class="stat-card"><span class="stat-card-accent"></span><div class="stat-card-eyebrow">Recibidas</div><div class="stat-card-value">{{ r.total }}</div><div class="stat-card-meta">{{ etiquetaPeriodo }}</div></article>
+                <article class="stat-card"><span class="stat-card-accent success"></span><div class="stat-card-eyebrow">Atendidas</div><div class="stat-card-value">{{ r.conActuacion }}</div><div class="stat-card-meta">{{ tasaAtencion() }} con respuesta registrada</div></article>
+                <article class="stat-card"><span class="stat-card-accent info"></span><div class="stat-card-eyebrow">En plazo legal</div><div class="stat-card-value">—</div><div class="stat-card-meta">El servidor no informa días hábiles de atención</div></article>
+                <article class="stat-card"><span class="stat-card-accent gold"></span><div class="stat-card-eyebrow">Tiempo promedio</div><div class="stat-card-value">—</div><div class="stat-card-meta">días hábiles de atención</div></article>
+              } @else {
+                <article class="stat-card"><span class="stat-card-accent"></span><div class="stat-card-eyebrow">Recursos ingresados</div><div class="stat-card-value">{{ r.total }}</div><div class="stat-card-meta">{{ etiquetaPeriodo }}</div></article>
+                <article class="stat-card"><span class="stat-card-accent success"></span><div class="stat-card-eyebrow">Resueltos</div><div class="stat-card-value">{{ r.conActuacion }}</div><div class="stat-card-meta">{{ enTramite() }} en trámite</div></article>
+                <article class="stat-card"><span class="stat-card-accent info"></span><div class="stat-card-eyebrow">Tasa de fundados</div><div class="stat-card-value">{{ tasaFundados() === null ? '—' : tasaFundados() + '%' }}</div><div class="stat-card-meta">{{ fundados() }} fundados (total o en parte)</div></article>
+                <article class="stat-card"><span class="stat-card-accent gold"></span><div class="stat-card-eyebrow">Promedio de resolución</div><div class="stat-card-value">—</div><div class="stat-card-meta">Se calcula con resoluciones fechadas</div></article>
+              }
             </div>
             <div class="reportes-summary-grid">
               <section class="form-shell reportes-evolution"><header class="form-section-header"><span class="eyebrow">Evolución</span><h2 class="form-section-title">{{ modo === 'entidad' ? 'Solicitudes' : 'Recursos' }} por mes</h2></header><div class="reportes-chart" aria-label="Registros por mes">
@@ -73,20 +119,19 @@
                 <dl><dt>Periodo</dt><dd>{{ r.desde | date:'dd/MM/yyyy' }} – {{ r.hasta | date:'dd/MM/yyyy' }}</dd><dt>Registros del periodo</dt><dd>{{ r.total }}</dd>
                 @if (borrador(); as b) { <dt>Estado persistido</dt><dd>Borrador · versión {{ b.version }}</dd><dt>Identificador</dt><dd class="reportes-id">{{ b.id }}</dd><dt>Guardado</dt><dd>{{ b.actualizado | date:'dd/MM/yyyy HH:mm' }}</dd> }
                 @else { <dt>Estado</dt><dd>Sin borrador guardado para este periodo</dd> }</dl>
-                <div class="reportes-form-actions"><button type="button" class="btn-brand" (click)="guardar()" [disabled]="guardando() || incierto()"><svg lucideSave class="w-4 h-4" aria-hidden="true"></svg>{{ guardando() ? 'Comprobando…' : 'Guardar borrador' }}</button>
+                <div class="reportes-form-actions"><button type="button" class="btn-brand" (click)="guardar()" [disabled]="guardando() || incierto()"><svg lucideSave size="16" color="currentColor" aria-hidden="true"></svg>{{ guardando() ? 'Comprobando…' : 'Guardar borrador' }}</button>
                   @if (incierto()) { <button type="button" class="btn-ghost-brand" (click)="recuperar()" [disabled]="guardando()">Recuperar resultado</button> }
-                  <button type="button" class="btn-ghost-brand" (click)="exportar('pdf')" [disabled]="!borrador() || guardando() || exportando()"><svg lucideDownload class="w-4 h-4" aria-hidden="true"></svg>PDF del borrador guardado</button>
-                  <button type="button" class="btn-ghost-brand" (click)="exportar('excel')" [disabled]="!borrador() || guardando() || exportando()"><svg lucideDownload class="w-4 h-4" aria-hidden="true"></svg>Excel del borrador guardado</button>
+                  <button type="button" class="btn-ghost-brand" (click)="exportar('pdf')" [disabled]="!puedeExportar()"><svg lucideFileDown size="16" color="currentColor" aria-hidden="true"></svg>Descargar PDF</button>
+                  <button type="button" class="btn-ghost-brand" (click)="exportar('excel')" [disabled]="!puedeExportar()"><svg lucideFileSpreadsheet size="16" color="currentColor" aria-hidden="true"></svg>Descargar Excel</button>
                 </div>
                 <p role="status" aria-live="polite">{{ aviso() }}</p>
-                <p class="reportes-hint">El contenido no guardado permanece solo en memoria y se pierde al cambiar periodo, sesión o recargar. Las descargas usan la versión guardada.</p>
-                <p class="reportes-hint">La remisión a la ANTAIP, su evidencia y bloqueo posterior requieren un caso de uso validado. Este borrador no acredita remisión, firma ni emisión formal.</p>
+                <p class="reportes-hint">Las cifras corresponden a los expedientes del periodo consultado. El texto que aún no guardaste se incluye en Excel y PDF y se pierde al cambiar de periodo, sesión o recargar.</p>
               </div></aside>
             </div>
           }
           @case ('detalle') {
             <section class="form-shell"><header class="form-section-header reportes-detail-header"><div><span class="eyebrow">Expedientes del periodo</span><h2 class="form-section-title">Detalle de registros</h2></div>
-              <form class="reportes-filters" (ngSubmit)="consultarDetalle()"><label class="sr-only" for="reporte-estado">Estado</label><select id="reporte-estado" name="estado" [(ngModel)]="filtro" class="field-input"><option value="">Todos los estados</option>@for (item of r.estados; track item.etiqueta) { <option [value]="item.etiqueta">{{ etiqueta(item.etiqueta) }}</option> }</select><label class="sr-only" for="reporte-busqueda">Buscar expediente o asunto</label><input id="reporte-busqueda" name="query" class="field-input" [(ngModel)]="busqueda" maxlength="120" placeholder="Expediente o asunto…" /><button class="btn-ghost-brand" type="submit"><svg lucideSearch class="w-4 h-4" aria-hidden="true"></svg>Buscar</button><button type="button" class="btn-ghost-brand" (click)="limpiarFiltro()">Limpiar</button><button type="button" class="btn-ghost-brand" (click)="csv()" [disabled]="!detalle() || detalleCarga()">CSV de esta página</button></form>
+              <form class="reportes-filters" (ngSubmit)="consultarDetalle()"><label class="sr-only" for="reporte-estado">Estado</label><select id="reporte-estado" name="estado" [(ngModel)]="filtro" class="field-input"><option value="">Todos los estados</option>@for (item of r.estados; track item.etiqueta) { <option [value]="item.etiqueta">{{ etiqueta(item.etiqueta) }}</option> }</select><label class="sr-only" for="reporte-busqueda">Buscar expediente o asunto</label><input id="reporte-busqueda" name="query" class="field-input" [(ngModel)]="busqueda" maxlength="120" placeholder="Expediente o asunto…" /><button class="btn-ghost-brand" type="submit"><svg lucideSearch class="w-4 h-4" aria-hidden="true"></svg>Buscar</button><button type="button" class="btn-ghost-brand" (click)="limpiarFiltro()">Limpiar</button><button type="button" class="btn-ghost-brand" (click)="csv()" [disabled]="!detalle() || detalleCarga()" aria-label="CSV de la página visible" title="Exporta la página visible del detalle"><svg lucideFileSpreadsheet size="16" color="currentColor" aria-hidden="true"></svg>CSV</button></form>
             </header>
             @if (detalleCarga()) { <p class="reportes-state" role="status">Consultando expedientes…</p> }
             @else if (detalleError()) { <p class="reportes-state" role="alert">{{ detalleError() }} <button type="button" class="btn-ghost-brand" (click)="consultarDetalle()">Reintentar</button></p> }

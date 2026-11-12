@@ -6,16 +6,17 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, forkJoin, of, Subscription, switchMap } from 'rxjs';
 import {
   LucideArrowLeft,
-  LucideFileChartColumn,
+  LucideFileBarChart,
   LucideCalendarRange,
   LucideAlertTriangle,
-  LucideInfo,
-  LucideFileText,
-  LucideLayers,
+  LucideClipboardCheck,
   LucideHistory,
   LucideSave,
-  LucideDownload,
   LucideSearch,
+  LucideFileSpreadsheet,
+  LucideFileDown,
+  LucideBuilding2,
+  LucideGavel,
 } from '@lucide/angular';
 import { AuthService } from '../../services/auth.service';
 import { BorradorInstitucional, FilaReporte, GuardarBorrador, ModoReporte, PaginaReporte, ReportesInstitucionalesService, ResumenInstitucional } from '../../services/reportes-institucionales.service';
@@ -23,6 +24,7 @@ import { csvPagina, descargarBorradorPdf, descargarBorradorExcel, guardarArchivo
 
 type Estado = 'carga' | 'listo' | 'error';
 type Tab = 'resumen' | 'informe' | 'detalle' | 'historial';
+type TipoPeriodo = 'anio' | 'semestre' | 'trimestre' | 'mes' | 'rango';
 interface Campo { key: string; label: string; ayuda?: string; largo?: boolean; numerico?: boolean; }
 @Component({
   selector: 'app-reportes-institucionales', standalone: true,
@@ -31,16 +33,17 @@ interface Campo { key: string; label: string; ayuda?: string; largo?: boolean; n
     FormsModule,
     RouterLink,
     LucideArrowLeft,
-    LucideFileChartColumn,
+    LucideFileBarChart,
     LucideCalendarRange,
     LucideAlertTriangle,
-    LucideInfo,
-    LucideFileText,
-    LucideLayers,
+    LucideClipboardCheck,
     LucideHistory,
     LucideSave,
-    LucideDownload,
     LucideSearch,
+    LucideFileSpreadsheet,
+    LucideFileDown,
+    LucideBuilding2,
+    LucideGavel,
   ],
   templateUrl: './reportes-institucionales.component.html', styleUrl: './reportes-institucionales.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,10 +54,14 @@ export class ReportesInstitucionalesComponent {
   private readonly route = inject(ActivatedRoute);
   readonly modo: ModoReporte = this.route.snapshot.data['reportMode'] === 'ttaip' ? 'ttaip' : 'entidad';
   readonly panel = this.modo === 'entidad' ? '/funcionario' : '/ttaip';
-  readonly tabs: { id: Tab; label: string }[] = [
-    { id: 'resumen', label: 'Resumen' }, { id: 'informe', label: 'Informe' },
-    { id: 'detalle', label: 'Detalle' }, { id: 'historial', label: 'Historial' },
-  ];
+  get tabs(): { id: Tab; label: string }[] {
+    return [
+      { id: 'resumen', label: 'Resumen' },
+      { id: 'informe', label: this.modo === 'entidad' ? 'Informe ANTAIP' : 'Informe del Tribunal' },
+      { id: 'detalle', label: 'Detalle' },
+      { id: 'historial', label: 'Historial' },
+    ];
+  }
   readonly tab = signal<Tab>('resumen');
   readonly estado = signal<Estado>('carga');
   readonly error = signal('');
@@ -66,6 +73,7 @@ export class ReportesInstitucionalesComponent {
   readonly incierto = signal(false);
   readonly aviso = signal('');
   readonly exportando = signal(false);
+  readonly puedeExportar = computed(() => this.estado() === 'listo' && this.resumen() !== null && !this.exportando() && !this.guardando());
   readonly detalleCarga = signal(false);
   readonly detalleError = signal('');
   readonly historialError = signal('');
@@ -83,6 +91,14 @@ export class ReportesInstitucionalesComponent {
     { key: 'conclusiones', label: 'Conclusiones del periodo', largo: true }, { key: 'recomendaciones', label: 'Recomendaciones', largo: true },
   ];
   cualitativo: Record<string, string> = {};
+  readonly meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  readonly tiposPeriodo: { id: TipoPeriodo; label: string }[] = [
+    { id: 'anio', label: 'Año' }, { id: 'semestre', label: 'Semestre' }, { id: 'trimestre', label: 'Trimestre' },
+    { id: 'mes', label: 'Mes' }, { id: 'rango', label: 'Rango' },
+  ];
+  tipoPeriodo: TipoPeriodo = 'anio';
+  anio = new Date().getFullYear();
+  indice = 1;
   desde = `${new Date().getFullYear()}-01-01`;
   hasta = `${new Date().getFullYear()}-12-31`;
   busqueda = '';
@@ -94,7 +110,103 @@ export class ReportesInstitucionalesComponent {
     }
     return 'Informe estadístico del Tribunal';
   }
+  get eyebrow(): string {
+    return this.modo === 'entidad' ? 'Reportes de la entidad · ANTAIP' : 'Reportes del Tribunal · ANTAIP';
+  }
+  get ambitoVisible(): string {
+    if (this.modo === 'ttaip') return 'Tribunal de Transparencia y Acceso a la Información Pública';
+    return this.resumen()?.entidad || this.auth.obtenerSesion()?.entidadNombre || 'Entidad pública';
+  }
+  get descripcion(): string {
+    return this.modo === 'entidad'
+      ? 'Indicadores del periodo para el informe anual que la ANTAIP consolida y presenta al Congreso: solicitudes recibidas, atendidas, plazos, denegatorias por causal, costos y régimen sancionador.'
+      : 'Ingresos por vía, calificaciones, resoluciones por sentido, regla del contador y cumplimiento, como insumo del informe anual de la ANTAIP.';
+  }
+  get anios(): number[] {
+    const actual = new Date().getFullYear();
+    return [0, 1, 2, 3, 4].map((n) => actual - n);
+  }
+  get subperiodos(): { value: number; label: string }[] {
+    if (this.tipoPeriodo === 'mes') return this.meses.map((label, i) => ({ value: i + 1, label }));
+    if (this.tipoPeriodo === 'trimestre') return ['I trimestre', 'II trimestre', 'III trimestre', 'IV trimestre'].map((label, i) => ({ value: i + 1, label }));
+    if (this.tipoPeriodo === 'semestre') return [{ value: 1, label: 'I semestre' }, { value: 2, label: 'II semestre' }];
+    return [];
+  }
+  get etiquetaPeriodo(): string {
+    if (this.tipoPeriodo === 'anio') return `Año ${this.anio}`;
+    if (this.tipoPeriodo === 'semestre') return `${this.indice === 2 ? 'II' : 'I'} semestre ${this.anio}`;
+    if (this.tipoPeriodo === 'trimestre') return `${['I', 'II', 'III', 'IV'][this.indice - 1] ?? 'I'} trimestre ${this.anio}`;
+    if (this.tipoPeriodo === 'mes') return `${this.meses[this.indice - 1] ?? 'Mes'} ${this.anio}`;
+    return 'Rango personalizado';
+  }
+  formato(iso: string): string {
+    const [y, m, d] = (iso ?? '').split('-');
+    return d && m && y ? `${d}/${m}/${y}` : iso;
+  }
+  consultarPeriodo() {
+    if (this.tipoPeriodo !== 'rango') this.sincronizarRango();
+    this.cargar();
+  }
+  cambiarTipo(tipo: TipoPeriodo) {
+    if (this.guardando() || this.incierto() || tipo === this.tipoPeriodo) return;
+    this.tipoPeriodo = tipo;
+    this.indice = tipo === 'mes' ? new Date().getMonth() + 1 : 1;
+    if (tipo !== 'rango') this.consultarPeriodo();
+  }
+  cambiarAnio(value: string | number) {
+    if (this.guardando() || this.incierto()) return;
+    const anio = Number(value);
+    if (!Number.isInteger(anio)) return;
+    this.anio = anio;
+    this.consultarPeriodo();
+  }
+  cambiarIndice(value: string | number) {
+    if (this.guardando() || this.incierto()) return;
+    const indice = Number(value);
+    if (!Number.isInteger(indice)) return;
+    this.indice = indice;
+    this.consultarPeriodo();
+  }
+  private sincronizarRango() {
+    const y = this.anio;
+    if (this.tipoPeriodo === 'anio') {
+      this.desde = `${y}-01-01`;
+      this.hasta = `${y}-12-31`;
+    } else if (this.tipoPeriodo === 'semestre') {
+      const segundo = this.indice === 2;
+      this.desde = segundo ? `${y}-07-01` : `${y}-01-01`;
+      this.hasta = segundo ? `${y}-12-31` : `${y}-06-30`;
+    } else if (this.tipoPeriodo === 'trimestre') {
+      const i = Math.min(4, Math.max(1, this.indice));
+      const inicio = (i - 1) * 3 + 1;
+      this.desde = this.iso(y, inicio, 1);
+      this.hasta = this.iso(y, inicio + 2, new Date(y, inicio + 2, 0).getDate());
+    } else if (this.tipoPeriodo === 'mes') {
+      const m = Math.min(12, Math.max(1, this.indice));
+      this.desde = this.iso(y, m, 1);
+      this.hasta = this.iso(y, m, new Date(y, m, 0).getDate());
+    }
+  }
+  private iso(anio: number, mes: number, dia: number) {
+    return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+  }
   readonly maxMes = computed(() => Math.max(1, ...(this.resumen()?.porMes.map(x => x.cantidad) ?? [])));
+  readonly enTramite = computed(() => {
+    const r = this.resumen();
+    return r ? Math.max(0, r.total - r.conActuacion) : 0;
+  });
+  readonly tasaAtencion = computed(() => {
+    const r = this.resumen();
+    if (!r || r.total <= 0) return '0%';
+    return `${Math.round(r.conActuacion * 100 / r.total)}%`;
+  });
+  readonly fundados = computed(() => (this.resumen()?.resultados ?? [])
+    .filter(item => item.etiqueta === 'FUNDADO' || item.etiqueta === 'FUNDADO_EN_PARTE')
+    .reduce((total, item) => total + item.cantidad, 0));
+  readonly tasaFundados = computed(() => {
+    const base = this.resumen()?.conActuacion ?? 0;
+    return base > 0 ? Math.round(this.fundados() * 100 / base) : null;
+  });
   private generation = 0;
   private reads = new Subscription();
   private detailRead?: Subscription;
@@ -159,7 +271,9 @@ export class ReportesInstitucionalesComponent {
     });
   }
   limpiarFiltro() { this.busqueda = ''; this.filtro = ''; this.consultarDetalle(); }
-  abrirBorrador(value: BorradorInstitucional) { this.desde = value.desde; this.hasta = value.hasta; this.tab.set('informe'); this.cargar(); }
+  abrirBorrador(value: BorradorInstitucional) {
+    this.tipoPeriodo = 'rango'; this.desde = value.desde; this.hasta = value.hasta; this.tab.set('informe'); this.cargar();
+  }
   guardar() {
     if (this.guardando() || this.incierto() || this.estado() !== 'listo' || !this.autorizado()) return;
     if (this.activePeriod !== `${this.desde}/${this.hasta}`) { this.aviso.set('Aplica primero el periodo seleccionado.'); return; }
@@ -200,11 +314,32 @@ export class ReportesInstitucionalesComponent {
     this.borrador.set(saved); this.cualitativo = { ...saved.cualitativo }; this.incierto.set(false); this.operation = null;
     this.aviso.set('Borrador guardado y recuperado del servidor. No acredita emisión ni remisión.'); this.consultarHistorial();
   }
+  documentoConsulta(): BorradorInstitucional | null {
+    const resumen = this.resumen();
+    if (!resumen) return null;
+    const saved = this.borrador();
+    const cualitativo: Record<string, string> = {};
+    for (const campo of this.campos) {
+      const value = (this.cualitativo[campo.key] ?? '').trim();
+      if (value) cualitativo[campo.key] = value;
+    }
+    return {
+      id: saved?.id ?? '', modo: this.modo, desde: resumen.desde, hasta: resumen.hasta,
+      version: saved?.version ?? 0, operacionId: saved?.operacionId ?? '', cualitativo, resumen,
+      actualizado: saved?.actualizado ?? resumen.consultado, estado: 'BORRADOR',
+    };
+  }
   async exportar(tipo: 'pdf' | 'excel') {
-    const saved = this.borrador(); if (!saved || this.exportando()) return;
-    const generation = this.generation; this.exportando.set(true); this.aviso.set('Preparando copia del borrador guardado…');
-    try { if (tipo === 'pdf') await descargarBorradorPdf(saved, () => generation === this.generation); else await descargarBorradorExcel(saved, () => generation === this.generation);
-      if (generation === this.generation) this.aviso.set('Copia del borrador guardado preparada. No es un documento emitido ni remitido.');
+    const doc = this.documentoConsulta();
+    if (!doc || !this.puedeExportar()) return;
+    const generation = this.generation;
+    const filas = this.detalle()?.content ?? [];
+    this.exportando.set(true); this.aviso.set('Preparando la copia del periodo consultado…');
+    try {
+      const activo = () => generation === this.generation;
+      if (tipo === 'pdf') await descargarBorradorPdf(doc, activo, filas);
+      else await descargarBorradorExcel(doc, activo, filas);
+      if (generation === this.generation) this.aviso.set('Copia del periodo consultado preparada. No es un documento emitido ni remitido.');
     } catch { if (generation === this.generation) this.aviso.set('No se pudo preparar la copia. No se generó un archivo sustituto.'); }
     finally { if (generation === this.generation) this.exportando.set(false); }
   }

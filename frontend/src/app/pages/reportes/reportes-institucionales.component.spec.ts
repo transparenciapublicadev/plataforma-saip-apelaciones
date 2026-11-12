@@ -225,6 +225,42 @@ describe('ReportesInstitucionalesComponent', () => {
     );
   });
 
+  it('nombra las pestañas como en el informe de la entidad', () => {
+    const fixture = TestBed.createComponent(ReportesInstitucionalesComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.tabs.map((t) => t.label)).toEqual([
+      'Resumen', 'Informe ANTAIP', 'Detalle', 'Historial',
+    ]);
+  });
+
+  it('consulta el primer semestre al cambiar el tipo de periodo', () => {
+    const fixture = TestBed.createComponent(ReportesInstitucionalesComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+
+    comp.cambiarTipo('semestre');
+
+    expect(comp.desde).toBe(`${currentYear}-01-01`);
+    expect(comp.hasta).toBe(`${currentYear}-06-30`);
+    expect(mockReportesService.resumen).toHaveBeenLastCalledWith('entidad', `${currentYear}-01-01`, `${currentYear}-06-30`);
+  });
+
+  it('prepara Excel y PDF del periodo consultado aunque no exista borrador', () => {
+    mockReportesService.borrador.mockReturnValue(of(null));
+    const fixture = TestBed.createComponent(ReportesInstitucionalesComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+
+    expect(comp.borrador()).toBeNull();
+    expect(comp.puedeExportar()).toBe(true);
+    expect(comp.documentoConsulta()).toEqual(expect.objectContaining({
+      id: '',
+      desde,
+      hasta,
+      resumen: resumenMock,
+    }));
+  });
+
   it('maneja error cuando el usuario no está autenticado o no tiene rol adecuado', () => {
     mockAuthService.estaLogueado.mockReturnValue(false);
     const fixture = TestBed.createComponent(ReportesInstitucionalesComponent);
@@ -233,5 +269,28 @@ describe('ReportesInstitucionalesComponent', () => {
 
     expect(comp.estado()).toBe('error');
     expect(comp.error()).toContain('Inicia sesión');
+  });
+
+  it('calcula fundados y en trámite con las resoluciones registradas', () => {
+    const fixture = TestBed.createComponent(ReportesInstitucionalesComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+
+    comp.resumen.set({
+      ...resumenMock,
+      modo: 'ttaip',
+      total: 7,
+      conActuacion: 4,
+      resultados: [
+        { etiqueta: 'FUNDADO', cantidad: 2 },
+        { etiqueta: 'FUNDADO_EN_PARTE', cantidad: 1 },
+        { etiqueta: 'INFUNDADO', cantidad: 1 },
+      ],
+    });
+
+    expect(comp.fundados()).toBe(3);
+    expect(comp.tasaFundados()).toBe(75);
+    expect(comp.enTramite()).toBe(3);
+    expect(comp.tasaAtencion()).toBe('57%');
   });
 });
