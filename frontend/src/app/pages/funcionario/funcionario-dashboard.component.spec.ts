@@ -194,6 +194,24 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('75%');
   });
 
+  it('no presenta 100% cuando no hay expedientes cerrados', () => {
+    const f = page();
+    const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
+    req.flush(mockPanelPage([row], {
+      resumen: {
+        total: 2,
+        porEstado: { EN_REVISION: 2 },
+        porEtapa: { san: 0, hoy: 0, semana: 2, plazo: 0, respondidas: 0 },
+        porTipoInformacion: {},
+        porDiasRestantes: {}
+      }
+    }));
+    f.detectChanges();
+
+    expect(f.componentInstance.cumplimiento()).toBeNull();
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).not.toContain('100%');
+  });
+
   it('muestra el banner de advertencia SAN con el texto legal exacto', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);

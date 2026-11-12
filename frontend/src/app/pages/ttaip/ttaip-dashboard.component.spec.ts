@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -71,7 +73,7 @@ describe('TtaipDashboardComponent stage selection', () => {
     TestBed.configureTestingModule({
       imports: [TtaipDashboardComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
         { provide: PanelQueryService, useValue: mockApelacionService },
         { provide: AuthService, useValue: mockAuthService },
       ]
@@ -96,7 +98,7 @@ describe('TtaipDashboardComponent stage selection', () => {
     TestBed.configureTestingModule({
       imports: [TtaipDashboardComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
         { provide: PanelQueryService, useValue: mockApelacionService },
         { provide: AuthService, useValue: mockAuthService },
       ]
@@ -113,7 +115,7 @@ describe('TtaipDashboardComponent stage selection', () => {
     expect(component.activeStage().key).toBe('todos');
   });
   it('mantiene pendiente el reloj sin usar la creación ni marcar urgencia', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const fixture = TestBed.createComponent(TtaipDashboardComponent); const c = fixture.componentInstance;
     const ap = createMockApelacion(3, 'EN_SUBSANACION'); ap.fechaSubsanacion = '2000-01-01'; ap.diasSubsanacion = 2;
@@ -125,7 +127,7 @@ describe('TtaipDashboardComponent stage selection', () => {
   });
 
   it('muestra los días hábiles recibidos del backend para el requerimiento eficaz', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const c = TestBed.createComponent(TtaipDashboardComponent).componentInstance;
     const ap = createMockApelacion(3, 'EN_SUBSANACION'); ap.fechaSubsanacion = '2000-01-01';
@@ -137,7 +139,7 @@ describe('TtaipDashboardComponent stage selection', () => {
   });
 
   it('identifica items con riesgo crítico conforme al cálculo de SLA', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const c = TestBed.createComponent(TtaipDashboardComponent).componentInstance;
     const ap = createMockApelacion(4, 'EN_CALIFICACION_1');
@@ -151,7 +153,7 @@ describe('TtaipDashboardComponent stage selection', () => {
   });
 
   it('computa tiempoPromedio honestamente ("—") cuando no hay apelaciones resueltas con fechas', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const c = TestBed.createComponent(TtaipDashboardComponent).componentInstance;
     c.apelaciones.set([mockApelacionC1]);
@@ -159,7 +161,7 @@ describe('TtaipDashboardComponent stage selection', () => {
   });
 
   it('computa tiempoPromedio dinámicamente en días hábiles a partir de apelaciones resueltas', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const fixture = TestBed.createComponent(TtaipDashboardComponent);
     fixture.detectChanges();
@@ -185,7 +187,7 @@ describe('TtaipDashboardComponent stage selection', () => {
   });
 
   it('filtra resolucionesMes acotado al mes y año en curso', () => {
-    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]),
+    TestBed.configureTestingModule({ imports: [TtaipDashboardComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: PanelQueryService, useValue: mockApelacionService }, { provide: AuthService, useValue: mockAuthService }] });
     const fixture = TestBed.createComponent(TtaipDashboardComponent);
     fixture.detectChanges();

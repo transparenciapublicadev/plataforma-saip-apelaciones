@@ -112,9 +112,11 @@
           <span class="text-xs text-muted-foreground hidden md:inline">Seleccione una etapa para enfocar su cola</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-          @for (s of stages; track s.key; let idx = $index; let last = $last) {
-            <button type="button" (click)="selectStage(s.key)" [attr.aria-pressed]="stageKey() === s.key"
-                    class="relative rounded-lg p-4 text-left overflow-hidden transition-all group"
+          @for (s of stageCatalog(); track s.key; let idx = $index; let last = $last) {
+            <button type="button" (click)="selectStage(s.key)" [disabled]="counts()[s.key] === 0"
+                    [attr.aria-pressed]="stageKey() === s.key"
+                    [attr.title]="counts()[s.key] === 0 ? 'Sin expedientes en esta etapa' : null"
+                    class="relative rounded-lg p-4 text-left overflow-hidden transition-all group disabled:cursor-not-allowed disabled:opacity-50"
                     [style.background]="stageKey() === s.key ? s.bg : 'var(--card)'"
                     [style.border]="'1.5px solid ' + (stageKey() === s.key ? s.color : 'var(--border)')"
                     [style.box-shadow]="stageKey() === s.key ? '0 0 0 3px ' + s.bg : 'none'">
@@ -145,41 +147,6 @@
             </button>
           }
         </div>
-      </div>
-
-      <!-- Barra de Filtros -->
-      <div class="flex items-center flex-wrap gap-3 mb-5">
-        <label for="tribunal-order" class="text-xs text-muted-foreground">Orden</label>
-        <select id="tribunal-order" class="field-input w-auto" [ngModel]="orden()" (ngModelChange)="cambiarOrden($event)">
-          <option value="recientes">Más recientes</option>
-          <option value="antiguas">Más antiguas</option>
-        </select>
-
-        <label for="tribunal-sala" class="text-xs text-muted-foreground">Vocalía / Sala</label>
-        <select id="tribunal-sala" class="field-input w-auto" [ngModel]="salaFiltro()" (ngModelChange)="cambiarSala($event)">
-          <option value="TODAS">Todas las salas</option>
-          <option value="SIN_SALA">Sin sala asignada</option>
-          @for (sala of salas(); track sala.id) {
-            <option [ngValue]="sala.id">{{ sala.nombre }}</option>
-          }
-        </select>
-
-        <label for="tribunal-state" class="text-xs text-muted-foreground">Estado legal</label>
-        <select id="tribunal-state" class="field-input w-auto" [ngModel]="estadoFiltro()" (ngModelChange)="cambiarEstado($event)">
-          <option value="">Todos los estados</option>
-          @for (state of estados(); track state) {
-            <option [value]="state">{{ state }}</option>
-          }
-        </select>
-
-        <label for="tribunal-page-size" class="text-xs text-muted-foreground">Por página</label>
-        <select id="tribunal-page-size" class="field-input w-auto" [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)">
-          <option [ngValue]="4">4 por página</option>
-          <option [ngValue]="8">8 por página</option>
-          <option [ngValue]="12">12 por página</option>
-        </select>
-
-        <button type="button" class="btn-ghost-brand" (click)="limpiarFiltros()">Limpiar filtros</button>
       </div>
 
       <!-- MAIN: Cola de Etapa + Sidebar -->
@@ -231,7 +198,7 @@
                 <p role="status" class="text-center py-12 text-sm text-muted-foreground">Consultando expedientes del Tribunal…</p>
               }
               @for (item of queueItems(); track item.apelacion.id) {
-                <div role="listitem" class="tribunal-row rounded-lg p-4 flex items-center gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
+                <div role="listitem" class="tribunal-row rounded-lg p-4 flex flex-wrap md:flex-nowrap items-center gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
                      style="background: var(--card); border: 1px solid var(--border)"
                      [style.border-left]="'3px solid ' + toneColor(item.status.tone)">
                   <!-- Avatar Iniciales -->
@@ -249,9 +216,8 @@
                             [style.background]="item.stage.bg" [style.color]="item.stage.color" [style.border]="'1px solid ' + item.stage.color">
                         {{ item.stage.shortLabel }}
                       </span>
-                      <app-status-badge [status]="item.apelacion.estado"></app-status-badge>
-                      @if (item.resultado) {
-                        <app-status-badge [status]="item.resultado"></app-status-badge>
+                      @if (item.decision) {
+                        <app-status-badge [status]="item.decision"></app-status-badge>
                       }
                     </div>
                     <h3 class="text-sm font-medium mt-1.5 break-words">{{ item.descripcion }}</h3>
@@ -262,18 +228,23 @@
 
                   <!-- Bloque Métrico de Plazo (10 días con suspensión) -->
                   @if (!item.stage.isResolved) {
-                    <div class="hidden md:flex flex-col items-end gap-1.5 min-w-[120px]">
+                    <div class="flex flex-col items-end gap-1.5 w-full md:w-auto md:min-w-[132px]">
                       <div class="text-right">
-                        <div class="font-display text-[22px] leading-none" [style.color]="toneColor(item.status.tone)">
-                          {{ item.status.restantes }}d
+                        <div class="font-display text-[22px] leading-none" [style.color]="item.status.informado ? toneColor(item.status.tone) : 'var(--muted-foreground)'">
+                          {{ plazoLista(item) }}
                         </div>
                         <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1 font-mono">
-                          {{ item.status.suspendido > 0 ? 'efectivos' : 'restantes' }}
+                          {{ plazoListaCaption(item) }}
                         </div>
+                        @if (fechaLimiteVisible(item); as limite) {
+                          <div class="font-mono text-[11px] text-muted-foreground mt-1">límite {{ limite }}</div>
+                        }
                       </div>
+                      @if (item.status.informado) {
                       <div class="w-full h-1 rounded-full overflow-hidden bg-muted">
                         <div class="h-full rounded-full transition-all" [style.width.%]="item.status.pct" [style.background]="toneColor(item.status.tone)"></div>
                       </div>
+                      }
                       @if (item.status.suspendido > 0) {
                         <div class="inline-flex items-center gap-1 text-[10px] font-medium" style="color: var(--gold-dark)" title="El contador de 10 días se suspende durante descargos, informe oral e información complementaria.">
                           <svg aria-hidden="true" lucidePauseCircle class="w-3 h-3"></svg>

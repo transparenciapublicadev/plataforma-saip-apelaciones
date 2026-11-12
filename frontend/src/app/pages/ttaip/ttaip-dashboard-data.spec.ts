@@ -24,7 +24,12 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
       { provide: GuidedTourService, useValue: { checkAutoStart() {}, endTourFor() {}, isFirstVisit: () => false, startTour() {} } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
-  afterEach(() => { try { http.verify({ ignoreCancelled: true }); } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); } });
+  afterEach(() => {
+    try {
+      http.match(req => req.url.endsWith('/calendario')).forEach(req => { if (!req.cancelled) req.flush({ plazos: {} }); });
+      http.verify({ ignoreCancelled: true });
+    } finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); }
+  });
   function page() { const f = TestBed.createComponent(TtaipDashboardComponent); f.detectChanges(); return f; }
   // Synthetic server pages: summaries describe the authorized aggregate, not the visible page.
   function payload(rows: ReturnType<typeof row>[], page = 0, size = 4, visible = rows) {
@@ -52,6 +57,8 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   it('no calcula un plazo de etapa desde una fecha de ingreso antigua', () => {
     const f = page(); reply([row({ fechaApelacion: '2000-01-01' })]);
     expect(f.componentInstance.getDiasValor(f.componentInstance.queueItems()[0])).toMatch(/no informado|no disponible/i);
+    expect(f.componentInstance.queueItems()[0].status.informado).toBe(false);
+    expect(f.nativeElement.textContent).not.toMatch(/\d+d/);
   });
 
   it('V6: pasos del Tribunal localizan el panel actual sin transiciones ni consultas nuevas', () => {
@@ -65,12 +72,97 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     const f = page(); reply([row({ estado: 'ESTADO_NO_RECONOCIDO' })]); expect(f.componentInstance.counts().resueltos).toBe(0);
   });
   it('una sala ausente no se atribuye a la primera sala', () => {
-    const f = page(); reply([row()]); f.componentInstance.cambiarSala('SIN_SALA'); const req = reply([row()], [row()]); expect(req.request.params.get('sala')).toBe('SIN_SALA'); expect(f.componentInstance.nombreSala(f.componentInstance.apelaciones()[0])).toBe('No informada');
+    const f = page(); const req = reply([row()]);
+    expect(req.request.params.get('sala')).toBeNull();
+    expect(req.request.params.get('estado')).toBeNull();
+    expect(f.componentInstance.nombreSala(f.componentInstance.apelaciones()[0])).toBe('No informada');
   });
   it('fundado en parte no se suma a fundado total', () => {
     const f = page(); reply([row({ estado: 'RESUELTO_FUNDADO_EN_PARTE', resultado: 'FUNDADO_EN_PARTE',
       resolucion: { id: 41, tipoResolucion: 'RESOLUCION_FINAL', decision: 'FUNDADO_EN_PARTE' } })]);
     expect(f.componentInstance.fundadasCount()).toBe(0);
+  });
+  it('un expediente resuelto muestra una sola decisión legible y no el código crudo', () => {
+    const f = page(); reply([row({ estado: 'RESUELTO_FUNDADO_EN_PARTE', resultado: 'FUNDADO_EN_PARTE',
+      resolucion: { id: 41, tipoResolucion: 'RESOLUCION_FINAL', decision: 'FUNDADO_EN_PARTE' } })]);
+    f.detectChanges();
+    const text = f.nativeElement.querySelector('.tribunal-row').textContent;
+    expect(text).toContain('Fundado en parte');
+    expect(text).not.toContain('FUNDADO_EN_PARTE');
+    expect(text.match(/Fundado en parte/g)).toHaveLength(1);
+    expect(text).not.toContain('RESUELTO');
+  });
+  function calendario(plazos: Record<string, number>) {
+    const req = http.expectOne(r => r.url.endsWith('/calendario'));
+    req.flush({ plazos });
+  }
+  it('cada etapa abierta cuenta el saldo desde el ingreso con el plazo oficial, y la fecha aparece una sola vez', () => {
+    const f = page();
+    f.componentInstance.hoyISO.set('2026-11-11');
+    calendario({ TTAIP_ELEVACION: 2, TTAIP_CALIFICACION_1: 8, TTAIP_SUBSANACION: 2, TTAIP_CALIFICACION_2: 10, TTAIP_RESOLUCION: 10 });
+    reply([
+      row({ estado: 'EN_CALIFICACION_2', fechaApelacion: '2026-11-07' }),
+      row({ id: 22, expediente: 'EXP-22', estado: 'PENDIENTE_ELEVACION', fechaApelacion: '2026-11-07' }),
+      row({ id: 23, expediente: 'EXP-23', estado: 'EN_CALIFICACION_1', fechaApelacion: '2026-11-07' }),
+      row({ id: 24, expediente: 'EXP-24', estado: 'EN_RESOLUCION', fechaApelacion: '2026-11-07', calificacionPrimera: 'ADMISIBLE' }),
+    ]);
+    f.detectChanges();
+    const rows = [...f.nativeElement.querySelectorAll('.tribunal-row')].map((node: HTMLElement) => node.textContent);
+    const cards = [...f.nativeElement.querySelectorAll('[data-tour="t-pipeline"] button')] as HTMLButtonElement[];
+    const card = (label: string) => cards.find(node => node.textContent?.includes(label));
+    expect(rows[0]).toContain('8d');
+    expect(rows[0]).toContain('restantes');
+    expect(rows[0]).toContain('límite 23/11/2026');
+    expect(rows[0]).not.toContain('10 días háb.');
+    expect(rows[0].match(/ingresó/gi)).toHaveLength(1);
+    expect(rows[0]).not.toContain('En 2da Calificación');
+    expect(rows[1]).toContain('Hoy');
+    expect(rows[1]).toContain('vence hoy');
+    expect(rows[1]).toContain('límite 11/11/2026');
+    expect(rows[2]).toContain('6d');
+    expect(rows[2]).not.toContain('7 días háb.');
+    expect(rows[2]).not.toContain('8 días háb.');
+    expect(rows[3]).toContain('8d');
+    expect(rows[3]).toContain('restantes');
+    expect(rows[3]).not.toContain('10 días háb.');
+    expect(card('1ra Calif.')?.textContent).toContain('8 días háb.');
+    expect(card('1ra Calif.')?.textContent).not.toContain('7 días háb.');
+    expect(card('Res. Final')?.textContent).toContain('10 días háb.');
+    expect(card('Subsanación')?.disabled).toBe(true);
+    expect(card('Resueltos')?.disabled).toBe(true);
+    expect(card('Elevación')?.disabled).toBe(false);
+    f.componentInstance.selectStage('subsanacion');
+    http.expectNone(panelRequest);
+    expect(f.componentInstance.stageKey()).toBe('todos');
+  });
+  it('un ingreso antiguo con calendario oficial figura vencido', () => {
+    const f = page();
+    f.componentInstance.hoyISO.set('2026-11-11');
+    calendario({ TTAIP_CALIFICACION_1: 8 });
+    reply([row({ fechaApelacion: '2000-01-01', estado: 'EN_CALIFICACION_1' })]);
+    f.detectChanges();
+    const text = f.nativeElement.querySelector('.tribunal-row').textContent;
+    expect(text).toContain('Vencido');
+    expect(text).toContain('plazo vencido');
+    expect(f.componentInstance.queueItems()[0].status.informado).toBe(true);
+    expect(f.componentInstance.queueItems()[0].status.vencido).toBe(true);
+  });
+  it('la subsanación conserva el reloj del servidor', () => {
+    const f = page();
+    f.componentInstance.hoyISO.set('2026-11-11');
+    calendario({ TTAIP_SUBSANACION: 2 });
+    reply([row({ estado: 'EN_SUBSANACION', fechaApelacion: '2000-01-01', plazoSubsanacion: { diasHabilesRestantes: 1, diasHabiles: 2, estado: 'EN_CURSO', fechaLimite: '2026-11-12' } })]);
+    f.detectChanges();
+    const text = f.nativeElement.querySelector('.tribunal-row').textContent;
+    expect(text).toContain('1d');
+    expect(text).not.toContain('Vencido');
+    expect(text).toContain('límite 12/11/2026');
+  });
+  it('sin calendario oficial no muestra un plazo inventado', () => {
+    const f = page(); reply([row({ estado: 'EN_CALIFICACION_1' })]); f.detectChanges();
+    const text = f.nativeElement.querySelector('.tribunal-row').textContent;
+    expect(text).toContain('plazo no informado');
+    expect(text).not.toContain('días háb.');
   });
   it('durante la carga no muestra ceros institucionales ni ausencia de críticos como datos confirmados', () => {
     const f = page(); expect(f.nativeElement.textContent).not.toContain('0%'); expect(f.nativeElement.textContent).not.toContain('sin críticos'); reply([]);
@@ -132,29 +224,31 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(f.componentInstance.counts()).toMatchObject({ todos: 8, elevacion: 1, calificacion1: 1, subsanacion: 1, calificacion2: 2, resolucion: 1, resueltos: 1, otras: 1 });
     f.componentInstance.selectStage('otras'); const req = reply(states.map((estado, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}`, estado })), [row({ estado: 'ESTADO_NO_RECONOCIDO' })]); expect(req.request.params.get('etapa')).toBe('otras'); expect(f.componentInstance.filtered()[0].apelacion.estado).toBe('ESTADO_NO_RECONOCIDO');
   });
-  it('combina etapa, búsqueda, estado y sala mediante la consulta autorizada del servidor', () => {
+  it('la búsqueda y la etapa consultan el servidor sin sala ni estado', () => {
     const rows = [row({ ciudadanoNombre: 'Ángela Pérez', expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala A' } } }), row({ id: 22, expediente: 'EXP-22', estado: 'EN_SUBSANACION' })];
     const f = page(); reply(rows); const c = f.componentInstance;
-    c.searchModel = 'angela informacion'; c.cambiarSala(8); const pending = http.expectOne(panelRequest);
-    c.cambiarEstado('EN_CALIFICACION_1'); expect(pending.cancelled).toBe(true);
-    const req = reply(rows, [rows[0]]);
-    expect(req.request.params.get('busqueda')).toBe('angela informacion'); expect(req.request.params.get('sala')).toBe('8');
-    expect(req.request.params.get('estado')).toBe('EN_CALIFICACION_1');
-    expect(c.filtered().map(item => item.apelacion.id)).toEqual([21]); expect(c.counts().todos).toBe(2);
-    c.limpiarFiltros(); reply(rows); expect(c.filtered().length).toBe(2); expect(c.search()).toBe('');
+    c.searchModel = 'angela informacion'; c.selectStage('subsanacion');
+    const req = reply(rows, [rows[1]]);
+    expect(req.request.params.get('busqueda')).toBe('angela informacion');
+    expect(req.request.params.get('etapa')).toBe('subsanacion');
+    expect(req.request.params.get('sala')).toBeNull();
+    expect(req.request.params.get('estado')).toBeNull();
+    expect(c.filtered().map(item => item.apelacion.id)).toEqual([22]);
+    c.searchModel = ''; c.selectStage('todos'); reply(rows); expect(c.filtered().length).toBe(2); expect(c.search()).toBe('');
   });
-  it('consulta salas por ID aunque compartan nombre y permite SIN_SALA', () => {
+  it('muestra la sala de cada expediente sin filtrar la consulta', () => {
     const rows = [row({ expedienteTtaip: { id: 51, sala: { id: 8, nombre: 'Sala 1' } } }), row({ id: 22, expediente: 'EXP-22', expedienteTtaip: { id: 52, sala: { id: 9, nombre: 'Sala 1' } } }), row({ id: 23, expediente: 'EXP-23' })];
-    const f = page(); reply(rows); const c = f.componentInstance;
-    c.cambiarSala(9); expect(reply(rows, [rows[1]]).request.params.get('sala')).toBe('9'); expect(c.filtered().map(item => item.apelacion.id)).toEqual([22]);
-    c.cambiarSala('SIN_SALA'); expect(reply(rows, [rows[2]]).request.params.get('sala')).toBe('SIN_SALA'); expect(c.filtered().map(item => item.apelacion.id)).toEqual([23]); expect(c.salas().length).toBe(2);
+    const f = page(); const req = reply(rows); const c = f.componentInstance;
+    expect(req.request.params.get('sala')).toBeNull();
+    expect(c.nombreSala(c.apelaciones()[0])).toBe('Sala 1');
+    expect(c.nombreSala(c.apelaciones()[1])).toBe('Sala 1');
+    expect(c.nombreSala(c.apelaciones()[2])).toBe('No informada');
   });
   it('la página no modifica el alcance de indicadores y búsqueda reinicia el rango', () => {
     const rows = Array.from({ length: 10 }, (_, i) => row({ id: 21 + i, expediente: `EXP-${21 + i}` }));
     const f = page(); reply(rows); const c = f.componentInstance;
-    c.cambiarPagina(3); expect(reply(rows).request.params.get('pagina')).toBe('2'); expect(c.filteredVisibles().length).toBe(2); expect(c.totalExpedientes()).toBe(10);
+    c.cambiarPagina(3); const pageReq = reply(rows); expect(pageReq.request.params.get('pagina')).toBe('2'); expect(pageReq.request.params.get('tamano')).toBe('4'); expect(c.filteredVisibles().length).toBe(2); expect(c.totalExpedientes()).toBe(10);
     expect(c.inicioRegistro()).toBe(9); c.searchModel = 'EXP-21'; expect(c.paginaActual()).toBe(1); expect(c.apelaciones()).toEqual([]);
-    c.limpiarFiltros(); reply(rows); c.cambiarItemsPorPagina(8); expect(reply(rows).request.params.get('tamano')).toBe('8'); expect(c.filteredVisibles().length).toBe(8);
   });
   it('distingue resuelta/concluida de resolución final identificada y de cumplimiento', () => {
     const f = page(); reply([row({ estado: 'RESUELTO', resultado: 'FUNDADO' }), row({ id: 22, expediente: 'EXP-22', estado: 'CONCLUSION_DESISTIMIENTO' })]);
@@ -177,7 +271,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     [undefined, 'Reloj no informado'],
     [{ requerimientoId: 71, estado: 'PENDIENTE_INICIO', diasHabiles: 2 }, 'Pendiente de inicio'],
     [{ requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2 }, 'Reloj incompleto'],
-    [{ requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2, notificacionId: 81, fechaEficacia: '2026-10-22T09:00:00', fechaLimite: '2026-10-26', diasHabilesRestantes: 0 }, '0d'],
+    [{ requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2, notificacionId: 81, fechaEficacia: '2026-10-22T09:00:00', fechaLimite: '2026-10-26', diasHabilesRestantes: 0 }, 'Vence hoy'],
     [{ requerimientoId: 71, estado: 'VENCIDO', diasHabiles: 2, notificacionId: 81, fechaEficacia: '2026-10-22T09:00:00', fechaLimite: '2026-10-26', diasHabilesRestantes: 0 }, 'Vencido'],
   ])('muestra el reloj explícito sin usar fechas históricas: %j', (clock, label) => {
     const f = page(); reply([row({ estado: 'EN_SUBSANACION', fechaSubsanacion: '2000-01-01', plazoSubsanacion: clock })]); f.detectChanges();
@@ -235,7 +329,12 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   });
   it('expone etiquetas, selección, nombres largos y enlaces de consulta sin almacenar búsquedas', () => {
     const f = page(); reply([row({ solicitudAsunto: 'Asunto extenso '.repeat(40) })]); f.detectChanges();
-    for (const id of ['tribunal-search', 'tribunal-state', 'tribunal-sala', 'tribunal-page-size']) expect(f.nativeElement.querySelector(`label[for='${id}']`)).not.toBeNull();
+    expect(f.nativeElement.querySelector(`label[for='tribunal-search']`)).not.toBeNull();
+    for (const id of ['tribunal-state', 'tribunal-sala', 'tribunal-page-size', 'tribunal-order']) expect(f.nativeElement.querySelector(`#${id}`)).toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Limpiar filtros');
+    expect(f.nativeElement.textContent).not.toContain('Vocalía / Sala');
+    expect(f.nativeElement.textContent).not.toContain('Estado legal');
+    expect(f.nativeElement.textContent).not.toContain('Por página');
     expect(f.nativeElement.querySelectorAll('h1').length).toBe(1); expect(f.nativeElement.querySelector('[aria-pressed=true]')).not.toBeNull();
     expect(f.nativeElement.querySelector('[role=listitem] h3').textContent).toContain('Asunto extenso');
     expect(f.nativeElement.querySelector('a[href="/ttaip/cumplimiento"]')).not.toBeNull();
