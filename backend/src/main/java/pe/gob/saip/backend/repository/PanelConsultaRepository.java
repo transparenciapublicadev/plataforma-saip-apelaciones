@@ -125,7 +125,9 @@ public class PanelConsultaRepository {
     }
     private Map<String,Long> group(String expression,String fromWhere,MapSqlParameterSource params) {
         Map<String,Long> result = new LinkedHashMap<>();
-        jdbc.query("select "+expression+" k,count(*) n "+fromWhere+" group by "+expression,params,rs->{
+        // Group by the select alias. Repeating a CASE that contains parameters makes
+        // PostgreSQL treat each placeholder as a different expression and reject the query.
+        jdbc.query("select "+expression+" k,count(*) n "+fromWhere+" group by k",params,rs->{
             String key=rs.getString("k"); if(key!=null)result.put(key,rs.getLong("n"));
         });
         return Map.copyOf(result);
