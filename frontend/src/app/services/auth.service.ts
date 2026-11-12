@@ -98,10 +98,9 @@ export class AuthService {
       resultado = 'local';
     }
     // Never clear storage or navigate after the response: a new login may already exist.
-    if (cierre === this.cierreEnCurso && !this.getToken()) {
-      this.avisoCierre.set(resultado === 'confirmado'
-        ? 'Sesión cerrada e invalidada en el servidor.'
-        : 'Sesión cerrada en este navegador. No se pudo confirmar la invalidación en el servidor.');
+    // A confirmed logout needs no banner; it was appearing on every module until the next login.
+    if (cierre === this.cierreEnCurso && !this.getToken() && resultado !== 'confirmado') {
+      this.avisoCierre.set('Sesión cerrada en este navegador. No se pudo confirmar la invalidación en el servidor.');
     }
     return resultado;
   }

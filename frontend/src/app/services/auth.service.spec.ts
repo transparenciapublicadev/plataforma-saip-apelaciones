@@ -138,13 +138,13 @@ describe('AuthService', () => {
     expect(service.avisoCierreSesion()).toContain('No se pudo confirmar');
   });
 
-  it('only reports server invalidation after a successful response', async () => {
+  it('a confirmed logout leaves no banner', async () => {
     service.guardarSesion({ success: true, token: 'closing-session' });
     const result = service.cerrarSesion();
     expect(service.avisoCierreSesion()).toBeNull();
     httpMock.expectOne(`${apiUrl}/logout`).flush(null, { status: 204, statusText: 'No Content' });
     expect(await result).toBe('confirmado');
-    expect(service.avisoCierreSesion()).toContain('invalidada en el servidor');
+    expect(service.avisoCierreSesion()).toBeNull();
     expect(service.estaLogueado()).toBe(false);
   });
 
