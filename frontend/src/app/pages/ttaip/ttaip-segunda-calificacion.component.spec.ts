@@ -241,7 +241,7 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
   });
   it.each([
     { estado: 'PENDIENTE_INICIO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: null, fechaLimite: null, diasHabilesRestantes: null, notificacionId: null, expected: 'Inicio pendiente de acreditación' },
-    { estado: 'EN_CURSO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', fechaLimite: '2026-10-26', diasHabilesRestantes: 0, notificacionId: 61, expected: 'En curso · 0 días hábiles informados' },
+    { estado: 'EN_CURSO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', fechaLimite: '2026-10-26', diasHabilesRestantes: 0, notificacionId: 61, expected: 'En curso · vence hoy' },
     { estado: 'VENCIDO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', fechaLimite: '2026-10-26', diasHabilesRestantes: -1, notificacionId: 61, expected: 'Vencido según el servidor' },
     { estado: 'PENDIENTE_INICIO', requerimientoId: 71, diasHabiles: 2, fechaEficacia: '2026-10-22', expected: 'Reloj incompleto' },
     { estado: 'EN_CURSO', requerimientoId: 71, diasHabiles: 2, diasHabilesRestantes: 1, expected: 'Reloj incompleto' },
@@ -251,7 +251,9 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
     const c = page(appeal({ plazoSubsanacion })).componentInstance; expect(c.relojTexto()).toBe(expected); expect(c.canSubmit()).toBe(false);
   });
   it('no sustituye un reloj ausente por fecha de primera calificación ni hoy', () => {
-    const f = page(); expect(f.componentInstance.relojTexto()).toBe('Reloj no informado'); expect(f.nativeElement.textContent).toContain('No se calcula un calendario local');
+    const f = page(); expect(f.componentInstance.relojTexto()).toBe('Reloj no informado');
+    expect(f.nativeElement.textContent).toContain('Fecha límite');
+    expect(f.nativeElement.textContent).not.toContain('01/10/2026');
   });
   it('la revisión conserva la decisión y no registra al cerrar', () => {
     const f = ready(); const c = f.componentInstance; c.seleccionarDecision('improcedente'); c.fundamentos = 'Sustento local'; c.abrirConfirmacionCalificacion(); f.detectChanges();

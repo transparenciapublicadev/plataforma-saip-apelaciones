@@ -86,6 +86,21 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'descargos' as const, label: 'Descargos de la entidad' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
   readonly options = [...finalOpciones, { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No es resolución final: requiere EN_SUBSANACION, ausencia de recepción y reloj acreditado', accent: 'var(--muted-foreground)' }];
   readonly selectedOption = computed(() => this.options.find(o => o.id === this.selectedDecision()));
+  efectoResolucion(): string {
+    switch (this.selectedDecision()) {
+      case 'fundado': return 'Se ampara totalmente el recurso. Se ordenará a la entidad la entrega de la información solicitada en el plazo establecido.';
+      case 'fundado_en_parte': return 'Se ampara parcialmente. La entidad deberá entregar la parte de información que corresponde dentro del plazo.';
+      case 'infundado': return 'Se desestima el recurso. La conducta de la entidad queda confirmada.';
+      case 'infundado_en_parte': return 'Se desestima parcialmente. Se confirma parte de la conducta de la entidad.';
+      case 'improcedente': return 'El recurso no cumple los requisitos formales o de fondo y se archiva.';
+      case 'sustraccion_materia': return 'Procede la conclusión por sustracción de la materia: la entidad entregó la información durante el trámite.';
+      case 'desistimiento': return 'Procede la conclusión por desistimiento expreso del ciudadano.';
+      case 'estese_a_lo_resuelto': return 'Existe un pronunciamiento previo sobre la misma materia. Se resuelve estése a lo ya resuelto.';
+      case 'nulidad_del_acto': return 'Se declara la nulidad de lo actuado y se retrotrae el procedimiento al momento del vicio.';
+      case 'no_presentado': return 'El recurso no fue subsanado dentro del plazo legal; se tiene por no presentado.';
+      default: return '';
+    }
+  }
   readonly primeraRegistro = computed<Apelacion['resolucionPrimeraCalificacion'] | null>(() => this.apelacion()?.resolucionPrimeraCalificacion ?? null);
   readonly segundaRegistro = computed<Apelacion['resolucionSegundaCalificacion'] | null>(() => this.apelacion()?.resolucionSegundaCalificacion ?? null);
   readonly admision = computed(() => admisionFinal(this.apelacion()));

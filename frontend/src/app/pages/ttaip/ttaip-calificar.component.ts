@@ -19,7 +19,7 @@ import { OfficialDocsSectionComponent } from './shared/official-docs-section.com
 import { OfficialPreviewComponent } from './shared/official-preview.component';
 import { DocContext, CedulaVariant, cedulaVariantForStage } from './shared/official-docs.util';
 import { CalificacionDecision, CalificacionOperacion, calificacionOpciones, positiveId, apelacionCompatible, motivoPrimera, actuacionCompatible, documentosRelacionados } from './ttaip-calificar.model';
-import { LucideEye, LucideEyeOff, LucideXCircle, LucidePlus, LucideCheckCircle2, LucideAlertCircle,
+import { LucideEye, LucideEyeOff, LucideXCircle, LucideCheckCircle2, LucideAlertCircle,
   LucideArrowLeft, LucideFileText, LucideDownload, LucideSend, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
@@ -27,7 +27,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
   selector: 'app-ttaip-calificar',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideEye, LucideEyeOff,
-    LucideXCircle, LucidePlus, LucideCheckCircle2, LucideAlertCircle, LucideArrowLeft, LucideFileText, LucideDownload, LucideSend, LucideSearch, LucideChevronDown],
+    LucideXCircle, LucideCheckCircle2, LucideAlertCircle, LucideArrowLeft, LucideFileText, LucideDownload, LucideSend, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-calificar.component.html', styleUrl: './ttaip-calificar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -93,6 +93,14 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
   readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
   readonly options = calificacionOpciones;
   readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
+  efectoCalificacion(): string {
+    switch (this.selectedDecision()) {
+      case 'admisible': return 'La apelación cumple con todos los requisitos formales. Pasará a la etapa de Resolución Final donde se emitirá un fallo sobre el fondo (10 días hábiles).';
+      case 'inadmisible': return 'La apelación presenta observaciones a subsanar. Se notificará al ciudadano para que subsane en 2 días hábiles. Si no subsana, se resuelve como TENER POR NO PRESENTADO.';
+      case 'improcedente': return 'La apelación no cumple los requisitos legales. El proceso se archiva y no continúa.';
+      default: return '';
+    }
+  }
   readonly cedulaVariant = computed<CedulaVariant>(() => cedulaVariantForStage('primera', this.selectedDecision() || undefined));
   readonly docCtx = computed<Partial<DocContext>>(() => ({
     expediente: this.apelacion()?.expediente || '', recurrente: this.apelacion()?.ciudadanoNombre || 'No registrado',
