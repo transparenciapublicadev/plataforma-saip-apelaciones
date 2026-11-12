@@ -515,6 +515,23 @@
                       }
                     </div>
                   </div>
+                } @else if (respuestaAunNoEmitida()) {
+                  <div class="p-12 text-center">
+                    <div class="w-14 h-14 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--muted); border: 1px solid var(--border)">
+                      <svg aria-hidden="true" lucideClock class="w-7 h-7" style="color: var(--muted-foreground)"></svg>
+                    </div>
+                    <span class="eyebrow">Respuesta no disponible todavía</span>
+                    <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">La entidad aún no ha respondido</h3>
+                    @if (esSilencioAdministrativo()) {
+                      <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                        El plazo de atención venció y la entidad no registró una respuesta. Esa ausencia no acredita entrega. Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
+                      </p>
+                    } @else {
+                      <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+                        La respuesta aparecerá aquí <span class="font-medium text-foreground/80">recién cuando la entidad la registre</span>, junto con los documentos que adjunte. Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
+                      </p>
+                    }
+                  </div>
                 } @else {
                   <div class="p-8 text-center">
                     <div class="w-14 h-14 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
@@ -632,7 +649,7 @@
                     <span class="eyebrow">Apelación no disponible todavía</span>
                     <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Aún no puede apelar</h3>
                     <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                      El recurso de apelación se habilita <span class="font-medium text-foreground/80">recién cuando la entidad emite su respuesta</span> (o vence el plazo legal sin respuesta). Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">«{{ getEstadoDisplay(sol.estado) }}»</span>.
+                      El recurso de apelación se habilita <span class="font-medium text-foreground/80">recién cuando la entidad emite su respuesta</span> (o vence el plazo legal sin respuesta). Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
                     </p>
                   </div>
                 }

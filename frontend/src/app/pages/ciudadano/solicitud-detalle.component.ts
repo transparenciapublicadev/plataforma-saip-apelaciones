@@ -32,6 +32,8 @@ import {
   LucideUser
 } from '@lucide/angular';
 
+const MARCADOR_SOPORTE_MAGNETICO = '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]';
+
 export type RequestTabId = 'solicitud' | 'respuesta' | 'notificaciones' | 'apelacion';
 
 export interface RequestTabItem {
@@ -508,7 +510,9 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     if (upper === 'RESUELTO_INFUNDADO' || upper === 'INFUNDADO') return 'Infundado';
     if (upper === 'RESUELTO_FUNDADO_EN_PARTE' || upper === 'FUNDADO_EN_PARTE') return 'Fundado en parte';
     if (upper === 'RESUELTO_IMPROCEDENTE' || upper === 'IMPROCEDENTE') return 'Improcedente';
-    if (upper === 'EN_PROCESO' || upper === 'EN_REVISION' || upper === 'RECEPCIONADA') return 'En Proceso';
+    if (upper === 'RECEPCIONADA') return 'Recepcionada';
+    if (upper === 'EN_REVISION') return 'En revisión';
+    if (upper === 'PENDIENTE_INFORMACION') return 'Pendiente Informacion';
     if (upper === 'DENEGADA') return 'Denegada';
     if (upper === 'VENCIDA') return 'Vencida';
     if (upper === 'RESPONDIDA') return 'Respondida';
@@ -597,11 +601,22 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     }
 
     const selected: string[] = [];
-    if (sol.formatoDigital) selected.push('Digital');
-    if (sol.formatoFisico) selected.push('Físico');
-    if (sol.copiaSimple) selected.push('Copia simple');
+    if (sol.formatoDigital) selected.push('Correo electrónico');
+    if (sol.copiaSimple) selected.push('Copia simple / fotocopia');
     if (sol.copiaCertificada) selected.push('Copia certificada');
+    const magnetico = (sol.descripcion ?? '').includes(MARCADOR_SOPORTE_MAGNETICO)
+      || (!!sol.formatoFisico && !sol.copiaSimple && !sol.copiaCertificada);
+    if (magnetico) selected.push('Soportes magnéticos o digitales');
     return selected;
+  }
+
+  respuestaAunNoEmitida(): boolean {
+    if (this.yaRespondio()) return false;
+    const estado = (this.solicitud()?.estado || '').toUpperCase();
+    return estado === 'RECEPCIONADA'
+      || estado === 'EN_REVISION'
+      || estado === 'EN_PROCESO'
+      || estado === 'PENDIENTE_INFORMACION';
   }
 
   puedeApelar(): boolean {
