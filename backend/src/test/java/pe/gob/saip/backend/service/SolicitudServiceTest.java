@@ -845,7 +845,7 @@ class SolicitudServiceTest {
     @Test
     void listarPorCiudadano_debeVerificarAutorizacionYMapearDTO() {
         Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
-        when(solicitudRepository.findByCiudadano_IdUsuarioOrderByFechaPresentacionDesc(9L)).thenReturn(List.of(s));
+        when(solicitudRepository.findByCiudadanoWithRespuesta(9L)).thenReturn(List.of(s));
 
         List<SolicitudDTO> resultado = solicitudService.listarPorCiudadano(9L);
 

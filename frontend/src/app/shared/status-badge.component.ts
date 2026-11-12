@@ -153,6 +153,8 @@ const STATUS_LABELS: Record<string, string> = {
   'OBSERVADA': 'Observada (en precisión)',
   'ENTREGA_TOTAL': 'Entrega total',
   'ENTREGA_PARCIAL': 'Entrega parcial',
+  'DENEGACION_TOTAL': 'Denegatoria total',
+  'RESPONDIDA': 'Respondida',
   'DENEGADA': 'Denegada',
   'ATENDIDA': 'Atendida',
   'VENCIDA': 'Vencida',

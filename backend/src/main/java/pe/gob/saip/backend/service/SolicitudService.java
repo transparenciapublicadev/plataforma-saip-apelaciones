@@ -201,7 +201,7 @@ public class SolicitudService {
     @Transactional(readOnly = true)
     public List<SolicitudDTO> listarPorCiudadano(Long ciudadanoId) {
         autorizacion.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
-        return findByCiudadanoId(ciudadanoId)
+        return solicitudRepository.findByCiudadanoWithRespuesta(ciudadanoId)
                 .stream()
                 .map(SolicitudDTO::from)
                 .toList();
