@@ -286,7 +286,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(c.apelacionCreada()).toBeNull(); expect(c.successModalAbierto()).toBe(false);
   });
   it('cerrar la confirmación con Escape restaura el foco sin enviar y conserva el formulario', async () => {
-    const f = preparar(); f.detectChanges(); const button = [...f.nativeElement.querySelectorAll('button')] .find((b: unknown) => (b as HTMLButtonElement).textContent?.includes('Revisar y presentar')) as HTMLButtonElement;
+    const f = preparar(); f.detectChanges(); const button = [...f.nativeElement.querySelectorAll('button')] .find((b: unknown) => (b as HTMLButtonElement).textContent?.includes('Presentar apelación')) as HTMLButtonElement;
     document.body.appendChild(f.nativeElement); button.focus(); button.click(); f.detectChanges(); await f.whenStable();
     const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement; expect(dialog.getAttribute('aria-label')).toBe('Confirme su apelación');
     expect(dialog.contains(document.activeElement)).toBe(true); dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges(); await f.whenStable();
@@ -388,6 +388,25 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     http.expectOne(`${base}/apelaciones/recepciones`).flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
     expect(c.successModalAbierto()).toBe(true); expect(c.documentosConsultados()?.[0].nombreOriginal).toBe('copia real.txt');
     expect(c.documentosConsultados()?.[0].id).toBe(188); expect(c.file1()?.name).toBe('copia  real.txt');
+  });
+
+  it('la bandeja solo ofrece SAIP con respuesta de la entidad y sin apelación', () => {
+    params.next(convertToParamMap({}));
+    const f = TestBed.createComponent(NuevaApelacionComponent); f.detectChanges();
+    http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]);
+    const parcial = { ...solicitud, id: 24, expediente: 'SAIP-2026-00024', estado: 'RESPONDIDA', apelacion: null,
+      respuesta: { ...solicitud.respuesta, id: 92, tipoRespuesta: 'ENTREGA_PARCIAL' } };
+    const pendiente = { ...solicitud, id: 30, expediente: 'SAIP-2026-00030', estado: 'RECEPCIONADA', respuesta: null, apelacion: null };
+    const apelada = { ...solicitud, id: 31, expediente: 'SAIP-2026-00031', apelacion: { id: 9 } };
+    const silencio = { ...solicitud, id: 32, expediente: 'SAIP-2026-00032', estado: 'VENCIDA',
+      respuesta: { ...solicitud.respuesta, id: 93, tipoRespuesta: 'SILENCIO_ADMINISTRATIVO' }, apelacion: null };
+    http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([solicitud, parcial, pendiente, apelada, silencio]);
+    f.detectChanges();
+    const texto = f.nativeElement.textContent as string;
+    expect(texto).toContain(expediente); expect(texto).toContain('SAIP-2026-00024');
+    expect(texto).toContain('Expedientes apelables'); expect(texto).toContain('Denegatoria total'); expect(texto).toContain('Entrega parcial');
+    expect(texto).not.toContain('SAIP-2026-00030'); expect(texto).not.toContain('SAIP-2026-00031'); expect(texto).not.toContain('SAIP-2026-00032');
+    expect(f.nativeElement.querySelectorAll('[aria-label^="Apelar expediente"]')).toHaveLength(2);
   });
 
   it.each([{ hashSha256: null }, { hashSha256: 'incompleto' }, { sizeBytes: 0 }, { contentType: null }])('no ofrece clonar un antecedente sin versión recuperable: %j', cambio => {

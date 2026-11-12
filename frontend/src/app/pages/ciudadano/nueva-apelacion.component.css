@@ -12,7 +12,9 @@
 .appeal-upload-zone:hover { border-color:var(--brand-600);background:color-mix(in srgb,var(--brand-50) 50%,var(--card)); }
 .appeal-selected { cursor:default;background:color-mix(in srgb,var(--success) 8%,var(--card));border-color:color-mix(in srgb,var(--success) 32%,var(--border)); }
 .appeal-file-row { display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem;justify-content:space-between; }
+.appeal-card { transition:border-color 160ms ease, box-shadow 160ms ease; }
+.appeal-card:hover { border-color:var(--brand-600); box-shadow:var(--shadow-sm); }
 .appeal-form-page button:disabled { opacity:0.6;cursor:not-allowed; }
 .appeal-form-page input { accent-color:var(--brand-600); }
 @media(max-width:639px) { .appeal-form-page .form-shell > .p-6 { padding:1.25rem; } .appeal-file-row > :first-child { flex:1 1 100%; } }
-@media(prefers-reduced-motion:reduce) { .appeal-upload-zone { transition:none; } }
+@media(prefers-reduced-motion:reduce) { .appeal-upload-zone, .appeal-card { transition:none; } }
