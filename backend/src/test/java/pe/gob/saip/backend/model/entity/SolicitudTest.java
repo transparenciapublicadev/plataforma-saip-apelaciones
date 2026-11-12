@@ -97,4 +97,12 @@ class SolicitudTest {
         Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, null);
         assertThat(s.getDiasRestantes()).isZero();
     }
+
+    @Test
+    void getDiasRestantes_elDiaDeRegistro_conservaLosDiezDiasHabiles() {
+        LocalDate hoy = LocalDate.now();
+        Solicitud s = crearSolicitud(Solicitud.EstadoSolicitud.RECEPCIONADA, DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+        s.setFechaPresentacion(hoy.atTime(9, 30));
+        assertThat(s.getDiasRestantes()).isEqualTo(10);
+    }
 }

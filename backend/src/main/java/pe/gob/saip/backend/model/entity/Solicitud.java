@@ -170,10 +170,11 @@ public class Solicitud {
      * Negativo si ya venció.
      */
     public int getDiasRestantes() {
-        if (fechaLimite != null) {
-            return DiasHabilesUtil.diasHabilesRestantes(fechaLimite);
+        if (fechaLimite == null) {
+            return 0;
         }
-        return 0;
+        LocalDate ancla = fechaPresentacion == null ? null : fechaPresentacion.toLocalDate();
+        return DiasHabilesUtil.diasHabilesVigentes(ancla, fechaLimite);
     }
 
     /**
