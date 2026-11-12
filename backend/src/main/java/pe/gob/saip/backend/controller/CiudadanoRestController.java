@@ -10,7 +10,9 @@ import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.CiudadanoDTO;
 import pe.gob.saip.backend.model.entity.Ciudadano;
 import pe.gob.saip.backend.model.entity.Solicitud;
+import pe.gob.saip.backend.model.entity.TipoPersona;
 import pe.gob.saip.backend.model.entity.Usuario;
+import pe.gob.saip.backend.model.dto.ContactoCiudadano;
 import pe.gob.saip.backend.service.ApelacionService;
 import pe.gob.saip.backend.service.AutorizacionRecursosService;
 import pe.gob.saip.backend.service.CiudadanoService;
@@ -100,7 +102,8 @@ public class CiudadanoRestController {
                 ciudadano.getEmail(), ciudadano.getTelefono(), ciudadano.getDireccion(),
                 ciudadano.getFechaRegistro() != null ? ciudadano.getFechaRegistro().toString() : null,
                 ciudadano.getActivo(), totalSolicitudes, solicitudesEnProceso,
-                solicitudesRespondidas, apelacionesRealizadas
+                solicitudesRespondidas, apelacionesRealizadas,
+                ciudadano.getDepartamento(), ciudadano.getProvincia(), ciudadano.getDistrito()
         ));
     }
 
@@ -139,10 +142,27 @@ public class CiudadanoRestController {
         Ciudadano ciudadano = ciudadanoService.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + id));
 
-        ciudadano.setNombreCompleto(ciudadanoDTO.nombreCompleto());
-        ciudadano.setEmail(ciudadanoDTO.email());
-        ciudadano.setTelefono(ciudadanoDTO.telefono());
-        ciudadano.setDireccion(ciudadanoDTO.direccion());
+        ContactoCiudadano contacto = ContactoCiudadano.validar(
+                ciudadanoDTO.nombreCompleto(), ciudadanoDTO.email(), ciudadanoDTO.telefono(),
+                ciudadanoDTO.direccion(), ciudadanoDTO.departamento(), ciudadanoDTO.provincia(), ciudadanoDTO.distrito());
+        if (!contacto.email().equalsIgnoreCase(ciudadano.getEmail())) {
+            usuarioService.obtenerUsuarioPorEmail(contacto.email()).ifPresent(otro -> {
+                if (!otro.getIdUsuario().equals(id)) {
+                    throw new IllegalArgumentException("Ya existe una cuenta con ese correo.");
+                }
+            });
+        }
+        if (ciudadano.getTipoPersona() == TipoPersona.JURIDICA) {
+            ciudadano.setRazonSocial(contacto.nombreCompleto());
+        } else {
+            ciudadano.setNombreCompleto(contacto.nombreCompleto());
+        }
+        ciudadano.setEmail(contacto.email());
+        ciudadano.setTelefono(contacto.telefono());
+        ciudadano.setDireccion(contacto.direccion());
+        ciudadano.setDepartamento(contacto.departamento());
+        ciudadano.setProvincia(contacto.provincia());
+        ciudadano.setDistrito(contacto.distrito());
 
         ciudadano = ciudadanoService.guardarCiudadano(ciudadano);
 

@@ -35,6 +35,13 @@ export class CiudadanoService {
     return this.http.put<Ciudadano>(`${this.apiUrl}/${id}`, ciudadano);
   }
 
+  actualizarContacto(id: number, contacto: {
+    nombreCompleto: string; email: string; telefono: string; direccion: string;
+    departamento: string; provincia: string; distrito: string;
+  }): Observable<Ciudadano> {
+    return this.http.put<Ciudadano>(`${this.apiUrl}/${id}`, contacto);
+  }
+
   cambiarEstado(id: number, activo: boolean): Observable<Ciudadano> {
     return this.http.patch<Ciudadano>(`${this.apiUrl}/${id}/estado`, { activo });
   }

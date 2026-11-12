@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, effect, inject, signal, untracked } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { LucideUserRound, LucideX } from '@lucide/angular';
@@ -12,11 +13,14 @@ interface OwnProfile {
   email: string;
   telefono: string | null;
   direccion: string | null;
+  departamento: string | null;
+  provincia: string | null;
+  distrito: string | null;
   dni: string | null;
 }
 const text = (value: unknown): string | null => typeof value === 'string' && value.trim() ? value : null;
 
-/** Read-only until a narrow own-profile command can preserve protected fields. */
+/** Own citizen profile. Document and password stay out of this form. */
 @Component({
   selector: 'app-profile-dialog',
   imports: [ModalFocusDirective, LucideUserRound, LucideX],
@@ -34,8 +38,17 @@ export class ProfileDialogComponent implements OnInit, OnDestroy {
   private destroyed = false;
   private readonly data = signal<OwnProfile | null>(null);
   readonly loading = signal(false);
+  readonly saving = signal(false);
   readonly error = signal('');
+  readonly aviso = signal('');
   readonly retry = signal(false);
+  readonly nombre = signal('');
+  readonly email = signal('');
+  readonly telefono = signal('');
+  readonly direccion = signal('');
+  readonly departamento = signal('');
+  readonly provincia = signal('');
+  readonly distrito = signal('');
 
   constructor() {
     effect(() => {
@@ -69,7 +82,7 @@ export class ProfileDialogComponent implements OnInit, OnDestroy {
     if (this.destroyed || !this.dialog.abierto()) return;
     this.queries.unsubscribe(); this.queries = new Subscription();
     const generation = ++this.generation;
-    this.data.set(null); this.error.set(''); this.retry.set(false); this.loading.set(false);
+    this.data.set(null); this.error.set(''); this.aviso.set(''); this.retry.set(false); this.loading.set(false); this.saving.set(false);
     if (!this.matchesSession()) { this.cerrar(); return; }
     const id = this.context!.id;
     this.loading.set(true);
@@ -83,11 +96,18 @@ export class ProfileDialogComponent implements OnInit, OnDestroy {
         this.queries.add(this.ciudadanos.findById(id).subscribe({
           next: citizen => {
             if (!this.current(generation)) return;
-            if (citizen?.id !== id || citizen?.activo !== true || citizen?.email !== account.email) {
+            const datos = citizen as typeof citizen & { departamento?: string | null; provincia?: string | null; distrito?: string | null };
+            if (datos?.id !== id || datos?.activo !== true || datos?.email !== account.email) {
               this.incomplete(); return;
             }
-            this.data.set({ nombre: text(citizen.nombreCompleto), email: account.email,
-              telefono: text(citizen.telefono), direccion: text(citizen.direccion), dni: text(citizen.dni) });
+            const perfil = {
+              nombre: text(datos.nombreCompleto), email: account.email,
+              telefono: text(datos.telefono), direccion: text(datos.direccion),
+              departamento: text(datos.departamento), provincia: text(datos.provincia),
+              distrito: text(datos.distrito), dni: text(datos.dni)
+            };
+            this.data.set(perfil);
+            this.copiar(perfil);
             this.loading.set(false);
           },
           error: error => { if (this.current(generation)) this.failed(error); },
@@ -105,6 +125,63 @@ export class ProfileDialogComponent implements OnInit, OnDestroy {
   private failed(error: unknown): void {
     const failure = falloConsulta(error, 'su perfil');
     this.data.set(null); this.loading.set(false); this.error.set(failure.mensaje); this.retry.set(failure.reintentable);
+  }
+
+  valor(event: Event): string { return (event.target as HTMLInputElement | HTMLTextAreaElement).value; }
+
+  puedeGuardar(): boolean {
+    const telefono = this.telefono().trim();
+    return !this.saving() && !this.loading() && this.perfil() !== null
+      && this.nombre().trim().length >= 3
+      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email().trim())
+      && (telefono === '' || /^9\d{8}$/.test(telefono));
+  }
+
+  guardar(): void {
+    if (!this.puedeGuardar() || !this.matchesSession()) return;
+    const generation = this.generation;
+    const id = this.context!.id;
+    this.saving.set(true); this.aviso.set('');
+    this.queries.add(this.ciudadanos.actualizarContacto(id, {
+      nombreCompleto: this.nombre().trim(),
+      email: this.email().trim(),
+      telefono: this.telefono().trim(),
+      direccion: this.direccion().trim(),
+      departamento: this.departamento().trim(),
+      provincia: this.provincia().trim(),
+      distrito: this.distrito().trim(),
+    }).subscribe({
+      next: saved => {
+        if (!this.current(generation)) return;
+        this.saving.set(false);
+        const sesion = this.auth.obtenerSesion();
+        const nombre = text(saved?.nombreCompleto) ?? this.nombre().trim();
+        const email = text(saved?.email) ?? this.email().trim();
+        if (sesion) this.auth.guardarSesion({ ...sesion, success: true, nombre, nombreCompleto: nombre, email });
+      },
+      error: error => {
+        if (!this.current(generation)) return;
+        this.saving.set(false); this.aviso.set(this.mensajeGuardado(error));
+      },
+    }));
+  }
+
+  private copiar(perfil: OwnProfile): void {
+    this.nombre.set(perfil.nombre ?? '');
+    this.email.set(perfil.email);
+    this.telefono.set(perfil.telefono ?? '');
+    this.direccion.set(perfil.direccion ?? '');
+    this.departamento.set(perfil.departamento ?? '');
+    this.provincia.set(perfil.provincia ?? '');
+    this.distrito.set(perfil.distrito ?? '');
+  }
+
+  private mensajeGuardado(error: unknown): string {
+    if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 409)) {
+      const detail = error.error?.detail;
+      if (typeof detail === 'string' && detail.length > 0 && detail.length < 180) return detail;
+    }
+    return 'No se pudieron guardar los cambios. Inténtelo nuevamente.';
   }
 
   cerrar(): void {

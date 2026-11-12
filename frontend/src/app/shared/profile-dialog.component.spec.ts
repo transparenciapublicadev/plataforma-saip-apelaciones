@@ -41,15 +41,37 @@ describe('Perfil propio — consulta respaldada y límites', () => {
     expect(localStorage.getItem('usuario')).toBe(before); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
   });
 
-  it('keeps every visible input read-only and save disabled with an explicit reason, without identity/security/password inputs', () => {
-    open(); complete();
+  it('edits contact fields and saves them with PUT, without a password field', () => {
+    const c = open(); complete();
     const fields = Array.from(body().querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input,textarea'));
-    expect(fields).toHaveLength(4); expect(fields.every(x => x.readOnly)).toBe(true);
-    expect(body().querySelector('input[type="password"],input[name="activo"],input[name="authVersion"],input[name="entidadId"]')).toBeNull();
+    expect(fields.length).toBeGreaterThan(4); expect(fields.every(x => !x.readOnly)).toBe(true);
+    expect(body().querySelector('input[type="password"]')).toBeNull();
+    expect(body().textContent).toContain('El documento y la contraseña no se cambian aquí');
+    const name = body().querySelector<HTMLInputElement>('#own-profile-name')!;
+    name.value = 'Nombre actualizado'; name.dispatchEvent(new Event('input')); f!.detectChanges();
     const save = Array.from(body().querySelectorAll('button')).find(b => b.textContent?.includes('Guardar'))!;
-    expect(save.disabled).toBe(true); expect(save.getAttribute('aria-describedby')).toBe('profile-limit'); save.click();
-    expect(body().querySelector('#profile-limit')?.textContent).toContain('actualización de datos de contacto aún no está habilitada');
-    expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+    expect(save.disabled).toBe(false); save.click();
+    const put = http.expectOne(base + '/ciudadanos/7');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual(expect.objectContaining({
+      nombreCompleto: 'Nombre actualizado', email: account.email, telefono: citizen.telefono
+    }));
+    put.flush({ ...citizen, nombreCompleto: 'Nombre actualizado' }); f!.detectChanges();
+    expect(dialog.abierto()).toBe(false);
+    expect(auth.obtenerSesion()?.nombreCompleto).toBe('Nombre actualizado');
+    expect(c.perfil()).toBeNull();
+  });
+
+  it('keeps the form open and shows the server reason when the save is rejected', () => {
+    open(); complete();
+    const save = Array.from(body().querySelectorAll('button')).find(b => b.textContent?.includes('Guardar'))!;
+    save.click();
+    http.expectOne(base + '/ciudadanos/7').flush(
+      { detail: 'Ya existe una cuenta con ese correo.' }, { status: 409, statusText: 'Conflict' });
+    f!.detectChanges();
+    expect(dialog.abierto()).toBe(true);
+    expect(body().textContent).toContain('Ya existe una cuenta con ese correo.');
+    expect(body().textContent).not.toContain('PRIVATE');
   });
 
   it('does not infer natural/company type, RUC, representative, location or verification from login claims', () => {
