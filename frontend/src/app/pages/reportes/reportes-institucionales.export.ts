@@ -38,7 +38,7 @@ export function csvPagina(filas: FilaReporte[]): string {
 /**
  * Genera y descarga un PDF del borrador guardado con diseño institucional y pie informativo legal.
  */
-export async function descargarBorradorPdf(borrador: BorradorInstitucional, activo?: () => boolean): Promise<void> {
+export async function descargarBorradorPdf(borrador: BorradorInstitucional, activo?: () => boolean, filas: FilaReporte[] = []): Promise<void> {
   if (activo && !activo()) return;
   const d = new jsPDF();
   const pageW = d.internal.pageSize.getWidth();
@@ -50,17 +50,24 @@ export async function descargarBorradorPdf(borrador: BorradorInstitucional, acti
   d.setFillColor(176, 136, 66);
   d.rect(0, 26, pageW, 1.6, 'F');
 
+  const persistido = Boolean(borrador.id);
   d.setTextColor(255, 255, 255);
   d.setFont('helvetica', 'bold');
   d.setFontSize(13);
-  const titulo = borrador.modo === 'entidad' ? 'Informe SAIP de la Entidad (Borrador)' : 'Informe Estadístico TTAIP (Borrador)';
+  const titulo = borrador.modo === 'entidad'
+    ? (persistido ? 'Informe SAIP de la Entidad (Borrador)' : 'Informe SAIP de la Entidad')
+    : (persistido ? 'Informe Estadístico TTAIP (Borrador)' : 'Informe Estadístico TTAIP');
   d.text(titulo, 14, 12);
 
   d.setFont('helvetica', 'normal');
   d.setFontSize(8.5);
-  d.text(`Periodo: ${borrador.desde} al ${borrador.hasta} · Versión ${borrador.version}`, 14, 20);
-  d.text(`ID: ${borrador.id}`, pageW - 14, 12, { align: 'right' });
-  d.text(`Guardado: ${borrador.actualizado ? new Date(borrador.actualizado).toLocaleString('es-PE') : 'No registrado'}`, pageW - 14, 20, { align: 'right' });
+  d.text(`Periodo: ${borrador.desde} al ${borrador.hasta}${persistido ? ` · Versión ${borrador.version}` : ' · Periodo consultado'}`, 14, 20);
+  if (persistido) {
+    d.text(`ID: ${borrador.id}`, pageW - 14, 12, { align: 'right' });
+    d.text(`Guardado: ${borrador.actualizado ? new Date(borrador.actualizado).toLocaleString('es-PE') : 'No registrado'}`, pageW - 14, 20, { align: 'right' });
+  } else {
+    d.text('Copia de trabajo', pageW - 14, 20, { align: 'right' });
+  }
 
   // Tabla Resumen Cuantitativo
   const resumen = borrador.resumen;
@@ -137,6 +144,23 @@ export async function descargarBorradorPdf(borrador: BorradorInstitucional, acti
       columnStyles: { 0: { cellWidth: 55 } },
       margin: { left: 14, right: 14 },
     });
+    nextY = (d as any).lastAutoTable?.finalY ? (d as any).lastAutoTable.finalY + 8 : nextY + 30;
+  }
+
+  if (filas.length > 0) {
+    if (nextY > pageH - 45) {
+      d.addPage();
+      nextY = 20;
+    }
+    autoTable(d, {
+      startY: nextY,
+      head: [['Expediente', 'Fecha', 'Entidad', 'Asunto', 'Estado', 'Resultado']],
+      body: filas.map((f) => [f.expediente ?? '', f.fecha ?? '', f.entidad ?? '', f.asunto ?? '', f.estado ?? '', f.resultado ?? '']),
+      theme: 'grid',
+      headStyles: { fillColor: [134, 24, 35], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+      styles: { fontSize: 7.5, cellPadding: 1.8 },
+      margin: { left: 14, right: 14 },
+    });
   }
 
   // Pie de página legal informativo
@@ -147,31 +171,32 @@ export async function descargarBorradorPdf(borrador: BorradorInstitucional, acti
     d.line(14, pageH - 12, pageW - 14, pageH - 12);
     d.setFontSize(7);
     d.setTextColor(110, 110, 110);
-    d.text('Copia de trabajo. Este borrador no acredita emisión formal ni remisión a la ANTAIP.', 14, pageH - 7);
+    d.text('Copia de trabajo del periodo consultado. No acredita emisión formal ni remisión a la ANTAIP.', 14, pageH - 7);
     d.text(`Página ${i} de ${totalPages}`, pageW - 14, pageH - 7, { align: 'right' });
   }
 
   if (activo && !activo()) return;
-  d.save(`borrador-${borrador.modo}-${borrador.desde}-${borrador.hasta}.pdf`);
+  d.save(`${borrador.id ? 'borrador' : 'informe'}-${borrador.modo}-${borrador.desde}-${borrador.hasta}.pdf`);
 }
 
 /**
  * Genera y descarga un libro Excel (.xlsx) con los datos del borrador institucional y contenido cualitativo.
  */
-export async function descargarBorradorExcel(borrador: BorradorInstitucional, activo?: () => boolean): Promise<void> {
+export async function descargarBorradorExcel(borrador: BorradorInstitucional, activo?: () => boolean, filas: FilaReporte[] = []): Promise<void> {
   if (activo && !activo()) return;
   const wb = XLSX.utils.book_new();
 
   // Hoja 1: Resumen y Metadatos
   const resumen = borrador.resumen;
   const isTtaip = borrador.modo === 'ttaip';
+  const persistido = Boolean(borrador.id);
   const resumenData: (string | number)[][] = [
-    [isTtaip ? 'INFORME ESTADÍSTICO TTAIP (BORRADOR DE TRABAJO)' : 'INFORME INSTITUCIONAL (BORRADOR DE TRABAJO)'],
+    [isTtaip ? 'INFORME ESTADÍSTICO TTAIP' : 'INFORME INSTITUCIONAL SAIP'],
+    ['Origen', persistido ? 'Borrador guardado' : 'Periodo consultado'],
     ['Ámbito', isTtaip ? 'Tribunal TTAIP (Ámbito Nacional)' : 'Entidad Pública'],
     ['Periodo', `${borrador.desde} al ${borrador.hasta}`],
-    ['Versión', borrador.version],
-    ['Identificador persistido', borrador.id],
-    ['Estado', borrador.estado],
+    ...(persistido ? [['Versión', borrador.version], ['Identificador persistido', borrador.id]] as (string | number)[][] : []),
+    ['Estado', persistido ? borrador.estado : 'Consulta'],
     ['Entidad / Sala', resumen?.entidad ?? (isTtaip ? 'Tribunal TTAIP' : 'No informada')],
     ['Total registros del periodo', resumen?.total ?? 0],
     ['Con actuación / resolución registrada', resumen?.conActuacion ?? 0],
@@ -200,6 +225,15 @@ export async function descargarBorradorExcel(borrador: BorradorInstitucional, ac
   const wsCualitativo = XLSX.utils.aoa_to_sheet(cualitativoData);
   XLSX.utils.book_append_sheet(wb, wsCualitativo, 'Cualitativo');
 
+  if (filas.length > 0) {
+    const detalleData: (string | number)[][] = [
+      ['Página visible del detalle. Si hay más páginas, esta hoja no contiene el universo completo.'],
+      ['Expediente', 'Fecha', 'Entidad', 'Asunto', 'Estado', 'Resultado'],
+      ...filas.map((f) => [f.expediente ?? '', f.fecha ?? '', f.entidad ?? '', f.asunto ?? '', f.estado ?? '', f.resultado ?? '']),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalleData), 'Detalle visible');
+  }
+
   if (activo && !activo()) return;
-  XLSX.writeFile(wb, `borrador-${borrador.modo}-${borrador.desde}-${borrador.hasta}.xlsx`);
+  XLSX.writeFile(wb, `${borrador.id ? 'borrador' : 'informe'}-${borrador.modo}-${borrador.desde}-${borrador.hasta}.xlsx`);
 }
