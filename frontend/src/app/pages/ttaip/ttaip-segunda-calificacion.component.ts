@@ -21,14 +21,14 @@ import { SegundaDecision, SegundaOperacion, segundaCompatible, segundaOpciones, 
 import { consultarRecepcionInstitucional, sinConsultaRecepcion, motivoRecepcion } from './recepcion-institucional.model';
 import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { LucideArrowLeft, LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff,
-  LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
+  LucideDownload, LucideSearch, LucideChevronDown, LucideSend } from '@lucide/angular';
 
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
-    LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
+    LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown, LucideSend],
   templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -83,6 +83,14 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   readonly tabs = [{ id: 'subsanacion' as const, label: 'Subsanación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
   readonly options = segundaOpciones;
   readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
+  efectoVerificacion(): string {
+    switch (this.selectedDecision()) {
+      case 'admitido': return 'La subsanación cumple con todos los requisitos. El expediente pasa a Resolución Final donde se emitirá fallo de Fundado o Infundado.';
+      case 'improcedente': return 'La subsanación no cumple los requisitos. El proceso se archiva.';
+      case 'no_presentado': return 'El administrado no subsanó dentro del plazo de 2 días hábiles. El recurso se tiene por no presentado y el expediente se archiva.';
+      default: return '';
+    }
+  }
   readonly requerimiento = computed(() => requerimientoConsultado(this.apelacion()));
   readonly segundaActuacion = computed(() => segundaConsultada(this.apelacion()));
   readonly contexto = computed(() => contextoSegunda(this.apelacion()));

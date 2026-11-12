@@ -7,9 +7,9 @@ export interface SegundaOperacion {
   decision: 'admitido' | 'improcedente' | 'no_presentado'; fundamentos: string; miembroId?: number; resolucionId?: number;
 }
 export const segundaOpciones = [
-  { id: 'admitido' as const, label: 'ADMITIDO A TRÁMITE', description: 'Admisión a trámite · verifica subsanación ciudadana y remisión de descargos/rebeldía de la entidad', accent: 'var(--success)', command: 'admitir' },
-  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Segunda improcedencia · subsanación extemporánea o manifiestamente insuficiente', accent: 'var(--muted-foreground)', command: 'inadmitir' },
-  { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'Apercibimiento legal por vencimiento del plazo de subsanación de 2 días hábiles', accent: 'var(--warning)', command: 'no-presentado' },
+  { id: 'admitido' as const, label: 'ADMITIDO A TRÁMITE', description: 'Subsanación aprobada · pasa a Resolución Final', accent: 'var(--success)', command: 'admitir' },
+  { id: 'improcedente' as const, label: 'IMPROCEDENTE', description: 'Subsanación insuficiente · proceso archivado', accent: 'var(--muted-foreground)', command: 'inadmitir' },
+  { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No subsanó en el plazo de 2 días hábiles', accent: 'var(--warning)', command: 'no-presentado' },
 ];
 export function requerimientoConsultado(ap: Apelacion | null) {
   const r = ap?.resolucionPrimeraCalificacion;
@@ -63,6 +63,8 @@ export function relojConsultado(ap: Apelacion | null): string {
   const date = (value: unknown) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && Number.isFinite(Date.parse(value));
   if (!['EN_CURSO', 'VENCIDO'].includes(p.estado || '') || !positiveId(p.notificacionId)
     || !date(p.fechaEficacia) || !date(p.fechaLimite) || !Number.isSafeInteger(p.diasHabilesRestantes)) return 'Reloj incompleto';
-  return p.estado === 'VENCIDO' ? 'Vencido según el servidor' : p.diasHabilesRestantes! >= 0
+  if (p.estado === 'VENCIDO') return 'Vencido según el servidor';
+  if (p.diasHabilesRestantes === 0) return 'En curso · vence hoy';
+  return p.diasHabilesRestantes! > 0
     ? 'En curso · ' + p.diasHabilesRestantes + ' días hábiles informados' : 'Reloj incompleto';
 }
