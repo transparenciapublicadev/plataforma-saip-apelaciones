@@ -207,7 +207,8 @@ export const routes: Routes = [
   {
     path: 'compliance',
     title: 'Seguimiento de cumplimiento | Yaiku Tribunal',
-    loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent)
+    loadComponent: () => import('./pages/ttaip/compliance-tracking.component').then(m => m.ComplianceTrackingComponent),
+    canActivate: [tipoUsuarioGuard('TTAIP', 'ADMINISTRADOR')]
   },
   {
     path: 'admin',

@@ -302,6 +302,30 @@ describe('App Routes — Reportes ANTAIP Guard Redirections', () => {
     expect(router.url).toBe('/acceso-funcionario');
   });
 
+  it('redirects unauthenticated user from /compliance to /acceso-ttaip', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/compliance');
+
+    const router = TestBed.inject(Router);
+    expect(router.url).toBe('/acceso-ttaip');
+  });
+
+  it('redirects authenticated CIUDADANO from /compliance to /', async () => {
+    const auth = TestBed.inject(AuthService);
+    auth.guardarSesion({
+      success: true,
+      token: 'synthetic-jwt-ciudadano',
+      usuarioId: 30,
+      tipoUsuario: 'CIUDADANO'
+    });
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/compliance');
+
+    const router = TestBed.inject(Router);
+    expect(router.url).toBe('/');
+  });
+
   it('redirects unauthenticated user from /ttaip/reportes to /acceso-ttaip', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/ttaip/reportes');

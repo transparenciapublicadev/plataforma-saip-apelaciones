@@ -22,18 +22,20 @@ export const authGuard: CanActivateFn = (route, state) => {
   return false;
 };
 
-export const tipoUsuarioGuard = (tipoRequerido: string): CanActivateFn => {
-  return (route, state) => {
+export const tipoUsuarioGuard = (...tiposRequeridos: string[]): CanActivateFn => {
+  return () => {
     const authService = inject(AuthService);
     const router = inject(Router);
+    const acceso = tiposRequeridos[0] ?? 'CIUDADANO';
 
     if (!authService.estaLogueado()) {
-      router.navigate([getLoginRouteByRole(tipoRequerido)]);
+      router.navigate([getLoginRouteByRole(acceso)]);
       return false;
     }
 
-    const tipoUsuario = authService.getTipoUsuario();
-    if (tipoUsuario?.toLowerCase() === tipoRequerido.toLowerCase()) {
+    const tipoUsuario = authService.getTipoUsuario()?.toLowerCase();
+    const permitidos = new Set(tiposRequeridos.map(tipo => tipo.toLowerCase()));
+    if (tipoUsuario && permitidos.has(tipoUsuario)) {
       return true;
     }
 
