@@ -97,12 +97,12 @@ public class PanelConsultaService {
     private PanelSolicitudDTO solicitud(Map<String,Object> r,List<Map<String,Object>> observations) {
         LocalDate limit=date(r,"fecha_limite");
         return new PanelSolicitudDTO(id(r,"id_solicitud"),str(r,"expediente"),str(r,"asunto"),str(r,"descripcion"),str(r,"estado"),
-            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesRestantes(limit),
+            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesVigentes(day(r,"fecha_presentacion"), limit),
             id(r,"id_ciudadano"),str(r,"ciudadano_nombre"),id(r,"id_entidad"),str(r,"entidad_nombre"),str(r,"entidad_acronimo"),str(r,"etapa"),
             id(r,"id_respuesta")==null?null:new PanelSolicitudDTO.PanelRespuestaDTO(id(r,"id_respuesta"),str(r,"tipo_respuesta"),text(r,"fecha_respuesta")),
             observations.stream().map(o->new PanelSolicitudDTO.PanelObservacionDTO(id(o,"id_observacion"),id(o,"id_solicitud"),str(o,"estado"),
                 text(o,"fecha_observacion"),text(o,"fecha_limite_subsanacion"),text(o,"fecha_subsanacion"),
-                date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesRestantes(date(o,"fecha_limite_subsanacion")))).toList(),
+                date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion")))).toList(),
             id(r,"a_id")==null?null:apelacion(r));
     }
     private PanelApelacionDTO apelacion(Map<String,Object> r) {
@@ -125,10 +125,22 @@ public class PanelConsultaService {
         int days=((Number)r.get("ip_dias")).intValue();
         LocalDate limit=DiasHabilesUtil.sumarDiasHabiles(effective.toLocalDate(),days);
         return new PlazoSubsanacionTtaipDTO(id(r,"r1_id"),LocalDate.now().isAfter(limit)?"VENCIDO":"EN_CURSO",id(r,"ip_notificacion"),effective,limit,
-            days,DiasHabilesUtil.diasHabilesRestantes(limit),str(r,"ip_fuente"));
+            days,DiasHabilesUtil.diasHabilesVigentes(effective.toLocalDate(), limit),str(r,"ip_fuente"));
     }
     private static Long id(Map<String,Object> r,String key){return r.get(key)==null?null:((Number)r.get(key)).longValue();}
     private static String str(Map<String,Object> r,String key){return (String)r.get(key);}
     private static LocalDate date(Map<String,Object> r,String key){return r.get(key)==null?null:((java.sql.Date)r.get(key)).toLocalDate();}
+    private static LocalDate day(Map<String,Object> r,String key){
+        Object value=r.get(key);
+        if(value instanceof java.sql.Timestamp timestamp)return timestamp.toLocalDateTime().toLocalDate();
+        if(value instanceof java.sql.Date sqlDate)return sqlDate.toLocalDate();
+        if(value instanceof java.time.OffsetDateTime offset)return offset.toLocalDate();
+        if(value instanceof java.time.LocalDateTime dateTime)return dateTime.toLocalDate();
+        if(value instanceof java.time.LocalDate date)return date;
+        if(value instanceof CharSequence text && text.length()>=10){
+            try{return java.time.LocalDate.parse(text.subSequence(0,10));}catch(java.time.format.DateTimeParseException ignored){return null;}
+        }
+        return null;
+    }
     private static String text(Map<String,Object> r,String key){Object v=r.get(key);return v==null?null:v instanceof java.sql.Timestamp t?t.toLocalDateTime().toString():v instanceof java.sql.Date d?d.toLocalDate().toString():v.toString();}
 }

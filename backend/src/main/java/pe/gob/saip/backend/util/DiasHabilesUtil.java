@@ -99,10 +99,29 @@ public final class DiasHabilesUtil {
      * @return Días hábiles restantes (negativo si ya venció)
      */
     public static int diasHabilesRestantes(LocalDate fechaLimite) {
-        LocalDate hoy = LocalDate.now();
+        return diasHabilesVigentes(null, fechaLimite, LocalDate.now());
+    }
+
+    /**
+     * Días hábiles del plazo que siguen vigentes.
+     * El plazo empieza el día siguiente a {@code ancla} y vence en {@code fechaLimite}, inclusive.
+     * El día del ancla no se cuenta. Si hoy ya pertenece al plazo, hoy sí cuenta.
+     */
+    public static int diasHabilesVigentes(LocalDate ancla, LocalDate fechaLimite) {
+        return diasHabilesVigentes(ancla, fechaLimite, LocalDate.now());
+    }
+
+    public static int diasHabilesVigentes(LocalDate ancla, LocalDate fechaLimite, LocalDate hoy) {
+        if (fechaLimite == null || hoy == null) {
+            return 0;
+        }
         if (hoy.isAfter(fechaLimite)) {
             return -contarDiasHabiles(fechaLimite, hoy);
         }
-        return contarDiasHabiles(hoy, fechaLimite);
+        LocalDate desde = ancla != null && !hoy.isAfter(ancla) ? ancla.plusDays(1) : hoy;
+        if (desde.isAfter(fechaLimite)) {
+            return 0;
+        }
+        return contarDiasHabiles(desde, fechaLimite);
     }
 }

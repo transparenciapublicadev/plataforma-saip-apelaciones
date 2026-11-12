@@ -37,6 +37,6 @@ public record PlazoSubsanacionTtaipDTO(
         LocalDate limite = DiasHabilesUtil.sumarDiasHabiles(inicio.getFechaEficacia().toLocalDate(), inicio.getDiasHabiles());
         return new PlazoSubsanacionTtaipDTO(r.getId(), LocalDate.now().isAfter(limite) ? "VENCIDO" : "EN_CURSO",
             inicio.getNotificacion().getId(), inicio.getFechaEficacia(), limite, inicio.getDiasHabiles(),
-            DiasHabilesUtil.diasHabilesRestantes(limite), inicio.getFuente());
+            DiasHabilesUtil.diasHabilesVigentes(inicio.getFechaEficacia().toLocalDate(), limite), inicio.getFuente());
     }
 }
