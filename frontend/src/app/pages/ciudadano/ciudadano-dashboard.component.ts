@@ -217,6 +217,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   selectedStageKey = signal<'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('todas');
   stageSearch = signal<string>('');
   stagePage = signal<number>(1);
+  private scrollEtapaPendiente = false;
   readonly PER_PAGE = 4;
 
   readonly nombrePila = computed(() => this.nombreUsuario().trim().split(' ')[0] || 'Ciudadano');
@@ -551,10 +552,12 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const generation = ++this.generation;
     this.read?.unsubscribe(); this.clearGlobalSearch(); clearTimeout(this.searchTimer);
     this.timers.forEach(timer => clearTimeout(timer)); this.timers.clear();
-    this.todasSolicitudes.set([]); this.pagina.set(null);
     this.selectedSolicitudId.set(null); this.accionResaltada.set(false);
     const changed = this.sessionRevision !== this.authService.cambiosSesion();
-    if (resetFilters || changed) { this.selectedStageKey.set('todas'); this.stagePage.set(1); this.stageSearch.set(''); this.clearGlobalSearch(); }
+    if (resetFilters || changed) {
+      this.todasSolicitudes.set([]); this.pagina.set(null); this.scrollEtapaPendiente = false;
+      this.selectedStageKey.set('todas'); this.stagePage.set(1); this.stageSearch.set(''); this.clearGlobalSearch();
+    }
     if (changed) this.resumen.set(null);
     this.error.set(''); this.errorTipo.set(null); this.loading.set(changed || !this.resumen()); this.queryLoading.set(true);
     this.sessionRevision = this.authService.cambiosSesion();
@@ -572,7 +575,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       this.nombreUsuario.set(''); this.nombreCompleto.set(''); this.ciudadanoId.set(0);
       this.dni.set(''); this.ruc.set(''); this.razonSocial.set(''); this.representanteDni.set(''); this.representanteNombreCompleto.set('');
       this.errorTipo.set('sesion'); this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
-      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); return;
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); this.scrollEtapaPendiente = false; return;
     }
     const current = () => {
       try {
@@ -587,10 +590,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         if (!current()) return;
         if (!validPanelPage<Solicitud>(data, page, this.PER_PAGE) || !this.validarSolicitudes(data.contenido, citizen)) {
           this.errorTipo.set('incompleta'); this.error.set('La información recibida está incompleta o no corresponde a esta consulta. Reintente la consulta.');
-          this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); return;
+          this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); this.scrollEtapaPendiente = false; return;
         }
         this.todasSolicitudes.set(data.contenido); this.pagina.set(data); this.resumen.set(data.resumen);
         this.calcularEstadisticas(); this.loading.set(false); this.queryLoading.set(false);
+        if (this.scrollEtapaPendiente) { this.scrollEtapaPendiente = false; this.scrollToStageList(); }
       },
       error: failure => {
         if (!current()) return;
@@ -602,7 +606,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
           : status === 404 ? 'El recurso solicitado no fue encontrado.'
           : status === 0 ? 'No se pudo conectar con el servidor. Revise su conexión y reintente.'
           : 'El servidor no pudo completar la consulta. Reintente más tarde.');
-        this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null);
+        this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); this.scrollEtapaPendiente = false;
       },
     });
   }
@@ -683,19 +687,23 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   // ── Pipeline methods ────────────────────────────────────────────
   selectStage(key: 'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'): void {
+    const misma = this.selectedStageKey() === key && this.stageSearch() === '' && this.stagePage() === 1 && !this.queryLoading();
     this.selectedStageKey.set(key);
     this.stageSearch.set('');
     this.stagePage.set(1);
+    if (misma) {
+      this.scrollToStageList();
+      return;
+    }
+    this.scrollEtapaPendiente = true;
     this.cargarDatos(false);
+  }
 
+  private scrollToStageList(): void {
+    if (typeof document === 'undefined') return;
     this.schedule(() => {
-      const element = document.getElementById('seccion-etapa-enfocada');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        document.querySelector('[data-tour="cola"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
+      document.querySelector('[data-tour="cola"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
   }
 
   onPrimary(s: Solicitud): void {
@@ -729,6 +737,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return 'En 1ra Calificación';
     }
     const estado = (s.estado || '').toUpperCase();
+    if (estado === 'RECEPCIONADA') return 'Recepcionada';
+    if (estado === 'EN_REVISION') return 'En revisión';
+    if (estado === 'PENDIENTE_INFORMACION') return 'Pendiente Informacion';
     if (estado === 'EN_PRECISION') return 'En Precisión';
     if (estado === 'POR_RECOGER') return 'Por Recoger';
     if (estado === 'ENCAUZADA') return 'Encauzada';
@@ -801,8 +812,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   goStagePage(page: number): void {
     const next = Math.max(1, Math.min(page, this.stageTotalPages()));
     if (next === this.stagePage()) return;
-    this.stagePage.set(next); this.cargarDatos(false);
-    this.schedule(() => document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+    this.stagePage.set(next);
+    this.scrollEtapaPendiente = true;
+    this.cargarDatos(false);
   }
 
   onStageSearchChange(value: string): void {
@@ -826,38 +838,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   private normalizeText(text: string): string {
     return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  }
-
-  getEstadoBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'badge-warning',
-      'EN_REVISION': 'badge-in-process',
-      'PENDIENTE_INFORMACION': 'badge-warning',
-      'RESPONDIDA': 'badge-success',
-      'DENEGADA': 'badge-danger',
-      'VENCIDA': 'badge-muted',
-      'CONCLUIDA': 'badge-muted',
-      'PENDIENTE_ELEVACION': 'badge-warning',
-      'EN_CALIFICACION_1': 'badge-in-process',
-      'EN_SUBSANACION': 'badge-warning',
-      'EN_CALIFICACION_2': 'badge-in-process',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'badge-in-process',
-      'EN_RESOLUCION': 'badge-in-process',
-      'RESUELTO': 'badge-success',
-      'RESUELTO_FUNDADO': 'badge-success',
-      'RESUELTO_FUNDADO_EN_PARTE': 'badge-success',
-      'RESUELTO_INFUNDADO': 'badge-muted',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
-      'RESUELTO_IMPROCEDENTE': 'badge-danger',
-      'RESUELTO_ESTESE_A_LO_RESUELTO': 'badge-muted',
-      'RESUELTO_NULIDAD_ACTO': 'badge-danger',
-      'TENER_POR_NO_PRESENTADO': 'badge-danger',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
-      'CONCLUSION_DESISTIMIENTO': 'badge-muted'
-    };
-
-    const estadoKey = (estado || '').toUpperCase();
-    return clases[estadoKey] || 'badge-muted';
   }
 
   timelineDotBackground(status: TimelineStep['status']): string {
