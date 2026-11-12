@@ -112,6 +112,7 @@ export default defineConfig({
           items: [
             { slug: 'despliegue/backend' },
             { slug: 'despliegue/frontend' },
+            { slug: 'despliegue/docker-azure' },
             { slug: 'despliegue/mobile' },
             { slug: 'despliegue/release-readiness' },
           ],

@@ -1,6 +1,6 @@
 ---
 title: Despliegue Frontend
-description: Build de producción para Angular 21 con SSR Express y optimizaciones de rendimiento.
+description: Build de producción del frontend Angular 22 con SSR, pnpm y la imagen Docker.
 ---
 
 import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
@@ -8,29 +8,33 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
 ## Requisitos
 
 <CardGrid>
-  <Card title="Node.js 22+" icon="seti:javascript">
-    Runtime para build y SSR con Express.
+  <Card title="Node.js 24.22.1" icon="seti:javascript">
+    Runtime de la imagen. El Dockerfile parte de `node:24.22.1-bookworm-slim`.
   </Card>
-  <Card title="npm 10+" icon="puzzle">
-    Gestión de dependencias.
+  <Card title="pnpm 12.3.4" icon="puzzle">
+    El contenedor instala con el lockfile. En local se usa el pnpm del workspace.
   </Card>
 </CardGrid>
+
+La publicación en Azure está en [Docker y Azure](/despliegue/docker-azure/).
+El navegador de producción usa `apiUrl: '/api'`. Solo el proceso SSR sustituye
+ese prefijo por `API_INTERNAL_ORIGIN`.
 
 ## Build de Producción
 
 <Steps>
-1. **Instalar** dependencias
+1. **Instalar** dependencias desde la raíz del monorepo
    ```bash
-   cd frontend && npm ci
+   pnpm --dir frontend install --frozen-lockfile
    ```
 2. **Compilar** para producción
    ```bash
-   npm run build
+   pnpm --dir frontend run build
    ```
-   Esto genera el directorio `dist/` con los bundles optimizados y el servidor SSR.
-3. **Ejecutar** SSR con Express
+   Esto genera `frontend/dist/saip-frontend/` con el navegador y el servidor SSR.
+3. **Ejecutar** SSR
    ```bash
-   node dist/saip-frontend/server/server.mjs
+   node frontend/dist/saip-frontend/server/server.mjs
    ```
 </Steps>
 
@@ -38,18 +42,12 @@ import { Card, CardGrid, Steps, Badge } from '@astrojs/starlight/components';
 
 | Variable | Descripción | Default |
 |----------|-------------|---------|
-| `API_URL` | URL del backend REST API | `http://localhost:8080/api` |
-| `PORT` | Puerto del servidor SSR | `4000` |
+| `PORT` | Puerto del servidor SSR dentro del contenedor | `4000` |
+| `API_INTERNAL_ORIGIN` | Origen del backend visto solo por el SSR | `http://backend:8080` en Compose |
+| `PUBLIC_ORIGIN` | Origen HTTPS público. El SSR rechaza un Host distinto | Obligatorio en la imagen publicada |
 
-## Configuración
-
-```typescript
-// environment.prod.ts
-export const environment = {
-  production: true,
-  apiUrl: 'https://api.misaip.gob.pe/api',
-};
-```
+Desarrollo local sigue en `environment.ts` con `http://localhost:8080/api`.
+Producción está en `environment.production.ts` y usa `/api`.
 
 ## Optimizaciones Incluidas
 
