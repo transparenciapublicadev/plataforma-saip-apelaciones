@@ -175,15 +175,21 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   it('un parámetro numérico sigue siendo un código y no se reutiliza como ID de resolución', () => {
     const f = page(); f.componentInstance.cargarApelacion('101'); const req = http.expectOne(api + '/apelaciones/expediente/101'); req.flush(null, { status: 404, statusText: 'Not Found' }); expect(http.match(r => /\/resoluciones\/101/.test(r.url))).toHaveLength(0);
   });
-  it('historial omitido se distingue de historial confirmado vacío y no se reconstruye por estado', () => {
-    const f = page(data({ fechaSubsanacion: '2026-10-01', expedienteTtaip: { ...data().expedienteTtaip, historial: undefined } })); expect(f.componentInstance.detalle().historial.error).not.toBe(''); expect(f.componentInstance.timeline()).toEqual([]);
+  it('historial omitido se distingue de historial confirmado vacío y la línea muestra solo hitos registrados', () => {
+    const f = page(data({ fechaSubsanacion: '2026-10-01', expedienteTtaip: { ...data().expedienteTtaip, historial: undefined } }));
+    expect(f.componentInstance.detalle().historial.error).not.toBe('');
+    expect(f.componentInstance.timeline().map(t => t.titulo)).toEqual(['Apelación presentada', '1ra calificación · INADMISIBLE']);
+    expect(f.componentInstance.timeline().some(t => t.titulo.startsWith('Subsanación'))).toBe(false);
   });
-  it('los eventos mantienen sus IDs y fechas propias, sin sustituciones por apertura o requerimiento', () => {
+  it('un acuse del historial no sustituye los hitos del proceso ni usa la fecha de apertura', () => {
     const c = page(data({ fechaSubsanacion: '2026-10-01', expedienteTtaip: { ...data().expedienteTtaip, fechaApertura: '2026-01-01', historial: [{ id: 61, tipoEvento: 'ACUSE_NOTIFICACION_REGISTRADO', fechaEvento: '2026-10-03T12:00:00', descripcion: 'Acuse registrado', referencia: 'NOTIFICACION-91:ACUSE:ENTREGADO' }] } })).componentInstance;
-    expect(c.timeline()).toHaveLength(1); expect(c.timeline()[0].id).toBe(61); expect(c.timeline()[0].fecha).toContain('03/10/2026');
+    expect(c.historialExpediente()[0].id).toBe(61);
+    expect(c.timeline().some(t => t.id === 61 || t.fecha.includes('03/10/2026') || t.fecha.includes('01/01/2026'))).toBe(false);
+    expect(c.timeline().map(t => t.titulo)).toEqual(['Apelación presentada', '1ra calificación · INADMISIBLE']);
   });
   it('una fecha de actuación ausente no se sustituye por hoy ni se llama pendiente', () => {
-    const c = page(data({ expedienteTtaip: { ...data().expedienteTtaip, historial: [{ id: 61, tipoEvento: 'RESOLUCION_REGISTRADA' }] } })).componentInstance; expect(c.timeline()[0].fecha).toBe('Fecha no informada');
+    const c = page(data({ resolucionPrimeraCalificacion: { ...first, fechaResolucion: null } })).componentInstance;
+    expect(c.timeline().find(t => t.titulo.startsWith('1ra'))?.fecha).toBe('Fecha no informada');
   });
   const cedula = { id: 61, destinatario: 'CIUDADANO', numeroCedula: 'CÉDULA-61' };
   const notification = { id: 91, cedulaId: 61, destinatario: 'CIUDADANO', estado: 'PENDIENTE' };
