@@ -277,8 +277,8 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
 
   readonly resultadoCajaLabel = computed(() => {
     const resultado = this.resultadoNormalizado();
-    if (resultado.startsWith('FUNDADO')) return 'APELACION FUNDADA';
-    if (resultado.startsWith('INFUNDADO')) return 'APELACION INFUNDADA';
+    if (resultado.startsWith('FUNDADO')) return 'APELACIÓN FUNDADA';
+    if (resultado.startsWith('INFUNDADO')) return 'APELACIÓN INFUNDADA';
     if (resultado.includes('NULIDAD')) return 'NULIDAD DEL ACTO APELADO';
     return 'APELACION RESUELTA';
   });
@@ -602,16 +602,59 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     return `${words[0][0]}${words[1][0]}`.toUpperCase();
   }
 
+  etiquetaEvento(value?: string | null): string { return this.formatEventoTtaip(value); }
   private buildTimeline(): TimelineItem[] {
     const apelacion = this.apelacion();
-    if (!apelacion) {
-      return [];
+    if (!apelacion) return [];
+    const eventos: TimelineItem[] = [{
+      id: apelacion.id,
+      fecha: this.formatDateLabel(apelacion.fechaApelacion),
+      titulo: 'Apelación presentada',
+      descripcion: 'Recurso de apelación recibido y registrado en el Tribunal.',
+      icon: 'check',
+    }];
+    const primera = apelacion.resolucionPrimeraCalificacion;
+    if (positiveId(primera?.id) && apelacion.calificacionPrimera) {
+      eventos.push({
+        id: primera.id,
+        fecha: this.formatDateLabel(primera.fechaResolucion),
+        titulo: `1ra calificación · ${this.formatDecision(apelacion.calificacionPrimera)}`,
+        descripcion: primera.observaciones || 'Calificación de admisibilidad registrada por el Tribunal.',
+        icon: this.iconForDecision(apelacion.calificacionPrimera),
+      });
     }
-
-    return this.historialExpediente().map(evento => ({
-      id: evento.id, fecha: this.formatDateLabel(evento.fechaEvento, true), titulo: this.formatEventoTtaip(evento.tipoEvento),
-      descripcion: evento.descripcion || evento.referencia || 'Descripción no informada.', icon: this.iconForEventoTtaip(evento.tipoEvento)
-    }));
+    const subsanacionRegistrada = Boolean(apelacion.fundamentosSubsanacion?.trim()) || (apelacion.documentosSubsanacion?.length ?? 0) > 0;
+    if (subsanacionRegistrada) {
+      eventos.push({
+        id: -apelacion.id,
+        fecha: 'Fecha no informada',
+        titulo: 'Subsanación presentada',
+        descripcion: apelacion.fundamentosSubsanacion?.trim() || 'El administrado registró la subsanación.',
+        icon: 'check',
+      });
+    }
+    const segunda = apelacion.resolucionSegundaCalificacion;
+    if (positiveId(segunda?.id) && apelacion.calificacionSegunda) {
+      eventos.push({
+        id: segunda.id,
+        fecha: this.formatDateLabel(segunda.fechaResolucion),
+        titulo: `2da calificación · ${this.formatDecision(apelacion.calificacionSegunda)}`,
+        descripcion: segunda.observaciones || 'Segunda calificación registrada tras la subsanación.',
+        icon: this.iconForDecision(apelacion.calificacionSegunda),
+      });
+    }
+    const final = apelacion.resolucion;
+    if (positiveId(final?.id) && final.tipoResolucion === 'RESOLUCION_FINAL') {
+      const decision = final.decision || apelacion.resultado;
+      eventos.push({
+        id: final.id,
+        fecha: this.formatDateLabel(final.fechaResolucion || apelacion.expedienteTtaip?.fechaResolucionFinal),
+        titulo: `Resolución final · ${this.formatDecision(decision)}`,
+        descripcion: final.fundamentos || 'El Tribunal registró la resolución final.',
+        icon: this.iconForDecision(decision),
+      });
+    }
+    return eventos;
   }
   private normalizeKey(value?: string | null): string {
     return (value || '')
@@ -671,6 +714,8 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
 
   private formatDateLabel(raw?: string | null, includeTime = false): string {
     if (!raw) return 'Fecha no informada';
+    const escrita = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+    if (escrita && !includeTime) return `${escrita[3]}/${escrita[2]}/${escrita[1]}`;
     const date = new Date(raw);
     if (Number.isNaN(date.getTime())) return 'Fecha no informada';
 
