@@ -242,6 +242,65 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     f.detectChanges(); expect(tabs[0].getAttribute('aria-selected')).toBe('true');
   });
 
+  it('muestra los formatos con las mismas etiquetas del formulario de creación', () => {
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      formatoDigital: true,
+      formatoFisico: true,
+      copiaSimple: true,
+      copiaCertificada: false,
+      descripcion: '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nTexto de la solicitud',
+    });
+    const formatos = f.componentInstance.formatosSeleccionados();
+    expect(formatos).toEqual(['Correo electrónico', 'Copia simple / fotocopia', 'Soportes magnéticos o digitales']);
+    expect(f.nativeElement.textContent).toContain('Correo electrónico');
+    expect(f.nativeElement.textContent).not.toContain('Digital');
+    expect(formatos).not.toContain('Físico');
+  });
+
+  it('un soporte magnético sin copias no se muestra como formato físico genérico', () => {
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      formatoDigital: false,
+      formatoFisico: true,
+      copiaSimple: false,
+      copiaCertificada: false,
+      descripcion: 'Solo el pedido',
+    });
+    expect(f.componentInstance.formatosSeleccionados()).toEqual(['Soportes magnéticos o digitales']);
+  });
+
+  it('la pestaña de respuesta explica que la entidad aún no ha respondido', () => {
+    const f = pagina();
+    responder(f);
+    f.componentInstance.cambiarTab('respuesta');
+    f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(text).toContain('Respuesta no disponible todavía');
+    expect(text).toContain('La entidad aún no ha respondido');
+    expect(text).toContain('En revisión');
+    expect(text).not.toContain('«');
+    expect(text).not.toContain('En Proceso');
+    expect(text).not.toContain('No se recuperó una respuesta registrada');
+  });
+
+  it('una solicitud recién registrada muestra Recepcionada en la insignia y en las pestañas de espera', () => {
+    const f = pagina();
+    responder(f, { ...solicitud, estado: 'RECEPCIONADA' });
+    expect(f.nativeElement.textContent).toContain('Recepcionada');
+    expect(f.nativeElement.textContent).not.toContain('En trámite');
+    f.componentInstance.cambiarTab('respuesta');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('estado Recepcionada');
+    f.componentInstance.cambiarTab('apelacion');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('estado Recepcionada');
+    expect(f.nativeElement.textContent).not.toContain('«');
+    expect(f.nativeElement.textContent).not.toContain('En Proceso');
+  });
+
   it.each(['VENCIDA', 'RESPONDIDA'])('el estado %s sin respuesta recuperable no acredita entrega ni una respuesta completa', estado => {
     const f = pagina(); responder(f, { ...solicitud, estado });
     f.componentInstance.cambiarTab('respuesta'); f.detectChanges();
