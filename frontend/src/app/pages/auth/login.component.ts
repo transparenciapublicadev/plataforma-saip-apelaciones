@@ -7,7 +7,7 @@ import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
   LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
-  LucideUser, LucideBuilding2, LucideScale, LucideSettings, LucideLock, LucideBadgeCheck
+  LucideLock, LucideBadgeCheck
 } from '@lucide/angular';
 import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
 
@@ -22,7 +22,7 @@ type AccessMode = 'citizen' | 'internal';
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideLogIn,
     LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
-    LucideUser, LucideBuilding2, LucideScale, LucideSettings, LucideLock, LucideBadgeCheck,
+    LucideLock, LucideBadgeCheck,
     YaikuLogoComponent
   ],
   templateUrl: './login.component.html',
@@ -44,30 +44,18 @@ export class LoginComponent implements OnInit {
   error = signal<string>('');
   mensaje = signal<string>('');
 
-  portalTitle = computed(() => {
-    if (this.accessMode() === 'citizen') return 'Acceso para Administrados';
-    const role = this.requiredRole();
-    return `Acceso ${this.getRoleLabel(role)}`;
-  });
+  formEyebrow = computed(() => this.isCitizenPortal() ? 'Acceso público' : 'Acceso institucional');
 
-  portalSubtitle = computed(() => {
-    if (this.accessMode() === 'citizen') {
-      return 'Portal público para solicitudes SAIP y apelaciones (Persona Natural y Jurídica)';
-    }
-    return 'Portal institucional para personal autorizado';
-  });
+  formTitle = computed(() => this.isCitizenPortal() ? 'Administrado' : this.getRoleLabel(this.requiredRole()));
+
+  formSubtitle = computed(() => this.isCitizenPortal()
+    ? 'Ingrese para presentar y consultar sus solicitudes.'
+    : 'Ingrese al espacio interno de gestión de Yaiku.');
 
   identifierLabel = computed(() => this.isCitizenPortal() ? 'Correo electrónico, DNI o RUC' : 'Usuario institucional');
   identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'correo@ejemplo.com, DNI (8 dígitos) o RUC (11 dígitos)' : 'Usuario o correo institucional');
 
   isCitizenPortal = computed(() => this.accessMode() === 'citizen');
-  readonly activePortalRole = computed(() => this.isCitizenPortal() ? 'CIUDADANO' : this.requiredRole());
-  readonly portalEntries = [
-    { role: 'CIUDADANO', label: 'Administrado', description: 'Presento solicitudes', route: '/login' },
-    { role: 'FUNCIONARIO', label: 'Funcionario', description: 'Respondo solicitudes', route: '/acceso-funcionario' },
-    { role: 'TTAIP', label: 'Personal TTAIP', description: 'Resuelvo apelaciones', route: '/acceso-ttaip' },
-    { role: 'ADMINISTRADOR', label: 'Administrador', description: 'Gestiono el sistema', route: '/acceso-admin' }
-  ] as const;
 
 
   constructor() {}
@@ -204,8 +192,8 @@ export class LoginComponent implements OnInit {
 
   private getRoleLabel(role: InternalRole | null): string {
     if (role === 'FUNCIONARIO') return 'Funcionario';
-    if (role === 'TTAIP') return 'TTAIP';
-    if (role === 'ADMINISTRADOR') return 'Administración';
+    if (role === 'TTAIP') return 'Personal TTAIP';
+    if (role === 'ADMINISTRADOR') return 'Administrador';
     return 'Interno';
   }
 }

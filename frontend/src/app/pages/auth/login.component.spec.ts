@@ -7,10 +7,10 @@ import { AuthService } from '../../services/auth.service';
 
 type Role = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
 const entries = [
-  { role: 'CIUDADANO', route: '/login' },
-  { role: 'FUNCIONARIO', route: '/acceso-funcionario' },
-  { role: 'TTAIP', route: '/acceso-ttaip' },
-  { role: 'ADMINISTRADOR', route: '/acceso-admin' }
+  { role: 'CIUDADANO', route: '/login', title: 'Administrado', eyebrow: 'Acceso público' },
+  { role: 'FUNCIONARIO', route: '/acceso-funcionario', title: 'Funcionario', eyebrow: 'Acceso institucional' },
+  { role: 'TTAIP', route: '/acceso-ttaip', title: 'Personal TTAIP', eyebrow: 'Acceso institucional' },
+  { role: 'ADMINISTRADOR', route: '/acceso-admin', title: 'Administrador', eyebrow: 'Acceso institucional' }
 ] as const;
 
 describe('Login: separate portals, manual credentials and reference presentation', () => {
@@ -44,10 +44,14 @@ describe('Login: separate portals, manual credentials and reference presentation
 
   it.each(entries)('uses $route as a real separate entry with $role fixed by route data', async entry => {
     const fixture = await create(entry.role); const host = fixture.nativeElement as HTMLElement;
-    const links = [...host.querySelectorAll<HTMLAnchorElement>('nav a')];
-    expect(links.map(a => a.getAttribute('href'))).toEqual(entries.map(e => e.route));
-    expect(links.filter(a => a.getAttribute('aria-current') === 'page').map(a => a.getAttribute('href'))).toEqual([entry.route]);
+    const links = [...host.querySelectorAll<HTMLAnchorElement>('a')].map(a => a.getAttribute('href'));
+    for (const other of entries) {
+      if (other.route !== entry.route) expect(links).not.toContain(other.route);
+    }
     expect(host.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(host.querySelector('#login-title')?.textContent).toContain(entry.title);
+    expect(host.textContent).toContain(entry.eyebrow);
+    expect(host.textContent).not.toContain('Perfil de usuario');
     expect(fixture.componentInstance.isCitizenPortal()).toBe(entry.role === 'CIUDADANO');
     expect(host.querySelector('a[href="/registro"]') !== null).toBe(entry.role === 'CIUDADANO');
     expect(auth.login).not.toHaveBeenCalled();
@@ -56,7 +60,7 @@ describe('Login: separate portals, manual credentials and reference presentation
   it('retains an accessible brand/home link, headings and honest capability labels', async () => {
     const fixture = await create(); const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('a[aria-label="Yaiku, volver al inicio"] app-yaiku-logo')).not.toBeNull();
-    expect(host.querySelector('#login-title')?.textContent).toContain('Bienvenido de vuelta');
+    expect(host.querySelector('#login-title')?.textContent).toContain('Administrado');
     expect(host.querySelectorAll('h1')).toHaveLength(1);
     expect(host.textContent).toContain('Pide, sigue y apela.');
     expect(host.textContent).toContain('Todo en un solo lugar.');
