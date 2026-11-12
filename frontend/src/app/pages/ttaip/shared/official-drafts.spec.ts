@@ -53,11 +53,12 @@ describe('R2: borradores sin emisión acreditada', () => {
     const find = (label: string) => Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b => b.textContent?.includes(label));
     find('Reservar')?.click();
     fixture.detectChanges();
-    find('Emitir')?.click();
-    fixture.detectChanges();
     expect(fixture.componentInstance.entries().every(e => !e.numeroCompleto)).toBe(true);
-    expect(fixture.nativeElement.textContent).not.toMatch(/EMITIDO|ARCHIVADO|RESERVADO/);
-    expect(find('Emitir')?.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Número pendiente de reserva');
+    expect(fixture.nativeElement.textContent).toContain('Sala colegiada');
+    expect(fixture.nativeElement.textContent).not.toMatch(/EMITIDO|ARCHIVADO|RESERVADO|Sala del borrador|PDF borrador/);
+    expect(find('Emitir')).toBeUndefined();
+    expect(find('Reservar')?.disabled).toBe(true);
   });
 
   it('la vista previa no afirma autenticidad ni muestra firmantes predeterminados', () => {
