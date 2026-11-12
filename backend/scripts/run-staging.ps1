@@ -46,6 +46,13 @@ Get-Content $envFilePath | ForEach-Object {
             $value = $Matches[1]
         }
         
+        # Una clave vacia no debe pisar el fallback de application.properties.
+        if ($key -eq "JWT_SECRET" -and [string]::IsNullOrWhiteSpace($value)) {
+            [System.Environment]::SetEnvironmentVariable($key, $null, [System.EnvironmentVariableTarget]::Process)
+            Write-Host "  [OK] JWT_SECRET vacio: staging local usa la clave de desarrollo." -ForegroundColor Green
+            return
+        }
+
         # Establecer variable a nivel de proceso
         [System.Environment]::SetEnvironmentVariable($key, $value, [System.EnvironmentVariableTarget]::Process)
         

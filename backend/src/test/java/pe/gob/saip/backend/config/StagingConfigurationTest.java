@@ -3,6 +3,8 @@ package pe.gob.saip.backend.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -21,15 +23,30 @@ class StagingConfigurationTest {
                 context.getEnvironment().getPropertySources().remove(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME);
                 context.getEnvironment().setActiveProfiles("staging");
                 try {
+                    // Staging overrides the local file. JWT remains in application.properties.
                     context.getEnvironment().getPropertySources().addLast(
                             new ResourcePropertySource("classpath:application-staging.properties"));
+                    context.getEnvironment().getPropertySources().addLast(
+                            new ResourcePropertySource("classpath:application.properties"));
                 } catch (IOException exception) { throw new IllegalStateException(exception); }
             }).withUserConfiguration(JwtOnly.class);
 
+    private static final String LOCAL_DEVELOPMENT_KEY =
+            "saip-plataforma-jwt-secret-key-for-development-only-at-least-256-bits-long";
+
     @Test
-    void stagingCannotStartJwtWithoutAnExplicitSecret() {
-        runner.run(context -> assertThat(context.getStartupFailure() != null)
-                .as("Staging must fail closed instead of choosing a shared development key").isTrue());
+    void stagingKeepsTheLocalDevelopmentKeyWhenNoSecretIsProvided() throws IOException {
+        String staging = Files.readString(Path.of("src/main/resources/application-staging.properties"));
+        String local = Files.readString(Path.of("src/main/resources/application.properties"));
+        String production = Files.readString(Path.of("src/main/resources/application-prod.properties"));
+        assertThat(staging).doesNotContain("jwt.secret=");
+        assertThat(local).contains("jwt.secret=${JWT_SECRET:" + LOCAL_DEVELOPMENT_KEY + "}");
+        assertThat(production).doesNotContain("jwt.secret=");
+        runner.run(context -> {
+            assertThat(context.getStartupFailure()).isNull();
+            JwtService jwt = context.getBean(JwtService.class);
+            assertThat(jwt.extractUsuarioId(jwt.generateToken(73L, "CIUDADANO", 4L))).isEqualTo(73L);
+        });
     }
 
     @Test
@@ -46,11 +63,14 @@ class StagingConfigurationTest {
     }
 
     @Test
-    void stagingOnlySelectsOriginalMigrationsAndNeverDevelopmentSeed() {
+    void stagingResolvesTheLocalSeedAlreadyAppliedToTheDevelopmentDatabase() throws IOException {
+        String production = Files.readString(Path.of("src/main/resources/application-prod.properties"));
+        assertThat(production).contains("spring.flyway.locations=classpath:db/migration");
+        assertThat(production).doesNotContain("classpath:db/seed");
         runner.withPropertyValues("JWT_SECRET=" + UUID.randomUUID() + UUID.randomUUID()).run(context -> {
             assertThat(context.getStartupFailure()).isNull();
             assertThat(context.getEnvironment().getProperty("spring.flyway.locations"))
-                    .isEqualTo("classpath:db/migration");
+                    .isEqualTo("classpath:db/migration,classpath:db/seed");
             assertThat(context.getEnvironment().getProperty("spring.jpa.open-in-view")).isEqualTo("false");
         });
     }
