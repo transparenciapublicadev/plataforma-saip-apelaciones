@@ -293,7 +293,7 @@
 
         <!-- ── ESTÁ VIENDO ESTA SOLICITUD (TIMELINE) ────────────────── -->
         @if (solicitudPrincipal(); as principal) {
-          <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 96px">
+          <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-start gap-4">
               <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 <svg lucideBuilding2 class="w-4.5 h-4.5 text-brand-700"></svg>
@@ -316,7 +316,7 @@
                       <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion.expediente }}</span>
                     </span>
                   }
-                  <span [class]="'badge ' + getEstadoBadgeClass(principal.estado)">{{ formatoEstado(principal.estado) }}</span>
+                  <app-status-badge [status]="estadoInsignia(principal)"></app-status-badge>
                 </div>
                 <h3 class="font-display mt-2" style="font-size: 20px; letter-spacing: -0.015em; line-height: 1.25">{{ principal.asunto }}</h3>
                 <p class="text-sm text-[var(--muted-foreground)] mt-0.5">{{ principal.entidadNombre }} · presentada el {{ principal.fechaPresentacion | date:'dd/MM/yyyy' }}</p>
@@ -470,7 +470,7 @@
 
         <!-- ── ETAPA ENFOCADA (STAGE-FILTERED LIST) ─────────────────── -->
         @if (stageAll().length > 0 || stageFiltered().length > 0) {
-          <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 96px">
+          <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (selectedStageMeta().iconName) {
