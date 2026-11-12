@@ -1,13 +1,17 @@
-# Staging: clave explícita y migraciones originales
+# Staging local y migraciones originales
 
-El perfil `staging` exige `JWT_SECRET` del servidor y selecciona únicamente
-`classpath:db/migration`. No elige una clave compartida ni instala cuentas demo.
+El perfil `staging` es el arranque local con almacenamiento Supabase. La clave
+JWT sigue en `application.properties`, con el fallback de desarrollo si
+`JWT_SECRET` no viene en `backend/.env`. Flyway usa
+`classpath:db/migration,classpath:db/seed`, la misma historia que `saip_db`.
+La imagen de producción no copia `db/seed` ni este perfil, y su perfil `prod`
+se queda en `classpath:db/migration`.
 No se rotan claves, cambian cuentas existentes ni se editan migraciones aplicadas.
 
-El defecto se reproduce mediante `StagingConfigurationTest`: antes del cambio,
-el contexto JWT arrancaba sin secreto explícito y Flyway seleccionaba también
-`db/seed`. La regresión exige fallo de configuración sin clave y comprueba una
-clave sintética explícita, identidad estable, authVersion y jti. Son pruebas de
+`StagingConfigurationTest` comprueba que, sin `JWT_SECRET`, staging conserva la
+clave de desarrollo de `application.properties`, que una clave explícita la
+sustituye, y que Flyway local resuelve `db/seed` mientras `prod` no lo incluye.
+Son pruebas de
 configuración sin proveedores externos ni PostgreSQL; no acreditan producción.
 Los tres contextos de pruebas staging previos aportan claves generadas por
 `DynamicPropertySource`; sus expectativas funcionales se conservan.
