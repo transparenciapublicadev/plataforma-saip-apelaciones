@@ -3,6 +3,7 @@ package pe.gob.saip.backend.repository;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.dto.ReporteInstitucionalDTO.*;
+import pe.gob.saip.backend.util.PlazoAtencionReporte;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,9 +36,18 @@ public class ReporteInstitucionalQueryRepository {
         var meses=counts("SELECT to_char("+date(saip)+",'YYYY-MM') etiqueta,COUNT(*) cantidad"+from+" GROUP BY 1 ORDER BY 1",p);
         String resultado=saip?"r.tipo_respuesta":"x.resultado";
         var resultados=counts("SELECT "+resultado+" etiqueta,COUNT(*) cantidad"+from+" AND "+resultado+" IS NOT NULL GROUP BY 1 ORDER BY 1",p);
+        var plazos=saip ? plazos(from,p) : new PlazoAtencionReporte.Resultado(0,null);
         return new Resumen(modo,ambito,entidad,nombre,desde,hasta,LocalDateTime.now(),total,con,estados,meses,resultados,
-            saip ? "Solicitudes registradas en la entidad actual dentro del periodo. Respuesta registrada no acredita entrega ni notificación eficaz."
-                : "Apelaciones registradas en la plataforma dentro del periodo. Resolución final registrada no acredita firma, emisión ni notificación eficaz.");
+            saip ? "Solicitudes registradas en la entidad actual dentro del periodo. En plazo usa la fecha límite ya guardada y la fecha de la respuesta. No acredita entrega ni notificación eficaz."
+                : "Apelaciones registradas en la plataforma dentro del periodo. Resolución final registrada no acredita firma, emisión ni notificación eficaz.",
+            saip ? plazos.enPlazoLegal() : null, plazos.tiempoPromedioDiasHabiles());
+    }
+    private PlazoAtencionReporte.Resultado plazos(String from, Map<String,Object> p) {
+        var filas=jdbc.query("SELECT x.fecha_presentacion presentacion, x.fecha_limite limite, r.fecha_respuesta respuesta"+from,p,(r,n)->new PlazoAtencionReporte.Muestra(
+            r.getTimestamp("presentacion").toLocalDateTime().toLocalDate(),
+            r.getDate("limite")==null?null:r.getDate("limite").toLocalDate(),
+            r.getTimestamp("respuesta")==null?null:r.getTimestamp("respuesta").toLocalDateTime().toLocalDate()));
+        return PlazoAtencionReporte.calcular(filas, LocalDate.now());
     }
     private List<Conteo> counts(String sql,Map<String,Object> p) { return jdbc.query(sql,p,(r,n)->new Conteo(r.getString("etiqueta"),r.getLong("cantidad"))); }
     public Pagina detalle(String modo,Long entidad,LocalDate desde,LocalDate hasta,int page,int size,String query,String estado) {

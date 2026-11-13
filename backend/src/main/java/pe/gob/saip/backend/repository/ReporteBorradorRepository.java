@@ -24,12 +24,6 @@ public class ReporteBorradorRepository {
         return jdbc.query("SELECT * FROM reportes_institucionales_borradores WHERE ambito=:ambito AND desde=:desde AND hasta=:hasta"+(lock?" FOR UPDATE":""),
             Map.of("ambito",scope,"desde",desde,"hasta",hasta),this::map).stream().findFirst();
     }
-    public Historial history(String scope,int page,int size) {
-        var p=Map.<String,Object>of("ambito",scope,"offset",Math.multiplyExact(page,size),"limite",size);
-        long total=jdbc.queryForObject("SELECT COUNT(*) FROM reportes_institucionales_borradores WHERE ambito=:ambito",p,Long.class);
-        var rows=jdbc.query("SELECT * FROM reportes_institucionales_borradores WHERE ambito=:ambito ORDER BY actualizado DESC,id DESC LIMIT :limite OFFSET :offset",p,this::map);
-        return new Historial(rows,total,(int)((total+size-1)/size),page,size);
-    }
     public void save(Borrador b,String scope,Long actor,boolean insert) {
         var p=new HashMap<String,Object>();p.put("id",b.id());p.put("ambito",scope);p.put("modo",b.modo());p.put("desde",b.desde());p.put("hasta",b.hasta());
         p.put("version",b.version());p.put("op",b.operacionId());p.put("cual",json.writeValueAsString(b.cualitativo()));p.put("resumen",json.writeValueAsString(b.resumen()));

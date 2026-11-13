@@ -19,7 +19,7 @@ import {
   LucideGavel,
 } from '@lucide/angular';
 import { AuthService } from '../../services/auth.service';
-import { BorradorInstitucional, FilaReporte, GuardarBorrador, ModoReporte, PaginaReporte, ReportesInstitucionalesService, ResumenInstitucional } from '../../services/reportes-institucionales.service';
+import { BorradorInstitucional, ConsultaReporte, FilaReporte, GuardarBorrador, ModoReporte, PaginaReporte, ReportesInstitucionalesService, ResumenInstitucional } from '../../services/reportes-institucionales.service';
 import { csvPagina, descargarBorradorPdf, descargarBorradorExcel, guardarArchivo } from './reportes-institucionales.export';
 
 type Estado = 'carga' | 'listo' | 'error';
@@ -67,7 +67,7 @@ export class ReportesInstitucionalesComponent {
   readonly error = signal('');
   readonly resumen = signal<ResumenInstitucional | null>(null);
   readonly detalle = signal<PaginaReporte<FilaReporte> | null>(null);
-  readonly historial = signal<PaginaReporte<BorradorInstitucional> | null>(null);
+  readonly historial = signal<PaginaReporte<ConsultaReporte> | null>(null);
   readonly borrador = signal<BorradorInstitucional | null>(null);
   readonly guardando = signal(false);
   readonly incierto = signal(false);
@@ -271,8 +271,8 @@ export class ReportesInstitucionalesComponent {
     });
   }
   limpiarFiltro() { this.busqueda = ''; this.filtro = ''; this.consultarDetalle(); }
-  abrirBorrador(value: BorradorInstitucional) {
-    this.tipoPeriodo = 'rango'; this.desde = value.desde; this.hasta = value.hasta; this.tab.set('informe'); this.cargar();
+  abrirPeriodo(desde: string, hasta: string) {
+    this.tipoPeriodo = 'rango'; this.desde = desde; this.hasta = hasta; this.tab.set('informe'); this.cargar();
   }
   guardar() {
     if (this.guardando() || this.incierto() || this.estado() !== 'listo' || !this.autorizado()) return;
@@ -352,6 +352,12 @@ export class ReportesInstitucionalesComponent {
     this.tab.set(this.tabs[index].id); document.getElementById(`reporte-tab-${this.tabs[index].id}`)?.focus();
   }
   etiqueta(value: string) { return value.replaceAll('_', ' ').toLocaleLowerCase('es-PE'); }
+  rangoPagina(page: { number: number; size: number; totalElements: number }) {
+    if (!page.totalElements) return 'sin filas';
+    const inicio = page.number * page.size + 1;
+    const fin = Math.min(page.totalElements, (page.number + 1) * page.size);
+    return `${inicio}–${fin}`;
+  }
   private mensaje(e: HttpErrorResponse) {
     if (e.status === 401) return 'La sesión no está vigente. Inicia sesión de nuevo.';
     if (e.status === 403) return 'Tu cuenta no tiene acceso a este ámbito institucional.';

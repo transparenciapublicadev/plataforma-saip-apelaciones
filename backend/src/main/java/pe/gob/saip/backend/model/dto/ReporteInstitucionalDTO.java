@@ -14,7 +14,7 @@ public final class ReporteInstitucionalDTO {
     public record Resumen(String modo, String ambito, Long entidadId, String entidad,
             LocalDate desde, LocalDate hasta, LocalDateTime consultado,
             long total, long conActuacion, List<Conteo> estados, List<Conteo> porMes,
-            List<Conteo> resultados, String alcance) { }
+            List<Conteo> resultados, String alcance, Long enPlazoLegal, Double tiempoPromedioDiasHabiles) { }
     public record Fila(Long id, String expediente, LocalDateTime fecha, String asunto,
             String entidad, String estado, String resultado, boolean actuacionRegistrada) { }
     public record Pagina(List<Fila> content, long totalElements, int totalPages, int number, int size) { }
@@ -22,5 +22,7 @@ public final class ReporteInstitucionalDTO {
     public record Borrador(UUID id, String modo, LocalDate desde, LocalDate hasta, long version,
             UUID operacionId, Map<String, String> cualitativo, Resumen resumen,
             LocalDateTime actualizado, String estado) { }
-    public record Historial(List<Borrador> content, long totalElements, int totalPages, int number, int size) { }
+    public record Consulta(UUID id, String modo, LocalDate desde, LocalDate hasta, LocalDateTime consultado,
+            String autor, long total, long conActuacion, Long enPlazoLegal, Double tiempoPromedioDiasHabiles, Long versionBorrador) { }
+    public record Historial(List<Consulta> content, long totalElements, int totalPages, int number, int size) { }
 }

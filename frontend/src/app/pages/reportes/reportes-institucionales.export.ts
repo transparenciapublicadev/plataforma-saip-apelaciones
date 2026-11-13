@@ -85,6 +85,8 @@ export async function descargarBorradorPdf(borrador: BorradorInstitucional, acti
     : [
         ['Total registros del periodo', resumen?.total ?? 0],
         ['Con actuación / respuesta registrada', resumen?.conActuacion ?? 0],
+        ['En plazo legal', resumen?.enPlazoLegal ?? 'Sin conteo'],
+        ['Tiempo promedio (días hábiles)', resumen?.tiempoPromedioDiasHabiles ?? 'Sin solicitudes en el periodo'],
         ['Ámbito', resumen?.ambito ?? ''],
         ['Entidad', resumen?.entidad ?? 'No informada'],
         ['Alcance', resumen?.alcance ?? 'Ámbito institucional autorizado'],
@@ -200,6 +202,10 @@ export async function descargarBorradorExcel(borrador: BorradorInstitucional, ac
     ['Entidad / Sala', resumen?.entidad ?? (isTtaip ? 'Tribunal TTAIP' : 'No informada')],
     ['Total registros del periodo', resumen?.total ?? 0],
     ['Con actuación / resolución registrada', resumen?.conActuacion ?? 0],
+    ...(!isTtaip ? [
+      ['En plazo legal', resumen?.enPlazoLegal ?? 'Sin conteo'],
+      ['Tiempo promedio (días hábiles)', resumen?.tiempoPromedioDiasHabiles ?? 'Sin solicitudes en el periodo'],
+    ] as (string | number)[][] : []),
     ['Tasa de atención', (resumen?.total ? Math.round(((resumen.conActuacion ?? 0) / resumen.total) * 100) + '%' : '0%')],
     [],
     [isTtaip ? 'ETAPAS Y ESTADOS DE APELACIONES' : 'ESTADOS REGISTRADOS'],

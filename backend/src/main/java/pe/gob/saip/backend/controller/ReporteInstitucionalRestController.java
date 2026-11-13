@@ -21,13 +21,15 @@ public class ReporteInstitucionalRestController {
     public ReporteInstitucionalRestController(ReporteInstitucionalService service) { this.service=service; }
     private <T> ResponseEntity<T> ok(T body) { return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body); }
     @GetMapping("/resumen") @Operation(summary="Resumen por periodo y ámbito del actor")
-    public ResponseEntity<Resumen> resumen(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta) { return ok(service.resumen(modo,desde,hasta)); }
+    public ResponseEntity<Resumen> resumen(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        Resumen body=service.resumen(modo,desde,hasta); service.registrarConsulta(modo,body); return ok(body);
+    }
     @GetMapping("/detalle") @Operation(summary="Detalle paginado del periodo; orden fecha e ID descendentes")
-    public ResponseEntity<Pagina> detalle(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="15") int size,@RequestParam(required=false) String query,@RequestParam(required=false) String estado) { return ok(service.detalle(modo,desde,hasta,page,size,query,estado)); }
+    public ResponseEntity<Pagina> detalle(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size,@RequestParam(required=false) String query,@RequestParam(required=false) String estado) { return ok(service.detalle(modo,desde,hasta,page,size,query,estado)); }
     @GetMapping("/borrador") @Operation(summary="Recuperar el borrador persistido del periodo")
     public ResponseEntity<Borrador> borrador(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta) { return ok(service.borrador(modo,desde,hasta)); }
     @PutMapping("/borrador") @Operation(summary="Guardar borrador con versión esperada e identificación de operación",description="Repetición compatible devuelve el mismo borrador; versión o contenido incompatibles devuelven 409. No emite ni remite documentos.")
     public ResponseEntity<Borrador> guardar(@PathVariable String modo,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate desde,@RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate hasta,@Valid @RequestBody Guardar input) { return ok(service.guardar(modo,desde,hasta,input)); }
-    @GetMapping("/historial") @Operation(summary="Historial paginado de borradores del ámbito actual")
-    public ResponseEntity<Historial> historial(@PathVariable String modo,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="15") int size) { return ok(service.historial(modo,page,size)); }
+    @GetMapping("/historial") @Operation(summary="Historial paginado de consultas del ámbito actual")
+    public ResponseEntity<Historial> historial(@PathVariable String modo,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size) { return ok(service.historial(modo,page,size)); }
 }
