@@ -214,6 +214,20 @@ class RespuestaSaipRecepcionPostgresIntegrationTest {
         assertThat(archivos()).isEqualTo(1);assertThat(jdbc.queryForObject("select count(*) from respuestas",Long.class)).isEqualTo(1L);
         assertThat(jdbc.queryForObject("select count(*) from recepciones_respuesta_saip",Long.class)).isEqualTo(1L);
     }
+
+    @Test void conservaTextoDelFuncionarioAlRegistrarYRecuperarLaRespuesta() throws Exception {
+        String clave = UUID.randomUUID().toString();
+        String texto = "Descripción escrita por el funcionario.\n\nFormato de entrega: digital\nPlazo estimado: 5 días hábiles";
+        mvc.perform(multipart(recepcion()).param("claveOperacion", clave).param("tipoRespuesta", "ENTREGA_TOTAL")
+                .param("contenido", texto).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.respuesta.contenido").value(texto));
+        assertThat(jdbc.queryForObject("select contenido from respuestas where id_solicitud=?", String.class, solicitudId))
+                .isEqualTo(texto);
+        mvc.perform(get(recepcion() + "/" + clave).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.respuesta.contenido").value(texto));
+        mvc.perform(get(base()).header("Authorization", "Bearer " + login("persona@example.invalid")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.respuesta.contenido").value(texto));
+    }
     @Test void falloFisicoDuranteSegundoArchivoCompensaElPrimeroYRevierteEstado() throws Exception {
         AtomicInteger aperturas=new AtomicInteger();Path guardado=LOCAL.resolveSibling(LOCAL.getFileName()+"-respaldo");
         var fallo=new MockMultipartFile("archivos","segundo.pdf","application/pdf",PDF){

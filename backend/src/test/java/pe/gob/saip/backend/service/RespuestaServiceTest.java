@@ -77,6 +77,36 @@ class RespuestaServiceTest {
     }
 
     @Test
+    void aceptarSinDatosDeEntregaConservaInclusoUnSufijoEscritoPorElFuncionario() {
+        Solicitud solicitud = crearSolicitudSinRespuesta();
+        when(solicitudService.bloquearSolicitudInstitucional(1L)).thenReturn(solicitud);
+        when(funcionarioService.obtenerFuncionarioPorId(10L)).thenReturn(Optional.of(crearFuncionario()));
+        String contenido = "Se entrega la información.\n\nFormato de entrega: digital\nPlazo estimado: 5 días hábiles";
+
+        RespuestaDTO resultado = respuestaService.aceptarSolicitud(new CrearRespuestaRequest(
+                1L, 10L, "ENTREGA_TOTAL", contenido, null, null, null, null));
+
+        assertThat(resultado.contenido()).isEqualTo(contenido);
+        assertThat(solicitud.getRespuesta().getContenido()).isEqualTo(contenido);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RESPONDIDA);
+        verify(respuestaRepository).save(solicitud.getRespuesta());
+    }
+
+    @Test
+    void aceptarConDatosExplicitosConservaElFormatoYPlazoDelContratoExistente() {
+        Solicitud solicitud = crearSolicitudSinRespuesta();
+        when(solicitudService.bloquearSolicitudInstitucional(1L)).thenReturn(solicitud);
+        when(funcionarioService.obtenerFuncionarioPorId(10L)).thenReturn(Optional.of(crearFuncionario()));
+
+        RespuestaDTO resultado = respuestaService.aceptarSolicitud(new CrearRespuestaRequest(
+                1L, 10L, "ENTREGA_TOTAL", "Descripción registrada", null, null, "FISICO", 3));
+
+        assertThat(resultado.contenido()).isEqualTo(
+                "Descripción registrada\n\nFormato de entrega: FISICO\nPlazo estimado: 3 días hábiles");
+        assertThat(solicitud.getRespuesta().getContenido()).isEqualTo(resultado.contenido());
+    }
+
+    @Test
     void crearRespuesta_conEntregaTotal_debePersistirYActualizarEstado() {
         Solicitud solicitud = crearSolicitudSinRespuesta();
         Funcionario funcionario = crearFuncionario();
