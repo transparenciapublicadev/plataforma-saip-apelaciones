@@ -404,7 +404,8 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     f.detectChanges();
     const texto = f.nativeElement.textContent as string;
     expect(texto).toContain(expediente); expect(texto).toContain('SAIP-2026-00024');
-    expect(texto).toContain('Expedientes apelables'); expect(texto).toContain('Denegatoria total'); expect(texto).toContain('Entrega parcial');
+    expect(texto).toContain('Expedientes apelables'); expect(texto).toContain('Denegada'); expect(texto).toContain('Respondida');
+    expect(texto).not.toContain('Denegatoria total'); expect(texto).not.toContain('Entrega parcial');
     expect(texto).not.toContain('SAIP-2026-00030'); expect(texto).not.toContain('SAIP-2026-00031'); expect(texto).not.toContain('SAIP-2026-00032');
     expect(f.nativeElement.querySelectorAll('[aria-label^="Apelar expediente"]')).toHaveLength(2);
   });
