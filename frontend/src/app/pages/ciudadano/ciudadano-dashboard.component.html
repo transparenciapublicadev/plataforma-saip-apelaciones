@@ -528,9 +528,7 @@
               <div class="p-4 space-y-2">
                 @for (solicitud of stageVisible(); track solicitud.id) {
                   @let esResueltas = selectedStageKey() === 'resueltas';
-                  @let esRespondidas = selectedStageKey() === 'respondidas';
-                  @let navega = esResueltas || esRespondidas;
-                  @let isActive = !navega && solicitud.id === solicitudPrincipal()?.id;
+                  @let isActive = !esResueltas && solicitud.id === solicitudPrincipal()?.id;
                   @let ubic = ubicacionTramite(solicitud);
                   @let urg = filaUrgencia(solicitud);
 
@@ -538,7 +536,7 @@
                     [style.background]="isActive ? 'var(--brand-subtle)' : 'var(--card)'"
                     [style.border]="'1px solid ' + (isActive ? 'var(--brand-700)' : 'var(--border)')">
                     <button type="button"
-                      (click)="onPrimary(solicitud)" [attr.aria-pressed]="selectedStageKey() !== 'respondidas' && selectedStageKey() !== 'resueltas' ? solicitudPrincipal()?.id === solicitud.id : null"
+                      (click)="onPrimary(solicitud)" [attr.aria-pressed]="selectedStageKey() !== 'resueltas' ? solicitudPrincipal()?.id === solicitud.id : null"
                       class="flex-1 min-w-0 p-3 flex items-center gap-3 text-left rounded-l-md hover:bg-[color:var(--brand-subtle)] transition-colors">
                       <!-- InstanciaTag -->
                       <div class="flex flex-col items-center justify-center rounded-md shrink-0 w-11 py-1.5"
