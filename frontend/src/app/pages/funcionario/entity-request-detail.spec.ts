@@ -44,7 +44,19 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
   });
   it('utiliza las modalidades explícitas y no extrae una modalidad del texto libre', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ formatoDigital: false, formatoFisico: true, descripcion: 'No enviar por correo ni digital' })));
-    const f = page(); expect(f.componentInstance.formatosSolicitados()).toEqual(['Físico']);
+    const f = page();
+    expect(f.componentInstance.formatosSolicitados()).toEqual(['Soportes magnéticos o digitales']);
+    expect(f.componentInstance.formatosSolicitados()).not.toContain('Correo electrónico');
+  });
+  it('muestra las modalidades con las etiquetas del formulario de creación', () => {
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      formatoDigital: true, formatoFisico: true, copiaSimple: true, copiaCertificada: true,
+      descripcion: '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]',
+    })));
+    const f = page();
+    expect(f.componentInstance.formatosSolicitados()).toEqual([
+      'Correo electrónico', 'Copia simple / fotocopia', 'Copia certificada', 'Soportes magnéticos o digitales',
+    ]);
   });
   it('un estado VENCIDA sin respuesta no fabrica una respuesta ni un hito fechado con el límite', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'VENCIDA', diasRestantes: -2 })));

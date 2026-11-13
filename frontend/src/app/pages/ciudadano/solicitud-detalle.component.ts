@@ -32,7 +32,7 @@ import {
   LucideUser
 } from '@lucide/angular';
 
-const MARCADOR_SOPORTE_MAGNETICO = '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]';
+import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 
 export type RequestTabId = 'solicitud' | 'respuesta' | 'notificaciones' | 'apelacion';
 
@@ -595,19 +595,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   formatosSeleccionados(): string[] {
-    const sol = this.solicitud();
-    if (!sol) {
-      return [];
-    }
-
-    const selected: string[] = [];
-    if (sol.formatoDigital) selected.push('Correo electrónico');
-    if (sol.copiaSimple) selected.push('Copia simple / fotocopia');
-    if (sol.copiaCertificada) selected.push('Copia certificada');
-    const magnetico = (sol.descripcion ?? '').includes(MARCADOR_SOPORTE_MAGNETICO)
-      || (!!sol.formatoFisico && !sol.copiaSimple && !sol.copiaCertificada);
-    if (magnetico) selected.push('Soportes magnéticos o digitales');
-    return selected;
+    return formatosEntregaSolicitados(this.solicitud());
   }
 
   respuestaAunNoEmitida(): boolean {
