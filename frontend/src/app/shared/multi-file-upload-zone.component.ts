@@ -6,12 +6,15 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  effect,
   inject,
   input,
   model,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { BodyPortalDirective } from './body-portal.directive';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   LucideUpload,
@@ -35,6 +38,7 @@ export interface MultiFileSlot {
   standalone: true,
   imports: [
     CommonModule,
+    BodyPortalDirective,
     LucideUpload,
     LucideCheckCircle2,
     LucideFileText,
@@ -167,14 +171,16 @@ export interface MultiFileSlot {
 
       <!-- Modal in-page de previsualización (réplica de FileUploadZone.tsx) -->
       @if (previewModalOpen() && previewSlot()) {
+        <ng-container *appBodyPortal>
         <div
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          class="fixed inset-0 z-[80] flex items-center justify-center p-4"
           style="background: rgba(0,0,0,0.55)"
           (click)="cerrarPrevisualizacion()"
         >
           <div
+            role="dialog" aria-modal="true" [attr.aria-label]="previewSlot()?.file?.name || 'Documento'"
             class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col"
-            style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.35)); max-height: 86vh"
+            style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.35)); height: min(80vh, calc(100vh - 2rem)); max-height: calc(100vh - 2rem)"
             (click)="$event.stopPropagation()"
           >
             <!-- Cabecera del visor -->
@@ -194,13 +200,13 @@ export interface MultiFileSlot {
             </div>
 
             <!-- Contenido del visor -->
-            <div class="flex-1 overflow-auto" style="background: var(--muted)">
+            <div class="flex-1 min-h-0 overflow-auto" style="background: var(--muted)">
               @if (isPdf(previewSlot()?.file) && previewSafeUrl()) {
                 <iframe
                   [src]="previewSafeUrl()"
                   [title]="previewSlot()?.file?.name || 'Documento'"
-                  class="w-full"
-                  style="height: 70vh; border: none"
+                  class="block w-full h-full"
+                  style="border: none"
                 ></iframe>
               } @else if (isImage(previewSlot()?.file) && previewRawUrl()) {
                 <div class="p-4 flex items-center justify-center min-h-[50vh]">
@@ -224,6 +230,7 @@ export interface MultiFileSlot {
             </div>
           </div>
         </div>
+        </ng-container>
       }
     </div>
   `,
@@ -232,6 +239,13 @@ export interface MultiFileSlot {
 export class MultiFileUploadZoneComponent implements OnDestroy {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly elRef = inject(ElementRef);
+
+  constructor() {
+    effect(() => {
+      const incoming = this.files();
+      untracked(() => this.rehidratar(incoming));
+    });
+  }
 
   readonly label = input<string>('');
   readonly required = input<boolean>(false);
@@ -385,6 +399,17 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
       return remaining.length > 0 ? remaining : [{ id: this.nextId++, file: null, dragging: false, objectUrl: null }];
     });
     this.emitChange();
+  }
+
+  private rehidratar(incoming: File[]): void {
+    const actuales = this.slots().map((slot) => slot.file).filter((file): file is File => !!file);
+    if (actuales.length === incoming.length && actuales.every((file, index) => file === incoming[index])) return;
+    for (const slot of this.slots()) {
+      if (slot.objectUrl) URL.revokeObjectURL(slot.objectUrl);
+    }
+    this.slots.set(incoming.length
+      ? incoming.map((file) => ({ id: this.nextId++, file, dragging: false, objectUrl: URL.createObjectURL(file), error: null }))
+      : [{ id: this.nextId++, file: null, dragging: false, objectUrl: null }]);
   }
 
   private emitChange(): void {
