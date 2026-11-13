@@ -374,15 +374,17 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       {
         accion: 'Solicitud presentada',
         fecha: sol.fechaPresentacion,
-        responsable: 'Sistema SAIP',
-        detalle: 'Solicitud registrada y asignada a la entidad responsable.',
+        responsable: 'Yaiku',
+        detalle: sol.entidadNombre?.trim()
+          ? `Solicitud registrada y asignada a ${sol.entidadNombre.trim()}.`
+          : 'Solicitud registrada. La entidad responsable no figura en el expediente.',
         color: 'brand'
       }
     ];
 
     if (positiveId(sol.respuesta?.id)) {
       items.push({
-        accion: `Respuesta registrada · ${this.getTipoRespuestaDisplay()}`,
+        accion: `Respuesta registrada · ${this.getResultadoLabel()}`,
         fecha: sol.respuesta!.fechaRespuesta || '',
         responsable: sol.respuesta!.funcionarioNombre || 'Funcionario no informado',
         detalle: 'La entidad registró respuesta para el ciudadano.',
@@ -547,6 +549,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.previasError.set('Consulta de solicitudes previas no disponible para el funcionario en este detalle. No se consulta el historial privado del administrado.');
   }
 
+  temaInformacion(): string {
+    return this.solicitud()?.tipoInformacion?.trim() || 'No indicado';
+  }
+
   getResultadoLabel(): string {
     const tipo = this.getTipoRespuestaDisplay();
     if (tipo === 'DENEGACION_TOTAL') return 'Denegada';
@@ -701,7 +707,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       next: () => {
         if (!vigente()) return;
         this.observacionMotivo.set('');
-        this.observacionSuccess.set('Observación registrada. Consulte las condiciones y fechas recuperadas del servidor.');
+        this.observacionSuccess.set('Observación registrada. Consulte las condiciones y fechas de la solicitud.');
         this.observacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'observacion');
       },
@@ -841,7 +847,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.liquidacionFechaNotificacion.set('');
         this.liquidacionMedioNotificacion.set('CASILLA_ELECTRONICA');
         this.liquidacionObservacion.set('');
-        this.liquidacionSuccess.set('Liquidación registrada; consulte sus fechas y actuaciones en el servidor.');
+        this.liquidacionSuccess.set('Liquidación registrada. Consulte sus fechas y actuaciones en la solicitud.');
         this.liquidacionLoading.set(false);
         this.cargarSolicitud(sol.expediente, 'liquidacion');
       },

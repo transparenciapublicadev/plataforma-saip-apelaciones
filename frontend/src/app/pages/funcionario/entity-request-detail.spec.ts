@@ -63,6 +63,27 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     const f = page(); expect(f.componentInstance.puedeVerRespuesta()).toBe(false);
     expect(f.componentInstance.historialItems().some(item => item.accion.includes('automático'))).toBe(false);
   });
+  it('el historial nombra a Yaiku, la entidad y la entrega con su etiqueta', () => {
+    solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'RESPONDIDA', tipoInformacion: '  Ejecución presupuestal  ',
+      respuesta: { id: 11, tipoRespuesta: 'ENTREGA_TOTAL', contenido: 'Texto del funcionario', fechaRespuesta: '2026-11-12', funcionarioNombre: 'Funcionario sintético' } })));
+    const f = page();
+    const items = f.componentInstance.historialItems();
+    expect(items[0]).toEqual(expect.objectContaining({
+      responsable: 'Yaiku', detalle: 'Solicitud registrada y asignada a Entidad sintética.' }));
+    expect(items[1]?.accion).toBe('Respuesta registrada · Entrega total');
+    expect(f.componentInstance.temaInformacion()).toBe('Ejecución presupuestal');
+    f.componentInstance.activeTab.set('historial'); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Yaiku');
+    expect(f.nativeElement.textContent).not.toContain('ENTREGA_TOTAL');
+    expect(f.nativeElement.textContent).not.toContain('Sistema SAIP');
+  });
+  it('el tema vacío indica que el administrado no lo escribió', () => {
+    const f = page();
+    expect(f.componentInstance.temaInformacion()).toBe('No indicado');
+    f.componentInstance.activeTab.set('solicitud'); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('No indicado');
+    expect(f.nativeElement.textContent).not.toContain('No informado');
+  });
   it('no muestra documentos de una respuesta ajena', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'RESPONDIDA', respuesta: { id: 11, tipoRespuesta: 'ENTREGA_TOTAL',
       documentosMetadata: [{ id: 91, respuestaId: 99, nombreOriginal: 'ajeno.pdf' }] } })));
@@ -134,7 +155,7 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'CONCLUIDA', formatoDigital: undefined, formatoFisico: undefined,
       copiaSimple: undefined, copiaCertificada: undefined, tipoInformacion: null, respuesta: null, fechaPresentacion: 'fecha no válida' })));
     const f = page(); expect(f.componentInstance.puedeVerRespuesta()).toBe(false); expect(f.componentInstance.formatosSolicitados()).toEqual([]);
-    expect(f.nativeElement.textContent).toContain('No informado'); expect(f.nativeElement.textContent).not.toContain('Atendida');
+    expect(f.nativeElement.textContent).toContain('No indicado'); expect(f.nativeElement.textContent).not.toContain('Atendida');
   });
   it('una denegatoria conserva causal y fundamento sin atribuir entrega o firma', () => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'DENEGADA', respuesta: { id: 11, tipoRespuesta: 'DENEGACION_TOTAL',
