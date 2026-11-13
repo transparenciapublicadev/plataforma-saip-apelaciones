@@ -225,8 +225,9 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     return raw ? raw.slice(0, 10) : 'Fecha no recuperada';
   }
   estadoVisible(s: Solicitud): string {
-    const tipo = s.respuesta?.tipoRespuesta;
-    return tipo && tipo !== 'SILENCIO_ADMINISTRATIVO' ? tipo : (s.estado || '');
+    const estado = (s.estado || '').toUpperCase();
+    if (estado === 'RESPONDIDA' || estado === 'DENEGADA') return estado;
+    return s.estado || '';
   }
   vinoDesdeLista(): boolean { return !this.entrada.expediente && !this.entrada.id; }
   cargarSolicitudesApelables(): void {
