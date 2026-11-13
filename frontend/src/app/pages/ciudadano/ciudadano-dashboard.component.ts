@@ -709,17 +709,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   onPrimary(s: Solicitud): void {
     if (this.loading() || this.error() || this.sessionRevision !== this.authService.cambiosSesion()
       || !this.todasSolicitudes().some(current => current.id === s.id && current.expediente === s.expediente)) return;
-    const esResueltas = this.selectedStageKey() === 'resueltas';
-    const esRespondidas = this.selectedStageKey() === 'respondidas';
-    if (esResueltas || esRespondidas) {
-      if (s.expediente) {
-        this.router.navigate(['/ciudadano/solicitud', s.expediente]);
-      } else {
-        this.enfocarSolicitud(s.id);
-      }
-    } else {
-      this.enfocarSolicitud(s.id);
+    if (this.selectedStageKey() === 'resueltas' && s.expediente) {
+      this.router.navigate(['/ciudadano/solicitud', s.expediente]);
+      return;
     }
+    this.enfocarSolicitud(s.id);
   }
 
   estadoInsignia(s: Solicitud): string {
@@ -1113,8 +1107,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
     } else if (estado === 'RESPONDIDA') {
-      const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'recibida';
-      steps.push({ key: 'plazo-entidad', label: 'Respuesta registrada', meta: 'Estado informado por la entidad', status: 'done' });
+      const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'Recibida';
       steps.push({
         key: 'respuesta',
         label: `Respuesta - ${resultado}`,

@@ -247,8 +247,14 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     component.selectStage('respondidas'); fixture.detectChanges();
     expect(component.stageVisible().map(s => s.id)).toEqual([89]);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    component.onPrimary(component.stageVisible()[0]);
-    expect(navigate).toHaveBeenCalledWith(['/ciudadano/solicitud', 'SAIP-2026-89']);
+    const respondida = { ...component.stageVisible()[0], respuesta: { tipoRespuesta: 'ENTREGA_TOTAL', fechaRespuesta: '2026-11-12' } };
+    component.todasSolicitudes.set([respondida]);
+    component.onPrimary(respondida);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(component.solicitudPrincipal()?.id).toBe(89);
+    const pasos = component.timelinePrincipal().map(paso => paso.label);
+    expect(pasos).toContain('Respuesta - Entrega Total');
+    expect(pasos).not.toContain('Respuesta registrada');
   });
 
   it('supports keyboard result selection, stable option IDs, Escape and focus after clearing', () => {
