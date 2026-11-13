@@ -110,7 +110,11 @@ describe('V4: continuidad del detalle TTAIP', () => {
       expect(f.componentInstance.recepcion().datos?.recepcionId).toBe(111);
       expect(f.componentInstance.navegacionSegunda()).toBe(true);
       expect(f.nativeElement.textContent).toContain(documentos.length ? 'Anexo sintético.pdf' : 'Recepción sin adjuntos');
-      expect(f.componentInstance.timeline()).toEqual([]); // No invented history from this read.
+      // The authorized appeal includes two recorded milestones. The receipt adds no notification or advance.
+      expect(f.componentInstance.timeline().map(event => [event.id, event.titulo])).toEqual([
+        [31, 'Apelación presentada'], [71, '1ra calificación · INADMISIBLE'],
+      ]);
+      http.expectNone(r => r.method !== 'GET');
     });
 
   it('solo un AUSENTE compatible confirma ausencia y permite reconsultar, sin habilitar registro', () => {
@@ -231,6 +235,7 @@ describe('V4: continuidad del detalle TTAIP', () => {
       const link = f.nativeElement.querySelector(`a[href^="${route}/"]`) as HTMLAnchorElement;
       expect(routes.find(r => r.path === `${route.slice(1)}/:expediente`)?.canActivate?.length).toBeGreaterThan(0);
       expect(link.getAttribute('aria-describedby')).toBe('detail-navigation-scope');
+      expect(f.nativeElement.querySelector('#detail-navigation-scope')?.textContent).toContain('comprueba los requisitos');
       link.click(); expect(navigate).toHaveBeenCalledOnce();
       expect(router.serializeUrl(navigate.mock.calls[0][0] as any)).toBe(router.serializeUrl(router.createUrlTree([route, code])));
       expect(navigate.mock.calls[0][1]?.state).toBeUndefined(); http.expectNone(r => r.method !== 'GET');

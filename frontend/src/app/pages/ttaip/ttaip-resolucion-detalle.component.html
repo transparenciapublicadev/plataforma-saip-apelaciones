@@ -39,12 +39,24 @@
           <app-recepcion-institucional [consulta]="recepcion()" (reintentar)="reintentarRecepcion()" />
         </section>
       }
-      @if (navegacionPrimera() || navegacionSegunda() || navegacionFinal()) {
-        <div class="flex flex-wrap gap-2">
-          @if (navegacionPrimera()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/calificar', expedienteDisplay()]">Ir a primera calificación</a> }
-          @if (navegacionSegunda()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/segunda-calificacion', expedienteDisplay()]">Registrar segunda calificación</a> }
-          @if (navegacionFinal()) { <a class="btn-ghost-brand" [routerLink]="['/ttaip/resolver', expedienteDisplay()]">Ir a resolución final</a> }
-        </div>
+      @if (navegacionPrimera() || navegacionSegunda() || navegacionFinal() || (rolInstitucional() && apelacion()?.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION')) {
+        <section class="space-y-2" aria-label="Actuaciones del expediente">
+          @if (navegacionPrimera() || navegacionSegunda() || navegacionFinal()) {
+            <p id="detail-navigation-scope" class="text-xs text-muted-foreground">Al abrir el formulario podrá revisar el expediente. El formulario comprueba los requisitos antes de registrar la actuación.</p>
+          }
+          @if (rolInstitucional() && apelacion()?.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
+            <p class="text-sm">{{ motivoSegunda() }}</p>
+            <p class="text-xs text-muted-foreground">Confirmar el avance es una operación del servidor que requiere ambas notificaciones eficaces.</p>
+          }
+          <div class="flex flex-wrap gap-2">
+            @if (navegacionPrimera()) { <a class="btn-ghost-brand" aria-describedby="detail-navigation-scope" [routerLink]="['/ttaip/calificar', expedienteDisplay()]">Ir a primera calificación</a> }
+            @if (navegacionSegunda()) { <a class="btn-ghost-brand" aria-describedby="detail-navigation-scope" [routerLink]="['/ttaip/segunda-calificacion', expedienteDisplay()]">Registrar segunda calificación</a> }
+            @if (navegacionFinal()) { <a class="btn-ghost-brand" aria-describedby="detail-navigation-scope" [routerLink]="['/ttaip/resolver', expedienteDisplay()]">Ir a resolución final</a> }
+            @if (rolInstitucional() && apelacion()?.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
+              <button type="button" class="btn-ghost-brand" (click)="revisarNotificaciones()">Revisar evidencias de notificación</button>
+            }
+          </div>
+        </section>
       }
       <div
         class="grid grid-cols-1 md:grid-cols-3 gap-4"
