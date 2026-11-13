@@ -1,5 +1,4 @@
 import { falloConsulta } from '../../utils/consulta-remota.util';
-import { ResponseContextComponent } from '../../shared/response-context.component';
 import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -44,6 +43,8 @@ import {
   DocumentPreviewTarget
 } from '../../shared/document-preview-modal.component';
 import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
+import { habilesEntre, sumarHabiles } from '../../models/calendario.model';
+import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 
 export interface HitoCronogramaItem {
   fecha: string;
@@ -55,7 +56,7 @@ import {
   LucideSend, LucideUser, LucideScale,
   LucideHelpCircle, LucideArrowRightLeft, LucideReceipt, LucideMail,
   LucidePhone, LucideIdCard, LucideCalendarClock,
-  LucideEye, LucideDownload
+  LucideEye, LucideDownload, LucideXCircle
 } from '@lucide/angular';
 
 interface IntentoRespuesta {
@@ -97,7 +98,7 @@ export const CAUSALES_DENEGATORIA = [
 @Component({
   selector: 'app-funcionario-responder',
   imports: [
-    ResponseContextComponent, ReferenceTabsDirective, CommonModule,
+    ReferenceTabsDirective, CommonModule,
     FormsModule,
     RouterLink,
     StatusBadgeComponent,
@@ -112,7 +113,7 @@ export const CAUSALES_DENEGATORIA = [
     LucideSend, LucideUser, LucideScale,
     LucideHelpCircle, LucideArrowRightLeft, LucideReceipt, LucideMail,
     LucidePhone, LucideIdCard, LucideCalendarClock,
-    LucideEye, LucideDownload
+    LucideEye, LucideDownload, LucideXCircle
   ],
   templateUrl: './funcionario-responder.component.html',
   styleUrl: './funcionario-responder.component.css',
@@ -142,8 +143,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       if (sesion !== this.sesionActual) {
         this.sesionActual = sesion; this.generacionRespuesta++; this.consultaSolicitud?.unsubscribe();
         this.solicitud.set(null); this.intentoRespuesta = null; this.recepcionRespuesta.set(null);
-        this.documentosEntrega.set([]); this.evidenciaDenegatoria.set([]); this.previewTarget.set(null);
-        this.descripcionAceptacion = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
+        this.documentosEntrega.set([]); this.documentosEntregaParcial.set([]); this.evidenciaDenegatoria.set([]); this.previewTarget.set(null);
+        this.descripcionAceptacion = ''; this.descripcionAceptacionParcial = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
+        this.precisionPuntos.set(['']);
         this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.loading.set(false); this.loadingSolicitud.set(false);
         this.consultaReintentable.set(false); this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
       }
@@ -175,12 +177,40 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   via = signal<ViaProcesal>('responder');
   decision = signal<DecisionId | null>(null);
 
-  // Vía de precisión
-  precisionDetalle = '';
+  // Vía de precisión: cada punto se conserva y se envía junto en el motivo existente.
+  readonly precisionPuntos = signal<string[]>(['']);
+
+  precisionTexto(): string {
+    return this.precisionPuntos()
+      .map(value => value.trim())
+      .filter(Boolean)
+      .map((value, index) => `${index + 1}. ${value}`)
+      .join('\n');
+  }
+
+  setPrecisionPunto(index: number, value: string): void {
+    if (this.loading()) return;
+    this.precisionPuntos.update(list => list.map((item, i) => i === index ? value : item));
+  }
+
+  addPrecisionPunto(): void {
+    if (this.loading()) return;
+    this.precisionPuntos.update(list => [...list, '']);
+  }
+
+  removePrecisionPunto(index: number): void {
+    if (this.loading()) return;
+    this.precisionPuntos.update(list => list.length > 1 ? list.filter((_, i) => i !== index) : list);
+  }
 
   // Vía de prórroga / ampliación
-  prorrogaDias = '5';
-  readonly prorrogaDiasNum = computed(() => parseInt(this.prorrogaDias) || 0);
+  private readonly diasAdicionales = signal('5');
+  get prorrogaDias(): string { return this.diasAdicionales(); }
+  set prorrogaDias(valor: string) { this.diasAdicionales.set(valor ?? ''); }
+  readonly prorrogaDiasNum = computed(() => {
+    const dias = Number.parseInt(this.diasAdicionales(), 10);
+    return Number.isFinite(dias) && dias > 0 ? dias : 0;
+  });
   prorrogaMotivo = '';
   prorrogaCronograma = '';
   hitos = signal<HitoCronogramaItem[]>([{ fecha: '', entregable: '' }]);
@@ -204,6 +234,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   // Decisión de fondo
   descripcionAceptacion = '';
+  descripcionAceptacionParcial = '';
   descripcionDenegacion = '';
   formatoEntrega = 'digital';
   plazoEntrega = 5;
@@ -226,6 +257,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   liqSoporte = '0';
 
   documentosEntrega = signal<File[]>([]);
+  documentosEntregaParcial = signal<File[]>([]);
   evidenciaDenegatoria = signal<File[]>([]);
   readonly documentAccept = DOCUMENTO_ACCEPT;
   readonly causalesOficiales = CAUSALES_DENEGATORIA;
@@ -236,16 +268,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   previewTarget = signal<DocumentPreviewTarget | null>(null);
 
-  readonly formatosSolicitados = computed(() => {
-    const desc = this.solicitud()?.descripcion || '';
-    const formatos: string[] = [];
-    if (/correo|email|digital/i.test(desc)) formatos.push('Copia digital (correo)');
-    if (/simple|copia simple/i.test(desc)) formatos.push('Copia simple');
-    if (/certificad/i.test(desc)) formatos.push('Copia certificada');
-    if (/cd|dvd|magn[ée]tic|usb/i.test(desc)) formatos.push('Soporte magnético');
-    if (formatos.length === 0) formatos.push('Copia digital (plataforma)');
-    return formatos;
-  });
+  readonly formatosSolicitados = computed(() => formatosEntregaSolicitados(this.solicitud()));
 
   readonly requiereFisico = computed(() => {
     const s = this.solicitud();
@@ -258,50 +281,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   });
 
   readonly diasTranscurridos = computed(() => {
-    const sol = this.solicitud();
-    if (!sol || !sol.fechaPresentacion) return 0;
+    const inicio = fechaIso(this.solicitud()?.fechaPresentacion);
+    return inicio ? habilesEntre(inicio, hoyIso()) : 0;
+  });
 
-    let cur: Date | null = null;
-    const raw = String(sol.fechaPresentacion).trim();
-
-    if (raw.includes('/')) {
-      const parts = raw.split(/[/\sT]/);
-      const d = Number(parts[0]);
-      const m = Number(parts[1]);
-      const y = Number(parts[2]);
-      if (d && m && y && !isNaN(d) && !isNaN(m) && !isNaN(y)) {
-        cur = new Date(y, m - 1, d, 0, 0, 0, 0);
-      }
-    } else {
-      const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-      if (match) {
-        const y = Number(match[1]);
-        const m = Number(match[2]);
-        const d = Number(match[3]);
-        cur = new Date(y, m - 1, d, 0, 0, 0, 0);
-      } else {
-        const parsed = new Date(raw);
-        if (!isNaN(parsed.getTime())) {
-          cur = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate(), 0, 0, 0, 0);
-        }
-      }
-    }
-
-    if (!cur || isNaN(cur.getTime())) return 0;
-
-    const fin = new Date();
-    fin.setHours(0, 0, 0, 0);
-
-    if (cur >= fin) return 0;
-
-    let count = 0;
-    const temp = new Date(cur);
-    while (temp < fin) {
-      temp.setDate(temp.getDate() + 1);
-      const dow = temp.getDay();
-      if (dow !== 0 && dow !== 6) count++;
-    }
-    return count;
+  readonly fechaLimiteProrroga = computed(() => {
+    const inicio = fechaIso(this.solicitud()?.fechaPresentacion);
+    return inicio ? fechaDmy(sumarHabiles(inicio, 2)) : '';
   });
 
   readonly prorrogaPermitida = computed(() => {
@@ -309,28 +295,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   });
 
   readonly nuevaFechaLimite = computed<string | null>(() => {
-    const sol = this.solicitud();
-    const dias = parseInt(this.prorrogaDias) || 0;
+    const dias = this.prorrogaDiasNum();
     if (dias <= 0) return null;
-
-    let base: Date;
-    if (sol?.fechaLimite) {
-      base = sol.fechaLimite.includes('/')
-        ? new Date(sol.fechaLimite.split('/').reverse().join('-'))
-        : new Date(sol.fechaLimite);
-    } else {
-      base = new Date();
-    }
-    if (isNaN(base.getTime())) base = new Date();
-
-    const fecha = new Date(base);
-    let agregados = 0;
-    while (agregados < dias) {
-      fecha.setDate(fecha.getDate() + 1);
-      const dow = fecha.getDay();
-      if (dow !== 0 && dow !== 6) agregados++;
-    }
-    return fecha.toISOString().slice(0, 10);
+    const base = fechaIso(this.solicitud()?.fechaLimite) ?? hoyIso();
+    return sumarHabiles(base, dias);
   });
 
   readonly nuevaFechaLimiteDMY = computed<string>(() => {
@@ -357,7 +325,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       return 'Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.';
     }
 
-    const hoyISO = new Date().toISOString().slice(0, 10);
+    const hoyISO = hoyIso();
     if (validos.some(h => h.fecha < hoyISO)) return 'Las fechas del cronograma no pueden ser anteriores a hoy.';
 
     const limite = this.nuevaFechaLimite();
@@ -564,8 +532,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.solicitud.set(null); this.intentoRespuesta = null; this.recepcionRespuesta.set(null);
     this.respuestaPendienteVerificacion.set(false); this.puedeReintentarRespuesta.set(false);
     this.resultadoRespuesta.set('inicial'); this.loading.set(false); this.successModalAbierto.set(false);
-    this.documentosEntrega.set([]); this.evidenciaDenegatoria.set([]);
-    this.descripcionAceptacion = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
+    this.documentosEntrega.set([]); this.documentosEntregaParcial.set([]); this.evidenciaDenegatoria.set([]);
+    this.descripcionAceptacion = ''; this.descripcionAceptacionParcial = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
+    this.precisionPuntos.set(['']);
     this.loadingSolicitud.set(true); this.error.set('');
     this.consultaSolicitud = this.solicitudService.findByExpediente(expediente).subscribe({
       next: data => {
@@ -600,6 +569,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   setVia(v: ViaProcesal): void {
     this.via.set(v);
     this.error.set('');
+  }
+
+  aplicarArea(actualizada: Solicitud): void {
+    this.solicitud.set(actualizada);
   }
 
   seleccionarDecision(value: DecisionId): void {
@@ -660,7 +633,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.loading() || this.respuestaPendienteVerificacion()) return false;
     if (this.via() === 'responder' && (this.motivoRespuestaNoDisponible() || !this.puedeRegistrarRespuestaManual())) return false;
     if (this.via() === 'precision') {
-      return this.precisionDetalle.trim().length >= 10;
+      const detalle = this.precisionTexto();
+      return detalle.length >= 10 && detalle.length <= 3000;
     }
 
     if (this.via() === 'prorroga') {
@@ -695,7 +669,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (curDecision === 'entrega_parcial') {
-      return this.descripcionAceptacion.trim().length > 0 &&
+      return this.descripcionAceptacionParcial.trim().length > 0 &&
         this.causalDenegatoria.length > 0 &&
         encauzamientoValido &&
         cuponValido;
@@ -727,7 +701,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.via() === 'precision') {
       this.loading.set(true);
       this.solicitudService.observar(sol.id, {
-        motivoObservacion: this.precisionDetalle.trim(),
+        motivoObservacion: this.precisionTexto(),
         responsable: sesion.nombre || 'Funcionario responsable'
       }).subscribe({
         next: () => {
@@ -760,14 +734,14 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         : [{
             numeroEntrega: 1,
             descripcion: 'Entrega de información en plazo ampliado',
-            fechaProgramada: this.nuevaFechaLimite() || new Date(Date.now() + dias * 86400000).toISOString().slice(0, 10),
+            fechaProgramada: this.nuevaFechaLimite() || sumarHabiles(hoyIso(), dias),
             observacion: this.prorrogaMotivo.trim()
           }];
 
       this.solicitudService.registrarAmpliacion(sol.id, {
         motivoAmpliacion: this.prorrogaMotivo.trim(),
         informeAmpliacion: this.prorrogaCronograma.trim() || this.prorrogaMotivo.trim(),
-        fechaNotificacionAmpliacion: new Date().toISOString().slice(0, 10),
+        fechaNotificacionAmpliacion: hoyIso(),
         responsable: sesion.nombre || 'Funcionario responsable',
         cronograma: hitosAEnviar
       }).subscribe({
@@ -805,12 +779,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const datos: CrearRespuestaRequest = {
       solicitudId: sol.id, funcionarioId: sesion.funcionarioId,
       tipoRespuesta: decision === 'entrega_total' ? 'ENTREGA_TOTAL' : decision === 'entrega_parcial' ? 'ENTREGA_PARCIAL' : 'DENEGACION_TOTAL',
-      contenido: (decision === 'denegacion_total' ? this.descripcionDenegacion : this.descripcionAceptacion).trim(),
+      contenido: (decision === 'denegacion_total' ? this.descripcionDenegacion : decision === 'entrega_parcial' ? this.descripcionAceptacionParcial : this.descripcionAceptacion).trim(),
       causalDenegatoria: decision !== 'entrega_total' ? this.causalDenegatoria || undefined : undefined,
       fundamentoLegal: decision !== 'entrega_total' ? this.fundamentoLegal.trim() || undefined : undefined,
       formatoEntrega: this.formatoEntrega, plazoEntrega: this.plazoEntrega
     };
-    const archivos = [...(decision === 'denegacion_total' ? this.evidenciaDenegatoria() : this.documentosEntrega())];
+    const archivos = [...(decision === 'denegacion_total' ? this.evidenciaDenegatoria()
+      : decision === 'entrega_parcial' ? this.documentosEntregaParcial() : this.documentosEntrega())];
     if (this.intentoRespuesta) {
       await this.comprobarRecepcionRespuesta();
       if (this.recepcionRespuesta() || this.respuestaPendienteVerificacion() || this.solicitud()?.id !== sol.id
@@ -1012,6 +987,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         { label: 'Expediente', value: exp, mono: true },
         { label: 'Administrado', value: ciu },
         { label: 'Vía', value: 'Solicitud de precisión' },
+        { label: 'Puntos', value: String(this.precisionPuntos().map(punto => punto.trim()).filter(Boolean).length) },
         { label: 'Plazo subsanación', value: '2 días hábiles' }
       ];
     }
@@ -1026,7 +1002,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     const decision = this.decision();
-    const files = decision === 'denegacion_total' ? this.evidenciaDenegatoria() : this.documentosEntrega();
+    const files = decision === 'denegacion_total' ? this.evidenciaDenegatoria()
+      : decision === 'entrega_parcial' ? this.documentosEntregaParcial() : this.documentosEntrega();
     const count = files.length;
     const countText = count > 0 ? `${count} ${count === 1 ? 'adjunto' : 'adjuntos'}` : 'sin adjuntos';
     const causalLabel = this.causalesOficiales.find(c => c.value === this.causalDenegatoria)?.label || this.causalDenegatoria || '—';
@@ -1210,4 +1187,24 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       .join('')
       .slice(0, 2) || 'CI';
   }
+}
+
+function fechaIso(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const texto = valor.trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(texto);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+  const barra = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(texto);
+  if (!barra) return null;
+  return `${barra[3]}-${barra[2].padStart(2, '0')}-${barra[1].padStart(2, '0')}`;
+}
+
+function hoyIso(): string {
+  const ahora = new Date();
+  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+}
+
+function fechaDmy(iso: string): string {
+  const [anio, mes, dia] = iso.split('-');
+  return `${dia}/${mes}/${anio}`;
 }

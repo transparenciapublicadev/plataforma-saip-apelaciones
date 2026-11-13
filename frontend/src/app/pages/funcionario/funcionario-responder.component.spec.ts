@@ -23,7 +23,7 @@ try {
 
 /** HTTP/storage are mocked here. PostgreSQL/LOCAL and rollback have a separate real integration suite. */
 describe('FuncionarioResponderComponent recepción coordinada', () => {
-  const solicitudes = { findByExpediente: vi.fn(), registrarAmpliacion: vi.fn() };
+  const solicitudes = { findByExpediente: vi.fn(), registrarAmpliacion: vi.fn(), observar: vi.fn() };
   const respuestas = { registrarConDocumentos: vi.fn(), consultarRecepcion: vi.fn(),
     crear: vi.fn(), aceptarSolicitud: vi.fn(), denegarSolicitud: vi.fn(), getCausalesDenegacion: vi.fn() };
   const documentos = { upload: vi.fn() };
@@ -99,6 +99,7 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
   });
   it.each(['entrega_total', 'entrega_parcial', 'denegacion_total'] as const)('mantiene adjuntos opcionales en %s', async decision => {
     const c = pagina([]); c.decision.set(decision); c.descripcionDenegacion = 'Sustento de denegatoria';
+    if (decision === 'entrega_parcial') c.descripcionAceptacionParcial = c.descripcionAceptacion;
     c.causalDenegatoria = 'Causal aportada'; c.fundamentoLegal = 'Fundamento aportado';
     expect(c.canSubmit()).toBe(true); await c.enviarRespuesta();
     expect(c.successModalAbierto()).toBe(true); expect(c.recepcionRespuesta()?.documentos).toEqual([]);
@@ -253,5 +254,24 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     expect(c.hitos().length).toBe(1);
     expect(c.errorHitos()).toBeNull();
     expect(c.canSubmit()).toBe(true);
+  });
+
+  it('envía el detalle de precisión como puntos numerados en el motivo existente', () => {
+    solicitudes.observar.mockReturnValue(of({}));
+    const c = pagina();
+    c.via.set('precision');
+    expect(c.canSubmit()).toBe(false);
+    c.setPrecisionPunto(0, 'Precise el periodo');
+    expect(c.canSubmit()).toBe(true);
+    c.addPrecisionPunto();
+    c.setPrecisionPunto(1, '  Indique el formato  ');
+    c.addPrecisionPunto();
+    c.removePrecisionPunto(2);
+    c.confirmarAccion();
+    expect(solicitudes.observar).toHaveBeenCalledWith(12, {
+      motivoObservacion: '1. Precise el periodo\n2. Indique el formato',
+      responsable: 'Funcionario'
+    });
+    expect(c.precisionPuntos()).toEqual(['Precise el periodo', '  Indique el formato  ']);
   });
 });

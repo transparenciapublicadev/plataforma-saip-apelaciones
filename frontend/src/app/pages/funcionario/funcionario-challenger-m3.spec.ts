@@ -342,7 +342,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       // 4. Invariant: role="alert" banner is rendered in DOM with verbatim explanation
       const alertElem = fixture.nativeElement.querySelector('div[role="alert"]');
       expect(alertElem).not.toBeNull();
-      expect(alertElem.textContent).toContain('Ya venció el 2.° día hábil para comunicar la prórroga');
+      expect(alertElem.textContent).toContain('Ya venció el día hábil 2');
       expect(alertElem.textContent).toContain('Corresponde atender la solicitud dentro del plazo vigente');
     });
 
@@ -498,6 +498,9 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       const limite = comp.nuevaFechaLimite();
       expect(limite).not.toBeNull();
+      comp.prorrogaDias = '8';
+      expect(comp.nuevaFechaLimite()).not.toBe(limite);
+      comp.prorrogaDias = '5';
 
       // Subtest A: Hito with date in the past
       comp.hitos.set([{ fecha: '2020-01-01', entregable: 'Entrega en el pasado' }]);

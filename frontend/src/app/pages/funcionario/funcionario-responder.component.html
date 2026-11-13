@@ -53,9 +53,9 @@
         </div>
       }
 
-      <app-response-context />
-
-      <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre"></app-area-responsable-panel>
+      <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre" [solicitudId]="sol.id"
+        [oficinaIndicada]="sol.oficinaDestinataria" [areaGuardada]="sol.areaResponsable" [encargadoGuardado]="sol.encargadoArea"
+        [fechaGuardada]="sol.fechaAsignacionArea" (guardada)="aplicarArea($event)"></app-area-responsable-panel>
 
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
         <div class="stat-card" data-motion-item>
@@ -181,7 +181,7 @@
                     <svg lucideCalendarClock class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="via() === 'prorroga' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
                     <div>
                       <div class="text-sm font-semibold text-foreground">Ampliar el plazo</div>
-                      <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Prórroga excepcional del plazo de atención. Debe comunicarse hasta el 2° día hábil.</div>
+                      <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Prórroga excepcional del plazo de atención. Debe comunicarse hasta el 2° día hábil@if (fechaLimiteProrroga()) { ({{ fechaLimiteProrroga() }}) }.</div>
                     </div>
                   </div>
                 </button>
@@ -201,11 +201,22 @@
                   <p class="text-sm text-foreground/85">Se notificará al administrado por <span class="font-semibold">correo electrónico y por la plataforma</span>. Dispondrá de <span class="font-mono font-semibold">2 días hábiles</span> para precisar su solicitud. Si no responde dentro del plazo, el expediente se archivará automáticamente sin requerir una respuesta adicional de la entidad.</p>
                 </div>
                 <div class="field">
-                  <label class="field-label">Detalle de lo que debe precisar el administrado <span class="req">*</span></label>
-                  <textarea class="field-input" rows="5" style="resize: vertical; min-height: 130px"
-                    placeholder="Indique con claridad qué información resulta ambigua o incompleta y qué debe precisar el administrado…"
-                    [(ngModel)]="precisionDetalle"></textarea>
-                  <span class="field-hint">Mínimo 10 caracteres. Sea específico para facilitar la subsanación.</span>
+                  <span id="precision-detalle-label" class="field-label">Detalle de lo que debe precisar el administrado <span class="req">*</span></span>
+                  <div role="group" aria-labelledby="precision-detalle-label" class="mt-2">
+                    <p id="precision-detalle-hint" class="text-xs text-muted-foreground mb-3">Registre cada punto por separado. El administrado los verá numerados (punto 1, punto 2, …).</p>
+                    @for (punto of precisionPuntos(); track $index) {
+                      <div class="flex items-start gap-2 mb-3">
+                        <span aria-hidden="true" class="w-7 h-9 flex items-center justify-center shrink-0 font-mono text-xs rounded-md" style="background: var(--brand-subtle); color: var(--brand-700)">{{ $index + 1 }}</span>
+                        <label class="sr-only" [for]="'precision-punto-' + $index">Punto {{ $index + 1 }}</label>
+                        <input [id]="'precision-punto-' + $index" type="text" class="field-input flex-1 min-w-0" [value]="punto" (input)="setPrecisionPunto($index, $any($event.target).value)" [disabled]="loading()" aria-required="true" aria-describedby="precision-detalle-hint" [placeholder]="'Qué debe precisar el administrado, punto ' + ($index + 1) + '…'" />
+                        <button type="button" (click)="removePrecisionPunto($index)" [disabled]="precisionPuntos().length <= 1 || loading()" class="w-9 h-9 flex items-center justify-center rounded-md shrink-0 border border-border disabled:opacity-30 hover:bg-muted" [attr.aria-label]="'Eliminar punto ' + ($index + 1)">
+                          <svg aria-hidden="true" lucideXCircle class="w-4 h-4" style="color: var(--brand-700)"></svg>
+                        </button>
+                      </div>
+                    }
+                    <button type="button" (click)="addPrecisionPunto()" [disabled]="loading()" class="btn-ghost-brand !py-2 !px-4 !text-[13px]">+ Agregar punto</button>
+                    <span class="field-hint block mt-2">Mínimo 10 caracteres en conjunto. {{ precisionTexto().length }} caracteres.</span>
+                  </div>
                 </div>
                 <button type="button" (click)="handleSubmit()" [disabled]="!canSubmit()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                   <svg lucideSend class="w-4 h-4"></svg>
@@ -223,19 +234,19 @@
                   <h2 class="form-section-title">Prórroga excepcional</h2>
                 </div>
 
+                <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.06); border: 1px solid rgba(217,119,6,0.25); border-left: 3px solid var(--gold, #d97706)">
+                  <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold, #d97706)"></svg>
+                  <p class="text-sm text-foreground/85">La prórroga debe comunicarse al administrado <span class="font-semibold">hasta el día hábil 2</span>@if (fechaLimiteProrroga()) {, el <span class="font-mono font-semibold">{{ fechaLimiteProrroga() }}</span>}. Hoy es el día hábil <span class="font-mono font-semibold">{{ diasTranscurridos() }}</span> del plazo. Si la ampliación supera los <span class="font-mono font-semibold">30 días hábiles</span>, es obligatorio un cronograma de entregas (ampliación <span class="font-semibold">programada</span>); en caso contrario, es una ampliación <span class="font-semibold">registrada</span>. Una sola fecha del cronograma incumplida constituye denegatoria y habilita la apelación.</p>
+                </div>
+
                 @if (!prorrogaPermitida()) {
                   <div role="alert" class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                     <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                     <p class="text-sm text-foreground/85">
-                      Ya venció el 2.° día hábil para comunicar la prórroga (han transcurrido {{ diasTranscurridos() }} días hábiles). Corresponde atender la solicitud dentro del plazo vigente{{ sol.fechaLimite ? ' (hasta el ' + (sol.fechaLimite | date:'dd/MM/yyyy') + ')' : '' }}.
+                      Ya venció el día hábil 2@if (fechaLimiteProrroga()) { ({{ fechaLimiteProrroga() }}) } para comunicar la prórroga. Corresponde atender la solicitud dentro del plazo vigente{{ sol.fechaLimite ? ' (hasta el ' + (sol.fechaLimite | date:'dd/MM/yyyy') + ')' : '' }}.
                     </p>
                   </div>
                 }
-
-                <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.06); border: 1px solid rgba(217,119,6,0.25); border-left: 3px solid var(--gold, #d97706)">
-                  <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold, #d97706)"></svg>
-                  <p class="text-sm text-foreground/85">La prórroga debe comunicarse al administrado <span class="font-semibold">hasta el 2° día hábil</span>. Si el cronograma de entrega supera los <span class="font-mono font-semibold">30 días hábiles</span>, es obligatorio detallar el cronograma (ampliación <span class="font-semibold">programada</span>); en caso contrario, es una ampliación <span class="font-semibold">registrada</span>.</p>
-                </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="field">
@@ -346,7 +357,7 @@
                   @if (causalDenegatoria) {
                     <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
                       <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)"></svg>
-                      <div class="text-sm text-foreground/85"><span class="font-semibold">Sustento de la decisión</span> — descripción y fundamento legal; adjuntos opcionales.</div>
+                      <div class="text-sm text-foreground/85"><span class="font-semibold">Obligatorio</span> — debe proporcionar el fundamento legal. La evidencia documental se registra si la adjunta.</div>
                     </div>
 
                     <div class="field">
@@ -363,7 +374,7 @@
                     <app-multi-file-upload-zone [keyboardAccessible]="true"
                       label="Evidencia de la causal"
                       [required]="false"
-                      description="Adjuntos opcionales de sustento. Se registrarán todos los archivos seleccionados."
+                      description="Documento(s) que acreditan la clasificación de la información. Puede adjuntar más de uno."
                       [(files)]="evidenciaDenegatoria"
                       [showPreview]="true"
                       addLabel="Añadir otra evidencia">
@@ -387,10 +398,18 @@
                     </div>
                   }
 
-                  <div class="field">
-                    <label class="field-label" for="respuesta-descripcion">Descripción de la aceptación <span class="req">*</span></label>
-                    <textarea id="respuesta-descripcion" required [(ngModel)]="descripcionAceptacion" class="field-input" rows="4" style="resize: vertical; min-height: 110px" placeholder="Explique qué información se está entregando y detalles relevantes…"></textarea>
-                  </div>
+                  @if (decision() === 'entrega_total') {
+                    <div class="field">
+                      <label class="field-label" for="respuesta-descripcion">Descripción de la aceptación <span class="req">*</span></label>
+                      <textarea id="respuesta-descripcion" required [(ngModel)]="descripcionAceptacion" class="field-input" rows="4" style="resize: vertical; min-height: 110px" placeholder="Explique qué información se está entregando y detalles relevantes…"></textarea>
+                    </div>
+                  }
+                  @if (decision() === 'entrega_parcial') {
+                    <div class="field">
+                      <label class="field-label" for="respuesta-descripcion-parcial">Descripción de la aceptación <span class="req">*</span></label>
+                      <textarea id="respuesta-descripcion-parcial" required [(ngModel)]="descripcionAceptacionParcial" class="field-input" rows="4" style="resize: vertical; min-height: 110px" placeholder="Explique qué información se está entregando y detalles relevantes…"></textarea>
+                    </div>
+                  }
 
                   @if (decision() === 'entrega_parcial') {
                     <div class="field">
@@ -432,14 +451,26 @@
                     </div>
                   </div>
 
-                  <app-multi-file-upload-zone [keyboardAccessible]="true"
-                    label="Documentos para el administrado"
-                    [required]="false"
-                    description="Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados."
-                    [(files)]="documentosEntrega"
-                    [showPreview]="true"
-                    addLabel="Añadir otro documento">
-                  </app-multi-file-upload-zone>
+                  @if (decision() === 'entrega_total') {
+                    <app-multi-file-upload-zone [keyboardAccessible]="true"
+                      label="Documentos para el administrado"
+                      [required]="false"
+                      description="Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados."
+                      [(files)]="documentosEntrega"
+                      [showPreview]="true"
+                      addLabel="Añadir otro documento">
+                    </app-multi-file-upload-zone>
+                  }
+                  @if (decision() === 'entrega_parcial') {
+                    <app-multi-file-upload-zone [keyboardAccessible]="true"
+                      label="Documentos para el administrado"
+                      [required]="false"
+                      description="Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados."
+                      [(files)]="documentosEntregaParcial"
+                      [showPreview]="true"
+                      addLabel="Añadir otro documento">
+                    </app-multi-file-upload-zone>
+                  }
 
                   <!-- Cupón de pago (entrega física) -->
                   @if (requiereFisico()) {

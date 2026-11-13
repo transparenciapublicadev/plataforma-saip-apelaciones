@@ -78,7 +78,7 @@
             <p class="text-sm text-foreground/85 mt-1.5">Consulte y responda el requerimiento desde el formulario de precisión. La recepción y sus condiciones se comprueban en el servidor.</p>
             <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
               <span class="eyebrow">Observaciones de la entidad</span>
-              <p class="mt-1.5 leading-relaxed">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
+              <p class="mt-1.5 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
             </div>
             <p class="text-xs text-muted-foreground mt-3">Fecha límite registrada: {{ (observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy') || 'No disponible' }}.</p>
             <a [routerLink]="['/ciudadano/precision', sol.expediente]" class="btn-brand mt-3 inline-flex !py-2 !px-4 !text-[13px]">Responder precisión</a>
