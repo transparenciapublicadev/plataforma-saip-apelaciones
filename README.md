@@ -670,8 +670,8 @@ curl -O -J -L http://localhost:8080/api/documentos/1/download \
 | JDK 17 | Build Android. |
 | PostgreSQL 16+ | Base de datos `saip_db` y cliente `psql`. |
 | Node.js 22 | Frontend Angular y docs Astro. |
-| pnpm 12.x | Gestor de paquetes obligatorio para el frontend web. |
-| npm 11.x | Documentación técnica en `docs/` y tooling de apoyo. |
+| pnpm 12.x | Gestor de paquetes para el frontend web y la documentación técnica en `docs/`. |
+| npm 11.x | Tooling de apoyo, como el diagnóstico con Newman. |
 | Android Studio / SDK | Build y ejecución mobile. |
 | PowerShell o Bash | Scripts de sincronización OpenAPI. |
 
@@ -865,9 +865,9 @@ cd mobile
 
 ```powershell
 cd docs
-npm ci
-npm start
-npm run build
+pnpm install --frozen-lockfile
+pnpm start
+pnpm run build
 ```
 
 Para publicar la documentación con sitemap canónico:
@@ -875,7 +875,7 @@ Para publicar la documentación con sitemap canónico:
 ```powershell
 $env:DOCS_SITE_URL='https://docs.misaip.gob.pe'
 cd docs
-npm run build
+pnpm run build
 ```
 
 ## Validación y CI
@@ -887,7 +887,7 @@ Cada módulo tiene validaciones independientes. Esto reduce acoplamiento y permi
 | `backend/` | `cd backend; .\mvnw.cmd test` |
 | `frontend/` | `cd frontend; pnpm test --watch=false; pnpm run build` |
 | `mobile/` | `cd mobile; .\gradlew.bat clean compileDebugKotlin test` |
-| `docs/` | `cd docs; npm run build` |
+| `docs/` | `cd docs; pnpm install --frozen-lockfile; pnpm run build` |
 | API contract | Backend corriendo + `.\scripts\sync-openapi.ps1` |
 
 Pipelines de GitHub Actions:
@@ -897,7 +897,7 @@ Pipelines de GitHub Actions:
 | `backend-ci.yml` | `backend/**` | Compile, test, package y export OpenAPI. |
 | `frontend-ci.yml` | `frontend/**`, `.github/workflows/frontend-ci.yml` | `pnpm/action-setup@v4`, Node 22, caché de `pnpm-lock.yaml`, compilación estricta (`tsc --noEmit`), suite completa de 179 pruebas unitarias en Vitest y build de producción Angular 22 con SSR. |
 | `mobile-ci.yml` | `mobile/**` | Gradle wrapper validation, debug APK y tests. |
-| `docs-ci.yml` | `docs/**` | Build del sitio Astro/Starlight. |
+| `docs-ci.yml` | `docs/**`, `.github/workflows/docs-ci.yml` | Node 22, pnpm con lockfile congelado y build del sitio Astro/Starlight. |
 
 ```mermaid
 flowchart LR
