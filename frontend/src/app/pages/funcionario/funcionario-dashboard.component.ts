@@ -119,10 +119,23 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }));
   readonly filtradas = computed(() => this.queueItems());
   readonly distribucionDias = computed(() => {
-    const groups = Object.entries(this.resumen()?.porDiasRestantes ?? {}).map(([day, count]) => [Number(day), count] as const);
-    const max = Math.max(1, ...groups.map(([, n]) => n));
-    return groups.filter(([day]) => Number.isSafeInteger(day) && day >= 0).sort(([a], [b]) => a - b)
-      .map(([dia, count]) => ({ dia, count, width: count / max * 100, color: dia <= 1 ? 'var(--brand-700)' : dia <= 5 ? 'var(--warning)' : 'var(--success)' }));
+    const counts = this.resumen()?.porDiasRestantes;
+    if (!counts || typeof counts !== 'object' || Array.isArray(counts)) return null;
+    const groups = Object.entries(counts);
+    if (groups.some(([day, count]) => !/^\d+$/.test(day) || String(Number(day)) !== day
+      || !Number.isSafeInteger(Number(day)) || !Number.isSafeInteger(count) || count < 0)) return null;
+    if (!groups.length) return [];
+    const dias = Array.from({ length: 11 }, (_, dia) => dia);
+    for (const key of Object.keys(counts)) {
+      const dia = Number(key);
+      if (Number.isSafeInteger(dia) && dia > 10) dias.push(dia);
+    }
+    const valores = dias.map(dia => Number(counts[String(dia)] ?? 0));
+    const max = Math.max(1, ...valores);
+    return dias.sort((a, b) => a - b).map(dia => {
+      const count = Number(counts[String(dia)] ?? 0);
+      return { dia, count, width: count / max * 100, color: dia <= 1 ? 'var(--brand-700)' : dia <= 5 ? 'var(--warning)' : 'var(--success)' };
+    });
   });
   readonly topTemas = computed(() => Object.entries(this.resumen()?.porTipoInformacion ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4));
   readonly paginaActual = signal(1);
@@ -232,7 +245,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
         403: 'No tiene autorización para consultar esta entidad o funcionario.',
         404: 'No se encontró el funcionario o recurso institucional solicitado.',
       };
-      this.error.set(messages[err.status ?? 0] ?? (err.status === 0 ? 'No hay conexión con el servidor. Puede reintentar.' : 'No se pudo consultar la información institucional. Puede reintentar.'));
+      this.error.set(messages[err.status ?? 0] ?? (err.status === 0 ? 'No hay conexión. Puede reintentar.' : 'No se pudo consultar la información institucional. Puede reintentar.'));
       this.errorTipo.set(err.status === 400 || err.status === 422 ? 'validacion' : err.status === 401 ? 'autenticacion' : err.status === 403 ? 'autorizacion' : err.status === 404 ? 'no-encontrado' : err.status === 0 ? 'red' : 'servidor');
       this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null);
     };

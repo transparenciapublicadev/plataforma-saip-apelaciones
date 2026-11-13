@@ -30,8 +30,8 @@ public class PanelConsultaService {
         var alcance=alcance();
         var filtro=filtro(false,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,null);
         LocalDate today=LocalDate.now();
-        var datos=repository.consultar(false,alcance,filtro,threshold(today,-1),threshold(today,1),threshold(today,5));
-        var rows=datos.filas().stream().map(row->solicitud(row,datos.observaciones().getOrDefault(id(row,"id_solicitud"),List.of()))).toList();
+        var datos=repository.consultar(false,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
+        var rows=datos.filas().stream().map(row->solicitud(row,datos.observaciones().getOrDefault(id(row,"id_solicitud"),List.of()),today)).toList();
         return pagina(rows,datos,filtro,alcance,"FECHA_LIMITE_REGISTRADA_SAIP");
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
@@ -40,7 +40,7 @@ public class PanelConsultaService {
         var alcance=alcance();
         var filtro=filtro(true,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala);
         LocalDate today=LocalDate.now();
-        var datos=repository.consultar(true,alcance,filtro,threshold(today,-1),threshold(today,1),threshold(today,5));
+        var datos=repository.consultar(true,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
         return pagina(datos.filas().stream().map(this::apelacion).toList(),datos,filtro,alcance,"INICIO_ACREDITADO_SUBSANACION_TTAIP;OTRAS_ETAPAS_NO_INFORMADAS");
     }
     private <T> PanelPaginaDTO<T> pagina(List<T> rows,PanelConsultaRepository.Datos datos,PanelConsultaRepository.Filtro filtro,
@@ -94,10 +94,10 @@ public class PanelConsultaService {
         return date;
     }
     private static int remaining(LocalDate today,LocalDate end){return today.isAfter(end)?-DiasHabilesUtil.contarDiasHabiles(end,today):DiasHabilesUtil.contarDiasHabiles(today,end);}
-    private PanelSolicitudDTO solicitud(Map<String,Object> r,List<Map<String,Object>> observations) {
+    private PanelSolicitudDTO solicitud(Map<String,Object> r,List<Map<String,Object>> observations, LocalDate hoy) {
         LocalDate limit=date(r,"fecha_limite");
         return new PanelSolicitudDTO(id(r,"id_solicitud"),str(r,"expediente"),str(r,"asunto"),str(r,"descripcion"),str(r,"estado"),
-            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesVigentes(day(r,"fecha_presentacion"), limit),
+            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesVigentes(day(r,"fecha_presentacion"), limit, hoy),
             id(r,"id_ciudadano"),str(r,"ciudadano_nombre"),id(r,"id_entidad"),str(r,"entidad_nombre"),str(r,"entidad_acronimo"),str(r,"etapa"),
             id(r,"id_respuesta")==null?null:new PanelSolicitudDTO.PanelRespuestaDTO(id(r,"id_respuesta"),str(r,"tipo_respuesta"),text(r,"fecha_respuesta")),
             observations.stream().map(o->new PanelSolicitudDTO.PanelObservacionDTO(id(o,"id_observacion"),id(o,"id_solicitud"),str(o,"estado"),

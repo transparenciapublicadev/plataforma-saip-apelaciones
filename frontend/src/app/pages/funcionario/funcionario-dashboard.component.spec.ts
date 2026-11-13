@@ -255,6 +255,36 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(f.nativeElement.textContent).toContain('Sin asignar');
   });
 
+  it('muestra la escala de vencimientos y los temas como en la referencia', () => {
+    const f = page();
+    const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
+    req.flush(mockPanelPage([row], { resumen: { ...mockPanelPage([row]).resumen, porDiasRestantes: { '2': 1 }, porTipoInformacion: { 'Información presupuestal': 1 } } }));
+    f.detectChanges();
+    const dias = f.componentInstance.distribucionDias();
+    expect(dias?.map(item => item.dia)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(dias?.find(item => item.dia === 2)?.count).toBe(1);
+    expect(dias?.find(item => item.dia === 0)?.count).toBe(0);
+    const text = f.nativeElement.textContent;
+    expect(text).toContain('Vencimientos próximos');
+    expect(text).toContain('Temas frecuentes');
+    expect(text).toContain('Información presupuestal');
+  });
+
+  it.each([
+    [undefined, 'Distribución por día no disponible.'],
+    [{ '2': -1 }, 'Distribución por día no disponible.'],
+    [{}, 'Sin vencimientos próximos'],
+  ] as const)('distingue distribución ausente, inválida y vacía: %j', (porDiasRestantes, mensaje) => {
+    const f = page();
+    const response = mockPanelPage([row]);
+    http.expectOne(r => r.url === `${api}/panel/solicitudes`).flush({
+      ...response, resumen: { ...response.resumen, porDiasRestantes },
+    });
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain(mensaje);
+    expect(f.componentInstance.distribucionDias()?.length ?? 0).toBe(0);
+  });
+
   it('incluye enlace en la barra lateral hacia /funcionario/reportes', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
