@@ -1,7 +1,7 @@
 @if (open && doc) {
   <ng-container *appBodyPortal>
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 z-[80] flex items-center justify-center p-4"
       style="background: rgba(0, 0, 0, 0.55);"
       (click)="onClose()"
     >
@@ -9,7 +9,7 @@
         role="dialog" aria-modal="true" [attr.aria-label]="doc.nombre" tabindex="-1"
         [appModalFocus]="manageFocus"
         class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col"
-        style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0, 0, 0, 0.35)); max-height: 86vh;"
+        style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0, 0, 0, 0.35)); height: min(80vh, calc(100vh - 2rem)); max-height: calc(100vh - 2rem);"
         (click)="$event.stopPropagation()"
       >
         <!-- Header -->
@@ -42,7 +42,7 @@
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-auto" style="background: var(--muted)">
+        <div class="flex-1 min-h-0 overflow-auto" style="background: var(--muted)">
           @if (loading()) {
             <div role="status" aria-live="polite" class="p-10 flex flex-col items-center justify-center text-center" style="min-height: 50vh;">
               <svg lucideLoader2 class="w-8 h-8 animate-spin" style="color: var(--brand-700)"></svg>
@@ -66,8 +66,8 @@
             <iframe
               [src]="safeUrl()"
               [title]="doc.nombre"
-              class="w-full"
-              style="height: 70vh; border: none;"
+              class="block w-full h-full"
+              style="border: none;"
             ></iframe>
           } @else if (rawUrl() && isImage()) {
             <div class="p-4 flex items-center justify-center">
