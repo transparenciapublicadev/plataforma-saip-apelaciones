@@ -66,6 +66,7 @@ public class AltaSaipRecepcionService {
         s.setFormatoDigital(request.formatoDigital());s.setFormatoFisico(request.formatoFisico());
         s.setCopiaSimple(request.copiaSimple());s.setCopiaCertificada(request.copiaCertificada());
         s.setConsentimientoDatosPersonales(true);s.setCanalNotificacion(Solicitud.CanalNotificacion.valueOf(request.canalNotificacion()));
+        s.registrarOficinaDesdeDescripcion();
         s.setEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);s.setPrioridad(Solicitud.Prioridad.MEDIA);
         s=solicitudes.save(s);
         AltaSaipRecepcion r=new AltaSaipRecepcion();r.setSolicitud(s);r.setCreadoPor(actor);r.setClaveOperacion(request.claveOperacion().toString());

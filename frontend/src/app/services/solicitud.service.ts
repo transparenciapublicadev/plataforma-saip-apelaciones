@@ -115,6 +115,10 @@ export class SolicitudService {
     return this.http.patch<Solicitud>(`${this.apiUrl}/${id}/estado`, { estado });
   }
 
+  asignarArea(id: number, payload: { area: string; encargado?: string }): Observable<Solicitud> {
+    return this.http.patch<Solicitud>(`${this.apiUrl}/${id}/area-responsable`, payload);
+  }
+
   observar(id: number, payload: ObservarSolicitudPayload): Observable<ObservacionSolicitud> {
     return this.http.post<ObservacionSolicitud>(`${this.apiUrl}/${id}/observaciones`, payload);
   }

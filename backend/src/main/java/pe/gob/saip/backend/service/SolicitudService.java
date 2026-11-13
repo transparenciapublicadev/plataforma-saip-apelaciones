@@ -142,6 +142,31 @@ public class SolicitudService {
         return solicitudRepository.save(solicitud);
     }
 
+    /** Records the internal area that holds the information. It does not change the legal term or the response. */
+    @Transactional
+    public SolicitudDTO asignarAreaResponsable(Long id, String area, String encargado) {
+        Solicitud solicitud = bloquearSolicitudInstitucional(id);
+        if (solicitud.getRespuesta() != null
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.DENEGADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.CONCLUIDA) {
+            throw new ConflictoEstadoException("La solicitud ya fue atendida. El área responsable queda como se registró.");
+        }
+        String limpia = area == null ? "" : area.trim();
+        if (limpia.isEmpty() || limpia.length() > 160) {
+            throw new IllegalArgumentException("Elija el área que tiene la información.");
+        }
+        String persona = encargado == null || encargado.isBlank() ? null : encargado.trim();
+        if (persona != null && persona.length() > 160) {
+            throw new IllegalArgumentException("El nombre del encargado supera el límite permitido.");
+        }
+        solicitud.setAreaResponsable(limpia);
+        solicitud.setEncargadoArea(persona);
+        solicitud.setFechaAsignacionArea(java.time.LocalDate.now());
+        solicitudRepository.saveAndFlush(solicitud);
+        return SolicitudDTO.from(solicitud);
+    }
+
     @Transactional(propagation = Propagation.MANDATORY)
     public void validarSinActuacionPendiente(Solicitud solicitud) {
         if (solicitud.getRespuesta() != null || observacionRepository.existsBySolicitud_IdSolicitudAndEstado(

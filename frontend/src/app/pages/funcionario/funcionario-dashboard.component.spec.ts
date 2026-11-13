@@ -194,7 +194,7 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('75%');
   });
 
-  it('no presenta 100% cuando no hay expedientes cerrados', () => {
+  it('dibuja el arco completo cuando no hay expedientes cerrados', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
     req.flush(mockPanelPage([row], {
@@ -208,8 +208,9 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     }));
     f.detectChanges();
 
-    expect(f.componentInstance.cumplimiento()).toBeNull();
-    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).not.toContain('100%');
+    expect(f.componentInstance.cumplimiento()).toBe(100);
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('100%');
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('0 de 0 atendidas a tiempo');
   });
 
   it('muestra el banner de advertencia SAN con el texto legal exacto', () => {
@@ -232,35 +233,26 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(banner.textContent).toContain('El plazo legal venció. Cada día sin respuesta puede originar sanción para la entidad y derecho de apelación del ciudadano.');
   });
 
-  it('muestra el chip de Área Responsable en cada solicitud del listado', () => {
-    localStorage.setItem('saip_area_responsable', JSON.stringify({
-      [row.expediente]: { area: 'Gerencia de Informática', responsable: 'Ing. Rojas', fecha: '2026-10-20' }
-    }));
+  it('muestra el área responsable que devolvió el servidor', () => {
+    const asignada = { ...row, areaResponsable: 'Gerencia de Informática', encargadoArea: 'Ing. Rojas' };
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
-    req.flush(mockPanelPage([row]));
+    req.flush(mockPanelPage([asignada]));
     f.detectChanges();
 
-    expect(f.componentInstance.getAreaLabel(row.expediente)).toBe('Gerencia de Informática');
+    expect(f.componentInstance.getAreaLabel(asignada)).toBe('Gerencia de Informática · Ing. Rojas');
     const chip = f.nativeElement.querySelector('[role="listitem"]');
-    expect(chip?.textContent).toContain('Gerencia de Informática');
+    expect(chip?.textContent).toContain('Gerencia de Informática · Ing. Rojas');
   });
 
-  it('reacciona a eventos de actualización de área responsable', () => {
+  it('deja el área sin asignar cuando el servidor no la registró', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
     req.flush(mockPanelPage([row]));
     f.detectChanges();
 
-    expect(f.componentInstance.getAreaLabel(row.expediente)).toBe('Sin asignar');
-
-    localStorage.setItem('saip_area_responsable', JSON.stringify({
-      [row.expediente]: { area: 'Secretaría General', fecha: '2026-10-21' }
-    }));
-    window.dispatchEvent(new CustomEvent('saip-area-responsable'));
-    f.detectChanges();
-
-    expect(f.componentInstance.getAreaLabel(row.expediente)).toBe('Secretaría General');
+    expect(f.componentInstance.getAreaLabel(row)).toBe('Sin asignar');
+    expect(f.nativeElement.textContent).toContain('Sin asignar');
   });
 
   it('incluye enlace en la barra lateral hacia /funcionario/reportes', () => {

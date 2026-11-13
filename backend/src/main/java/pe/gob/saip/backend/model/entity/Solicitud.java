@@ -81,6 +81,18 @@ public class Solicitud {
     @Column(name = "tipo_informacion", length = 100)
     private String tipoInformacion;
 
+    @Column(name = "oficina_destinataria", length = 160)
+    private String oficinaDestinataria;
+
+    @Column(name = "area_responsable", length = 160)
+    private String areaResponsable;
+
+    @Column(name = "encargado_area", length = 160)
+    private String encargadoArea;
+
+    @Column(name = "fecha_asignacion_area")
+    private LocalDate fechaAsignacionArea;
+
     @Column(name = "consentimiento_datos_personales")
     private Boolean consentimientoDatosPersonales;
 
@@ -110,6 +122,25 @@ public class Solicitud {
     @EqualsAndHashCode.Exclude
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Apelacion apelacion;
+
+    /** Recovers the optional office the citizen wrote into the description before it had its own column. */
+    public static String oficinaIndicada(String descripcion) {
+        if (descripcion == null) return null;
+        String marca = "[Oficina destinataria: ";
+        int inicio = descripcion.indexOf(marca);
+        if (inicio < 0) return null;
+        int desde = inicio + marca.length();
+        int fin = descripcion.indexOf(']', desde);
+        if (fin < 0) return null;
+        String valor = descripcion.substring(desde, fin).trim();
+        if (valor.isEmpty()) return null;
+        return valor.length() > 160 ? valor.substring(0, 160) : valor;
+    }
+
+    public void registrarOficinaDesdeDescripcion() {
+        String indicada = oficinaIndicada(descripcion);
+        if (indicada != null) oficinaDestinataria = indicada;
+    }
 
     @PrePersist
     protected void onCreate() {

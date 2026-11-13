@@ -20,7 +20,7 @@ export function readInstitutionList(value: unknown, entidad: number): Solicitud[
     if (!row || !positiveId(row.id) || row.entidadId !== entidad || typeof row.expediente !== 'string'
       || !/^SAIP-\d{4}-\d{5,}$/.test(row.expediente) || typeof row.estado !== 'string' || !row.estado.trim()
       || ids.has(row.id) || codes.has(row.expediente)) return null;
-    for (const field of ['asunto', 'ciudadanoNombre', 'tipoInformacion', 'fechaPresentacion']) {
+    for (const field of ['asunto', 'ciudadanoNombre', 'tipoInformacion', 'fechaPresentacion', 'oficinaDestinataria', 'areaResponsable', 'encargadoArea']) {
       if (row[field] != null && typeof row[field] !== 'string') return null;
     }
     ids.add(row.id); codes.add(row.expediente);

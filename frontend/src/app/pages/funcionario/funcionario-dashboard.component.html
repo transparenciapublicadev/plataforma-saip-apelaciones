@@ -38,7 +38,7 @@
           <div class="relative w-[70px] h-[70px] shrink-0">
             <svg width="70" height="70" viewBox="0 0 70 70">
               <circle cx="35" cy="35" r="26" fill="none" stroke="var(--muted)" stroke-width="6" />
-              <circle cx="35" cy="35" r="26" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" stroke-dasharray="163.36" [attr.stroke-dashoffset]="donutDashOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms" />
+              <circle cx="35" cy="35" r="26" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" [attr.stroke-dasharray]="donutCircunferencia" [attr.stroke-dashoffset]="donutDashOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms" />
             </svg>
             <div class="absolute inset-0 flex items-center justify-center font-display text-sm" [style.color]="donutAccent()" style="letter-spacing: -0.02em">{{ cumplimiento() === null ? '—' : cumplimiento() + '%' }}</div>
           </div>
@@ -188,19 +188,17 @@
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
                         <a class="code-chip" [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" [attr.aria-label]="'Ver detalle de ' + item.solicitud.expediente">{{ item.solicitud.expediente }}</a>
-                        <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad || 'NO INFORMADA' }}</span>
+                        @if (item.prioridad) { <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad }}</span> }
                         <app-status-badge [status]="getEstadoDisplay(item.solicitud)"></app-status-badge>
                       </div>
 
-                      <h3 class="text-sm font-medium text-foreground mt-1.5 break-words">{{ item.solicitud.asunto || 'Asunto no informado' }}</h3>
-                      <div class="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                        <svg aria-hidden="true" lucideUser class="w-3 h-3 inline"></svg>
-                        {{ item.solicitud.ciudadanoNombre || 'Identificación no informada' }} · <span class="font-mono">{{ item.tema || 'Tipo no informado' }}</span> ·
-                        @if (fechaVisible(item.solicitud.fechaPresentacion); as fecha) { presentada {{ fecha | date:'dd/MM/yyyy' }} } @else { Fecha de presentación no informada }
+                      <h3 class="text-sm font-medium text-foreground mt-1.5 truncate" [title]="item.solicitud.asunto || ''">{{ item.solicitud.asunto }}</h3>
+                      <div class="text-xs text-muted-foreground mt-0.5 truncate">
+                        <svg aria-hidden="true" lucideUser class="w-3 h-3 inline mr-1"></svg>{{ item.solicitud.ciudadanoNombre }}@if (item.tema) { · <span class="font-mono">{{ item.tema }}</span> }@if (fechaVisible(item.solicitud.fechaPresentacion); as fecha) { · presentada {{ fecha | date:'dd/MM/yyyy' }} }
                       </div>
-                      <div class="text-xs mt-1 truncate" [style.color]="getArea(item.solicitud.expediente) ? 'var(--brand-700)' : 'var(--muted-foreground)'">
+                      <div class="text-xs mt-1 truncate" [style.color]="item.solicitud.areaResponsable ? 'var(--brand-700)' : 'var(--muted-foreground)'">
                         <svg aria-hidden="true" lucideBuilding2 class="w-3 h-3 inline mr-1"></svg>
-                        <span class="font-medium">Área responsable:</span> {{ getAreaLabel(item.solicitud.expediente) }}
+                        <span class="font-medium">Área responsable:</span> {{ getAreaLabel(item.solicitud) }}
                       </div>
                     </div>
 
@@ -213,12 +211,12 @@
 
                     <!-- Acción -->
                     @if (!canResponder(item.solicitud)) {
-                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] w-[116px] justify-center flex-shrink-0">
+                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="queue-action btn-ghost-brand !px-3 !py-2 !text-[12px]">
                         Ver detalle
                         <svg aria-hidden="true" lucideChevronRight class="w-3.5 h-3.5"></svg>
                       </a>
                     } @else {
-                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] w-[116px] justify-center flex-shrink-0">
+                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="queue-action btn-brand !px-3 !py-2 !text-[13px]">
                         <svg aria-hidden="true" lucideSend class="w-3.5 h-3.5"></svg>
                         Responder
                       </a>

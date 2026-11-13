@@ -16,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.AsignarAreaResponsableRequest;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.AmpliacionPlazoSolicitudDTO;
@@ -202,6 +203,7 @@ public class SolicitudRestController {
         solicitud.setCopiaCertificada(solicitudDTO.copiaCertificada() != null ? solicitudDTO.copiaCertificada() : false);
         solicitud.setConsentimientoDatosPersonales(true);
         solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
+        solicitud.registrarOficinaDesdeDescripcion();
         solicitud.setCiudadano(ciudadano);
         solicitud.setEntidad(entidad);
         solicitud.setEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
@@ -438,6 +440,15 @@ public class SolicitudRestController {
                     "Canal de notificación no válido: " + canal
                     + ". Valores permitidos: CORREO_ELECTRONICO, CASILLA_ELECTRONICA, PLATAFORMA, FISICA");
         }
+    }
+
+    @Operation(summary = "Registrar el área responsable", description = "Persiste el área de la entidad que tiene la información y, si se indica, la persona encargada. No modifica el plazo ni la respuesta.")
+    @PatchMapping("/{id}/area-responsable")
+    public ResponseEntity<SolicitudDTO> asignarArea(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody AsignarAreaResponsableRequest body) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
+        return ResponseEntity.ok(solicitudService.asignarAreaResponsable(id, body.area(), body.encargado()));
     }
 
     @Operation(summary = "Cambiar estado de solicitud", description = "Solo permite RECEPCIONADA a EN_REVISION sin respuesta ni observación pendiente, o consultar el mismo estado sin nueva actuación. Los demás cambios requieren su comando específico (409).")

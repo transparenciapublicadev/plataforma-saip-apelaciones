@@ -58,7 +58,7 @@
             @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
               <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
               <p class="text-sm text-foreground/85 mt-1.5">Se solicitó al administrado precisar su solicitud (plazo hasta el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaLimiteSubsanacion) ? (observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy') : 'No informada' }}</span>). Si no responde, el expediente se archivará automáticamente.</p>
-              <p class="text-sm text-foreground/70 mt-2 leading-relaxed">{{ observacion.motivoObservacion }}</p>
+              <p class="text-sm text-foreground/70 mt-2 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion }}</p>
             } @else {
               <span class="eyebrow" style="color: var(--warning)">Subsanación presentada · pendiente de evaluación</span>
               <p class="text-sm text-foreground/85 mt-1.5">El administrado subsanó el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaSubsanacion) ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : '—' }}</span>. Evalúe si la observación quedó subsanada.</p>
@@ -287,8 +287,9 @@
           {{ liquidacionError() }}
         </p>
       }
-      <app-response-context />
-      <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre" [readOnly]="yaRespondida()"></app-area-responsable-panel>
+      <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre" [solicitudId]="sol.id"
+        [readOnly]="yaRespondida()" [oficinaIndicada]="sol.oficinaDestinataria" [areaGuardada]="sol.areaResponsable"
+        [encargadoGuardado]="sol.encargadoArea" [fechaGuardada]="sol.fechaAsignacionArea" (guardada)="aplicarArea($event)"></app-area-responsable-panel>
 
       <div class="form-shell" data-reveal>
         <div class="flex border-b overflow-x-auto" appReferenceTabs role="tablist" aria-label="Secciones del expediente" style="border-color: var(--border)">
