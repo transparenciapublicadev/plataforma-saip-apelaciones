@@ -44,7 +44,9 @@ describe('ReportesInstitucionalesComponent', () => {
       { etiqueta: '2026-03', cantidad: 20 }
     ],
     resultados: [{ etiqueta: 'ENTREGA_TOTAL', cantidad: 38 }, { etiqueta: 'ENTREGA_PARCIAL', cantidad: 2 }],
-    alcance: 'Ámbito institucional autorizado'
+    alcance: 'Ámbito institucional autorizado',
+    enPlazoLegal: 12,
+    tiempoPromedioDiasHabiles: 8.5
   };
 
   const borradorMock: BorradorInstitucional = {

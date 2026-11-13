@@ -22,10 +22,11 @@ public class ReporteInstitucionalService {
     private final FuncionarioRepository funcionarios;
     private final ReporteInstitucionalQueryRepository queries;
     private final ReporteBorradorRepository drafts;
+    private final ReporteConsultaRepository consultas;
     private static final Set<String> SAIP=Set.of("frasaiNombre","frasaiCargo","frasaiDesignacion","factores","factoresOtros","buenasPracticas","necesidades","denunciasRecibidas","comunicacionesSTPAD","pasInstaurados","observaciones");
     private static final Set<String> TTAIP=Set.of("responsable","cargo","conclusiones","recomendaciones");
-    public ReporteInstitucionalService(AutorizacionRecursosService auth,FuncionarioRepository funcionarios,ReporteInstitucionalQueryRepository queries,ReporteBorradorRepository drafts) {
-        this.auth=auth;this.funcionarios=funcionarios;this.queries=queries;this.drafts=drafts;
+    public ReporteInstitucionalService(AutorizacionRecursosService auth,FuncionarioRepository funcionarios,ReporteInstitucionalQueryRepository queries,ReporteBorradorRepository drafts,ReporteConsultaRepository consultas) {
+        this.auth=auth;this.funcionarios=funcionarios;this.queries=queries;this.drafts=drafts;this.consultas=consultas;
     }
     private record Scope(String key,Long entity,String name,Long actor) { }
     private Scope scope(String modo) {
@@ -61,7 +62,13 @@ public class ReporteInstitucionalService {
     public Borrador borrador(String modo,LocalDate desde,LocalDate hasta) {
         var s=scope(modo);period(desde,hasta);return drafts.find(s.key(),desde,hasta,false).orElseThrow(()->new RecursoNoEncontradoException("No existe borrador para este periodo"));
     }
-    public Historial historial(String modo,int page,int size) { var s=scope(modo);page(page,size);return drafts.history(s.key(),page,size); }
+    public Historial historial(String modo,int page,int size) { var s=scope(modo);page(page,size);return consultas.history(s.key(),page,size); }
+
+    @Transactional(isolation=Isolation.READ_COMMITTED)
+    public void registrarConsulta(String modo, Resumen resumen) {
+        var s=scope(modo);period(resumen.desde(),resumen.hasta());
+        consultas.upsert(s.key(),resumen,s.actor());
+    }
 
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public Borrador guardar(String modo,LocalDate desde,LocalDate hasta,Guardar input) {

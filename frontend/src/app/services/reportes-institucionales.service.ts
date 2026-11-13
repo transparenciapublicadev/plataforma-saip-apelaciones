@@ -8,6 +8,12 @@ export interface ResumenInstitucional {
   modo: ModoReporte; ambito: string; entidadId: number | null; entidad: string | null;
   desde: string; hasta: string; consultado: string; total: number; conActuacion: number;
   estados: ConteoReporte[]; porMes: ConteoReporte[]; resultados: ConteoReporte[]; alcance: string;
+  enPlazoLegal: number | null; tiempoPromedioDiasHabiles: number | null;
+}
+export interface ConsultaReporte {
+  id: string; modo: ModoReporte; desde: string; hasta: string; consultado: string; autor: string;
+  total: number; conActuacion: number; enPlazoLegal: number | null; tiempoPromedioDiasHabiles: number | null;
+  versionBorrador: number | null;
 }
 export interface FilaReporte { id: number; expediente: string; fecha: string; asunto: string | null; entidad: string | null; estado: string; resultado: string | null; actuacionRegistrada: boolean; }
 export interface PaginaReporte<T> { content: T[]; totalElements: number; totalPages: number; number: number; size: number; }
@@ -25,7 +31,7 @@ export class ReportesInstitucionalesService {
     return this.http.get<ResumenInstitucional>(`${this.url(modo)}/resumen`, { params: this.periodo(desde, hasta) });
   }
   detalle(modo: ModoReporte, desde: string, hasta: string, page = 0, query = '', estado = '') {
-    let params = this.periodo(desde, hasta).set('page', page).set('size', 15);
+    let params = this.periodo(desde, hasta).set('page', page).set('size', 10);
     if (query.trim()) params = params.set('query', query.trim());
     if (estado) params = params.set('estado', estado);
     return this.http.get<PaginaReporte<FilaReporte>>(`${this.url(modo)}/detalle`, { params });
@@ -37,6 +43,6 @@ export class ReportesInstitucionalesService {
     return this.http.put<BorradorInstitucional>(`${this.url(modo)}/borrador`, body, { params: this.periodo(desde, hasta) });
   }
   historial(modo: ModoReporte, page = 0) {
-    return this.http.get<PaginaReporte<BorradorInstitucional>>(`${this.url(modo)}/historial`, { params: { page, size: 15 } });
+    return this.http.get<PaginaReporte<ConsultaReporte>>(`${this.url(modo)}/historial`, { params: { page, size: 10 } });
   }
 }
