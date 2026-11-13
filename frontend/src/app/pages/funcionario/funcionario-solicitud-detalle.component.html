@@ -232,9 +232,9 @@
             <span class="stat-card-bar" style="background: var(--brand-700)"></span>
             <div class="flex items-center gap-2 mb-2">
               <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-              <span class="eyebrow">Tipo</span>
+              <span class="eyebrow">Tema o materia</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'No informado' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ temaInformacion() }}</div>
           </div>
         } @else {
           <div class="stat-card">
@@ -268,9 +268,9 @@
             <span class="stat-card-bar" style="background: var(--brand-700)"></span>
             <div class="flex items-center gap-2 mb-2">
               <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-              <span class="eyebrow">Tipo</span>
+              <span class="eyebrow">Tema o materia</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ sol.tipoInformacion || 'No informado' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--brand-700)">{{ temaInformacion() }}</div>
           </div>
         }
       </div>
@@ -346,7 +346,7 @@
               } @else if (esRespuestaAceptada()) {
                 <div>
                   <span class="eyebrow">Descripción</span>
-                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed whitespace-pre-line" style="background: var(--card); border: 1px solid var(--border)">
                     {{ sol.respuesta?.contenido || 'Descripción no registrada' }}
                   </div>
                 </div>
@@ -373,7 +373,7 @@
                 </div>
                 <div>
                   <span class="eyebrow">Descripción</span>
-                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
+                  <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed whitespace-pre-line" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
                     {{ sol.respuesta?.contenido || 'Descripción no registrada' }}
                   </div>
                 </div>
@@ -441,8 +441,8 @@
                 <div class="mt-1.5 text-sm">{{ sol.entidadNombre }}</div>
               </div>
               <div>
-                <span class="eyebrow">Tipo de información</span>
-                <div class="mt-1.5 text-sm">{{ sol.tipoInformacion || 'No informado' }}</div>
+                <span class="eyebrow">Tema o materia</span>
+                <div class="mt-1.5 text-sm">{{ temaInformacion() }}</div>
               </div>
               <div>
                 <span class="eyebrow">Modalidad de entrega solicitada</span>
