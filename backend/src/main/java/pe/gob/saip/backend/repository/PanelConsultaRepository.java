@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.dto.*;
+import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 /** SQL projections keep ownership, filters, counts and pagination in PostgreSQL, not in memory.
  * No entity/collection hydration or documents are needed by the panel. */
@@ -66,7 +67,7 @@ public class PanelConsultaRepository {
     private static final String AP_FROM = "from apelaciones a left join solicitudes s on s.id_solicitud=a.id_solicitud ";
 
     public Datos consultar(boolean apelaciones, Alcance alcance, Filtro filtro,
-                           LocalDate vencida, LocalDate hastaUno, LocalDate hastaCinco) {
+                           LocalDate hoy, LocalDate vencida, LocalDate hastaUno, LocalDate hastaCinco) {
         MapSqlParameterSource params = new MapSqlParameterSource()
             .addValue("vencida",vencida).addValue("hastaUno",hastaUno).addValue("hastaCinco",hastaCinco)
             .addValue("actor",alcance.ciudadanoId()).addValue("entidadActor",alcance.entidadId());
@@ -109,7 +110,20 @@ public class PanelConsultaRepository {
         Map<String,Long> states = group(alias+".estado",from+scope,params);
         Map<String,Long> stages = group(stage,from+scope,params);
         Map<String,Long> result = apelaciones ? group("rf.decision",from+scope+" and a.estado in "+FINAL+" and rf.decision is not null",params) : Map.of();
-        Map<String,Long> topics = apelaciones ? Map.of() : group("s.tipo_informacion",from+scope+" and s.tipo_informacion is not null",params);
+        Map<String,Long> topics;
+        Map<String,Long> porDia = null;
+        if (!apelaciones && alcance.ciudadanoId()==null && alcance.entidadId()!=null) {
+            String enCurso = """
+                from solicitudes s where s.id_entidad=:entidadActor
+                and s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION')
+                and not exists (select 1 from respuestas r where r.id_solicitud=s.id_solicitud)
+                and not (%s)
+                """.formatted(PENDING_OBSERVATION);
+            topics = group("s.tipo_informacion", enCurso + " and nullif(trim(s.tipo_informacion),'') is not null", params);
+            porDia = contarDiasRestantes(plazosAbiertos(enCurso, params.addValue("hoy", hoy)), hoy);
+        } else {
+            topics = apelaciones ? Map.of() : group("s.tipo_informacion",from+scope+" and s.tipo_informacion is not null",params);
+        }
         List<PanelOpcionDTO> entities = jdbc.query("select distinct "+effectiveEntity+" id, "+(apelaciones?"coalesce(ae.nombre,a.entidad_externa_nombre)":"e.nombre")+" nombre "+from+scope
             +" and "+effectiveEntity+" is not null order by nombre,id limit 501",params,(rs,n)->new PanelOpcionDTO(rs.getLong("id"),rs.getString("nombre")));
         List<PanelOpcionDTO> salas = apelaciones ? jdbc.query("select distinct sala.id_sala_ttaip id,sala.nombre "+from+scope
@@ -121,9 +135,32 @@ public class PanelConsultaRepository {
             jdbc.queryForList("select id_observacion,id_solicitud,estado,fecha_observacion,fecha_limite_subsanacion,fecha_subsanacion from observaciones_solicitud where id_solicitud in (:ids) order by fecha_observacion desc,id_observacion desc",new MapSqlParameterSource("ids",ids))
                 .forEach(r->observations.computeIfAbsent(((Number)r.get("id_solicitud")).longValue(),k->new ArrayList<>()).add(r));
         }
-        return new Datos(rows,total,new PanelResumenDTO(states.values().stream().mapToLong(Long::longValue).sum(),states,stages,result,topics,group("cast("+effectiveEntity+" as varchar)",from+scope+" and "+effectiveEntity+" is not null",params)),
+        return new Datos(rows,total,new PanelResumenDTO(states.values().stream().mapToLong(Long::longValue).sum(),states,stages,result,topics,group("cast("+effectiveEntity+" as varchar)",from+scope+" and "+effectiveEntity+" is not null",params),porDia),
             entities.stream().limit(500).toList(),salas.stream().limit(500).toList(),limited,observations);
     }
+    record PlazoAbierto(LocalDate presentacion, LocalDate limite, long total) {}
+
+    private List<PlazoAbierto> plazosAbiertos(String fromWhere, MapSqlParameterSource params) {
+        return jdbc.query("""
+            select cast(s.fecha_presentacion as date) presentacion, s.fecha_limite, count(*) total
+            """ + fromWhere + """
+             and s.fecha_presentacion is not null and s.fecha_limite >= :hoy
+            group by presentacion, s.fecha_limite
+            """, params, (rs, n) -> new PlazoAbierto(rs.getObject("presentacion", LocalDate.class),
+                rs.getObject("fecha_limite", LocalDate.class), rs.getLong("total")));
+    }
+
+    /** Business days still open, using the same clock as each panel row. Overdue rows stay out of the week chart. */
+    static Map<String,Long> contarDiasRestantes(List<PlazoAbierto> filas, LocalDate hoy) {
+        Map<String,Long> counts = new LinkedHashMap<>();
+        for (PlazoAbierto fila : filas) {
+            if (fila.limite().isBefore(hoy)) continue;
+            int dias = DiasHabilesUtil.diasHabilesVigentes(fila.presentacion(), fila.limite(), hoy);
+            counts.merge(String.valueOf(dias), fila.total(), Long::sum);
+        }
+        return Map.copyOf(counts);
+    }
+
     private Map<String,Long> group(String expression,String fromWhere,MapSqlParameterSource params) {
         Map<String,Long> result = new LinkedHashMap<>();
         // Group by the select alias. Repeating a CASE that contains parameters makes

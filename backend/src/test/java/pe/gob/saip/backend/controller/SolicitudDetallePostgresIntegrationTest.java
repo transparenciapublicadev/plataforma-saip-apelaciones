@@ -183,6 +183,54 @@ class SolicitudDetallePostgresIntegrationTest {
     }
 
     @Test
+    void institutionalPanelCountsOpenDeadlinesAcrossPagesWithoutOtherEntities() throws Exception {
+        assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
+        assertThat(flyway.info().pending()).isEmpty();
+        tx(() -> {
+            Solicitud original = em.find(Solicitud.class, id);
+            original.setTipoInformacion("Tema activo");
+            Solicitud second = panelRequest(original, original.getEntidad(), "segunda", "Tema activo");
+            assertThat(second.getFechaLimite()).isEqualTo(original.getFechaLimite());
+            Solicitud overdue = panelRequest(original, original.getEntidad(), "vencida", "Tema anterior");
+            overdue.setFechaLimite(LocalDate.now().minusDays(1));
+            Solicitud answered = panelRequest(original, original.getEntidad(), "respondida", "Tema cerrado");
+            answered.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+            panelRequest(original, entity("Entidad del panel ajena", "PA-" + ownerId), "ajena", "Tema ajeno");
+        });
+
+        HttpResponse<String> response = get("/api/panel/solicitudes?tamano=1&busqueda=segunda", login(staffEmail));
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+        JsonNode page = json.readTree(response.body());
+        assertThat(page.path("totalElementos").asInt()).isEqualTo(1);
+        JsonNode days = page.path("resumen").path("porDiasRestantes");
+        String visibleDays = page.path("contenido").get(0).path("diasRestantes").asString();
+        assertThat(days.size()).isEqualTo(1);
+        assertThat(days.path(visibleDays).asInt()).isEqualTo(2);
+        JsonNode topics = page.path("resumen").path("porTipoInformacion");
+        assertThat(topics.path("Tema activo").asInt()).isEqualTo(2);
+        assertThat(topics.has("Tema cerrado")).isFalse();
+        assertThat(topics.has("Tema ajeno")).isFalse();
+
+        HttpResponse<String> ownerPage = get("/api/panel/solicitudes", login(ownerEmail));
+        assertThat(ownerPage.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(ownerPage.body()).path("resumen").path("porDiasRestantes").isObject()).isFalse();
+        assertThat(get("/api/panel/solicitudes", null).statusCode()).isEqualTo(401);
+    }
+
+    private Solicitud panelRequest(Solicitud original, Entidad entidad, String suffix, String topic) {
+        Solicitud request = new Solicitud();
+        request.setExpediente(expediente + "-" + suffix);
+        request.setAsunto(suffix);
+        request.setDescripcion("Solicitud sintética del panel");
+        request.setCiudadano(original.getCiudadano());
+        request.setEntidad(entidad);
+        request.setTipoInformacion(topic);
+        request.setConsentimientoDatosPersonales(true);
+        em.persist(request);
+        return request;
+    }
+
+    @Test
     void addingDocumentsDoesNotAddOneSelectPerDocumentOrDuplicateRows() throws Exception {
         richFixture();
         String token = login(ownerEmail); Statistics stats = statistics(); stats.clear();

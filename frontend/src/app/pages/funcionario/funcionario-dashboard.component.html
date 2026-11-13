@@ -248,21 +248,26 @@
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
                 <svg aria-hidden="true" lucideLayers class="w-3 h-3"></svg>
-                Vencimientos de la semana
+                Solicitudes en atención
               </span>
               <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos próximos</h2>
             </div>
             <div class="p-4 space-y-1.5">
-              @for (row of distribucionDias(); track row.dia) {
+              @if (distribucionDias() === null) {
+                <p class="text-xs text-muted-foreground">Distribución por día no disponible.</p>
+              } @else {
+                @for (row of distribucionDias(); track row.dia) {
                 <div class="flex items-center gap-2.5" data-table-row>
-                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia === 0 ? 'hoy' : row.dia + 'd' }}</span>
+                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia }}d</span>
                   <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: var(--muted)">
                     <div class="h-full rounded-full transition-all" [style.width.%]="row.width" [style.background]="row.count === 0 ? 'var(--border-strong)' : row.color" [style.opacity]="row.count === 0 ? 0.4 : 1"></div>
                   </div>
                   <span class="font-mono text-[11px] w-5 text-right" [style.color]="row.count > 0 ? row.color : 'var(--muted-foreground)'">{{ row.count }}</span>
                 </div>
+                } @empty {
+                  <p class="text-xs text-muted-foreground">Sin vencimientos próximos en las solicitudes con plazo registrado.</p>
+                }
               }
-              @if (distribucionDias().length === 0) { <p class="text-xs text-muted-foreground">Distribución por día no disponible. Las bandejas muestran los rangos informados por el servidor.</p> }
               <p class="text-[11px] text-muted-foreground pt-3 border-t border-border mt-3">
                 Vencimientos por días hábiles restantes.
               </p>
@@ -274,9 +279,9 @@
               <div class="form-section-header">
                 <span class="eyebrow flex items-center gap-2">
                   <svg aria-hidden="true" lucideTarget class="w-3 h-3"></svg>
-                  Resumen del listado
+                  Oportunidad
                 </span>
-                <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Tipos de información registrados</h2>
+                <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Temas frecuentes</h2>
               </div>
               <div class="p-4 space-y-2.5">
                 @for (tema of topTemas(); track tema[0]) {
@@ -301,8 +306,9 @@
             <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
             <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
               <li><span class="font-mono font-semibold">10 días hábiles</span> para responder · Ley N° 27806.</li>
+              <li>Observar requisitos en <span class="font-mono font-semibold">2 días hábiles</span>. Consulte las condiciones de ampliación en el expediente.</li>
               <li>Vencido el plazo aplica <span class="font-semibold">silencio administrativo negativo</span>.</li>
-              <li>El administrado puede apelar en <span class="font-mono font-semibold">15 días hábiles</span> ante el Tribunal.</li>
+              <li>El administrado puede apelar una denegatoria en <span class="font-mono font-semibold">15 días hábiles</span>; ante silencio, sin plazo perentorio.</li>
             </ul>
           </div>
 
