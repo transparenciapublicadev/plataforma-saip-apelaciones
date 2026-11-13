@@ -1,5 +1,6 @@
 import { DOCUMENTO_RELATION_KEYS, DocumentoRelation } from '../../models/documento.model';
 import { Solicitud } from '../../models/solicitud.model';
+import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 import { positiveId } from './funcionario-dashboard.model';
 
 /** Legacy nested DTOs omit relations; explicit metadata must agree with its parent. */
@@ -28,10 +29,7 @@ export function registroAnidadoCompatible(registro: any, solicitud: Solicitud): 
 }
 
 export function modalidadesRegistradas(solicitud: Solicitud | null): string[] {
-  if (!solicitud) return [];
-  const opciones: [boolean, string][] = [[solicitud.formatoDigital, 'Digital'], [solicitud.formatoFisico, 'Físico'],
-    [solicitud.copiaSimple, 'Copia simple'], [solicitud.copiaCertificada, 'Copia certificada']];
-  return opciones.filter(([elegida]) => elegida === true).map(([, label]) => label);
+  return formatosEntregaSolicitados(solicitud);
 }
 
 export function detalleConRelacionesVerificadas(data: Solicitud): { solicitud: Solicitud; incompleta: boolean } {
