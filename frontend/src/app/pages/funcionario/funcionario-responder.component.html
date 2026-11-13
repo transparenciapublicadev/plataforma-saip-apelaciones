@@ -25,7 +25,7 @@
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
       @if (error()) { <div role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ error() }}</div> }
-      @if (loading()) { <p role="status" class="text-sm text-muted-foreground">Registrando o comprobando la recepción. Espere la confirmación del servidor.</p> }
+      @if (loading()) { <p role="status" class="text-sm text-muted-foreground">Registrando o comprobando la recepción. Espere la confirmación.</p> }
       @if (via() === 'responder' && (motivoRespuestaNoDisponible() || respuestaPendienteVerificacion() || resultadoRespuesta() === 'sin-confirmacion')) {
         <div class="rounded-lg p-4 text-sm" role="status" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
           <p>{{ motivoRespuestaNoDisponible() || 'Resultado pendiente de verificar. Compruebe el expediente antes de repetir el registro.' }}</p>

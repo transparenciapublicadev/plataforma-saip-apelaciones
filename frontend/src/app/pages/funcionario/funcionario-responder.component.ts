@@ -236,8 +236,6 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   descripcionAceptacion = '';
   descripcionAceptacionParcial = '';
   descripcionDenegacion = '';
-  formatoEntrega = 'digital';
-  plazoEntrega = 5;
   causalDenegatoria = '';
   fundamentoLegal = '';
 
@@ -781,8 +779,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       tipoRespuesta: decision === 'entrega_total' ? 'ENTREGA_TOTAL' : decision === 'entrega_parcial' ? 'ENTREGA_PARCIAL' : 'DENEGACION_TOTAL',
       contenido: (decision === 'denegacion_total' ? this.descripcionDenegacion : decision === 'entrega_parcial' ? this.descripcionAceptacionParcial : this.descripcionAceptacion).trim(),
       causalDenegatoria: decision !== 'entrega_total' ? this.causalDenegatoria || undefined : undefined,
-      fundamentoLegal: decision !== 'entrega_total' ? this.fundamentoLegal.trim() || undefined : undefined,
-      formatoEntrega: this.formatoEntrega, plazoEntrega: this.plazoEntrega
+      fundamentoLegal: decision !== 'entrega_total' ? this.fundamentoLegal.trim() || undefined : undefined
     };
     const archivos = [...(decision === 'denegacion_total' ? this.evidenciaDenegatoria()
       : decision === 'entrega_parcial' ? this.documentosEntregaParcial() : this.documentosEntrega())];
