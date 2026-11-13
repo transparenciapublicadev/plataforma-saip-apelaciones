@@ -98,18 +98,19 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly totalActivas = computed(() => ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
     .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0));
   readonly respondidas = computed(() => this.resumen()?.porEtapa['respondidas'] ?? 0);
-  // Registration alone cannot prove timely delivery or effective notification.
   readonly cerradas = computed(() => this.respondidas() + this.counts().san);
+  /** Misma lectura que el indicador de design-reference: sin expedientes cerrados el arco queda en 100. */
   readonly cumplimiento = computed<number | null>(() => {
+    if (!this.resumen()) return null;
     const cerradas = this.cerradas();
-    if (cerradas === 0) return null;
-    return Math.round((this.respondidas() / cerradas) * 100);
+    return cerradas > 0 ? Math.round((this.respondidas() / cerradas) * 100) : 100;
   });
+  readonly donutCircunferencia = 2 * Math.PI * 26;
+  private readonly donutDibujado = signal(false);
+  private donutFrame = 0;
   readonly donutDashOffset = computed(() => {
-    const val = this.cumplimiento() ?? 0;
-    const r = 26;
-    const c = 2 * Math.PI * r;
-    return c - (val / 100) * c;
+    const val = this.donutDibujado() ? (this.cumplimiento() ?? 0) : 0;
+    return this.donutCircunferencia - (val / 100) * this.donutCircunferencia;
   });
   readonly donutAccent = computed(() => {
     const val = this.cumplimiento() ?? 0;
@@ -134,9 +135,6 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly filtradasVisibles = computed(() => this.filtradas());
   get busquedaModel(): string { return this.busqueda(); }
   set busquedaModel(value: string) { this.busqueda.set(value.slice(0, 120)); this.paginaActual.set(1); clearTimeout(this.searchTimer); this.read.unsubscribe(); this.generation++; this.solicitudes.set([]); this.queryLoading.set(true); this.searchTimer = setTimeout(() => this.cargarSolicitudes(false), 250); }
-  readonly areasAsignadas = signal<Record<string, { area: string; responsable?: string; fecha: string }>>({});
-  private readonly areaListener = () => this.recargarAreas();
-
   limpiarBusqueda(): void {
     if (this.busqueda()) {
       this.busqueda.set('');
@@ -145,23 +143,25 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private recargarAreas(): void {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      const data = JSON.parse(localStorage.getItem('saip_area_responsable') || '{}');
-      this.areasAsignadas.set(data);
-    } catch {
-      this.areasAsignadas.set({});
+  getAreaLabel(solicitud: { areaResponsable?: string | null; encargadoArea?: string | null }): string {
+    const area = solicitud.areaResponsable?.trim();
+    if (!area) return 'Sin asignar';
+    const encargado = solicitud.encargadoArea?.trim();
+    return encargado ? `${area} · ${encargado}` : area;
+  }
+
+  private programarDonut(valor: number | null): void {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.donutFrame);
+    this.donutDibujado.set(false);
+    if (valor === null) return;
+    const dibujar = () => this.donutDibujado.set(true);
+    if (typeof requestAnimationFrame !== 'function') {
+      dibujar();
+      return;
     }
-  }
-
-  getArea(expediente: string): { area: string; responsable?: string; fecha: string } | null {
-    return this.areasAsignadas()[expediente] || null;
-  }
-
-  getAreaLabel(expediente: string): string {
-    const a = this.getArea(expediente);
-    return a ? a.area : 'Sin asignar';
+    this.donutFrame = requestAnimationFrame(() => {
+      this.donutFrame = requestAnimationFrame(dibujar);
+    });
   }
 
   constructor() {
@@ -169,26 +169,22 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
       const revision = this.authService.cambiosSesion();
       if (this.initialized && revision !== this.revision) untracked(() => this.cargarSolicitudes());
     });
+    effect(() => {
+      const valor = this.cumplimiento();
+      untracked(() => this.programarDonut(valor));
+    });
   }
   ngOnInit(): void {
     this.initialized = true;
-    this.recargarAreas();
-    if (typeof window !== 'undefined') {
-      window.addEventListener('saip-area-responsable', this.areaListener);
-      window.addEventListener('storage', this.areaListener);
-    }
     this.cargarSolicitudes();
   }
   ngOnDestroy(): void {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.donutFrame);
     this.tourService.endTourFor('saip_tour_funcionario');
     this.destroyed = true;
     this.generation++;
     this.read.unsubscribe();
     clearTimeout(this.searchTimer);
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('saip-area-responsable', this.areaListener);
-      window.removeEventListener('storage', this.areaListener);
-    }
   }
   selectBucket(bucket: BucketKey): void {
     if (this.selectedBucket() === bucket) return;

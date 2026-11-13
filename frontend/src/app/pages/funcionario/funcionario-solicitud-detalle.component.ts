@@ -1,7 +1,6 @@
 import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
 import { Subscription } from 'rxjs';
 import { falloConsulta } from '../../utils/consulta-remota.util';
-import { ResponseContextComponent } from '../../shared/response-context.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -65,7 +64,7 @@ import {
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentUploadComponent, ResponseContextComponent, ReferenceTabsDirective,
+    CommonModule, FormsModule, RouterLink, DocumentUploadComponent, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
     AreaResponsablePanelComponent,
@@ -336,6 +335,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly formatosSolicitados = computed(() => {
     return modalidadesRegistradas(this.solicitud());
   });
+
+  aplicarArea(actualizada: Solicitud): void {
+    this.solicitud.set(actualizada);
+  }
 
   readonly yaRespondida = computed<boolean>(() => {
     return positiveId(this.solicitud()?.respuesta?.id);

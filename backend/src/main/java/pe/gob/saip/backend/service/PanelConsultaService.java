@@ -103,7 +103,12 @@ public class PanelConsultaService {
             observations.stream().map(o->new PanelSolicitudDTO.PanelObservacionDTO(id(o,"id_observacion"),id(o,"id_solicitud"),str(o,"estado"),
                 text(o,"fecha_observacion"),text(o,"fecha_limite_subsanacion"),text(o,"fecha_subsanacion"),
                 date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion")))).toList(),
-            id(r,"a_id")==null?null:apelacion(r));
+            id(r,"a_id")==null?null:apelacion(r),
+            oficina(r), str(r,"area_responsable"), str(r,"encargado_area"));
+    }
+    private static String oficina(Map<String,Object> r) {
+        String guardada = str(r, "oficina_destinataria");
+        return guardada != null ? guardada : Solicitud.oficinaIndicada(str(r, "descripcion"));
     }
     private PanelApelacionDTO apelacion(Map<String,Object> r) {
         return new PanelApelacionDTO(id(r,"a_id"),str(r,"a_expediente"),str(r,"a_fundamentos"),str(r,"a_estado"),str(r,"a_resultado"),text(r,"a_fecha"),

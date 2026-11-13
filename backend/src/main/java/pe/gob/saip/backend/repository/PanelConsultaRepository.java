@@ -95,6 +95,7 @@ public class PanelConsultaRepository {
         long total = jdbc.queryForObject("select count(*) "+from+where,params,Long.class);
         String columns = apelaciones ? AP_COLUMNS : """
             s.id_solicitud,s.expediente,s.asunto,s.descripcion,s.estado,s.prioridad,s.tipo_informacion,
+            s.oficina_destinataria,s.area_responsable,s.encargado_area,
             s.fecha_presentacion,s.fecha_limite,s.id_ciudadano,c.nombre_completo ciudadano_nombre,
             s.id_entidad,e.nombre entidad_nombre,e.acronimo entidad_acronimo,
             rp.id_respuesta,rp.tipo_respuesta,rp.fecha_respuesta,

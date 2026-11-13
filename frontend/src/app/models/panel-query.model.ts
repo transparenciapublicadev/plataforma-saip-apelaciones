@@ -4,7 +4,8 @@ import type { Apelacion } from './apelacion.model';
 /** Read models for bounded dashboard queries. They are not writable aggregates. */
 export type PanelSolicitud = Pick<Solicitud, 'id' | 'expediente' | 'estado' | 'ciudadanoId' | 'entidadId'>
   & Partial<Pick<Solicitud, 'asunto' | 'descripcion' | 'ciudadanoNombre' | 'ciudadanoDni' | 'entidadNombre'
-    | 'fechaPresentacion' | 'fechaLimite' | 'diasRestantes' | 'prioridad' | 'tipoInformacion'>> & {
+    | 'fechaPresentacion' | 'fechaLimite' | 'diasRestantes' | 'prioridad' | 'tipoInformacion'
+    | 'oficinaDestinataria' | 'areaResponsable' | 'encargadoArea'>> & {
   respuesta?: { id?: number; tipoRespuesta?: string; fechaRespuesta?: string } | null;
   observaciones?: { id?: number; solicitudId?: number; estado?: string; fechaLimiteSubsanacion?: string; fechaObservacion?: string; fechaSubsanacion?: string; diasRestantes?: number }[];
   etapa?: string;

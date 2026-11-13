@@ -42,6 +42,14 @@ public record SolicitudDTO(
     Boolean consentimientoDatosPersonales,
     @Schema(description = "Canal formal elegido para notificaciones", example = "CASILLA_ELECTRONICA", allowableValues = {"CORREO_ELECTRONICO", "CASILLA_ELECTRONICA", "PLATAFORMA", "FISICA"})
     String canalNotificacion,
+    @Schema(description = "Oficina que el administrado indicó al presentar la SAIP. Es opcional y no asigna el área interna.")
+    String oficinaDestinataria,
+    @Schema(description = "Área de la entidad que tiene la información y prepara la respuesta")
+    String areaResponsable,
+    @Schema(description = "Persona encargada del área, si la entidad la registró")
+    String encargadoArea,
+    @Schema(description = "Fecha en que la entidad registró el área responsable")
+    String fechaAsignacionArea,
     RespuestaDTO respuesta,
     ApelacionInfoDTO apelacion,
     List<DocumentoDTO> documentos,
@@ -82,6 +90,11 @@ public record SolicitudDTO(
             s.getTipoInformacion(),
             s.getConsentimientoDatosPersonales(),
             s.getCanalNotificacion() != null ? s.getCanalNotificacion().name() : null,
+            s.getOficinaDestinataria() != null && !s.getOficinaDestinataria().isBlank()
+                    ? s.getOficinaDestinataria() : Solicitud.oficinaIndicada(s.getDescripcion()),
+            s.getAreaResponsable(),
+            s.getEncargadoArea(),
+            s.getFechaAsignacionArea() != null ? s.getFechaAsignacionArea().toString() : null,
             s.getRespuesta() != null ? RespuestaDTO.from(s.getRespuesta()) : null,
             s.getApelacion() != null ? ApelacionInfoDTO.from(s.getApelacion()) : null,
             DocumentoDTO.fromActive(s.getDocumentos()),

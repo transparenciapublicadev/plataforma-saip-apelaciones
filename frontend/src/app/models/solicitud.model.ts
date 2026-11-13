@@ -98,6 +98,10 @@ export type Solicitud = Required<Omit<SolicitudDTO, 'respuesta' | 'apelacion' | 
     ampliacionesPlazo: AmpliacionPlazoSolicitud[];
     encauzamientos: EncauzamientoSolicitud[];
     liquidacionesCosto: LiquidacionCostoSolicitud[];
+    oficinaDestinataria?: string | null;
+    areaResponsable?: string | null;
+    encargadoArea?: string | null;
+    fechaAsignacionArea?: string | null;
 };
 
 // Tipo solo del lado cliente — no existe en el contrato OpenAPI

@@ -46,7 +46,7 @@ class SolicitudRestControllerTest {
                 null, null, "2026-07-01T10:00:00", "2026-07-15", 10,
                 9L, "Ciudadano Demo", "70000001", "ciudadano@test.pe", null,
                 5L, "Entidad Demo", "ENT", true, false, false, false,
-                "PUBLICA", true, null, null, null,
+                "PUBLICA", true, null, null, null, null, null, null, null,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of()
         );
     }
