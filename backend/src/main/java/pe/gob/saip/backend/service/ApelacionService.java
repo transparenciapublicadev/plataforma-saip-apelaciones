@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
+import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
 import pe.gob.saip.backend.model.dto.CrearApelacionExternaRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Ciudadano;
@@ -173,6 +174,13 @@ public class ApelacionService {
     @Transactional(readOnly = true)
     public Optional<Apelacion> findByExpediente(String expediente) {
         return apelacionRepository.findByExpedienteWithDetails(expediente);
+    }
+
+    @Transactional(readOnly = true)
+    public ConsultaPublicaSolicitudDTO consultarEstadoPublicoTtaip(String expediente) {
+        return apelacionRepository.findByExpediente(expediente)
+                .map(ConsultaPublicaSolicitudDTO::from)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el expediente"));
     }
 
     @Transactional(readOnly = true)

@@ -13,12 +13,17 @@ import { CaptchaPoWComponent } from '../../shared/captcha-pow.component';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 
 type EstadoPublico = ConsultaPublicaSolicitud['estado'];
+const NUMERO_SAIP = /^SAIP-\d{4}-\d{5,}$/;
+const NUMERO_TTAIP = /^\d{5,}-\d{4}-JUS\/TTAIP$/;
 const ESTADOS: Record<EstadoPublico, string> = {
   EN_PROCESO: 'En Proceso', RESPONDIDA: 'Respondida', APELADA: 'Apelada',
   DENEGADA: 'Denegada', VENCIDA: 'Vencida', ARCHIVADA: 'Archivada',
 };
 interface ConsultaResultado {
   expediente: string;
+  expedienteSaip: string | null;
+  codigoConsultado: string;
+  consultaTtaip: boolean;
   estado: EstadoPublico;
   ciudadano: string | null;
   entidad: string | null;
@@ -26,6 +31,7 @@ interface ConsultaResultado {
   diasTranscurridos: number | null;
   apelacionExpediente: string | null;
   apelacionEstado: string | null;
+  apelacionFecha: string | null;
   resolucionResultado: string | null;
   timeline: TimelineEvent[];
   faltantes: string[];
@@ -43,7 +49,7 @@ interface ConsultaResultado {
 export class ConsultarComponent implements OnDestroy {
   private readonly solicitudService = inject(SolicitudService);
   readonly query = signal('');
-  readonly estadoConsulta = signal<EstadoConsulta | 'inicial' | 'incompleta'>('inicial');
+  readonly estadoConsulta = signal<EstadoConsulta | 'inicial' | 'incompleta' | 'limite'>('inicial');
   readonly buscando = computed(() => this.estadoConsulta() === 'cargando');
   readonly resultado = signal<ConsultaResultado | null>(null);
   readonly noEncontrado = computed(() => this.estadoConsulta() === 'inexistente');
@@ -77,6 +83,10 @@ export class ConsultarComponent implements OnDestroy {
 
   buscar(): void {
     if (this.destruido) return;
+    const codigo = this.query().trim().toUpperCase();
+    if (this.buscando() && codigo === this.codigoConsultado) return;
+    this.cancelarConsulta();
+    this.aviso.set(null);
 
     // 1. Honeypot y tiempo mínimo (1200ms)
     if (this.trampa() || (this.tiempoMinimoMs > 0 && Date.now() - this.montado < this.tiempoMinimoMs)) {
@@ -88,7 +98,9 @@ export class ConsultarComponent implements OnDestroy {
     const ahora = Date.now();
     this.recientes = this.recientes.filter((t) => ahora - t < 60000);
     if (this.recientes.length >= 8) {
-      this.aviso.set('Ha realizado muchas consultas seguidas. Espere un minuto.');
+      this.estadoConsulta.set('limite');
+      this.mensaje.set('Ha realizado muchas consultas seguidas. Espere un minuto antes de volver a buscar.');
+      this.enfocar('consulta-feedback');
       return;
     }
 
@@ -98,32 +110,25 @@ export class ConsultarComponent implements OnDestroy {
       return;
     }
 
-    this.recientes.push(ahora);
-    this.aviso.set(null);
-
-    const codigo = this.query().trim().toUpperCase();
-    if (this.buscando() && codigo === this.codigoConsultado) return;
-    this.cancelarConsulta();
     this.query.set(codigo);
-    // Published SAIP format; five is a minimum width in SolicitudService.generarExpediente.
-    if (!/^SAIP-\d{4}-\d{5,}$/.test(codigo) || codigo.length > 50) {
-      this.consumirPrueba();
+    if (codigo.length > 50 || !(NUMERO_SAIP.test(codigo) || NUMERO_TTAIP.test(codigo))) {
       this.estadoConsulta.set('validacion');
-      this.errorValidacion.set('Ingrese el expediente SAIP completo, por ejemplo SAIP-2026-00001. Esta consulta no busca números TTAIP.');
+      this.errorValidacion.set('Ingrese el número completo: SAIP-2026-00001 o 00001-2026-JUS/TTAIP.');
       this.enfocar('expediente');
       return;
     }
+    this.recientes.push(ahora);
     const gen = this.generacion;
     this.codigoConsultado = codigo;
     this.estadoConsulta.set('cargando');
     this.consulta = this.solicitudService.consultarPublicamente(codigo).subscribe({
       next: data => {
-        this.consumirPrueba();
         if (!this.actual(gen, codigo)) return;
+        this.consumirPrueba();
         const resultado = this.convertir(data, codigo);
         if (!resultado) {
           this.estadoConsulta.set('incompleta');
-          this.mensaje.set('El servidor no devolvió un resumen identificable de esta solicitud. No se puede confirmar su estado ni su ausencia.');
+          this.mensaje.set('No pudimos identificar el expediente en el resultado. Vuelva a intentarlo.');
           this.reintentable.set(true);
           this.enfocar('consulta-feedback');
           return;
@@ -133,12 +138,18 @@ export class ConsultarComponent implements OnDestroy {
         this.enfocar('consulta-resultado');
       },
       error: error => {
-        this.consumirPrueba();
         if (!this.actual(gen, codigo)) return;
+        this.consumirPrueba();
+        if (error?.status === 429) {
+          this.estadoConsulta.set('limite');
+          this.mensaje.set('Espere un momento antes de volver a buscar.');
+          this.enfocar('consulta-feedback');
+          return;
+        }
         const fallo = falloConsulta(error, 'el resumen público');
         this.estadoConsulta.set(fallo.estado);
         this.mensaje.set(fallo.estado === 'inexistente'
-          ? 'No se encontró una solicitud para esta consulta. Revise el número completo del expediente SAIP.'
+          ? 'No se encontró un expediente con ese número. Revise el número completo e inténtelo de nuevo.'
           : fallo.mensaje);
         this.reintentable.set(fallo.reintentable);
         this.enfocar('consulta-feedback');
@@ -154,6 +165,7 @@ export class ConsultarComponent implements OnDestroy {
   limpiarBusqueda(): void {
     if (this.destruido) return;
     this.cancelarConsulta();
+    this.aviso.set(null);
     this.query.set('');
     this.enfocar('expediente');
   }
@@ -208,7 +220,11 @@ export class ConsultarComponent implements OnDestroy {
   private convertir(data: unknown, codigo: string): ConsultaResultado | null {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     const raw = data as Record<string, unknown>;
-    if (raw['expediente'] !== codigo || typeof raw['estado'] !== 'string' || !Object.hasOwn(ESTADOS, raw['estado'])) return null;
+    const consultaTtaip = NUMERO_TTAIP.test(codigo);
+    const expedienteSaip = this.texto(raw['expediente']);
+    if (consultaTtaip ? raw['apelacionExpediente'] !== codigo || raw['estado'] !== 'APELADA'
+      || expedienteSaip !== null && !NUMERO_SAIP.test(expedienteSaip) : raw['expediente'] !== codigo) return null;
+    if (typeof raw['estado'] !== 'string' || !Object.hasOwn(ESTADOS, raw['estado'])) return null;
     const estado = raw['estado'] as EstadoPublico;
     const ciudadano = this.texto(raw['ciudadano']), entidad = this.texto(raw['entidad']);
     const fechaPresentacion = this.fecha(raw['fechaPresentacion']);
@@ -222,9 +238,9 @@ export class ConsultarComponent implements OnDestroy {
     const resolucionResultado = apelacionExpediente ? this.texto(raw['resolucionResultado']) : null;
     const faltantes: string[] = [];
     if (!ciudadano) faltantes.push('identificación enmascarada del solicitante');
-    if (!entidad) faltantes.push('nombre de entidad');
-    if (!fechaPresentacion) faltantes.push('fecha de presentación válida');
-    if (diasTranscurridos === null) faltantes.push('días transcurridos verificables en el resumen');
+    if (expedienteSaip && !entidad) faltantes.push('nombre de entidad');
+    if (expedienteSaip && !fechaPresentacion) faltantes.push('fecha de presentación válida');
+    if (expedienteSaip && diasTranscurridos === null) faltantes.push('días transcurridos verificables en el resumen');
     if ((raw['respuestaFecha'] != null || respuestaTipo) && (!respuestaFecha || !respuestaTipo)) faltantes.push('datos de respuesta completos');
     if ((estado === 'RESPONDIDA' || estado === 'DENEGADA') && !respuestaFecha) faltantes.push('fecha del registro de respuesta');
     if ((estado === 'APELADA' || raw['apelacionEstado'] != null || raw['apelacionFecha'] != null) && !apelacionExpediente) faltantes.push('referencia de la apelación vinculada');
@@ -242,7 +258,7 @@ export class ConsultarComponent implements OnDestroy {
       description: resolucionResultado ? `Resultado informado: ${resolucionResultado.replaceAll('_', ' ')}. No acredita firma ni emisión documental verificadas.`
         : 'Resultado no informado. No acredita firma ni emisión documental verificadas.', date: resolucionFecha, status: 'completed', icon: 'scale' });
     // Deliberate allowlist: never retain private fields or document relations from an unexpected payload.
-    return { expediente: codigo, estado, ciudadano, entidad, fechaPresentacion, diasTranscurridos,
-      apelacionExpediente, apelacionEstado, resolucionResultado, timeline, faltantes };
+    return { expediente: expedienteSaip ?? codigo, expedienteSaip, codigoConsultado: codigo, consultaTtaip, estado, ciudadano, entidad, fechaPresentacion, diasTranscurridos,
+      apelacionExpediente, apelacionEstado, apelacionFecha, resolucionResultado, timeline, faltantes };
   }
 }

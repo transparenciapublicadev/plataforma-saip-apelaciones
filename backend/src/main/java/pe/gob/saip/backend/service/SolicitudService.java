@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Propagation;
 import jakarta.persistence.EntityManager;
 import pe.gob.saip.backend.exception.ConflictoEstadoException;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
+import pe.gob.saip.backend.model.dto.ConsultaPublicaSolicitudDTO;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
@@ -310,6 +311,13 @@ public class SolicitudService {
     @Transactional(readOnly = true)
     public Optional<Solicitud> findByExpediente(String expediente) {
         return solicitudRepository.findByExpediente(expediente);
+    }
+
+    @Transactional(readOnly = true)
+    public ConsultaPublicaSolicitudDTO consultarEstadoPublicoSaip(String expediente) {
+        return solicitudRepository.findByExpediente(expediente)
+                .map(ConsultaPublicaSolicitudDTO::from)
+                .orElseThrow(() -> new RecursoNoEncontradoException("No se encontró el expediente"));
     }
 
     @Transactional(readOnly = true)

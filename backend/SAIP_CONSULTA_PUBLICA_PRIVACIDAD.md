@@ -1,7 +1,17 @@
 # Consulta pública SAIP: minimización del asunto
 
-Alcance: `GET /api/solicitudes/publica/expediente/{expediente}`, utilizado por
-`/consultar`. Revisión acotada del 2026-10-26; no es una auditoría integral ni cierra R5.
+La extensión `GET /api/solicitudes/publica/expediente?expediente=…` permite
+consultar números SAIP y TTAIP completos. La barra de TTAIP viaja en el parámetro,
+sin relajar el tratamiento de barras en las rutas. La ruta anterior sigue
+disponible para SAIP. Ambos accesos devuelven el mismo resumen para una apelación
+vinculada, sin caché. Una apelación externa informa su número, estado y fechas
+propias, sin inventar una SAIP ni publicar el nombre libre de una entidad declarada.
+La proyección se construye en una transacción de lectura para recuperar el estado
+y la resolución vinculada con `open-in-view=false`. El snapshot incorpora solo la
+nueva ruta y el esquema público actualizado, capturados del OpenAPI de Spring.
+
+La revisión inicial del 2026-10-26 cubrió la ruta SAIP anterior y la minimización
+de su respuesta. Los resultados de esa revisión se conservan a continuación.
 
 ## Reproducción y acceso
 
@@ -16,8 +26,8 @@ marcador. Los logins reales del titular y de otro ciudadano obtuvieron la misma
 proyección pública. Las dos regresiones de minimización fallaron; las otras cinco
 comprobaciones de contexto, búsqueda y controles privados pasaron.
 
-La consulta exige conocer únicamente el código SAIP. No exige DNI, RUC, token ni
-titularidad, y no busca apelaciones por su número TTAIP independiente. Un código
+En la revisión inicial, la consulta exigía únicamente el código SAIP, sin DNI,
+RUC, token ni titularidad. Un código
 incorrecto o inexistente produjo 404 en los tres casos sintéticos probados,
 sin enumeración masiva. La ausencia de Bearer en esta operación no es un bypass
 del detalle privado: se trata de rutas y proyecciones distintas.
