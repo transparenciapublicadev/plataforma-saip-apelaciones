@@ -29,4 +29,4 @@ Para el correcto funcionamiento del almacenamiento de documentos en staging util
    Este script se encargará de:
    - Validar la existencia de tu archivo `.env`.
    - Cargar todas las variables especificadas en el scope de proceso de PowerShell de forma segura (sin mostrar sus valores en pantalla).
-   - Iniciar la aplicación Spring Boot automáticamente a través de Maven Wrapper (`.\mvnw.cmd spring-boot:run`).
+   - Compilar con Maven Wrapper en un directorio temporal y arrancar el JAR resultante. Así, las recompilaciones del editor en `target/classes` no interrumpen staging. Para aplicar un cambio de código, detén el proceso y vuelve a ejecutar el script.
