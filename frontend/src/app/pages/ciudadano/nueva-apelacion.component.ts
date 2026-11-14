@@ -26,6 +26,10 @@ import type { AltaApelacionRecepcionDTO, RegistrarAltaApelacionRequest } from '.
 
 type Comando = { modo: 'directa'; datos: ApelacionCreate } | { modo: 'ante-entidad'; datos: ApelacionCreateAnteEntidad }
   | { modo: 'externa'; datos: ApelacionCreateExterna };
+type GrupoDocumental = 1 | 2 | 3;
+const FECHA_PRESENTACION = new Intl.DateTimeFormat('es-PE', {
+  dateStyle: 'long', timeZone: 'UTC'
+});
 interface DocumentoEnvio {
   label: string; tipo: TipoDocumento; file?: File; origen?: DocumentoMetadata;
   estado: 'pendiente' | 'enviando' | 'registrado' | 'rechazado' | 'incierto'; documento?: DocumentoMetadata;
@@ -80,11 +84,8 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   readonly documentosConsultados = signal<DocumentoMetadata[] | null>(null);
   readonly errorRecuperacion = signal('');
   readonly bloqueado = computed(() => this.loading() || !!this.apelacionCreada() || this.operacionPendiente());
-  readonly file1 = signal<File | null>(null);
-  readonly file2 = signal<File | null>(null);
-  readonly file3 = signal<File | null>(null);
-  readonly doc1Auto = signal<DocumentoMetadata | null>(null);
-  readonly doc2Auto = signal<DocumentoMetadata | null>(null);
+  readonly archivos = signal<Record<GrupoDocumental, readonly File[]>>({ 1: [], 2: [], 3: [] });
+  private readonly excluidos = signal<ReadonlySet<number>>(new Set());
   readonly avisosArchivo = signal<Record<number, string>>({});
   readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
   readonly isPreviewOpen = signal(false);
@@ -93,13 +94,14 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     const term = this.searchTerm().trim().toLowerCase();
     return this.solicitudesApelables().filter(s => !term || [s.expediente, s.asunto, s.entidadNombre].some(v => v?.toLowerCase().includes(term)));
   });
-  readonly archivosCargados = computed(() => [1, 2, 3].filter(n => this.hasDocument(n)).length);
   readonly documentos = computed(() => [
-    { n: 1 as const, label: 'SAIP original', desc: this.esApelacionExterna() ? 'Referencia declarada y copia opcional del documento externo.' : 'Copia real de la SAIP vinculada; un registro sin archivo no se presenta como PDF.' },
+    { n: 1 as const, label: 'SAIP original', desc: this.esApelacionExterna() ? 'Puede añadir copias de la solicitud externa.' : 'Incluya una copia de la solicitud presentada a la entidad. Puede acompañarla con sus anexos.' },
     { n: 2 as const, label: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA' ? 'Sustento de silencio' : 'Respuesta de la entidad',
-      desc: this.requiereRespuesta() ? 'Documento oficial de respuesta emitido por la entidad.' : 'Archivo de respaldo opcional; no se inventa una respuesta que no consta.' },
-    { n: 3 as const, label: 'Recurso fundamentado', desc: 'Archivo complementario opcional a los fundamentos escritos en el formulario.' }
+      desc: this.requiereRespuesta() ? 'Incluya al menos un documento de la respuesta de la entidad.' : 'Puede añadir archivos de respaldo.' },
+    { n: 3 as const, label: 'Recurso fundamentado', desc: 'Puede añadir documentos que complementen sus fundamentos escritos.' }
   ]);
+  readonly archivosCargados = computed(() => this.documentos().reduce(
+    (total, { n }) => total + this.archivos()[n].length + this.documentosPara(n).length, 0));
   fundamentos = '';
   entidadExternaId: number | null = null;
   entidadExternaNombre = '';
@@ -153,8 +155,8 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private limpiarContexto(): void {
     this.generacion++; this.consultas.unsubscribe(); this.catalogo.unsubscribe(); this.operaciones.unsubscribe(); this.descargas.unsubscribe();
     this.consultas = new Subscription(); this.operaciones = new Subscription(); this.descargas = new Subscription();
-    this.solicitud.set(null); this.solicitudesApelables.set([]); this.entidades.set([]); this.doc1Auto.set(null); this.doc2Auto.set(null);
-    this.file1.set(null); this.file2.set(null); this.file3.set(null); this.fundamentos = ''; this.searchTerm.set('');
+    this.solicitud.set(null); this.solicitudesApelables.set([]); this.entidades.set([]);
+    this.archivos.set({ 1: [], 2: [], 3: [] }); this.excluidos.set(new Set()); this.fundamentos = ''; this.searchTerm.set('');
     this.tipoOrigen.set('SAIP_INTERNA'); this.canalPresentacion.set('DIRECTA_TTAIP'); this.modoEntidad.set('catalogo');
     this.tipoDenegatoriaExterna.set('EXPRESA'); this.entidadExternaId = null;
     this.entidadExternaNombre = ''; this.entidadExternaRuc = ''; this.entidadExternaEmail = ''; this.numeroSolicitudExterna = '';
@@ -261,7 +263,9 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   cambiarDenegatoria(tipo: TipoDenegatoriaApelacion): void {
     if (this.bloqueado() || !this.actual()) return;
     this.tipoDenegatoriaExterna.set(tipo); this.fechaRespuestaEntidad = ''; this.resumenRespuestaEntidad = ''; this.referenciaRespuestaEntidad = ''; this.evidenciaSilencioAdministrativo = '';
-    this.file2.set(null); this.doc2Auto.set(null); this.cerrarPreview(); this.confirmacion = null;
+    this.archivos.update(archivos => ({ ...archivos, 2: [] }));
+    this.avisosArchivo.update(avisos => ({ ...avisos, 2: '' }));
+    this.cerrarPreview(); this.confirmacion = null;
   }
   private metadataFuente(d: DocumentoMetadata, tipo: TipoDocumento, key: 'solicitudId' | 'respuestaId', id: number): boolean {
     return !!d && this.idValido(d.id) && d.tipoDocumento === tipo && d.estado === 'ACTIVO' && d[key] === id && !!d.nombreOriginal
@@ -271,43 +275,90 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private inicializarDocumentos(s: Solicitud): void {
     const fuente1 = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
     const fuente2 = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
-    const originales = fuente1.filter(d => this.metadataFuente(d, 'SOLICITUD_ORIGINAL', 'solicitudId', s.id));
-    const respuestas = fuente2.filter(d => this.idValido(s.respuesta?.id) && this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', s.respuesta!.id!));
-    this.doc1Auto.set(originales.length === 1 ? originales[0] : null); this.doc2Auto.set(respuestas.length === 1 ? respuestas[0] : null);
-    this.documentosIncompletos.set(!Array.isArray(s.documentosMetadata) || originales.length !== fuente1.filter(d => d?.tipoDocumento === 'SOLICITUD_ORIGINAL').length
-      || !!s.respuesta && (!Array.isArray(s.respuesta.documentosMetadata) || respuestas.length !== fuente2.filter(d => d?.tipoDocumento === 'RESPUESTA_ENTIDAD').length));
+    this.documentosIncompletos.set(!Array.isArray(s.documentosMetadata)
+      || fuente1.filter(d => d?.tipoDocumento === 'SOLICITUD_ORIGINAL' || d?.tipoDocumento === 'DOCUMENTO_ADJUNTO').length !== this.antecedentes(1).length
+      || this.requiereRespuesta() && (!Array.isArray(s.respuesta?.documentosMetadata)
+        || fuente2.filter(d => d?.tipoDocumento === 'RESPUESTA_ENTIDAD').length !== this.antecedentes(2).length));
   }
-  antecedentes(n: number): DocumentoMetadata[] {
-    const s = this.solicitud(); if (!s || !this.actual()) return [];
-    return n === 1 ? (Array.isArray(s.documentosMetadata) ? s.documentosMetadata : []).filter(d => this.metadataFuente(d, 'SOLICITUD_ORIGINAL', 'solicitudId', s.id))
-      : n === 2 && this.idValido(s.respuesta?.id) ? (Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : []).filter(d => this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', s.respuesta!.id!)) : [];
+  private antecedentes(n: GrupoDocumental): DocumentoMetadata[] {
+    const s = this.solicitud();
+    if (!s || !this.actual() || n === 3) return [];
+    const respuestaId = s.respuesta?.id;
+    const originales = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
+    const respuestas = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
+    const documentos = n === 1
+      ? originales.filter(d => this.metadataFuente(d, 'SOLICITUD_ORIGINAL', 'solicitudId', s.id)
+        || this.metadataFuente(d, 'DOCUMENTO_ADJUNTO', 'solicitudId', s.id))
+      : this.requiereRespuesta() && this.idValido(respuestaId)
+        ? respuestas.filter(d => this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', respuestaId))
+        : [];
+    return [...new Map(documentos.map(d => [d.id, d])).values()];
   }
-  usarAntecedente(n: number, doc: DocumentoMetadata): void { if (!this.bloqueado() && this.antecedentes(n).some(d => d.id === doc.id)) { this.fileSignal(n).set(null); (n === 1 ? this.doc1Auto : this.doc2Auto).set(doc); } }
-  fileFor(n: number): File | null { return this.fileSignal(n)(); }
-  private fileSignal(n: number) { return n === 1 ? this.file1 : n === 2 ? this.file2 : this.file3; }
-  documentoPara(n: number): DocumentoMetadata | null { return n === 1 ? this.doc1Auto() : n === 2 ? this.doc2Auto() : null; }
-  hasDocument(n: number): boolean { return !!this.fileFor(n) || !!this.documentoPara(n); }
-  onFileChange(event: Event, n: 1 | 2 | 3): void {
-    const input = event.target as HTMLInputElement, file = input.files?.[0]; input.value = '';
-    if (!this.actual() || this.bloqueado() || !file) return;
-    const error = !file.size ? 'No se admiten archivos vacíos.' : validarDocumento(file);
-    this.avisosArchivo.update(v => ({ ...v, [n]: error || '' }));
-    if (!error) { this.fileSignal(n).set(file); if (n < 3) (n === 1 ? this.doc1Auto : this.doc2Auto).set(null); }
+  documentosPara(n: GrupoDocumental): DocumentoMetadata[] {
+    return this.antecedentes(n).filter(d => !this.excluidos().has(d.id!));
   }
-  removeFile(n: 1 | 2 | 3): void { if (!this.actual() || this.bloqueado()) return; this.fileSignal(n).set(null); if (n < 3) (n === 1 ? this.doc1Auto : this.doc2Auto).set(null); this.cerrarPreview(); }
-  abrirSelector(event: KeyboardEvent, input: HTMLInputElement): void { if (!this.bloqueado() && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); input.click(); } }
-  previewFile(n: 1 | 2 | 3): void {
+  antecedentesExcluidos(n: GrupoDocumental): DocumentoMetadata[] {
+    return this.antecedentes(n).filter(d => this.excluidos().has(d.id!));
+  }
+  adjuntosPara(n: GrupoDocumental) {
+    return [
+      ...this.documentosPara(n).map(doc => ({ adjunto: doc, nombre: doc.nombreOriginal, bytes: doc.sizeBytes, antecedente: true })),
+      ...this.archivos()[n].map(file => ({ adjunto: file, nombre: file.name, bytes: file.size, antecedente: false }))
+    ];
+  }
+  incluirAntecedente(n: GrupoDocumental, id: number): void {
+    if (this.bloqueado() || !this.antecedentes(n).some(d => d.id === id)) return;
+    this.excluidos.update(ids => new Set([...ids].filter(excluido => excluido !== id)));
+    this.enfocar(`apelacion-elegir-${n}`);
+  }
+  onFileChange(event: Event, n: GrupoDocumental): void {
+    const input = event.target as HTMLInputElement;
+    this.agregarArchivos(n, Array.from(input.files ?? []));
+    input.value = '';
+  }
+  onFileDrop(event: DragEvent, n: GrupoDocumental): void {
+    event.preventDefault();
+    this.agregarArchivos(n, Array.from(event.dataTransfer?.files ?? []));
+  }
+  private agregarArchivos(n: GrupoDocumental, seleccion: File[]): void {
+    if (!this.actual() || this.bloqueado() || !seleccion.length) return;
+    const aceptados: File[] = [], errores: string[] = [];
+    for (const file of seleccion) {
+      const error = !file.size ? 'No se admiten archivos vacíos.' : validarDocumento(file);
+      if (error) errores.push(`${file.name}: ${error}`);
+      else aceptados.push(file);
+    }
+    this.archivos.update(archivos => ({ ...archivos, [n]: [...new Set([...archivos[n], ...aceptados])] }));
+    this.avisosArchivo.update(avisos => ({ ...avisos, [n]: errores.join(' ') }));
+  }
+  quitarArchivo(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
+    if (!this.actual() || this.bloqueado()) return;
+    if (adjunto instanceof File) {
+      this.archivos.update(archivos => ({ ...archivos, [n]: archivos[n].filter(file => file !== adjunto) }));
+    } else if (this.documentosPara(n).some(doc => doc.id === adjunto.id)) {
+      this.excluidos.update(ids => new Set([...ids, adjunto.id!]));
+    }
+    this.cerrarPreview();
+    this.enfocar(`apelacion-elegir-${n}`);
+  }
+  previewFile(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
     if (!this.actual()) return;
-    const file = this.fileFor(n), doc = this.documentoPara(n); this.cerrarPreview();
-    if (file) this.previewTarget.set({ file, blob: file, nombre: file.name, tipo: file.type });
-    else if (doc && this.antecedentes(n).some(d => d.id === doc.id)) this.previewTarget.set({ id: doc.id, nombre: doc.nombreOriginal || 'Nombre no registrado', tipo: doc.contentType });
-    this.isPreviewOpen.set(!!this.previewTarget());
+    const doc = adjunto instanceof File
+      ? this.archivos()[n].includes(adjunto) ? { file: adjunto, blob: adjunto, nombre: adjunto.name, tipo: adjunto.type } : null
+      : this.documentosPara(n).find(d => d.id === adjunto.id);
+    if (!doc) return;
+    this.previewTarget.set('file' in doc ? doc : { id: doc.id, nombre: doc.nombreOriginal!, tipo: doc.contentType });
+    this.isPreviewOpen.set(true);
   }
   cerrarPreview(): void { this.isPreviewOpen.set(false); this.previewTarget.set(null); }
-  downloadFile(n: 1 | 2 | 3): void {
+  downloadFile(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
     if (!this.actual()) return;
-    const file = this.fileFor(n), doc = this.documentoPara(n);
-    if (file) this.descargarBlob(file, file.name); else if (doc && this.antecedentes(n).some(d => d.id === doc.id)) this.descargar(doc);
+    if (adjunto instanceof File) {
+      if (this.archivos()[n].includes(adjunto)) this.descargarBlob(adjunto, adjunto.name);
+    } else {
+      const doc = this.documentosPara(n).find(d => d.id === adjunto.id);
+      if (doc) this.descargar(doc);
+    }
   }
   descargarRegistrado(doc: DocumentoMetadata): void {
     if (this.actual() && doc.apelacionId === this.apelacionCreada()?.id
@@ -338,15 +389,13 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     } else {
       const s = this.solicitud();
       if (!s || !this.solicitudCompatible(s) || s.apelacion !== null || s.respuesta === undefined || s.respuesta && !this.idValido(s.respuesta.id)) e['solicitud'] = 'La solicitud está incompleta o ya registra una apelación. Actualice su consulta.';
-      if (!this.hasDocument(1)) e['documentos'] = 'Seleccione una copia real de la SAIP original o un antecedente registrado.';
-      if (this.requiereRespuesta() && !this.hasDocument(2)) e['respuesta'] = 'Seleccione el documento de respuesta registrado o una copia real.';
+      if (!this.archivos()[1].length && !this.documentosPara(1).some(d => d.tipoDocumento === 'SOLICITUD_ORIGINAL')) e['documentos'] = 'Seleccione una copia real de la SAIP original o un antecedente registrado.';
+      if (this.requiereRespuesta() && !this.archivos()[2].length && !this.documentosPara(2).length) e['respuesta'] = 'Incluya al menos un documento de la respuesta de la entidad.';
       if (this.esPresentacionAnteEntidad() && (!this.fechaPresentacionAnteEntidad || !this.referenciaCargoPresentacionEntidad.trim()
         || this.referenciaCargoPresentacionEntidad.trim().length > 500 || this.observacionPresentacionEntidad.trim().length > 5000)) e['cargo'] = 'Ingrese la fecha real y referencia del cargo ante entidad (máximo 500); observación hasta 5000 caracteres.';
     }
-    for (const n of [1, 2, 3]) {
-      const file = this.fileFor(n), doc = this.documentoPara(n);
-      if (file && (!file.size || validarDocumento(file))) e['archivos'] = 'Revise los archivos seleccionados y el límite de 10 MB por archivo.';
-      if (doc && !this.antecedentes(n).some(d => d.id === doc.id)) e['archivos'] = 'Un antecedente no corresponde al recurso actual.';
+    if (Object.values(this.archivos()).some(files => files.some(file => !file.size || validarDocumento(file)))) {
+      e['archivos'] = 'Revise los archivos seleccionados y el límite de 10 MB por archivo.';
     }
     return e;
   }
@@ -376,9 +425,13 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     else comando = { modo: 'directa', datos: { solicitudId: this.solicitud()!.id, ciudadanoId, fundamentos } };
     return { clave, comando, contexto: this.contexto(), solicitudExpediente: this.solicitud()?.expediente,
       documentos: this.documentos().flatMap(({ n, label }) => {
-        const file = this.fileFor(n), origen = file ? null : this.documentoPara(n);
-        return file || origen ? [{ label, tipo: (n === 1 ? 'SOLICITUD_ORIGINAL' : n === 3 ? 'RECURSO_APELACION' : this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA' || !this.esApelacionExterna() && !this.requiereRespuesta() ? 'DOCUMENTO_ADJUNTO' : 'RESPUESTA_ENTIDAD') as TipoDocumento,
-          file: file || undefined, origen: origen ? { ...origen } : undefined, estado: 'pendiente' as const }] : [];
+        const respuestaExpresa = this.esApelacionExterna() ? this.tipoDenegatoriaExterna() === 'EXPRESA' : this.requiereRespuesta();
+        const tipo: TipoDocumento = n === 1 ? 'SOLICITUD_ORIGINAL' : n === 3 ? 'RECURSO_APELACION'
+          : respuestaExpresa ? 'RESPUESTA_ENTIDAD' : 'DOCUMENTO_ADJUNTO';
+        return [
+          ...this.documentosPara(n).map(origen => ({ label, tipo: origen.tipoDocumento as TipoDocumento, origen: { ...origen }, estado: 'pendiente' as const })),
+          ...this.archivos()[n].map(file => ({ label, tipo, file, estado: 'pendiente' as const }))
+        ];
       }) };
   }
   crearApelacion(): void {
@@ -413,17 +466,19 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
       next: r => {
         if (!this.intentoActual(gen) || this.intento !== i) return;
         this.confirmModalAbierto.set(false);
-        if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) { this.incierta('El servidor no confirmó una recepción compatible. Consulte la misma operación antes de reintentar.'); return; }
+        if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) { this.incierta('Aún no pudimos confirmar su apelación. Compruebe si se presentó antes de volver a enviarla.'); return; }
         this.recepcionEsperada = r; this.consultarRecepcion(i, gen);
       }, error: error => {
         if (!this.intentoActual(gen) || this.intento !== i) return;
         this.loading.set(false); this.confirmModalAbierto.set(false);
         if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
-          this.incierta('Resultado incierto: el servidor podría haber registrado la apelación y sus documentos. Consulte por la misma clave; no se repite el POST automáticamente.');
+          this.incierta('La apelación podría haberse presentado. Compruebe el resultado antes de volver a enviarla.');
         } else {
           this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
             : error.status === 403 ? 'No tiene permiso para registrar este recurso.' : error.status === 409
-              ? 'Conflicto de operación, contenido o recurso. Consulte la recepción antes de otro registro.' : 'El servidor rechazó el registro. Revise los datos y condiciones de presentación.');
+              ? 'No se pudo confirmar este envío. Compruebe el resultado antes de presentar otra apelación.'
+              : error.status === 413 ? 'Los archivos nuevos superan el tamaño total admitido. Quite alguno o use archivos más pequeños.'
+                : 'No se pudo presentar la apelación. Revise los datos y vuelva a intentarlo.');
           if (error.status !== 409) { this.operacionPendiente.set(false); this.intento = null; this.confirmacion = null; }
         }
       }
@@ -492,8 +547,8 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
       if (!this.intentoActual(gen) || this.intento !== i) return;
       this.loading.set(false);
       if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) {
-        if (!confirmada) this.incierta('La consulta no acredita la recepción de esta operación y sus documentos.');
-        this.errorRecuperacion.set('Datos, procedencia o identificadores incompatibles. No se repite el alta.'); return;
+        if (!confirmada) this.incierta('Aún no pudimos confirmar la presentación de su apelación.');
+        this.errorRecuperacion.set('La información consultada no coincide con su apelación o sus documentos.'); return;
       }
       this.recepcionEsperada = r; this.recepcionId.set(r.id); this.apelacionCreada.set(r.apelacion as Apelacion); this.expedienteTtaip.set(r.apelacion.expediente!);
       i.documentos.forEach((d, n) => { d.documento = r.documentos[n].documento; d.estado = 'registrado'; });
@@ -503,21 +558,72 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
       if (!this.intentoActual(gen) || this.intento !== i) return;
       this.loading.set(false);
       if (!confirmada && error?.status === 404) {
-        this.estadoEnvio.set('sin-recepcion'); this.error.set('No hay recepción confirmada para esta clave. El envío anterior podría seguir en curso; solo puede reintentar explícitamente la misma operación y contenido.');
+        this.estadoEnvio.set('sin-recepcion'); this.error.set('Aún no se ha confirmado la presentación. Puede comprobar de nuevo o volver a enviar la misma apelación.');
       } else {
-        if (!confirmada) this.incierta('No se pudo comprobar la recepción. El error no acredita ausencia; consulte nuevamente antes de reintentar.');
-        this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. No se confirma ausencia ni otra recepción.');
+        if (!confirmada) this.incierta('No se pudo comprobar si su apelación se presentó. Vuelva a consultar antes de enviarla de nuevo.');
+        this.errorRecuperacion.set('No pudimos consultar la apelación y sus documentos en este momento.');
       }
     } }));
   }
   apelacionConfirmSummary(): ReferenceConfirmSummary[] {
-    return [{ label: 'Origen', value: this.esApelacionExterna() ? 'Externo, sin SAIP local' : this.solicitud()?.expediente || 'No disponible' },
-      { label: 'Entidad', value: this.entidadDisplay() }, { label: 'Ingreso', value: this.esPresentacionAnteEntidad() ? 'Ante la entidad' : 'Directo al TTAIP' },
-      { label: 'Documentos seleccionados o antecedentes', value: String([1, 2, 3].filter(n => this.hasDocument(n)).length) }, { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` }];
+    const solicitud = this.solicitud();
+    return [
+      { label: 'Solicitud original', value: solicitud?.expediente || this.numeroSolicitudExterna.trim() || 'No indicada', mono: true },
+      { label: 'Entidad', value: this.entidadDisplay() },
+      { label: 'Asunto original', value: solicitud?.asunto || this.resumenSolicitudOriginal.trim() || 'No indicado' },
+      { label: 'Vía de ingreso', value: this.esPresentacionAnteEntidad() ? 'Ante la entidad' : 'Directa al TTAIP' },
+      { label: 'Documentos incluidos', value: String(this.archivosCargados()) },
+    ];
   }
-  apelacionWarning(): ReferenceConfirmWarning { return { label: 'Alcance del registro', detail: 'La operación coordina el alta y todos los archivos y copias seleccionados. Ante incertidumbre consulte la recepción por su clave. Registrar no acredita admisión, entrega, notificación eficaz, firma ni emisión formal.' }; }
-  apelacionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.apelacionCreada(); return r ? [{ label: 'Recepción', value: String(this.recepcionId()), mono: true }, { label: 'Apelación', value: String(r.id), mono: true }, { label: 'Estado', value: r.estado || 'No disponible' }, { label: 'Fecha registrada', value: r.fechaApelacion || 'No disponible' }, { label: 'Documentos vinculados confirmados', value: String(this.documentosEnviados().filter(d => d.estado === 'registrado').length) }] : []; }
-  apelacionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte el estado y las actuaciones reales en su panel.' }, { label: 'El registro no certifica admisibilidad, entrega, notificación eficaz, firma ni emisión documental.' }]; }
+  apelacionWarning(): ReferenceConfirmWarning {
+    return {
+      label: 'Antes de presentar',
+      detail: this.esPresentacionAnteEntidad()
+        ? 'Compruebe la fecha y el cargo de presentación. La entidad deberá remitir el recurso al Tribunal.'
+        : 'Compruebe que los documentos y los fundamentos correspondan a su solicitud. El Tribunal revisará si su apelación cumple los requisitos.',
+    };
+  }
+  estadoPresentacion(): string {
+    switch (this.apelacionCreada()?.estado) {
+      case 'EN_CALIFICACION_1': return 'En primera calificación';
+      case 'PENDIENTE_ELEVACION': return 'Pendiente de remisión al Tribunal';
+      case 'EN_SUBSANACION': return 'En subsanación';
+      case 'EN_CALIFICACION_2': return 'En segunda calificación';
+      case 'NOTIFICACION_SEGUNDA_CALIFICACION': return 'Pendiente de notificación';
+      case 'EN_RESOLUCION': return 'En resolución final';
+      default: return 'Consulte el expediente';
+    }
+  }
+  fechaPresentacion(): string {
+    const fecha = this.recepcionEsperada?.modalidad === 'ANTE_ENTIDAD'
+      ? this.apelacionCreada()?.elevacion?.fechaPresentacionAnteEntidad
+      : this.recepcionEsperada?.fechaRecepcion;
+    const dia = fecha?.slice(0, 10);
+    const valor = dia && Date.parse(`${dia}T00:00:00Z`);
+    return typeof valor === 'number' && Number.isFinite(valor) ? FECHA_PRESENTACION.format(valor) : 'Fecha por confirmar';
+  }
+  apelacionSuccessMetadata(): ReferenceSuccessMeta[] {
+    return this.apelacionCreada() ? [
+      { label: 'Estado', value: this.estadoPresentacion() },
+      { label: 'Fecha de presentación', value: this.fechaPresentacion() },
+      { label: 'Entidad', value: this.entidadDisplay() },
+      { label: 'Documentos adjuntos', value: String(this.documentosEnviados().filter(d => d.estado === 'registrado').length) },
+    ] : [];
+  }
+  apelacionNextSteps(): ReferenceSuccessNextStep[] {
+    const seguimiento = { label: 'En Mi panel, abra el expediente para consultar su estado y las decisiones del Tribunal.' };
+    switch (this.apelacionCreada()?.estado) {
+      case 'PENDIENTE_ELEVACION':
+        return [{ label: 'La entidad debe remitir su apelación al Tribunal. La primera calificación comienza después de que el Tribunal la reciba.' }, seguimiento];
+      case 'EN_CALIFICACION_1':
+        return [
+          { label: 'El Tribunal tiene 7 días hábiles desde el día hábil siguiente a la recepción para revisar si su apelación cumple los requisitos.' },
+          seguimiento,
+          { label: 'Si el Tribunal le pide corregir o completar algo, consulte las observaciones y el plazo para responder.' },
+        ];
+      default: return [seguimiento];
+    }
+  }
   entidadDisplay(): string { return !this.esApelacionExterna() ? this.solicitud()?.entidadNombre || 'Nombre no disponible'
     : this.modoEntidad() === 'catalogo' ? this.entidades().find(e => e.id === this.entidadExternaId)?.nombre || 'Entidad no disponible' : this.entidadExternaNombre || 'Nombre declarado no indicado'; }
   rutaRegreso(): string[] { const s = this.solicitud(); return s && (this.entrada.expediente || this.entrada.id) ? ['/ciudadano/solicitud', s.expediente] : ['/ciudadano']; }

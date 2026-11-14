@@ -13,7 +13,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
   const base = environment.apiUrl, expediente = 'SAIP-2026-00023';
   const original = { id: 88, solicitudId: 23, tipoDocumento: 'SOLICITUD_ORIGINAL', estado: 'ACTIVO',
     nombreOriginal: 'original.pdf', sizeBytes: 8, contentType: 'application/pdf', hashSha256: 'c'.repeat(64) };
-  const respuestaDoc = { ...original, id: 89, solicitudId: null, respuestaId: 91, tipoDocumento: 'RESPUESTA_ENTIDAD', nombreOriginal: 'respuesta.pdf' };
+  const respuestaDoc = { ...original, id: 89, solicitudId: undefined, respuestaId: 91, tipoDocumento: 'RESPUESTA_ENTIDAD', nombreOriginal: 'respuesta.pdf' };
   const solicitud = { id: 23, expediente, ciudadanoId: 5, entidadId: 3, entidadNombre: 'Entidad sintética',
     asunto: 'Pedido sintético', estado: 'DENEGADA', apelacion: null, documentosMetadata: [original],
     respuesta: { id: 91, solicitudId: 23, tipoRespuesta: 'DENEGACION_TOTAL', documentosMetadata: [respuestaDoc] } };
@@ -44,8 +44,11 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]); return f; }
   function preparar(data: Record<string, unknown> = solicitud) {
     const f = pagina(); http.expectOne(`${base}/solicitudes/expediente/${expediente}`).flush(data);
-    f.componentInstance.file3.set(new File(['recurso'], 'recurso.txt', { type: 'text/plain' }));
+    seleccionar(f.componentInstance, 3, new File(['recurso'], 'recurso.txt', { type: 'text/plain' }));
     f.componentInstance.fundamentos = creada.fundamentos; return f;
+  }
+  function seleccionar(c: NuevaApelacionComponent, n: 1 | 2 | 3, ...files: File[]) {
+    c.onFileChange({ target: { files, value: 'fakepath' } } as unknown as Event, n);
   }
   function escriturasDocumentales() { return http.match(r => r.method === 'POST' && r.url.startsWith(`${base}/documentos`)); }
   it('envía alta y documentos en una única operación coordinada antes de confirmar', () => {
@@ -60,13 +63,13 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
   it('descarta una SAIP tardía después de pasar a origen externo', () => {
     const f = pagina(); const req = http.expectOne(`${base}/solicitudes/expediente/${expediente}`);
     f.componentInstance.iniciarApelacionExterna(); http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]); if (!req.cancelled) req.flush(solicitud);
-    expect(f.componentInstance.solicitud()).toBeNull(); expect(f.componentInstance.doc1Auto()).toBeNull();
+    expect(f.componentInstance.solicitud()).toBeNull(); expect(f.componentInstance.documentosPara(1)).toEqual([]);
   });
   it('un documento relacionado con otra SAIP no se considera antecedente propio', () => {
-    const f = preparar({ ...solicitud, documentosMetadata: [{ ...original, solicitudId: 999 }] }); expect(f.componentInstance.doc1Auto()).toBeNull();
+    const f = preparar({ ...solicitud, documentosMetadata: [{ ...original, solicitudId: 999 }] }); expect(f.componentInstance.documentosPara(1)).toEqual([]);
   });
   it('una descarga fallida no entrega un PDF canónico sustituto', () => {
-    const f = preparar(); f.componentInstance.downloadFile(1);
+    const f = preparar(); f.componentInstance.downloadFile(1, original);
     http.expectOne(`${base}/documentos/88/download`).flush(null, { status: 500, statusText: 'Error' });
     expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
   });
@@ -78,7 +81,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion();
     http.expectOne(`${base}/apelaciones/recepciones`).flush(null, { status: 400, statusText: 'Rejected' });
     expect(c.successModalAbierto()).toBe(false); expect(c.expedienteTtaip()).toBe(''); expect(c.apelacionCreada()).toBeNull();
-    expect(c.file3()).not.toBeNull(); expect(c.fundamentos).toBe(creada.fundamentos); expect(escriturasDocumentales()).toEqual([]);
+    expect(c.archivos()[3]).toHaveLength(1); expect(c.fundamentos).toBe(creada.fundamentos); expect(escriturasDocumentales()).toEqual([]);
   });
   it('una recepción incompatible no confirma ni inicia escrituras documentales', () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion(); http.expectOne(`${base}/apelaciones/recepciones`).flush(resultado(c, { ...creada, solicitudId: 999 }));
@@ -118,8 +121,25 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     const r = resultado(c, apelacion); http.expectOne(`${base}/apelaciones/recepciones`).flush(r);
     expect(c.successModalAbierto()).toBe(false); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r); return r;
   }
+  it('explica la revisión y la recepción con estado y fecha legibles', () => {
+    const f = preparar(), c = f.componentInstance;
+    c.abrirConfirmacionApelacion();
+    f.detectChanges();
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Antes de presentar');
+    c.crearApelacion();
+    const r = { ...resultado(c), fechaRecepcion: '2026-10-28T12:30:00.992383' };
+    http.expectOne(`${base}/apelaciones/recepciones`).flush(r);
+    http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
+    f.detectChanges();
+    const dialog = document.body.querySelector('[aria-label="Apelación registrada"]')?.textContent;
+    expect(dialog).toContain('En primera calificación');
+    expect(dialog).not.toMatch(/servidor|EN_CALIFICACION_1|T12:30:00/);
+    expect(c.apelacionSuccessMetadata()).toContainEqual({ label: 'Estado', value: 'En primera calificación' });
+    expect(c.apelacionSuccessMetadata()).toContainEqual({ label: 'Fecha de presentación', value: '28 de octubre de 2026' });
+    expect(c.apelacionNextSteps()[0].label).toContain('7 días hábiles');
+  });
   it('una vinculada pide copias por IDs y versiones sin imponer 50 caracteres ni un tercer archivo', async () => {
-    const f = preparar(), c = f.componentInstance; c.file3.set(null); c.fundamentos = 'Solicito revisión.';
+    const f = preparar(), c = f.componentInstance; c.quitarArchivo(3, c.archivos()[3][0]); c.fundamentos = 'Solicito revisión.';
     expect(c.puedeEnviar()).toBe(true); c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
     expect(req.request.headers.get('Authorization')).toBe('Bearer sesion-sintetica');
     expect(datos).toMatchObject({ modalidad: 'DIRECTA_TTAIP', solicitudId: 23, fundamentos: 'Solicito revisión.',
@@ -129,9 +149,9 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
     expect(c.successModalAbierto()).toBe(true); expect(c.documentosEnviados().map(d => d.documento?.id)).toEqual([188, 189]); expect(escriturasDocumentales()).toEqual([]);
   });
-  it('un reemplazo seleccionado tiene prioridad y envía todos los bytes junto al manifiesto', async () => {
+  it('excluir un antecedente y adjuntar una copia envía los bytes de la copia junto al manifiesto', async () => {
     const f = preparar(), c = f.componentInstance, file = new File(['reemplazo real'], 'reemplazo.txt', { type: 'text/plain' });
-    c.file1.set(file); c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
+    c.quitarArchivo(1, original); seleccionar(c, 1, file); c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
     expect(datos['documentos']).toEqual([{ tipoDocumento: 'SOLICITUD_ORIGINAL' }, { tipoDocumento: 'RESPUESTA_ENTIDAD', origenId: 89, hashOrigen: 'c'.repeat(64) }, { tipoDocumento: 'RECURSO_APELACION' }]);
     const files = (req.request.body as FormData).getAll('archivos') as File[]; expect(files.map(f => f.name)).toEqual(['reemplazo.txt', 'recurso.txt']);
     const bytes = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(files[0]); }); expect(bytes).toBe('reemplazo real');
@@ -140,18 +160,21 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
   });
   it('el registro de datos SAIP sin archivo no se transforma en un PDF antecedente', () => {
     const f = preparar({ ...solicitud, documentosMetadata: [] }), c = f.componentInstance;
-    c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`); expect(c.doc1Auto()).toBeNull(); expect(c.errores()['documentos']).toContain('copia real');
+    c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`); expect(c.documentosPara(1)).toEqual([]); expect(c.errores()['documentos']).toContain('copia real');
   });
   it('una SAIP sin respuesta permite sustento adicional sin fabricar documento de respuesta', () => {
-    const f = preparar({ ...solicitud, respuesta: null, estado: 'VENCIDA' }), c = f.componentInstance; c.file3.set(null);
-    c.crearApelacion(); confirmar(c); expect(c.successModalAbierto()).toBe(true); expect(c.doc2Auto()).toBeNull(); expect(c.documentosConsultados()).toHaveLength(1);
+    const f = preparar({ ...solicitud, respuesta: null, estado: 'VENCIDA' }), c = f.componentInstance; c.quitarArchivo(3, c.archivos()[3][0]);
+    c.crearApelacion(); confirmar(c); expect(c.successModalAbierto()).toBe(true); expect(c.documentosPara(2)).toEqual([]); expect(c.documentosConsultados()).toHaveLength(1);
   });
   it('la modalidad ante entidad conserva su cargo y fecha declarada sin abrir ingreso directo', async () => {
-    const f = preparar(), c = f.componentInstance; c.file3.set(null); c.cambiarCanal('ANTE_ENTIDAD'); c.fechaPresentacionAnteEntidad = '2026-10-15'; c.referenciaCargoPresentacionEntidad = 'Cargo real sintético';
+    const f = preparar(), c = f.componentInstance; c.quitarArchivo(3, c.archivos()[3][0]); c.cambiarCanal('ANTE_ENTIDAD'); c.fechaPresentacionAnteEntidad = '2026-10-15'; c.referenciaCargoPresentacionEntidad = 'Cargo real sintético';
     c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
     expect(datos).toMatchObject({ modalidad: 'ANTE_ENTIDAD', fechaPresentacionAnteEntidad: '2026-10-15', referenciaCargoPresentacion: 'Cargo real sintético' });
     const r = resultado(c, { ...creada, estado: 'PENDIENTE_ELEVACION', elevacion: { id: 77, apelacionId: 145, fechaPresentacionAnteEntidad: '2026-10-15', referenciaCargoPresentacion: 'Cargo real sintético' } });
     req.flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r); expect(c.apelacionCreada()?.estado).toBe('PENDIENTE_ELEVACION'); expect(escriturasDocumentales()).toEqual([]);
+    expect(c.fechaPresentacion()).toBe('15 de octubre de 2026');
+    expect(c.apelacionNextSteps()[0].label).toContain('La entidad debe remitir');
+    expect(c.apelacionNextSteps()[0].label).not.toContain('7 días');
   });
   it('no envía ante entidad sin fecha/cargo ni acepta un fundamento externo que excede el DTO', () => {
     const f = preparar(), c = f.componentInstance; c.cambiarCanal('ANTE_ENTIDAD'); c.crearApelacion();
@@ -173,14 +196,14 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     req.flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r); expect(c.apelacionCreada()?.entidadId).toBe(3);
   });
   it('denegatoria tácita exige declaración real y limpia datos y archivo de expresa', async () => {
-    const f = externa(), c = f.componentInstance; c.file2.set(new File(['x'], 'respuesta.txt', { type: 'text/plain' })); c.cambiarDenegatoria('TACITA');
-    expect(c.fechaRespuestaEntidad).toBe(''); expect(c.file2()).toBeNull(); c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`);
+    const f = externa(), c = f.componentInstance; seleccionar(c, 2, new File(['x'], 'respuesta.txt', { type: 'text/plain' })); c.cambiarDenegatoria('TACITA');
+    expect(c.fechaRespuestaEntidad).toBe(''); expect(c.archivos()[2]).toEqual([]); c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`);
     c.evidenciaSilencioAdministrativo = 'Declaro ausencia de respuesta según mis antecedentes.'; c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
     expect(datos['tipoDenegatoria']).toBe('TACITA'); expect(datos['fechaRespuestaEntidad']).toBeUndefined(); expect(datos['referenciaRespuestaEntidad']).toBeUndefined();
     const r = resultado(c, resultadoExterno(datos)); req.flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r); expect(c.successModalAbierto()).toBe(true);
   });
   it('una externa expresa no reemplaza una referencia requerida por el nombre de un archivo', () => {
-    const f = externa(), c = f.componentInstance; c.file1.set(new File(['x'], 'nombre-no-es-referencia.txt', { type: 'text/plain' })); c.referenciaDocumentoSolicitud = '';
+    const f = externa(), c = f.componentInstance; seleccionar(c, 1, new File(['x'], 'nombre-no-es-referencia.txt', { type: 'text/plain' })); c.referenciaDocumentoSolicitud = '';
     c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`); expect(c.errores()['externa']).toBeTruthy();
     c.referenciaDocumentoSolicitud = 'Referencia declarada'; c.resumenRespuestaEntidad = ''; c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`);
     expect(c.errores()['respuesta']).toContain('resumen o referencia');
@@ -200,7 +223,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     const f = preparar(), c = f.componentInstance; params.next(convertToParamMap({ expediente: 'SAIP-2026-00024' })); catalogo();
     const req = http.expectOne(`${base}/solicitudes/expediente/SAIP-2026-00024`);
     if (status) req.flush(null, { status, statusText: 'Error' }); else req.error(new ProgressEvent('error'));
-    f.detectChanges(); expect(c.solicitud()).toBeNull(); expect(c.doc1Auto()).toBeNull(); expect(c.file3()).toBeNull();
+    f.detectChanges(); expect(c.solicitud()).toBeNull(); expect(c.documentosPara(1)).toEqual([]); expect(c.archivos()[3]).toEqual([]);
     expect(c.errorConsulta()).toBeTruthy(); expect(c.estadoConsulta()).not.toBe('vacio');
     expect(f.nativeElement.textContent).not.toContain('Pedido sintético'); c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`);
   });
@@ -229,15 +252,91 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(c.filteredSolicitudes()).toHaveLength(1); c.seleccionarSolicitud(c.filteredSolicitudes()[0]); catalogo();
     http.expectOne(`${base}/solicitudes/23`).flush(solicitud); expect(c.solicitud()?.id).toBe(23);
   });
-  it('antecedentes ambiguos requieren elección por ID y no se seleccionan por nombre o posición', () => {
-    const f = preparar({ ...solicitud, documentosMetadata: [original, { ...original, id: 90 }] }), c = f.componentInstance;
-    expect(c.doc1Auto()).toBeNull(); expect(c.antecedentes(1).map(d => d.id)).toEqual([88, 90]);
-    c.usarAntecedente(1, c.antecedentes(1)[1]); expect(c.doc1Auto()?.id).toBe(90);
-    expect(c.doc2Auto()?.respuestaId).toBe(91);
+  it('incorpora automáticamente todos los antecedentes vinculados aunque compartan nombre', async () => {
+    const f = preparar({ ...solicitud,
+      documentosMetadata: [original, { ...original, id: 90 }, { ...original, id: 92, tipoDocumento: 'DOCUMENTO_ADJUNTO' }],
+      respuesta: { ...solicitud.respuesta, documentosMetadata: [respuestaDoc, { ...respuestaDoc, id: 93 }] }
+    }), c = f.componentInstance;
+    expect(c.puedeEnviar()).toBe(true);
+    c.crearApelacion();
+    const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req);
+    expect(datos['documentos']).toEqual([
+      { tipoDocumento: 'SOLICITUD_ORIGINAL', origenId: 88, hashOrigen: original.hashSha256 },
+      { tipoDocumento: 'SOLICITUD_ORIGINAL', origenId: 90, hashOrigen: original.hashSha256 },
+      { tipoDocumento: 'DOCUMENTO_ADJUNTO', origenId: 92, hashOrigen: original.hashSha256 },
+      { tipoDocumento: 'RESPUESTA_ENTIDAD', origenId: 89, hashOrigen: respuestaDoc.hashSha256 },
+      { tipoDocumento: 'RESPUESTA_ENTIDAD', origenId: 93, hashOrigen: respuestaDoc.hashSha256 },
+      { tipoDocumento: 'RECURSO_APELACION' }
+    ]);
+    expect((req.request.body as FormData).getAll('archivos')).toHaveLength(1);
+    const r = resultado(c);
+    req.flush(r);
+    http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
+    expect(c.successModalAbierto()).toBe(true);
+    expect(c.documentosConsultados()).toHaveLength(6);
+  });
+  it('acumula varios archivos por categoría, valida cada archivo y permite quitar uno sin afectar los demás', async () => {
+    const f = preparar(), c = f.componentInstance;
+    f.detectChanges();
+    const inputs = [...f.nativeElement.querySelectorAll('input[type="file"]')] as HTMLInputElement[];
+    expect(inputs).toHaveLength(3);
+    expect(inputs.every(input => input.multiple)).toBe(true);
+    const a = new File(['texto A'], 'copia.txt', { type: 'text/plain' });
+    const b = new File(['texto B'], 'copia.txt', { type: 'text/plain' });
+    const respaldo = new File(['respaldo'], 'respaldo.txt', { type: 'text/plain' });
+    const fundamento = new File(['sustento'], 'sustento.txt', { type: 'text/plain' });
+    seleccionar(c, 1, a, b);
+    seleccionar(c, 2, new File([], 'vacio.txt', { type: 'text/plain' }), respaldo);
+    seleccionar(c, 3, fundamento);
+    c.quitarArchivo(1, a);
+    expect(c.archivos()[1]).toEqual([b]);
+    expect(c.archivos()[2]).toEqual([respaldo]);
+    expect(c.avisosArchivo()[2]).toContain('vacio.txt');
+    expect(c.documentosPara(1).map(d => d.id)).toEqual([88]);
+    expect(c.apelacionConfirmSummary()).toContainEqual({ label: 'Documentos incluidos', value: '6' });
+    c.crearApelacion();
+    const req = http.expectOne(`${base}/apelaciones/recepciones`);
+    const datos = await payload(req);
+    expect(datos['documentos']).toEqual([
+      { tipoDocumento: 'SOLICITUD_ORIGINAL', origenId: 88, hashOrigen: original.hashSha256 },
+      { tipoDocumento: 'SOLICITUD_ORIGINAL' },
+      { tipoDocumento: 'RESPUESTA_ENTIDAD', origenId: 89, hashOrigen: respuestaDoc.hashSha256 },
+      { tipoDocumento: 'RESPUESTA_ENTIDAD' },
+      { tipoDocumento: 'RECURSO_APELACION' },
+      { tipoDocumento: 'RECURSO_APELACION' }
+    ]);
+    const archivos = (req.request.body as FormData).getAll('archivos') as File[];
+    expect(archivos.map(file => file.name)).toEqual(['copia.txt', 'respaldo.txt', 'recurso.txt', 'sustento.txt']);
+    const contenidos = await Promise.all(archivos.map(file => new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(file);
+    })));
+    expect(contenidos).toEqual(['texto B', 'respaldo', 'recurso', 'sustento']);
+  });
+  it('permite excluir y volver a incluir un documento sin cambiar los otros antecedentes ni escribir en el servidor', () => {
+    const otraRespuesta = { ...respuestaDoc, id: 93, nombreOriginal: 'segunda-respuesta.pdf' };
+    const f = preparar({ ...solicitud, respuesta: { ...solicitud.respuesta, documentosMetadata: [respuestaDoc, otraRespuesta] } });
+    const c = f.componentInstance;
+    f.detectChanges();
+    const boton = f.nativeElement.querySelector('[aria-label="Excluir de la apelación respuesta.pdf"]') as HTMLButtonElement;
+    boton.click();
+    f.detectChanges();
+    expect(c.documentosPara(2).map(d => d.id)).toEqual([93]);
+    const restaurar = [...f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>]
+      .find(button => button.textContent?.includes('Volver a incluir respuesta.pdf'))!;
+    restaurar.click();
+    expect(c.documentosPara(2).map(d => d.id)).toEqual([89, 93]);
+    http.expectNone(request => request.method !== 'GET');
+  });
+  it('un anexo de la SAIP no sustituye la copia de la solicitud original', () => {
+    const f = preparar({ ...solicitud, documentosMetadata: [{ ...original, tipoDocumento: 'DOCUMENTO_ADJUNTO' }] });
+    expect(f.componentInstance.documentosPara(1)).toHaveLength(1);
+    expect(f.componentInstance.puedeEnviar()).toBe(false);
   });
   it('un documento de otra respuesta no se ofrece aunque tenga el mismo nombre', () => {
     const f = preparar({ ...solicitud, respuesta: { ...solicitud.respuesta, documentosMetadata: [{ ...respuestaDoc, respuestaId: 999 }] } });
-    expect(f.componentInstance.doc2Auto()).toBeNull(); expect(f.componentInstance.antecedentes(2)).toEqual([]);
+    expect(f.componentInstance.documentosPara(2)).toEqual([]);
   });
   it('el cambio de sesión cancela el alta e impide sus continuaciones documentales', () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion(); const alta = http.expectOne(`${base}/apelaciones/recepciones`);
@@ -256,7 +355,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     http.expectOne(`${base}/apelaciones/recepciones`).flush(r); expect(c.estadoEnvio()).toBe('incierta'); expect(c.apelacionCreada()).toBeNull(); expect(c.successModalAbierto()).toBe(false); expect(escriturasDocumentales()).toEqual([]);
   });
   it('una externa con referencias alteradas no confirma otra recepción', async () => {
-    const f = externa(), c = f.componentInstance; c.file1.set(new File(['x'], 'original.txt', { type: 'text/plain' })); c.crearApelacion();
+    const f = externa(), c = f.componentInstance; seleccionar(c, 1, new File(['x'], 'original.txt', { type: 'text/plain' })); c.crearApelacion();
     const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req); req.flush(resultado(c, { ...resultadoExterno(datos), referenciaDocumentoSolicitud: 'Otro registro' }));
     expect(c.estadoEnvio()).toBe('incierta'); expect(c.successModalAbierto()).toBe(false); expect(escriturasDocumentales()).toEqual([]);
   });
@@ -269,20 +368,20 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(c.apelacionCreada()?.id).toBe(145); expect(c.documentosConsultados()).toBeNull(); expect(c.errorRecuperacion()).toBeTruthy();
   });
   it('descarga solo bytes autorizados y cancela una descarga pendiente al abandonar el contexto', () => {
-    const f = preparar(), c = f.componentInstance; c.downloadFile(1); const req = http.expectOne(`${base}/documentos/88/download`);
+    const f = preparar(), c = f.componentInstance; c.downloadFile(1, original); const req = http.expectOne(`${base}/documentos/88/download`);
     const blob = new Blob(['bytes conocidos'], { type: 'application/pdf' }); req.flush(blob, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="original.pdf"' } });
     expect(URL.createObjectURL).toHaveBeenCalledWith(blob); expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1);
-    c.downloadFile(2); const pendiente = http.expectOne(`${base}/documentos/89/download`); c.iniciarApelacionExterna(); catalogo();
+    c.downloadFile(2, respuestaDoc); const pendiente = http.expectOne(`${base}/documentos/89/download`); c.iniciarApelacionExterna(); catalogo();
     expect(pendiente.cancelled).toBe(true); expect(c.previewTarget()).toBeNull();
   });
   it('selección local por teclado y errores vinculados no se presentan como documento registrado', () => {
     const f = preparar({ ...solicitud, documentosMetadata: [] }), c = f.componentInstance; f.detectChanges();
-    const zone = f.nativeElement.querySelector('[aria-label="Seleccionar archivo para SAIP original"]') as HTMLElement;
+    const zone = f.nativeElement.querySelector('[aria-label="Añadir archivos a SAIP original"]') as HTMLElement;
     const input = f.nativeElement.querySelector('#apelacion-file-1') as HTMLInputElement; const click = vi.spyOn(input, 'click');
-    zone.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); expect(click).toHaveBeenCalledOnce();
+    expect(zone).toBeInstanceOf(HTMLButtonElement); zone.click(); expect(click).toHaveBeenCalledOnce();
     c.onFileChange({ target: { files: [new File(['x'], 'no-admitido.zip', { type: 'application/zip' })], value: 'fakepath' } } as unknown as Event, 1); f.detectChanges();
-    expect(c.file1()).toBeNull(); expect(input.getAttribute('aria-describedby')).toBe('apelacion-file-error-1'); expect(c.avisosArchivo()[1]).toBeTruthy();
-    c.file1.set(new File(['x'], 'seleccion.txt', { type: 'text/plain' })); c.previewFile(1); expect(c.previewTarget()?.file?.name).toBe('seleccion.txt');
+    expect(c.archivos()[1]).toEqual([]); expect(input.getAttribute('aria-describedby')).toBe('apelacion-file-error-1'); expect(c.avisosArchivo()[1]).toBeTruthy();
+    seleccionar(c, 1, new File(['x'], 'seleccion.txt', { type: 'text/plain' })); c.previewFile(1, c.archivos()[1][0]); expect(c.previewTarget()?.file?.name).toBe('seleccion.txt');
     expect(c.apelacionCreada()).toBeNull(); expect(c.successModalAbierto()).toBe(false);
   });
   it('cerrar la confirmación con Escape restaura el foco sin enviar y conserva el formulario', async () => {
@@ -329,15 +428,15 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     http.expectOne(`${base}/apelaciones/recepciones/${key}`).flush(r);
     expect(c.recepcionId()).toBe(701); expect(c.apelacionCreada()?.id).toBe(145); expect(c.successModalAbierto()).toBe(true);
     c.comprobarRegistro(); http.expectOne(`${base}/apelaciones/recepciones/${key}`).flush({ ...r, id: 702 });
-    expect(c.recepcionId()).toBe(701); expect(c.errorRecuperacion()).toContain('incompatibles');
+    expect(c.recepcionId()).toBe(701); expect(c.errorRecuperacion()).toContain('no coincide');
   });
   it('solo una consulta 404 habilita reintento explícito con la misma clave, campos, versiones y archivos', async () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), first = await payload(req);
-    const file = c.file3(); req.flush(null, { status: 503, statusText: 'Unavailable' }); c.reintentarAlta(); http.expectNone(`${base}/apelaciones/recepciones`);
+    const file = c.archivos()[3][0]; req.flush(null, { status: 503, statusText: 'Unavailable' }); c.reintentarAlta(); http.expectNone(`${base}/apelaciones/recepciones`);
     c.comprobarRegistro(); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(null, { status: 404, statusText: 'Not Found' });
     expect(c.estadoEnvio()).toBe('sin-recepcion'); c.fundamentos = 'Edición directa que no reemplaza el intento capturado'; c.reintentarAlta();
     const retry = http.expectOne(`${base}/apelaciones/recepciones`); expect(await payload(retry)).toEqual(first);
-    expect((retry.request.body as FormData).getAll('archivos')).toHaveLength(1); expect(c.file3()).toBe(file);
+    expect((retry.request.body as FormData).getAll('archivos')).toHaveLength(1); expect(c.archivos()[3][0]).toBe(file);
     const r = resultado(c); retry.flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
     expect(c.successModalAbierto()).toBe(true); expect(c.apelacionCreada()?.fundamentos).toBe(creada.fundamentos);
   });
@@ -346,7 +445,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     c.comprobarRegistro(); const get = http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`);
     if (status) get.flush(null, { status, statusText: 'Error' }); else get.error(new ProgressEvent('error'));
     c.reintentarAlta(); c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`);
-    expect(c.successModalAbierto()).toBe(false); expect(c.apelacionCreada()).toBeNull(); expect(c.file3()).not.toBeNull(); expect(c.bloqueado()).toBe(true);
+    expect(c.successModalAbierto()).toBe(false); expect(c.apelacionCreada()).toBeNull(); expect(c.archivos()[3]).toHaveLength(1); expect(c.bloqueado()).toBe(true);
   });
   it('un conflicto conserva la clave y exige consultar antes de otro intento', () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion(); const key = c.claveOperacion();
@@ -373,21 +472,21 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
   it('cerrar o cambiar modalidad descarta recuperación pendiente sin repoblar otro contexto', () => {
     const f = preparar(), c = f.componentInstance; c.crearApelacion(); http.expectOne(`${base}/apelaciones/recepciones`).flush(resultado(c));
     const pending = http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`); c.iniciarApelacionExterna(); catalogo();
-    expect(pending.cancelled).toBe(true); expect(c.claveOperacion()).toBe(''); expect(c.recepcionId()).toBeNull(); expect(c.apelacionCreada()).toBeNull(); expect(c.file3()).toBeNull();
+    expect(pending.cancelled).toBe(true); expect(c.claveOperacion()).toBe(''); expect(c.recepcionId()).toBeNull(); expect(c.apelacionCreada()).toBeNull(); expect(c.archivos()[3]).toEqual([]);
   });
   it('no persiste preparación, clave o archivos personales y advierte pérdida tras recarga', () => {
     const f = preparar(), c = f.componentInstance; const local = vi.spyOn(localStorage, 'setItem'), session = vi.spyOn(sessionStorage, 'setItem');
     c.crearApelacion(); http.expectOne(`${base}/apelaciones/recepciones`).error(new ProgressEvent('error')); f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('solo en memoria'); expect(f.nativeElement.textContent).toContain(c.claveOperacion());
+    expect(f.nativeElement.textContent).toContain('Compruebe el resultado antes de salir o recargar'); expect(f.nativeElement.textContent).toContain(c.claveOperacion());
     expect(local).not.toHaveBeenCalled(); expect(session).not.toHaveBeenCalled();
   });
 
   it('acepta el nombre normalizado por almacenamiento sin usarlo como identidad documental', () => {
-    const f = preparar(), c = f.componentInstance; c.file1.set(new File(['contenido'], 'copia  real.txt', { type: 'text/plain' }));
+    const f = preparar(), c = f.componentInstance; c.quitarArchivo(1, original); seleccionar(c, 1, new File(['contenido'], 'copia  real.txt', { type: 'text/plain' }));
     c.crearApelacion(); const r = resultado(c); r.documentos[0].documento.nombreOriginal = 'copia real.txt';
     http.expectOne(`${base}/apelaciones/recepciones`).flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r);
     expect(c.successModalAbierto()).toBe(true); expect(c.documentosConsultados()?.[0].nombreOriginal).toBe('copia real.txt');
-    expect(c.documentosConsultados()?.[0].id).toBe(188); expect(c.file1()?.name).toBe('copia  real.txt');
+    expect(c.documentosConsultados()?.[0].id).toBe(188); expect(c.archivos()[1][0]?.name).toBe('copia  real.txt');
   });
 
   it('la bandeja solo ofrece SAIP con respuesta de la entidad y sin apelación', () => {
@@ -412,8 +511,8 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
 
   it.each([{ hashSha256: null }, { hashSha256: 'incompleto' }, { sizeBytes: 0 }, { contentType: null }])('no ofrece clonar un antecedente sin versión recuperable: %j', cambio => {
     const f = preparar({ ...solicitud, documentosMetadata: [{ ...original, ...cambio }] }), c = f.componentInstance;
-    expect(c.doc1Auto()).toBeNull(); expect(c.antecedentes(1)).toEqual([]); expect(c.documentosIncompletos()).toBe(true); expect(c.puedeEnviar()).toBe(false);
-    c.file1.set(new File(['copia real'], 'copia.txt', { type: 'text/plain' })); expect(c.puedeEnviar()).toBe(true);
+    expect(c.documentosPara(1)).toEqual([]); expect(c.documentosIncompletos()).toBe(true); expect(c.puedeEnviar()).toBe(false);
+    seleccionar(c, 1, new File(['copia real'], 'copia.txt', { type: 'text/plain' })); expect(c.puedeEnviar()).toBe(true);
     expect(escriturasDocumentales()).toEqual([]);
   });
 

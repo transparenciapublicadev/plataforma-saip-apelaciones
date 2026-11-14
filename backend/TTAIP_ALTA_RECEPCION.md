@@ -30,6 +30,10 @@ contiene ni se alteran los datos de consentimiento de la SAIP original.
   partes `archivos`. `datos` contiene UUID, modalidad, campos propios y manifiesto
   ordenado. Cada entrada sin `origenId` consume el siguiente archivo; con origen
   exige ID y SHA-256 de la versión seleccionada. Devuelve 200 para alta o repetición.
+  Una apelación vinculada puede copiar varios documentos de la solicitud
+  (`SOLICITUD_ORIGINAL`, `DOCUMENTO_ADJUNTO`) y de su respuesta (`RESPUESTA_ENTIDAD`).
+  Cada copia conserva su tipo y se vincula a la apelación; un anexo no cubre el
+  requisito de la copia de la solicitud original.
 - `GET /api/apelaciones/recepciones/{claveOperacion}`: consulta sin escrituras,
   restringida al ciudadano original. No hay excepción administrativa en estas rutas.
 - La recepción contiene ID, UUID, modalidad, fecha persistida, apelación autorizada
