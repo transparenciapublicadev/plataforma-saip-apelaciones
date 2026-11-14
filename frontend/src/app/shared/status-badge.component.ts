@@ -36,6 +36,7 @@ const STATUS_TO_TONE: Record<string, BadgeTone> = {
   'En Precisión': 'amber',
   'En Precision': 'amber',
   'EN_PRECISION': 'amber',
+  'PENDIENTE_INFORMACION': 'amber',
   'Encauzada': 'violet',
   'ENCAUZADA': 'violet',
   'Por Recoger': 'gold',
@@ -151,8 +152,10 @@ const STATUS_TO_TONE: Record<string, BadgeTone> = {
 const STATUS_LABELS: Record<string, string> = {
   'EN_PROCESO': 'En trámite',
   'RECEPCIONADA': 'Recepcionada',
+  'EN_REVISION': 'En revisión',
   'EN_REVISION_REQUISITOS': 'En revisión de requisitos',
   'OBSERVADA': 'Observada (en precisión)',
+  'PENDIENTE_INFORMACION': 'En precisión',
   'ENTREGA_TOTAL': 'Entrega total',
   'ENTREGA_PARCIAL': 'Entrega parcial',
   'DENEGACION_TOTAL': 'Denegatoria total',

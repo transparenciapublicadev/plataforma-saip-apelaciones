@@ -224,7 +224,10 @@ public class Solicitud {
      * Verde (5+), Ámbar (2-4), Rojo (0-1), Negro (vencido)
      */
     public String getSemaforo() {
-        int dias = getDiasRestantes();
+        return semaforoParaDiasRestantes(getDiasRestantes());
+    }
+
+    public static String semaforoParaDiasRestantes(int dias) {
         if (dias < 0) return "NEGRO";
         if (dias <= 1) return "ROJO";
         if (dias <= 4) return "AMBAR";

@@ -27,7 +27,7 @@ import {
   LucideBuilding2, LucideCompass, LucideShieldAlert,
   LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
   LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-  LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp,
+  LucideSend, LucideChevronRight, LucideLayers, LucideTarget,
   LucideFileChartColumn
 } from '@lucide/angular';
 
@@ -39,7 +39,7 @@ import {
     LucideBuilding2, LucideCompass, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-    LucideSend, LucideChevronRight, LucideLayers, LucideTarget, LucideTrendingUp,
+    LucideSend, LucideChevronRight, LucideLayers, LucideTarget,
     LucideFileChartColumn
   ],
   templateUrl: './funcionario-dashboard.component.html',
@@ -60,7 +60,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly contextoVigente = computed(() => this.revisionConsulta() === this.authService.cambiosSesion());
   readonly tourSteps: TourStep[] = [
     { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo o vencen hoy.' },
-    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes atendidas dentro del plazo legal (10 días hábiles, o el ampliado por prórroga).' },
+    { selector: '[data-tour="e-cumplimiento"]', title: 'Respuestas registradas en plazo', body: 'El indicador compara la fecha de la respuesta con el plazo registrado. Incluye solicitudes vencidas sin respuesta y muestra por separado las que aún están pendientes.' },
     { selector: '[data-tour="e-buckets"]', title: 'Bandeja por plazo', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
     { selector: '[data-tour="e-cola"]', title: 'Solicitudes de la bandeja', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start' },
     { selector: '[data-tour="e-carga"]', title: 'Vencimientos de la semana', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
@@ -72,7 +72,8 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     { key: 'hoy', label: 'Hoy o mañana', eyebrow: 'Vencen en ≤1 día háb.', icon: 'flame', color: 'var(--brand-600)', bg: 'color-mix(in srgb, var(--brand-600) 8%, transparent)' },
     { key: 'semana', label: 'Esta semana', eyebrow: '2 a 5 días hábiles', icon: 'calendar', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
     { key: 'plazo', label: 'Cómodo en plazo', eyebrow: 'Más de 5 días háb.', icon: 'check', color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 10%, transparent)' },
-    { key: 'respondidas', label: 'Respondidas', eyebrow: 'Cerradas este periodo', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
+    { key: 'precision', label: 'En precisión', eyebrow: 'En espera del administrado', icon: 'alert', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
+    { key: 'respondidas', label: 'Respondidas', eyebrow: 'Con respuesta registrada', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
   ];
   solicitudes = signal<Solicitud[]>([]);
   loading = signal(true);
@@ -93,17 +94,27 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   readonly counts = computed(() => ({ todas: this.resumen()?.total ?? 0,
     san: this.resumen()?.porEtapa['san'] ?? 0, hoy: this.resumen()?.porEtapa['hoy'] ?? 0,
     semana: this.resumen()?.porEtapa['semana'] ?? 0, plazo: this.resumen()?.porEtapa['plazo'] ?? 0,
+    precision: this.resumen()?.porEtapa['precision'] ?? 0,
     respondidas: this.resumen()?.porEtapa['respondidas'] ?? 0 }));
   readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket()) ?? this.buckets[0]);
   readonly totalActivas = computed(() => ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
     .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0));
-  readonly respondidas = computed(() => this.resumen()?.porEtapa['respondidas'] ?? 0);
-  readonly cerradas = computed(() => this.respondidas() + this.counts().san);
-  /** Misma lectura que el indicador de design-reference: sin expedientes cerrados el arco queda en 100. */
+  readonly registroRespuestas = computed(() => {
+    if (!this.contextoVigente()) return null;
+    const resumen = this.resumen();
+    const registro = resumen?.registroRespuestas;
+    if (!registro) return null;
+    const cantidades = [registro.enPlazo, registro.fueraDePlazo, registro.pendientes, registro.noEvaluadas];
+    return cantidades.every(n => Number.isSafeInteger(n) && n >= 0)
+      && cantidades.reduce((total, n) => total + n, 0) === resumen.total ? registro : null;
+  });
+  readonly evaluadas = computed(() => {
+    const registro = this.registroRespuestas();
+    return registro ? registro.enPlazo + registro.fueraDePlazo : 0;
+  });
   readonly cumplimiento = computed<number | null>(() => {
-    if (!this.resumen()) return null;
-    const cerradas = this.cerradas();
-    return cerradas > 0 ? Math.round((this.respondidas() / cerradas) * 100) : 100;
+    const registro = this.registroRespuestas(), evaluadas = this.evaluadas();
+    return registro && evaluadas > 0 ? Math.round((registro.enPlazo / evaluadas) * 100) : null;
   });
   readonly donutCircunferencia = 2 * Math.PI * 26;
   private readonly donutDibujado = signal(false);
@@ -113,7 +124,8 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     return this.donutCircunferencia - (val / 100) * this.donutCircunferencia;
   });
   readonly donutAccent = computed(() => {
-    const val = this.cumplimiento() ?? 0;
+    const val = this.cumplimiento();
+    if (val === null) return 'var(--muted-foreground)';
     return val >= 80 ? 'var(--success)' : val >= 60 ? 'var(--warning)' : 'var(--brand-700)';
   });
   readonly fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }));
@@ -292,7 +304,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     if (isResp) return 'Respondida el';
     const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
       || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
-    if (enPrecision) return 'Precisar antes de';
+    if (enPrecision) return 'Fecha registrada para precisar';
     if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) return 'En silencio administrativo';
     return 'Plazo p/ responder';
   }

@@ -325,6 +325,8 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.SUBSANADA);
         assertThat(resultado.getFechaSubsanacion()).isNotNull();
+        assertThat(solicitud.getFechaLimite())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(resultado.getFechaSubsanacion().toLocalDate(), 10));
         assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
         verify(solicitudRepository).save(solicitud);
     }
@@ -804,7 +806,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void obtenerSeguimientoPlazo_debeCalcularPlazosYRetornarDTO() {
+    void obtenerSeguimientoPlazo_usaElLimiteRegistradoYCuentaDiasHabiles() {
         Long solicitudId = 1L;
         Solicitud solicitud = crearSolicitud(solicitudId, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
         LocalDateTime fechaPresentacion = LocalDateTime.of(2026, 7, 1, 10, 0); // Miércoles 1 de julio
@@ -813,11 +815,9 @@ class SolicitudServiceTest {
         when(solicitudRepository.findById(eq(solicitudId))).thenReturn(Optional.of(solicitud));
         
         LocalDate fechaRegistro = fechaPresentacion.toLocalDate();
-        LocalDate fechaVencimiento = LocalDate.of(2026, 7, 15);
-        when(plazoCalculadorService.calcularFechaVencimiento(eq(fechaRegistro), eq(10)))
-                .thenReturn(fechaVencimiento);
-        when(plazoCalculadorService.verificarExcesoDePlazo(eq(fechaRegistro), eq(10)))
-                .thenReturn(false);
+        LocalDate fechaVencimiento = LocalDate.of(2026, 7, 21);
+        solicitud.setFechaLimite(fechaVencimiento);
+        when(plazoCalculadorService.hoy()).thenReturn(LocalDate.of(2026, 7, 17));
 
         PlazoSeguimientoDTO resultado = solicitudService.obtenerSeguimientoPlazo(solicitudId);
 
@@ -825,7 +825,7 @@ class SolicitudServiceTest {
         assertThat(resultado.fechaRegistro()).isEqualTo(fechaRegistro);
         assertThat(resultado.fechaVencimiento()).isEqualTo(fechaVencimiento);
         assertThat(resultado.enSilencioAdministrativo()).isFalse();
-        assertThat(resultado.diasRestantes()).isGreaterThanOrEqualTo(0);
+        assertThat(resultado.diasRestantes()).isEqualTo(3);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package pe.gob.saip.backend.service;
 
+import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
+
 import java.text.Normalizer;
 import java.time.*;
 import java.util.*;
@@ -19,9 +21,10 @@ public class PanelConsultaService {
     private final AutorizacionRecursosService autorizacion;
     private final FuncionarioRepository funcionarios;
     private final PanelConsultaRepository repository;
+    private final PlazoCalculadorService calendario;
     public PanelConsultaService(AutorizacionRecursosService autorizacion, FuncionarioRepository funcionarios,
-                                 PanelConsultaRepository repository) {
-        this.autorizacion=autorizacion; this.funcionarios=funcionarios; this.repository=repository;
+                                 PanelConsultaRepository repository, PlazoCalculadorService calendario) {
+        this.autorizacion=autorizacion; this.funcionarios=funcionarios; this.repository=repository; this.calendario=calendario;
     }
     // Rows and aggregates share a database snapshot even with concurrent insertions.
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
@@ -29,7 +32,7 @@ public class PanelConsultaService {
                                                         String orden,Long entidadId) {
         var alcance=alcance();
         var filtro=filtro(false,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,null);
-        LocalDate today=LocalDate.now();
+        LocalDate today=calendario.hoy();
         var datos=repository.consultar(false,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
         var rows=datos.filas().stream().map(row->solicitud(row,datos.observaciones().getOrDefault(id(row,"id_solicitud"),List.of()),today)).toList();
         return pagina(rows,datos,filtro,alcance,"FECHA_LIMITE_REGISTRADA_SAIP");
@@ -76,7 +79,7 @@ public class PanelConsultaService {
         etapa=blank(etapa); if("todas".equals(etapa)||"todos".equals(etapa))etapa=null;
         Set<String> stages=apelaciones?Set.of("elevacion","calificacion1","subsanacion","calificacion2","resolucion","resueltos","otras")
             :alcance.ciudadanoId()!=null?Set.of("accion","proceso","respondidas","apelar","tribunal","resueltas","otras")
-            :Set.of("san","hoy","semana","plazo","respondidas","desconocido");
+            :Set.of("san","hoy","semana","plazo","precision","respondidas","desconocido");
         if(etapa!=null&&!stages.contains(etapa))throw new IllegalArgumentException("Etapa no válida para este panel");
         orden=blank(orden);if(orden==null)orden="recientes";
         if(!Set.of("recientes","antiguas").contains(orden))throw new IllegalArgumentException("Orden no válido");
@@ -96,13 +99,16 @@ public class PanelConsultaService {
     private static int remaining(LocalDate today,LocalDate end){return today.isAfter(end)?-DiasHabilesUtil.contarDiasHabiles(end,today):DiasHabilesUtil.contarDiasHabiles(today,end);}
     private PanelSolicitudDTO solicitud(Map<String,Object> r,List<Map<String,Object>> observations, LocalDate hoy) {
         LocalDate limit=date(r,"fecha_limite");
+        LocalDate inicio = observations.stream().filter(o -> "SUBSANADA".equals(str(o,"estado")))
+            .map(o -> day(o,"fecha_subsanacion")).filter(Objects::nonNull).max(Comparator.naturalOrder())
+            .orElseGet(() -> day(r,"fecha_presentacion"));
         return new PanelSolicitudDTO(id(r,"id_solicitud"),str(r,"expediente"),str(r,"asunto"),str(r,"descripcion"),str(r,"estado"),
-            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesVigentes(day(r,"fecha_presentacion"), limit, hoy),
+            str(r,"prioridad"),str(r,"tipo_informacion"),text(r,"fecha_presentacion"),text(r,"fecha_limite"),limit==null?null:DiasHabilesUtil.diasHabilesVigentes(inicio, limit, hoy),
             id(r,"id_ciudadano"),str(r,"ciudadano_nombre"),id(r,"id_entidad"),str(r,"entidad_nombre"),str(r,"entidad_acronimo"),str(r,"etapa"),
             id(r,"id_respuesta")==null?null:new PanelSolicitudDTO.PanelRespuestaDTO(id(r,"id_respuesta"),str(r,"tipo_respuesta"),text(r,"fecha_respuesta")),
             observations.stream().map(o->new PanelSolicitudDTO.PanelObservacionDTO(id(o,"id_observacion"),id(o,"id_solicitud"),str(o,"estado"),
                 text(o,"fecha_observacion"),text(o,"fecha_limite_subsanacion"),text(o,"fecha_subsanacion"),
-                date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion")))).toList(),
+                date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion"), hoy))).toList(),
             id(r,"a_id")==null?null:apelacion(r),
             oficina(r), str(r,"area_responsable"), str(r,"encargado_area"));
     }
@@ -137,9 +143,9 @@ public class PanelConsultaService {
     private static LocalDate date(Map<String,Object> r,String key){return r.get(key)==null?null:((java.sql.Date)r.get(key)).toLocalDate();}
     private static LocalDate day(Map<String,Object> r,String key){
         Object value=r.get(key);
-        if(value instanceof java.sql.Timestamp timestamp)return timestamp.toLocalDateTime().toLocalDate();
+        if(value instanceof java.sql.Timestamp timestamp)return timestamp.toInstant().atZone(ZONA_LIMA).toLocalDate();
         if(value instanceof java.sql.Date sqlDate)return sqlDate.toLocalDate();
-        if(value instanceof java.time.OffsetDateTime offset)return offset.toLocalDate();
+        if(value instanceof java.time.OffsetDateTime offset)return offset.atZoneSameInstant(ZONA_LIMA).toLocalDate();
         if(value instanceof java.time.LocalDateTime dateTime)return dateTime.toLocalDate();
         if(value instanceof java.time.LocalDate date)return date;
         if(value instanceof CharSequence text && text.length()>=10){

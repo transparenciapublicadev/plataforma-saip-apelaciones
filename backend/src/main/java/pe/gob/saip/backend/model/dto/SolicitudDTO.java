@@ -61,9 +61,10 @@ public record SolicitudDTO(
     List<LiquidacionCostoSolicitudDTO> liquidacionesCosto
 ) {
     public static SolicitudDTO from(Solicitud s) {
-        if (s == null) {
-            return null;
-        }
+        return s == null ? null : from(s, s.getDiasRestantes());
+    }
+
+    public static SolicitudDTO from(Solicitud s, int diasRestantes) {
         return new SolicitudDTO(
             s.getId(),
             s.getExpediente(),
@@ -71,10 +72,10 @@ public record SolicitudDTO(
             s.getDescripcion(),
             s.getEstado() != null ? s.getEstado().name() : null,
             s.getPrioridad() != null ? s.getPrioridad().name() : null,
-            s.getSemaforo(),
+            Solicitud.semaforoParaDiasRestantes(diasRestantes),
             s.getFechaPresentacion() != null ? s.getFechaPresentacion().toString() : null,
             s.getFechaLimite() != null ? s.getFechaLimite().toString() : null,
-            s.getDiasRestantes(),
+            diasRestantes,
             s.getCiudadano() != null ? s.getCiudadano().getId() : null,
             s.getCiudadano() != null ? s.getCiudadano().getNombreCompleto() : null,
             s.getCiudadano() != null ? s.getCiudadano().getDni() : null,

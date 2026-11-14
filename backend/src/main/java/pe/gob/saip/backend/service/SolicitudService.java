@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -211,7 +212,24 @@ public class SolicitudService {
         // Do not initialize detail collections until the current actor is authorized.
         // Map one request, not a list: each required LAZY collection is read in this session.
         autorizacion.verificarSolicitudAccesible(solicitud);
-        return SolicitudDTO.from(solicitud);
+        int diasRestantes = DiasHabilesUtil.diasHabilesVigentes(
+                inicioPlazoAtencion(solicitud), solicitud.getFechaLimite(), plazoCalculadorService.hoy());
+        return SolicitudDTO.from(solicitud, diasRestantes);
+    }
+
+    private LocalDate inicioPlazoAtencion(Solicitud solicitud) {
+        List<ObservacionSolicitud> observaciones = solicitud.getObservaciones();
+        if (observaciones != null) {
+            Optional<LocalDateTime> ultimaSubsanacion = observaciones.stream()
+                    .filter(o -> o.getEstado() == ObservacionSolicitud.EstadoObservacion.SUBSANADA)
+                    .map(ObservacionSolicitud::getFechaSubsanacion)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder());
+            if (ultimaSubsanacion.isPresent()) {
+                return ultimaSubsanacion.get().toLocalDate();
+            }
+        }
+        return solicitud.getFechaPresentacion().toLocalDate();
     }
 
     /** Map authorized accessible solicitudes to DTO within a read-only transactional boundary. */
@@ -731,6 +749,7 @@ public class SolicitudService {
                 "%s - Subsanación registrada por %s; la solicitud vuelve a revisión.".formatted(ahora, responsable)));
 
         solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(ahora.toLocalDate(), 10));
         solicitudRepository.save(solicitud);
         return observacionRepository.save(observacion);
     }
@@ -1162,13 +1181,14 @@ public class SolicitudService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + solicitudId));
 
         LocalDate fechaRegistro = solicitud.getFechaPresentacion().toLocalDate();
-        LocalDate fechaVencimiento = plazoCalculadorService.calcularFechaVencimiento(fechaRegistro, 10);
-        boolean enSilencioAdministrativo = plazoCalculadorService.verificarExcesoDePlazo(fechaRegistro, 10);
-
-        long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaVencimiento);
-        if (diasRestantes < 0) {
-            diasRestantes = 0;
-        }
+        LocalDate fechaVencimiento = solicitud.getFechaLimite();
+        LocalDate hoy = plazoCalculadorService.hoy();
+        long diasRestantes = DiasHabilesUtil.diasHabilesVigentes(inicioPlazoAtencion(solicitud), fechaVencimiento, hoy);
+        boolean enSilencioAdministrativo = esSolicitudEnAtencion(solicitud)
+                && solicitud.getRespuesta() == null
+                && fechaVencimiento != null && fechaVencimiento.isBefore(hoy)
+                && !observacionRepository.existsBySolicitud_IdSolicitudAndEstado(
+                        solicitudId, ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
 
         return new PlazoSeguimientoDTO(
                 fechaRegistro,

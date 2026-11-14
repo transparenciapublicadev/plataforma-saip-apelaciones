@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -18,14 +19,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import pe.gob.saip.backend.model.entity.*;
+import pe.gob.saip.backend.service.PlazoCalculadorService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -52,6 +56,8 @@ class SolicitudDetallePostgresIntegrationTest {
     @Autowired JsonMapper json;
     @Autowired Environment environment;
     @Autowired Flyway flyway;
+    @Autowired JdbcTemplate jdbc;
+    @MockitoSpyBean PlazoCalculadorService calendario;
     @LocalServerPort int port;
     private HttpClient client;
     private String password, ownerEmail, otherEmail, staffEmail, otherStaffEmail, expediente, marker;
@@ -107,7 +113,8 @@ class SolicitudDetallePostgresIntegrationTest {
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(flyway.info().applied()).hasSize(11);
+        assertThat(flyway.info().applied()).extracting(migration -> migration.getVersion().getVersion())
+                .containsExactly("1", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16");
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
     }
 
@@ -228,6 +235,102 @@ class SolicitudDetallePostgresIntegrationTest {
         request.setConsentimientoDatosPersonales(true);
         em.persist(request);
         return request;
+    }
+
+    @Test
+    void institutionalDeadlineStatsUseStoredDatesAndSeparatePendingPrecision() throws Exception {
+        LocalDate hoy = calendario.hoy();
+        tx(() -> {
+            Solicitud original = em.find(Solicitud.class, id);
+            original.setFechaLimite(hoy); // El último día sigue abierto.
+            Solicitud vencida = panelRequest(original, original.getEntidad(), "sin-respuesta", "Tema");
+            vencida.setFechaLimite(hoy.minusDays(1));
+            Solicitud precision = panelRequest(original, original.getEntidad(), "precision", "Tema");
+            precision.setEstado(Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION);
+            precision.setFechaLimite(hoy.minusDays(1));
+            ObservacionSolicitud observacion = new ObservacionSolicitud();
+            observacion.setSolicitud(precision);
+            observacion.setMotivoObservacion("Precise el periodo");
+            observacion.setFechaLimiteSubsanacion(hoy.plusDays(2));
+            observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
+            em.persist(observacion);
+            Solicitud archivada = panelRequest(original, original.getEntidad(), "archivada", "Tema");
+            archivada.setEstado(Solicitud.EstadoSolicitud.CONCLUIDA);
+            archivada.setFechaLimite(hoy.minusDays(1));
+            Solicitud aTiempo = panelRequest(original, original.getEntidad(), "puntual", "Tema");
+            Solicitud tarde = panelRequest(original, original.getEntidad(), "tardia", "Tema");
+            registrarFechaRespuesta(aTiempo, hoy.minusDays(1), hoy.minusDays(1));
+            registrarFechaRespuesta(tarde, hoy.minusDays(1), hoy);
+            Solicitud ajena = panelRequest(original, entity("Entidad ajena al indicador", "CI-" + ownerId), "ajena", "Tema");
+            ajena.setFechaLimite(hoy.minusDays(1));
+        });
+
+        String staff = login(staffEmail);
+        HttpResponse<String> response = get("/api/panel/solicitudes?tamano=1&etapa=precision", staff);
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+        JsonNode page = json.readTree(response.body());
+        assertThat(page.path("totalElementos").asInt()).isEqualTo(1);
+        assertThat(page.path("contenido").get(0).path("etapa").asString()).isEqualTo("precision");
+        JsonNode summary = page.path("resumen");
+        assertThat(summary.path("porEtapa").path("san").asInt()).isEqualTo(1);
+        JsonNode registro = summary.path("registroRespuestas");
+        assertThat(registro.path("enPlazo").asLong()).isEqualTo(1);
+        assertThat(registro.path("fueraDePlazo").asLong()).isEqualTo(2);
+        assertThat(registro.path("pendientes").asLong()).isEqualTo(2);
+        assertThat(registro.path("noEvaluadas").asLong()).isEqualTo(1);
+        var citizenPanel = get("/api/panel/solicitudes", login(ownerEmail));
+        assertThat(citizenPanel.statusCode()).isEqualTo(200);
+        assertThat(json.readTree(citizenPanel.body()).path("resumen").path("registroRespuestas").isObject()).isFalse();
+    }
+
+    private void registrarFechaRespuesta(Solicitud solicitud, LocalDate limite, LocalDate fecha) {
+        solicitud.setFechaLimite(limite);
+        solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setSolicitud(solicitud);
+        respuesta.setFuncionario(em.find(Funcionario.class, staffId));
+        respuesta.setContenido("Respuesta sintética");
+        respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.ENTREGA_TOTAL);
+        em.persist(respuesta);
+        em.flush();
+        jdbc.update("update respuestas set fecha_respuesta=? where id_respuesta=?",
+                fecha.atTime(23, 30).atZone(ZoneId.of("America/Lima")).toOffsetDateTime(), respuesta.getId());
+    }
+
+    @Test
+    void remainingBusinessDaysAgreeBetweenPanelDetailAndTrackingAfterPrecision() throws Exception {
+        LocalDate hoy = LocalDate.of(2020, 11, 13);
+        LocalDate limite = LocalDate.of(2020, 11, 27);
+        doReturn(hoy).when(calendario).hoy();
+        tx(() -> {
+            Solicitud solicitud = em.find(Solicitud.class, id);
+            solicitud.setFechaPresentacion(hoy.minusDays(3).atStartOfDay());
+            solicitud.setFechaLimite(limite);
+            solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
+            ObservacionSolicitud observacion = new ObservacionSolicitud();
+            observacion.setSolicitud(solicitud);
+            observacion.setMotivoObservacion("Periodo solicitado");
+            observacion.setFechaLimiteSubsanacion(hoy);
+            observacion.setFechaSubsanacion(hoy.atTime(12, 0));
+            observacion.setEstado(ObservacionSolicitud.EstadoObservacion.SUBSANADA);
+            em.persist(observacion);
+        });
+        String staff = login(staffEmail);
+        HttpResponse<String> tracking = get("/api/solicitudes/" + id + "/plazo-seguimiento", staff);
+        assertThat(tracking.statusCode()).as(tracking.body()).isEqualTo(200);
+        JsonNode body = json.readTree(tracking.body());
+        assertThat(body.path("fechaVencimiento").asString()).isEqualTo(limite.toString());
+        assertThat(body.path("diasRestantes").asInt()).isEqualTo(10);
+        assertThat(body.path("enSilencioAdministrativo").asBoolean()).isFalse();
+        var panel = get("/api/panel/solicitudes", staff);
+        assertThat(panel.statusCode()).as(panel.body()).isEqualTo(200);
+        JsonNode page = json.readTree(panel.body());
+        assertThat(page.path("contenido").get(0).path("diasRestantes").asInt()).isEqualTo(10);
+        assertThat(page.path("resumen").path("porDiasRestantes").path("10").asInt()).isEqualTo(1);
+        JsonNode detalle = detail(staff);
+        assertThat(detalle.path("fechaLimite").asString()).isEqualTo(limite.toString());
+        assertThat(detalle.path("diasRestantes").asInt()).isEqualTo(10);
+        assertThat(detalle.path("semaforo").asString()).isEqualTo("VERDE");
     }
 
     @Test
