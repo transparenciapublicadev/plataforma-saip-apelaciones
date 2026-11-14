@@ -36,7 +36,7 @@
     }
 
     @if (estadoFormulario() === 'vacio') {
-      <p role="status" class="form-shell p-6 text-muted-foreground">El servidor no devolvió la solicitud. No se puede determinar si existe un requerimiento.</p>
+      <p role="status" class="form-shell p-6 text-muted-foreground">La solicitud no está disponible. No se puede determinar si existe un requerimiento.</p>
       <button type="button" class="btn-outline" (click)="reintentarCarga()">Reintentar consulta</button>
     }
     @if (solicitud(); as sol) {
@@ -45,7 +45,7 @@
         <p class="text-sm font-medium mt-1">{{ sol.entidadNombre || 'Entidad no registrada' }}</p>
         <p class="text-sm text-muted-foreground mt-1">{{ sol.asunto || 'Asunto no registrado' }}</p>
         @if (observacionSeleccionada(); as obs) {
-          <p class="font-mono text-xs text-muted-foreground mt-2">Requerimiento {{ obs.id }} · Estado registrado: {{ recepcion()?.estado || obs.estado }}</p>
+          <p class="text-xs text-muted-foreground mt-2">Requerimiento {{ obs.id }} · {{ estadoObservacionVisible() }}</p>
         }
       </div>
       @if (estadoFormulario() === 'incompleto') {
@@ -64,7 +64,7 @@
       <div class="flex-1">
         <span class="eyebrow" style="color: var(--warning)">Plazo · 2 días hábiles</span>
         <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
-          La regla contempla <span class="font-mono font-semibold">2 días hábiles</span> desde la notificación. La fecha de observación <span class="font-semibold">no acredita notificación eficaz</span>. La fecha límite mostrada procede del servidor; las condiciones de recepción se comprueban al presentar.
+          El plazo legal es de <strong>dos días hábiles</strong> desde el día siguiente a la notificación válida. En este formulario se muestra la fecha registrada para subsanar. La fecha de notificación validada aún no está disponible aquí.
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
           <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
@@ -72,7 +72,7 @@
             <div class="font-mono text-sm mt-1">{{ fechaObservacion() || 'No registrada' }}</div>
           </div>
           <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-            <div class="eyebrow" style="color: var(--warning)">Fecha límite</div>
+            <div class="eyebrow" style="color: var(--warning)">Fecha registrada para subsanar</div>
             <div class="font-mono text-sm mt-1" style="color: var(--warning)">{{ fechaLimite() || 'No disponible' }}</div>
           </div>
         </div>
@@ -332,7 +332,7 @@
             @if (archivoSeleccionado(); as doc) {
               <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
                 <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" style="color: var(--success)"></svg>
-                <span class="text-sm flex-1 font-medium">Seleccionado en memoria: {{ doc.name }}</span>
+                <span class="text-sm flex-1 font-medium">Archivo seleccionado: {{ doc.name }}</span>
                 <span class="font-mono text-[11px] text-muted-foreground flex-shrink-0">
                   {{ (doc.size / 1024).toFixed(1) }} KB
                 </span>
@@ -356,19 +356,17 @@
           }
         </button>
 
-        <p id="precision-memoria" class="text-xs text-muted-foreground" role="note">El comentario y el archivo permanecen solo en memoria. Al recargar, cambiar de solicitud o sesión, o salir, deberá escribir el comentario y seleccionar el archivo nuevamente si la recepción no está confirmada. Solo se conserva en esta pestaña la clave de operación para consultar el resultado.</p>
-        <p class="text-xs text-center text-muted-foreground" aria-live="polite">{{ loadingEnvio() ? 'Envío o comprobación de recepción en curso.' : verificacionPendiente() ? 'Resultado incierto: compruebe la recepción antes de repetir.' : 'Se confirmará únicamente la recepción registrada por el servidor.' }}</p>
+        <p id="precision-memoria" class="text-xs text-muted-foreground" role="note">Si sale de este formulario o recarga la página, deberá volver a escribir el comentario y seleccionar el archivo para enviarlos. Si ya hizo el envío, use «Comprobar recepción» antes de intentarlo de nuevo.</p>
+        <p class="text-xs text-center text-muted-foreground" aria-live="polite">{{ loadingEnvio() ? 'Comprobando la recepción…' : verificacionPendiente() ? 'Aún no sabemos si se recibió el envío. Compruebe la recepción antes de volver a enviarlo.' : '' }}</p>
         } @else if (recepcion(); as recibida) {
           <section id="precision-recepcion" tabindex="-1" class="form-shell p-6 space-y-3" aria-label="Recepción persistida">
             <span class="eyebrow" style="color: var(--success)">Precisión registrada</span>
-            <h2 class="form-section-title">Recepción recuperada del servidor</h2>
+            <h2 class="form-section-title">Datos de la recepción</h2>
             <dl class="precision-receipt text-sm space-y-2">
               <div><dt>Requerimiento</dt><dd class="font-mono">{{ recibida.observacionId }}</dd></div>
-              <div><dt>Clave de operación</dt><dd class="font-mono">{{ recibida.claveOperacion }}</dd></div>
-              <div><dt>Fecha registrada</dt><dd>{{ recibida.fechaRecepcion }}</dd></div>
+              <div><dt>Fecha de recepción</dt><dd>{{ fechaRecepcionVisible() }}</dd></div>
               <div><dt>Documento registrado</dt><dd class="font-mono">{{ recibida.documento.id }} · {{ recibida.documento.nombreOriginal }}</dd></div>
             </dl>
-            <p class="text-xs text-muted-foreground">El registro de la precisión y su archivo no acredita entrega, notificación eficaz, firma o emisión formal.</p>
             <button type="button" class="btn-outline" (click)="verDetalleExpediente()">Ver expediente</button>
           </section>
         }
@@ -407,9 +405,9 @@
     tone="success"
     eyebrow="Recepción registrada"
     title="Precisión registrada"
-    description="El servidor confirmó el registro de la precisión y su documento en el requerimiento indicado. Este registro no acredita entrega, notificación eficaz ni firma."
+    description="Su subsanación y el documento adjunto quedaron registrados en el expediente."
     [expediente]="expediente()"
-    [expedienteHint]="'Recepción registrada: ' + (recepcion()?.fechaRecepcion || '—')"
+    [expedienteHint]="'Fecha de recepción: ' + fechaRecepcionVisible()"
     [metadata]="subsanacionSuccessMetadata()"
     [nextSteps]="subsanacionNextSteps"
     primaryLabel="Ir a mi panel"
