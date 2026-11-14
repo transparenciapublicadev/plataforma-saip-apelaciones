@@ -22,11 +22,6 @@ public interface ObservacionSolicitudRepository extends JpaRepository<Observacio
 
     List<ObservacionSolicitud> findBySolicitud_IdSolicitudOrderByFechaObservacionDesc(Long solicitudId);
 
-    Optional<ObservacionSolicitud> findFirstBySolicitud_IdSolicitudAndEstadoOrderByFechaObservacionDesc(
-            Long solicitudId,
-            ObservacionSolicitud.EstadoObservacion estado
-    );
-
     boolean existsBySolicitud_IdSolicitudAndEstado(
             Long solicitudId,
             ObservacionSolicitud.EstadoObservacion estado

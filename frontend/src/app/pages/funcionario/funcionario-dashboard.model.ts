@@ -1,6 +1,6 @@
 import { PanelSolicitud as Solicitud } from '../../models/panel-query.model';
 
-export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
+export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'precision' | 'respondidas';
 export interface QueueItem {
   solicitud: Solicitud;
   bucket: Exclude<BucketKey, 'todas'>;
@@ -33,8 +33,9 @@ export function queueItem(solicitud: Solicitud): QueueItem {
   let bucket: QueueItem['bucket'] = 'plazo';
   if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA' || solicitud.respuesta != null) {
     bucket = 'respondidas';
-  } else if (solicitud.estado === 'PENDIENTE_INFORMACION') {
-    bucket = 'plazo';
+  } else if (solicitud.estado === 'PENDIENTE_INFORMACION'
+    || (Array.isArray(solicitud.observaciones) && solicitud.observaciones.some(o => o?.estado === 'PENDIENTE_SUBSANACION'))) {
+    bucket = 'precision';
   } else if (solicitud.estado === 'VENCIDA' || (days !== null && days < 0)) {
     bucket = 'san';
   } else if (days !== null && days <= 1) {

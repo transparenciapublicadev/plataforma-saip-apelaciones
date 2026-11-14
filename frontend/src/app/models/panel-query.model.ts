@@ -32,6 +32,12 @@ export interface PanelSummary {
   porEntidad?: Record<string, number>;
   porTipoInformacion?: Record<string, number>;
   porDiasRestantes?: Record<string, number>;
+  registroRespuestas?: {
+    enPlazo: number;
+    fueraDePlazo: number;
+    pendientes: number;
+    noEvaluadas: number;
+  } | null;
 }
 export interface PanelPage<T> {
   contenido: T[];

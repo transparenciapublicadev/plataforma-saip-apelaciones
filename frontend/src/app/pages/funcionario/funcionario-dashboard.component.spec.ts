@@ -141,6 +141,8 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(f.componentInstance.solicitudes().length).toBe(1);
     expect(f.componentInstance.solicitudes()[0].expediente).toBe(row.expediente);
     expect(f.nativeElement.textContent).toContain(row.expediente);
+    expect(f.nativeElement.textContent).toContain('En revisión');
+    expect(f.nativeElement.textContent).not.toContain('EN_REVISION');
   });
 
   it('deshabilita las bandejas con conteo 0 e incluye su aria-label correspondiente', () => {
@@ -150,8 +152,6 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     f.detectChanges();
 
     const buttons = f.nativeElement.querySelectorAll('[data-tour="e-buckets"] button');
-    expect(buttons.length).toBe(6);
-
     const sanBtn = [...buttons].find((b: any) => b.textContent.includes('Vencidas')) as HTMLButtonElement;
     expect(sanBtn).toBeTruthy();
     expect(sanBtn.disabled).toBe(true);
@@ -173,7 +173,7 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     http.expectNone(r => r.url === `${api}/panel/solicitudes`);
   });
 
-  it('calcula y renderiza el indicador Donut de cumplimiento legal', () => {
+  it('distingue respuestas puntuales de tardías y solicitudes pendientes usando el resumen de la entidad', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
     const pageData = mockPanelPage([row], {
@@ -182,19 +182,20 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
         porEstado: { RESPONDIDA: 3, VENCIDA: 1, EN_REVISION: 6 },
         porEtapa: { san: 1, hoy: 0, semana: 6, plazo: 0, respondidas: 3 },
         porTipoInformacion: {},
-        porDiasRestantes: {}
+        porDiasRestantes: {},
+        registroRespuestas: { enPlazo: 2, fueraDePlazo: 2, pendientes: 6, noEvaluadas: 0 }
       }
     });
     req.flush(pageData);
     f.detectChanges();
 
-    expect(f.componentInstance.respondidas()).toBe(3);
-    expect(f.componentInstance.cerradas()).toBe(4);
-    expect(f.componentInstance.cumplimiento()).toBe(75);
-    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('75%');
+    const indicador = f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent;
+    expect(indicador).toContain('50%');
+    expect(indicador).toContain('2 de 4 solicitudes evaluadas');
+    expect(indicador).toContain('6 pendientes');
   });
 
-  it('dibuja el arco completo cuando no hay expedientes cerrados', () => {
+  it('no asigna un porcentaje cuando todavía no hay solicitudes evaluables', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
     req.flush(mockPanelPage([row], {
@@ -203,14 +204,34 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
         porEstado: { EN_REVISION: 2 },
         porEtapa: { san: 0, hoy: 0, semana: 2, plazo: 0, respondidas: 0 },
         porTipoInformacion: {},
-        porDiasRestantes: {}
+        porDiasRestantes: {},
+        registroRespuestas: { enPlazo: 0, fueraDePlazo: 0, pendientes: 2, noEvaluadas: 0 }
       }
     }));
     f.detectChanges();
 
-    expect(f.componentInstance.cumplimiento()).toBe(100);
-    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('100%');
-    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('0 de 0 atendidas a tiempo');
+    expect(f.componentInstance.cumplimiento()).toBeNull();
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('Aún no hay solicitudes evaluables');
+  });
+
+  it('muestra un nombre legible y la fecha registrada para precisar en la bandeja', () => {
+    const f = page();
+    http.expectOne(r => r.url === `${api}/panel/solicitudes`).flush(mockPanelPage([{
+      ...row, estado: 'PENDIENTE_INFORMACION', diasRestantes: 10,
+      observaciones: [{ id: 8, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION', fechaLimiteSubsanacion: '2026-10-05' }]
+    }]));
+    f.detectChanges();
+    const content = f.nativeElement.textContent;
+    expect(content).toContain('En precisión');
+    expect(content).not.toContain('PENDIENTE_INFORMACION');
+    expect(content).toContain('Fecha registrada para precisar');
+    expect(content).toContain('05/10/2026');
+    const precision = [...(f.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[data-tour="e-buckets"] button')]
+      .find(button => button.textContent.includes('En precisión'));
+    expect(precision?.disabled).toBe(false);
+    precision?.click();
+    http.expectOne(r => r.url === `${api}/panel/solicitudes` && r.params.get('etapa') === 'precision')
+      .flush(mockPanelPage([]));
   });
 
   it('muestra el banner de advertencia SAN con el texto legal exacto', () => {

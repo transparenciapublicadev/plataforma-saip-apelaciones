@@ -10,6 +10,7 @@ import java.nio.file.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
+import pe.gob.saip.backend.util.DiasHabilesUtil;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -272,6 +273,14 @@ class TransicionesSaipPostgresIntegrationTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("SUBSANADA"))
             .andExpect(jsonPath("$.documentoSubsanacionRuta").isEmpty());
         var antes=actuaciones(); assertThat(estado()).isEqualTo("EN_REVISION");
+        assertThat(jdbc.queryForObject("""
+                select s.fecha_limite from solicitudes s
+                join observaciones_solicitud o on o.id_solicitud=s.id_solicitud
+                where o.id_observacion=?
+                """, LocalDate.class, id))
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(
+                        jdbc.queryForObject("select cast(fecha_subsanacion as date) from observaciones_solicitud where id_observacion=?",
+                                LocalDate.class, id), 10));
         mvc.perform(post(ruta).header("Authorization","Bearer "+ciudadano).contentType("application/json")
             .content("{\"comentarioSubsanacion\":\"Preciso que el periodo solicitado es 2025\"}"))
             .andExpect(status().isConflict());

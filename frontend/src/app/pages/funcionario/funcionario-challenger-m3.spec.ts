@@ -161,14 +161,14 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       return f;
     }
 
-    it('empirically verifies all 6 tray buttons are disabled when count is 0', () => {
+    it('disables every tray, including precision, when the entity has no requests', () => {
       const f = createDashboardPage();
       const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
       req.flush(mockPanelPage([])); // Zero items
       f.detectChanges();
 
       const buttons = f.nativeElement.querySelectorAll('[data-tour="e-buckets"] button');
-      expect(buttons.length).toBe(6);
+      expect([...buttons].some((button: HTMLButtonElement) => button.textContent.includes('En precisión'))).toBe(true);
 
       buttons.forEach((btn: HTMLButtonElement) => {
         expect(btn.disabled).toBe(true);
@@ -183,8 +183,6 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       f.detectChanges();
 
       const buttons = f.nativeElement.querySelectorAll('[data-tour="e-buckets"] button');
-      expect(buttons.length).toBe(6);
-
       // Tray 1: san (Vencidas) -> count 0
       const btnSan = [...buttons].find((b: any) => b.textContent.includes('Vencidas')) as HTMLButtonElement;
       expect(btnSan).toBeTruthy();
@@ -196,6 +194,11 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       expect(btnHoy).toBeTruthy();
       expect(btnHoy.disabled).toBe(true);
       expect(btnHoy.getAttribute('aria-label')).toContain('sin solicitudes');
+
+      const btnPrecision = [...buttons].find((button: HTMLButtonElement) =>
+        button.textContent.includes('En precisión')) as HTMLButtonElement;
+      expect(btnPrecision.disabled).toBe(true);
+      expect(btnPrecision.getAttribute('aria-label')).toBe('En precisión: sin solicitudes');
 
       // Tray 3: semana (Esta semana) -> count 1 (active)
       const btnSemana = [...buttons].find((b: any) => b.textContent.includes('Esta semana')) as HTMLButtonElement;
