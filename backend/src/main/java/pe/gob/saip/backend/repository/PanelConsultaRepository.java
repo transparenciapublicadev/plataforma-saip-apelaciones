@@ -42,6 +42,14 @@ public class PanelConsultaRepository {
         a.entidad_externa_nombre, a.resumen_solicitud_original, a.tipo_origen,
         a.numero_solicitud_externa, a.calificacion_primera, a.calificacion_segunda, a.dias_subsanacion,
         ex.id_expediente_ttaip, ex.id_sala_ttaip, sala.nombre sala_nombre,
+        case
+            when ev.estado_elevacion='ELEVADA'
+                then cast(ev.fecha_elevacion_ttaip at time zone 'America/Lima' as date)
+            when ev.estado_elevacion='ADMITIDA_EXCEPCIONALMENTE'
+                then cast(ex.fecha_apertura at time zone 'America/Lima' as date)
+            when ev.id_apelacion is null and ra.modalidad in ('DIRECTA_TTAIP','EXTERNA')
+                then cast(ra.fecha_recepcion as date)
+        end a_recepcion_tribunal,
         r1.id_resolucion r1_id, r1.decision r1_decision, r1.fecha_resolucion r1_fecha,
         r2.id_resolucion r2_id, r2.decision r2_decision, r2.fecha_resolucion r2_fecha,
         rf.id_resolucion rf_id, rf.decision rf_decision, rf.fecha_resolucion rf_fecha,
@@ -110,7 +118,11 @@ public class PanelConsultaRepository {
         String id = apelaciones ? "a.id_apelacion" : "s.id_solicitud";
         String direction = filtro.orden().equals("antiguas") ? " asc" : " desc";
         params.addValue("limit",filtro.tamano()).addValue("offset",(long)filtro.pagina()*filtro.tamano());
-        List<Map<String,Object>> rows = jdbc.queryForList("select "+columns+",("+stage+") etapa,"+AP_STAGE+" a_etapa "+from+where
+        String ingresoTtaip = """
+            left join elevaciones_apelacion_ttaip ev on ev.id_apelacion=a.id_apelacion
+            left join recepciones_alta_apelacion ra on ra.id_apelacion=a.id_apelacion and ra.id_creado_por=a.id_ciudadano
+            """;
+        List<Map<String,Object>> rows = jdbc.queryForList("select "+columns+",("+stage+") etapa,"+AP_STAGE+" a_etapa "+from+ingresoTtaip+where
             +" order by "+date+direction+" nulls last,"+id+direction+" limit :limit offset :offset",params);
         Map<String,Long> states = group(alias+".estado",from+scope,params);
         Map<String,Long> stages = group(stage,from+scope,params);

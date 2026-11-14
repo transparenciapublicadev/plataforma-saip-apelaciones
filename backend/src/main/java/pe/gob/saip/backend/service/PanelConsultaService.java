@@ -18,6 +18,8 @@ import pe.gob.saip.backend.util.DiasHabilesUtil;
 /** Resolves the current account before querying rows or aggregates. */
 @Service
 public class PanelConsultaService {
+    // Mapa Integral SAIP–TTAIP, página numerada 4.
+    private static final int DIAS_PRIMERA_CALIFICACION = 7;
     private final AutorizacionRecursosService autorizacion;
     private final FuncionarioRepository funcionarios;
     private final PanelConsultaRepository repository;
@@ -35,7 +37,7 @@ public class PanelConsultaService {
         LocalDate today=calendario.hoy();
         var datos=repository.consultar(false,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
         var rows=datos.filas().stream().map(row->solicitud(row,datos.observaciones().getOrDefault(id(row,"id_solicitud"),List.of()),today)).toList();
-        return pagina(rows,datos,filtro,alcance,"FECHA_LIMITE_REGISTRADA_SAIP");
+        return pagina(rows,datos,filtro,alcance,"FECHA_LIMITE_REGISTRADA_SAIP;RECEPCION_TTAIP_PRIMERA_CALIFICACION");
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public PanelPaginaDTO<PanelApelacionDTO> apelaciones(int pagina,int tamano,String busqueda,String estado,String etapa,
@@ -44,7 +46,7 @@ public class PanelConsultaService {
         var filtro=filtro(true,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala);
         LocalDate today=LocalDate.now();
         var datos=repository.consultar(true,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
-        return pagina(datos.filas().stream().map(this::apelacion).toList(),datos,filtro,alcance,"INICIO_ACREDITADO_SUBSANACION_TTAIP;OTRAS_ETAPAS_NO_INFORMADAS");
+        return pagina(datos.filas().stream().map(this::apelacion).toList(),datos,filtro,alcance,"INICIO_ACREDITADO_SUBSANACION_TTAIP;RECEPCION_TTAIP_PRIMERA_CALIFICACION");
     }
     private <T> PanelPaginaDTO<T> pagina(List<T> rows,PanelConsultaRepository.Datos datos,PanelConsultaRepository.Filtro filtro,
                                         PanelConsultaRepository.Alcance alcance,String fuente) {
@@ -122,7 +124,24 @@ public class PanelConsultaService {
             id(r,"a_entidad_id"),str(r,"a_entidad_nombre"),str(r,"entidad_externa_nombre"),str(r,"resumen_solicitud_original"),str(r,"tipo_origen"),
             str(r,"numero_solicitud_externa"),str(r,"calificacion_primera"),str(r,"calificacion_segunda"),"resueltos".equals(str(r,"a_etapa")),str(r,"a_etapa"),
             id(r,"id_expediente_ttaip")==null?null:new PanelApelacionDTO.PanelExpedienteDTO(id(r,"id_expediente_ttaip"),id(r,"id_sala_ttaip")==null?null:new PanelOpcionDTO(id(r,"id_sala_ttaip"),str(r,"sala_nombre"))),
-            resolution(r,"rf","RESOLUCION_FINAL"),resolution(r,"r1","PRIMERA_CALIFICACION"),resolution(r,"r2","SEGUNDA_CALIFICACION"),clock(r));
+            resolution(r,"rf","RESOLUCION_FINAL"),resolution(r,"r1","PRIMERA_CALIFICACION"),resolution(r,"r2","SEGUNDA_CALIFICACION"),clock(r),
+            plazoPrimeraCalificacion(r));
+    }
+    private PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO plazoPrimeraCalificacion(Map<String,Object> row) {
+        if (!"EN_CALIFICACION_1".equals(str(row,"a_estado")) || id(row,"id_expediente_ttaip") == null
+                || id(row,"r1_id") != null || str(row,"calificacion_primera") != null) {
+            return null;
+        }
+        LocalDate recepcion = date(row,"a_recepcion_tribunal");
+        LocalDate hoy = calendario.hoy();
+        if (recepcion == null || recepcion.isAfter(hoy)) {
+            return null;
+        }
+        LocalDate limite = calendario.calcularFechaVencimiento(recepcion, DIAS_PRIMERA_CALIFICACION);
+        boolean vencido = hoy.isAfter(limite);
+        LocalDate desde = hoy.isAfter(recepcion) ? hoy.minusDays(1) : recepcion;
+        int diasRestantes = vencido ? 0 : calendario.contarDiasHabiles(desde, limite);
+        return new PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO(diasRestantes, vencido);
     }
     private PanelApelacionDTO.PanelResolucionDTO resolution(Map<String,Object> r,String prefix,String type) {
         return id(r,prefix+"_id")==null?null:new PanelApelacionDTO.PanelResolucionDTO(id(r,prefix+"_id"),type,str(r,prefix+"_decision"),text(r,prefix+"_fecha"));
