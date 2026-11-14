@@ -276,6 +276,18 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(input.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('groups both case numbers before the status in a linked appeal search result', () => {
+    const linked = { ...request(71), apelacion: { id: 4, expediente: '00004-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1' } } as Solicitud;
+    find.mockReturnValue(of([linked]));
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[role="combobox"]') as HTMLInputElement;
+    input.value = 'sintética';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('#citizen-result-71') as HTMLElement;
+    expect(row.textContent).toMatch(/SAIP-2026-71.*00004-2026-JUS\/TTAIP.*En primera calificación/s);
+  });
+
   it('does not turn a closed request into invented ongoing work or an appeal into a calculated countdown', () => {
     const closed = request(89, 'CONCLUIDA'); find.mockReturnValue(of([closed])); fixture.detectChanges();
     expect(component.accionPrincipal()).toBeNull();
