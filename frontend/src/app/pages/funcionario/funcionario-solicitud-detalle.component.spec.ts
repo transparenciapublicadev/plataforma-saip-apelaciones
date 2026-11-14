@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
 import { EntidadService } from '../../services/entidad.service';
 import { FuncionarioSolicitudDetalleComponent } from './funcionario-solicitud-detalle.component';
 
-describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
+describe('FuncionarioSolicitudDetalleComponent', () => {
   const base: Partial<Solicitud> = { id: 12, expediente: 'SAIP-2026-00012', entidadId: 3, asunto: 'Pedido sintético',
     fechaPresentacion: '2026-10-01', respuesta: null, observaciones: [], documentosMetadata: [],
     ampliacionesPlazo: [], encauzamientos: [], liquidacionesCosto: [] };
@@ -49,68 +49,24 @@ describe('FuncionarioSolicitudDetalleComponent puedeAdjuntarDocumentos', () => {
       .compileComponents();
   });
 
-  it('debería retornar puedeAdjuntarDocumentos como true para estados activos', () => {
-    mockSolicitudService.findByExpediente.mockReturnValue(of({
-      ...base,
-      id: 12,
-      estado: 'RECEPCIONADA'
-    } as Solicitud));
-    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
-    fixture.detectChanges();
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(true);
+  it.each(['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'RESPONDIDA'] as const)(
+    'permite consultar y descargar documentos del administrado sin adjuntar archivos en %s', estado => {
+      mockSolicitudService.findByExpediente.mockReturnValue(of({
+        ...base, estado, documentosMetadata: [{ id: 45, solicitudId: 12, nombreOriginal: 'adjunto.pdf' }]
+      } as Solicitud));
+      const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+      fixture.detectChanges();
+      fixture.componentInstance.activeTab.set('adjuntos');
+      fixture.detectChanges();
 
-    fixture.componentInstance.solicitud.set({ estado: 'EN_REVISION' } as Solicitud);
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(true);
-
-    fixture.componentInstance.solicitud.set({ estado: 'PENDIENTE_INFORMACION' } as Solicitud);
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(true);
-  });
-
-  it('debería retornar puedeAdjuntarDocumentos como false para estados cerrados', () => {
-    mockSolicitudService.findByExpediente.mockReturnValue(of({
-      ...base,
-      id: 12,
-      estado: 'RESPONDIDA'
-    } as Solicitud));
-    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
-    fixture.detectChanges();
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(false);
-
-    fixture.componentInstance.solicitud.set({ estado: 'VENCIDA' } as Solicitud);
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(false);
-
-    fixture.componentInstance.solicitud.set({ estado: 'DENEGADA' } as Solicitud);
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(false);
-
-    fixture.componentInstance.solicitud.set({ estado: 'CONCLUIDA' } as Solicitud);
-    expect(fixture.componentInstance.puedeAdjuntarDocumentos()).toBe(false);
-  });
-
-  it('debería renderizar o remover el elemento <app-document-upload> en base a la regla de visibilidad', () => {
-    // Return an active request
-    const mockSol = { ...base, id: 12, estado: 'RECEPCIONADA', documentosMetadata: [] } as any;
-    mockSolicitudService.findByExpediente.mockReturnValue(of(mockSol));
-
-    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
-    const component = fixture.componentInstance;
-    
-    // Initial detectChanges sets the state and runs the synchronous lifecycle
-    fixture.detectChanges();
-
-    // Now change active tab to adjuntos so the block is evaluated
-    component.activeTab.set('adjuntos');
-    fixture.detectChanges();
-
-    // Con estado RECEPCIONADA (activo): debe existir
-    let uploadEl = fixture.nativeElement.querySelector('app-document-upload');
-    expect(uploadEl).not.toBeNull();
-
-    // Con estado RESPONDIDA (cerrado): debe ser removido del DOM
-    component.solicitud.set({ id: 12, estado: 'RESPONDIDA', documentosMetadata: [] } as any);
-    fixture.detectChanges();
-    uploadEl = fixture.nativeElement.querySelector('app-document-upload');
-    expect(uploadEl).toBeNull();
-  });
+      const panel = fixture.nativeElement.querySelector('[role=tabpanel]');
+      expect(panel.textContent).toContain('adjunto.pdf');
+      expect(panel.querySelector('button[title="Ver documento"]')).not.toBeNull();
+      expect(panel.textContent).toContain('Descargar');
+      expect(panel.querySelector('input[type="file"]')).toBeNull();
+      expect(panel.textContent).not.toContain('Adjuntar documento a la solicitud');
+    }
+  );
   it('ofrece evaluar la subsanación presentada mediante las acciones oficiales', () => {
     mockSolicitudService.findByExpediente.mockReturnValue(of({ ...base, id: 12, estado: 'PENDIENTE_INFORMACION',
       documentosMetadata: [], observaciones: [{ id: 8, estado: 'PENDIENTE_SUBSANACION',
