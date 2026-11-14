@@ -27,13 +27,13 @@
             <span class="eyebrow">Bandeja institucional · Detalle</span>
             <div class="flex items-center gap-3 mt-2 flex-wrap">
               <span class="code-chip" style="font-size: 13px">{{ sol.expediente }}</span>
-              <app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge>
               @if (sol.prioridad) {
                 <span class="pill" [style.background]="sol.prioridad === 'ALTA' ? 'rgba(200,16,46,0.1)' : (sol.prioridad === 'MEDIA' ? 'rgba(217,119,6,0.1)' : 'rgba(5,150,105,0.1)')" [style.color]="sol.prioridad === 'ALTA' ? 'var(--brand-700)' : (sol.prioridad === 'MEDIA' ? 'var(--warning)' : 'var(--success)')">
                   <span class="dot"></span>
                   {{ sol.prioridad }}
                 </span>
               }
+              <app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge>
             </div>
             <h1 class="font-display mt-3 break-words" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.02em;">{{ sol.asunto || 'Asunto no informado' }}</h1>
           </div>
@@ -57,8 +57,6 @@
           <div class="flex-1">
             @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
               <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
-              <p class="text-sm text-foreground/85 mt-1.5">Se solicitó al administrado precisar su solicitud (plazo hasta el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaLimiteSubsanacion) ? (observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy') : 'No informada' }}</span>). Si no responde, el expediente se archivará automáticamente.</p>
-              <p class="text-sm text-foreground/70 mt-2 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion }}</p>
             } @else {
               <span class="eyebrow" style="color: var(--warning)">Subsanación presentada · pendiente de evaluación</span>
               <p class="text-sm text-foreground/85 mt-1.5">El administrado subsanó el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaSubsanacion) ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : '—' }}</span>. Evalúe si la observación quedó subsanada.</p>
@@ -79,6 +77,9 @@
                   <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4"></svg> No subsanada · archivar
                 </button>
               </div>
+            }
+            @if (observacion.motivoObservacion) {
+              <p class="text-sm text-foreground/70 mt-2 leading-relaxed whitespace-pre-line break-words">{{ observacion.motivoObservacion }}</p>
             }
           </div>
         </div>
@@ -192,7 +193,7 @@
               @if ((getDiasRestantes() ?? 0) < 0) {
                 <span class="font-mono font-semibold" style="color: var(--brand-700)">{{ Math.abs(getDiasRestantes() ?? 0) }} días retraso</span> en silencio administrativo negativo.
               } @else {
-                <span class="font-mono font-semibold">{{ getDiasRestantes() }} días restantes</span> para responder dentro del plazo legal.
+                <span class="font-mono font-semibold">{{ getDiasRestantesDisplay() }}</span> para responder dentro del plazo.
               }
             </p>
           </div>
@@ -246,23 +247,34 @@
             <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ (fechaVisible(sol.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</div>
           </div>
 
-          <div class="stat-card">
+          <div class="stat-card" [class]="enPrecision() ? 'md:col-span-2' : ''">
             <span class="stat-card-bar" style="background: var(--warning)"></span>
             <div class="flex items-center gap-2 mb-2">
               <svg aria-hidden="true" lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
-              <span class="eyebrow">Fecha límite</span>
+              <span class="eyebrow">{{ enPrecision() ? 'Fecha registrada para precisar' : 'Fecha límite para responder' }}</span>
             </div>
-            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ (fechaVisible(sol.fechaLimite) | date:'dd/MM/yyyy') || 'No informada' }}</div>
+            <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">
+              @if (enPrecision()) {
+                {{ (fechaVisible(observacionPendiente()?.fechaLimiteSubsanacion) | date:'dd/MM/yyyy') || 'Sin fecha registrada' }}
+              } @else {
+                {{ (fechaVisible(sol.fechaLimite) | date:'dd/MM/yyyy') || 'No informada' }}
+              }
+            </div>
+            @if (enPrecision()) {
+              <p class="mt-2 text-sm text-muted-foreground">El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.</p>
+            }
           </div>
 
-          <div class="stat-card">
-            <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
-            <div class="flex items-center gap-2 mb-2">
-              <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
-              <span class="eyebrow">Días restantes</span>
+          @if (!enPrecision()) {
+            <div class="stat-card">
+              <span class="stat-card-bar" [style.background]="getDiasRestantesColor()"></span>
+              <div class="flex items-center gap-2 mb-2">
+                <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4" [style.color]="getDiasRestantesColor()"></svg>
+                <span class="eyebrow">Días hábiles restantes</span>
+              </div>
+              <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
             </div>
-            <div class="font-display" [style.color]="getDiasRestantesColor()" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;">{{ getDiasRestantesDisplay() }}</div>
-          </div>
+          }
 
           <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--brand-700)"></span>
@@ -472,6 +484,19 @@
                 {{ sol.descripcion }}
               </div>
             </div>
+            @for (observacion of observacionesAnteriores(); track observacion.id) {
+              @if (observacion.motivoObservacion) {
+                <details class="rounded-md border border-border p-4 text-sm">
+                  <summary class="cursor-pointer font-semibold">
+                    Ver observación de precisión
+                    @if (fechaVisible(observacion.fechaObservacion); as fecha) {
+                      <span class="font-normal text-muted-foreground">· {{ fecha | date:'dd/MM/yyyy' }}</span>
+                    }
+                  </summary>
+                  <p class="mt-3 whitespace-pre-line break-words text-foreground/85">{{ observacion.motivoObservacion }}</p>
+                </details>
+              }
+            }
           </div>
         }
 
@@ -523,17 +548,6 @@
 
         @if (activeTab() === 'adjuntos') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
-            @if (solicitudDocumentoRelation(); as relation) {
-              @if (puedeAdjuntarDocumentos()) {
-                <app-document-upload
-                  heading="Adjuntar documento a la solicitud"
-                  tipoDocumento="DOCUMENTO_ADJUNTO"
-                  [relation]="relation"
-                  (uploaded)="onDocumentoSubido('adjuntos', sol.id)"
-                />
-              }
-            }
-
             @if (todosDocumentosAdministrado().length === 0) {
               <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
                 {{ informacionIncompleta() ? 'No hay documentos verificables en la información recibida.' : 'La consulta no contiene documentos del administrado asociados a esta solicitud.' }}

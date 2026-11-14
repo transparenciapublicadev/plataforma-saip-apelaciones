@@ -69,11 +69,11 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     const f = page();
     const items = f.componentInstance.historialItems();
     expect(items[0]).toEqual(expect.objectContaining({
-      responsable: 'Yaiku', detalle: 'Solicitud registrada y asignada a Entidad sintética.' }));
+      responsable: 'Registrada en Yaiku', detalle: 'Solicitud registrada y asignada a Entidad sintética.' }));
     expect(items[1]?.accion).toBe('Respuesta registrada · Entrega total');
     expect(f.componentInstance.temaInformacion()).toBe('Ejecución presupuestal');
     f.componentInstance.activeTab.set('historial'); f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('Yaiku');
+    expect(f.nativeElement.textContent).toContain('Registrada en Yaiku');
     expect(f.nativeElement.textContent).not.toContain('ENTREGA_TOTAL');
     expect(f.nativeElement.textContent).not.toContain('Sistema SAIP');
   });
@@ -226,6 +226,67 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
   it('el seguimiento de plazos prioriza la respuesta del servicio especializado', () => {
     const f = page(); expect(f.componentInstance.getDiasRestantes()).toBe(5); expect(f.componentInstance.solicitud()?.diasRestantes).toBe(3);
   });
+  it('durante la precisión muestra la fecha de la observación sin usar el plazo ordinario ni acreditar la notificación', () => {
+    solicitudes.obtenerSeguimientoPlazo.mockReturnValue(of({ diasRestantes: 14 }));
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      estado: 'PENDIENTE_INFORMACION', prioridad: 'MEDIA', fechaLimite: '2026-11-27',
+      observaciones: [{ id: 8, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION', fechaLimiteSubsanacion: '2026-11-17' }]
+    })));
+    const f = page();
+    const cards = [...f.nativeElement.querySelectorAll('.stat-card')].map(card => card.textContent).join(' ');
+    expect(f.nativeElement.textContent).toContain('En precisión');
+    expect(cards).toContain('Fecha registrada para precisar');
+    expect(cards).toContain('17/11/2026');
+    expect(cards).toContain('El plazo legal se cuenta desde el día siguiente a la notificación válida.');
+    expect(cards).not.toContain('Plazo de precisión');
+    expect(cards).not.toContain('27/11/2026');
+    expect(cards).not.toContain('14 días');
+    expect(solicitudes.obtenerSeguimientoPlazo).not.toHaveBeenCalled();
+    const header = f.nativeElement.querySelector('h1').parentElement.textContent;
+    expect(header.indexOf('MEDIA')).toBeLessThan(header.indexOf('En precisión'));
+  });
+  it('una precisión sin fecha propia no muestra un vencimiento sustituto', () => {
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      estado: 'PENDIENTE_INFORMACION',
+      observaciones: [{ id: 8, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION' }]
+    })));
+    const f = page();
+    const card = [...f.nativeElement.querySelectorAll('.stat-card')]
+      .find(el => el.textContent?.includes('Fecha registrada para precisar'));
+    expect(card?.textContent).toContain('Sin fecha registrada');
+    expect(card?.textContent).not.toContain('01/11/2026');
+  });
+  it('el historial resume la observación y conserva los puntos en el aviso del expediente', () => {
+    const motivo = '1. Precise el periodo solicitado.\n2. Identifique la oficina.';
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      estado: 'PENDIENTE_INFORMACION',
+      observaciones: [{
+        id: 8, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION',
+        fechaObservacion: '2026-10-02', responsableObservacion: 'Funcionario sintético', motivoObservacion: motivo
+      }]
+    })));
+    const f = page();
+    expect(f.nativeElement.textContent).toContain(motivo);
+    f.componentInstance.activeTab.set('historial');
+    f.detectChanges();
+    const history = f.nativeElement.querySelector('[role=tabpanel]').textContent;
+    expect(history).toContain('Solicitud de precisión');
+    expect(history).toContain('En espera de la precisión del administrado.');
+    expect(history).toContain('Funcionario sintético');
+    expect(history).not.toContain('Precise el periodo solicitado');
+    expect(history).not.toContain('PENDIENTE SUBSANACION');
+  });
+  it('permite consultar el motivo original de una observación subsanada desde Solicitud', () => {
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      observaciones: [{ id: 8, solicitudId: 101, estado: 'SUBSANADA', motivoObservacion: 'Aclare qué documentos solicita.' }]
+    })));
+    const f = page();
+    const observation = f.nativeElement.querySelector('[role=tabpanel] details') as HTMLDetailsElement;
+    expect(observation.open).toBe(false);
+    observation.querySelector('summary')?.click();
+    expect(observation.open).toBe(true);
+    expect(observation.textContent).toContain('Aclare qué documentos solicita.');
+  });
   it('el último día y la respuesta tardía conservan las condiciones del servidor', () => {
     solicitudes.obtenerSeguimientoPlazo.mockReturnValue(of({ diasRestantes: 0 }));
     solicitudes.findByExpediente.mockReturnValue(of(row({ estado: 'VENCIDA', diasRestantes: -1 })));
@@ -280,9 +341,6 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();
     expect(f.componentInstance.previewTarget()).toBeNull(); expect(document.activeElement).toBe(trigger); expect(pending.observed).toBe(false);
-  });
-  it('un evento de subida de la solicitud anterior no vuelve a consultar el nuevo recurso', () => {
-    const f = page(); f.componentInstance.onDocumentoSubido('adjuntos', 999); expect(solicitudes.findByExpediente).toHaveBeenCalledTimes(1);
   });
   it.each(['registrarAmpliacion', 'registrarEncauzamiento', 'emitirLiquidacion', 'actualizarLiquidacion'])('la continuación del comando %s no repuebla otra sesión', command => {
     solicitudes.findByExpediente.mockReturnValue(of(row({ liquidacionesCosto: [{ id: 15, solicitudId: 101, estadoLiquidacion: 'EMITIDA' }] })));

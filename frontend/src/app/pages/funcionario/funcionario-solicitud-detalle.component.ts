@@ -21,9 +21,7 @@ import {
 import { Entidad } from '../../models/entidad.model';
 import { canNavigateToResponse, positiveId } from './funcionario-dashboard.model';
 import { documentosDelRecurso, modalidadesRegistradas, detalleConRelacionesVerificadas } from './entity-request-detail.model';
-import { DocumentoRelation } from '../../models/documento.model';
 import { DocumentoService } from '../../services/documento.service';
-import { DocumentUploadComponent } from '../../shared/document-upload.component';
 import {
   DocumentPreviewModalComponent,
   DocumentPreviewTarget
@@ -64,7 +62,7 @@ import {
 @Component({
   selector: 'app-funcionario-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentUploadComponent, ReferenceTabsDirective,
+    CommonModule, FormsModule, RouterLink, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
     AreaResponsablePanelComponent,
@@ -374,7 +372,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       {
         accion: 'Solicitud presentada',
         fecha: sol.fechaPresentacion,
-        responsable: 'Yaiku',
+        responsable: 'Registrada en Yaiku',
         detalle: sol.entidadNombre?.trim()
           ? `Solicitud registrada y asignada a ${sol.entidadNombre.trim()}.`
           : 'Solicitud registrada. La entidad responsable no figura en el expediente.',
@@ -394,10 +392,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
 
     for (const observacion of this.observaciones()) {
       items.push({
-        accion: `Observación SAIP · ${this.getObservacionEstadoDisplay(observacion.estado)}`,
+        accion: 'Solicitud de precisión',
         fecha: observacion.fechaObservacion,
         responsable: observacion.responsableObservacion || 'Entidad pública',
-        detalle: observacion.motivoObservacion,
+        detalle: this.resumenObservacion(observacion.estado),
         color: observacion.estado === 'SUBSANADA' ? 'success' : (observacion.estado === 'NO_SUBSANADA' ? 'warning' : 'muted')
       });
       if (observacion.estado === 'SUBSANADA') {
@@ -467,6 +465,9 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly observacionPendiente = computed<ObservacionSolicitud | null>(() =>
     this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null
   );
+  readonly enPrecision = computed(() =>
+    this.solicitud()?.estado === 'PENDIENTE_INFORMACION' || this.observacionPendiente() !== null
+  );
 
   readonly ampliacionActiva = computed<AmpliacionPlazoSolicitud | null>(() =>
     this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null
@@ -481,20 +482,9 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null
   );
 
-  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const solicitudId = this.solicitud()?.id;
-    return solicitudId ? { solicitudId } : null;
-  });
-
-  readonly puedeAdjuntarDocumentos = computed<boolean>(() => {
-    const estado = this.solicitud()?.estado;
-    return estado !== 'RESPONDIDA' && estado !== 'VENCIDA' && estado !== 'DENEGADA' && estado !== 'CONCLUIDA';
-  });
-
-  readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const respuestaId = this.solicitud()?.respuesta?.id;
-    return respuestaId ? { respuestaId } : null;
-  });
+  readonly observacionesAnteriores = computed(() =>
+    this.observaciones().filter(observacion => observacion.id !== this.observacionPendiente()?.id)
+  );
 
   ngOnInit(): void {
     const params = this.route.paramMap;
@@ -523,7 +513,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.solicitud.set(verified.solicitud); this.informacionIncompleta.set(verified.incompleta);
         const initial = this.puedeVerRespuesta() ? 'respuesta' : 'solicitud';
         this.activeTab.set(preferredTab && this.tabs().some(tab => tab.id === preferredTab) ? preferredTab : initial);
-        if (data.id) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
+        if (!this.enPrecision()) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
           next: plazo => {
             if (!vigente()) return;
             if (plazo && Number.isSafeInteger(plazo.diasRestantes)) this.plazoSeguimiento.set(plazo);
@@ -571,14 +561,6 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   getIniciales(nombre?: string): string {
     if (!nombre) return '—';
     return nombre.trim().split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase() || '').join('') || '—';
-  }
-
-  onDocumentoSubido(preferredTab: DetailTabId = 'adjuntos', solicitudId?: number): void {
-    if (!this.contextoVigente() || (solicitudId != null && solicitudId !== this.solicitud()?.id)) return;
-    const expediente = this.solicitud()?.expediente;
-    if (expediente) {
-      this.cargarSolicitud(expediente, preferredTab);
-    }
   }
 
   cambiarTab(tab: DetailTabId): void {
@@ -1109,15 +1091,16 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     }
 
     if (dias < 0) {
-      return `${Math.abs(dias)} días retraso`;
+      const retraso = Math.abs(dias);
+      return `${retraso} ${retraso === 1 ? 'día hábil' : 'días hábiles'} de retraso`;
     }
 
-    return `${dias} días`;
+    return `${dias} ${dias === 1 ? 'día hábil' : 'días hábiles'}`;
   }
 
   isUrgente(): boolean {
     const dias = this.getDiasRestantes();
-    return dias !== null && dias >= 0 && dias <= 3 && !this.puedeVerRespuesta();
+    return !this.enPrecision() && dias !== null && dias >= 0 && dias <= 3 && this.puedeResponder();
   }
 
   getInitials(name: string | undefined): string {
@@ -1145,8 +1128,14 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     return map[color];
   }
 
-  getObservacionEstadoDisplay(value: string | undefined): string {
-    return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
+  private resumenObservacion(estado: string | undefined): string {
+    switch (estado) {
+      case 'PENDIENTE_SUBSANACION': return 'En espera de la precisión del administrado.';
+      case 'SUBSANADA': return 'Observación subsanada.';
+      case 'NO_SUBSANADA': return 'Observación sin subsanar.';
+      case 'ARCHIVADA': return 'Observación archivada.';
+      default: return 'La entidad pidió precisar el pedido.';
+    }
   }
 
   getAmpliacionEstadoDisplay(value: string | undefined): string {
