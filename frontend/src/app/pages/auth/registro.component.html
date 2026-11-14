@@ -42,8 +42,8 @@
   <!-- Form panel -->
   <div class="relative flex items-center justify-center px-6 py-12 lg:py-10 bg-paper overflow-y-auto">
     <div class="w-full max-w-xl hero-animate">
-      <button (click)="navigateToHome()" class="inline-flex items-center gap-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-sm mb-6 transition-colors cursor-pointer">
-        <svg lucideArrowLeft class="w-4 h-4"></svg> Volver al inicio
+      <button type="button" (click)="navigateToHome()" class="back-link">
+        <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg> Volver al inicio
       </button>
 
       <div class="mb-6">
