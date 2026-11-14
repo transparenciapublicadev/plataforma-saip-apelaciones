@@ -4,11 +4,11 @@
 </div>
     <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14">
       @if (step() > 1 && !bloqueado()) {
-        <button type="button" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6" (click)="irPaso(step() - 1)">
+        <button type="button" class="back-link back-link--dark" (click)="irPaso(step() - 1)">
 <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4">
 </svg>Volver al paso {{ step() - 1 }}: {{ pasos[step() - 2].short }}</button>
       } @else {
-        <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6">
+        <a routerLink="/ciudadano" class="back-link back-link--dark">
 <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4">
 </svg>Volver al panel</a>
       }
