@@ -51,6 +51,22 @@ Los endpoints JSON previos y los comandos posteriores permanecen: no conocen est
 clave ni la selección conjunta, y no adquieren idempotencia documental retroactiva.
 Android todavía usa esos contratos; su revisión es estática, sin Kotlin modificado.
 
+## Seguimiento de la primera calificación
+
+Los listados `/api/panel/solicitudes` y `/api/panel/apelaciones` pueden informar
+`plazoPrimeraCalificacion` con `diasRestantes` y `vencido`. Se muestra únicamente
+mientras está pendiente la primera calificación y consta el ingreso al Tribunal:
+recepción directa o externa, remisión registrada por la entidad o apertura por
+admisión excepcional acreditada. El Mapa Integral (página numerada 4) fija siete
+días hábiles. Se excluye el día de recepción y se cuenta el último día permitido,
+con el calendario y la fecha de Lima que usa el backend. Los registros históricos
+sin esos datos, los pendientes de remisión y los que ya tienen una calificación
+omiten el campo. El contador es de seguimiento y no cambia etapas ni fechas.
+
+La extensión es aditiva. Los snapshots históricos no contienen las rutas del panel;
+el contrato de esta consulta se comprueba en el OpenAPI de Spring y se consume
+mediante el modelo específico del panel Angular.
+
 ## Huella, procedencia y transacción
 
 V12 añade tablas de recepción y manifiesto; no modifica ni reconstruye históricos.

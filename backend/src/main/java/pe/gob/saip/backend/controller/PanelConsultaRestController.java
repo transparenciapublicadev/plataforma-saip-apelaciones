@@ -21,7 +21,7 @@ public class PanelConsultaRestController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.solicitudes(pagina,tamano,busqueda,estado,etapa,orden,entidadId));
     }
     @GetMapping("/apelaciones")
-    @Operation(summary="Consultar página y agregados TTAIP del actor actual",description="Titular o entidad desde la identidad actual; TTAIP/administración conservan su alcance autorizado. Reloj acreditado de subsanación; otros relojes no se infieren.")
+    @Operation(summary="Consultar página y agregados TTAIP del actor actual",description="Titular o entidad desde la identidad actual; TTAIP/administración conservan su alcance autorizado. Plazos de primera calificación y subsanación cuando consta el inicio correspondiente.")
     public ResponseEntity<PanelPaginaDTO<PanelApelacionDTO>> apelaciones(@RequestParam(defaultValue="0") int pagina,
         @RequestParam(defaultValue="10") int tamano,@RequestParam(required=false) String busqueda,@RequestParam(required=false) String estado,
         @RequestParam(required=false) String etapa,@RequestParam(defaultValue="recientes") String orden,@RequestParam(required=false) Long entidadId,

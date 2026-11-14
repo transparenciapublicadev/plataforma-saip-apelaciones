@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -36,6 +37,7 @@ import org.springframework.test.context.*;
 import org.springframework.test.web.servlet.*;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.*;
+import pe.gob.saip.backend.service.PlazoCalculadorService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -62,6 +64,7 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
     @Autowired DocumentoRepository documentos;
     @Autowired FuncionarioRepository funcionarios;
     @Autowired Flyway flyway;
+    @Autowired PlazoCalculadorService calendario;
     @Autowired PlatformTransactionManager manager;
     @LocalServerPort int port;
     long ciudadanoId, entidadId;
@@ -141,6 +144,65 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
         var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+base()+"/"+key)).header("Authorization","Bearer "+token).GET().build(),HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);return json.readTree(response.body());
     }
+    JsonNode plazoEnPanel(long solicitudId) throws Exception {
+        return json.readTree(mvc.perform(get("/api/panel/solicitudes").param("etapa","tribunal")
+            .header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+            .path("contenido").valueStream().filter(fila -> fila.path("id").asLong() == solicitudId)
+            .findFirst().orElseThrow().path("apelacion").path("plazoPrimeraCalificacion");
+    }
+    @Test void panelCuentaDesdeLaRecepcionDirectaYNoDesdeUnaFechaDeApertura() throws Exception {
+        long solicitudId = solicitud();
+        var recepcion = recibir(vinculada(UUID.randomUUID().toString(),solicitudId),archivo("original.txt"));
+        long apelacionId = recepcion.path("apelacion").path("id").asLong();
+        LocalDate hoy = calendario.hoy();
+        jdbc.update("update recepciones_alta_apelacion set fecha_recepcion=? where id_apelacion=?",hoy.atStartOfDay(),apelacionId);
+        jdbc.update("update expedientes_ttaip set fecha_apertura=fecha_apertura - interval '30 days' where id_apelacion=?",apelacionId);
+        assertThat(plazoEnPanel(solicitudId).path("diasRestantes").asInt()).isEqualTo(7);
+
+        LocalDate ultimoDia = hoy;
+        while (!calendario.esDiaHabil(ultimoDia)) ultimoDia = ultimoDia.plusDays(1);
+        LocalDate base = ultimoDia;
+        for (int dias = 0; dias < 7;) {
+            base = base.minusDays(1);
+            if (calendario.esDiaHabil(base)) dias++;
+        }
+        jdbc.update("update recepciones_alta_apelacion set fecha_recepcion=? where id_apelacion=?",base.atStartOfDay(),apelacionId);
+        assertThat(plazoEnPanel(solicitudId).path("diasRestantes").asInt()).isEqualTo(1);
+        assertThat(plazoEnPanel(solicitudId).path("vencido").asBoolean()).isFalse();
+
+        jdbc.update("update recepciones_alta_apelacion set fecha_recepcion=? where id_apelacion=?",hoy.minusDays(30).atStartOfDay(),apelacionId);
+        assertThat(plazoEnPanel(solicitudId).path("vencido").asBoolean()).isTrue();
+        jdbc.update("update apelaciones set calificacion_primera='ADMISIBLE' where id_apelacion=?",apelacionId);
+        assertThat(plazoEnPanel(solicitudId).isMissingNode()).isTrue();
+        jdbc.update("update apelaciones set calificacion_primera=null where id_apelacion=?",apelacionId);
+        jdbc.update("delete from recepciones_alta_apelacion where id_apelacion=?",apelacionId);
+        assertThat(plazoEnPanel(solicitudId).isMissingNode()).isTrue();
+        mvc.perform(get("/api/panel/solicitudes").param("etapa","tribunal")
+                .header("Authorization","Bearer "+login("otra@example.invalid")))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.contenido").isEmpty());
+    }
+    @Test void panelUsaLaRemisionRegistradaYNoLaPresentacionAnteLaEntidad() throws Exception {
+        long solicitudId = solicitud();
+        var datos = vinculada(UUID.randomUUID().toString(), solicitudId);
+        datos.put("modalidad","ANTE_ENTIDAD");
+        datos.put("fechaPresentacionAnteEntidad",calendario.hoy().toString());
+        datos.put("referenciaCargoPresentacion","Cargo sintético");
+        long apelacionId = recibir(datos,archivo("original.txt")).path("apelacion").path("id").asLong();
+        assertThat(plazoEnPanel(solicitudId).isMissingNode()).isTrue();
+        var funcionario = new Funcionario();
+        funcionario.setEmail("remision@example.invalid");
+        funcionario.setPassword(encoder.encode("Sintetico-2026!"));
+        funcionario.setNombreCompleto("Funcionario sintético");
+        funcionario.setTipoUsuario(Usuario.TipoUsuario.FUNCIONARIO);
+        funcionario.setEntidad(entidades.findById(entidadId).orElseThrow());
+        funcionarios.saveAndFlush(funcionario);
+        mvc.perform(post("/api/apelaciones/"+apelacionId+"/elevacion/elevar")
+                .header("Authorization","Bearer "+login(funcionario.getEmail())).contentType("application/json")
+                .content(json.writeValueAsString(Map.of("responsableEntidad","Funcionario sintético","referenciaExpedienteElevado","Remisión sintética"))))
+            .andExpect(status().isOk());
+        jdbc.update("update recepciones_alta_apelacion set fecha_recepcion=fecha_recepcion - interval '30 days' where id_apelacion=?",apelacionId);
+        assertThat(plazoEnPanel(solicitudId).path("diasRestantes").asInt()).isEqualTo(7);
+    }
     JsonNode antecedente(long source)throws Exception {
         return subirAntecedente("solicitudId",source,"SOLICITUD_ORIGINAL","origen.txt",BYTES);
     }
@@ -168,6 +230,10 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
         assertThat(r.path("apelacion").path("estado").asString()).isEqualTo("ANTE_ENTIDAD".equals(modo)?"PENDIENTE_ELEVACION":"EN_CALIFICACION_1");
         assertThat(cuenta("expedientes_ttaip")).isEqualTo("ANTE_ENTIDAD".equals(modo)?0:1);
         assertThat(cuenta("historial_ttaip")).isEqualTo("ANTE_ENTIDAD".equals(modo)?0:1);
+        if ("ANTE_ENTIDAD".equals(modo)) {
+            long solicitudId = r.path("apelacion").path("solicitudId").asLong();
+            assertThat(plazoEnPanel(solicitudId).isMissingNode()).isTrue();
+        }
         if("EXTERNA".equals(modo)){assertThat(r.path("apelacion").path("solicitudId").isNull()).isTrue();assertThat(cuenta("solicitudes")).isZero();}
         for(var item:r.path("documentos")) {
             var d=item.path("documento");assertThat(d.path("apelacionId").asLong()).isEqualTo(r.path("apelacion").path("id").asLong());
