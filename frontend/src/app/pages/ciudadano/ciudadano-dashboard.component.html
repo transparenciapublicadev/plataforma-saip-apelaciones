@@ -330,6 +330,7 @@
                       @case ('scale') { <svg lucideScale class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('clock') { <svg lucideClock class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @case ('alertTriangle') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @default { <svg lucideBuilding2 class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                     }
                     <div class="leading-tight">
@@ -344,12 +345,14 @@
 
             <div class="p-6 md:p-8">
               <div class="relative">
-                <div class="hidden md:block absolute top-[18px] left-0 right-0 h-px" style="background: var(--border)"></div>
+                @if (timelinePrincipal().length <= 5) {
+                  <div class="hidden md:block absolute top-[18px] left-0 right-0 h-px" style="background: var(--border)"></div>
+                }
 
 
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-2 relative">
-                  @for (step of timelineDisplaySteps(); track step.key) {
-                    <div data-motion-item class="flex md:flex-col gap-3 md:gap-2 md:text-center">
+                <ol aria-label="Seguimiento de la solicitud" class="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-2 relative">
+                  @for (step of timelinePrincipal(); track step.key) {
+                    <li data-motion-item class="flex md:flex-col gap-3 md:gap-2 md:text-center" [attr.aria-current]="step.status === 'active' ? 'step' : null">
                       <div class="relative md:flex md:justify-center">
                         <div
                           class="w-9 h-9 rounded-full flex items-center justify-center relative z-10 transition-all duration-300"
@@ -377,10 +380,39 @@
                           <div class="text-[11px] mt-0.5" [style.color]="timelineMetaColor(step.status)">{{ step.meta }}</div>
                         }
                       </div>
-                    </div>
+                    </li>
+                  }
+                </ol>
+              </div>
+
+              @if (precisionPrincipal(); as precision) {
+                <div class="mt-7 rounded-lg p-4 flex flex-wrap items-center gap-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+                  <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 shrink-0" style="color: var(--warning)"></svg>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium">Precisión de su solicitud</p>
+                    @if (precision.expediente) {
+                      <p class="mt-1 text-sm font-semibold" [style.color]="precision.indicador.tone">
+                        {{ precision.indicador.value }} · {{ precision.indicador.unit }}
+                      </p>
+                    }
+                    <p class="text-xs text-muted-foreground mt-1">
+                      @if (precision.fechaRegistrada) {
+                        Fecha registrada para precisar: {{ precision.fechaRegistrada }}.
+                      } @else if (precision.expediente) {
+                        Sin fecha registrada para precisar.
+                      } @else {
+                        El requerimiento no está disponible en este resumen. Consulte el expediente completo.
+                      }
+                    </p>
+                    @if (precision.expediente) {
+                      <p class="text-xs text-muted-foreground mt-1">El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.</p>
+                    }
+                  </div>
+                  @if (precision.expediente) {
+                    <a [routerLink]="['/ciudadano/precision', precision.expediente]" class="btn-ghost-brand">Revisar precisión</a>
                   }
                 </div>
-              </div>
+              }
 
               @if (plazoEntidadPrincipal(); as plazo) {
                 <div class="mt-7 rounded-lg p-4 flex items-center gap-4" [style.border-left]="'3px solid ' + plazo.tone" style="background: var(--card); border: 1px solid var(--border)">
@@ -388,7 +420,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                       <span class="text-sm font-medium">Plazo de respuesta</span>
-                      <span class="font-mono text-xs" [style.color]="plazo.tone">{{ plazo.restantes === null ? 'No disponible' : (plazo.restantes <= 0 ? 'Plazo vencido' : plazo.restantes + (plazo.restantes === 1 ? ' día hábil restante' : ' días hábiles restantes')) }}</span>
+                      <span class="font-mono text-xs" [style.color]="plazo.tone">{{ plazo.restantes === null ? 'No disponible' : (plazo.restantes === 0 ? 'Último día' : plazo.restantes + (plazo.restantes === 1 ? ' día hábil restante' : ' días hábiles restantes')) }}</span>
                     </div>
                     @if (plazo.fechaLimite) {
                       <div class="text-[11px] text-[var(--muted-foreground)] mt-1">Fecha límite: {{ plazo.fechaLimite }}</div>
@@ -596,13 +628,19 @@
                           <span class="text-[11px] font-medium truncate" [style.color]="ubic.tone">{{ ubic.label }}</span>
                           <span class="text-[11px] text-muted-foreground shrink-0 border-l border-border pl-1.5">{{ ubic.instancia }}</span>
                         </div>
+                        @if (urg) {
+                          <p class="mt-1.5 text-xs sm:hidden" [style.color]="urg.tone">{{ urg.value }} · {{ urg.unit }}@if (urg.nota) { · {{ urg.nota }} }</p>
+                        }
                       </div>
 
                       <!-- Métrica de urgencia -->
                       @if (urg) {
                         <div class="hidden sm:flex flex-col items-end shrink-0 pl-2 w-[104px]">
-                          <span class="font-display leading-none" [style.color]="urg.tone" style="font-size: 22px; letter-spacing: -0.02em">{{ urg.value }}</span>
+                          <span class="font-display leading-none text-right" [style.color]="urg.tone" style="font-size: 22px; letter-spacing: -0.02em">{{ urg.value }}</span>
                           <span class="text-[9px] tracking-wide uppercase text-muted-foreground mt-1 text-right leading-tight">{{ urg.unit }}</span>
+                          @if (urg.nota) {
+                            <span class="text-[10px] text-muted-foreground mt-1 text-right leading-tight">{{ urg.nota }}</span>
+                          }
                         </div>
                       }
                     </button>

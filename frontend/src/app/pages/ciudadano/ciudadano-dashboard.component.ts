@@ -43,6 +43,13 @@ interface PlazoEntidadView {
   fechaLimite?: string;
 }
 
+interface IndicadorBandeja {
+  value: string | number;
+  unit: string;
+  tone: string;
+  nota?: string;
+}
+
 interface SubsanacionView {
   dias: number | null;
   pendiente: boolean;
@@ -277,11 +284,20 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     return null;
   });
   readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
-  readonly timelineDisplaySteps = computed(() => this.timelinePrincipal().slice(0, 5));
+  readonly precisionPrincipal = computed(() => {
+    const solicitud = this.solicitudPrincipal();
+    if (!solicitud || !this.enPrecision(solicitud)) return null;
+    const observacion = this.observacionPendiente(solicitud);
+    return {
+      fechaRegistrada: this.formatDate(observacion?.fechaLimiteSubsanacion),
+      expediente: observacion ? solicitud.expediente : null,
+      indicador: this.indicadorPrecision(solicitud),
+    };
+  });
 
   readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
     const solicitud = this.solicitudPrincipal();
-    if (!solicitud) return null;
+    if (!solicitud || this.enPrecision(solicitud) || this.esSilencioAdministrativo(solicitud)) return null;
 
     const estado = (solicitud.estado || '').toUpperCase();
     if (!this.estadosEnProceso.has(estado)) return null;
@@ -324,7 +340,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   requiereAccion(s: Solicitud): boolean {
     const estado = (s.estado || '').toUpperCase();
-    return (estado === 'PENDIENTE_INFORMACION' && s.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) || estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
+    return (this.enPrecision(s) && this.observacionPendiente(s) !== undefined)
+      || estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
   }
 
   // ── Pipeline computed properties ──────────────────────────────────────
@@ -509,14 +526,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   readonly ubicacionPrincipal = computed<UbicacionTramite | null>(() => {
     const s = this.solicitudPrincipal();
-    if (!s) return null;
-    const estado = (s.estado || '').toUpperCase();
-    if (this.esApelacionResuelta(s)) return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
-    if (this.tieneApelacionActiva(s)) return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
-    if (estado === 'RESPONDIDA') return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
-    if (estado === 'DENEGADA') return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
-    if (estado === 'VENCIDA') return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
-    return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
+    return s ? this.ubicacionTramite(s) : null;
   });
 
   constructor() {
@@ -723,18 +733,17 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       }
       if (s.apelacion?.estado) {
         if (s.apelacion.estado === 'EN_SUBSANACION') return 'En subsanación';
-        if (s.apelacion.estado === 'EN_CALIFICACION_1') return 'En 1ra Calificación';
+        if (s.apelacion.estado === 'EN_CALIFICACION_1') return 'En primera calificación';
         if (s.apelacion.estado === 'EN_CALIFICACION_2') return 'En 2da Calificación';
         if (s.apelacion.estado === 'EN_RESOLUCION') return 'En Resolución Final';
         return this.formatoEstado(s.apelacion.estado);
       }
-      return 'En 1ra Calificación';
+      return 'Etapa por confirmar';
     }
     const estado = (s.estado || '').toUpperCase();
     if (estado === 'RECEPCIONADA') return 'Recepcionada';
     if (estado === 'EN_REVISION') return 'En revisión';
-    if (estado === 'PENDIENTE_INFORMACION') return 'Pendiente Informacion';
-    if (estado === 'EN_PRECISION') return 'En Precisión';
+    if (this.enPrecision(s)) return 'En precisión';
     if (estado === 'POR_RECOGER') return 'Por Recoger';
     if (estado === 'ENCAUZADA') return 'Encauzada';
     return this.formatoEstado(s.estado);
@@ -742,6 +751,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   ubicacionTramite(s: Solicitud): UbicacionTramite {
     const estadoApelacion = (s.apelacion?.estado || '').toUpperCase();
+    if (estadoApelacion === 'PENDIENTE_ELEVACION') {
+      return { label: 'Pendiente de remisión al Tribunal', instancia: 'Ante la entidad', tone: 'var(--gold-dark)', iconName: 'scale' };
+    }
     if (this.esApelacionResuelta(s)) {
       return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
     }
@@ -749,8 +761,12 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
     }
     const estado = (s.estado || '').toUpperCase();
-    if (estado === 'EN_PRECISION' || (estado === 'PENDIENTE_INFORMACION' && s.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION'))) {
-      return { label: 'Debe precisar su solicitud', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'alertTriangle' };
+    if (this.enPrecision(s)) {
+      const label = this.observacionPendiente(s) ? 'Debe precisar su solicitud' : 'En precisión';
+      return { label, instancia: '1ª instancia · Entidad', tone: 'var(--warning)', iconName: 'alertTriangle' };
+    }
+    if (this.archivadaSinPrecision(s)) {
+      return { label: 'Archivada por falta de precisión', instancia: '1ª instancia · Entidad', tone: 'var(--muted-foreground)', iconName: 'clock' };
     }
     if (estado === 'POR_RECOGER') {
       return { label: 'Lista para recoger en la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'mailCheck' };
@@ -770,7 +786,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
   }
 
-  filaUrgencia(s: Solicitud): { value: string | number; unit: string; tone: string } | null {
+  filaUrgencia(s: Solicitud): IndicadorBandeja | null {
     const estado = (s.estado || '').toUpperCase();
     if (this.requiereSubsanacionTTAIP(s)) {
       if (s.apelacion?.plazoSubsanacion?.estado === 'VENCIDO') return { value: 'Vencido', unit: 'plazo de subsanación', tone: 'var(--destructive)' };
@@ -778,14 +794,33 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return dias === null ? { value: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'Pendiente' : 'No disponible', unit: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'notificación eficaz' : 'información del plazo', tone: 'var(--muted-foreground)' }
         : { value: Math.max(0, dias), unit: 'días háb. para subsanar', tone: 'var(--brand-700)' };
     }
-    if (this.tieneApelacionActiva(s)) return { value: 'En trámite', unit: 'consulte la actuación registrada', tone: 'var(--info)' };
-    if (estado === 'PENDIENTE_INFORMACION') {
-      const pending = s.observaciones?.filter(o => o.estado === 'PENDIENTE_SUBSANACION');
-      const obsDays = pending?.[0]?.diasRestantes;
-      const remaining: number = typeof obsDays === 'number' ? obsDays : 2;
-      return { value: remaining, unit: 'días háb. para precisar', tone: 'var(--brand-700)' };
+    const estadoApelacion = s.apelacion?.estado;
+    if (estadoApelacion === 'PENDIENTE_ELEVACION') {
+      return { value: 'Pendiente', unit: 'remisión al Tribunal', tone: 'var(--gold-dark)' };
     }
-    if (estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(s)) {
+    if (estadoApelacion === 'EN_CALIFICACION_1' && !s.apelacion?.resolucionPrimeraCalificacion && !s.apelacion?.calificacionPrimera) {
+      const plazo = s.apelacion?.plazoPrimeraCalificacion;
+      if (!plazo || typeof plazo.vencido !== 'boolean' || !Number.isSafeInteger(plazo.diasRestantes)
+        || plazo.diasRestantes < 0 || plazo.vencido !== (plazo.diasRestantes === 0)) {
+        return { value: 'Por confirmar', unit: 'plazo de primera calificación', tone: 'var(--muted-foreground)' };
+      }
+      if (plazo.vencido) return { value: 'Plazo vencido', unit: 'primera calificación pendiente', tone: 'var(--warning)' };
+      const dias = plazo.diasRestantes;
+      return {
+        value: dias,
+        unit: dias === 1 ? 'día hábil para la primera calificación' : 'días hábiles para la primera calificación',
+        tone: dias <= 1 ? 'var(--brand-700)' : dias <= 3 ? 'var(--warning)' : 'var(--info)'
+      };
+    }
+    if (this.tieneApelacionActiva(s)) return { value: 'En revisión', unit: 'por el Tribunal', tone: 'var(--info)' };
+    if (this.enPrecision(s)) return this.indicadorPrecision(s);
+    if (this.archivadaSinPrecision(s)) {
+      return { value: 'Archivada', unit: 'sin precisión presentada', tone: 'var(--muted-foreground)' };
+    }
+    if (this.esSilencioAdministrativo(s)) {
+      return { value: 'Plazo vencido', unit: 'silencio administrativo negativo', tone: 'var(--brand-700)' };
+    }
+    if (estado === 'DENEGADA') {
       return { value: 'No disponible', unit: 'días para apelar', tone: 'var(--gold-dark)' };
     }
     if (this.estadosEnProceso.has(estado)) {
@@ -793,11 +828,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       if (dias === null) {
         return { value: 'No disponible', unit: 'días háb. para que la entidad responda', tone: 'var(--info)' };
       }
-      const val = Math.max(0, dias);
+      if (dias === 0) return { value: 'Último día', unit: 'para que la entidad responda', tone: 'var(--brand-700)' };
       return {
-        value: val,
-        unit: val === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda',
-        tone: val <= 2 ? 'var(--brand-700)' : 'var(--info)'
+        value: dias,
+        unit: dias === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda',
+        tone: dias <= 2 ? 'var(--brand-700)' : 'var(--info)'
       };
     }
     return null;
@@ -867,7 +902,10 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   }
 
   esSilencioAdministrativo(solicitud: Solicitud): boolean {
-    return isSilencioAdministrativo(solicitud);
+    if (solicitud.respuesta && solicitud.respuesta.tipoRespuesta !== 'SILENCIO_ADMINISTRATIVO') return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    return !this.enPrecision(solicitud) && (this.estadosEnProceso.has(estado) || estado === 'VENCIDA')
+      && isSilencioAdministrativo(solicitud);
   }
 
   private validarSolicitudes(data: Solicitud[], citizen: number | undefined): boolean {
@@ -940,12 +978,16 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
 
     if (this.tieneApelacionActiva(solicitud)) {
+      const primeraCalificacion = estadoApelacion === 'EN_CALIFICACION_1' && !solicitud.apelacion?.resolucionPrimeraCalificacion
+        && !solicitud.apelacion?.calificacionPrimera;
+      const plazo = primeraCalificacion ? this.filaUrgencia(solicitud) : null;
       return {
-        eyebrow: 'El Tribunal esta revisando su caso',
-        titulo: 'Su apelacion esta en evaluacion',
-        detalle: `El expediente ${solicitud.apelacion?.expediente || expediente} se encuentra en etapa ${this.formatoEstado(solicitud.apelacion?.estado)}. Consulte las actuaciones registradas.`,
-        metricValue: '·',
-        metricUnit: 'en estudio',
+        eyebrow: 'En revisión del Tribunal',
+        titulo: primeraCalificacion ? 'Su apelación está en primera calificación' : 'El Tribunal está revisando su apelación',
+        detalle: primeraCalificacion ? 'El Tribunal revisará si su recurso cumple los requisitos. Puede seguir el resultado en el detalle de la solicitud.'
+          : 'Abra el expediente para ver la etapa de su apelación y las decisiones disponibles.',
+        metricValue: plazo ? String(plazo.value) : '·',
+        metricUnit: plazo?.unit ?? 'en estudio',
         ctaLabel: 'Ver expediente',
         route: ['/ciudadano/solicitud', expediente],
         icon: 'gavel',
@@ -958,17 +1000,15 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
 
     const estado = (solicitud.estado || '').toUpperCase();
-    if (estado === 'EN_PRECISION' || (estado === 'PENDIENTE_INFORMACION' && solicitud.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION'))) {
-      const obs = solicitud.observaciones?.find(o => o.estado === 'PENDIENTE_SUBSANACION');
-      const dp = typeof obs?.diasRestantes === 'number' ? obs.diasRestantes : null;
-      const metricVal = dp !== null ? `${dp}` : 'Consultar';
-      const metricUn = dp !== null ? (dp === 1 ? 'día hábil' : 'días hábiles') : 'requerimiento';
+    if (this.enPrecision(solicitud)) {
+      if (!this.observacionPendiente(solicitud)) return null;
+      const indicador = this.indicadorPrecision(solicitud);
       return {
         eyebrow: 'Subsanación · 1ª instancia (entidad)',
         titulo: 'Revise la precisión solicitada por la entidad',
         detalle: `${entidad} necesita que precise su solicitud. Consulte el requerimiento antes de presentar su precisión.`,
-        metricValue: metricVal,
-        metricUnit: metricUn,
+        metricValue: String(indicador.value),
+        metricUnit: indicador.nota ? `${indicador.unit} · ${indicador.nota}` : indicador.unit,
         ctaLabel: 'Revisar precisión',
         route: ['/ciudadano/precision', expediente],
         icon: 'alert',
@@ -1059,13 +1099,13 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
     if (!this.estadosEnProceso.has(estado)) return null;
     const diasEntidad = this.diasRestantesParaEntidad(solicitud);
-    const diasVal = diasEntidad === null ? 'No disponible' : String(Math.max(0, diasEntidad));
+    const diasVal = diasEntidad === null ? 'No disponible' : diasEntidad === 0 ? 'Último día' : String(diasEntidad);
     return {
       eyebrow: 'Seguimiento de solicitud',
       titulo: 'Consulte su solicitud en la entidad',
       detalle: `Consulte el estado y las actuaciones registradas por ${entidad}.`,
       metricValue: diasVal,
-      metricUnit: diasVal === '1' ? 'día hábil para responder' : 'días hábiles para responder',
+      metricUnit: diasEntidad === 0 ? 'para que la entidad responda' : diasVal === '1' ? 'día hábil para responder' : 'días hábiles para responder',
       ctaLabel: 'Ver mi solicitud',
       route: ['/ciudadano/solicitud', expediente],
       icon: 'clock',
@@ -1091,14 +1131,35 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const estado = (solicitud.estado || '').toUpperCase();
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
-    if (estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+    const observaciones = this.observacionesDeSolicitud(solicitud).sort((a, b) =>
+      (a.fechaObservacion ?? '').localeCompare(b.fechaObservacion ?? ''));
+    for (const obs of observaciones) {
+      const pendiente = this.enPrecision(solicitud) && obs.estado === 'PENDIENTE_SUBSANACION';
+      steps.push({
+        key: `precision-${obs.id}`, label: 'Solicitud de precisión', date: this.formatDate(obs.fechaObservacion),
+        meta: pendiente ? 'En espera de su precisión' : undefined, status: pendiente ? 'active' : 'done',
+      });
+      if (obs.estado === 'SUBSANADA') {
+        steps.push({
+          key: `precision-registrada-${obs.id}`, label: 'Precisión registrada',
+          date: this.formatDate(obs.fechaSubsanacion), status: 'done',
+        });
+      }
+    }
+
+    if (this.enPrecision(solicitud)) {
+      steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
+    } else if (this.archivadaSinPrecision(solicitud)) {
+      steps.push({ key: 'archivo', label: 'Archivada sin precisión', status: 'done' });
+    } else if (this.esSilencioAdministrativo(solicitud)) {
       steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
       steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
       steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
     } else if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(solicitud);
       const vencimiento = this.formatDate(solicitud.fechaLimite);
-      const diasLabel = dias === null ? 'Plazo en evaluación' : `${Math.max(0, dias)} días hábiles`;
+      const diasLabel = dias === null ? 'Plazo en evaluación' : dias === 0 ? 'Último día para responder'
+        : `${dias} ${dias === 1 ? 'día hábil' : 'días hábiles'}`;
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
@@ -1151,7 +1212,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const estado = (solicitud.estado || '').toUpperCase();
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
-    if (estado === 'EN_PRECISION' || estado === 'OBSERVADA' || (estado === 'PENDIENTE_INFORMACION' && solicitud.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION'))) {
+    if (this.enPrecision(solicitud)) {
       return 110;
     }
 
@@ -1207,6 +1268,36 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     if (estado === 'VENCIDA') return 'vencida';
     if (estado === 'RESPONDIDA') return 'respondida';
     return estado.toLowerCase();
+  }
+
+  private enPrecision(solicitud: Solicitud): boolean {
+    return ['PENDIENTE_INFORMACION', 'EN_PRECISION', 'OBSERVADA'].includes((solicitud.estado || '').toUpperCase());
+  }
+
+  private observacionesDeSolicitud(solicitud: Solicitud) {
+    return (solicitud.observaciones ?? []).filter(obs => obs?.id != null && Number.isSafeInteger(obs.id)
+      && obs.id > 0 && obs.solicitudId === solicitud.id);
+  }
+
+  private observacionPendiente(solicitud: Solicitud) {
+    return this.observacionesDeSolicitud(solicitud).find(obs => obs.estado === 'PENDIENTE_SUBSANACION');
+  }
+
+  private archivadaSinPrecision(solicitud: Solicitud): boolean {
+    return ['CONCLUIDA', 'ARCHIVADA'].includes((solicitud.estado || '').toUpperCase())
+      && this.observacionesDeSolicitud(solicitud).some(obs => obs.estado === 'NO_SUBSANADA' || obs.estado === 'ARCHIVADA');
+  }
+
+  private indicadorPrecision(solicitud: Solicitud): IndicadorBandeja {
+    const dias = this.observacionPendiente(solicitud)?.diasRestantes;
+    const tone = 'var(--warning)';
+    if (dias == null || !Number.isSafeInteger(dias)) {
+      return { value: 'Plazo no disponible', unit: 'solicitud de precisión', tone };
+    }
+    if (dias < 0) return { value: 'Fecha registrada vencida', unit: 'precisión pendiente', tone };
+    const nota = 'Según la fecha registrada';
+    if (dias === 0) return { value: 'Último día', unit: 'para precisar', tone, nota };
+    return { value: dias, unit: dias === 1 ? 'día hábil para precisar' : 'días hábiles para precisar', tone, nota };
   }
 
   private diasRestantesParaEntidad(solicitud: Solicitud): number | null {
