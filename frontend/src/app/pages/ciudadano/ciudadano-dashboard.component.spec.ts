@@ -306,6 +306,23 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(component.accionPrincipal()?.metricValue).toBe('Pendiente');
     expect(component.filaUrgencia(appeal)?.unit).toBe('notificación eficaz');
   });
+  it('shows the days for first qualification reported for this appeal', () => {
+    const appeal = { ...request(91, 'DENEGADA'), apelacion: {
+      id: 19, expediente: 'TTAIP-SYNTHETIC-91', estado: 'EN_CALIFICACION_1',
+      plazoPrimeraCalificacion: { diasRestantes: 4, vencido: false },
+    } } as unknown as Solicitud;
+    expect(component.filaUrgencia(appeal)).toMatchObject({ value: 4, unit: 'días hábiles para la primera calificación' });
+    const lastDay = { ...appeal, apelacion: { ...appeal.apelacion!, plazoPrimeraCalificacion: { diasRestantes: 1, vencido: false } } };
+    expect(component.filaUrgencia(lastDay)?.unit).toBe('día hábil para la primera calificación');
+    const expired = { ...appeal, apelacion: { ...appeal.apelacion!, plazoPrimeraCalificacion: { diasRestantes: 0, vencido: true } } };
+    expect(component.filaUrgencia(expired)?.value).toBe('Plazo vencido');
+    const missing = { ...appeal, apelacion: { ...appeal.apelacion!, plazoPrimeraCalificacion: undefined } };
+    expect(component.filaUrgencia(missing)).toMatchObject({ value: 'Por confirmar', unit: 'plazo de primera calificación' });
+    const pending = { ...appeal, apelacion: { ...appeal.apelacion!, estado: 'PENDIENTE_ELEVACION' } } as Solicitud;
+    expect(component.filaUrgencia(pending)).toMatchObject({ value: 'Pendiente', unit: 'remisión al Tribunal' });
+    const decided = { ...appeal, apelacion: { ...appeal.apelacion!, resolucionPrimeraCalificacion: { id: 14 } } };
+    expect(component.filaUrgencia(decided)?.value).toBe('En revisión');
+  });
 
   it('distinguishes a missing clock from an explicitly pending start', () => {
     const appeal = { ...request(91, 'DENEGADA'), apelacion: { expediente: 'TTAIP-SYNTHETIC-91', estado: 'EN_SUBSANACION' } } as unknown as Solicitud;
@@ -322,7 +339,55 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     find.mockReturnValue(of([observed])); fixture.detectChanges();
     expect(component.pipeline().find(p => p.key === 'accion')?.count).toBe(1);
     expect(component.accionPrincipal()?.route).toEqual(['/ciudadano/precision', 'SAIP-2026-91']);
-    expect(component.accionPrincipal()?.metricValue).toBe('Consultar');
+    expect(component.accionPrincipal()?.metricValue).toBe('Plazo no disponible');
+  });
+
+  it('muestra el requerimiento del expediente enfocado sin usar su plazo ordinario ni observaciones ajenas', () => {
+    const observed: Solicitud = { ...request(91, 'PENDIENTE_INFORMACION'), diasRestantes: -5,
+      fechaLimite: '2026-10-29', observaciones: [
+        { id: 21, solicitudId: 99, estado: 'PENDIENTE_SUBSANACION', fechaLimiteSubsanacion: '2026-11-30' },
+        { id: 22, solicitudId: 91, estado: 'PENDIENTE_SUBSANACION', fechaObservacion: '2026-10-07',
+          fechaLimiteSubsanacion: '2026-10-09', diasRestantes: 2 }
+      ] };
+    find.mockReturnValue(of([observed, request(92)]));
+    fixture.detectChanges();
+    component.selectedSolicitudId.set(91);
+    fixture.detectChanges();
+    const seguimiento = fixture.nativeElement.querySelector('#seccion-timeline');
+    expect(seguimiento.textContent).toContain('Debe precisar su solicitud');
+    expect(seguimiento.textContent).toContain('Solicitud de precisión');
+    expect(seguimiento.textContent).toContain('07/10/2026');
+    expect(seguimiento.textContent).toContain('Fecha registrada para precisar: 09/10/2026');
+    expect(seguimiento.textContent).not.toMatch(/29\/10\/2026|30\/11\/2026|Plazo de respuesta|Silencio administrativo/);
+    expect(seguimiento.querySelector('a[href="/ciudadano/precision/SAIP-2026-91"]')).not.toBeNull();
+    expect(component.accionPrincipal()?.metricValue).toBe('2');
+    component.selectedSolicitudId.set(92);
+    fixture.detectChanges();
+    expect(seguimiento.textContent).not.toContain('07/10/2026');
+    expect(seguimiento.textContent).toContain('Plazo de respuesta');
+  });
+
+  it('distingue una observación subsanada de un requerimiento pendiente y retoma el seguimiento de la entidad', () => {
+    find.mockReturnValue(of([{ ...request(91), observaciones: [
+      { id: 22, solicitudId: 91, estado: 'SUBSANADA', fechaObservacion: '2026-10-07', fechaSubsanacion: '2026-10-08' }
+    ] }]));
+    fixture.detectChanges();
+    const seguimiento = fixture.nativeElement.querySelector('#seccion-timeline');
+    expect(seguimiento.textContent).toContain('Solicitud de precisión');
+    expect(seguimiento.textContent).toContain('Precisión registrada');
+    expect(seguimiento.textContent).toContain('08/10/2026');
+    expect(seguimiento.textContent).toContain('Plazo de respuesta');
+    expect(seguimiento.querySelector('a[href*="/ciudadano/precision/"]')).toBeNull();
+  });
+
+  it('avisa cuando falta la observación en el resumen sin inventar el paso ni su fecha', () => {
+    find.mockReturnValue(of([{ ...request(91, 'PENDIENTE_INFORMACION'), fechaLimite: '2026-10-29' }]));
+    fixture.detectChanges();
+    const seguimiento = fixture.nativeElement.querySelector('#seccion-timeline');
+    expect(seguimiento.textContent).toContain('El requerimiento no está disponible en este resumen');
+    expect(seguimiento.querySelector('ol').textContent).not.toContain('Solicitud de precisión');
+    expect(seguimiento.textContent).not.toContain('29/10/2026');
+    expect(seguimiento.querySelector('a[href*="/ciudadano/precision/"]')).toBeNull();
   });
 
   it('clears the view on logout and ignores pending callbacks and stale navigation', () => {
@@ -408,7 +473,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(component.puedePresentarApelacion(sanRequest)).toBe(true);
 
     const urgencia = component.filaUrgencia(sanRequest);
-    expect(urgencia?.unit).toBe('días para apelar');
+    expect(urgencia).toMatchObject({ value: 'Plazo vencido', unit: 'silencio administrativo negativo' });
     expect(urgencia?.unit).not.toContain('saldo');
     expect(String(urgencia?.value)).not.toContain('-60');
 
@@ -442,8 +507,42 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
 
     const precision = { ...request(103, 'PENDIENTE_INFORMACION') } as unknown as Solicitud;
     const urgenciaPrec = component.filaUrgencia(precision);
-    expect(urgenciaPrec?.value).toBe(2);
-    expect(urgenciaPrec?.unit).toBe('días háb. para precisar');
+    expect(urgenciaPrec?.value).toBe('Plazo no disponible');
+    expect(urgenciaPrec?.unit).toBe('solicitud de precisión');
+  });
+
+  it('usa los días de la observación vinculada y no el plazo ordinario de respuesta', () => {
+    const solicitud: Solicitud = { ...request(101, 'PENDIENTE_INFORMACION'), diasRestantes: 9, observaciones: [
+      { id: 71, solicitudId: 102, estado: 'PENDIENTE_SUBSANACION', diasRestantes: 5 },
+      { id: 72, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION', diasRestantes: 1 }
+    ] };
+    expect(component.filaUrgencia(solicitud)).toMatchObject({
+      value: 1, unit: 'día hábil para precisar', nota: 'Según la fecha registrada'
+    });
+  });
+
+  it('distingue el último día para precisar, el vencimiento y el archivo registrado', () => {
+    const solicitud: Solicitud = { ...request(101, 'PENDIENTE_INFORMACION'),
+      diasRestantes: -9, observaciones: [{ id: 72, solicitudId: 101, estado: 'PENDIENTE_SUBSANACION', diasRestantes: 0 }] };
+    expect(component.filaUrgencia(solicitud)).toMatchObject({ value: 'Último día', unit: 'para precisar' });
+    const vencida = { ...solicitud, observaciones: [{ ...solicitud.observaciones![0], diasRestantes: -1 }] };
+    expect(component.filaUrgencia(vencida)).toMatchObject({ value: 'Fecha registrada vencida', unit: 'precisión pendiente' });
+    expect(component.puedePresentarApelacion(vencida)).toBe(false);
+    const archivada: Solicitud = { ...vencida, estado: 'CONCLUIDA',
+      observaciones: [{ ...vencida.observaciones![0], estado: 'NO_SUBSANADA' }] };
+    expect(component.filaUrgencia(archivada)).toMatchObject({ value: 'Archivada', unit: 'sin precisión presentada' });
+    expect(component.puedePresentarApelacion(archivada)).toBe(false);
+  });
+
+  it('muestra Último día para responder cuando Spring informa cero y mantiene abierta la solicitud', () => {
+    const solicitud = { ...request(103), diasRestantes: 0, fechaLimite: '2026-10-29' };
+    find.mockReturnValue(of([solicitud]));
+    fixture.detectChanges();
+    const panel = fixture.nativeElement.querySelector('#seccion-timeline');
+    expect(component.filaUrgencia(solicitud)).toMatchObject({ value: 'Último día', unit: 'para que la entidad responda' });
+    expect(panel.textContent).toContain('Último día');
+    expect(panel.textContent).not.toMatch(/0 días hábiles|Plazo vencido/);
+    expect(component.puedePresentarApelacion(solicitud)).toBe(false);
   });
 
   it('incluye EN_PRECISION, POR_RECOGER y ENCAUZADA en solicitudesActivas y excluye solicitudes históricas respondidas', () => {
@@ -481,7 +580,8 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
       apelacion: { id: 80, expediente: '00080-2026-JUS/TTAIP', estado: 'EN_RESOLUCION' } as any
     } as unknown as Solicitud; // Score 25
     const reqPorRecoger = { ...request(212, 'POR_RECOGER' as any), id: 212, diasRestantes: 15 } as unknown as Solicitud; // Score 70
-    const reqPrecision = { ...request(213, 'EN_PRECISION' as any), id: 213, expediente: 'SAIP-2026-00213' } as unknown as Solicitud; // Score 110
+    const reqPrecision: Solicitud = { ...request(213, 'PENDIENTE_INFORMACION'), expediente: 'SAIP-2026-00213',
+      observaciones: [{ id: 52, solicitudId: 213, estado: 'PENDIENTE_SUBSANACION' }] };
 
     component.selectedSolicitudId.set(null);
     component.todasSolicitudes.set([reqRevisionUrgente, reqApelacionEnResolucion, reqPorRecoger, reqPrecision]);
