@@ -22,13 +22,13 @@ import type { AltaSaipRecepcionDTO } from '../api/types';
 import type { TipoDocumento } from '../models/documento.model';
 
 export interface ConsultaPublicaSolicitud {
-  expediente: string;
+  expediente: string | null;
   ciudadano: string;
-  entidad: string;
-  fechaPresentacion: string;
-  fechaLimite: string;
-  diasTranscurridos: number;
-  diasRestantes: number;
+  entidad: string | null;
+  fechaPresentacion: string | null;
+  fechaLimite: string | null;
+  diasTranscurridos: number | null;
+  diasRestantes: number | null;
   estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
   respuestaFecha: string | null;
   respuestaTipo: string | null;
@@ -76,6 +76,9 @@ export class SolicitudService {
   }
 
   consultarPublicamente(expediente: string): Observable<ConsultaPublicaSolicitud> {
+    if (expediente.endsWith('-JUS/TTAIP')) {
+      return this.http.get<ConsultaPublicaSolicitud>(`${this.apiUrl}/publica/expediente`, { params: { expediente } });
+    }
     return this.http.get<ConsultaPublicaSolicitud>(`${this.apiUrl}/publica/expediente/${encodeURIComponent(expediente)}`);
   }
 

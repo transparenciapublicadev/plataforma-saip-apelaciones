@@ -34,11 +34,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import pe.gob.saip.backend.model.entity.Ciudadano;
+import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.Funcionario;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.CiudadanoRepository;
+import pe.gob.saip.backend.repository.ApelacionRepository;
 import pe.gob.saip.backend.repository.EntidadRepository;
 import pe.gob.saip.backend.repository.FuncionarioRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
@@ -51,6 +53,7 @@ import tools.jackson.databind.json.JsonMapper;
         "spring.flyway.enabled=true", "spring.flyway.clean-disabled=true",
         "spring.flyway.locations=classpath:db/migration,classpath:db/seed",
         "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.jpa.open-in-view=false",
         "spring.datasource.driver-class-name=org.postgresql.Driver",
         "spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect",
         "springdoc.default-produces-media-type=application/json",
@@ -69,6 +72,7 @@ class ConsultaPublicaPrivacidadPostgresIntegrationTest {
             "resolucionFecha", "resolucionResultado");
 
     @Autowired private CiudadanoRepository ciudadanos;
+    @Autowired private ApelacionRepository apelaciones;
     @Autowired private EntidadRepository entidades;
     @Autowired private FuncionarioRepository funcionarios;
     @Autowired private SolicitudRepository solicitudes;
@@ -173,6 +177,37 @@ class ConsultaPublicaPrivacidadPostgresIntegrationTest {
     }
 
     @Test
+    void lookupByEitherNumberReturnsTheSameLimitedSummaryWithOsivDisabled() throws Exception {
+        String ttaip = crearApelacion(true);
+        HttpResponse<String> saip = get(publicPath(expediente), null);
+        HttpResponse<String> appeal = get(publicQuery(ttaip), null);
+        assertThat(saip.statusCode()).isEqualTo(200);
+        assertThat(appeal.statusCode()).isEqualTo(200);
+        assertThat(appeal.headers().firstValue("Cache-Control")).contains("no-store");
+        assertThat(json.readTree(appeal.body())).isEqualTo(json.readTree(saip.body()));
+        assertThat(appeal.body()).doesNotContain(marker);
+        assertThat(json.readTree(appeal.body()).path("apelacionExpediente").asString()).isEqualTo(ttaip);
+        assertThat(json.readTree(appeal.body()).path("apelacionEstado").asString()).isEqualTo("EN_CALIFICACION_1");
+        assertThat(get("/api/apelaciones/expediente?numero=" + ttaip, null).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void externalAppealLookupDoesNotExposeDeclaredTextOrInventASaipNumber() throws Exception {
+        String ttaip = crearApelacion(false);
+        HttpResponse<String> response = get(publicQuery(ttaip), null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.size()).isEqualTo(PUBLIC_FIELDS.size());
+        assertThat(body.path("expediente").isNull()).isTrue();
+        assertThat(body.path("entidad").isNull()).isTrue();
+        assertThat(body.path("fechaPresentacion").isNull()).isTrue();
+        assertThat(body.path("apelacionExpediente").asString()).isEqualTo(ttaip);
+        assertThat(response.body()).doesNotContain(marker);
+        assertThat(get(publicQuery("99999-2099-JUS/TTAIP"), null).statusCode()).isEqualTo(404);
+        assertThat(get(publicQuery("99999-2099-JUS-TTAIP"), null).statusCode()).isEqualTo(400);
+    }
+
+    @Test
     void authenticatedPublicProjectionIsTheSameForOwnerAndUnrelatedAccount() throws Exception {
         HttpResponse<String> anonymous = get(publicPath(expediente), null);
         HttpResponse<String> owner = get(publicPath(expediente), login(emailTitular));
@@ -252,6 +287,29 @@ class ConsultaPublicaPrivacidadPostgresIntegrationTest {
 
     private URI uri(String path) { return URI.create("http://127.0.0.1:" + port + path); }
     private String publicPath(String code) { return "/api/solicitudes/publica/expediente/" + code; }
+    private String publicQuery(String code) { return "/api/solicitudes/publica/expediente?expediente=" + code.replace("/", "%2F"); }
+    private String crearApelacion(boolean vinculada) {
+        return new TransactionTemplate(manager).execute(tx -> {
+            Solicitud solicitud = solicitudes.findById(solicitudId).orElseThrow();
+            Apelacion apelacion = new Apelacion();
+            apelacion.setExpediente("%05d-2099-JUS/TTAIP".formatted(solicitudId));
+            apelacion.setCiudadano(solicitud.getCiudadano());
+            apelacion.setFundamentos(marker);
+            if (vinculada) {
+                apelacion.setSolicitud(solicitud);
+            } else {
+                apelacion.setTipoOrigen(Apelacion.TipoOrigenApelacion.EXTERNA);
+                apelacion.setTipoDenegatoria(Apelacion.TipoDenegatoria.TACITA);
+                apelacion.setEntidadExternaNombre(marker);
+                apelacion.setNumeroSolicitudExterna(marker.substring(0, 25));
+                apelacion.setFechaPresentacionSolicitudExterna(java.time.LocalDate.of(2099, 1, 1));
+                apelacion.setResumenSolicitudOriginal(marker);
+                apelacion.setReferenciaDocumentoSolicitud(marker);
+                apelacion.setEvidenciaSilencioAdministrativo(marker);
+            }
+            return apelaciones.saveAndFlush(apelacion).getExpediente();
+        });
+    }
     private void evidence(String name, String text) throws IOException {
         String directory = System.getenv("PUBLICA_PRIVACY_ARTIFACTS");
         if (directory != null) Files.writeString(Path.of(directory).resolve(name), text);

@@ -5295,6 +5295,39 @@
         }
       }
     },
+    "/api/solicitudes/publica/expediente": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consulta pública enmascarada por número de expediente SAIP o TTAIP",
+        "operationId": "consultarEstadoPublico",
+        "parameters": [
+          {
+            "name": "expediente",
+            "in": "query",
+            "description": "Número completo, por ejemplo SAIP-2026-00001 o 00001-2026-JUS/TTAIP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaPublicaSolicitudDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
     "/api/solicitudes/publica/expediente/{expediente}": {
       "get": {
         "tags": [
@@ -11629,29 +11662,48 @@
       },
       "ConsultaPublicaSolicitudDTO": {
         "type": "object",
-        "description": "Vista pública y enmascarada del estado de una solicitud SAIP",
+        "description": "Vista pública y enmascarada del estado de una solicitud SAIP o una apelación TTAIP",
         "properties": {
           "expediente": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Número SAIP. Nulo si la apelación se presentó sin una solicitud en la plataforma"
           },
           "ciudadano": {
             "type": "string"
           },
           "entidad": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "fechaPresentacion": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "fechaLimite": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "diasTranscurridos": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32"
           },
           "diasRestantes": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int32"
           },
           "estado": {

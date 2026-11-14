@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
@@ -40,6 +41,7 @@ import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -47,22 +49,27 @@ import java.util.stream.Collectors;
 @Tag(name = "Solicitudes SAIP", description = "Gestión de solicitudes de acceso a la información pública (Ley N° 27806)")
 public class SolicitudRestController {
 
+    private static final Pattern EXPEDIENTE_TTAIP = Pattern.compile("[0-9]{5,}-[0-9]{4}-JUS/TTAIP");
+    private static final Pattern EXPEDIENTE_SAIP = Pattern.compile("SAIP-[0-9]{4}-[0-9]{5,}");
     private final SolicitudService solicitudService;
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
     private final MotorNotificacionesService motorNotificacionesService;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final ApelacionService apelacionService;
 
     public SolicitudRestController(SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
                                     EntidadService entidadService,
                                     MotorNotificacionesService motorNotificacionesService,
-                                    AutorizacionRecursosService autorizacionRecursosService) {
+                                    AutorizacionRecursosService autorizacionRecursosService,
+                                    ApelacionService apelacionService) {
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
         this.motorNotificacionesService = motorNotificacionesService;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.apelacionService = apelacionService;
     }
 
     @Operation(summary = "Listar todas las solicitudes SAIP")
@@ -98,9 +105,29 @@ public class SolicitudRestController {
     @GetMapping("/publica/expediente/{expediente}")
     public ResponseEntity<ConsultaPublicaSolicitudDTO> obtenerPublicaPorExpediente(
             @Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
-        Solicitud solicitud = solicitudService.findByExpediente(expediente)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
-        return ResponseEntity.ok(ConsultaPublicaSolicitudDTO.from(solicitud));
+        return respuestaPublica(solicitudService.consultarEstadoPublicoSaip(expediente));
+    }
+
+    @SecurityRequirements
+    @Operation(summary = "Consulta pública enmascarada por número de expediente SAIP o TTAIP")
+    @GetMapping("/publica/expediente")
+    public ResponseEntity<ConsultaPublicaSolicitudDTO> consultarEstadoPublico(
+            @Parameter(description = "Número completo, por ejemplo SAIP-2026-00001 o 00001-2026-JUS/TTAIP")
+            @RequestParam String expediente) {
+        String codigo = expediente.strip().toUpperCase(Locale.ROOT);
+        if (codigo.length() <= 50) {
+            if (EXPEDIENTE_TTAIP.matcher(codigo).matches()) {
+                return respuestaPublica(apelacionService.consultarEstadoPublicoTtaip(codigo));
+            }
+            if (EXPEDIENTE_SAIP.matcher(codigo).matches()) {
+                return respuestaPublica(solicitudService.consultarEstadoPublicoSaip(codigo));
+            }
+        }
+        throw new IllegalArgumentException("Ingrese un número completo de expediente SAIP o TTAIP");
+    }
+
+    private ResponseEntity<ConsultaPublicaSolicitudDTO> respuestaPublica(ConsultaPublicaSolicitudDTO resumen) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(resumen);
     }
 
     @Operation(summary = "Listar solicitudes por ciudadano")

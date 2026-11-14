@@ -1857,6 +1857,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/publica/expediente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulta pública enmascarada por número de expediente SAIP o TTAIP */
+        get: operations["consultarEstadoPublico"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/publica/expediente/{expediente}": {
         parameters: {
             query?: never;
@@ -4587,17 +4604,18 @@ export interface components {
             diasRestantes?: number;
             enSilencioAdministrativo?: boolean;
         };
-        /** @description Vista pública y enmascarada del estado de una solicitud SAIP */
+        /** @description Vista pública y enmascarada del estado de una solicitud SAIP o una apelación TTAIP */
         ConsultaPublicaSolicitudDTO: {
-            expediente?: string;
+            /** @description Número SAIP. Nulo si la apelación se presentó sin una solicitud en la plataforma */
+            expediente?: string | null;
             ciudadano?: string;
-            entidad?: string;
-            fechaPresentacion?: string;
-            fechaLimite?: string;
+            entidad?: string | null;
+            fechaPresentacion?: string | null;
+            fechaLimite?: string | null;
             /** Format: int32 */
-            diasTranscurridos?: number;
+            diasTranscurridos?: number | null;
             /** Format: int32 */
-            diasRestantes?: number;
+            diasRestantes?: number | null;
             estado?: string;
             respuestaFecha?: string;
             respuestaTipo?: string;
@@ -8458,6 +8476,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CronogramaEntregaParcialDTO"][];
+                };
+            };
+        };
+    };
+    consultarEstadoPublico: {
+        parameters: {
+            query: {
+                /** @description Número completo, por ejemplo SAIP-2026-00001 o 00001-2026-JUS/TTAIP */
+                expediente: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaPublicaSolicitudDTO"];
                 };
             };
         };

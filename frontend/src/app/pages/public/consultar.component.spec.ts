@@ -61,12 +61,62 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     const f = pagina(), c = f.componentInstance; c.buscar(); const req = http.expectOne(url); f.destroy();
     if (!req.cancelled) req.flush(resumen); expect(req.cancelled).toBe(true); expect(c.resultado()).toBeNull();
   });
-  it.each(['', ' ', '123', '00145-2026-JUS/TTAIP', 'SAIP-2026-123', 'SAIP-20AB-00001', 'SAIP-2026-00001/../23'])('valida el expediente %j sin consultar datos privados ni completar la búsqueda', codigo => {
+  it.each(['', ' ', '123', '00145-2026-JUS-TTAIP', 'SAIP-2026-123', 'SAIP-20AB-00001', 'SAIP-2026-00001/../23'])('valida el expediente %j sin consultar datos privados ni completar la búsqueda', codigo => {
     const f = pagina(), c = f.componentInstance; c.query.set(codigo); c.buscar(); f.detectChanges();
     expect(c.estadoConsulta()).toBe('validacion'); expect(c.noEncontrado()).toBe(false); expect(c.resultado()).toBeNull();
     const input = f.nativeElement.querySelector('#expediente') as HTMLInputElement;
     expect(input.getAttribute('aria-invalid')).toBe('true'); expect(input.getAttribute('aria-describedby')).toContain('expediente-error');
     expect(f.nativeElement.querySelector('#expediente-error').textContent).toContain('SAIP'); http.expectNone(() => true);
+  });
+  it('consulta el número TTAIP completo sin incluir su barra en la ruta', () => {
+    const f = pagina(), c = f.componentInstance;
+    escribir(c, ' 00145-2026-jus/ttaip ');
+    c.buscar();
+    const req = http.expectOne(request => request.url === `${environment.apiUrl}/solicitudes/publica/expediente`
+      && request.params.get('expediente') === '00145-2026-JUS/TTAIP');
+    req.flush({ ...resumen, estado: 'APELADA', apelacionExpediente: '00145-2026-JUS/TTAIP',
+      apelacionEstado: 'EN_CALIFICACION_1', apelacionFecha: '2026-10-10' });
+    expect(c.resultado()?.apelacionExpediente).toBe('00145-2026-JUS/TTAIP');
+    expect(c.resultado()?.expediente).toBe(expediente);
+  });
+  it('distingue el límite de consultas de un error del servidor', () => {
+    const f = pagina(), c = f.componentInstance;
+    c.buscar();
+    http.expectOne(url).flush(null, { status: 429, statusText: 'Too Many Requests' });
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Demasiadas consultas');
+    expect(f.nativeElement.textContent).not.toContain('No se pudo completar la consulta');
+    expect(c.reintentable()).toBe(false);
+  });
+  it('muestra una apelación externa por su número propio sin inventar una solicitud SAIP', () => {
+    const f = pagina(), c = f.componentInstance;
+    escribir(c, '00145-2026-JUS/TTAIP');
+    c.buscar();
+    http.expectOne(request => request.params.get('expediente') === '00145-2026-JUS/TTAIP')
+      .flush({ ...resumen, expediente: null, estado: 'APELADA', apelacionExpediente: '00145-2026-JUS/TTAIP',
+        apelacionEstado: 'EN_CALIFICACION_1', apelacionFecha: '2026-10-10', fechaPresentacion: null, diasTranscurridos: null });
+    f.detectChanges();
+    expect(c.resultado()?.expedienteSaip).toBeNull();
+    expect(f.nativeElement.textContent).toContain('Expediente TTAIP');
+    expect(f.nativeElement.textContent).not.toContain('Solicitud SAIP vinculada');
+    expect(f.nativeElement.textContent).not.toContain('días transcurridos');
+    expect(c.resultado()?.timeline).toHaveLength(1);
+  });
+  it('las entradas inválidas y los clics repetidos durante la carga no agotan el límite', () => {
+    const c = pagina().componentInstance;
+    for (let i = 0; i < 9; i++) {
+      c.query.set('incompleto');
+      c.buscar();
+    }
+    expect(c.estadoConsulta()).toBe('validacion');
+    c.query.set(expediente);
+    c.buscar();
+    for (let i = 0; i < 9; i++) c.buscar();
+    http.expectOne(url).flush(resumen);
+    expect(c.estadoConsulta()).toBe('disponible');
+    c.buscar();
+    http.expectOne(url).flush(resumen);
+    expect(c.estadoConsulta()).toBe('disponible');
   });
   it('normaliza el código sin añadir datos de identificación, admite números secuenciales de más de cinco dígitos', () => {
     const c = pagina().componentInstance; escribir(c, ' saip-2026-100001 '); c.buscar();
@@ -103,7 +153,7 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
   it('solo el 404 del contrato representa ausencia; mantiene el mensaje genérico y los datos para corregir', () => {
     const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush({ detail: 'Coincidencia parcial privada' }, { status: 404, statusText: 'Not found' }); f.detectChanges();
     expect(c.noEncontrado()).toBe(true); expect(c.estadoConsulta()).toBe('inexistente'); expect(c.query()).toBe(expediente);
-    expect(f.nativeElement.textContent).toContain('Sin resultado para esta consulta'); expect(c.mensaje()).not.toContain('Coincidencia');
+    expect(f.nativeElement.textContent).toContain('Expediente no encontrado'); expect(c.mensaje()).not.toContain('Coincidencia');
   });
   it.each([null, {}, [], { ...resumen, expediente: 'OTRO' }, { ...resumen, estado: null }, { ...resumen, estado: 'ESTADO_NUEVO' }])('un 200 incompleto o incompatible %j no se transforma en ausencia o estado archivado', data => {
     const f = pagina(), c = f.componentInstance; c.buscar(); http.expectOne(url).flush(data); f.detectChanges();
@@ -253,7 +303,10 @@ describe('ConsultarEstado — resumen público independiente del expediente aute
     // Intento 9 dentro del minuto
     c.query.set('SAIP-2026-00009');
     c.buscar();
-    expect(c.aviso()).toContain('muchas consultas seguidas');
+    f.detectChanges();
+    expect(c.estadoConsulta()).toBe('limite');
+    expect(c.mensaje()).toContain('muchas consultas seguidas');
+    expect(f.nativeElement.textContent).not.toContain('No se pudo completar la consulta');
     http.expectNone(`${environment.apiUrl}/solicitudes/publica/expediente/SAIP-2026-00009`);
   });
 });
