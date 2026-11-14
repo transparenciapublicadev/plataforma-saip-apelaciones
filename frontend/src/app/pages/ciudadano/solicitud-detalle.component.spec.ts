@@ -80,6 +80,29 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.nativeElement.textContent).not.toContain('Juan Carlos');
   });
 
+  it('presenta la entrega total como tipo de respuesta y permite consultar su adjunto', () => {
+    const f = pagina();
+    responder(f, { ...solicitud, estado: 'RESPONDIDA', respuesta: {
+      id: 91, tipoRespuesta: 'ENTREGA_TOTAL', fechaRespuesta: '2026-10-22T10:00:00',
+      contenido: 'Información solicitada',
+      documentosMetadata: [{ ...documento, solicitudId: null, respuestaId: 91,
+        tipoDocumento: 'RESPUESTA_ENTIDAD', nombreOriginal: 'respuesta.pdf' }],
+    } });
+
+    const timeline = f.nativeElement.querySelector('aside[aria-label="Actuaciones registradas"]');
+    expect(timeline.textContent).toContain('Respuesta de la entidad');
+    expect(timeline.textContent).toContain('Entrega total');
+    expect(timeline.textContent).not.toMatch(/recuperadas del servidor|no acredita/i);
+
+    (f.nativeElement.querySelector('#tab-respuesta') as HTMLButtonElement).click();
+    f.detectChanges();
+    const panel = f.nativeElement.querySelector('#panel-respuesta');
+    expect(panel.textContent).toContain('Respuesta de la entidad · Entrega total');
+    expect(panel.textContent).toContain('Información solicitada');
+    expect(panel.textContent).not.toMatch(/no acredita|la entidad entregó/i);
+    expect(panel.querySelector('button[aria-label="Descargar respuesta.pdf"]')).not.toBeNull();
+  });
+
   it.each([[400, 'validacion'], [422, 'validacion'], [401, 'autenticacion'], [403, 'autorizacion'],
     [404, 'inexistente'], [500, 'servidor'], [503, 'servidor'], [0, 'red']])(
     'el error %s no encuentra una solicitud ficticia y muestra un mensaje accesible', (status, estado) => {
@@ -211,7 +234,8 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     ] });
     f.componentInstance.cambiarTab('notificaciones'); f.detectChanges();
     expect(f.componentInstance.notifStages()[0].docs).toEqual([]);
-    expect(f.nativeElement.textContent).toContain('sin archivos recuperables');
+    expect(f.nativeElement.textContent).toContain('Aún no hay archivos disponibles para abrir o descargar');
+    expect(f.nativeElement.querySelector('#panel-notificaciones [download]')).toBeNull();
   });
 
   it('un error documental TTAIP no se convierte en lista vacía; reintenta y recupera los IDs reales', () => {
@@ -293,10 +317,10 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.nativeElement.textContent).not.toContain('En trámite');
     f.componentInstance.cambiarTab('respuesta');
     f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('estado Recepcionada');
+    expect(f.nativeElement.querySelector('#panel-respuesta').textContent).toContain('Estado actual: Recepcionada');
     f.componentInstance.cambiarTab('apelacion');
     f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('estado Recepcionada');
+    expect(f.nativeElement.querySelector('#panel-apelacion').textContent).toContain('Estado actual: Recepcionada');
     expect(f.nativeElement.textContent).not.toContain('«');
     expect(f.nativeElement.textContent).not.toContain('En Proceso');
   });
@@ -307,6 +331,28 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.nativeElement.textContent).not.toContain('La entidad entregó');
     expect(f.nativeElement.textContent).toContain('No se recuperó una respuesta registrada');
     expect(f.componentInstance.adjuntosRespuesta()).toEqual([]);
+  });
+
+  it('resume la solicitud de precisión en la línea de tiempo y muestra el estado real en ambas pestañas', () => {
+    const motivo = '1. Indique el periodo.\n2. Identifique el documento.';
+    const f = pagina();
+    responder(f, { ...solicitud, estado: 'PENDIENTE_INFORMACION', diasRestantes: -3, observaciones: [{
+      id: 22, solicitudId: 23, estado: 'PENDIENTE_SUBSANACION',
+      fechaObservacion: '2026-10-22T11:00:00', motivoObservacion: motivo
+    }] });
+    const timeline = f.nativeElement.querySelector('aside[aria-label="Actuaciones registradas"]');
+    expect(timeline.textContent).toContain('Solicitud de precisión');
+    expect(timeline.textContent).toContain('En espera de su precisión.');
+    expect(timeline.textContent).not.toContain('Indique el periodo');
+    expect(f.nativeElement.textContent).toContain(motivo);
+    for (const tab of ['respuesta', 'apelacion'] as const) {
+      f.componentInstance.cambiarTab(tab);
+      f.detectChanges();
+      const panel = f.nativeElement.querySelector('[role="tabpanel"]');
+      expect(panel.textContent).toContain('En precisión');
+      expect(panel.textContent).not.toMatch(/Pendiente Informacion|plazo de atención venció/);
+      expect(panel.querySelector('a[href*="/apelacion/nueva/"]')).toBeNull();
+    }
   });
 
   it('una respuesta parcial conserva contenido, causal y fundamento sin afirmar entrega ni firma', () => {
@@ -330,6 +376,17 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(events.some(e => e.title === 'Revisión de la entidad')).toBe(false);
     expect(events.some(e => e.title === 'Resolución final')).toBe(false);
     expect(events.some(e => e.description.includes('ADMITIDO'))).toBe(false);
+  });
+
+  it('explica qué encontrará el ciudadano cuando aún no hay decisiones del Tribunal disponibles', () => {
+    const f = pagina();
+    responder(f, { ...solicitud, apelacion: { id: 145, estado: 'EN_CALIFICACION_1' } });
+    http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, resoluciones: [] });
+    f.componentInstance.activeTab.set('notificaciones');
+    f.detectChanges();
+    const panel = f.nativeElement.querySelector('#panel-notificaciones') as HTMLElement;
+    expect(panel.textContent).toContain('Aún no hay resoluciones ni cédulas disponibles');
+    expect(panel.querySelector('button')).toBeNull();
   });
 
   it('una liquidación no permite confirmar un recojo solo en el navegador', () => {
@@ -451,7 +508,8 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
       fechaLimiteSubsanacion: '2020-01-01', motivoObservacion: 'Motivo real' }] });
     expect(f.nativeElement.querySelector('a[href="/ciudadano/precision/SAIP-2026-00023"]')).not.toBeNull();
     expect(f.nativeElement.textContent).not.toContain('Subsanación Vencida');
-    expect(f.nativeElement.textContent).toContain('se comprueban en el servidor');
+    expect(f.nativeElement.textContent).toContain('Fecha registrada para precisar: 01/01/2020');
+    expect(f.nativeElement.textContent).toContain('No se dispone de una fecha de notificación validada');
   });
 
   it('navega de vuelta al panel y al formulario de apelación con el expediente persistido', () => {
