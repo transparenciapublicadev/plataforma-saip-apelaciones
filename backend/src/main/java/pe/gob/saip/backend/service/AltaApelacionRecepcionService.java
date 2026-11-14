@@ -134,7 +134,7 @@ public class AltaApelacionRecepcionService {
         em.refresh(source);
         var d=documentos.obtenerMetadataDisponible(archivo.origenId());
         boolean sinOtras=d.apelacionId()==null && d.expedienteTtaipId()==null && d.resolucionId()==null && d.cedulaNotificacionId()==null;
-        boolean original="SOLICITUD_ORIGINAL".equals(archivo.tipo()) && "SOLICITUD_ORIGINAL".equals(d.tipoDocumento())
+        boolean original=Set.of("SOLICITUD_ORIGINAL","DOCUMENTO_ADJUNTO").contains(archivo.tipo()) && archivo.tipo().equals(d.tipoDocumento())
             && solicitud.getId().equals(d.solicitudId()) && d.respuestaId()==null;
         boolean respuesta="RESPUESTA_ENTIDAD".equals(archivo.tipo()) && "RESPUESTA_ENTIDAD".equals(d.tipoDocumento())
             && d.solicitudId()==null && solicitud.getRespuesta()!=null && solicitud.getRespuesta().getId().equals(d.respuestaId());

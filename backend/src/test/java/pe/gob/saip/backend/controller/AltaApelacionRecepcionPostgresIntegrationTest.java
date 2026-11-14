@@ -142,8 +142,11 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
         assertThat(response.statusCode()).isEqualTo(200);return json.readTree(response.body());
     }
     JsonNode antecedente(long source)throws Exception {
-        return json.readTree(mvc.perform(multipart("/api/documentos/upload").file(new MockMultipartFile("file","origen.txt","text/plain",BYTES))
-            .param("solicitudId",Long.toString(source)).param("tipoDocumento","SOLICITUD_ORIGINAL").header("Authorization","Bearer "+token))
+        return subirAntecedente("solicitudId",source,"SOLICITUD_ORIGINAL","origen.txt",BYTES);
+    }
+    JsonNode subirAntecedente(String relacion,long id,String tipo,String nombre,byte[] bytes)throws Exception {
+        return json.readTree(mvc.perform(multipart("/api/documentos/upload").file(new MockMultipartFile("file",nombre,"text/plain",bytes))
+            .param(relacion,Long.toString(id)).param("tipoDocumento",tipo).header("Authorization","Bearer "+token))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
     }
     long archivos()throws IOException{try(var paths=Files.walk(LOCAL)){return paths.filter(Files::isRegularFile).count();}}
@@ -301,8 +304,12 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
         jdbc.update("update documentos set id_apelacion=? where id_documento=?",other.path("apelacion").path("id").asLong(),first.path("documentos").get(0).path("documento").path("id").asLong());
         mvc.perform(get(base()+"/"+datos.get("claveOperacion")).header("Authorization","Bearer "+token)).andExpect(status().isConflict());assertThat(cuenta("apelaciones")).isEqualTo(2);
     }
-    @Test void respuestaExpresaExigeSuDocumentoYPermiteCopiarSoloElDeLaSolicitudCorrecta()throws Exception {
+    @Test void respuestaExpresaExigeSuDocumentoYCopiaTodosLosAntecedentesAutorizados()throws Exception {
         long source=solicitud();var original=antecedente(source);
+        byte[] bytesAnexo="Anexo original".getBytes(StandardCharsets.UTF_8);
+        byte[] bytesSegundaRespuesta="Segundo archivo de respuesta".getBytes(StandardCharsets.UTF_8);
+        var anexo=subirAntecedente("solicitudId",source,"DOCUMENTO_ADJUNTO","anexo.txt",bytesAnexo);
+        var otroAnexo=subirAntecedente("solicitudId",solicitud(),"DOCUMENTO_ADJUNTO","otro.txt",bytesAnexo);
         pe.gob.saip.backend.model.entity.Funcionario funcionario=new pe.gob.saip.backend.model.entity.Funcionario();
         funcionario.setEmail("funcionario@example.invalid");funcionario.setPassword(encoder.encode("Sintetico-2026!"));funcionario.setNombreCompleto("Funcionario sintético");
         funcionario.setTipoUsuario(Usuario.TipoUsuario.FUNCIONARIO);funcionario.setEntidad(entidades.findById(entidadId).orElseThrow());
@@ -311,13 +318,48 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
         var answer=json.readTree(mvc.perform(post("/api/respuestas").contentType("application/json").header("Authorization","Bearer "+token)
             .content(json.writeValueAsString(Map.of("solicitudId",source,"funcionarioId",funcionario.getId(),"tipoRespuesta","DENEGACION_TOTAL","contenido","Respuesta sintética","causalDenegatoria","Causal sintética","fundamentoLegal","Fundamento sintético"))))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        var response=json.readTree(mvc.perform(multipart("/api/documentos/upload").file(new MockMultipartFile("file","respuesta.txt","text/plain",BYTES))
-            .param("respuestaId",answer.path("id").asString()).param("tipoDocumento","RESPUESTA_ENTIDAD").header("Authorization","Bearer "+token))
-            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());token=own;
-        var datos=vinculada(UUID.randomUUID().toString(),source);datos.put("documentos",List.of(Map.of("tipoDocumento","SOLICITUD_ORIGINAL","origenId",original.path("id").asLong(),"hashOrigen",hash(BYTES))));
-        mvc.perform(envio(datos)).andExpect(status().isBadRequest());sinAlta(2);
-        datos.put("documentos",List.of(Map.of("tipoDocumento","SOLICITUD_ORIGINAL","origenId",original.path("id").asLong(),"hashOrigen",hash(BYTES)),Map.of("tipoDocumento","RESPUESTA_ENTIDAD","origenId",response.path("id").asLong(),"hashOrigen",hash(BYTES))));
-        var r=recibir(datos);assertThat(r.path("documentos").size()).isEqualTo(2);assertThat(cuenta("documentos")).isEqualTo(4);assertThat(archivos()).isEqualTo(4);
+        long respuestaId=answer.path("id").asLong();
+        var response=subirAntecedente("respuestaId",respuestaId,"RESPUESTA_ENTIDAD","respuesta.txt",BYTES);
+        var segunda=subirAntecedente("respuestaId",respuestaId,"RESPUESTA_ENTIDAD","respuesta.txt",bytesSegundaRespuesta);
+        token=own;
+
+        String clave=UUID.randomUUID().toString();
+        var datos=vinculada(clave,source);
+        datos.put("documentos",List.of(entradaAntecedente(original),entradaAntecedente(anexo)));
+        mvc.perform(envio(datos)).andExpect(status().isBadRequest());sinAlta(5);
+        datos.put("documentos",List.of(entradaAntecedente(original),entradaAntecedente(otroAnexo),entradaAntecedente(response)));
+        mvc.perform(envio(datos)).andExpect(status().isConflict());sinAlta(5);
+        datos.put("documentos",List.of(entradaAntecedente(anexo),entradaAntecedente(response)));
+        mvc.perform(envio(datos)).andExpect(status().isBadRequest());sinAlta(5);
+
+        List<JsonNode> origenes=List.of(original,anexo,response,segunda);
+        datos.put("documentos",origenes.stream().map(this::entradaAntecedente).toList());
+        var r=recibir(datos);
+        var adjuntos=r.path("documentos");
+        assertThat(adjuntos.size()).isEqualTo(origenes.size());
+        var bytesPorDocumento=List.of(BYTES,bytesAnexo,BYTES,bytesSegundaRespuesta);
+        for(int i=0;i<origenes.size();i++){
+            var origen=origenes.get(i);
+            var entrada=adjuntos.get(i);
+            var copia=entrada.path("documento");
+            assertThat(entrada.path("origenId").asLong()).isEqualTo(origen.path("id").asLong());
+            assertThat(copia.path("id").asLong()).isNotEqualTo(origen.path("id").asLong());
+            assertThat(copia.path("tipoDocumento").asString()).isEqualTo(origen.path("tipoDocumento").asString());
+            assertThat(copia.path("apelacionId").asLong()).isEqualTo(r.path("apelacion").path("id").asLong());
+            assertThat(entrada.path("hashAceptado").asString()).isEqualTo(hash(bytesPorDocumento.get(i)));
+            mvc.perform(get("/api/documentos/"+copia.path("id").asLong()+"/download").header("Authorization","Bearer "+token))
+                .andExpect(status().isOk()).andExpect(content().bytes(bytesPorDocumento.get(i)));
+        }
+        assertThat(recuperar(clave)).isEqualTo(r);
+        assertThat(recibir(datos)).isEqualTo(r);
+        assertThat(cuenta("apelaciones")).isEqualTo(1);
+        assertThat(cuenta("documentos")).isEqualTo(9);
+        assertThat(archivos()).isEqualTo(9);
+    }
+
+    private Map<String,Object> entradaAntecedente(JsonNode documento){
+        return Map.of("tipoDocumento",documento.path("tipoDocumento").asString(),"origenId",documento.path("id").asLong(),
+            "hashOrigen",documento.path("hashSha256").asString());
     }
 
     @Test void nombreNormalizadoNoCambiaIdentidadNiBytesAceptados()throws Exception {
@@ -327,7 +369,8 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
     }
     @Test void flywayValidateYContratoCompletoReal()throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();assertThat(flyway.info().pending()).isEmpty();
-        assertThat(Arrays.stream(flyway.info().applied()).map(m->m.getVersion().toString()).toList()).containsExactly("1","2","3","4","5","6","7","8","9","10","11","12");
+        assertThat(Arrays.stream(flyway.info().applied()).map(m->m.getVersion().toString()).toList())
+            .containsExactly("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16");
         String dir=System.getenv("ALTA_APELACION_POSTGRES_ARTIFACTS");if(dir!=null){var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString());
             assertThat(response.statusCode()).isEqualTo(200);
             var contract=json.readTree(response.body());var schemas=contract.path("components").path("schemas");
