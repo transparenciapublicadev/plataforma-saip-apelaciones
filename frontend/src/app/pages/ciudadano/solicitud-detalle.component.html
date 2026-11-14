@@ -75,12 +75,17 @@
           </div>
           <div class="flex-1 min-w-0">
             <span class="eyebrow" style="color: var(--warning)">Solicitud de precisión registrada</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Consulte y responda el requerimiento desde el formulario de precisión. La recepción y sus condiciones se comprueban en el servidor.</p>
+            <p class="text-sm text-foreground/85 mt-1.5">Revise lo que le pide la entidad y presente su precisión.</p>
             <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
               <span class="eyebrow">Observaciones de la entidad</span>
               <p class="mt-1.5 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
             </div>
-            <p class="text-xs text-muted-foreground mt-3">Fecha límite registrada: {{ (observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy') || 'No disponible' }}.</p>
+            <p class="text-xs text-muted-foreground mt-3">
+              @if (observacion.fechaLimiteSubsanacion) {
+                Fecha registrada para precisar: {{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}.
+              } @else { Sin fecha registrada para precisar. }
+              El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.
+            </p>
             <a [routerLink]="['/ciudadano/precision', sol.expediente]" class="btn-brand mt-3 inline-flex !py-2 !px-4 !text-[13px]">Responder precisión</a>
           </div>
         </div>
@@ -240,13 +245,12 @@
             <span class="eyebrow" style="color: var(--brand-700)">Acción disponible · 15 días hábiles</span>
             <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
               @if (sol.estado === 'DENEGADA') {
-                Su solicitud fue <span class="font-semibold">denegada</span>.
+                Su solicitud fue <span class="font-semibold">denegada</span>. Puede <span class="font-semibold">apelar ante el TTAIP</span>.
               } @else if (sol.estado === 'VENCIDA' || esSilencioAdministrativo()) {
-                Su solicitud <span class="font-semibold">no fue respondida en plazo</span> (silencio administrativo).
+                Su solicitud <span class="font-semibold">no fue respondida en plazo</span> (silencio administrativo). Puede <span class="font-semibold">apelar ante el TTAIP</span>.
               } @else {
-                El expediente tiene una <span class="font-semibold">respuesta registrada</span>. Si no está conforme,
+                Si no está conforme con la <span class="font-semibold">respuesta de la entidad</span>, puede <span class="font-semibold">apelar ante el TTAIP</span>.
               }
-              Tiene derecho a <span class="font-semibold">interponer recurso de apelación</span> ante el TTAIP.
             </p>
           </div>
           <a [routerLink]="['/ciudadano/apelacion/nueva', sol.expediente]" class="btn-brand !py-2 !px-4 !text-[13px] flex-shrink-0">
@@ -264,11 +268,10 @@
               <h2 class="form-section-title">Línea de tiempo</h2>
             </div>
             <div class="p-6">
-              <p class="text-xs text-muted-foreground mb-4">Actuaciones recuperadas del servidor. El estado actual no acredita por sí solo entrega, notificación eficaz ni firma.</p>
               @if (timelineEvents().length) {
                 <app-timeline [events]="timelineEvents()"></app-timeline>
               } @else {
-                <p role="status" class="text-sm text-muted-foreground">No se recuperaron actuaciones con evidencia suficiente para esta línea de tiempo.</p>
+                <p role="status" class="text-sm text-muted-foreground">No hay actuaciones para mostrar en este expediente.</p>
               }
             </div>
           </div>
@@ -333,6 +336,19 @@
                     {{ sol.descripcion || 'Descripción no registrada' }}
                   </div>
                 </div>
+
+                @for (obs of observaciones(); track obs.id) {
+                  @if (obs.id !== observacionPendiente()?.id && obs.motivoObservacion) {
+                    <details class="rounded-md border border-border p-4 text-sm">
+                      <summary class="cursor-pointer font-semibold">Ver observación de precisión
+                        @if (obs.fechaObservacion) {
+                          <span class="font-normal text-muted-foreground">· {{ obs.fechaObservacion | date:'dd/MM/yyyy' }}</span>
+                        }
+                      </summary>
+                      <p class="mt-3 whitespace-pre-line break-words">{{ obs.motivoObservacion }}</p>
+                    </details>
+                  }
+                }
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
@@ -421,16 +437,12 @@
                   <div class="rounded-lg p-5 flex items-start gap-4" [style.background]="respDenegada() ? 'var(--brand-subtle)' : 'color-mix(in srgb, var(--success) 8%, transparent)'" [style.border]="respDenegada() ? '1px solid var(--brand-200)' : '1px solid color-mix(in srgb, var(--success) 30%, transparent)'" [style.border-left]="respDenegada() ? '3px solid var(--brand-700)' : '3px solid var(--success)'">
                     <svg aria-hidden="true" lucideAlertCircle class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="respDenegada() ? 'var(--brand-700)' : 'var(--success)'"></svg>
                     <div>
-                      <span class="eyebrow" [style.color]="respDenegada() ? 'var(--brand-700)' : 'var(--success)'">Respuesta registrada · {{ respLabel() }}</span>
-                      <p class="text-sm text-foreground/85 mt-1.5">
-                        @if (respDenegada()) {
-                          La entidad denegó el acceso a la información solicitada. Puede apelar esta decisión ante el Tribunal (TTAIP).
-                        } @else if (respParcial()) {
-                          La entidad registró una respuesta de entrega parcial. Los archivos vinculados se muestran más abajo; su registro no acredita la entrega efectiva.
-                        } @else {
-                          La entidad registró una respuesta. El registro y sus archivos no acreditan por sí solos entrega, notificación eficaz, firma o emisión formal.
-                        }
-                      </p>
+                      <span class="eyebrow" [style.color]="respDenegada() ? 'var(--brand-700)' : 'var(--success)'">Respuesta de la entidad · {{ respLabel() }}</span>
+                      @if (respDenegada()) {
+                        <p class="text-sm text-foreground/85 mt-1.5">La entidad denegó el acceso a la información solicitada.</p>
+                      } @else if (adjuntosRespuesta().length) {
+                        <p class="text-sm text-foreground/85 mt-1.5">Consulte los documentos adjuntos a continuación.</p>
+                      }
                     </div>
                   </div>
 
@@ -524,11 +536,12 @@
                     <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">La entidad aún no ha respondido</h3>
                     @if (esSilencioAdministrativo()) {
                       <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                        El plazo de atención venció y la entidad no registró una respuesta. Esa ausencia no acredita entrega. Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
+                        El plazo de atención venció sin una respuesta de la entidad. Su expediente figura como <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
                       </p>
                     } @else {
                       <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                        La respuesta aparecerá aquí <span class="font-medium text-foreground/80">recién cuando la entidad la registre</span>, junto con los documentos que adjunte. Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
+                        La respuesta y sus documentos aparecerán aquí cuando la entidad los registre.
+                        Estado actual: <span class="font-medium text-foreground/80">{{ estadoSaipLabel() }}</span>.
                       </p>
                     }
                   </div>
@@ -540,7 +553,7 @@
                     <span class="eyebrow">Información de respuesta no disponible</span>
                     <h3 class="font-display mt-1.5" style="font-size: 20px">No se recuperó una respuesta registrada</h3>
                     <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                      El detalle recibido no contiene una respuesta con identificador persistido. El estado del expediente no sustituye su contenido ni acredita entrega.
+                      El contenido de la respuesta no está disponible en el detalle del expediente.
                     </p>
                   </div>
                 }
@@ -554,7 +567,7 @@
                   <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
                     <svg aria-hidden="true" lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                     <p class="text-sm text-foreground/85 leading-relaxed">
-                      Aquí se muestran las resoluciones y cédulas registradas por el <span class="font-semibold">Tribunal (TTAIP)</span> y los archivos disponibles en el expediente.
+                      Consulte las decisiones del <span class="font-semibold">Tribunal de Transparencia (TTAIP)</span> sobre su apelación y los avisos que le dirige. Cuando haya archivos disponibles, podrá abrirlos o descargarlos aquí.
                     </p>
                   </div>
                 </div>
@@ -573,9 +586,8 @@
                     <div class="w-14 h-14 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <svg aria-hidden="true" lucideBellRing class="w-7 h-7" style="color: var(--brand-700)"></svg>
                     </div>
-                    <span class="eyebrow">Sin documentos recuperados</span>
-                    <h3 class="font-display mt-1.5" style="font-size: 20px">No hay documentos del Tribunal</h3>
-                    <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">La consulta no devolvió resoluciones o cédulas recuperables. La presencia de un archivo no acredita firma ni notificación eficaz.</p>
+                    <h3 class="font-display" style="font-size: 20px">Aún no hay resoluciones ni cédulas disponibles</h3>
+                    <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">Vuelva a esta pestaña para consultar las decisiones del Tribunal y sus avisos cuando estén disponibles en su expediente.</p>
                   </div>
                 } @else {
                   <div class="p-5 md:p-6 space-y-5">
@@ -614,7 +626,7 @@
                               </div>
                             </div>
                           } @empty {
-                            <p role="status" class="text-sm text-muted-foreground">Esta resolución está registrada sin archivos recuperables de resolución o cédula. No hay documentos disponibles para descargar.</p>
+                            <p role="status" class="text-sm text-muted-foreground">Puede ver el resultado de esta etapa. Aún no hay archivos disponibles para abrir o descargar.</p>
                           }
                         </div>
                       </div>
@@ -649,7 +661,12 @@
                     <span class="eyebrow">Apelación no disponible todavía</span>
                     <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">Aún no puede apelar</h3>
                     <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                      El recurso de apelación se habilita <span class="font-medium text-foreground/80">recién cuando la entidad emite su respuesta</span> (o vence el plazo legal sin respuesta). Su expediente se encuentra actualmente en estado <span class="font-medium text-foreground/80">{{ getEstadoDisplay(sol.estado) }}</span>.
+                      @if (observacionPendiente()) {
+                        La entidad le pidió precisar su solicitud. Consulte el requerimiento en este expediente.
+                      } @else {
+                        Puede presentar una apelación después de la respuesta de la entidad o si vence el plazo sin respuesta, según corresponda.
+                      }
+                      Estado actual: <span class="font-medium text-foreground/80">{{ estadoSaipLabel() }}</span>.
                     </p>
                   </div>
                 }

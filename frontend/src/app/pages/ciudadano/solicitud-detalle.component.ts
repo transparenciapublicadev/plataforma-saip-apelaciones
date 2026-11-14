@@ -125,6 +125,8 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return est ? this.getEstadoDisplay(est) : 'Sin estado registrado';
   });
 
+  readonly estadoSaipLabel = computed(() => this.getEstadoDisplay(this.solicitud()?.estado));
+
   readonly estadoBadge = computed<string>(() => {
     const sol = this.solicitud();
     if (!sol) return 'Sin estado registrado';
@@ -148,7 +150,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       }
       return this.getEstadoDisplay(est);
     }
-    return this.getEstadoDisplay(sol.estado);
+    return this.estadoSaipLabel();
   });
 
   readonly tabs = computed<RequestTabItem[]>(() => {
@@ -512,7 +514,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     if (upper === 'RESUELTO_IMPROCEDENTE' || upper === 'IMPROCEDENTE') return 'Improcedente';
     if (upper === 'RECEPCIONADA') return 'Recepcionada';
     if (upper === 'EN_REVISION') return 'En revisión';
-    if (upper === 'PENDIENTE_INFORMACION') return 'Pendiente Informacion';
+    if (this.enPrecisionSaip(upper)) return 'En precisión';
     if (upper === 'DENEGADA') return 'Denegada';
     if (upper === 'VENCIDA') return 'Vencida';
     if (upper === 'RESPONDIDA') return 'Respondida';
@@ -604,7 +606,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return estado === 'RECEPCIONADA'
       || estado === 'EN_REVISION'
       || estado === 'EN_PROCESO'
-      || estado === 'PENDIENTE_INFORMACION';
+      || this.enPrecisionSaip(estado);
   }
 
   puedeApelar(): boolean {
@@ -613,7 +615,13 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   esSilencioAdministrativo(): boolean {
-    return isSilencioAdministrativo(this.solicitud());
+    const sol = this.solicitud();
+    return !!sol && !this.observacionPendiente() && !this.enPrecisionSaip(sol.estado)
+      && isSilencioAdministrativo(sol);
+  }
+
+  private enPrecisionSaip(estado?: string): boolean {
+    return ['PENDIENTE_INFORMACION', 'EN_PRECISION', 'OBSERVADA'].includes((estado || '').toUpperCase());
   }
 
   isApelacionResuelta(): boolean {
@@ -655,7 +663,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud SAIP.', sol.fechaPresentacion, 'mail');
     for (const obs of sol.observaciones ?? []) {
       if (!this.idValido(obs.id) || (obs.solicitudId != null && obs.solicitudId !== sol.id)) continue;
-      add('Solicitud de precisión', obs.motivoObservacion || 'Motivo no registrado.', obs.fechaObservacion, 'search');
+      add('Solicitud de precisión', this.resumenPrecision(obs.estado), obs.fechaObservacion, 'search');
       if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck');
     }
     for (const enc of sol.encauzamientos ?? []) {
@@ -673,7 +681,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck');
     }
     if (this.idValido(sol.respuesta?.id)) {
-      add('Respuesta registrada', this.respLabel() + ' · el registro no acredita entrega ni notificación eficaz.', sol.respuesta?.fechaRespuesta, 'filecheck');
+      add('Respuesta de la entidad', this.respLabel(), sol.respuesta?.fechaRespuesta, 'filecheck');
     }
     const ap = sol.apelacion;
     if (this.idValido(ap?.id)) {
@@ -696,5 +704,15 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   timelineDisplayOrder(steps: TimelineEvent[]): TimelineEvent[] {
     return [...steps].reverse();
+  }
+
+  private resumenPrecision(estado: string): string {
+    switch (estado) {
+      case 'PENDIENTE_SUBSANACION': return 'En espera de su precisión.';
+      case 'SUBSANADA': return 'La observación fue subsanada.';
+      case 'NO_SUBSANADA': return 'La observación quedó sin subsanar.';
+      case 'ARCHIVADA': return 'La observación fue archivada.';
+      default: return 'La entidad pidió precisar su solicitud.';
+    }
   }
 }
