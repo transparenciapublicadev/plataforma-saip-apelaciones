@@ -119,7 +119,7 @@ describe('PrecisionFormComponent — recepción verificable', () => {
     expect(precisionService.consultar).toHaveBeenCalledWith(23, 9, clave);
     expect(component.successModalAbierto()).toBe(false);
     expect(component.verificacionPendiente()).toBe(false);
-    expect(component.error()).toContain('misma clave');
+    expect(component.error()).toContain('mismo comentario y archivo');
     precisionService.enviar.mockImplementation((_s: number, _o: number, key: string) => of(recepcion(key)));
     component.confirmarEnvio();
     expect(precisionService.enviar.mock.calls[1][2]).toBe(clave);

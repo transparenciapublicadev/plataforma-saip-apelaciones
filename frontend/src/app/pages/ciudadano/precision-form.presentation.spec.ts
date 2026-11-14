@@ -95,8 +95,12 @@ describe('PrecisionFormComponent — presentación y contexto autorizado', () =>
   it('la fecha de observación no se presenta como evidencia de notificación eficaz', () => {
     const f = pagina(); responder(f);
     expect(f.nativeElement.textContent).toContain('Fecha de observación');
-    expect(f.nativeElement.textContent).toContain('no acredita notificación eficaz');
-    expect(f.nativeElement.querySelector('a[href="/ciudadano/solicitud/SAIP-2026-00023"]')).not.toBeNull();
+    expect(f.nativeElement.textContent).toContain('Fecha registrada para subsanar');
+    expect(f.nativeElement.textContent).toContain('Pendiente de subsanar');
+    expect(f.nativeElement.textContent).not.toContain('PENDIENTE_SUBSANACION');
+    const volver = f.nativeElement.querySelector('a[href="/ciudadano/solicitud/SAIP-2026-00023"]');
+    expect(volver?.textContent).toContain('Volver al expediente');
+    expect(volver?.nextElementSibling.textContent).toContain('Subsanación de requisitos');
   });
 
   it('asocia el comentario a su etiqueta y ofrece selección de archivo por teclado', () => {
@@ -138,6 +142,8 @@ describe('PrecisionFormComponent — presentación y contexto autorizado', () =>
     f.componentInstance.abrirConfirmacion(); f.detectChanges(); await Promise.resolve();
     const dialog = document.querySelector('[role=dialog]')!;
     expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(dialog.textContent).toContain('desde el día siguiente a la notificación válida');
+    expect(dialog.textContent).not.toContain('servidor');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();
     http.expectNone(precision);
     expect(f.componentInstance.recepcion()).toBeNull();
@@ -177,7 +183,7 @@ describe('PrecisionFormComponent — presentación y contexto autorizado', () =>
 
   it('seleccionar un archivo es un estado local y eliminarlo permite seleccionarlo otra vez', () => {
     const f = pagina(); responder(f); const file = completar(f);
-    expect(f.nativeElement.textContent).toContain('Seleccionado en memoria: precision.pdf');
+    expect(f.nativeElement.textContent).toContain('Archivo seleccionado: precision.pdf');
     expect(f.componentInstance.recepcion()).toBeNull();
     http.expectNone(precision);
     f.componentInstance.removerArchivo(); f.detectChanges();
@@ -209,14 +215,21 @@ describe('PrecisionFormComponent — presentación y contexto autorizado', () =>
     expect(body.get('comentario')).toBe('Preciso el periodo solicitado.');
     expect(f.componentInstance.successModalAbierto()).toBe(false);
     req.flush(recibida(clave)); f.detectChanges(); await Promise.resolve();
-    expect(document.querySelector('[role=dialog]')?.getAttribute('aria-label')).toBe('Precisión registrada');
-    expect(document.body.textContent).toContain('88');
+    const dialog = document.querySelector('[role=dialog]');
+    expect(dialog?.getAttribute('aria-label')).toBe('Precisión registrada');
+    expect(dialog?.textContent).toContain('precision.pdf');
+    expect(dialog?.textContent).toContain('21/10/2026');
+    expect(dialog?.textContent).not.toMatch(/servidor|Clave de operación|2026-10-21T/);
+    expect(dialog?.textContent).not.toContain(clave);
+    expect(f.componentInstance.recepcion()?.documento.id).toBe(88);
     expect(f.componentInstance.solicitud()?.estado).toBe('PENDIENTE_INFORMACION');
     expect(document.body.textContent).not.toContain('dentro del plazo legal');
     (document.querySelector('[role=dialog] button[aria-label="Cerrar"]') as HTMLButtonElement).click();
     f.detectChanges(); await Promise.resolve();
     expect(document.activeElement?.id).toBe('precision-recepcion');
-    expect(f.nativeElement.textContent).toContain(clave);
+    expect(f.nativeElement.querySelector('#precision-recepcion').textContent).toContain('21/10/2026');
+    expect(f.nativeElement.textContent).not.toContain(clave);
+    expect(f.nativeElement.textContent).toContain('Subsanada');
   });
 
   it('la pérdida de confirmación consulta la misma clave y recupera sin segundo POST', () => {
@@ -307,7 +320,9 @@ describe('PrecisionFormComponent — presentación y contexto autorizado', () =>
     expect(nueva.componentInstance.archivoSeleccionado()).toBeNull(); expect(nueva.componentInstance.respuesta()).toBe('');
     http.expectOne(`${precision}/${clave}`).flush(recibida(clave)); nueva.detectChanges();
     expect(nueva.componentInstance.recepcion()?.documento.id).toBe(88);
-    expect(nueva.nativeElement.textContent).toContain(clave); http.expectNone(precision);
+    expect(nueva.nativeElement.textContent).not.toContain(clave);
+    expect(nueva.componentInstance.recepcion()?.claveOperacion).toBe(clave);
+    http.expectNone(precision);
   });
 
   it('un 409 no confirma éxito y permite consultar la operación existente sin sustituir su clave', () => {

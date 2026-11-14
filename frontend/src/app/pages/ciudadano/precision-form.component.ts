@@ -145,7 +145,7 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
     'Precise o corrija su solicitud según lo observado.',
     'Describa las correcciones realizadas.',
     'Adjunte el documento que subsana la observación.',
-    'Consulte la fecha límite registrada; el servidor comprueba las condiciones de presentación.'
+    'Revise la fecha registrada para subsanar.'
   ];
 
   // Estado del expediente
@@ -158,6 +158,19 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
   private readonly conservarContenidoIntento = signal(false);
   recepcion = signal<PrecisionSaipRecepcion | null>(null);
   observacionSeleccionada = signal<ObservacionSolicitud | null>(null);
+  readonly estadoObservacionVisible = computed(() => {
+    switch (this.recepcion()?.estado ?? this.observacionSeleccionada()?.estado) {
+      case 'PENDIENTE_SUBSANACION': return 'Pendiente de subsanar';
+      case 'SUBSANADA': return 'Subsanada';
+      case 'NO_SUBSANADA': return 'Sin subsanar';
+      case 'ARCHIVADA': return 'Archivada';
+      default: return 'Estado no disponible';
+    }
+  });
+  readonly fechaRecepcionVisible = computed(() => {
+    const fecha = this.recepcion()?.fechaRecepcion;
+    return fecha ? this.formatearFecha(fecha) : '';
+  });
   readonly formularioBloqueado = computed(() => !this.puedeEnviar() || this.loadingEnvio() || this.verificacionPendiente()
     || this.conservarContenidoIntento() || !!this.recepcion());
   readonly puedeEnviar = computed(() => !!this.solicitud()?.id
@@ -270,7 +283,7 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
         this.loadingSolicitud.set(false);
         if (!sol) { this.estadoFormulario.set('vacio'); this.puedeReintentarCarga.set(true); return; }
         if (!this.idValido(sol.id) || sol.expediente !== expedienteParam || (sol.ciudadanoId != null && sol.ciudadanoId !== contexto.usuarioId)) {
-          this.estadoFormulario.set('error'); this.error.set('El servidor devolvió datos que no corresponden a la solicitud consultada.');
+          this.estadoFormulario.set('error'); this.error.set('Los datos recibidos no corresponden a la solicitud consultada.');
           return;
         }
         this.solicitud.set(sol);
@@ -569,8 +582,8 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
           if (error instanceof HttpErrorResponse && error.status === 404) {
             this.verificacionPendiente.set(false);
             this.error.set(this.estadoFormulario() === 'disponible'
-              ? 'El servidor aún no registra esta recepción. Puede reintentar con el mismo comentario y archivo; se conservará la misma clave para evitar duplicados.'
-              : 'No se recuperó una recepción para esta clave y el requerimiento no está disponible para otro envío. Consulte el expediente; no se volverá a presentar automáticamente.');
+              ? 'Aún no hay una recepción registrada. Puede reintentar con el mismo comentario y archivo.'
+              : 'No encontramos la recepción de su envío. Consulte el expediente para conocer el estado del requerimiento.');
           } else {
             this.dejarResultadoIncierto(error);
           }
@@ -690,10 +703,10 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
       if (error.status === 401) return 'Su sesión no está autorizada. Ingrese nuevamente; no se ha confirmado la recepción.';
       if (error.status === 403) return 'No tiene permiso para realizar esta operación sobre la solicitud.';
       if (error.status === 404) return 'No se encontró la solicitud, observación o documento solicitado.';
-      if (error.status === 400 || error.status === 422) return 'El servidor rechazó los datos de la precisión. Revise el comentario y el archivo; no se ha confirmado la recepción.';
-      if (error.status === 409) return 'La operación entra en conflicto con una recepción o estado registrado. Conserve la clave y compruebe la recepción antes de volver a enviar.';
-      if (error.status === 413) return 'El archivo supera el tamaño permitido por el servidor.';
-      if (error.status === 415) return 'El servidor rechazó el formato del archivo.';
+      if (error.status === 400 || error.status === 422) return 'No se pudo registrar la subsanación. Revise el comentario y el archivo antes de enviarla de nuevo.';
+      if (error.status === 409) return 'El envío no coincide con los datos registrados. Compruebe la recepción antes de volver a enviar.';
+      if (error.status === 413) return 'El archivo supera el tamaño permitido.';
+      if (error.status === 415) return 'El formato del archivo no está permitido.';
     }
     return fallback;
   }
@@ -727,28 +740,25 @@ export class PrecisionFormComponent implements OnInit, OnDestroy {
 
   readonly subsanacionWarning: ReferenceConfirmWarning = {
     label: 'Plazo de subsanación',
-    detail: 'La regla contempla 2 días hábiles desde la notificación. La fecha de observación no acredita su eficacia. El servidor comprueba el plazo y el estado al recibir la precisión.'
+    detail: 'Puede presentar su subsanación en dos días hábiles, contados desde el día siguiente a la notificación válida. Revise la fecha registrada para subsanar antes de enviar.'
   };
 
   // Metadatos para modal de éxito
   subsanacionSuccessMetadata = computed<ReferenceSuccessMeta[]>(() => {
     const recepcion = this.recepcion();
     return [
-      { label: 'Observación subsanada', value: recepcion ? String(recepcion.observacionId) : '—' },
+      { label: 'Requerimiento atendido', value: recepcion ? String(recepcion.observacionId) : '—' },
       { label: 'Documento adjunto', value: recepcion?.documento.nombreOriginal || '—' },
-      { label: 'Recepción registrada', value: recepcion ? this.formatearFecha(recepcion.fechaRecepcion) : '—' },
-      { label: 'Documento registrado', value: recepcion?.documento.id ? String(recepcion.documento.id) : '—', mono: true },
-      { label: 'Clave de operación', value: recepcion?.claveOperacion || '—', mono: true }
+      { label: 'Documento registrado', value: recepcion?.documento.id ? String(recepcion.documento.id) : '—', mono: true }
     ];
   });
 
   readonly subsanacionNextSteps: ReferenceSuccessNextStep[] = [
     {
-      label: 'Consulte el expediente para recuperar su estado actualizado.',
-      hint: 'El plazo aplicable corresponde al servidor; no se calcula desde esta confirmación.'
+      label: 'Abra su expediente para consultar el estado de su solicitud y el documento que adjuntó.'
     },
     {
-      label: 'La recepción acredita el registro de la precisión y su archivo, no una entrega, notificación eficaz, firma o emisión formal.'
+      label: 'Cuando la entidad registre su respuesta, podrá consultarla en el mismo expediente.'
     }
   ];
 }
