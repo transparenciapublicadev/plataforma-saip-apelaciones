@@ -203,11 +203,11 @@
                       </div>
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                          <span class="code-chip" style="font-size: 11px">{{ solicitud.expediente }}</span>
-                          <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
+                          <span class="code-chip" style="font-size: 11px"><span aria-hidden="true">SAIP</span> {{ solicitud.expediente }}</span>
                           @if (solicitud.apelacion?.expediente) {
-                            <span class="code-chip code-chip-alt" style="font-size: 11px">{{ solicitud.apelacion.expediente }}</span>
+                            <span class="code-chip code-chip-alt" style="font-size: 11px"><span aria-hidden="true">TTAIP</span> {{ solicitud.apelacion.expediente }}</span>
                           }
+                          <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
                         </div>
                         <div class="text-sm text-foreground mt-1 truncate" [title]="solicitud.entidadNombre + ' · ' + solicitud.asunto">
                           <span class="font-semibold">{{ solicitud.entidadNombre }}</span> · {{ solicitud.asunto }}
