@@ -114,7 +114,8 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
   });
   readonly cumplimiento = computed<number | null>(() => {
     const registro = this.registroRespuestas(), evaluadas = this.evaluadas();
-    return registro && evaluadas > 0 ? Math.round((registro.enPlazo / evaluadas) * 100) : null;
+    if (!registro) return null;
+    return evaluadas > 0 ? Math.round((registro.enPlazo / evaluadas) * 100) : 0;
   });
   readonly donutCircunferencia = 2 * Math.PI * 26;
   private readonly donutDibujado = signal(false);

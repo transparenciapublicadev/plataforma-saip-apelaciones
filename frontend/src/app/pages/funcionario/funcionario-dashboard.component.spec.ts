@@ -195,7 +195,7 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     expect(indicador).toContain('6 pendientes');
   });
 
-  it('no asigna un porcentaje cuando todavía no hay solicitudes evaluables', () => {
+  it('muestra 0 cuando todavía no hay respuestas evaluadas y sí hay pendientes', () => {
     const f = page();
     const req = http.expectOne(r => r.url === `${api}/panel/solicitudes`);
     req.flush(mockPanelPage([row], {
@@ -210,8 +210,10 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     }));
     f.detectChanges();
 
-    expect(f.componentInstance.cumplimiento()).toBeNull();
-    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('Aún no hay solicitudes evaluables');
+    expect(f.componentInstance.cumplimiento()).toBe(0);
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('0%');
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('0 respuestas registradas en plazo');
+    expect(f.nativeElement.querySelector('[data-tour="e-cumplimiento"]')?.textContent).toContain('2 pendientes');
   });
 
   it('muestra un nombre legible y la fecha registrada para precisar en la bandeja', () => {
