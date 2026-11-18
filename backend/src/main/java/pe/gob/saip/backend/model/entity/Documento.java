@@ -102,6 +102,12 @@ public class Documento {
     @JoinColumn(name = "id_cedula")
     private CedulaNotificacion cedulaNotificacion;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_entrega_parcial")
+    private CronogramaEntregaParcialSolicitud entregaParcial;
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();

@@ -2979,7 +2979,7 @@
           "Solicitudes SAIP"
         ],
         "summary": "Registrar ampliación de plazo SAIP",
-        "description": "Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.",
+        "description": "Registra el nuevo vencimiento y las entregas programadas dentro del plazo aplicable.",
         "operationId": "registrarAmpliacion",
         "parameters": [
           {
@@ -4401,6 +4401,65 @@
       }
     },
     "/api/solicitudes/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}": {
+      "post": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Registrar los archivos y la fecha real de una entrega programada SAIP",
+        "description": "Requiere al menos un archivo. Ante incertidumbre consulte el cronograma antes de repetir.",
+        "operationId": "registrarDocumentosEntregaParcial",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "ampliacionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "entregaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarDocumentosEntregaParcialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Solicitudes SAIP"
@@ -5288,6 +5347,48 @@
                   "items": {
                     "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solicitudes/{id}/ampliaciones/prevision": {
+      "get": {
+        "tags": [
+          "Solicitudes SAIP"
+        ],
+        "summary": "Consultar disponibilidad y límite de una ampliación SAIP",
+        "operationId": "preverAmpliacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "diasHabilesAdicionales",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrevisionAmpliacionDTO"
                 }
               }
             }
@@ -8482,6 +8583,9 @@
             "items": {
               "$ref": "#/components/schemas/CronogramaEntregaParcialDTO"
             }
+          },
+          "plazoOrdinarioVencido": {
+            "type": "boolean"
           }
         }
       },
@@ -8575,6 +8679,26 @@
             "type": "string"
           },
           "observacion": {
+            "type": "string"
+          },
+          "incumplida": {
+            "type": "boolean"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ENTREGA_TOTAL",
+              "ENTREGA_PARCIAL",
+              "DENEGACION_TOTAL"
+            ]
+          },
+          "fundamentoDecision": {
             "type": "string"
           }
         }
@@ -10998,10 +11122,15 @@
             },
             "maxItems": 12,
             "minItems": 0
+          },
+          "diasHabilesAdicionales": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Días hábiles adicionales sobre el vencimiento vigente, sin tope de producto. Si se omite, se conserva el cronograma del contrato anterior.",
+            "minimum": 1
           }
         },
         "required": [
-          "cronograma",
           "fechaNotificacionAmpliacion",
           "informeAmpliacion",
           "motivoAmpliacion"
@@ -12859,6 +12988,65 @@
           "documentos",
           "fundamentos",
           "modalidad"
+        ]
+      },
+      "PrevisionAmpliacionDTO": {
+        "type": "object",
+        "properties": {
+          "hoy": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaMaximaComunicacion": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaLimiteAmpliada": {
+            "type": "string",
+            "format": "date"
+          },
+          "disponible": {
+            "type": "boolean"
+          },
+          "requiereCronograma": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RegistrarDocumentosEntregaParcialRequest": {
+        "type": "object",
+        "description": "Fecha real y archivos de una entrega programada de la SAIP",
+        "properties": {
+          "fechaEntregaReal": {
+            "type": "string",
+            "format": "date"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "ENTREGA_TOTAL",
+              "ENTREGA_PARCIAL",
+              "DENEGACION_TOTAL"
+            ]
+          },
+          "fundamentoDecision": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 0
+          },
+          "archivos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "archivos",
+          "decision",
+          "fechaEntregaReal"
         ]
       }
     },

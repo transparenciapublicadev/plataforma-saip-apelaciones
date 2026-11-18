@@ -18421,7 +18421,7 @@
                   "pm.variables.set(\"ampliacionFechaNotificacion\", isoPlusDays(0));",
                   "pm.variables.set(\"ampliacionEntrega1Fecha\", isoPlusDays(15));",
                   "pm.variables.set(\"ampliacionEntrega2Fecha\", isoPlusDays(30));",
-                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(31));"
+                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(-1));"
                 ]
               }
             },
@@ -18481,7 +18481,7 @@
                 "ampliaciones"
               ]
             },
-            "description": "## Registrar Ampliación de Plazo SAIP\n\n**POST** `/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones`\n\n## Lógica de negocio\nLa entidad registra y notifica una ampliación de plazo dentro del día 4 de atención. La solicitud mantiene trazabilidad del plazo ordinario, nuevo plazo, informe y cronograma de entregas parciales. Cada entrega parcial no puede exceder 30 días respecto del hito anterior.\n\n## Respuesta esperada\n`201 Created` con ampliación `NOTIFICADA`, plazo original, plazo ampliado y cronograma.",
+            "description": "## Registrar Ampliación de Plazo SAIP\n\n**POST** `/solicitudes/{{ampliacionSolicitudSaipId}}/ampliaciones`\n\n## Lógica de negocio\nLa entidad registra y comunica una ampliación de plazo hasta el día hábil 2 de atención. Con días adicionales, la fecha de comunicación es la del registro. La solicitud mantiene trazabilidad del plazo ordinario, nuevo plazo, informe y cronograma de entregas parciales. Las fechas de las entregas parciales deben avanzar en orden.\n\n## Respuesta esperada\n`201 Created` con ampliación `NOTIFICADA`, plazo original, plazo ampliado y cronograma.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -18779,7 +18779,7 @@
           }
         },
         {
-          "name": "[EXPECTED_ERROR] Rechazar Ampliación SAIP con Entrega Mayor a 30 Días",
+          "name": "[EXPECTED_ERROR] Rechazar Ampliación SAIP con Entrega Anterior a la Comunicación",
           "event": [
             {
               "listen": "prerequest",
@@ -18789,7 +18789,7 @@
                   "function isoPlusDays(days) { const date = new Date(); date.setDate(date.getDate() + days); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }",
                   "if (!pm.environment.get(\"ampliacionInvalidaSolicitudSaipId\")) { throw new Error(\"Missing ampliacionInvalidaSolicitudSaipId.\"); }",
                   "pm.variables.set(\"ampliacionFechaNotificacion\", isoPlusDays(0));",
-                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(31));"
+                  "pm.variables.set(\"ampliacionEntregaInvalidaFecha\", isoPlusDays(-1));"
                 ]
               }
             },
@@ -18800,11 +18800,11 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "pm.test(\"invalid ampliacion is rejected with Problem Details\", function () {",
-                  "    pm.response.to.have.status(422);",
+                  "    pm.response.to.have.status(400);",
                   "    pm.expect(json.type, \"type\").to.exist;",
                   "    pm.expect(json.title, \"title\").to.exist;",
-                  "    pm.expect(json.status, \"status\").to.eql(422);",
-                  "    pm.expect(json.detail, \"detail\").to.include(\"30 días\");",
+                  "    pm.expect(json.status, \"status\").to.eql(400);",
+                  "    pm.expect(json.detail, \"detail\").to.include(\"antes de la comunicación\");",
                   "    pm.expect(json.instance, \"instance\").to.exist;",
                   "});"
                 ]
@@ -18829,7 +18829,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"motivoAmpliacion\": \"El cronograma excede el máximo permitido por entrega parcial.\",\n    \"informeAmpliacion\": \"Informe inválido para validar reglas de negocio RFC 9457.\",\n    \"fechaNotificacionAmpliacion\": \"{{ampliacionFechaNotificacion}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"cronograma\": [\n        {\n            \"numeroEntrega\": 1,\n            \"descripcion\": \"Entrega programada fuera del límite de 30 días\",\n            \"fechaProgramada\": \"{{ampliacionEntregaInvalidaFecha}}\"\n        }\n    ]\n}",
+              "raw": "{\n    \"motivoAmpliacion\": \"La fecha de entrega es anterior a la comunicación.\",\n    \"informeAmpliacion\": \"Informe inválido para validar reglas de negocio RFC 9457.\",\n    \"fechaNotificacionAmpliacion\": \"{{ampliacionFechaNotificacion}}\",\n    \"responsable\": \"Funcionario de Transparencia\",\n    \"cronograma\": [\n        {\n            \"numeroEntrega\": 1,\n            \"descripcion\": \"Entrega programada antes de la comunicación\",\n            \"fechaProgramada\": \"{{ampliacionEntregaInvalidaFecha}}\"\n        }\n    ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -18847,7 +18847,7 @@
                 "ampliaciones"
               ]
             },
-            "description": "Validación negativa esperada: el backend debe rechazar una entrega parcial programada a más de 30 días del hito anterior y responder con RFC 9457 / Problem Details. El header `X-Expected-Error: true` permite al diagnóstico clasificarlo como prueba negativa esperada, no como falla oculta.",
+            "description": "Validación negativa esperada: el backend debe rechazar una entrega parcial programada antes de la comunicación de la ampliación y responder con RFC 9457 / Problem Details. El header `X-Expected-Error: true` permite al diagnóstico clasificarlo como prueba negativa esperada, no como falla oculta.",
             "auth": {
               "type": "bearer",
               "bearer": [

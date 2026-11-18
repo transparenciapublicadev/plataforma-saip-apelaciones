@@ -8,9 +8,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -57,11 +60,24 @@ public class CronogramaEntregaParcialSolicitud {
     @Column(columnDefinition = "TEXT")
     private String observacion;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private Decision decision;
+
+    @Column(name = "fundamento_decision", columnDefinition = "TEXT")
+    private String fundamentoDecision;
+
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "entregaParcial")
+    @BatchSize(size = 30)
+    private List<Documento> documentos = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -89,4 +105,17 @@ public class CronogramaEntregaParcialSolicitud {
         CANCELADA,
         VENCIDA
     }
+
+    public enum Decision {
+        ENTREGA_TOTAL, ENTREGA_PARCIAL, DENEGACION_TOTAL
+    }
+
+    public boolean incumplida(LocalDate hoy) {
+        if (fechaProgramada == null || estado == EstadoEntregaParcial.CANCELADA) return false;
+        if (estado == EstadoEntregaParcial.ENTREGADA) {
+            return fechaEntregaReal != null && fechaEntregaReal.isAfter(fechaProgramada);
+        }
+        return fechaProgramada.isBefore(hoy);
+    }
+
 }

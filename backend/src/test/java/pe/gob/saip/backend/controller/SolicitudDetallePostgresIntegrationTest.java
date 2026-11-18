@@ -114,7 +114,7 @@ class SolicitudDetallePostgresIntegrationTest {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         assertThat(flyway.info().pending()).isEmpty();
         assertThat(flyway.info().applied()).extracting(migration -> migration.getVersion().getVersion())
-                .containsExactly("1", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16");
+                .containsExactly("1", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17");
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
     }
 

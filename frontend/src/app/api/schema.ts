@@ -897,7 +897,7 @@ export interface paths {
         put?: never;
         /**
          * Registrar ampliación de plazo SAIP
-         * @description Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.
+         * @description Registra el nuevo vencimiento y las entregas programadas dentro del plazo aplicable.
          */
         post: operations["registrarAmpliacion"];
         delete?: never;
@@ -1435,7 +1435,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Registrar los archivos y la fecha real de una entrega programada SAIP
+         * @description Requiere al menos un archivo. Ante incertidumbre consulte el cronograma antes de repetir.
+         */
+        post: operations["registrarDocumentosEntregaParcial"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1849,6 +1853,23 @@ export interface paths {
         };
         /** Consultar cronograma de entregas parciales de una SAIP */
         get: operations["listarCronogramaAmpliacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/ampliaciones/prevision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar disponibilidad y límite de una ampliación SAIP */
+        get: operations["preverAmpliacion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3217,6 +3238,7 @@ export interface components {
             responsable?: string;
             trazabilidad?: string;
             cronograma?: components["schemas"]["CronogramaEntregaParcialDTO"][];
+            plazoOrdinarioVencido?: boolean;
         };
         /** @description Resumen de apelación asociada a una solicitud */
         ApelacionInfoDTO: {
@@ -3255,6 +3277,11 @@ export interface components {
             estado?: string;
             fechaEntregaReal?: string;
             observacion?: string;
+            incumplida?: boolean;
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
+            /** @enum {string} */
+            decision?: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            fundamentoDecision?: string;
         };
         /** @description Documento adjunto a solicitud, respuesta, apelación o resolución */
         DocumentoDTO: {
@@ -4337,7 +4364,12 @@ export interface components {
              * @example Funcionario de Transparencia
              */
             responsable?: string;
-            cronograma: components["schemas"]["RegistrarEntregaParcialRequest"][];
+            cronograma?: components["schemas"]["RegistrarEntregaParcialRequest"][];
+            /**
+             * Format: int32
+             * @description Días hábiles adicionales sobre el vencimiento vigente, sin tope de producto. Si se omite, se conserva el cronograma del contrato anterior.
+             */
+            diasHabilesAdicionales?: number;
         };
         /** @description Entrega parcial del cronograma de ampliación SAIP */
         RegistrarEntregaParcialRequest: {
@@ -4997,6 +5029,25 @@ export interface components {
             fechaPresentacionAnteEntidad?: string;
             referenciaCargoPresentacion?: string;
             documentos: components["schemas"]["DocumentoAltaApelacionRequest"][];
+        };
+        PrevisionAmpliacionDTO: {
+            /** Format: date */
+            hoy?: string;
+            /** Format: date */
+            fechaMaximaComunicacion?: string;
+            /** Format: date */
+            fechaLimiteAmpliada?: string;
+            disponible?: boolean;
+            requiereCronograma?: boolean;
+        };
+        /** @description Fecha real y archivos de una entrega programada de la SAIP */
+        RegistrarDocumentosEntregaParcialRequest: {
+            /** Format: date */
+            fechaEntregaReal: string;
+            /** @enum {string} */
+            decision: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            fundamentoDecision?: string;
+            archivos: string[];
         };
     };
     responses: never;
@@ -7879,6 +7930,34 @@ export interface operations {
             };
         };
     };
+    registrarDocumentosEntregaParcial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                ampliacionId: number;
+                entregaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarDocumentosEntregaParcialRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CronogramaEntregaParcialDTO"];
+                };
+            };
+        };
+    };
     actualizarEntregaParcial: {
         parameters: {
             query?: never;
@@ -8476,6 +8555,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CronogramaEntregaParcialDTO"][];
+                };
+            };
+        };
+    };
+    preverAmpliacion: {
+        parameters: {
+            query?: {
+                diasHabilesAdicionales?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisionAmpliacionDTO"];
                 };
             };
         };

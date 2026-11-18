@@ -3,6 +3,11 @@ package pe.gob.saip.backend.model.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
+
 @Schema(description = "Entrega parcial programada dentro de una ampliación de plazo SAIP")
 public record CronogramaEntregaParcialDTO(
         Long id,
@@ -12,7 +17,11 @@ public record CronogramaEntregaParcialDTO(
         String fechaProgramada,
         String estado,
         String fechaEntregaReal,
-        String observacion
+        String observacion,
+        boolean incumplida,
+        List<DocumentoMetadataDTO> documentos,
+        CronogramaEntregaParcialSolicitud.Decision decision,
+        String fundamentoDecision
 ) {
     public static CronogramaEntregaParcialDTO from(CronogramaEntregaParcialSolicitud entrega) {
         return new CronogramaEntregaParcialDTO(
@@ -23,7 +32,12 @@ public record CronogramaEntregaParcialDTO(
                 entrega.getFechaProgramada() != null ? entrega.getFechaProgramada().toString() : null,
                 entrega.getEstado() != null ? entrega.getEstado().name() : null,
                 entrega.getFechaEntregaReal() != null ? entrega.getFechaEntregaReal().toString() : null,
-                entrega.getObservacion()
+                entrega.getObservacion(),
+                entrega.incumplida(LocalDate.now(ZONA_LIMA)),
+                DocumentoMetadataDTO.fromActive(entrega.getDocumentos()),
+                entrega.getDecision(),
+                entrega.getFundamentoDecision()
         );
     }
+
 }

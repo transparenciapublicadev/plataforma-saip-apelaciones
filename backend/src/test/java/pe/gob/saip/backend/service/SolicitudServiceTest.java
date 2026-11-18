@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -361,7 +362,7 @@ class SolicitudServiceTest {
         LocalDate hoy = LocalDate.now();
         LocalDate fechaLimiteOriginal = DiasHabilesUtil.sumarDiasHabiles(hoy, 10);
         LocalDate entrega1 = hoy.plusDays(15);
-        LocalDate entrega2 = hoy.plusDays(30);
+        LocalDate entrega2 = entrega1.plusDays(30);
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now());
         solicitud.setFechaLimite(fechaLimiteOriginal);
@@ -399,7 +400,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void registrarAmpliacion_despuesDelDia4_debeLanzarReglaNegocio() {
+    void registrarAmpliacion_despuesDelDiaHabil2_debeLanzarReglaNegocio() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(20));
         solicitud.setFechaLimite(LocalDate.now().plusDays(10));
@@ -419,11 +420,66 @@ class SolicitudServiceTest {
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("día 4");
+                .hasMessageContaining("día hábil 2");
     }
 
     @Test
-    void registrarAmpliacion_conEntregaMayorA30Dias_debeLanzarReglaNegocio() {
+    void registrarAmpliacion_conDias_rechazaComunicacionEnUnDiaDistintoDelRegistro() {
+        LocalDate hoy = LocalDate.of(2026, 11, 16);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(5), eq(3L))).thenReturn(hoy.plusDays(10));
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(hoy.minusDays(1).atStartOfDay());
+        solicitud.setFechaLimite(hoy.plusDays(8));
+        solicitud.setEntidad(crearEntidad(3L, "MIN", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                1L,
+                new RegistrarAmpliacionPlazoRequest(
+                        "Pedido voluminoso",
+                        "Informe de ampliación",
+                        hoy.minusDays(1),
+                        "Funcionario",
+                        List.of(),
+                        5)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("día de su registro");
+        verify(ampliacionRepository, never()).save(any());
+    }
+
+    @Test
+    void preverAmpliacion_conCienDiasHabiles_calculaLaNuevaFechaSinTopeDeProducto() {
+        LocalDate hoy = LocalDate.of(2026, 11, 17);
+        LocalDate ampliada = LocalDate.of(2027, 4, 20);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(100), eq(3L))).thenReturn(ampliada);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10007", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaPresentacion(hoy.atStartOfDay());
+        solicitud.setFechaLimite(hoy.plusDays(14));
+        solicitud.setEntidad(crearEntidad(3L, "MINEDU", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        var prevision = solicitudService.preverAmpliacion(1L, 100);
+
+        assertThat(prevision.fechaLimiteAmpliada()).isEqualTo(ampliada);
+        assertThat(prevision.disponible()).isTrue();
+        assertThat(prevision.requiereCronograma()).isTrue();
+    }
+
+    @Test
+    void preverAmpliacion_sinDias_rechazaLaConsulta() {
+        assertThatThrownBy(() -> solicitudService.preverAmpliacion(1L, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("al menos 1");
+    }
+
+    @Test
+    void registrarAmpliacion_conCronogramaDesordenado_rechazaIndicandoLaEntrega() {
         LocalDate hoy = LocalDate.now();
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now());
@@ -440,11 +496,43 @@ class SolicitudServiceTest {
                                 "Informe con cronograma",
                                 hoy,
                                 "Funcionario",
-                                List.of(new RegistrarEntregaParcialRequest(1, "Entrega", hoy.plusDays(31), null))
+                                List.of(
+                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", hoy.plusDays(44), null),
+                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", hoy.plusDays(40), null)
+                                )
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("30 días");
+                .hasMessageContaining("entrega 2 no puede programarse antes de la entrega 1");
+    }
+
+    @Test
+    void registrarAmpliacion_conEntregasSeparadasPorMasDe30Dias_rechazaElCronograma() {
+        LocalDate hoy = LocalDate.now();
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                        1L,
+                        new RegistrarAmpliacionPlazoRequest(
+                                "Pedido voluminoso",
+                                "Informe con cronograma",
+                                hoy,
+                                "Funcionario",
+                                List.of(
+                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", hoy.plusDays(10), null),
+                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", hoy.plusDays(41), null)
+                                )
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("más de 30 días");
+        verify(ampliacionRepository, never()).save(any());
     }
 
     @Test
@@ -737,7 +825,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void actualizarEntregaParcial_entregadaDebeMarcarFechaReal() {
+    void actualizarEntregaParcial_noPermiteMarcarLaEntregaSinArchivos() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         var ampliacion = new AmpliacionPlazoSolicitud();
         ampliacion.setIdAmpliacion(50L);
@@ -753,20 +841,14 @@ class SolicitudServiceTest {
         when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(ampliacionRepository.findById(50L)).thenReturn(Optional.of(ampliacion));
         when(cronogramaRepository.findById(80L)).thenReturn(Optional.of(entrega));
-        when(cronogramaRepository.save(entrega)).thenReturn(entrega);
-        when(cronogramaRepository.findByAmpliacion_IdAmpliacionOrderByNumeroEntregaAsc(50L)).thenReturn(List.of(entrega));
-
-        CronogramaEntregaParcialSolicitud resultado = solicitudService.actualizarEntregaParcial(
+        assertThatThrownBy(() -> solicitudService.actualizarEntregaParcial(
                 1L,
                 50L,
                 80L,
                 new ActualizarEntregaParcialRequest("ENTREGADA", LocalDate.now(), "Entregado por casilla")
-        );
-
-        assertThat(resultado.getEstado()).isEqualTo(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA);
-        assertThat(resultado.getFechaEntregaReal()).isEqualTo(LocalDate.now());
-        verify(cronogramaRepository).save(entrega);
-        verify(ampliacionRepository).save(ampliacion);
+        )).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("documento");
+        assertThat(entrega.getEstado()).isEqualTo(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
+        verify(cronogramaRepository, never()).save(entrega);
     }
 
     @Test

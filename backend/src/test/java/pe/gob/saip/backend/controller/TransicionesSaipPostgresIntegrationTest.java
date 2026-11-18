@@ -21,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.*;
 import org.springframework.test.web.servlet.*;
@@ -106,6 +107,158 @@ class TransicionesSaipPostgresIntegrationTest {
             .content(json.writeValueAsString(Map.of("identificador",email,"password","Sintetico-2026!"))))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).path("token").asString();
     }
+    @Test void ampliacionProgramadaRespetaElLimiteYRegistraEntregasPorSeparado() throws Exception {
+        LocalDate hoy = LocalDate.now(pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA);
+        String ruta = base() + "/ampliaciones";
+        String prevision = ruta + "/prevision";
+        mvc.perform(get(prevision).param("diasHabilesAdicionales", "31")
+                .header("Authorization", "Bearer " + login("ajeno@example.invalid")))
+            .andExpect(status().isForbidden());
+        var datos = json.readTree(mvc.perform(get(prevision).param("diasHabilesAdicionales", "31")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.requiereCronograma").value(true))
+            .andReturn().getResponse().getContentAsString());
+        LocalDate limite = LocalDate.parse(datos.path("fechaLimiteAmpliada").asString());
+        var hitos = new ArrayList<Map<String, Object>>();
+        for (LocalDate fecha = hoy.plusDays(14); fecha.isBefore(limite); fecha = fecha.plusDays(14)) {
+            hitos.add(Map.of("numeroEntrega", hitos.size() + 1, "descripcion", "Bloque parcial", "fechaProgramada", fecha));
+        }
+        var payload = new HashMap<String, Object>(Map.of("motivoAmpliacion", "Material por digitalizar",
+                "informeAmpliacion", "Informe sintético", "fechaNotificacionAmpliacion", hoy,
+                "diasHabilesAdicionales", 31, "cronograma", List.of()));
+        mvc.perform(post(ruta).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content(json.writeValueAsString(payload))).andExpect(status().isBadRequest());
+        hitos.add(Map.of("numeroEntrega", hitos.size() + 1, "descripcion", "Bloque final", "fechaProgramada", limite.plusDays(1)));
+        payload.put("cronograma", hitos);
+        mvc.perform(post(ruta).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content(json.writeValueAsString(payload))).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from ampliaciones_plazo_solicitud", Integer.class)).isZero();
+        hitos.set(hitos.size() - 1, Map.of("numeroEntrega", hitos.size(), "descripcion", "Bloque final", "fechaProgramada", limite));
+        var ampliacion = json.readTree(mvc.perform(post(ruta).header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(json.writeValueAsString(payload)))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.estadoAmpliacion").value("REGISTRADA"))
+            .andExpect(jsonPath("$.fechaLimiteAmpliada").value(limite.toString()))
+            .andReturn().getResponse().getContentAsString());
+        long idHito = ampliacion.path("cronograma").get(0).path("id").asLong();
+        String entrega = ruta + "/" + ampliacion.path("id").asLong() + "/cronograma/" + idHito;
+        mvc.perform(get(prevision).param("diasHabilesAdicionales", "31").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.disponible").value(false));
+        jdbc.update("update cronograma_entregas_parciales_solicitud set fecha_programada=? where id_entrega=?", hoy.minusDays(1), idHito);
+        mvc.perform(get(base()).header("Authorization", "Bearer " + login("persona@example.invalid")))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.ampliacionesPlazo[0].cronograma[0].incumplida").value(true));
+        mvc.perform(patch(entrega).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content(json.writeValueAsString(Map.of("estado", "ENTREGADA", "fechaEntregaReal", hoy))))
+            .andExpect(status().isBadRequest());
+        MockMultipartFile anexo = new MockMultipartFile("archivos", "entrega.txt", "text/plain", new byte[]{65, 66});
+        MockMultipartFile indice = new MockMultipartFile("archivos", "indice.txt", "text/plain", new byte[]{67});
+        MockMultipartFile vacio = new MockMultipartFile("archivos", "vacio.txt", "text/plain", new byte[]{});
+        mvc.perform(multipart(entrega).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.toString()).header("Authorization", "Bearer " + token))
+            .andExpect(status().isBadRequest());
+        mvc.perform(multipart(entrega).file(anexo).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.plusDays(1).toString())
+                .header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+        mvc.perform(multipart(entrega).file(anexo).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.toString())
+                .header("Authorization", "Bearer " + login("ajeno@example.invalid"))).andExpect(status().isForbidden());
+        mvc.perform(multipart(entrega).file(anexo).file(vacio).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.toString())
+                .header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from documentos where id_entrega_parcial=?", Integer.class, idHito)).isZero();
+        try (var paths = Files.walk(LOCAL)) {
+            assertThat(paths.filter(Files::isRegularFile).toList()).isEmpty();
+        }
+        assertThat(jdbc.queryForObject("select estado from cronograma_entregas_parciales_solicitud where id_entrega=?",
+                String.class, idHito)).isEqualTo("PROGRAMADA");
+
+        mvc.perform(multipart(entrega).file(anexo).param("decision", "DENEGACION_TOTAL")
+                .param("fechaEntregaReal", hoy.toString()).header("Authorization", "Bearer " + token))
+            .andExpect(status().isBadRequest());
+        var recepcion = json.readTree(mvc.perform(multipart(entrega).file(anexo).file(indice).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.toString())
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("ENTREGADA"))
+            .andExpect(jsonPath("$.incumplida").value(true)).andExpect(jsonPath("$.decision").value("ENTREGA_PARCIAL")).andExpect(jsonPath("$.documentos.length()").value(2))
+            .andReturn().getResponse().getContentAsString());
+        mvc.perform(multipart(entrega).file(anexo).param("decision", "ENTREGA_PARCIAL").param("fundamentoDecision", "Se excluye la información protegida").param("fechaEntregaReal", hoy.toString())
+                .header("Authorization", "Bearer " + token)).andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("select count(*) from documentos where id_entrega_parcial=?", Integer.class, idHito)).isEqualTo(2);
+        String titular = login("persona@example.invalid");
+        mvc.perform(get(base()).header("Authorization", "Bearer " + titular)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.ampliacionesPlazo[0].cronograma[0].documentos.length()").value(2))
+            .andExpect(jsonPath("$.documentosMetadata").isEmpty());
+        for (var documento : recepcion.path("documentos")) {
+            String descarga = "/api/documentos/" + documento.path("id").asLong() + "/download";
+            byte[] esperado = documento.path("nombreOriginal").asString().equals("entrega.txt") ? anexo.getBytes() : indice.getBytes();
+            mvc.perform(get(descarga).header("Authorization", "Bearer " + titular)).andExpect(status().isOk())
+                .andExpect(content().bytes(esperado));
+            mvc.perform(get(descarga).header("Authorization", "Bearer " + login("otra@example.invalid")))
+                .andExpect(status().isForbidden());
+        }
+        long ampliacionId = ampliacion.path("id").asLong();
+        long segundoHito = ampliacion.path("cronograma").get(1).path("id").asLong();
+        String denegacion = ruta + "/" + ampliacionId + "/cronograma/" + segundoHito;
+        mvc.perform(multipart(denegacion).file(indice).param("decision", "DENEGACION_TOTAL")
+                .param("fundamentoDecision", "Se deniega el bloque mediante oficio motivado")
+                .param("fechaEntregaReal", hoy.toString()).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.decision").value("DENEGACION_TOTAL"))
+            .andExpect(jsonPath("$.incumplida").value(false));
+
+        long tercerHito = ampliacion.path("cronograma").get(2).path("id").asLong();
+        String registroAnterior = ruta + "/" + ampliacionId + "/cronograma/" + tercerHito;
+        jdbc.update("update cronograma_entregas_parciales_solicitud set estado='ENTREGADA',fecha_entrega_real=? where id_entrega=?",
+                hoy.minusDays(1), tercerHito);
+        mvc.perform(multipart(registroAnterior).file(indice).param("decision", "ENTREGA_TOTAL")
+                .param("fechaEntregaReal", hoy.minusDays(1).toString()).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.decision").value("ENTREGA_TOTAL"))
+            .andExpect(jsonPath("$.fechaEntregaReal").value(hoy.minusDays(1).toString()));
+        assertThat(jdbc.queryForObject("select count(*) from respuestas", Integer.class)).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 5})
+    void rechazaCronogramaConMasDeTreintaDiasEntreEntregas(int cantidad) throws Exception {
+        String ruta = base() + "/ampliaciones";
+        var prevision = json.readTree(mvc.perform(get(ruta + "/prevision").param("diasHabilesAdicionales", "50")
+                .header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString());
+        LocalDate hoy = LocalDate.parse(prevision.path("hoy").asString());
+        LocalDate limite = LocalDate.parse(prevision.path("fechaLimiteAmpliada").asString());
+        assertThat(limite).isAfter(hoy.plusDays(cantidad + 30L));
+        var hitos = new ArrayList<Map<String, Object>>();
+        for (int n = 1; n < cantidad; n++) {
+            hitos.add(Map.of("numeroEntrega", n, "descripcion", "Bloque " + n, "fechaProgramada", hoy.plusDays(n)));
+        }
+        hitos.add(Map.of("numeroEntrega", cantidad, "descripcion", "Último bloque", "fechaProgramada", limite));
+        var payload = Map.of("motivoAmpliacion", "Se requiere digitalizar varios expedientes", "informeAmpliacion", "Informe sintético",
+                "fechaNotificacionAmpliacion", hoy, "diasHabilesAdicionales", 50, "cronograma", hitos);
+
+        mvc.perform(post(ruta).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content(json.writeValueAsString(payload)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("30 días")));
+        assertThat(jdbc.queryForObject("select count(*) from cronograma_entregas_parciales_solicitud", Integer.class)).isZero();
+    }
+
+    @Test void ampliacionConFechaUnicaConservaLaFechaSinCrearEntregas() throws Exception {
+        String ruta = base() + "/ampliaciones";
+        var prevision = json.readTree(mvc.perform(get(ruta + "/prevision").param("diasHabilesAdicionales", "5")
+                .header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString());
+        var datos = Map.of("motivoAmpliacion", "Búsqueda en archivo", "informeAmpliacion", "Informe sintético",
+                "fechaNotificacionAmpliacion", prevision.path("hoy").asString(), "diasHabilesAdicionales", 5, "cronograma", List.of());
+        var ampliacion = json.readTree(mvc.perform(post(ruta).header("Authorization", "Bearer " + token).contentType("application/json")
+                .content(json.writeValueAsString(datos)))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.cronograma").isEmpty())
+            .andExpect(jsonPath("$.fechaLimiteAmpliada").value(prevision.path("fechaLimiteAmpliada").asString()))
+            .andReturn().getResponse().getContentAsString());
+        assertThat(jdbc.queryForObject("select count(*) from cronograma_entregas_parciales_solicitud", Integer.class)).isZero();
+        LocalDate hoy = LocalDate.parse(prevision.path("hoy").asString());
+        long id = ampliacion.path("id").asLong();
+        String titular = login("persona@example.invalid");
+        jdbc.update("update ampliaciones_plazo_solicitud set fecha_limite_original=? where id_ampliacion=?", hoy, id);
+        mvc.perform(get(base()).header("Authorization", "Bearer " + titular)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.ampliacionesPlazo[0].plazoOrdinarioVencido").value(false));
+        jdbc.update("update ampliaciones_plazo_solicitud set fecha_limite_original=? where id_ampliacion=?", hoy.minusDays(1), id);
+        mvc.perform(get(base()).header("Authorization", "Bearer " + titular)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.ampliacionesPlazo[0].plazoOrdinarioVencido").value(true));
+    }
+
     String base(){return "/api/solicitudes/"+solicitudId;}
     String estado(){return jdbc.queryForObject("select estado from solicitudes where id_solicitud=?",String.class,solicitudId);}
     List<Long> actuaciones(){return List.of("respuestas","observaciones_solicitud","documentos","ampliaciones_plazo_solicitud",
