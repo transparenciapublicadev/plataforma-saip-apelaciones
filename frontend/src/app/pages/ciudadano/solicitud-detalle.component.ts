@@ -9,11 +9,12 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
-import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { ampliacionParaApelar, AmpliacionPlazoSolicitud, DECISIONES_ENTREGA, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud, tieneHitoDesfavorable } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { DocumentoRelation, DocumentoListItem, DOCUMENTO_RELATION_KEYS, getDocumentoRelationEntry } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
+import { DocumentListComponent } from '../../shared/document-list.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 import {
   LucideAlertCircle,
@@ -89,6 +90,7 @@ export interface NotifStageItem {
     LucideReceipt,
     LucideScale,
     LucideUser,
+    DocumentListComponent,
     DocumentPreviewModalComponent
   ],
   templateUrl: './solicitud-detalle.component.html',
@@ -451,8 +453,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   private documentoActual(id: number | undefined): boolean {
+    const docsCronograma = (this.ampliacionActiva()?.cronograma ?? [])
+      .flatMap(h => (h.documentos ?? []).filter(d => this.idValido(d?.id)))
+      .map(d => ({ id: d.id }));
     return this.detalleActual() && this.idValido(id) && [
-      ...this.misDocumentos(), ...this.adjuntosRespuesta(), ...this.notifStages().flatMap(stage => stage.docs)
+      ...this.misDocumentos(), ...this.adjuntosRespuesta(), ...docsCronograma, ...this.notifStages().flatMap(stage => stage.docs)
     ].some(doc => doc.id === id);
   }
 
@@ -542,7 +547,36 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   ampliacionActiva(): AmpliacionPlazoSolicitud | null {
-    return this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null;
+    return this.ampliaciones().find(item => item.estadoAmpliacion !== 'CANCELADA') || null;
+  }
+
+  cronogramaEntregasOrdenadas() {
+    return [...(this.ampliacionActiva()?.cronograma ?? [])].sort((a, b) => a.numeroEntrega - b.numeroEntrega);
+  }
+
+  cronogramaTotalCount(): number {
+    return this.cronogramaEntregasOrdenadas().length;
+  }
+
+  cronogramaEntregadasCount(): number {
+    return this.cronogramaEntregasOrdenadas().filter(h => h.estado === 'ENTREGADA').length;
+  }
+
+  cronogramaIncumplido(): boolean {
+    const ampliacion = this.ampliacionActiva();
+    return ampliacion?.cronograma?.some(h => h.ampliacionId === ampliacion.id && h.incumplida === true) ?? false;
+  }
+
+  readonly etiquetasDecisionHito = DECISIONES_ENTREGA;
+
+  hitoDesfavorable(): boolean {
+    const sol = this.solicitud();
+    return !!sol && tieneHitoDesfavorable(sol);
+  }
+
+  ampliacionApelable(): AmpliacionPlazoSolicitud | undefined {
+    const sol = this.solicitud();
+    return sol ? ampliacionParaApelar(sol) : undefined;
   }
 
   encauzamientos(): EncauzamientoSolicitud[] {
@@ -611,7 +645,9 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   puedeApelar(): boolean {
     const sol = this.solicitud();
-    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA' || this.esSilencioAdministrativo()) && !this.enApelacion();
+    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA'
+      || this.esSilencioAdministrativo() || this.cronogramaIncumplido() || this.hitoDesfavorable()
+      || this.ampliacionApelable()?.plazoOrdinarioVencido === true) && !this.enApelacion();
   }
 
   esSilencioAdministrativo(): boolean {
@@ -634,13 +670,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   }
 
   private formatTimelineDate(dateStr?: string | null): string {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
+    return fechaVisible(dateStr, 'corta') || dateStr || '—';
+  }
+
+  textoFecha(dateStr?: string | null): string {
+    return fechaVisible(dateStr, 'numerica');
   }
 
   private formatBytes(bytes?: number): string {
@@ -654,38 +688,54 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   // Only recorded acts enter this view. Current status is a separate summary,
   // not evidence that intermediate acts, delivery or notifications occurred.
   buildCitizenTimeline(sol: Solicitud): TimelineEvent[] {
-    const events: (TimelineEvent & { fechaOrden: number | null })[] = [];
+    const events: (TimelineEvent & { fechaOrden: number | null; secuencia: number })[] = [];
     const add = (title: string, description: string, date: string | null | undefined,
-      icon: TimelineEvent['icon'], instancia: 1 | 2 = 1) => {
-      const timestamp = date ? Date.parse(date) : NaN;
-      events.push({ title, description, date: this.formatTimelineDate(date), icon, instancia, status: 'completed', fechaOrden: Number.isFinite(timestamp) ? timestamp : null });
+      icon: TimelineEvent['icon'], secuencia: number, instancia: 1 | 2 = 1) => {
+      events.push({
+        title, description, date: this.formatTimelineDate(date), icon, instancia, status: 'completed',
+        fechaOrden: diaCalendario(date), secuencia
+      });
     };
-    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud SAIP.', sol.fechaPresentacion, 'mail');
+    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud SAIP.', sol.fechaPresentacion, 'mail', 10);
     for (const obs of sol.observaciones ?? []) {
       if (!this.idValido(obs.id) || (obs.solicitudId != null && obs.solicitudId !== sol.id)) continue;
-      add('Solicitud de precisión', this.resumenPrecision(obs.estado), obs.fechaObservacion, 'search');
-      if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck');
+      add('Solicitud de precisión', this.resumenPrecision(obs.estado), obs.fechaObservacion, 'search', 20);
+      if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck', 30);
     }
     for (const enc of sol.encauzamientos ?? []) {
       if (!this.idValido(enc.id) || enc.solicitudId !== sol.id) continue;
-      add('Encauzamiento registrado', enc.motivoEncauzamiento || 'Motivo no registrado.', enc.fechaEncauzamiento, 'search');
+      add('Encauzamiento registrado', enc.motivoEncauzamiento || 'Motivo no registrado.', enc.fechaEncauzamiento, 'search', 40);
     }
     for (const amp of sol.ampliacionesPlazo ?? []) {
       if (!this.idValido(amp.id) || amp.solicitudId !== sol.id) continue;
-      add('Ampliación registrada', amp.motivoAmpliacion || amp.informeAmpliacion || 'Motivo no registrado.', amp.fechaSolicitudAmpliacion, 'search');
+      add('Ampliación registrada', amp.motivoAmpliacion || amp.informeAmpliacion || 'Motivo no registrado.', amp.fechaSolicitudAmpliacion || amp.fechaNotificacionAmpliacion, 'search', 50);
+      for (const hito of [...(amp.cronograma ?? [])].sort((a, b) => a.numeroEntrega - b.numeroEntrega)) {
+        if (hito.estado !== 'ENTREGADA') continue;
+        const docsCount = (hito.documentos ?? []).filter(d => this.idValido(d?.id)).length;
+        const suffix = docsCount > 0 ? ` · ${docsCount} ${docsCount === 1 ? 'documento' : 'documentos'}` : '';
+        const programada = this.textoFecha(hito.fechaProgramada);
+        const cuando = programada ? ` Programada para el ${programada}.` : '';
+        add(
+          `Entrega parcial ${hito.numeroEntrega}`,
+          `${hito.decision ? DECISIONES_ENTREGA[hito.decision] + ' · ' : ''}${hito.descripcion || 'Entrega programada registrada'}.${cuando}${suffix}`,
+          hito.fechaEntregaReal || hito.fechaProgramada,
+          'filecheck',
+          60 + (hito.numeroEntrega || 0)
+        );
+      }
     }
     for (const liq of sol.liquidacionesCosto ?? []) {
       if (!this.idValido(liq.id) || liq.solicitudId !== sol.id) continue;
-      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail');
-      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck');
-      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck');
+      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail', 80);
+      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck', 81);
+      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck', 82);
     }
     if (this.idValido(sol.respuesta?.id)) {
-      add('Respuesta de la entidad', this.respLabel(), sol.respuesta?.fechaRespuesta, 'filecheck');
+      add('Respuesta de la entidad', this.respLabel(), sol.respuesta?.fechaRespuesta, 'filecheck', 90);
     }
     const ap = sol.apelacion;
     if (this.idValido(ap?.id)) {
-      add('Apelación registrada', ap?.expediente || 'Numeración TTAIP no registrada.', ap?.fechaApelacion, 'gavel', 2);
+      add('Apelación registrada', ap?.expediente || 'Numeración TTAIP no registrada.', ap?.fechaApelacion, 'gavel', 100, 2);
       const detalle = this.apelacionDetalle();
       if (detalle) {
         const vistos = new Set<number>();
@@ -693,13 +743,14 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
           detalle.resolucionSegundaCalificacion, detalle.resolucion]) {
           if (!res || !this.idValido(res.id) || vistos.has(res.id)) continue;
           vistos.add(res.id);
-          add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 2);
+          add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 110, 2);
         }
       }
     }
-    const dated = events.filter(event => event.fechaOrden !== null).sort((a, b) => a.fechaOrden! - b.fechaOrden!);
-    const undated = events.filter(event => event.fechaOrden === null);
-    return [...dated, ...undated].map(({ fechaOrden, ...event }) => event);
+    const dated = events.filter(event => event.fechaOrden !== null)
+      .sort((a, b) => a.fechaOrden! - b.fechaOrden! || a.secuencia - b.secuencia);
+    const undated = events.filter(event => event.fechaOrden === null).sort((a, b) => a.secuencia - b.secuencia);
+    return [...dated, ...undated].map(({ fechaOrden, secuencia, ...event }) => event);
   }
 
   timelineDisplayOrder(steps: TimelineEvent[]): TimelineEvent[] {
@@ -715,4 +766,35 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       default: return 'La entidad pidió precisar su solicitud.';
     }
   }
+}
+
+function diaCalendario(valor?: string | null): number | null {
+  const iso = fechaIsoCalendario(valor);
+  if (iso) return Number(iso.anio) * 10000 + Number(iso.mes) * 100 + Number(iso.dia);
+  if (!valor) return null;
+  const parsed = new Date(valor);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit' }).format(parsed);
+  const [anio, mes, dia] = partes.split('-');
+  return Number(anio) * 10000 + Number(mes) * 100 + Number(dia);
+}
+
+function fechaVisible(valor: string | null | undefined, formato: 'corta' | 'numerica'): string {
+  const iso = fechaIsoCalendario(valor);
+  if (iso) {
+    if (formato === 'numerica') return `${iso.dia}/${iso.mes}/${iso.anio}`;
+    const fecha = new Date(Date.UTC(Number(iso.anio), Number(iso.mes) - 1, Number(iso.dia), 12));
+    return fecha.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  }
+  if (!valor) return '';
+  const parsed = new Date(valor);
+  if (Number.isNaN(parsed.getTime())) return valor;
+  return parsed.toLocaleDateString('es-PE', formato === 'numerica'
+    ? { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }
+    : { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Lima' });
+}
+
+function fechaIsoCalendario(valor?: string | null): { anio: string; mes: string; dia: string } | null {
+  const iso = valor ? /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(valor.trim()) : null;
+  return iso ? { anio: iso[1], mes: iso[2], dia: iso[3] } : null;
 }

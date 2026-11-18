@@ -542,7 +542,7 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     buttons.item(buttons.length - 1).focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
     expect(document.activeElement).toBe(buttons.item(0));
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); f.detectChanges();
+    buttons.item(0).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); f.detectChanges();
     expect(f.componentInstance.isPreviewOpen()).toBe(false);
     expect(document.activeElement).toBe(trigger);
   });
@@ -568,5 +568,107 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.componentInstance.notifStages()[0].docs.map(d => d.id)).toEqual([92]);
     f.componentInstance.descargarDoc({ id: 90, nombre: 'cedula-entidad.pdf' });
     http.expectNone(`${base}/documentos/90/download`);
+  });
+
+  it('muestra ampliación, entregas parciales y documentos en la pestaña Respuesta de la entidad sin afirmar falta de respuesta', () => {
+    const entregaDoc = {
+      ...documento,
+      id: 210,
+      solicitudId: 23,
+      respuestaId: null,
+      tipoDocumento: 'ENTREGA_PARCIAL',
+      nombreOriginal: 'entrega-hito-1.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 2048
+    };
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      ampliacionesPlazo: [{
+        id: 50,
+        solicitudId: 23,
+        estadoAmpliacion: 'REGISTRADA',
+        fechaSolicitudAmpliacion: '2026-10-22',
+        fechaLimiteOriginal: '2026-11-05',
+        fechaLimiteAmpliada: '2026-12-10',
+        motivoAmpliacion: 'Volumen documental',
+        cronograma: [{
+          id: 71,
+          ampliacionId: 50,
+          numeroEntrega: 1,
+          descripcion: 'Bloque inicial',
+          fechaProgramada: '2026-11-20',
+          estado: 'ENTREGADA',
+          decision: 'ENTREGA_PARCIAL',
+          fundamentoDecision: 'Se omitieron los datos protegidos.',
+          fechaEntregaReal: '2026-11-18',
+          documentos: [entregaDoc]
+        }]
+      }]
+    });
+
+    const root = f.nativeElement as HTMLElement;
+    // No debe duplicar el bloque de ampliación ni sus documentos fuera de la pestaña Respuesta de la entidad.
+    expect(root.querySelector('#panel-respuesta')).toBeNull();
+    expect(root.textContent).not.toContain('Plazo ampliado');
+    expect(root.textContent).not.toContain('entrega-hito-1.pdf');
+    expect(root.textContent).toContain('Entrega parcial 1');
+    expect(root.querySelector('#tab-respuesta')?.textContent).toContain('1/1');
+
+    (root.querySelector('#tab-respuesta') as HTMLButtonElement).click();
+    f.detectChanges();
+
+    const panelRespuesta = root.querySelector('#panel-respuesta') as HTMLElement | null;
+    expect(panelRespuesta).not.toBeNull();
+    expect(panelRespuesta!.textContent).toContain('Plazo ampliado');
+    expect(panelRespuesta!.textContent).toContain('Volumen documental');
+    expect(panelRespuesta!.textContent).toContain('entrega-hito-1.pdf');
+    expect(panelRespuesta!.textContent).toContain('Decisión');
+    expect(panelRespuesta!.textContent).toContain('Entrega parcial del hito');
+    expect(panelRespuesta!.textContent).toContain('18/11/2026');
+    expect(panelRespuesta!.textContent).toContain('Se omitieron los datos protegidos.');
+    expect(panelRespuesta!.textContent).not.toContain('La entidad aún no ha respondido');
+
+    const orden = f.componentInstance.buildCitizenTimeline({
+      ...solicitud,
+      fechaPresentacion: '2026-11-13T10:00:00',
+      ampliacionesPlazo: [{
+        id: 50, solicitudId: 23, estadoAmpliacion: 'REGISTRADA',
+        fechaSolicitudAmpliacion: '2026-11-16T18:40:00', fechaNotificacionAmpliacion: '2026-11-16',
+        fechaLimiteOriginal: '2026-11-27', fechaLimiteAmpliada: '2027-01-20', motivoAmpliacion: 'Por tener muchos folios',
+        cronograma: [{
+          id: 73, ampliacionId: 50, numeroEntrega: 3, descripcion: 'Contratos de 2025 Part 3',
+          fechaProgramada: '2026-12-25', estado: 'ENTREGADA', decision: 'ENTREGA_PARCIAL',
+          fundamentoDecision: 'Fundamentos de la entrega parcial del hito', fechaEntregaReal: '2026-11-16',
+          documentos: [{ id: 210 }]
+        }]
+      }]
+    } as never);
+    expect(orden.map(evento => evento.title)).toEqual(['Solicitud presentada', 'Ampliación registrada', 'Entrega parcial 3']);
+    expect(orden[2].date).toContain('16');
+    expect(orden[2].date).not.toContain('15');
+    expect(f.componentInstance.timelineDisplayOrder(orden).map(evento => evento.title))
+      .toEqual(['Entrega parcial 3', 'Ampliación registrada', 'Solicitud presentada']);
+
+    const btnDescargar = panelRespuesta!.querySelector('button[aria-label="Descargar documento"]') as HTMLButtonElement | null;
+    expect(btnDescargar).not.toBeNull();
+    btnDescargar!.click();
+    const req = http.expectOne(`${base}/documentos/210/download`);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer sesion-a');
+    req.flush(new Blob(['pdf'], { type: 'application/pdf' }));
+  });
+
+  it('ofrece la apelación por la ampliación tras el vencimiento ordinario informado por el backend', () => {
+    const f = pagina();
+    const ampliacion = { id: 50, solicitudId: 23, estadoAmpliacion: 'REGISTRADA' as const,
+      expediente: 'SAIP-2026-00023', motivoAmpliacion: 'Volumen documental', informeAmpliacion: 'Informe de ampliación',
+      fechaSolicitudAmpliacion: '2026-11-05', fechaNotificacionAmpliacion: '2026-11-05',
+      fechaLimiteOriginal: '2026-11-17', fechaLimiteAmpliada: '2026-12-20',
+      plazoOrdinarioVencido: false, cronograma: [] };
+    responder(f, { ...solicitud, estado: 'EN_REVISION', respuesta: null, ampliacionesPlazo: [ampliacion] });
+    const componente = f.componentInstance;
+    expect(componente.puedeApelar()).toBe(false);
+    componente.solicitud.update(sol => sol && ({ ...sol, ampliacionesPlazo: [{ ...ampliacion, plazoOrdinarioVencido: true }] }));
+    expect(componente.puedeApelar()).toBe(true);
   });
 });
