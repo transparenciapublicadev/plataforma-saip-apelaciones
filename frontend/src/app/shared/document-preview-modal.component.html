@@ -8,6 +8,7 @@
       <div
         role="dialog" aria-modal="true" [attr.aria-label]="doc.nombre" tabindex="-1"
         [appModalFocus]="manageFocus"
+        (modalEscape)="onClose()"
         class="w-full max-w-3xl rounded-lg overflow-hidden flex flex-col"
         style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 20px 60px rgba(0, 0, 0, 0.35)); height: min(80vh, calc(100vh - 2rem)); max-height: calc(100vh - 2rem);"
         (click)="$event.stopPropagation()"

@@ -262,9 +262,11 @@
               aria-label="Documento de subsanación: Seleccionar archivo (PDF, JPG, PNG o TXT, máximo 10 MB)"
               aria-describedby="precision-archivo-hint precision-archivo-error precision-memoria"
               class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
+              [class.reference-upload-feedback]="!archivoSeleccionado()"
+              [class.is-dragging]="isDragging()"
               [ngClass]="{
                 'border-[var(--brand-700)] bg-[color:var(--brand-subtle)]': isDragging(),
-                'border-border hover:border-[var(--brand-700)] bg-card': !isDragging() && !archivoSeleccionado(),
+                'border-border bg-card': !isDragging() && !archivoSeleccionado(),
                 'border-green-500/40 bg-[color:rgba(21,128,61,0.06)] cursor-default': !!archivoSeleccionado()
               }">
 

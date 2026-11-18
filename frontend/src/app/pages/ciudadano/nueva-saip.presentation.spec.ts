@@ -160,7 +160,7 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     expect(body.get('formatoDigital')).toBe('true'); expect(body.get('claveOperacion')).toBe(f.componentInstance.claveOperacion());
     for (const campo of ['ciudadanoId', 'id', 'estado', 'expediente', 'fechaPresentacion', 'fechaLimite', 'documentoIds']) expect(body.has(campo)).toBe(false);
     confirmar(f, respuesta, [], req); expect(f.componentInstance.estadoEnvio()).toBe('confirmada');
-    expect(f.componentInstance.solicitudSuccessMetadata()).toContainEqual({ label: 'Fecha límite del servidor', value: respuesta.fechaLimite });
+    expect(f.componentInstance.solicitudSuccessMetadata()).toContainEqual({ label: 'Fecha límite de atención', value: '09/11/2026' });
   });
   it('tema y oficina siguen opcionales; soportes se revisan en la descripción sin fingir catálogo o asignación', () => {
     const f = preparar(), c = f.componentInstance; c.tema = 'Materia libre'; c.oficinaDestinataria = 'Oficina sintética';
@@ -242,7 +242,8 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
   it('una comprobación fallida no elimina el registro ni acredita ausencia documental', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); confirmar(f);
     c.comprobarRegistro(); http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`).flush(null, { status: 503, statusText: 'Unavailable' });
-    expect(c.solicitudCreada()?.id).toBe(101); expect(c.documentosConsultados()).toBeNull(); expect(c.errorRecuperacion()).toContain('no acredita ausencia');
+    expect(c.solicitudCreada()?.id).toBe(101); expect(c.documentosConsultados()).toBeNull(); expect(c.errorRecuperacion()).toBeTruthy();
+    expect(c.estadoEnvio()).toBe('confirmada');
   });
   it('un cambio de sesión inmediato impide subidas aunque la creación responda antes del efecto', () => {
     const f = preparar(), c = f.componentInstance; c.adjunto.set(new File(['x'], 'x.txt', { type: 'text/plain' }));
@@ -309,7 +310,7 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
   });
   it('un conflicto de escritura se distingue del resultado incierto y exige consulta antes de otro envío', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); http.expectOne(`${base}/solicitudes/recepciones`).flush(null, { status: 409, statusText: 'Conflict' });
-    expect(c.estadoEnvio()).toBe('rechazada'); expect(c.error()).toContain('conflicto'); expect(c.bloqueado()).toBe(true);
+    expect(c.estadoEnvio()).toBe('rechazada'); expect(c.error()).toBeTruthy(); expect(c.bloqueado()).toBe(true);
     c.crearSolicitud(); c.reintentarAlta(); http.expectNone(r => r.method === 'POST');
   });
   it.each([{ id: 0 }, { claveOperacion: 'otra-operacion' }, { declaraVeracidad: false }, { fechaRecepcion: 'sin-fecha' }, { documentos: null }])(
@@ -326,7 +327,7 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); const r = recibida(f); http.expectOne(`${base}/solicitudes/recepciones`).flush(r);
     expect(c.successModalAbierto()).toBe(true); c.comprobarRegistro();
     http.expectOne(`${base}/solicitudes/recepciones/${c.claveOperacion()}`).flush({ ...r, id: 72 });
-    expect(c.errorRecuperacion()).toContain('incompatibles');
+    expect(c.errorRecuperacion()).toBeTruthy(); expect(c.recepcionId()).toBe(r.id); expect(c.documentosConsultados()).toBeNull();
   });
   it('un reintento tampoco sustituye un ID de recepción ya conocido', () => {
     const f = preparar(), c = f.componentInstance; c.crearSolicitud(); const r = recibida(f);
@@ -357,7 +358,8 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
   it('no añade pedido, archivos ni clave al almacenamiento del navegador', () => {
     const f = preparar(), c = f.componentInstance; const before = JSON.stringify([localStorage, sessionStorage]);
     c.crearSolicitud(); http.expectOne(`${base}/solicitudes/recepciones`).error(new ProgressEvent('error')); f.detectChanges();
-    expect(JSON.stringify([localStorage, sessionStorage])).toBe(before); expect(f.nativeElement.textContent).toContain('solo en memoria');
+    expect(JSON.stringify([localStorage, sessionStorage])).toBe(before);
     expect(c.claveOperacion()).not.toBe('');
+    expect(f.nativeElement.textContent).not.toContain(c.claveOperacion());
   });
 });

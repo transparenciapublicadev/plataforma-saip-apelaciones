@@ -83,7 +83,7 @@ export class DocumentPreviewModalComponent implements OnChanges, OnDestroy {
 
   @HostListener('window:keydown.escape')
   onEscape(): void {
-    if (this.open) {
+    if (this.open && !this.manageFocus) {
       this.onClose();
     }
   }
@@ -159,7 +159,8 @@ export class DocumentPreviewModalComponent implements OnChanges, OnDestroy {
 
   private setUrl(url: string): void {
     this.rawUrl.set(url);
-    this.safeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+    const vistaInicial = this.isPdf() && url === this.activeObjectUrl ? `${url}#page=1` : url;
+    this.safeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(vistaInicial));
   }
 
   private loadDocument(doc: DocumentPreviewTarget): void {

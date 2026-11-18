@@ -339,7 +339,7 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     const close = dialog.querySelector('button[title="Cerrar"]') as HTMLButtonElement; close.focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
     expect(dialog.contains(document.activeElement)).toBe(true);
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges();
+    close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); f.detectChanges();
     expect(f.componentInstance.previewTarget()).toBeNull(); expect(document.activeElement).toBe(trigger); expect(pending.observed).toBe(false);
   });
   it.each(['registrarAmpliacion', 'registrarEncauzamiento', 'emitirLiquidacion', 'actualizarLiquidacion'])('la continuación del comando %s no repuebla otra sesión', command => {

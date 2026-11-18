@@ -23,8 +23,8 @@ import { LucideArrowLeft, LucideShieldCheck, LucideCheckCircle2, LucideHelpCircl
 export const FORMATOS = [
   { key: 'correo' as const, label: 'Correo electrónico', desc: 'Formato digital (PDF, Excel, Word)' },
   { key: 'copiaSimple' as const, label: 'Copia simple / fotocopia', desc: 'Impreso, previo pago del costo de reproducción aplicable' },
-  { key: 'copiaCertificada' as const, label: 'Copia certificada', desc: 'Modalidad solicitada; no acredita certificación de un documento' },
-  { key: 'soporteMagnetico' as const, label: 'Soportes magnéticos o digitales', desc: 'Se consigna en la descripción; disponibilidad según la entidad' }
+  { key: 'copiaCertificada' as const, label: 'Copia certificada', desc: 'Copia con certificación de la entidad' },
+  { key: 'soporteMagnetico' as const, label: 'Soportes magnéticos o digitales', desc: 'CD, DVD o USB, según disponibilidad de la entidad' }
 ];
 export const MEDIOS_NOTIFICACION = [
   { key: 'correo' as const, label: 'Correo electrónico', desc: 'Al correo registrado de la cuenta' },
@@ -153,12 +153,14 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       next: data => {
         if (!this.actual(gen)) return;
         if (!Array.isArray(data) || data.some(e => !e || !this.idValido(e.id) || !e.nombre?.trim()) || new Set(data.map(e => e.id)).size !== data.length) {
-          this.estadoEntidades.set('error'); this.errorEntidades.set('El catálogo de entidades está incompleto. No se habilitó la selección.'); this.reintentarEntidades.set(true); return;
+          this.estadoEntidades.set('error'); this.errorEntidades.set('No se pudo cargar la lista completa de entidades. Vuelva a consultarla.'); this.reintentarEntidades.set(true); return;
         }
         this.entidades.set(data); this.estadoEntidades.set(data.length ? 'disponible' : 'vacio');
       },
       error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'las entidades'); this.estadoEntidades.set(fallo.estado);
-        this.errorEntidades.set(fallo.mensaje); this.reintentarEntidades.set(fallo.reintentable); } }
+        this.errorEntidades.set(fallo.estado === 'red' ? 'Compruebe su conexión y vuelva a consultar las entidades.'
+          : fallo.estado === 'servidor' ? 'No se pudo cargar la lista de entidades. Inténtelo nuevamente.' : fallo.mensaje);
+        this.reintentarEntidades.set(fallo.reintentable); } }
     }));
   }
   guia() { return GUIA[this.step()]; }
@@ -167,17 +169,17 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   formatosSeleccionadosLabels(): string[] { return this.formatos.filter(f => this.formatoRespuesta[f.key]).map(f => f.label); }
   revisionLocal(): { label: string; revisado: boolean }[] {
     return [
-      { label: 'Entidad identificada en el catálogo consultado', revisado: this.entidades().some(e => e.id === this.entidadId) },
-      { label: 'Asunto y descripción incorporados para revisión', revisado: !!this.asunto.trim() && !!this.descripcion.trim() },
-      { label: 'Modalidad y canal seleccionados', revisado: !!this.formatosSeleccionadosLabels().length && !!this.medioNotificacion },
-      { label: 'Archivos opcionales revisados; todavía no registrados', revisado: this.zonas.every(z => !z.file() || this.validarArchivoConAviso(z.file()!).valid) }
+      { label: 'Elegí la entidad a la que se dirige mi solicitud', revisado: this.entidades().some(e => e.id === this.entidadId) },
+      { label: 'El asunto y la descripción indican qué información solicito', revisado: !!this.asunto.trim() && !!this.descripcion.trim() },
+      { label: 'Elegí la forma de entrega y el medio de notificación', revisado: !!this.formatosSeleccionadosLabels().length && !!this.medioNotificacion },
+      { label: 'Revisé los archivos que deseo adjuntar', revisado: this.zonas.every(z => !z.file() || this.validarArchivoConAviso(z.file()!).valid) }
     ];
   }
   seleccionarMedioNotificacion(medio: 'correo' | 'fisica'): void { if (!this.bloqueado()) this.medioNotificacion = medio; }
   private validar(paso: number): Record<string, string> {
     const errors: Record<string, string> = {};
     if (!this.actual() || !this.idValido(this.authService.obtenerSesion()?.ciudadanoId)) errors['sesion'] = 'No se identificó al ciudadano de la sesión. Inicie sesión nuevamente.';
-    if (this.estadoEntidades() !== 'disponible' || !this.entidades().some(e => e.id === this.entidadId)) errors['entidad'] = 'Seleccione una entidad del catálogo autorizado.';
+    if (this.estadoEntidades() !== 'disponible' || !this.entidades().some(e => e.id === this.entidadId)) errors['entidad'] = 'Seleccione la entidad a la que dirige su solicitud.';
     if (!this.asunto.trim() || this.asunto.trim().length > 500) errors['asunto'] = 'Ingrese un asunto de hasta 500 caracteres.';
     if (!this.descripcion.trim()) errors['descripcion'] = 'Describa la información solicitada.';
     if (this.tema.trim().length > 100) errors['tema'] = 'El tema admite hasta 100 caracteres.';
@@ -315,7 +317,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
         if (!this.actual(gen) || this.envio !== envio) return;
         this.confirmModalAbierto.set(false);
         if (!this.recepcionCompatible(respuesta, envio) || !this.mismaRecepcionEsperada(respuesta)) {
-          this.incierta('El servidor no confirmó una recepción compatible. Consulte por la misma operación; no repita la creación a ciegas.');
+          this.incierta('Aún no se confirmó el registro de su solicitud. Compruébelo antes de volver a enviarla.');
           return;
         }
         this.recepcionEsperada = respuesta;
@@ -335,12 +337,12 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
         if (!this.actual(gen) || this.envio !== envio) return;
         this.loading.set(false); this.confirmModalAbierto.set(false);
         if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
-          this.incierta('Resultado incierto: el servidor podría haber registrado la solicitud y sus archivos. Consulte la recepción con la misma clave antes de un reintento explícito. No se repite el POST automáticamente.');
+          this.incierta('Su solicitud y sus archivos podrían haberse registrado. Compruebe el envío antes de volver a intentarlo.');
         } else {
           this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
             : error.status === 403 ? 'No tiene permiso para presentar esta solicitud.' : error.status === 409
-              ? 'El servidor rechazó la operación por conflicto. Consulte su recepción antes de intentar otro registro.'
-              : 'El servidor rechazó la creación. Revise los campos y las condiciones de presentación.');
+              ? 'No se pudo confirmar el envío. Compruebe el registro antes de presentar otra solicitud.'
+              : 'No se pudo presentar la solicitud. Revise los datos e inténtelo de nuevo.');
           if (error.status !== 409) { this.operacionPendiente.set(false); this.envio = null; this.confirmacion = null; }
         }
       }
@@ -401,8 +403,8 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
         if (!this.actual(gen) || this.envio !== envio) return;
         this.loading.set(false);
         if (!this.recepcionCompatible(r, envio) || !this.mismaRecepcionEsperada(r)) {
-          if (!yaConfirmada) this.incierta('La consulta no acredita la recepción de esta operación y sus documentos. No se confirma otro registro.');
-          this.errorRecuperacion.set('La consulta contiene relaciones o datos incompatibles. No se repite el alta.'); return;
+          if (!yaConfirmada) this.incierta('Aún no podemos confirmar el registro de su solicitud y sus archivos.');
+          this.errorRecuperacion.set('No se pudo comprobar el envío. Consulte nuevamente antes de reintentar.'); return;
         }
         this.recepcionEsperada = r; this.recepcionId.set(r.id); this.solicitudCreada.set(r.solicitud as Solicitud); this.expedienteCreado.set(r.solicitud.expediente!);
         envio.archivos.forEach((a, i) => { a.estado = 'registrado'; a.documento = r.documentos[i]; });
@@ -412,10 +414,10 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       error: error => { if (this.actual(gen) && this.envio === envio) {
         this.loading.set(false);
         if (!yaConfirmada && error?.status === 404) {
-          this.estadoEnvio.set('sin-recepcion'); this.error.set('No hay recepción confirmada para la clave consultada. El envío anterior podría seguir en curso. Solo se permite reintentar explícitamente la misma clave y contenido.');
+          this.estadoEnvio.set('sin-recepcion'); this.error.set('Todavía no encontramos un registro de este envío. Si elige reintentar, se conservarán los datos y archivos que ya confirmó.');
         } else {
-          if (!yaConfirmada) this.incierta('No se pudo comprobar la recepción. Un error de consulta no acredita ausencia; conserve el contenido y consulte nuevamente.');
-          this.errorRecuperacion.set('No se pudo comprobar el registro y sus documentos. El error no acredita ausencia de archivos.');
+          if (!yaConfirmada) this.incierta('No se pudo comprobar el envío. Permanezca en esta página y vuelva a consultar.');
+          this.errorRecuperacion.set('No se pudo comprobar el registro de la solicitud y sus archivos.');
         }
       } }
     }));
@@ -446,18 +448,16 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   solicitudWarning(): ReferenceConfirmWarning {
     return {
       label: 'Plazo legal',
-      detail: 'La entidad tendrá 10 días hábiles para responder desde la fecha de envío (Ley N° 27806).'
+      detail: 'La entidad tendrá 10 días hábiles para responder como plazo ordinario de atención (Ley N° 27806).'
     };
   }
   solicitudSuccessDescription(): string {
     const ent = this.getEntidadSeleccionadaNombre();
-    return `Su solicitud fue recibida por ${ent}. La entidad cuenta con un plazo legal para emitir respuesta.`;
+    return `Su solicitud para ${ent} quedó registrada. Puede seguir su trámite con el número de expediente.`;
   }
   solicitudSuccessHint(): string {
     const r = this.solicitudCreada();
-    const fecha = r?.fechaPresentacion ? new Date(r.fechaPresentacion).toLocaleDateString('es-PE') : 'hoy';
-    const email = this.sesionVisual().email || 'su correo';
-    return `Generado el ${fecha} · Notificaciones a ${email}`;
+    return r?.fechaPresentacion ? `Presentada el ${this.fechaVisible(r.fechaPresentacion)}` : 'Solicitud presentada';
   }
   solicitudSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.solicitudCreada();
@@ -467,15 +467,19 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       { label: 'Asunto', value: r?.asunto || this.asunto.trim() || '—' },
       { label: 'Modalidad', value: this.formatosSeleccionadosLabels().join(', ') || 'No definida' },
       { label: 'Solicitante', value: s.nombre || '—' },
-      { label: 'Fecha registrada', value: r?.fechaPresentacion || 'No disponible' },
-      { label: 'Fecha límite del servidor', value: r?.fechaLimite || 'No disponible' }
+      { label: 'Fecha de presentación', value: this.fechaVisible(r?.fechaPresentacion) },
+      { label: 'Fecha límite de atención', value: this.fechaVisible(r?.fechaLimite) }
     ];
+  }
+  private fechaVisible(fecha?: string | null): string {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})/.exec(fecha || '');
+    return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : 'No disponible';
   }
   solicitudNextSteps(): ReferenceSuccessNextStep[] {
     return [
-      { label: 'La entidad evaluará su solicitud y emitirá respuesta.', hint: 'Recibirá notificación por correo cuando exista una decisión.' },
-      { label: 'Si no recibe respuesta en 10 días hábiles, podrá apelar ante el TTAIP.', hint: 'Silencio Administrativo Negativo' },
-      { label: 'Puede consultar el estado en cualquier momento desde su panel.' }
+      { label: 'Revise su expediente para consultar los avances y la fecha de atención.' },
+      { label: 'Si vence el plazo sin respuesta, puede presentar una apelación ante el TTAIP.' },
+      { label: 'Conserve el número de expediente para consultar su solicitud.' }
     ];
   }
   cerrarResultado(): void {

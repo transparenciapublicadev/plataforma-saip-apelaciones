@@ -74,11 +74,13 @@ export interface MultiFileSlot {
               (dragleave)="handleDragLeave($event, slot.id)"
               (drop)="handleDrop($event, slot.id)"
               class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
+              [class.reference-upload-feedback]="!slot.file"
+              [class.is-dragging]="slot.dragging"
               [ngClass]="{
                 'border-[var(--brand-600)] bg-[color:var(--brand-subtle)]': slot.dragging,
                 'border-border': !slot.dragging && !slot.file,
                 'bg-[color:var(--success-soft,rgba(34,197,94,0.10))] border-emerald-300 dark:border-emerald-800': !!slot.file,
-                'bg-[color:var(--card)] hover:border-[var(--brand-600)]': !slot.file && !slot.dragging
+                'bg-[color:var(--card)]': !slot.file && !slot.dragging
               }"
               (click)="onSlotClick(slot)"
               [attr.role]="keyboardAccessible() && !slot.file ? 'button' : null"

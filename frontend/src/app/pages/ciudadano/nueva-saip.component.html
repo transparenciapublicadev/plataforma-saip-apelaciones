@@ -26,9 +26,18 @@
           <div id="saip-errores" tabindex="-1" role="alert" class="rounded-lg p-4" style="background:color-mix(in srgb,var(--destructive) 8%,var(--card));border:1px solid var(--destructive)">
             <p class="text-sm">{{ error() }}</p>
             <ul class="list-disc pl-5 text-sm mt-2">@for (item of errores() | keyvalue; track item.key) { <li>{{ item.value }}</li> }</ul>
+            @if (operacionPendiente()) {
+              @if (errorRecuperacion()) { <p class="text-sm mt-2">{{ errorRecuperacion() }}</p> }
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar registro</button>
+                @if (estadoEnvio() === 'sin-recepcion') {
+                  <button type="button" class="btn-brand" [disabled]="loading()" (click)="reintentarAlta()">Volver a enviar</button>
+                }
+              </div>
+            }
           </div>
         }
-        @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el resultado de la operación en el servidor…</p> }
+        @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el registro de su solicitud…</p> }
         <nav aria-label="Pasos de la solicitud">
           <ol class="flex items-start gap-2">
             @for (paso of pasos; track paso.short; let i = $index) {
@@ -62,7 +71,7 @@
 </svg>
 </div>
                 <div class="flex-1 min-w-0">
-<span class="eyebrow" style="color:var(--brand-700)">Datos de la sesión autenticada</span>
+<span class="eyebrow" style="color:var(--brand-700)">Datos del solicitante</span>
 <h3 class="font-display mt-1.5" style="font-size:20px;letter-spacing:-0.01em;line-height:1.15">{{ sesionVisual().nombre || 'Nombre no disponible' }}</h3>
                   <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px]">
                     <div class="rounded-md px-3.5 py-2.5" style="background:var(--card);border:1px solid var(--border)">
@@ -74,7 +83,7 @@
 <dd class="font-mono mt-0.5">{{ sesionVisual().email || 'No disponible' }}</dd>
 </div>
                   </dl>
-                  <p class="text-xs text-muted-foreground mt-3 italic">La identidad del solicitante procede de su cuenta y no es editable aquí. Estos datos de sesión no acreditan una verificación RENIEC/SUNAT. No se consultan aquí domicilio o teléfono; la edición de perfil no está disponible en esta pantalla.</p>
+                  <p class="text-xs text-muted-foreground mt-3 italic">Estos son los datos de su cuenta que se usarán para identificarle en la solicitud.</p>
                 </div>
               </div>
             </section>
@@ -93,21 +102,21 @@
                   <select id="saip-entidad" class="field-input" name="entidad" [(ngModel)]="entidadId" [disabled]="estadoEntidades() !== 'disponible'" required aria-required="true" aria-describedby="saip-entidad-estado saip-entidad-error" [attr.aria-invalid]="!!errores()['entidad']">
                     <option [ngValue]="null">Seleccione la entidad receptora</option>@for (entidad of entidades(); track entidad.id) { <option [ngValue]="entidad.id">{{ entidad.nombre }}{{ entidad.acronimo ? ' (' + entidad.acronimo + ')' : '' }}</option> }
                   </select>
-                  <p id="saip-entidad-estado" role="status" class="field-hint">@if (estadoEntidades() === 'cargando') { Consultando entidades… } @else if (estadoEntidades() === 'vacio') { El servidor devolvió un catálogo vacío. } @else if (errorEntidades()) { {{ errorEntidades() }} }</p>
+                  <p id="saip-entidad-estado" role="status" class="field-hint">@if (estadoEntidades() === 'cargando') { Consultando entidades… } @else if (estadoEntidades() === 'vacio') { Por el momento no hay entidades disponibles para seleccionar. } @else if (errorEntidades()) { {{ errorEntidades() }} }</p>
                   <p id="saip-entidad-error" class="field-hint text-destructive">{{ errores()['entidad'] }}</p>
-                  @if (reintentarEntidades()) { <button type="button" class="btn-ghost-brand" (click)="cargarEntidades()">Reintentar catálogo</button> }
+                  @if (reintentarEntidades()) { <button type="button" class="btn-ghost-brand" (click)="cargarEntidades()">Volver a consultar entidades</button> }
                 </div>
                 <div class="field">
 <label for="saip-tema" class="field-label">Tema o materia <span class="text-muted-foreground font-normal">(opcional)</span>
 </label>
 <input id="saip-tema" class="field-input" name="tema" [(ngModel)]="tema" maxlength="100" aria-describedby="saip-tema-hint">
-<p id="saip-tema-hint" class="field-hint">Texto libre, hasta 100 caracteres. El backend no ofrece un catálogo de materias para este formulario.</p>
+<p id="saip-tema-hint" class="field-hint">Indique el tema de su solicitud, en hasta 100 caracteres.</p>
 </div>
                 <div class="field">
 <label for="saip-oficina" class="field-label">Oficina o unidad orgánica destinataria <span class="text-muted-foreground font-normal">(opcional)</span>
 </label>
 <input id="saip-oficina" class="field-input" name="oficina" [(ngModel)]="oficinaDestinataria" placeholder="Ej. Oficina General de Administración">
-<span class="field-hint">Opcional. Se guarda con la solicitud para que la entidad la vea. No asigna el área interna que atenderá el pedido.</span>
+<span class="field-hint">Si conoce la oficina que tiene la información, indíquela como referencia.</span>
 </div>
                 <div class="field">
 <label for="saip-asunto" class="field-label">Asunto <span class="req">*</span>
@@ -171,7 +180,7 @@
 <span aria-hidden="true" class="saip-section-number">03</span>
 </div>
               <div class="p-6 md:p-8 space-y-4">
-<p class="text-sm text-muted-foreground">Seleccione el canal que se registrará en la solicitud. Su selección no acredita envío ni notificación eficaz. Esta pantalla conserva correo y medio físico; no configura proveedores de casilla o plataforma.</p>
+<p class="text-sm text-muted-foreground">Elija cómo prefiere recibir las notificaciones de su trámite.</p>
                 <div role="radiogroup" aria-label="Medio de notificación" class="grid grid-cols-1 md:grid-cols-2 gap-3">@for (item of mediosNotificacion; track item.key) { <label class="saip-option text-left rounded-lg p-4 flex items-start gap-3" [style.background]="medioNotificacion === item.key ? 'var(--brand-50)' : 'var(--card)'" style="border:1px solid var(--border)">
 <input type="radio" class="sr-only" name="medio" [value]="item.key" [(ngModel)]="medioNotificacion">
 <span>
@@ -201,8 +210,14 @@
 <span aria-hidden="true" class="saip-section-number">04</span>
 </div>
               <div class="p-6 md:p-8 space-y-6">
-<p class="text-sm text-muted-foreground">Todos son opcionales. PDF, JPG, PNG o TXT hasta 10 MB por archivo. ZIP no está admitido por el almacenamiento vigente. La selección y la vista previa son locales.</p>
+<p class="text-sm text-muted-foreground">Adjunte un archivo principal o anexos si ayudan a ubicar la información solicitada. Puede usar PDF, JPG, PNG o TXT de hasta 10 MB por archivo.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">@for (zona of zonas; track zona.label; let i = $index) {
+                  @if (i === 1) {
+                    <div class="md:col-span-2">
+                      <div class="rule-ornament"></div>
+                      <p class="mt-4"><span class="eyebrow">Anexos</span> <span class="text-xs text-muted-foreground">(opcionales · hasta dos archivos)</span></p>
+                    </div>
+                  }
                   <div [ngClass]="{'md:col-span-2': i === 0}">
 <label [for]="'saip-archivo-' + i" class="field-label">{{ zona.label }} <span class="font-normal text-muted-foreground">(opcional)</span>
 </label>
@@ -213,7 +228,7 @@
 </svg>
 <span class="text-sm font-medium">{{ file.name }}</span>
 </div>
-<p class="font-mono text-xs mt-2">{{ formatFileSizeMB(file.size) }} MB · seleccionado en memoria; aún no subido</p>
+<p class="font-mono text-xs mt-2">{{ formatFileSizeMB(file.size) }} MB · listo para adjuntar</p>
 <div class="flex flex-wrap gap-2 justify-center mt-3">
 <button type="button" class="btn-outline !text-xs" (click)="previsualizarArchivo(file)" [attr.aria-label]="'Previsualizar archivo seleccionado ' + file.name">
 <svg aria-hidden="true" lucideEye class="w-4 h-4">
@@ -224,15 +239,15 @@
 </div>
 </div>
                     } @else {
-                      <div class="file-upload-zone" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar ' + zona.label + ' (opcional)'" (click)="fileInput.click()" (keydown)="abrirSelector($event, fileInput)" [class.is-dragging]="zona.dragging()" (dragover)="arrastrarArchivo($event, i, true)" (dragleave)="arrastrarArchivo($event, i, false)" (drop)="soltarArchivo($event, i)">
+                      <div class="file-upload-zone reference-upload-feedback" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar ' + zona.label + ' (opcional)'" (click)="!bloqueado() && fileInput.click()" (keydown)="abrirSelector($event, fileInput)" [class.is-dragging]="zona.dragging()" (dragover)="arrastrarArchivo($event, i, true)" (dragleave)="arrastrarArchivo($event, i, false)" (drop)="soltarArchivo($event, i)">
 <svg aria-hidden="true" lucideUpload class="w-8 h-8 mx-auto text-muted-foreground">
 </svg>
-<p class="text-sm mt-2">Arrastra o <span class="upload-action-link">selecciona</span>
+<p class="text-sm mt-2">Arrastre un archivo o <span class="upload-action-link">selecciónelo</span>
 </p>
 <p class="text-xs text-muted-foreground">PDF, JPG, PNG o TXT · hasta 10 MB</p>
 </div>
                     }
-                    <input #fileInput [id]="'saip-archivo-' + i" type="file" class="sr-only" [accept]="accept" (change)="seleccionarArchivo($event, i)" [attr.aria-describedby]="'saip-archivo-error-' + i">
+                    <input #fileInput [id]="'saip-archivo-' + i" type="file" class="sr-only" tabindex="-1" [accept]="accept" (change)="seleccionarArchivo($event, i)" [attr.aria-describedby]="'saip-archivo-error-' + i">
 <p [id]="'saip-archivo-error-' + i" role="status" class="field-hint text-destructive">{{ zona.warning() }}</p>
                   </div>
                 }</div>
@@ -248,11 +263,11 @@
 </svg>Lista de verificación</h3>
 </div>
               <div class="p-6 md:p-8 space-y-5">
-<p class="text-sm">Revise entidad, pedido, modalidad, canal y archivos. Las recomendaciones de redacción no bloquean la presentación.</p>
-<ul class="space-y-2.5 text-sm" aria-label="Revisión local sin validación del servidor">@for (item of revisionLocal(); track item.label) { <li class="flex items-start gap-2.5">
+<p class="text-sm">Revise su pedido, la entidad, la forma de entrega y los archivos antes de presentar la solicitud.</p>
+<ul class="space-y-2.5 text-sm" aria-label="Lista de verificación de la solicitud">@for (item of revisionLocal(); track item.label) { <li class="flex items-start gap-2.5">
 <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" [style.color]="item.revisado ? 'var(--success)' : 'var(--muted-foreground)'">
 </svg>
-<span>{{ item.label }} <span class="sr-only">{{ item.revisado ? 'Revisado localmente' : 'Por revisar' }}</span>
+<span>{{ item.label }} <span class="sr-only">{{ item.revisado ? 'Completo' : 'Por revisar' }}</span>
 </span>
 </li> }</ul>
                 @if (avisosCalidad().length) { <div role="status" class="rounded-lg p-4" style="background:color-mix(in srgb,var(--gold) 14%,var(--card));border:1px solid var(--border)">
@@ -265,7 +280,7 @@
 <p class="font-medium">{{ asunto }}</p>
 <p class="whitespace-pre-line mt-1">{{ descripcion }}</p>
 <p class="mt-2 text-xs text-muted-foreground">Entidad: {{ getEntidadSeleccionadaNombre() }} · Entrega: {{ formatosSeleccionadosLabels().join(', ') }}</p>
-<p class="mt-1 text-xs text-muted-foreground">Canal: {{ medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' }} · Tema: {{ temaEfectivo() || 'No indicado' }}</p>@if (oficinaDestinataria) { <p class="mt-1 text-xs">Referencia a oficina: {{ oficinaDestinataria }}</p> }@for (zona of zonas; track zona.label) { @if (zona.file(); as file) { <p class="mt-1 text-xs">{{ zona.label }}: {{ file.name }} (solo seleccionado)</p> } }</div>
+<p class="mt-1 text-xs text-muted-foreground">Canal: {{ medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' }} · Tema: {{ temaEfectivo() || 'No indicado' }}</p>@if (oficinaDestinataria) { <p class="mt-1 text-xs">Referencia a oficina: {{ oficinaDestinataria }}</p> }@for (zona of zonas; track zona.label) { @if (zona.file(); as file) { <p class="mt-1 text-xs">{{ zona.label }}: {{ file.name }} </p> } }</div>
                 <label class="flex items-start gap-2.5 text-sm">
 <input type="checkbox" name="consentimiento" [(ngModel)]="consentimientoDatosPersonales" aria-describedby="saip-consentimiento-error">
 <span>Acepto expresamente el tratamiento de mis datos personales para este procedimiento SAIP.</span>
@@ -273,10 +288,9 @@
 <p id="saip-consentimiento-error" class="field-hint text-destructive">{{ errores()['consentimiento'] }}</p>
                 <label class="flex items-start gap-2.5 text-sm">
 <input type="checkbox" name="veracidad" [(ngModel)]="declaraVeracidad" aria-describedby="saip-veracidad-error">
-<span>Declaro que la información consignada es veraz. Esta aceptación no constituye una firma digital verificada.</span>
+<span>Declaro que la información consignada es veraz.</span>
 </label>
 <p id="saip-veracidad-error" class="field-hint text-destructive">{{ errores()['veracidad'] }}</p>
-                <p class="text-xs text-muted-foreground">La declaración se comprueba en este formulario; el contrato persiste el consentimiento, pero no un campo independiente de declaración de veracidad.</p>
               </div>
             </section>
 
@@ -321,7 +335,7 @@
 </svg>Presentar solicitud</button> }
           </div>
         </fieldset>
-        <p role="note" class="text-xs text-muted-foreground">El texto y los archivos permanecen solo en memoria mientras siga en esta pantalla y sesión. Se pierden al recargar o salir. No se guarda un borrador en el servidor ni una copia de este contenido en el almacenamiento del navegador.</p>
+        <p role="note" class="text-xs text-muted-foreground">Si sale de esta página o la recarga antes de presentar la solicitud, perderá el texto y los archivos seleccionados.</p>
       </div>
       <aside class="lg:col-span-4">
 <div class="sticky top-28 space-y-5">
@@ -363,7 +377,7 @@
 </svg>
 <div>
 <div class="eyebrow !text-[10px] mb-1.5">Plazos legales</div>
-<p class="text-sm text-foreground/85 leading-snug">La entidad tiene 10 días hábiles para responder. Si no responde en ese plazo, aplica el Silencio Administrativo Negativo y podrá apelar ante el Tribunal.</p>
+<p class="text-sm text-foreground/85 leading-snug">El plazo ordinario de atención es de 10 días hábiles. Consulte el vencimiento de su solicitud en el expediente. Si vence sin respuesta, puede apelar ante el Tribunal.</p>
 </div>
 </div>
       </div>
@@ -372,9 +386,9 @@
   </div>
   <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su solicitud" titleLead="Confirme" titleEmphasis="su solicitud" eyebrow="Revisión final · SAIP" description="Antes de enviar, revise que la información esté correcta. Si algo no le convence, puede volver al formulario para editarlo." [summary]="solicitudConfirmSummary()" [warning]="solicitudWarning()" confirmLabel="Confirmar y enviar" cancelLabel="Volver a revisar" (close)="confirmModalAbierto.set(false)" (confirm)="crearSolicitud()">
 </app-reference-confirm-modal>
-  <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Solicitud presentada" title="Tu SAIP fue registrada" [description]="solicitudSuccessDescription()" [expediente]="expedienteCreado()" [expedienteHint]="solicitudSuccessHint()" [plazoDias]="10" plazoTipo="hábiles" plazoDescripcion="La entidad debe responder dentro de este plazo. Puede ampliarse 5 días con justificación." plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
+  <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Solicitud presentada" title="Tu SAIP fue registrada" [description]="solicitudSuccessDescription()" [expediente]="expedienteCreado()" [expedienteHint]="solicitudSuccessHint()" [plazoDias]="10" plazoTipo="hábiles" plazoDescripcion="Es el plazo ordinario de atención. Consulte en su expediente la fecha aplicable." plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
 </app-reference-success-modal>
-  <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solo en memoria" title="Borrador en esta pantalla" description="El contenido permanece en memoria al avanzar y retroceder. No se ha guardado en el servidor ni en el almacenamiento del navegador. Se pierde al salir, recargar o cambiar de sesión." confirmLabel="Continuar editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
+  <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solicitud en preparación" title="Borrador en esta pantalla" description="Puede avanzar y retroceder para seguir editando. Si sale, recarga la página o cierra sesión, perderá el texto y los archivos seleccionados." confirmLabel="Continuar editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
   <app-reference-confirm-modal [open]="!!modeloPendiente()" [manageFocus]="true" presentation="saip-response" title="Reemplazar descripción" description="El modelo sustituirá el texto que ya escribió. Revíselo y adapte sus ejemplos antes de presentar." confirmLabel="Usar modelo" (close)="modeloPendiente.set(null)" (confirm)="confirmarModelo()">
 </app-reference-confirm-modal>
   <app-document-preview-modal [doc]="previewTarget()" [open]="isPreviewOpen()" [manageFocus]="true" (close)="cerrarPreview()">

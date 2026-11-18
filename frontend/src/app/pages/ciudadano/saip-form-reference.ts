@@ -57,13 +57,13 @@ export const GUIA: Record<number, { tips: string[]; bueno?: string; malo?: strin
     tips: [
       'Los archivos son opcionales. Úselos solo si ayudan a ubicar la información (por ejemplo, una referencia o número de expediente).',
       'No adjunte documentos con datos personales de otras personas.',
-      'Use PDF, JPG, PNG o TXT; ZIP no está admitido por el almacenamiento actual.',
+      'Puede adjuntar un archivo principal y hasta dos anexos.',
     ],
   },
   4: {
     tips: [
-      'Consulte el plazo y las actuaciones registrados por el servidor; no se calculan fechas en este formulario.',
-      'Si la entidad solicita una precisión, consulte el requerimiento concreto y sus condiciones de presentación.',
+      'Una vez presentada la solicitud, consulte la fecha límite y los avances desde su expediente.',
+      'Si la entidad le pide precisar su solicitud, revise qué información debe aclarar y hasta cuándo puede hacerlo.',
       'Si no le responden a tiempo o le niegan la información, puede apelar ante el Tribunal de Transparencia (TTAIP).',
     ],
   },
