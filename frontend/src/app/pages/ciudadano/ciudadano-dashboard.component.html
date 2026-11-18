@@ -429,6 +429,39 @@
                 </div>
               }
 
+              @if (seguimientoPlazo(); as seguimiento) {
+                <div class="mt-7 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand-700)">
+                  <p class="text-sm font-medium">Plazo prolongado</p>
+                  <p class="text-xs text-muted-foreground mt-1">
+                    @if (seguimiento.comunicada) { Comunicado el {{ seguimiento.comunicada }}. }
+                    @if (seguimiento.original && seguimiento.ampliada) {
+                      El vencimiento pasó de {{ seguimiento.original }} a {{ seguimiento.ampliada }}.
+                    }
+                  </p>
+                  @if (seguimiento.entregas.length) {
+                    <ul class="mt-3 space-y-2" aria-label="Entregas del plazo prolongado">
+                      @for (entrega of seguimiento.entregas; track entrega.id) {
+                        <li class="rounded-md px-3 py-2" style="background: var(--muted); border: 1px solid var(--border)">
+                          <div class="flex flex-wrap items-baseline justify-between gap-2">
+                            <span class="text-sm font-medium">Entrega {{ entrega.numero }}@if (entrega.descripcion) { · {{ entrega.descripcion }} }</span>
+                            <span class="text-xs font-semibold">{{ entrega.estado }}</span>
+                          </div>
+                          @if (entrega.fechaProgramada) {
+                            <p class="text-[11px] text-muted-foreground mt-1">Fecha programada: {{ entrega.fechaProgramada }}</p>
+                          }
+                          @if (entrega.decision) {
+                            <p class="text-[11px] mt-0.5">Decisión: {{ entrega.decision }}</p>
+                          }
+                          @if (entrega.fechaReal) {
+                            <p class="text-[11px] text-muted-foreground mt-0.5">Fecha de la entrega: {{ entrega.fechaReal }}</p>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+
               @if (subsanacionPrincipal(); as subsanacion) {
                 <div class="mt-7 rounded-lg p-5 flex flex-col md:flex-row md:items-center gap-5" [style.background]="subsanacion.vencido ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), var(--card) 70%)' : 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)'" [style.border]="'1px solid ' + (subsanacion.vencido ? 'var(--destructive)' : 'var(--brand-200)')">
                   <div class="flex items-center gap-5">

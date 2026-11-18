@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideRouter } from '@angular/router';
 import { CiudadanoDashboardComponent } from './ciudadano-dashboard.component';
 import { PanelQueryService } from '../../services/panel-query.service';
+import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelQuery } from '../../models/panel-query.model';
@@ -77,6 +78,7 @@ describe('Panel ciudadano — inicio acreditado de subsanación TTAIP', () => {
       providers: [
         provideRouter([]),
         { provide: PanelQueryService, useValue: { solicitudes: vi.fn().mockReturnValue(of(toPanelPage([], { pagina: 0, tamano: 4 }))) } },
+        { provide: SolicitudService, useValue: { findById: () => of({ ampliacionesPlazo: [] }) } },
         { provide: AuthService, useValue: { obtenerSesion: () => null, cambiosSesion: signal(0) } },
         { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false } },
       ],
@@ -119,6 +121,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
   let session: any;
   let revision: ReturnType<typeof signal<number>>;
   let find: any;
+  let detalle: any;
   const request = (id = 71, estado: Solicitud['estado'] = 'EN_REVISION'): Solicitud => ({
     id, expediente: `SAIP-2026-${id}`, estado, asunto: `Consulta sintética ${id}`,
     ciudadanoId: 7, entidadId: 4, entidadNombre: 'Entidad sintética', fechaPresentacion: '2026-10-01T09:00:00',
@@ -129,6 +132,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     revision = signal(0);
     session = { ciudadanoId: 7, tipoUsuario: 'CIUDADANO', token: 'synthetic-session-a', nombreCompleto: 'Persona sintética A' };
     find = vi.fn().mockReturnValue(of([request()]));
+    detalle = vi.fn().mockReturnValue(of({ ampliacionesPlazo: [] }));
     const panelServiceMock = {
       solicitudes: vi.fn((query: PanelQuery) => {
         const raw = find(session?.ciudadanoId);
@@ -138,6 +142,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     };
     await TestBed.configureTestingModule({ imports: [CiudadanoDashboardComponent], providers: [provideRouter([]),
       { provide: PanelQueryService, useValue: panelServiceMock },
+      { provide: SolicitudService, useValue: { findById: detalle } },
       { provide: AuthService, useValue: { obtenerSesion: () => session, cambiosSesion: revision } },
       { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false, checkAutoStart: vi.fn(), startTour: vi.fn() } },
     ] }).compileComponents();
@@ -255,6 +260,45 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     const pasos = component.timelinePrincipal().map(paso => paso.label);
     expect(pasos).toContain('Respuesta - Entrega Total');
     expect(pasos).not.toContain('Respuesta registrada');
+  });
+
+  it('muestra el plazo prolongado y las entregas parciales de la solicitud que se está viendo', () => {
+    const enRevision = { ...request(10006, 'EN_REVISION'), fechaLimite: '2027-01-20', diasRestantes: 43 };
+    find.mockReturnValue(of([enRevision]));
+    detalle.mockReturnValue(of({
+      id: 10006,
+      ampliacionesPlazo: [
+        {
+          id: 9, solicitudId: 10006, estadoAmpliacion: 'CANCELADA',
+          fechaNotificacionAmpliacion: '2026-11-17', fechaLimiteOriginal: '2026-12-01',
+          fechaLimiteAmpliada: '2028-01-01', cronograma: [],
+        },
+        {
+          id: 4, solicitudId: 10006, estadoAmpliacion: 'NOTIFICADA',
+          fechaNotificacionAmpliacion: '2026-11-16', fechaLimiteOriginal: '2026-12-01',
+          fechaLimiteAmpliada: '2027-01-20',
+          cronograma: [
+            { id: 2, ampliacionId: 4, numeroEntrega: 2, descripcion: 'Cierre', fechaProgramada: '2027-01-20', estado: 'PROGRAMADA' },
+            { id: 1, ampliacionId: 4, numeroEntrega: 1, descripcion: 'Primer bloque', fechaProgramada: '2026-12-15', estado: 'ENTREGADA', fechaEntregaReal: '2026-12-15', decision: 'ENTREGA_PARCIAL' },
+          ],
+        },
+      ],
+    }));
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    const pasos = component.timelinePrincipal().map(paso => paso.label);
+    expect(pasos.indexOf('Plazo prolongado')).toBeGreaterThan(-1);
+    expect(pasos.indexOf('Plazo prolongado')).toBeLessThan(pasos.indexOf('Plazo de la entidad'));
+    const texto = fixture.nativeElement.textContent as string;
+    expect(texto).toContain('Comunicado el 16/11/2026');
+    expect(texto).toContain('01/12/2026');
+    expect(texto).toContain('20/01/2027');
+    expect(texto).not.toContain('01/01/2028');
+    expect(texto.indexOf('Primer bloque')).toBeLessThan(texto.indexOf('Cierre'));
+    expect(texto).toContain('Entrega parcial del hito');
+    expect(texto).toContain('Fecha de la entrega: 15/12/2026');
+    expect(texto).toContain('Pendiente');
   });
 
   it('supports keyboard result selection, stable option IDs, Escape and focus after clearing', () => {

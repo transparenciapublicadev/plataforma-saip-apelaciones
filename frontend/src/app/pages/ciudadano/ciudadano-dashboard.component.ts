@@ -3,7 +3,9 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { PanelQueryService } from '../../services/panel-query.service';
+import { SolicitudService } from '../../services/solicitud.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
+import { AmpliacionPlazoSolicitud, CronogramaEntregaParcial, DECISIONES_ENTREGA } from '../../models/solicitud.model';
 import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
@@ -41,6 +43,23 @@ interface PlazoEntidadView {
   restantes: number | null;
   tone: string;
   fechaLimite?: string;
+}
+
+interface EntregaProlongadaView {
+  id: number;
+  numero: number;
+  descripcion: string;
+  fechaProgramada?: string;
+  estado: string;
+  decision?: string;
+  fechaReal?: string;
+}
+
+interface SeguimientoPlazoView {
+  comunicada?: string;
+  original?: string;
+  ampliada?: string;
+  entregas: EntregaProlongadaView[];
 }
 
 interface IndicadorBandeja {
@@ -114,6 +133,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   readonly profileDialog = inject(ProfileDialogService);
   private readonly elementRef = inject(ElementRef);
   private readonly panelService = inject(PanelQueryService);
+  private readonly solicitudService = inject(SolicitudService);
   private readonly tourService = inject(GuidedTourService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -219,6 +239,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   showAllSecundarias = signal<boolean>(false);
   selectedSolicitudId = signal<number | null>(null);
   accionResaltada = signal<boolean>(false);
+  private readonly ampliacionVista = signal<AmpliacionPlazoSolicitud | null>(null);
+  private readonly ampliacionSolicitudId = signal<number | null>(null);
 
   // Pipeline state
   selectedStageKey = signal<'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('todas');
@@ -292,6 +314,21 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       fechaRegistrada: this.formatDate(observacion?.fechaLimiteSubsanacion),
       expediente: observacion ? solicitud.expediente : null,
       indicador: this.indicadorPrecision(solicitud),
+    };
+  });
+
+  readonly seguimientoPlazo = computed<SeguimientoPlazoView | null>(() => {
+    const solicitud = this.solicitudPrincipal();
+    const ampliacion = this.ampliacionCoincidente(solicitud);
+    if (!ampliacion) return null;
+    return {
+      comunicada: this.formatDate(ampliacion.fechaNotificacionAmpliacion),
+      original: this.formatDate(ampliacion.fechaLimiteOriginal),
+      ampliada: this.formatDate(ampliacion.fechaLimiteAmpliada),
+      entregas: [...(ampliacion.cronograma ?? [])]
+        .filter(hito => Number.isSafeInteger(hito.numeroEntrega))
+        .sort((a, b) => a.numeroEntrega - b.numeroEntrega)
+        .map(hito => this.entregaVisible(hito)),
     };
   });
 
@@ -538,6 +575,24 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       if (this.tourService.isOpen()) {
         this.clearGlobalSearch();
       }
+    });
+    effect(onCleanup => {
+      const id = this.solicitudPrincipal()?.id ?? null;
+      if (id == null || !Number.isSafeInteger(id) || id <= 0) {
+        untracked(() => {
+          this.ampliacionVista.set(null);
+          this.ampliacionSolicitudId.set(null);
+        });
+        return;
+      }
+      untracked(() => {
+        if (this.ampliacionSolicitudId() !== id) this.ampliacionVista.set(null);
+      });
+      const sub = this.solicitudService.findById(id).subscribe({
+        next: detalle => this.aplicarAmpliacion(id, detalle.ampliacionesPlazo),
+        error: () => this.aplicarAmpliacion(id, null),
+      });
+      onCleanup(() => sub.unsubscribe());
     });
   }
 
@@ -1147,6 +1202,19 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       }
     }
 
+    const ampliacion = this.ampliacionCoincidente(solicitud);
+    if (ampliacion) {
+      const original = this.formatDate(ampliacion.fechaLimiteOriginal);
+      const ampliada = this.formatDate(ampliacion.fechaLimiteAmpliada);
+      steps.push({
+        key: 'plazo-prolongado',
+        label: 'Plazo prolongado',
+        date: this.formatDate(ampliacion.fechaNotificacionAmpliacion),
+        meta: original && ampliada ? `De ${original} a ${ampliada}` : undefined,
+        status: 'done',
+      });
+    }
+
     if (this.enPrecision(solicitud)) {
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
     } else if (this.archivadaSinPrecision(solicitud)) {
@@ -1298,6 +1366,32 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const nota = 'Según la fecha registrada';
     if (dias === 0) return { value: 'Último día', unit: 'para precisar', tone, nota };
     return { value: dias, unit: dias === 1 ? 'día hábil para precisar' : 'días hábiles para precisar', tone, nota };
+  }
+
+  private aplicarAmpliacion(id: number, lista: AmpliacionPlazoSolicitud[] | null): void {
+    if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
+    const ampliacion = lista?.find(item => item.solicitudId === id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
+    this.ampliacionSolicitudId.set(id);
+    this.ampliacionVista.set(ampliacion);
+  }
+
+  private ampliacionCoincidente(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {
+    const ampliacion = this.ampliacionVista();
+    if (!solicitud || !ampliacion || ampliacion.solicitudId !== solicitud.id || ampliacion.estadoAmpliacion === 'CANCELADA') return null;
+    return ampliacion;
+  }
+
+  private entregaVisible(hito: CronogramaEntregaParcial): EntregaProlongadaView {
+    const entregada = hito.estado === 'ENTREGADA';
+    return {
+      id: hito.id,
+      numero: hito.numeroEntrega,
+      descripcion: hito.descripcion,
+      fechaProgramada: this.formatDate(hito.fechaProgramada),
+      estado: entregada ? 'Entregada' : hito.incumplida ? 'Fuera de plazo' : 'Pendiente',
+      decision: entregada && hito.decision ? DECISIONES_ENTREGA[hito.decision] : undefined,
+      fechaReal: entregada ? this.formatDate(hito.fechaEntregaReal ?? undefined) : undefined,
+    };
   }
 
   private diasRestantesParaEntidad(solicitud: Solicitud): number | null {

@@ -112,6 +112,7 @@ describe('CHALLENGER STRESS-TEST — Milestone 2: Ciudadano Portal Parity', () =
       providers: [
         provideRouter([]),
         { provide: PanelQueryService, useValue: panelServiceMock },
+        { provide: SolicitudService, useValue: { findById: () => of({ ampliacionesPlazo: [] }) } },
         { provide: AuthService, useValue: { obtenerSesion: () => session, getToken: () => 'synthetic-jwt-token-m2', cambiosSesion: revision } },
         { provide: GuidedTourService, useValue: { isOpen: () => false, endTourFor() {}, isFirstVisit: () => false, checkAutoStart: vi.fn(), startTour: vi.fn() } },
       ]
