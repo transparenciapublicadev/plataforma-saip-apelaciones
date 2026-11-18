@@ -266,7 +266,7 @@
               <div class="p-6 space-y-3">
                 <label for="subsanacion-archivos" id="subsanacion-archivos-label" class="field-label">Documentos complementarios (opcionales)</label>
                 <p id="subsanacion-archivos-hint" class="text-sm text-muted-foreground">Puede presentar solo fundamentos. Todos los archivos seleccionados se enviarán juntos. PDF, JPG, PNG o TXT · máximo total 10 MB.</p>
-                <div class="border-2 border-dashed rounded-lg p-6 text-center transition-colors" style="border-color: var(--border); background: var(--card)"
+                <div class="reference-upload-feedback border-2 border-dashed rounded-lg p-6 text-center transition-colors" style="border-color: var(--border); background: var(--card)"
                   role="button" [attr.tabindex]="formularioBloqueado() ? -1 : 0" [attr.aria-disabled]="formularioBloqueado()"
                   aria-label="Seleccionar archivos de subsanación (opcionales)" aria-describedby="subsanacion-archivos-hint subsanacion-archivos-error subsanacion-memoria"
                   (click)="!formularioBloqueado() && archivosInput.click()" (keydown)="abrirSelector($event, archivosInput)">

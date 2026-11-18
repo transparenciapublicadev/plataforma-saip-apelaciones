@@ -2310,9 +2310,14 @@ html.dark .reference-option-card.is-selected {
     box-shadow 180ms ease-in-out;
 }
 
-.reference-upload-zone:hover {
-  border-color: var(--brand-300) !important;
-  background-color: var(--card) !important;
+.reference-upload-feedback:not(:disabled, [aria-disabled='true']):is(:hover, :focus-visible, :has(:focus-visible), .is-dragging) {
+  border-color: var(--brand-600) !important;
+  background-color: color-mix(in srgb, var(--brand-50) 50%, var(--card)) !important;
+}
+
+.reference-upload-feedback:not(:disabled, [aria-disabled='true']).is-dragging {
+  background-color: color-mix(in srgb, var(--brand-100) 70%, var(--card)) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-600) 18%, transparent);
 }
 
 .reference-file-button {

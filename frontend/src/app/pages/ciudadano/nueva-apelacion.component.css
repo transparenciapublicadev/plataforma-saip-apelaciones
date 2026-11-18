@@ -22,7 +22,6 @@
   cursor: pointer;
   transition: border-color 160ms ease, background-color 160ms ease;
 }
-.appeal-upload-zone:hover:not(:disabled) { border-color: var(--brand-600); background: var(--brand-subtle); }
 .appeal-upload-compact { flex-direction: row; justify-content: center; padding: 0.75rem; }
 .appeal-prefilled {
   display: flex;

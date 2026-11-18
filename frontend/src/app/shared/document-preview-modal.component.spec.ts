@@ -89,16 +89,23 @@ describe('DocumentPreviewModalComponent — archivo real', () => {
     expect(document.body.textContent).toContain('Plantilla oficial');
   });
 
-  it('conserva la vista previa del archivo local seleccionado', () => {
+  it('solicita la primera página al abrir y reabrir un PDF local y conserva la URL de descarga', () => {
     const file = new File(['local'], 'adjunto-local.pdf', { type: 'application/pdf' });
-    abrir({ nombre: file.name, file });
+    const f = abrir({ nombre: file.name, file });
     expect(documentos.download).not.toHaveBeenCalled();
     expect(URL.createObjectURL).toHaveBeenCalledWith(file);
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1');
+    expect(f.componentInstance.rawUrl()).toBe('blob:real');
+    f.componentRef.setInput('open', false); f.detectChanges();
+    expect(document.body.querySelector('iframe')).toBeNull();
+    f.componentRef.setInput('open', true); f.detectChanges();
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1');
   });
 
   it('contiene el foco del visor SAIP y lo devuelve al control que lo abrió', async () => {
     const trigger = document.createElement('button');
     document.body.append(trigger); trigger.focus();
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
     const f = TestBed.createComponent(DocumentPreviewModalComponent);
     f.componentRef.setInput('manageFocus', true);
     f.componentRef.setInput('doc', { nombre: 'adjunto.pdf', file: new File(['pdf'], 'adjunto.pdf') });
@@ -108,15 +115,17 @@ describe('DocumentPreviewModalComponent — archivo real', () => {
     expect(panel).not.toBeNull();
     expect(panel.getAttribute('aria-label')).toBe('adjunto.pdf');
     expect(panel.contains(document.activeElement)).toBe(true);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
     const buttons = panel.querySelectorAll<HTMLButtonElement>('button');
     buttons.item(buttons.length - 1).focus();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
     expect(document.activeElement).toBe(buttons.item(0));
     const close = vi.fn(); f.componentInstance.close.subscribe(close);
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    buttons.item(0).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     expect(close).toHaveBeenCalledOnce();
     f.componentRef.setInput('open', false); f.detectChanges();
     expect(document.activeElement).toBe(trigger);
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
     f.destroy(); trigger.remove();
   });
 });

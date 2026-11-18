@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { signal } from '@angular/core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { NuevaSaipComponent } from './nueva-saip.component';
@@ -194,6 +195,30 @@ describe('NuevaSaipComponent', () => {
     expect(mockDocumentoService.upload).not.toHaveBeenCalled();
     expect(component.successModalAbierto()).toBe(true);
     expect(component.expedienteCreado()).toBe('SAIP-2026-00101');
+  });
+
+  it('ofrece comprobar un envío incierto antes de habilitar otro intento con los mismos datos', () => {
+    const fixture = TestBed.createComponent(NuevaSaipComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    Object.assign(component, { entidadId: 1, asunto: 'Pedido', descripcion: 'Descripción del pedido',
+      medioNotificacion: 'correo', aceptaCorreo: true, consentimientoDatosPersonales: true, declaraVeracidad: true });
+    component.formatoRespuesta.correo = true;
+    mockSolicitudService.registrarAlta.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 0 })));
+    mockSolicitudService.obtenerRecepcionAlta.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 404 })));
+
+    component.crearSolicitud();
+    fixture.detectChanges();
+    const buttons = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
+    const buscar = (texto: string) => buttons().find(button => button.textContent?.trim() === texto);
+    expect(buscar('Volver a enviar')).toBeUndefined();
+    buscar('Comprobar registro')!.click();
+    fixture.detectChanges();
+    expect(mockSolicitudService.obtenerRecepcionAlta).toHaveBeenCalledWith(component.claveOperacion());
+    expect(mockSolicitudService.registrarAlta).toHaveBeenCalledOnce();
+    buscar('Volver a enviar')!.click();
+    expect(mockSolicitudService.registrarAlta).toHaveBeenCalledTimes(2);
+    expect(mockSolicitudService.registrarAlta.mock.calls[0]).toEqual(mockSolicitudService.registrarAlta.mock.calls[1]);
   });
 
   it('debería resetear formulario correctamente en resetForm()', () => {

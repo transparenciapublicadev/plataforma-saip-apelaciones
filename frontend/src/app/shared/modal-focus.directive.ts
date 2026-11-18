@@ -36,7 +36,7 @@ export class ModalFocusDirective implements AfterViewInit, OnDestroy {
     // Capture before keyboard handlers on the underlying overlay/page.
     this.document.addEventListener('keydown', this.onKey, true);
     queueMicrotask(() => {
-      if (!this.destroyed && this.isTop()) (this.controls()[0] || this.host.nativeElement).focus();
+      if (!this.destroyed && this.isTop()) (this.controls()[0] || this.host.nativeElement).focus({ preventScroll: true });
     });
   }
   private controls(): HTMLElement[] {
@@ -59,7 +59,7 @@ export class ModalFocusDirective implements AfterViewInit, OnDestroy {
     if (!stack.length) activeDialogs.delete(this.document);
     if (!wasTop) return;
     const next = stack.at(-1);
-    if (this.previous?.isConnected && (!next || next.host.nativeElement.contains(this.previous))) this.previous.focus();
-    else if (next) (next.controls()[0] || next.host.nativeElement).focus();
+    if (this.previous?.isConnected && (!next || next.host.nativeElement.contains(this.previous))) this.previous.focus({ preventScroll: true });
+    else if (next) (next.controls()[0] || next.host.nativeElement).focus({ preventScroll: true });
   }
 }

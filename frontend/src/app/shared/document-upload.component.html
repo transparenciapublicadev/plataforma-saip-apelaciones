@@ -7,6 +7,9 @@
 
   <div
     class="reference-upload-zone rounded-lg border-2 border-dashed p-5 text-center transition-colors"
+    [class.reference-upload-feedback]="!selectedFile()"
+    [class.is-dragging]="dragging()"
+    [attr.aria-disabled]="isDisabled()"
     [style.border-color]="dragging() ? 'var(--brand-600)' : 'var(--border)'"
     [style.background]="dragging() ? 'var(--brand-subtle)' : 'var(--card)'"
     (dragover)="onDragOver($event)"
