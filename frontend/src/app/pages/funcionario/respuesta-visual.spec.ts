@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of, Subject, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { EntidadService } from '../../services/entidad.service';
@@ -37,6 +37,8 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
       { provide: RespuestaService, useValue: { getCausalesDenegacion: () => of([]) } }
     ] }).compileComponents();
   });
+  afterEach(() => { vi.restoreAllMocks(); });
+
   it('recarga al navegar a otro expediente sobre el mismo componente', async () => {
     const h = await RouterTestingHarness.create();
     await h.navigateByUrl('/detalle/SAIP-A', Detalle);
@@ -78,6 +80,7 @@ describe('Respuesta SAIP: presentación y aislamiento del recurso', () => {
     expect(h.routeNativeElement!.textContent).toContain('Consulta de solicitudes previas no disponible');
   });
   it('separa los adjuntos de entrega total y parcial y muestra la modalidad registrada', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:adjunto-sintetico');
     const h = await RouterTestingHarness.create();
     const c = await h.navigateByUrl('/respuesta/SAIP-A', Responder);
     c.decision.set('entrega_total');

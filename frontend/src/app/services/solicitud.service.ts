@@ -6,11 +6,13 @@ import {
   ActualizarLiquidacionCostoPayload,
   AmpliacionPlazoSolicitud,
   CronogramaEntregaParcial,
+  DecisionEntregaProgramada,
   EncauzamientoSolicitud,
   LiquidacionCostoSolicitud,
   ObservacionSolicitud,
   ObservarSolicitudPayload,
   RegistrarAmpliacionPlazoPayload,
+  PrevisionAmpliacion,
   RegistrarEncauzamientoPayload,
   RegistrarLiquidacionCostoPayload,
   Solicitud,
@@ -142,6 +144,12 @@ export class SolicitudService {
     return this.http.post<AmpliacionPlazoSolicitud>(`${this.apiUrl}/${id}/ampliaciones`, payload);
   }
 
+  preverAmpliacion(id: number, dias: number): Observable<PrevisionAmpliacion> {
+    return this.http.get<PrevisionAmpliacion>(`${this.apiUrl}/${id}/ampliaciones/prevision`, {
+      params: { diasHabilesAdicionales: dias }
+    });
+  }
+
   listarAmpliaciones(id: number): Observable<AmpliacionPlazoSolicitud[]> {
     return this.http.get<AmpliacionPlazoSolicitud[]>(`${this.apiUrl}/${id}/ampliaciones`);
   }
@@ -198,6 +206,28 @@ export class SolicitudService {
     return this.http.patch<CronogramaEntregaParcial>(
       `${this.apiUrl}/${id}/ampliaciones/${ampliacionId}/cronograma/${entregaId}`,
       payload
+    );
+  }
+
+  registrarDocumentosEntregaParcial(
+    id: number,
+    ampliacionId: number,
+    entregaId: number,
+    fechaEntregaReal: string,
+    archivos: File[],
+    decision: DecisionEntregaProgramada,
+    fundamentoDecision: string
+  ): Observable<CronogramaEntregaParcial> {
+    const formData = new FormData();
+    formData.append('fechaEntregaReal', fechaEntregaReal);
+    formData.append('decision', decision);
+    if (fundamentoDecision) formData.append('fundamentoDecision', fundamentoDecision);
+    for (const archivo of archivos) {
+      formData.append('archivos', archivo, archivo.name);
+    }
+    return this.http.post<CronogramaEntregaParcial>(
+      `${this.apiUrl}/${id}/ampliaciones/${ampliacionId}/cronograma/${entregaId}`,
+      formData
     );
   }
 

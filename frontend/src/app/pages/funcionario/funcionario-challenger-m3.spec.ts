@@ -247,8 +247,8 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
     });
   });
 
-  describe('2. Prórroga Restriction: diasTranscurridos > 2 must block submission with alert banner', () => {
-    let mockSolicitudes: { findByExpediente: ReturnType<typeof vi.fn>; registrarAmpliacion: ReturnType<typeof vi.fn> };
+  describe('2. Prórroga: disponibilidad informada por Spring', () => {
+    let mockSolicitudes: { findByExpediente: ReturnType<typeof vi.fn>; preverAmpliacion: ReturnType<typeof vi.fn>; registrarAmpliacion: ReturnType<typeof vi.fn> };
     let mockRespuestas: { registrarConDocumentos: ReturnType<typeof vi.fn>; getCausalesDenegacion: ReturnType<typeof vi.fn> };
 
     const baseSolicitud = {
@@ -273,6 +273,11 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       vi.clearAllMocks();
       mockSolicitudes = {
         findByExpediente: vi.fn().mockReturnValue(of(baseSolicitud)),
+        preverAmpliacion: vi.fn().mockImplementation((_id, dias) => of({
+          hoy: '2026-11-17', fechaMaximaComunicacion: '2026-11-19',
+          fechaLimiteAmpliada: dias === 8 ? '2026-12-10' : '2026-12-04',
+          disponible: true, requiereCronograma: dias > 30
+        })),
         registrarAmpliacion: vi.fn().mockReturnValue(of({}))
       };
       mockRespuestas = {
@@ -296,129 +301,38 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       }).compileComponents();
     });
 
-    it('empirically verifies diasTranscurridos and prorrogaPermitida across boundary cases and formats', () => {
+    it('solo habilita el envío después de recibir la previsión del expediente', () => {
       const fixture = TestBed.createComponent(FuncionarioResponderComponent);
       fixture.detectChanges();
       const comp = fixture.componentInstance;
-
-      const now = new Date();
-
-      // Case 0: presented today in ISO format -> prorrogaPermitida is true
-      const todayISO = now.toISOString().slice(0, 10);
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: todayISO });
-      expect(comp.prorrogaPermitida()).toBe(true);
-
-      // Case 1: presented far in the past (> 30 business days)
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: '2026-01-01' });
-      expect(comp.diasTranscurridos()).toBeGreaterThan(2);
       expect(comp.prorrogaPermitida()).toBe(false);
-
-      // Case 2: invalid date string does not throw, returns 0 safely
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: 'invalid-date' });
-      expect(comp.diasTranscurridos()).toBe(0);
+      comp.setVia('prorroga');
+      fixture.detectChanges();
+      expect(mockSolicitudes.preverAmpliacion).toHaveBeenCalledWith(12, 5);
       expect(comp.prorrogaPermitida()).toBe(true);
+      expect(comp.fechaLimiteProrroga()).toBe('2026-11-19');
     });
 
-    it('adversarially blocks submission and renders role="alert" banner when diasTranscurridos > 2', () => {
+    it('muestra el rechazo de disponibilidad sin abrir el modal ni registrar', () => {
+      mockSolicitudes.preverAmpliacion.mockReturnValue(of({
+        hoy: '2026-11-20', fechaMaximaComunicacion: '2026-11-19', disponible: false, requiereCronograma: false
+      }));
       const fixture = TestBed.createComponent(FuncionarioResponderComponent);
       fixture.detectChanges();
       const comp = fixture.componentInstance;
-
-      // Force request presented 20 days ago
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: '2026-10-01' });
       comp.setVia('prorroga');
-      comp.prorrogaDias = '10';
-      comp.prorrogaMotivo = 'Motivo de ampliación suficientemente largo para cumplir longitud mínima';
+      comp.prorrogaMotivo = 'Búsqueda exhaustiva en archivos descentralizados';
       fixture.detectChanges();
-
-      // 1. Invariant: prorrogaPermitida must be false
-      expect(comp.prorrogaPermitida()).toBe(false);
-
-      // 2. Invariant: canSubmit() must be strictly false
-      expect(comp.canSubmit()).toBe(false);
-
-      // 3. Invariant: attempting handleSubmit() must block without opening modal
+      fixture.detectChanges();
       comp.handleSubmit();
       expect(comp.confirmModalAbierto()).toBe(false);
-      expect(comp.error()).toBe('Complete todos los campos obligatorios antes de enviar.');
-
-      // 4. Invariant: role="alert" banner is rendered in DOM with verbatim explanation
-      const alertElem = fixture.nativeElement.querySelector('div[role="alert"]');
-      expect(alertElem).not.toBeNull();
-      expect(alertElem.textContent).toContain('Ya venció el día hábil 2');
-      expect(alertElem.textContent).toContain('Corresponde atender la solicitud dentro del plazo vigente');
-    });
-
-    it('adversarial finding: diasTranscurridos off-by-one boundary calculation with slash dates and mid-day comparisons', () => {
-      const fixture = TestBed.createComponent(FuncionarioResponderComponent);
-      fixture.detectChanges();
-      const comp = fixture.componentInstance;
-
-      // When presented today in slash format (DD/MM/YYYY):
-      // With start-of-day normalization, presentation today evaluates to 0 elapsed business days.
-      const now = new Date();
-      const d = String(now.getDate()).padStart(2, '0');
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const y = now.getFullYear();
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: `${d}/${m}/${y}` });
-
-      const elapsed = comp.diasTranscurridos();
-      expect(elapsed).toBe(0);
-      expect(comp.prorrogaPermitida()).toBe(true);
-    });
-
-    it('verifies exact statutory boundaries: day 0 = 0, day 1 = 1, day 2 = 2 (prórroga permitida), day 3 = 3 (prórroga bloqueada)', () => {
-      const fixture = TestBed.createComponent(FuncionarioResponderComponent);
-      fixture.detectChanges();
-      const comp = fixture.componentInstance;
-
-      // Find a past presentation date that results in exactly targetElapsed business days up to today
-      const dateForElapsedBusinessDays = (targetElapsed: number): string => {
-        const fin = new Date();
-        fin.setHours(0, 0, 0, 0);
-        const cur = new Date(fin);
-        while (true) {
-          let count = 0;
-          const temp = new Date(cur);
-          while (temp < fin) {
-            temp.setDate(temp.getDate() + 1);
-            const dow = temp.getDay();
-            if (dow !== 0 && dow !== 6) count++;
-          }
-          if (count === targetElapsed) {
-            const y = cur.getFullYear();
-            const m = String(cur.getMonth() + 1).padStart(2, '0');
-            const day = String(cur.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-          }
-          cur.setDate(cur.getDate() - 1);
-        }
-      };
-
-      // Day 0: presented today -> 0 elapsed, prorrogaPermitida is true
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: dateForElapsedBusinessDays(0) });
-      expect(comp.diasTranscurridos()).toBe(0);
-      expect(comp.prorrogaPermitida()).toBe(true);
-
-      // Day 1: presented 1 business day ago -> 1 elapsed, prorrogaPermitida is true
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: dateForElapsedBusinessDays(1) });
-      expect(comp.diasTranscurridos()).toBe(1);
-      expect(comp.prorrogaPermitida()).toBe(true);
-
-      // Day 2: presented 2 business days ago -> 2 elapsed, prorrogaPermitida MUST BE TRUE (Art. 11 Ley 27806)
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: dateForElapsedBusinessDays(2) });
-      expect(comp.diasTranscurridos()).toBe(2);
-      expect(comp.prorrogaPermitida()).toBe(true);
-
-      // Day 3: presented 3 business days ago -> 3 elapsed, prorrogaPermitida MUST BE FALSE
-      comp.solicitud.set({ ...baseSolicitud, fechaPresentacion: dateForElapsedBusinessDays(3) });
-      expect(comp.diasTranscurridos()).toBe(3);
-      expect(comp.prorrogaPermitida()).toBe(false);
+      expect(mockSolicitudes.registrarAmpliacion).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.textContent).toContain('La solicitud ya no admite una ampliación');
     });
   });
 
   describe('3. Structured Hitos Array Validation & Boundaries', () => {
-    let mockSolicitudes: { findByExpediente: ReturnType<typeof vi.fn>; registrarAmpliacion: ReturnType<typeof vi.fn> };
+    let mockSolicitudes: { findByExpediente: ReturnType<typeof vi.fn>; preverAmpliacion: ReturnType<typeof vi.fn>; registrarAmpliacion: ReturnType<typeof vi.fn> };
     let mockRespuestas: { registrarConDocumentos: ReturnType<typeof vi.fn>; getCausalesDenegacion: ReturnType<typeof vi.fn> };
 
     const baseSolicitud = {
@@ -429,7 +343,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       asunto: 'Solicitud con cronograma',
       estado: 'EN_REVISION',
       diasRestantes: 8,
-      fechaPresentacion: new Date().toISOString().slice(0, 10), // Presented today -> prorroga permitted
+      fechaPresentacion: '2026-11-13',
       fechaLimite: '2026-11-10',
       respuesta: null,
       observaciones: [],
@@ -443,6 +357,11 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       vi.clearAllMocks();
       mockSolicitudes = {
         findByExpediente: vi.fn().mockReturnValue(of(baseSolicitud)),
+        preverAmpliacion: vi.fn().mockImplementation((_id, dias) => of({
+          hoy: '2026-11-17', fechaMaximaComunicacion: '2026-11-19',
+          fechaLimiteAmpliada: dias === 8 ? '2026-12-10' : '2026-12-04',
+          disponible: true, requiereCronograma: dias > 30
+        })),
         registrarAmpliacion: vi.fn().mockReturnValue(of({}))
       };
       mockRespuestas = {
@@ -498,12 +417,17 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       comp.prorrogaDias = '5';
       comp.prorrogaMotivo = 'Búsqueda exhaustiva en archivos descentralizados';
       comp.usarCronograma.set(true);
+      fixture.detectChanges();
 
       const limite = comp.nuevaFechaLimite();
       expect(limite).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('input[aria-label="Fecha de la entrega parcial 1"]').max).toBe('2026-12-03');
       comp.prorrogaDias = '8';
-      expect(comp.nuevaFechaLimite()).not.toBe(limite);
+      expect(comp.nuevaFechaLimite()).toBeNull();
+      fixture.detectChanges();
+      expect(comp.nuevaFechaLimite()).toBe('2026-12-10');
       comp.prorrogaDias = '5';
+      fixture.detectChanges();
 
       // Subtest A: Hito with date in the past
       comp.hitos.set([{ fecha: '2020-01-01', entregable: 'Entrega en el pasado' }]);
@@ -531,6 +455,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       comp.prorrogaDias = '5';
       comp.prorrogaMotivo = 'Búsqueda exhaustiva en archivos descentralizados';
       comp.usarCronograma.set(true);
+      fixture.detectChanges();
 
       const limite = comp.nuevaFechaLimite()!;
 
@@ -552,7 +477,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
       // Verified remediation: When multiple hitos exist and any has an empty or whitespace deliverable,
       // errorHitos() reports incomplete entries and blocks submission.
       comp.hitos.set([
-        { fecha: limite, entregable: 'Primera parte válida' },
+        { fecha: '2026-11-25', entregable: 'Primera parte válida' },
         { fecha: limite, entregable: '' } // second hito empty
       ]);
       expect(comp.hitosValidos().length).toBe(1);
@@ -561,7 +486,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       // Whitespace deliverable on second hito
       comp.hitos.set([
-        { fecha: limite, entregable: 'Primera parte válida' },
+        { fecha: '2026-11-25', entregable: 'Primera parte válida' },
         { fecha: limite, entregable: '   ' }
       ]);
       expect(comp.errorHitos()).toBe('Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.');
@@ -569,7 +494,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       // Missing date on second hito
       comp.hitos.set([
-        { fecha: limite, entregable: 'Primera parte válida' },
+        { fecha: '2026-11-25', entregable: 'Primera parte válida' },
         { fecha: '', entregable: 'Segunda entrega válida' }
       ]);
       expect(comp.errorHitos()).toBe('Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.');
@@ -577,7 +502,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       // Both hitos complete and valid
       comp.hitos.set([
-        { fecha: limite, entregable: 'Primera parte válida' },
+        { fecha: '2026-11-25', entregable: 'Primera parte válida' },
         { fecha: limite, entregable: 'Segunda entrega válida' }
       ]);
       expect(comp.errorHitos()).toBeNull();
@@ -815,7 +740,7 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       // 4. In DOM template: normative advice list
       const templateText = fixture.nativeElement.textContent;
-      expect(templateText).toContain('El ciudadano puede apelar en 15 días hábiles ante el TTAIP');
+      expect(templateText).toContain('15 días hábiles corresponde a la apelación por una respuesta expresa');
       expect(templateText).not.toContain('15 días calendario ante el TTAIP');
     });
   });

@@ -1,5 +1,6 @@
 import { falloConsulta } from '../../utils/consulta-remota.util';
 import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
+import { HttpClient } from '@angular/common/http';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +9,14 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { RespuestaSaipRecepcion, RespuestaService } from '../../services/respuesta.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
+import {
+  AmpliacionPlazoSolicitud,
+  CronogramaEntregaParcial,
+  DecisionEntregaProgramada,
+  LiquidacionCostoSolicitud,
+  PrevisionAmpliacion,
+  Solicitud
+} from '../../models/solicitud.model';
 import type { CrearRespuestaRequest } from '../../api/types';
 import { Entidad } from '../../models/entidad.model';
 import { Respuesta } from '../../models/respuesta.model';
@@ -18,7 +26,8 @@ import {
   validarDocumento
 } from '../../models/documento.model';
 import { DocumentoService } from '../../services/documento.service';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { catchError, firstValueFrom, of, Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
@@ -43,12 +52,18 @@ import {
   DocumentPreviewTarget
 } from '../../shared/document-preview-modal.component';
 import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
-import { habilesEntre, sumarHabiles } from '../../models/calendario.model';
+import {
+  CronogramaEntregasPanelComponent,
+  HitoPanelMessage,
+  RegistroEntregaHitoEvent
+} from '../../shared/cronograma-entregas-panel.component';
+import { habilesEntre, hoyLima, Tarifas } from '../../models/calendario.model';
 import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 
 export interface HitoCronogramaItem {
   fecha: string;
   entregable: string;
+  cierre?: boolean;
 }
 import {
   LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
@@ -68,7 +83,7 @@ interface IntentoRespuesta {
 
 type ResponseTabId = 'responder' | 'solicitud' | 'ciudadano' | 'adjuntos';
 type DecisionId = 'entrega_total' | 'entrega_parcial' | 'denegacion_total';
-type ViaProcesal = 'responder' | 'precision' | 'prorroga';
+type ViaProcesal = 'responder' | 'cronograma' | 'precision' | 'prorroga';
 
 interface ResponseDecision {
   id: DecisionId;
@@ -108,6 +123,7 @@ export const CAUSALES_DENEGATORIA = [
     MultiFileUploadZoneComponent,
     DocumentPreviewModalComponent,
     AreaResponsablePanelComponent,
+    CronogramaEntregasPanelComponent,
     LucideArrowLeft, LucideAlertTriangle, LucideCalendar, LucideClock,
     LucideFileText, LucideInfo, LucideCheckCircle2,
     LucideSend, LucideUser, LucideScale,
@@ -127,6 +143,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   private readonly entidadService = inject(EntidadService);
   private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient, { optional: true });
 
   solicitud = signal<Solicitud | null>(null);
   entidades = signal<Entidad[]>([]);
@@ -144,11 +161,41 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         this.sesionActual = sesion; this.generacionRespuesta++; this.consultaSolicitud?.unsubscribe();
         this.solicitud.set(null); this.intentoRespuesta = null; this.recepcionRespuesta.set(null);
         this.documentosEntrega.set([]); this.documentosEntregaParcial.set([]); this.evidenciaDenegatoria.set([]); this.previewTarget.set(null);
-        this.descripcionAceptacion = ''; this.descripcionAceptacionParcial = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
-        this.precisionPuntos.set(['']);
+        this.resetFormularioRespuesta();
+        this.limpiarAmpliacion();
         this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.loading.set(false); this.loadingSolicitud.set(false);
         this.consultaReintentable.set(false); this.error.set('La sesión cambió. Abra nuevamente el expediente con la cuenta actual.');
       }
+    });
+    effect(onCleanup => {
+      const id = this.solicitud()?.id;
+      const dias = this.prorrogaDiasNum();
+      if (!id || this.via() !== 'prorroga' || !dias || this.ampliacionRegistrada()) return;
+      this.revisionPrevision();
+      const sesion = this.claveSesion();
+      const generacion = this.generacionRespuesta;
+      this.prevision.set(null);
+      this.errorPrevision.set('');
+      const consulta = this.solicitudService.preverAmpliacion(id, dias).subscribe({
+        next: datos => {
+          if (this.contextoAmpliacionVigente(generacion, sesion) && this.prorrogaDiasNum() === dias) {
+            this.prevision.set({ dias, datos });
+          }
+        },
+        error: err => {
+          if (this.contextoAmpliacionVigente(generacion, sesion) && this.prorrogaDiasNum() === dias) {
+            this.errorPrevision.set(problemDetailsMessage(err, 'No se pudo consultar el nuevo plazo.'));
+          }
+        }
+      });
+      onCleanup(() => consulta.unsubscribe());
+    });
+    effect(() => {
+      const limite = this.nuevaFechaLimite() ?? '';
+      const activo = this.usarCronograma() || this.cronogramaRequerido();
+      if (!activo || !limite) return;
+      const requerido = this.cronogramaRequerido();
+      this.hitos.update(lista => cronogramaConCierre(lista, limite, requerido));
     });
   }
   reintentarConsulta(): void { if (this.consultaReintentable()) this.cargarSolicitud(this.expedienteActual); }
@@ -160,9 +207,17 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   private generacionRespuesta = 0;
   private navegacion?: Subscription;
   private consultaSolicitud?: Subscription;
+  private actuacionAmpliacion?: Subscription;
+  private consultaTarifas?: Subscription;
   private destruido = false;
 
-  ngOnDestroy(): void { this.destruido = true; this.navegacion?.unsubscribe(); this.consultaSolicitud?.unsubscribe(); }
+  ngOnDestroy(): void {
+    this.destruido = true;
+    this.navegacion?.unsubscribe();
+    this.consultaSolicitud?.unsubscribe();
+    this.actuacionAmpliacion?.unsubscribe();
+    this.consultaTarifas?.unsubscribe();
+  }
 
   private claveSesion(): string {
     const s = this.authService.obtenerSesion();
@@ -208,23 +263,131 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   get prorrogaDias(): string { return this.diasAdicionales(); }
   set prorrogaDias(valor: string) { this.diasAdicionales.set(valor ?? ''); }
   readonly prorrogaDiasNum = computed(() => {
-    const dias = Number.parseInt(this.diasAdicionales(), 10);
-    return Number.isFinite(dias) && dias > 0 ? dias : 0;
+    const dias = Number(this.diasAdicionales());
+    return Number.isSafeInteger(dias) && dias >= 1 && dias <= 2_147_483_647 ? dias : 0;
   });
   prorrogaMotivo = '';
   prorrogaCronograma = '';
   hitos = signal<HitoCronogramaItem[]>([{ fecha: '', entregable: '' }]);
   usarCronograma = signal<boolean>(false);
+  private readonly prevision = signal<{ dias: number; datos: PrevisionAmpliacion } | null>(null);
+  readonly errorPrevision = signal('');
+  private readonly revisionPrevision = signal(0);
+  readonly previsionVigente = computed(() => {
+    const prevision = this.prevision();
+    return prevision?.dias === this.prorrogaDiasNum() ? prevision.datos : null;
+  });
+  readonly cronogramaIncumplido = computed(() => this.ampliacionRegistrada()?.cronograma?.some(h => h.incumplida) ?? false);
+  readonly reciboAmpliacion = signal<AmpliacionPlazoSolicitud | null>(null);
+  readonly ampliacionRegistrada = computed(() => {
+    const sol = this.solicitud();
+    const recibo = this.reciboAmpliacion();
+    if (recibo && recibo.solicitudId === sol?.id) return recibo;
+    return sol?.ampliacionesPlazo?.find(a => a.solicitudId === sol.id && a.estadoAmpliacion !== 'CANCELADA') ?? null;
+  });
+  readonly ampliacionIncierta = signal(false);
+  readonly fechaEntrega = signal<Record<number, string>>({});
+  readonly archivosPorHito = signal<Record<number, File[]>>({});
+  readonly hitoRegistrandoId = signal<number | null>(null);
+  readonly hitoExitoId = signal<number | null>(null);
+  readonly cronogramaHitoError = signal<HitoPanelMessage | null>(null);
+  readonly cronogramaTotal = computed(() => this.ampliacionRegistrada()?.cronograma?.length ?? 0);
+  readonly cronogramaEntregadas = computed(
+    () => (this.ampliacionRegistrada()?.cronograma ?? []).filter(h => h.estado === 'ENTREGADA').length
+  );
+  readonly tieneCronogramaActivo = computed(() => this.cronogramaTotal() > 0);
+  readonly tieneHitosPendientes = computed(
+    () => (this.ampliacionRegistrada()?.cronograma ?? []).some(h => h.estado !== 'ENTREGADA' && h.estado !== 'CANCELADA')
+  );
+  readonly adjuntarAdicionalesEnCierre = signal<boolean>(false);
+  readonly cronogramaDocumentosEntregados = computed(() => {
+    const hitos = [...(this.ampliacionRegistrada()?.cronograma ?? [])].sort(
+      (a, b) => a.numeroEntrega - b.numeroEntrega
+    );
+    const docs: {
+      id: number;
+      nombre: string;
+      tamano: string;
+      tipo: string;
+      entregaNumero: number;
+      fechaEntregaReal?: string | null;
+      raw: any;
+    }[] = [];
+    for (const hito of hitos) {
+      if (hito.estado !== 'ENTREGADA') continue;
+      for (const doc of hito.documentos ?? []) {
+        if (!doc?.id) continue;
+        docs.push({
+          id: doc.id,
+          nombre: doc.nombreOriginal || `Documento #${doc.id}`,
+          tamano: this.tamanoDoc(doc),
+          tipo: doc.contentType || 'application/pdf',
+          entregaNumero: hito.numeroEntrega,
+          fechaEntregaReal: hito.fechaEntregaReal,
+          raw: doc
+        });
+      }
+    }
+    return docs;
+  });
+
+  private limpiarAmpliacion(): void {
+    this.actuacionAmpliacion?.unsubscribe();
+    this.prevision.set(null);
+    this.errorPrevision.set('');
+    this.reciboAmpliacion.set(null);
+    this.ampliacionIncierta.set(false);
+    this.fechaEntrega.set({});
+    this.archivosPorHito.set({});
+    this.hitoRegistrandoId.set(null);
+    this.hitoExitoId.set(null);
+    this.cronogramaHitoError.set(null);
+    this.adjuntarAdicionalesEnCierre.set(false);
+    this.via.set('responder');
+    this.prorrogaDias = '5';
+    this.prorrogaMotivo = '';
+    this.prorrogaCronograma = '';
+    this.usarCronograma.set(false);
+    this.hitos.set([{ fecha: '', entregable: '' }]);
+  }
+
+  private contextoAmpliacionVigente(generacion: number, sesion: string): boolean {
+    return !this.destruido && generacion === this.generacionRespuesta && sesion === this.claveSesion();
+  }
+
+  reintentarPrevision(): void {
+    this.revisionPrevision.update(revision => revision + 1);
+  }
 
   agregarHito(): void {
-    this.hitos.update(prev => [...prev, { fecha: '', entregable: '' }]);
+    this.hitos.update(prev => {
+      const cierre = prev.find(h => h.cierre);
+      if (!cierre) return prev.length < 12 ? [...prev, { fecha: '', entregable: '' }] : prev;
+      const parciales = prev.filter(h => !h.cierre);
+      return parciales.length >= 11 ? prev : [...parciales, { fecha: '', entregable: '' }, cierre];
+    });
   }
 
   quitarHito(index: number): void {
-    this.hitos.update(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+    if (!this.puedeQuitarHito(index)) return;
+    this.hitos.update(prev => prev.filter((_, i) => i !== index));
+  }
+
+  puedeAgregarParcial(): boolean {
+    return this.prorrogaPermitida() && this.hitos().filter(h => !h.cierre).length < 11;
+  }
+
+  puedeQuitarHito(index: number): boolean {
+    const hitos = this.hitos();
+    const hito = hitos[index];
+    if (!hito || hito.cierre) return false;
+    const parciales = hitos.filter(h => !h.cierre).length;
+    if (this.cronogramaRequerido() && parciales <= 1) return false;
+    return hitos.some(h => h.cierre) || hitos.length > 1;
   }
 
   actualizarHitoFecha(index: number, fecha: string): void {
+    if (this.hitos()[index]?.cierre) return;
     this.hitos.update(prev => prev.map((h, i) => i === index ? { ...h, fecha } : h));
   }
 
@@ -232,27 +395,170 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.hitos.update(prev => prev.map((h, i) => i === index ? { ...h, entregable } : h));
   }
 
-  // Decisión de fondo
-  descripcionAceptacion = '';
-  descripcionAceptacionParcial = '';
-  descripcionDenegacion = '';
-  causalDenegatoria = '';
-  fundamentoLegal = '';
+  textoFecha(iso: string | null | undefined): string {
+    return iso ? fechaDmy(iso) : '';
+  }
+
+  indiceParcial(index: number): number {
+    return this.hitos().slice(0, index + 1).filter(h => !h.cierre).length;
+  }
+
+  minFechaParcial(index: number): string | null {
+    const hoy = this.previsionVigente()?.hoy ?? null;
+    const previa = this.fechaParcialVecina(index, -1);
+    let min = previa ? desplazarDia(previa, 1) : hoy;
+    const limite = this.nuevaFechaLimite();
+    if (limite && this.esUltimaParcial(index)) {
+      const antesDelVencimiento = desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS);
+      if (!min || antesDelVencimiento > min) min = antesDelVencimiento;
+    }
+    return hoy && min && min < hoy ? hoy : min;
+  }
+
+  maxFechaParcial(index: number): string | null {
+    const limite = this.nuevaFechaLimite();
+    if (!limite) return null;
+    let max = desplazarDia(limite, -1);
+    const posterior = this.fechaParcialVecina(index, 1);
+    if (posterior) {
+      const anteriorALaSiguiente = desplazarDia(posterior, -1);
+      if (anteriorALaSiguiente < max) max = anteriorALaSiguiente;
+    }
+    const previa = this.fechaParcialVecina(index, -1);
+    if (previa) {
+      const tope = desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS);
+      if (tope < max) max = tope;
+    }
+    return max;
+  }
+
+  pistaFechaParcial(index: number): string {
+    const max = this.maxFechaParcial(index);
+    const min = this.minFechaParcial(index);
+    const limite = this.nuevaFechaLimite();
+    if (!max || !limite) return 'Espere el cálculo del nuevo vencimiento.';
+    if (min && min > max) {
+      const previa = this.fechaParcialVecina(index, -1);
+      const tope = previa ? desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
+      const desdeVencimiento = this.esUltimaParcial(index) ? desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
+      if (tope && desdeVencimiento && tope < desdeVencimiento) {
+        return 'Hay más de 30 días entre la entrega anterior y el vencimiento. Añada una entrega intermedia.';
+      }
+      return 'No queda un día entre la entrega anterior y el vencimiento. Quite esta entrega o aumente los días de la ampliación.';
+    }
+    const previaVacia = this.hitos().slice(0, index).some(h => !h.cierre && !h.fecha);
+    if (previaVacia) return `Complete antes la fecha de la entrega anterior. El ${fechaDmy(limite)} queda reservado para la última entrega.`;
+    return `Elija del ${fechaDmy(min ?? max)} al ${fechaDmy(max)}. Entre una entrega y la siguiente no pueden pasar más de 30 días.`;
+  }
+
+  private esUltimaParcial(index: number): boolean {
+    return this.hitos().slice(index + 1).every(h => !!h.cierre);
+  }
+
+  private fechaParcialVecina(index: number, sentido: -1 | 1): string | null {
+    const hitos = this.hitos();
+    for (let i = index + sentido; i >= 0 && i < hitos.length; i += sentido) {
+      if (!hitos[i].cierre && hitos[i].fecha) return hitos[i].fecha;
+    }
+    return null;
+  }
+
+  // Decisión de fondo (respaldados por signals para reactividad inmediata bajo OnPush)
+  private readonly descripcionAceptacionSignal = signal('');
+  get descripcionAceptacion(): string { return this.descripcionAceptacionSignal(); }
+  set descripcionAceptacion(v: string) { this.descripcionAceptacionSignal.set(v ?? ''); }
+
+  private readonly descripcionAceptacionParcialSignal = signal('');
+  get descripcionAceptacionParcial(): string { return this.descripcionAceptacionParcialSignal(); }
+  set descripcionAceptacionParcial(v: string) { this.descripcionAceptacionParcialSignal.set(v ?? ''); }
+
+  private readonly descripcionDenegacionSignal = signal('');
+  get descripcionDenegacion(): string { return this.descripcionDenegacionSignal(); }
+  set descripcionDenegacion(v: string) { this.descripcionDenegacionSignal.set(v ?? ''); }
+
+  private readonly causalDenegatoriaSignal = signal('');
+  get causalDenegatoria(): string { return this.causalDenegatoriaSignal(); }
+  set causalDenegatoria(v: string) { this.causalDenegatoriaSignal.set(v ?? ''); }
+
+  private readonly fundamentoLegalSignal = signal('');
+  get fundamentoLegal(): string { return this.fundamentoLegalSignal(); }
+  set fundamentoLegal(v: string) { this.fundamentoLegalSignal.set(v ?? ''); }
 
   // Encauzamiento
-  encauzar = false;
-  entidadDestino = '';
-  motivoEncauzamiento = '';
-  parteEncauzada = '';
+  private readonly encauzarSignal = signal(false);
+  get encauzar(): boolean { return this.encauzarSignal(); }
+  set encauzar(v: boolean) { this.encauzarSignal.set(Boolean(v)); }
+
+  private readonly entidadDestinoSignal = signal('');
+  get entidadDestino(): string { return this.entidadDestinoSignal(); }
+  set entidadDestino(v: string) { this.entidadDestinoSignal.set(v ?? ''); }
+
+  private readonly motivoEncauzamientoSignal = signal('');
+  get motivoEncauzamiento(): string { return this.motivoEncauzamientoSignal(); }
+  set motivoEncauzamiento(v: string) { this.motivoEncauzamientoSignal.set(v ?? ''); }
+
+  private readonly parteEncauzadaSignal = signal('');
+  get parteEncauzada(): string { return this.parteEncauzadaSignal(); }
+  set parteEncauzada(v: string) { this.parteEncauzadaSignal.set(v ?? ''); }
 
   // Cupón de pago (entrega física)
-  cuponEnviado = false;
-  cuponLugar = '';
-  liqFolios = '';
-  liqCostoFolio = '0.10';
-  liqCertificadas = '';
-  liqCostoCert = '0.50';
-  liqSoporte = '0';
+  readonly tarifasConfig = signal<Tarifas>({ copiaSimple: 0.10, copiaCertificada: 0.50, soporteDigital: 1.00 });
+  readonly sinCobroReproduccion = signal(false);
+  readonly cuponError = signal('');
+  private tarifasEditadas = false;
+
+  private readonly cuponEnviadoSignal = signal(false);
+  get cuponEnviado(): boolean { return this.cuponEnviadoSignal(); }
+  set cuponEnviado(v: boolean) { this.cuponEnviadoSignal.set(Boolean(v)); this.cuponError.set(''); }
+
+  private readonly cuponLugarSignal = signal('');
+  get cuponLugar(): string { return this.cuponLugarSignal(); }
+  set cuponLugar(v: string) { this.cuponLugarSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private readonly liqFoliosSignal = signal<string | number>('');
+  get liqFolios(): string { return String(this.liqFoliosSignal() ?? ''); }
+  set liqFolios(v: string | number) { this.liqFoliosSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private readonly liqCostoFolioSignal = signal<string | number>('0.10');
+  get liqCostoFolio(): string { return String(this.liqCostoFolioSignal() ?? ''); }
+  set liqCostoFolio(v: string | number) { this.tarifasEditadas = true; this.liqCostoFolioSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private readonly liqCertificadasSignal = signal<string | number>('');
+  get liqCertificadas(): string { return String(this.liqCertificadasSignal() ?? ''); }
+  set liqCertificadas(v: string | number) { this.liqCertificadasSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private readonly liqCostoCertSignal = signal<string | number>('0.50');
+  get liqCostoCert(): string { return String(this.liqCostoCertSignal() ?? ''); }
+  set liqCostoCert(v: string | number) { this.tarifasEditadas = true; this.liqCostoCertSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private readonly liqSoporteSignal = signal<string | number>('0');
+  get liqSoporte(): string { return String(this.liqSoporteSignal() ?? ''); }
+  set liqSoporte(v: string | number) { this.liqSoporteSignal.set(v ?? ''); this.cuponError.set(''); }
+
+  private resetFormularioRespuesta(): void {
+    const tarifas = this.tarifasConfig();
+    this.tarifasEditadas = false;
+    this.descripcionAceptacion = '';
+    this.descripcionAceptacionParcial = '';
+    this.descripcionDenegacion = '';
+    this.causalDenegatoria = '';
+    this.fundamentoLegal = '';
+    this.encauzar = false;
+    this.entidadDestino = '';
+    this.motivoEncauzamiento = '';
+    this.parteEncauzada = '';
+    this.cuponEnviado = false;
+    this.cuponLugar = '';
+    this.liqFolios = '';
+    this.liqCostoFolioSignal.set(tarifas.copiaSimple.toFixed(2));
+    this.liqCertificadas = '';
+    this.liqCostoCertSignal.set(tarifas.copiaCertificada.toFixed(2));
+    this.liqSoporte = '0';
+    this.sinCobroReproduccion.set(false);
+    this.cuponError.set('');
+    this.adjuntarAdicionalesEnCierre.set(false);
+    this.precisionPuntos.set(['']);
+  }
 
   documentosEntrega = signal<File[]>([]);
   documentosEntregaParcial = signal<File[]>([]);
@@ -283,21 +589,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     return inicio ? habilesEntre(inicio, hoyIso()) : 0;
   });
 
-  readonly fechaLimiteProrroga = computed(() => {
-    const inicio = fechaIso(this.solicitud()?.fechaPresentacion);
-    return inicio ? fechaDmy(sumarHabiles(inicio, 2)) : '';
-  });
-
-  readonly prorrogaPermitida = computed(() => {
-    return this.diasTranscurridos() <= 2;
-  });
-
-  readonly nuevaFechaLimite = computed<string | null>(() => {
-    const dias = this.prorrogaDiasNum();
-    if (dias <= 0) return null;
-    const base = fechaIso(this.solicitud()?.fechaLimite) ?? hoyIso();
-    return sumarHabiles(base, dias);
-  });
+  readonly fechaLimiteProrroga = computed(() => this.previsionVigente()?.fechaMaximaComunicacion || '');
+  readonly prorrogaPermitida = computed(() => this.previsionVigente()?.disponible === true && !this.ampliacionRegistrada());
+  readonly nuevaFechaLimite = computed(() => this.previsionVigente()?.fechaLimiteAmpliada ?? null);
+  readonly cronogramaRequerido = computed(() => this.previsionVigente()?.requiereCronograma ?? false);
 
   readonly nuevaFechaLimiteDMY = computed<string>(() => {
     const iso = this.nuevaFechaLimite();
@@ -310,12 +605,79 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     return this.hitos().filter(h => h.fecha && h.entregable.trim().length > 0);
   });
 
-  readonly errorHitos = computed<string | null>(() => {
-    const dias = parseInt(this.prorrogaDias) || 0;
-    const cronogramaObligatorio = dias > 30 || this.usarCronograma();
-    if (!cronogramaObligatorio) return null;
+  readonly erroresFechaHitos = computed(() => {
+    const hoy = this.previsionVigente()?.hoy;
+    const limite = this.nuevaFechaLimite();
+    const hitos = this.hitos();
+    if (hitos.some(h => h.cierre)) {
+      return hitos.map((hito, index) => this.errorFechaConCierre(hito, index, hoy, limite));
+    }
+    return hitos.map(({ fecha }, index) => {
+      if (!fecha || !hoy || !limite) return null;
+      if (fecha < hoy) return 'Las fechas del cronograma no pueden ser anteriores a hoy.';
+      if (fecha > limite) return `Las entregas deben programarse hasta la nueva fecha límite (${fechaDmy(limite)}).`;
+      const anterior = hitos[index - 1]?.fecha;
+      if (anterior && fecha <= anterior) return `Elija una fecha posterior a la entrega ${index} (${fechaDmy(anterior)}).`;
+      if (anterior && diasEntre(anterior, fecha) > DIAS_CALENDARIO_ENTRE_ENTREGAS) {
+        return `Hay más de 30 días entre esta entrega y la anterior (${fechaDmy(anterior)}).`;
+      }
+      if (index === hitos.length - 1 && fecha !== limite) {
+        return `La última entrega debe coincidir con la nueva fecha límite (${fechaDmy(limite)}).`;
+      }
+      return null;
+    });
+  });
+
+  private errorFechaConCierre(hito: HitoCronogramaItem, index: number, hoy: string | undefined, limite: string | null): string | null {
+    if (hito.cierre) {
+      if (!limite || !hito.fecha || hito.fecha !== limite) return limite ? `La última entrega queda el ${fechaDmy(limite)}.` : null;
+      const inmediata = this.hitos()[index - 1];
+      if (inmediata?.fecha && diasEntre(inmediata.fecha, limite) > DIAS_CALENDARIO_ENTRE_ENTREGAS) {
+        return `La última entrega queda a más de 30 días de la anterior (${fechaDmy(inmediata.fecha)}). Acerque esa fecha o añada una entrega intermedia.`;
+      }
+      return null;
+    }
+    if (!hito.fecha || !hoy || !limite) return null;
+    if (hito.fecha < hoy) return 'Esta entrega no puede ser anterior a hoy.';
+    const max = this.maxFechaParcial(index);
+    const min = this.minFechaParcial(index);
+    if (max && hito.fecha > max) {
+      const previa = this.fechaParcialVecina(index, -1);
+      const topeTreinta = previa ? desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
+      if (topeTreinta && hito.fecha > topeTreinta && hito.fecha < limite) {
+        return `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa!)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
+      }
+      const posterior = this.fechaParcialVecina(index, 1);
+      if (posterior && hito.fecha >= posterior && hito.fecha < limite) {
+        return `Elija una fecha anterior a la siguiente entrega (${fechaDmy(posterior)}).`;
+      }
+      return `Esta fecha llega al vencimiento o lo pasa. Elija hasta el ${fechaDmy(max)}; la última entrega ya queda el ${fechaDmy(limite)}.`;
+    }
+    if (min && hito.fecha < min) {
+      const previa = this.fechaParcialVecina(index, -1);
+      const desdeVencimiento = desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS);
+      if (this.esUltimaParcial(index) && hito.fecha < desdeVencimiento && (!previa || hito.fecha > previa)) {
+        return `Esta entrega queda a más de 30 días del vencimiento (${fechaDmy(limite)}). Elija desde el ${fechaDmy(desdeVencimiento)} o añada una entrega intermedia.`;
+      }
+      return previa ? `Elija una fecha posterior al ${fechaDmy(previa)}.` : `Elija una fecha desde el ${fechaDmy(min)}.`;
+    }
+    return null;
+  }
+
+  readonly errorEstructuraCronograma = computed<string | null>(() => {
+    if (!this.cronogramaRequerido() && !this.usarCronograma()) return null;
 
     const todos = this.hitos();
+    const cierre = todos.find(h => h.cierre);
+    if (cierre) {
+      const parciales = todos.filter(h => !h.cierre);
+      if (this.cronogramaRequerido() && parciales.length < 1) return 'Registre al menos una entrega parcial antes del vencimiento.';
+      if (!cierre.fecha || cierre.entregable.trim().length === 0 || parciales.some(h => !h.fecha || h.entregable.trim().length === 0)) {
+        return 'Complete la fecha y el entregable de cada entrega. La última queda en el vencimiento.';
+      }
+      return null;
+    }
+
     const validos = this.hitosValidos();
     if (validos.length === 0) return 'Registre al menos una entrega con fecha y descripción.';
 
@@ -323,30 +685,60 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       return 'Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.';
     }
 
-    const hoyISO = hoyIso();
-    if (validos.some(h => h.fecha < hoyISO)) return 'Las fechas del cronograma no pueden ser anteriores a hoy.';
-
-    const limite = this.nuevaFechaLimite();
-    if (limite && validos.some(h => h.fecha > limite)) {
-      return `Las entregas deben programarse hasta la nueva fecha límite (${this.nuevaFechaLimiteDMY()}).`;
-    }
+    if (this.cronogramaRequerido() && validos.length < 2) return 'Registre al menos dos entregas.';
     return null;
   });
+
+  readonly errorHitos = computed(() => this.cronogramaRequerido() || this.usarCronograma()
+    ? this.errorEstructuraCronograma() || this.erroresFechaHitos().find(error => error !== null) || null
+    : null);
 
   readonly dentroPlazoEncauzamiento = computed(() => {
     return this.diasTranscurridos() <= 4;
   });
 
+  readonly liquidacionActiva = computed<LiquidacionCostoSolicitud | null>(() => {
+    const sol = this.solicitud();
+    const list = (sol?.liquidacionesCosto ?? []).filter(item => item?.id > 0 && item.solicitudId === sol?.id);
+    return list.find(item =>
+      item.estadoLiquidacion === 'EMITIDA'
+      || item.estadoLiquidacion === 'NOTIFICADA'
+      || item.estadoLiquidacion === 'PAGADA'
+      || item.estadoLiquidacion === 'RECOGIDA'
+    ) ?? null;
+  });
+
+  readonly liqFoliosNum = computed(() => Math.max(0, Math.floor(Number(this.liqFoliosSignal()) || 0)));
+  readonly liqCostoFolioNum = computed(() => Math.max(0, Number(String(this.liqCostoFolioSignal()).replace(',', '.')) || 0));
+  readonly liqCertificadasNum = computed(() => Math.max(0, Math.floor(Number(this.liqCertificadasSignal()) || 0)));
+  readonly liqCostoCertNum = computed(() => Math.max(0, Number(String(this.liqCostoCertSignal()).replace(',', '.')) || 0));
+  readonly liqSoporteNum = computed(() => Math.max(0, Number(String(this.liqSoporteSignal()).replace(',', '.')) || 0));
+
+  readonly liqFoliosSubtotal = computed(() => Math.round(this.liqFoliosNum() * this.liqCostoFolioNum() * 100) / 100);
+  readonly liqCertificadasSubtotal = computed(() => Math.round(this.liqCertificadasNum() * this.liqCostoCertNum() * 100) / 100);
+
   readonly liqTotal = computed(() => {
-    const f = (Number(this.liqFolios) || 0) * (Number(this.liqCostoFolio) || 0);
-    const c = (Number(this.liqCertificadas) || 0) * (Number(this.liqCostoCert) || 0);
-    const s = Number(this.liqSoporte) || 0;
-    return f + c + s;
+    if (this.sinCobroReproduccion()) return 0;
+    return Math.round((this.liqFoliosSubtotal() + this.liqCertificadasSubtotal() + this.liqSoporteNum()) * 100) / 100;
   });
 
   readonly cuponMonto = computed(() => {
     const total = this.liqTotal();
     return total > 0 ? `S/ ${total.toFixed(2)}` : '';
+  });
+
+  readonly desgloseLiquidacion = computed<string[]>(() => {
+    const partes: string[] = [];
+    if (this.liqFoliosNum() > 0 && this.liqFoliosSubtotal() > 0) {
+      partes.push(`${this.liqFoliosNum()} folios simples (S/ ${this.liqFoliosSubtotal().toFixed(2)})`);
+    }
+    if (this.liqCertificadasNum() > 0 && this.liqCertificadasSubtotal() > 0) {
+      partes.push(`${this.liqCertificadasNum()} copias certificadas (S/ ${this.liqCertificadasSubtotal().toFixed(2)})`);
+    }
+    if (this.liqSoporteNum() > 0) {
+      partes.push(`Soporte CD/USB (S/ ${this.liqSoporteNum().toFixed(2)})`);
+    }
+    return partes;
   });
 
   readonly entidadesDestino = computed(() => {
@@ -473,8 +865,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   readonly prorrogaTipo = computed<'programada' | 'registrada'>(() => {
-    const dias = parseInt(this.prorrogaDias) || 0;
-    return (dias > 30 || this.prorrogaCronograma.trim().length > 0) ? 'programada' : 'registrada';
+    return this.cronogramaRequerido() || this.usarCronograma() ? 'programada' : 'registrada';
   });
 
   readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
@@ -519,6 +910,28 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       } else this.cargarSolicitud(expediente);
     });
     this.cargarEntidades();
+    this.cargarTarifasCalendario();
+  }
+
+  private cargarTarifasCalendario(): void {
+    if (!this.http) return;
+    this.consultaTarifas?.unsubscribe();
+    this.consultaTarifas = this.http
+      .get<{ tarifas?: Partial<Tarifas> }>(`${environment.apiUrl}/calendario`)
+      .pipe(catchError(() => of(null)))
+      .subscribe(cfg => {
+        if (this.destruido || !cfg?.tarifas) return;
+        const tarifas: Tarifas = {
+          copiaSimple: Number(cfg.tarifas.copiaSimple ?? 0.10),
+          copiaCertificada: Number(cfg.tarifas.copiaCertificada ?? 0.50),
+          soporteDigital: Number(cfg.tarifas.soporteDigital ?? 1.00)
+        };
+        this.tarifasConfig.set(tarifas);
+        if (!this.tarifasEditadas) {
+          this.liqCostoFolioSignal.set(tarifas.copiaSimple.toFixed(2));
+          this.liqCostoCertSignal.set(tarifas.copiaCertificada.toFixed(2));
+        }
+      });
   }
 
   cargarSolicitud(expediente: string): void {
@@ -531,13 +944,14 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.respuestaPendienteVerificacion.set(false); this.puedeReintentarRespuesta.set(false);
     this.resultadoRespuesta.set('inicial'); this.loading.set(false); this.successModalAbierto.set(false);
     this.documentosEntrega.set([]); this.documentosEntregaParcial.set([]); this.evidenciaDenegatoria.set([]);
-    this.descripcionAceptacion = ''; this.descripcionAceptacionParcial = ''; this.descripcionDenegacion = ''; this.causalDenegatoria = ''; this.fundamentoLegal = '';
-    this.precisionPuntos.set(['']);
+    this.resetFormularioRespuesta();
+    this.limpiarAmpliacion();
     this.loadingSolicitud.set(true); this.error.set('');
     this.consultaSolicitud = this.solicitudService.findByExpediente(expediente).subscribe({
       next: data => {
         if (this.destruido || generacion !== this.generacionRespuesta || sesion !== this.claveSesion()) return;
         this.solicitud.set(data); this.loadingSolicitud.set(false);
+        this.inicializarCronogramaSolicitud(data);
         if (this.yaPreciso() && this.via() === 'precision') this.via.set('responder');
         const intento = data?.id ? this.recuperarIntentoRespuesta(data.id) : null;
         if (intento) {
@@ -553,6 +967,27 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     });
   }
 
+  private inicializarCronogramaSolicitud(data: Solicitud | null): void {
+    const ampliacion = data?.ampliacionesPlazo?.find(a => a.solicitudId === data.id && a.estadoAmpliacion !== 'CANCELADA');
+    const cronograma = ampliacion?.cronograma ?? [];
+    if (!cronograma.length) return;
+    const hoy = hoyLima();
+    const min = ampliacion?.fechaNotificacionAmpliacion;
+    const fechaDefecto = min && min > hoy ? min : hoy;
+    const fechasIniciales: Record<number, string> = {};
+    let hayPendientes = false;
+    for (const hito of cronograma) {
+      if (hito.estado !== 'ENTREGADA' && hito.estado !== 'CANCELADA') {
+        fechasIniciales[hito.id] = fechaDefecto;
+        hayPendientes = true;
+      }
+    }
+    this.fechaEntrega.set(fechasIniciales);
+    if (hayPendientes && this.puedeRegistrarRespuestaManual()) {
+      this.via.set('cronograma');
+    }
+  }
+
   cargarEntidades(): void {
     this.entidadService.findActivas().subscribe({
       next: (data) => this.entidades.set(data),
@@ -565,8 +1000,11 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   setVia(v: ViaProcesal): void {
+    if (this.loading() || (v === 'prorroga' && this.ampliacionRegistrada())) return;
+    if (v === 'cronograma' && !this.tieneCronogramaActivo()) return;
     this.via.set(v);
     this.error.set('');
+    this.cuponError.set('');
   }
 
   aplicarArea(actualizada: Solicitud): void {
@@ -627,8 +1065,67 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     return `${(file.size / 1024 / 1024).toFixed(2)} MB`;
   }
 
+  readonly cuponRequiereEmision = computed(() => {
+    const d = this.decision();
+    return this.requiereFisico()
+      && (d === 'entrega_total' || d === 'entrega_parcial')
+      && !this.liquidacionActiva()
+      && !this.sinCobroReproduccion();
+  });
+
+  readonly cuponValido = computed(() => {
+    if (!this.requiereFisico()) return true;
+    const d = this.decision();
+    if (d !== 'entrega_total' && d !== 'entrega_parcial') return true;
+    if (this.liquidacionActiva() || this.sinCobroReproduccion()) return true;
+    return this.cuponEnviado && this.liqTotal() > 0 && this.cuponLugar.trim().length > 0;
+  });
+
+  readonly faltantesRespuesta = computed<string[]>(() => {
+    if (this.via() !== 'responder') return [];
+    const curDecision = this.decision();
+    if (!curDecision) return [];
+    const faltantes: string[] = [];
+
+    if (curDecision === 'entrega_total' && !this.descripcionAceptacion.trim()) {
+      faltantes.push('Complete la descripción de la aceptación.');
+    }
+    if (curDecision === 'entrega_parcial') {
+      if (!this.descripcionAceptacionParcial.trim()) faltantes.push('Complete la descripción de lo que se entrega parcialmente.');
+      if (!this.causalDenegatoria) faltantes.push('Seleccione la causal legal del extremo reservado o denegado.');
+    }
+    if (curDecision === 'denegacion_total') {
+      if (!this.causalDenegatoria) faltantes.push('Seleccione la causal legal de denegatoria.');
+      if (!this.descripcionDenegacion.trim()) faltantes.push('Complete la descripción / sustento de la denegatoria.');
+      if (!this.fundamentoLegal.trim()) faltantes.push('Ingrese el fundamento legal que respalda la denegación.');
+    }
+
+    if (this.encauzar) {
+      if (!this.entidadDestino.trim()) faltantes.push('Seleccione la entidad destino para el encauzamiento.');
+      if (this.motivoEncauzamiento.trim().length < 10) faltantes.push('Indique el motivo del encauzamiento (mínimo 10 caracteres).');
+      if (curDecision === 'entrega_parcial' && this.parteEncauzada.trim().length < 10) {
+        faltantes.push('Indique el extremo encauzado a la otra entidad (mínimo 10 caracteres).');
+      }
+    }
+
+    if (this.cuponRequiereEmision()) {
+      if (this.liqTotal() <= 0) {
+        faltantes.push('Ingrese cantidades/costos de reproducción (o marque entrega sin cobro de reproducción).');
+      }
+      if (!this.cuponLugar.trim()) {
+        faltantes.push('Indique el lugar de pago del cupón.');
+      }
+      if (!this.cuponEnviado) {
+        faltantes.push('Confirme la emisión y envío del cupón de pago al administrado.');
+      }
+    }
+
+    return faltantes;
+  });
+
   canSubmit(): boolean {
     if (this.loading() || this.respuestaPendienteVerificacion()) return false;
+    if (this.via() === 'cronograma') return false;
     if (this.via() === 'responder' && (this.motivoRespuestaNoDisponible() || !this.puedeRegistrarRespuestaManual())) return false;
     if (this.via() === 'precision') {
       const detalle = this.precisionTexto();
@@ -636,14 +1133,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (this.via() === 'prorroga') {
-      if (!this.prorrogaPermitida()) return false;
-      const dias = parseInt(this.prorrogaDias) || 0;
-      const motivoOk = this.prorrogaMotivo.trim().length >= 10;
-      const cronogramaRequerido = dias > 30 || this.usarCronograma();
-      if (cronogramaRequerido) {
-        return dias >= 1 && motivoOk && !this.errorHitos();
-      }
-      return dias >= 1 && motivoOk;
+      return !this.ampliacionIncierta() && this.prorrogaPermitida() && !!this.nuevaFechaLimite()
+        && !!this.previsionVigente()?.hoy
+        && this.prorrogaMotivo.trim().length >= 10 && !this.errorHitos();
     }
 
     // via === 'responder'
@@ -656,9 +1148,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       (curDecision !== 'entrega_parcial' || this.parteEncauzada.trim().length >= 10)
     );
 
-    const cuponValido = !this.requiereFisico() || (
-      this.cuponEnviado && !!this.cuponMonto().trim() && this.cuponLugar.trim().length > 0
-    );
+    const cuponValido = this.cuponValido();
 
     if (curDecision === 'entrega_total') {
       return this.descripcionAceptacion.trim().length > 0 &&
@@ -694,7 +1184,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   confirmarAccion(): void {
     const sol = this.solicitud();
     const sesion = this.authService.obtenerSesion();
-    if (!sol || !sesion) return;
+    if (!sol || !sesion || this.loading()) return;
 
     if (this.via() === 'precision') {
       this.loading.set(true);
@@ -714,48 +1204,192 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (this.via() === 'prorroga') {
-      const dias = parseInt(this.prorrogaDias) || 5;
-      const cronogramaReq = dias > 30 || this.usarCronograma();
-      if (cronogramaReq && this.errorHitos()) {
-        this.loading.set(false);
-        this.error.set(this.errorHitos()!);
-        return;
-      }
+      if (!this.canSubmit()) return;
+      const dias = this.prorrogaDiasNum();
+      const generacion = this.generacionRespuesta;
+      const claveSesion = this.claveSesion();
       this.loading.set(true);
-      const hitosAEnviar = cronogramaReq && this.hitosValidos().length > 0
+      const vencimiento = this.nuevaFechaLimite();
+      const hitosAEnviar = this.prorrogaTipo() === 'programada'
         ? this.hitosValidos().map((h, i) => ({
             numeroEntrega: i + 1,
             descripcion: h.entregable.trim(),
-            fechaProgramada: h.fecha,
+            fechaProgramada: h.cierre && vencimiento ? vencimiento : h.fecha,
             observacion: this.prorrogaCronograma.trim() || undefined
           }))
-        : [{
-            numeroEntrega: 1,
-            descripcion: 'Entrega de información en plazo ampliado',
-            fechaProgramada: this.nuevaFechaLimite() || sumarHabiles(hoyIso(), dias),
-            observacion: this.prorrogaMotivo.trim()
-          }];
+        : [];
 
-      this.solicitudService.registrarAmpliacion(sol.id, {
+      this.actuacionAmpliacion = this.solicitudService.registrarAmpliacion(sol.id, {
         motivoAmpliacion: this.prorrogaMotivo.trim(),
         informeAmpliacion: this.prorrogaCronograma.trim() || this.prorrogaMotivo.trim(),
-        fechaNotificacionAmpliacion: hoyIso(),
+        fechaNotificacionAmpliacion: this.previsionVigente()?.hoy ?? '',
+        diasHabilesAdicionales: dias,
         responsable: sesion.nombre || 'Funcionario responsable',
         cronograma: hitosAEnviar
       }).subscribe({
-        next: () => {
+        next: ampliacion => {
+          if (!this.contextoAmpliacionVigente(generacion, claveSesion)) return;
           this.loading.set(false);
           this.confirmModalAbierto.set(false);
-          this.mensaje.set('Ampliación registrada. Verifique su notificación en el expediente.');
+          if (!ampliacion?.id || ampliacion.solicitudId !== sol.id || !fechaIso(ampliacion.fechaLimiteAmpliada)
+              || !Array.isArray(ampliacion.cronograma)) {
+            this.ampliacionIncierta.set(true);
+            this.error.set('Consulte el expediente para comprobar si la ampliación quedó registrada.');
+            return;
+          }
+          this.reciboAmpliacion.set(ampliacion);
           this.successModalAbierto.set(true);
         },
-        error: (err) => this.handleError(err)
+        error: err => {
+          if (!this.contextoAmpliacionVigente(generacion, claveSesion)) return;
+          this.handleError(err);
+          if (!err?.status || err.status >= 500 || err.status === 409) {
+            this.ampliacionIncierta.set(true);
+            this.confirmModalAbierto.set(false);
+            this.error.set('Consulte el expediente antes de intentar registrar la ampliación otra vez.');
+          }
+        }
       });
       return;
     }
 
     // Decisión de fondo
     this.enviarRespuesta();
+  }
+
+  actualizarFechaEntrega(hitoId: number, fecha: string): void {
+    this.fechaEntrega.update(fechas => ({ ...fechas, [hitoId]: fecha }));
+    if (this.cronogramaHitoError()?.hitoId === hitoId) {
+      this.cronogramaHitoError.set(null);
+    }
+  }
+
+  actualizarArchivosHito(hitoId: number, archivos: File[]): void {
+    this.archivosPorHito.update(prev => ({ ...prev, [hitoId]: archivos }));
+    if (this.cronogramaHitoError()?.hitoId === hitoId) {
+      this.cronogramaHitoError.set(null);
+    }
+  }
+
+  registrarEntregaDesdePanel(event: RegistroEntregaHitoEvent): void {
+    const ampliacion = this.ampliacionRegistrada();
+    if (!ampliacion) return;
+    this.actualizarFechaEntrega(event.hito.id, event.fecha);
+    this.registrarHito(ampliacion, event.hito, event.archivos, event.decision, event.fundamentoDecision);
+  }
+
+  registrarHito(ampliacion: AmpliacionPlazoSolicitud, hito: CronogramaEntregaParcial, archivosExplicitos?: File[],
+    decision?: DecisionEntregaProgramada, fundamentoDecision = ''): void {
+    const sol = this.solicitud();
+    const hoy = hoyLima();
+    const min = ampliacion.fechaNotificacionAmpliacion;
+    const fecha = hito.fechaEntregaReal || this.fechaEntrega()[hito.id] || (min && min > hoy ? min : hoy);
+    const archivos = archivosExplicitos ?? this.archivosPorHito()[hito.id] ?? [];
+
+    if (!sol || this.loading() || this.hitoRegistrandoId() !== null || this.ampliacionIncierta()
+        || ampliacion.id !== this.ampliacionRegistrada()?.id
+        || hito.ampliacionId !== ampliacion.id || (hito.estado === 'ENTREGADA' && !!hito.documentos?.length)
+        || hito.estado === 'CANCELADA') return;
+
+    if (!fecha) {
+      this.cronogramaHitoError.set({ hitoId: hito.id, mensaje: 'Indique la fecha real de entrega.' });
+      return;
+    }
+    if (!archivos.length) {
+      this.cronogramaHitoError.set({
+        hitoId: hito.id,
+        mensaje: 'Adjunta al menos un documento de sustento (PDF, JPG, PNG o TXT) para registrar esta entrega.'
+      });
+      return;
+    }
+
+    if (!decision || (decision !== 'ENTREGA_TOTAL' && !fundamentoDecision.trim())) return;
+
+    const generacion = this.generacionRespuesta;
+    const sesion = this.claveSesion();
+    this.hitoRegistrandoId.set(hito.id);
+    this.cronogramaHitoError.set(null);
+    this.hitoExitoId.set(null);
+    this.error.set('');
+
+    this.actuacionAmpliacion = this.solicitudService.registrarDocumentosEntregaParcial(
+      sol.id, ampliacion.id, hito.id, fecha, archivos, decision, fundamentoDecision
+    ).subscribe({
+      next: guardado => {
+        if (!this.contextoAmpliacionVigente(generacion, sesion)) return;
+        this.hitoRegistrandoId.set(null);
+        if (guardado?.id !== hito.id || guardado.ampliacionId !== ampliacion.id || guardado.estado !== 'ENTREGADA'
+            || guardado.decision !== decision || guardado.documentos?.length !== archivos.length) {
+          this.ampliacionIncierta.set(true);
+          this.cronogramaHitoError.set({
+            hitoId: hito.id,
+            mensaje: 'No se pudo confirmar la respuesta del servidor. Consulte el expediente antes de reintentar.'
+          });
+          return;
+        }
+        this.aplicarHitoGuardadoEnEstado(sol.id, ampliacion.id, guardado);
+        this.archivosPorHito.update(prev => {
+          const { [hito.id]: _, ...rest } = prev;
+          return rest;
+        });
+        this.hitoExitoId.set(hito.id);
+        this.refrescarSolicitudSilencioso(sol.expediente, generacion, sesion);
+      },
+      error: err => {
+        if (!this.contextoAmpliacionVigente(generacion, sesion)) return;
+        this.hitoRegistrandoId.set(null);
+        const mensaje = problemDetailsMessage(err, 'No se pudo registrar la entrega parcial con sus documentos.');
+        this.cronogramaHitoError.set({ hitoId: hito.id, mensaje });
+        if (!err?.status || err.status >= 500 || err.status === 409) {
+          this.ampliacionIncierta.set(true);
+        }
+      }
+    });
+  }
+
+  private aplicarHitoGuardadoEnEstado(solicitudId: number, ampliacionId: number, guardado: CronogramaEntregaParcial): void {
+    const actualizarCrono = (amp: AmpliacionPlazoSolicitud): AmpliacionPlazoSolicitud => {
+      if (amp.id !== ampliacionId) return amp;
+      const crono = (amp.cronograma ?? []).map(item => (item.id === guardado.id ? guardado : item));
+      const pendientes = crono.some(item => item.estado !== 'ENTREGADA' && item.estado !== 'CANCELADA');
+      return {
+        ...amp,
+        estadoAmpliacion: pendientes ? amp.estadoAmpliacion : 'COMPLETADA',
+        cronograma: crono
+      };
+    };
+
+    const recibo = this.reciboAmpliacion();
+    if (recibo && recibo.id === ampliacionId && recibo.solicitudId === solicitudId) {
+      this.reciboAmpliacion.set(actualizarCrono(recibo));
+    }
+    this.solicitud.update(actual => {
+      if (!actual || actual.id !== solicitudId) return actual;
+      return {
+        ...actual,
+        ampliacionesPlazo: (actual.ampliacionesPlazo ?? []).map(actualizarCrono)
+      };
+    });
+  }
+
+  private refrescarSolicitudSilencioso(expediente: string, generacion: number, sesion: string): void {
+    this.solicitudService.findByExpediente(expediente).subscribe({
+      next: actualizada => {
+        if (!this.contextoAmpliacionVigente(generacion, sesion) || !actualizada) return;
+        this.solicitud.set(actualizada);
+      },
+      error: () => { /* Se conserva la actualización ya devuelta por POST cronograma */ }
+    });
+  }
+
+  revisarAmpliacion(): void {
+    if (this.expedienteActual && !this.loading()) this.cargarSolicitud(this.expedienteActual);
+  }
+
+  abrirPlanAmpliacion(): void {
+    this.successModalAbierto.set(false);
+    this.via.set(this.tieneCronogramaActivo() ? 'cronograma' : 'responder');
+    this.revisarAmpliacion();
   }
 
   motivoRespuestaNoDisponible(): string {
@@ -766,6 +1400,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     return '';
   }
 
+  private construirConceptoLiquidacion(): string {
+    const partes = this.desgloseLiquidacion();
+    const resumen = partes.length ? partes.join(', ') : 'Costo de reproducción física';
+    return `Cupón de reproducción — ${resumen}`.slice(0, 240);
+  }
+
   async enviarRespuesta(): Promise<void> {
     const sesion = this.authService.obtenerSesion(); const sol = this.solicitud(); const decision = this.decision();
     if (!sesion?.funcionarioId || !sol || !decision || this.loading() || this.respuestaPendienteVerificacion()) return;
@@ -774,6 +1414,45 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       this.error.set(motivo || 'El estado del expediente no permite registrar una respuesta. Recupere su estado actual.'); return;
     }
     const generacion = this.generacionRespuesta; const sesionClave = this.claveSesion();
+
+    if (this.cuponRequiereEmision()) {
+      if (!this.cuponValido()) {
+        this.cuponError.set('Complete el monto, lugar de pago y confirme el envío del cupón de pago.');
+        return;
+      }
+      this.loading.set(true);
+      this.error.set('');
+      this.cuponError.set('');
+      try {
+        const liquidacion = await firstValueFrom(this.solicitudService.emitirLiquidacion(sol.id, {
+          monto: Number(this.liqTotal().toFixed(2)),
+          moneda: 'PEN',
+          concepto: this.construirConceptoLiquidacion(),
+          fechaNotificacion: hoyLima(),
+          medioNotificacion: sol.canalNotificacion || 'CORREO_ELECTRONICO',
+          responsable: sesion.nombre || 'Funcionario de entidad',
+          observacion: `Lugar de pago: ${this.cuponLugar.trim()}`
+        }));
+        if (this.destruido || this.generacionRespuesta !== generacion || this.claveSesion() !== sesionClave
+            || this.solicitud()?.id !== sol.id) {
+          this.loading.set(false);
+          return;
+        }
+        this.solicitud.update(actual => actual && actual.id === sol.id
+          ? { ...actual, liquidacionesCosto: [...(actual.liquidacionesCosto ?? []), liquidacion] }
+          : actual);
+      } catch (err: unknown) {
+        if (this.destruido || this.generacionRespuesta !== generacion || this.claveSesion() !== sesionClave
+            || this.solicitud()?.id !== sol.id) return;
+        const msg = problemDetailsMessage(err, 'No se pudo emitir el cupón de pago en el servidor.');
+        this.cuponError.set(msg);
+        this.error.set(msg);
+        this.loading.set(false);
+        this.confirmModalAbierto.set(false);
+        return;
+      }
+    }
+
     const datos: CrearRespuestaRequest = {
       solicitudId: sol.id, funcionarioId: sesion.funcionarioId,
       tipoRespuesta: decision === 'entrega_total' ? 'ENTREGA_TOTAL' : decision === 'entrega_parcial' ? 'ENTREGA_PARCIAL' : 'DENEGACION_TOTAL',
@@ -969,7 +1648,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       return 'El administrado será notificado por correo y plataforma, y tendrá 2 días hábiles para subsanar. Si no responde, el expediente se archivará automáticamente.';
     }
     if (this.via() === 'prorroga') {
-      return 'Se comunicará al administrado la ampliación excepcional del plazo de atención. Esta acción quedará registrada en el expediente.';
+      return 'Revise el nuevo vencimiento y las entregas antes de registrar la ampliación en el expediente.';
     }
     return 'Verifique la decisión y el sustento antes de notificar al ciudadano. Esta acción quedará registrada en el expediente.';
   }
@@ -994,7 +1673,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         { label: 'Expediente', value: exp, mono: true },
         { label: 'Administrado', value: ciu },
         { label: 'Tipo', value: this.prorrogaTipo() === 'programada' ? 'Ampliación programada' : 'Ampliación registrada' },
-        { label: 'Días hábiles', value: this.prorrogaDias }
+        { label: 'Nueva fecha límite', value: this.nuevaFechaLimiteDMY() },
+        ...(this.prorrogaTipo() === 'programada'
+          ? this.hitosValidos().map((hito, index) => ({ label: `Entrega ${index + 1} · ${fechaDmy(hito.fecha)}`, value: hito.entregable.trim() }))
+          : [{ label: 'Entregas programadas', value: 'Sin cronograma' }])
       ];
     }
 
@@ -1002,7 +1684,14 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const files = decision === 'denegacion_total' ? this.evidenciaDenegatoria()
       : decision === 'entrega_parcial' ? this.documentosEntregaParcial() : this.documentosEntrega();
     const count = files.length;
-    const countText = count > 0 ? `${count} ${count === 1 ? 'adjunto' : 'adjuntos'}` : 'sin adjuntos';
+    const cronogramaDocsCount = decision === 'denegacion_total' ? 0 : this.cronogramaDocumentosEntregados().length;
+    const countText = count > 0
+      ? (cronogramaDocsCount > 0
+        ? `${count} adicional${count === 1 ? '' : 'es'} + ${cronogramaDocsCount} en cronograma`
+        : `${count} ${count === 1 ? 'adjunto' : 'adjuntos'}`)
+      : (cronogramaDocsCount > 0
+        ? `${cronogramaDocsCount} entregados en el cronograma (sin adjuntos adicionales)`
+        : 'sin adjuntos');
     const causalLabel = this.causalesOficiales.find(c => c.value === this.causalDenegatoria)?.label || this.causalDenegatoria || '—';
 
     const summary: ReferenceConfirmSummary[] = [
@@ -1023,8 +1712,18 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (this.requiereFisico() && this.cuponEnviado) {
-      summary.push({ label: 'Cupón de pago', value: `${this.cuponMonto()} · 30 días para recoger` });
+    if (this.requiereFisico() && (decision === 'entrega_total' || decision === 'entrega_parcial')) {
+      const activa = this.liquidacionActiva();
+      if (activa) {
+        summary.push({
+          label: 'Cupón de pago',
+          value: `${activa.codigoLiquidacion || 'Emitido'} · S/ ${Number(activa.monto).toFixed(2)} (${activa.estadoLiquidacion})`
+        });
+      } else if (this.sinCobroReproduccion()) {
+        summary.push({ label: 'Cupón de pago', value: 'Sin cobro de reproducción física' });
+      } else if (this.cuponEnviado) {
+        summary.push({ label: 'Cupón de pago', value: `${this.cuponMonto()} · ${this.cuponLugar.trim()} · 30 días calendario` });
+      }
     }
 
     return summary;
@@ -1039,8 +1738,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
     if (this.via() === 'prorroga') {
       return {
-        label: 'Notificación oficial',
-        detail: 'Se comunicará al administrado la prórroga del plazo de atención.'
+        label: 'Comunicación al administrado',
+        detail: 'Verifique la fecha que declaró y conserve la constancia de comunicación en el expediente.'
       };
     }
     const denegacion = this.decision() === 'denegacion_total';
@@ -1069,7 +1768,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   respuestaSuccessTitle(): string {
     if (this.documentUploadWarning()) return 'La respuesta se guardó con una incidencia documental';
     if (this.via() === 'precision') return 'Solicitud de precisión notificada';
-    if (this.via() === 'prorroga') return 'Ampliación del plazo comunicada';
+    if (this.via() === 'prorroga') return 'Ampliación del plazo registrada';
     return this.decision() === 'denegacion_total' ? 'Denegatoria notificada al ciudadano' : 'Respuesta enviada al ciudadano';
   }
 
@@ -1079,7 +1778,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       return 'Se notificó al administrado por correo y plataforma. Dispone de 2 días hábiles para subsanar; si no responde, el expediente se archivará automáticamente.';
     }
     if (this.via() === 'prorroga') {
-      return 'Se comunicará al administrado la ampliación del plazo de atención. El expediente continúa en trámite con la nueva fecha límite.';
+      return 'La solicitud sigue en trámite con la nueva fecha límite. Verifique la comunicación de la ampliación al administrado.';
     }
     return this.decision() === 'denegacion_total'
       ? 'Se ha registrado la denegatoria con su fundamento legal. El ciudadano fue notificado y dispone de su derecho a apelar ante el TTAIP.'
@@ -1099,16 +1798,21 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     if (this.via() === 'prorroga') {
+      const ampliacion = this.reciboAmpliacion();
       return [
         { label: 'Administrado', value: ciu },
-        { label: 'Tipo', value: this.prorrogaTipo() === 'programada' ? 'Ampliación programada' : 'Ampliación registrada' },
-        { label: 'Días adicionales', value: `${this.prorrogaDias} días hábiles` }
+        { label: 'Nueva fecha límite', value: ampliacion ? fechaDmy(ampliacion.fechaLimiteAmpliada) : 'No disponible' },
+        { label: 'Entregas programadas', value: String(ampliacion?.cronograma.length ?? 0) }
       ];
     }
 
     const recibida = this.recepcionRespuesta();
     const respuesta = recibida?.respuesta;
-    const documentos = recibida?.documentos.map(d => d.nombreOriginal || `Documento ${d.id}`).join(', ') || 'Sin adjuntos seleccionados';
+    const cronogramaDocsCount = respuesta?.tipoRespuesta === 'DENEGACION_TOTAL' ? 0 : this.cronogramaDocumentosEntregados().length;
+    const documentos = recibida?.documentos.map(d => d.nombreOriginal || `Documento ${d.id}`).join(', ')
+      || (cronogramaDocsCount > 0
+        ? `${cronogramaDocsCount} documento(s) entregados previamente en el cronograma`
+        : 'Sin adjuntos seleccionados');
     const metadata: ReferenceSuccessMeta[] = [
       { label: 'Recepción', value: recibida ? `${recibida.id} · respuesta ${respuesta?.id}` : 'No confirmada' },
       { label: 'Ciudadano', value: ciu },
@@ -1118,6 +1822,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (respuesta?.tipoRespuesta === 'DENEGACION_TOTAL' || respuesta?.tipoRespuesta === 'ENTREGA_PARCIAL') {
       metadata.push({ label: 'Causal registrada', value: respuesta.causalDenegatoria || 'No registrada' },
         { label: 'Fundamento registrado', value: respuesta.fundamentoLegal || 'No registrado' });
+    }
+    const liq = this.liquidacionActiva();
+    if (liq) {
+      metadata.push({
+        label: 'Liquidación / Cupón',
+        value: `${liq.codigoLiquidacion || 'Registrado'} · S/ ${Number(liq.monto).toFixed(2)}`
+      });
     }
     return metadata;
   }
@@ -1133,9 +1844,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
     if (this.via() === 'prorroga') {
       return [
-        { label: 'El administrado recibirá el informe y cronograma de entregas.' },
-        { label: 'La fecha límite de atención en el sistema se ha actualizado.' },
-        { label: 'Podrá resolver el fondo antes del nuevo vencimiento.' }
+        { label: 'Si hay un cronograma, registre cada entrega en su fecha. Un hito incumplido habilita la apelación.' },
+        { label: 'Registre la respuesta final según el resultado de la atención: total, parcial o denegatoria.' }
       ];
     }
 
@@ -1204,4 +1914,37 @@ function hoyIso(): string {
 function fechaDmy(iso: string): string {
   const [anio, mes, dia] = iso.split('-');
   return `${dia}/${mes}/${anio}`;
+}
+
+const DIAS_CALENDARIO_ENTRE_ENTREGAS = 30;
+
+function diasEntre(desde: string, hasta: string): number {
+  const inicio = Date.parse(`${desde}T00:00:00Z`);
+  const fin = Date.parse(`${hasta}T00:00:00Z`);
+  return Math.round((fin - inicio) / 86_400_000);
+}
+
+function desplazarDia(iso: string, dias: number): string {
+  const [anio, mes, dia] = iso.split('-').map(Number);
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia + dias));
+  const mesTexto = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+  const diaTexto = String(fecha.getUTCDate()).padStart(2, '0');
+  return `${fecha.getUTCFullYear()}-${mesTexto}-${diaTexto}`;
+}
+
+function cronogramaConCierre(lista: HitoCronogramaItem[], limite: string, requerido: boolean): HitoCronogramaItem[] {
+  const cierrePrevio = lista.find(h => h.cierre);
+  let parciales = lista.filter(h => !h.cierre);
+  if (!cierrePrevio && parciales.length === 1 && !parciales[0].fecha && !parciales[0].entregable) {
+    parciales = [{ fecha: '', entregable: '' }];
+  }
+  parciales = parciales.map(h => h.fecha >= limite ? { fecha: '', entregable: h.entregable } : { fecha: h.fecha, entregable: h.entregable });
+  if (requerido && parciales.length === 0) parciales = [{ fecha: '', entregable: '' }];
+  const siguiente: HitoCronogramaItem[] = [
+    ...parciales,
+    { fecha: limite, entregable: cierrePrevio?.entregable ?? '', cierre: true }
+  ];
+  const igual = lista.length === siguiente.length && lista.every((h, i) =>
+    h.fecha === siguiente[i].fecha && h.entregable === siguiente[i].entregable && !!h.cierre === !!siguiente[i].cierre);
+  return igual ? lista : siguiente;
 }

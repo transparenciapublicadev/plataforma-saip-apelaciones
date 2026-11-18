@@ -17,6 +17,7 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
   const mockSolicitudService = {
     findByExpediente: vi.fn(),
     obtenerSeguimientoPlazo: vi.fn(() => of({} as any)),
+    registrarDocumentosEntregaParcial: vi.fn(),
     actualizarLiquidacion: vi.fn((_id: number, liq: number, payload: any) => of({
       id: liq,
       solicitudId: 12,
@@ -162,6 +163,70 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
       responsable: expect.any(String),
       observacion: 'No acreditó el pago — Vencimiento de 30 días calendario'
     }));
+  });
+
+  it('permite registrar entrega parcial con documentos desde el panel de cronograma y muestra advertencia inline si falta sustento', () => {
+    const hito1 = {
+      id: 41,
+      ampliacionId: 91,
+      numeroEntrega: 1,
+      descripcion: 'Primer entregable',
+      fechaProgramada: '2026-12-01',
+      estado: 'PROGRAMADA' as const
+    };
+    const ampliacion = {
+      id: 91,
+      solicitudId: 12,
+      estadoAmpliacion: 'REGISTRADA',
+      fechaSolicitudAmpliacion: '2026-11-01',
+      fechaLimiteOriginal: '2026-11-15',
+      fechaLimiteAmpliada: '2026-12-20',
+      fechaNotificacionAmpliacion: '2026-11-02',
+      motivoAmpliacion: 'Volumen de información',
+      cronograma: [hito1]
+    };
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'EN_REVISION',
+      ampliacionesPlazo: [ampliacion]
+    } as any));
+
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+
+    comp.registrarEntregaDesdePanel(ampliacion as any, { hito: hito1 as any, fecha: '2026-11-05', archivos: [], decision: "ENTREGA_TOTAL", fundamentoDecision: "" });
+    expect(mockSolicitudService.registrarDocumentosEntregaParcial).not.toHaveBeenCalled();
+    expect(comp.cronogramaHitoError()).toEqual(expect.objectContaining({ hitoId: 41 }));
+    fixture.detectChanges();
+    const hitoEl = fixture.nativeElement.querySelector('[data-hito-id="41"]') as HTMLElement;
+    expect(hitoEl?.querySelector('[role="alert"]')?.textContent).toContain('documento');
+
+    const archivo = new File(['acta'], 'acta-hito-1.pdf', { type: 'application/pdf' });
+    const actualizado = {
+      ...hito1,
+      estado: 'ENTREGADA' as const,
+      fechaEntregaReal: '2026-11-05',
+      decision: 'ENTREGA_TOTAL' as const,
+      documentos: [{ id: 310, nombreOriginal: 'acta-hito-1.pdf', contentType: 'application/pdf', sizeBytes: 4 }]
+    };
+    mockSolicitudService.registrarDocumentosEntregaParcial.mockReturnValue(of(actualizado));
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'EN_REVISION',
+      ampliacionesPlazo: [{ ...ampliacion, estadoAmpliacion: 'COMPLETADA', cronograma: [actualizado] }]
+    } as any));
+
+    comp.registrarEntregaDesdePanel(ampliacion as any, { hito: hito1 as any, fecha: '2026-11-05', archivos: [archivo], decision: "ENTREGA_TOTAL", fundamentoDecision: "" });
+    fixture.detectChanges();
+
+    expect(mockSolicitudService.registrarDocumentosEntregaParcial).toHaveBeenCalledWith(12, 91, 41, '2026-11-05', [archivo], 'ENTREGA_TOTAL', '');
+    expect(comp.hitoExitoId()).toBe(41);
+    expect(comp.cronogramaHitoError()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('acta-hito-1.pdf');
+    expect(fixture.nativeElement.textContent).toContain('Entrega total del hito · 05/11/2026');
   });
 
 });
