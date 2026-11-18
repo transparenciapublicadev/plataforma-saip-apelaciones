@@ -241,6 +241,25 @@ describe('SolicitudService', () => {
     req.flush({ id: 40, estado: 'ENTREGADA' });
   });
 
+  it('should POST multipart documentos para entrega parcial', () => {
+    const f1 = new File(['uno'], 'hito1.pdf', { type: 'application/pdf' });
+    const f2 = new File(['dos'], 'anexo.png', { type: 'image/png' });
+    service.registrarDocumentosEntregaParcial(1, 30, 40, '2026-06-05', [f1, f2], 'ENTREGA_PARCIAL', 'Fundamento')
+      .subscribe(res => {
+        expect(res.estado).toBe('ENTREGADA');
+        expect(res.documentos?.length).toBe(2);
+      });
+    const req = httpMock.expectOne(`${apiUrl}/1/ampliaciones/30/cronograma/40`);
+    expect(req.request.method).toBe('POST');
+    const body = req.request.body as FormData;
+    expect(body instanceof FormData).toBe(true);
+    expect(body.get('fechaEntregaReal')).toBe('2026-06-05');
+    expect(body.getAll('archivos').length).toBe(2);
+    expect(body.get('decision')).toBe('ENTREGA_PARCIAL');
+    expect(body.get('fundamentoDecision')).toBe('Fundamento');
+    req.flush({ id: 40, estado: 'ENTREGADA', documentos: [{ id: 7 }, { id: 8 }] });
+  });
+
   it('should DELETE eliminar solicitud', () => {
     service.eliminar(1).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/1`);

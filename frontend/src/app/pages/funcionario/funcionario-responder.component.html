@@ -133,32 +133,33 @@
               <p class="text-xs text-muted-foreground mt-2.5 leading-relaxed">Se muestran los datos personales del administrado por contar con su autorización previa para el tratamiento de datos, útil para coordinar la atención de su solicitud.</p>
             </div>
 
-            <!-- Vía procesal: 00 · Antes de resolver -->
-            <div>
-              <span class="eyebrow">00 · Antes de resolver</span>
-              <h2 class="form-section-title">¿Cómo desea proceder?</h2>
-              @if (yaPreciso()) {
-                <div class="mt-3 rounded-lg p-3 flex items-start gap-2.5 text-xs text-foreground/80" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
-                  <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-                  <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">brindar respuesta a la SAIP</span>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
-                </div>
-              }
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                <button type="button" (click)="setVia('responder')" class="rounded-lg p-4 text-left transition-all"
-                  [style.background]="via() === 'responder' ? 'var(--brand-subtle)' : 'var(--card)'"
-                  [style.border]="via() === 'responder' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
-                  [style.box-shadow]="via() === 'responder' ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <div class="flex items-start gap-2.5">
-                    <svg lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="via() === 'responder' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
-                    <div>
-                      <div class="text-sm font-semibold text-foreground">Brindar respuesta a la SAIP</div>
-                      <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Emitir la decisión: entrega total, parcial o denegación.</div>
-                    </div>
+            <!-- Vía procesal / Flujo con prórroga programada -->
+            @if (!ampliacionRegistrada()) {
+              <div>
+                <span class="eyebrow">00 · Antes de resolver</span>
+                <h2 class="form-section-title">¿Cómo desea proceder?</h2>
+                @if (yaPreciso()) {
+                  <div class="mt-3 rounded-lg p-3 flex items-start gap-2.5 text-xs text-foreground/80" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
+                    <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
+                    <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">brindar respuesta a la SAIP</span>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
                   </div>
-                </button>
+                }
 
-                @if (!yaPreciso()) {
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                  <button type="button" (click)="setVia('responder')" class="rounded-lg p-4 text-left transition-all"
+                    [style.background]="via() === 'responder' ? 'var(--brand-subtle)' : 'var(--card)'"
+                    [style.border]="via() === 'responder' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
+                    [style.box-shadow]="via() === 'responder' ? '0 0 0 3px var(--brand-50)' : 'none'">
+                    <div class="flex items-start gap-2.5">
+                      <svg lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="via() === 'responder' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
+                      <div>
+                        <div class="text-sm font-semibold text-foreground">Brindar respuesta a la SAIP</div>
+                        <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Registre el resultado de la solicitud: entrega total, parcial o denegatoria.</div>
+                      </div>
+                    </div>
+                  </button>
+
+                @if (!yaPreciso() && !ampliacionRegistrada()) {
                   <button type="button" (click)="setVia('precision')" class="rounded-lg p-4 text-left transition-all"
                     [style.background]="via() === 'precision' ? 'var(--brand-subtle)' : 'var(--card)'"
                     [style.border]="via() === 'precision' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
@@ -173,6 +174,7 @@
                   </button>
                 }
 
+                @if (!ampliacionRegistrada()) {
                 <button type="button" (click)="setVia('prorroga')" class="rounded-lg p-4 text-left transition-all"
                   [style.background]="via() === 'prorroga' ? 'var(--brand-subtle)' : 'var(--card)'"
                   [style.border]="via() === 'prorroga' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
@@ -181,12 +183,137 @@
                     <svg lucideCalendarClock class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="via() === 'prorroga' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
                     <div>
                       <div class="text-sm font-semibold text-foreground">Ampliar el plazo</div>
-                      <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Prórroga excepcional del plazo de atención. Debe comunicarse hasta el 2° día hábil@if (fechaLimiteProrroga()) { ({{ fechaLimiteProrroga() }}) }.</div>
+                      <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">Consulte si todavía puede registrar una prórroga y cuál sería el nuevo vencimiento.</div>
                     </div>
                   </div>
-                </button>
+                  </button>
+                  }
+                </div>
               </div>
-            </div>
+            } @else if (ampliacionRegistrada(); as ampliacion) {
+              @if (tieneCronogramaActivo()) {
+                <div class="space-y-3 animate-fade-in">
+                  <div class="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <span class="eyebrow">00 · Flujo con prórroga programada</span>
+                      <h2 class="form-section-title">Entregas parciales y resolución final</h2>
+                      <p class="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Registre por separado la decisión de cada hito y sus archivos. La respuesta final consolida el resultado de toda la solicitud.
+                      </p>
+                    </div>
+                    <span class="rounded-full px-2.5 py-1 text-[11px] font-mono font-semibold"
+                      [style.background]="tieneHitosPendientes() ? 'rgba(176,136,66,0.14)' : 'rgba(5,150,105,0.12)'"
+                      [style.color]="tieneHitosPendientes() ? 'var(--gold-dark)' : 'var(--success)'">
+                      {{ cronogramaEntregadas() }}/{{ cronogramaTotal() }} hitos respondidos
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3" role="tablist" aria-label="Etapas del flujo con prórroga">
+                    <button type="button" role="tab" [attr.aria-selected]="via() === 'cronograma'" (click)="setVia('cronograma')"
+                      class="rounded-lg p-4 text-left transition-all"
+                      [style.background]="via() === 'cronograma' ? 'var(--brand-subtle)' : 'var(--card)'"
+                      [style.border]="via() === 'cronograma' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
+                      [style.box-shadow]="via() === 'cronograma' ? '0 0 0 3px var(--brand-50)' : 'none'">
+                      <div class="flex items-start gap-2.5">
+                        <svg aria-hidden="true" lucideCalendar class="w-5 h-5 flex-shrink-0 mt-0.5"
+                          [style.color]="via() === 'cronograma' ? 'var(--brand-700)' : (!tieneHitosPendientes() ? 'var(--success)' : 'var(--muted-foreground)')"></svg>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-sm font-semibold text-foreground">Paso 1 · Entregas parciales del cronograma</span>
+                            <span class="rounded-full px-2 py-0.5 text-[11px] font-mono font-medium"
+                              [style.background]="tieneHitosPendientes() ? 'rgba(176,136,66,0.14)' : 'rgba(5,150,105,0.12)'"
+                              [style.color]="tieneHitosPendientes() ? 'var(--gold-dark)' : 'var(--success)'">
+                              {{ tieneHitosPendientes() ? (cronogramaEntregadas() + '/' + cronogramaTotal()) : 'Completado' }}
+                            </span>
+                          </div>
+                          <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            Previsualice o corrija los archivos adjuntos antes de confirmar cada entrega parcial al administrado.
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button type="button" role="tab" [attr.aria-selected]="via() === 'responder'" (click)="setVia('responder')"
+                      class="rounded-lg p-4 text-left transition-all"
+                      [style.background]="via() === 'responder' ? 'var(--brand-subtle)' : 'var(--card)'"
+                      [style.border]="via() === 'responder' ? '1.5px solid var(--brand-700)' : '1.5px solid var(--border)'"
+                      [style.box-shadow]="via() === 'responder' ? '0 0 0 3px var(--brand-50)' : 'none'">
+                      <div class="flex items-start gap-2.5">
+                        <svg aria-hidden="true" lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5"
+                          [style.color]="via() === 'responder' ? 'var(--brand-700)' : 'var(--muted-foreground)'"></svg>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-sm font-semibold text-foreground">Paso 2 · Resolución definitiva del expediente</span>
+                            @if (!tieneHitosPendientes()) {
+                              <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" style="background: rgba(5,150,105,0.12); color: var(--success)">Listo para resolver</span>
+                            }
+                          </div>
+                          <div class="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            Cierre formal del expediente (entrega total, parcial o denegatoria) consolidando lo entregado en el cronograma.
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="rounded-lg p-4 space-y-1.5 animate-fade-in"
+                  style="background: rgba(176,136,66,0.06); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold)">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="eyebrow" style="color: var(--gold-dark)">Plazo ampliado · Atención con fecha única</span>
+                    <span class="rounded-full px-2.5 py-0.5 text-[11px] font-mono font-semibold" style="background: rgba(176,136,66,0.14); color: var(--gold-dark)">
+                      Límite {{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-foreground/85 leading-relaxed">
+                    Prórroga comunicada el {{ ampliacion.fechaNotificacionAmpliacion | date:'dd/MM/yyyy' }} — {{ ampliacion.motivoAmpliacion || ampliacion.informeAmpliacion }}.
+                  </p>
+                </div>
+              }
+            }
+
+            @if (ampliacionIncierta()) {
+              <button type="button" class="btn-ghost-brand" (click)="revisarAmpliacion()">Consultar expediente actualizado</button>
+            }
+
+            @if (ampliacionRegistrada(); as ampliacion) {
+              @if (tieneCronogramaActivo()) {
+                @if (via() === 'cronograma') {
+                  <app-cronograma-entregas-panel
+                    class="block animate-fade-in"
+                    [ampliacion]="ampliacion"
+                    [fechasReales]="fechaEntrega()"
+                    [archivosPorHito]="archivosPorHito()"
+                    [hitoRegistrandoId]="hitoRegistrandoId()"
+                    [hitoExitoId]="hitoExitoId()"
+                    [hitoError]="cronogramaHitoError()"
+                    [disabled]="loading() || ampliacionIncierta()"
+                    [mostrarAccionRespuestaFinal]="puedeRegistrarRespuestaManual()"
+                    (fechaChange)="actualizarFechaEntrega($event.hitoId, $event.fecha)"
+                    (archivosChange)="actualizarArchivosHito($event.hitoId, $event.archivos)"
+                    (registrarEntrega)="registrarEntregaDesdePanel($event)"
+                    (irARespuestaFinal)="setVia('responder')"
+                  ></app-cronograma-entregas-panel>
+                } @else if (via() === 'responder') {
+                  <div class="rounded-lg border px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-fade-in"
+                    [style.background]="tieneHitosPendientes() ? 'rgba(176,136,66,0.06)' : 'rgba(5,150,105,0.06)'"
+                    [style.border-color]="tieneHitosPendientes() ? 'rgba(176,136,66,0.28)' : 'rgba(5,150,105,0.28)'"
+                    [style.border-left]="tieneHitosPendientes() ? '3px solid var(--gold)' : '3px solid var(--success)'">
+                    <div class="text-sm">
+                      <span class="font-semibold text-foreground">
+                        {{ tieneHitosPendientes() ? 'Cronograma en curso:' : 'Cronograma completado:' }}
+                      </span>
+                      <span class="text-muted-foreground ml-1">
+                        {{ cronogramaEntregadas() }} de {{ cronogramaTotal() }} hitos respondidos (límite {{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}).
+                      </span>
+                    </div>
+                    <button type="button" class="btn-ghost-brand shrink-0 !py-1.5 !px-3 text-xs" (click)="setVia('cronograma')">
+                      {{ tieneHitosPendientes() ? 'Ver o registrar entregas' : 'Revisar entregas del cronograma' }}
+                    </button>
+                  </div>
+                }
+              }
+            }
 
             <!-- Vía Precisión -->
             @if (via() === 'precision') {
@@ -226,7 +353,7 @@
             }
 
             <!-- Vía Prórroga -->
-            @if (via() === 'prorroga') {
+            @if (via() === 'prorroga' && !ampliacionRegistrada()) {
               <div class="space-y-5">
                 <div class="rule-ornament"></div>
                 <div>
@@ -236,14 +363,18 @@
 
                 <div class="rounded-lg p-4 flex items-start gap-3" style="background: rgba(217,119,6,0.06); border: 1px solid rgba(217,119,6,0.25); border-left: 3px solid var(--gold, #d97706)">
                   <svg lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold, #d97706)"></svg>
-                  <p class="text-sm text-foreground/85">La prórroga debe comunicarse al administrado <span class="font-semibold">hasta el día hábil 2</span>@if (fechaLimiteProrroga()) {, el <span class="font-mono font-semibold">{{ fechaLimiteProrroga() }}</span>}. Hoy es el día hábil <span class="font-mono font-semibold">{{ diasTranscurridos() }}</span> del plazo. Si la ampliación supera los <span class="font-mono font-semibold">30 días hábiles</span>, es obligatorio un cronograma de entregas (ampliación <span class="font-semibold">programada</span>); en caso contrario, es una ampliación <span class="font-semibold">registrada</span>. Una sola fecha del cronograma incumplida constituye denegatoria y habilita la apelación.</p>
+                  <p class="text-sm text-foreground/85">@if (fechaLimiteProrroga()) { La ampliación se comunica hasta el día hábil 2: <strong>{{ textoFecha(fechaLimiteProrroga()) }}</strong>. }
+                    Si supera los <strong>30 días hábiles</strong>, el cronograma de entregas parciales es obligatorio. Una fecha incumplida habilita la apelación.</p>
                 </div>
 
-                @if (!prorrogaPermitida()) {
+                @if (errorPrevision()) {
+                  <p role="alert">{{ errorPrevision() }}</p>
+                  <button type="button" class="btn-ghost-brand" (click)="reintentarPrevision()">Consultar plazo nuevamente</button>
+                } @else if (previsionVigente() && !prorrogaPermitida()) {
                   <div role="alert" class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                     <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                     <p class="text-sm text-foreground/85">
-                      Ya venció el día hábil 2@if (fechaLimiteProrroga()) { ({{ fechaLimiteProrroga() }}) } para comunicar la prórroga. Corresponde atender la solicitud dentro del plazo vigente{{ sol.fechaLimite ? ' (hasta el ' + (sol.fechaLimite | date:'dd/MM/yyyy') + ')' : '' }}.
+                      La solicitud ya no admite una ampliación. Consulte el plazo vigente en el expediente.
                     </p>
                   </div>
                 }
@@ -251,16 +382,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="field">
                     <label class="field-label">Días hábiles adicionales <span class="req">*</span></label>
-                    <input type="number" min="1" max="90" class="field-input" [(ngModel)]="prorrogaDias" [disabled]="!prorrogaPermitida()" />
+                    <input type="number" min="1" class="field-input" [(ngModel)]="prorrogaDias" [disabled]="loading()" />
                     <span class="field-hint">Tipo: <span class="font-semibold">{{ prorrogaTipo() === 'programada' ? 'Programada (con cronograma)' : 'Registrada' }}</span></span>
                   </div>
                   <div class="rounded-md p-3 self-start" style="background: var(--paper); border: 1px solid var(--border)">
                     <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Nueva fecha límite</div>
                     <div class="font-display mt-0.5" style="font-size: 19px; color: var(--brand-700)">{{ nuevaFechaLimiteDMY() }}</div>
-                    <div class="text-[11px] text-muted-foreground">Calculada con el calendario oficial de días hábiles</div>
+                    <div class="text-[11px] text-muted-foreground" role="status">{{ !previsionVigente() && prorrogaDiasNum() && !errorPrevision() ? 'Consultando plazo…' : 'Según el calendario oficial de días hábiles' }}</div>
                   </div>
                 </div>
 
+                <div class="rounded-md p-3" style="background: var(--paper); border: 1px solid var(--border)">
+                  <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Comunicación</div>
+                  <p class="text-sm text-foreground mt-1">@if (previsionVigente()?.hoy) { Se comunica hoy, <strong>{{ textoFecha(previsionVigente()?.hoy) }}</strong>. } @else { Espere la fecha de esta comunicación. }</p>
+                  <p class="text-[11px] text-muted-foreground">La fecha es la del registro. No se comunica con una fecha anterior.</p>
+                </div>
                 <div class="field">
                   <label class="field-label">Motivo de la ampliación <span class="req">*</span></label>
                   <textarea class="field-input" rows="4" style="resize: vertical; min-height: 110px"
@@ -270,42 +406,68 @@
                 </div>
 
                 <label class="flex items-start gap-2.5 cursor-pointer">
-                  <input type="checkbox" class="mt-0.5" [checked]="usarCronograma() || prorrogaDiasNum() > 30"
-                    [disabled]="prorrogaDiasNum() > 30 || !prorrogaPermitida()"
+                  <input type="checkbox" class="mt-0.5" [checked]="usarCronograma() || cronogramaRequerido()"
+                    [disabled]="cronogramaRequerido() || !prorrogaPermitida()"
                     (change)="usarCronograma.set($any($event.target).checked)" />
-                  <span class="text-sm text-foreground/85">Entregar con <span class="font-semibold">cronograma de entregas parciales</span>{{ prorrogaDiasNum() > 30 ? ' (obligatorio: supera 30 días hábiles)' : '' }}</span>
+                  <span class="text-sm text-foreground/85">Entregar con <span class="font-semibold">cronograma de entregas parciales</span>{{ cronogramaRequerido() ? ' (obligatorio: supera 30 días hábiles)' : '' }}</span>
                 </label>
 
-                @if (usarCronograma() || prorrogaDiasNum() > 30) {
+                @if (usarCronograma() || cronogramaRequerido()) {
                   <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
                     <span class="eyebrow">Cronograma de entrega <span class="req">*</span></span>
+                    <p class="text-sm text-muted-foreground">Primero las entregas parciales, cada una en un día posterior a la anterior y a no más de 30 días. La última entrega queda fija en el nuevo vencimiento.</p>
                     @for (h of hitos(); track $index) {
-                      <div class="grid grid-cols-[160px_1fr_auto] gap-2 items-end">
-                        <div class="field">
-                          <label class="field-label">Fecha {{ $index + 1 }}</label>
-                          <input type="date" class="field-input font-mono !py-[9px]" [value]="h.fecha" (input)="actualizarHitoFecha($index, $any($event.target).value)" />
+                      @let errorFecha = erroresFechaHitos()[$index];
+                      @if (h.cierre) {
+                        <div class="rounded-md p-3 space-y-2" style="background: var(--paper); border: 1px solid var(--border)">
+                          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Última entrega</div>
+                          <div class="font-mono text-sm" style="color: var(--brand-700)">{{ nuevaFechaLimiteDMY() }}</div>
+                          <p class="text-[11px] text-muted-foreground">Esta fecha es el vencimiento de la ampliación.</p>
+                          @if (errorFecha) {
+                            <p class="text-xs text-destructive" role="status">{{ errorFecha }}</p>
+                          }
+                          <div class="field">
+                            <label class="field-label" [for]="'cronograma-entregable-' + $index">Qué se entrega ese día <span class="req">*</span></label>
+                            <input class="field-input" [id]="'cronograma-entregable-' + $index" [attr.aria-label]="'Entregable de la última entrega'" placeholder="Ej.: Resto del expediente" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" [disabled]="!prorrogaPermitida()" />
+                          </div>
                         </div>
-                        <div class="field">
-                          <label class="field-label">Entregable</label>
-                          <input class="field-input" placeholder="Ej.: Contratos de 2024 (folios 1-200)" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" />
+                      } @else {
+                        <div class="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
+                          <div class="field">
+                            <label class="field-label" [for]="'cronograma-fecha-' + $index">Entrega parcial {{ indiceParcial($index) }}</label>
+                            <input type="date" class="field-input font-mono !py-[9px]" [id]="'cronograma-fecha-' + $index" [attr.aria-label]="'Fecha de la entrega parcial ' + indiceParcial($index)"
+                              [attr.min]="minFechaParcial($index)" [attr.max]="maxFechaParcial($index)" [value]="h.fecha"
+                              [disabled]="!prorrogaPermitida()"
+                              [attr.aria-invalid]="errorFecha ? 'true' : null"
+                              [attr.aria-describedby]="(errorFecha ? 'cronograma-fecha-error-' + $index + ' ' : '') + 'cronograma-fecha-pista-' + $index"
+                              (input)="actualizarHitoFecha($index, $any($event.target).value)" />
+                          </div>
+                          <div class="field">
+                            <label class="field-label" [for]="'cronograma-entregable-' + $index">Qué se entrega</label>
+                            <input class="field-input" [id]="'cronograma-entregable-' + $index" [attr.aria-label]="'Entregable de la entrega parcial ' + indiceParcial($index)" placeholder="Ej.: Contratos de 2024 (folios 1-200)" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" [disabled]="!prorrogaPermitida()" />
+                          </div>
+                          <button type="button" (click)="quitarHito($index)" [attr.aria-label]="'Quitar entrega parcial ' + indiceParcial($index)" [disabled]="!puedeQuitarHito($index)" class="btn-ghost-brand !px-3 !py-[9px] disabled:opacity-40">Quitar</button>
+                          <p [id]="'cronograma-fecha-pista-' + $index" class="sm:col-span-3 text-xs text-muted-foreground">{{ pistaFechaParcial($index) }}</p>
+                          @if (errorFecha) {
+                            <p [id]="'cronograma-fecha-error-' + $index" class="sm:col-span-3 text-xs text-destructive" role="status">{{ errorFecha }}</p>
+                          }
                         </div>
-                        <button type="button" (click)="quitarHito($index)" [disabled]="hitos().length === 1" class="btn-ghost-brand !px-3 !py-[9px] disabled:opacity-40">Quitar</button>
-                      </div>
+                      }
                     }
-                    <button type="button" (click)="agregarHito()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px]">Añadir entrega</button>
+                    <button type="button" (click)="agregarHito()" [disabled]="!puedeAgregarParcial()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px]">Añadir entrega parcial</button>
                     <div class="field">
                       <label class="field-label">Nota del cronograma (opcional)</label>
                       <textarea class="field-input" rows="2" style="resize: vertical" placeholder="Precisiones sobre la forma de entrega de cada parte…" [(ngModel)]="prorrogaCronograma"></textarea>
                     </div>
-                    @if (errorHitos()) {
-                      <p class="text-xs" style="color: var(--brand-700)">{{ errorHitos() }}</p>
+                    @if (errorEstructuraCronograma()) {
+                      <p class="text-xs text-destructive" role="status">{{ errorEstructuraCronograma() }}</p>
                     }
                   </div>
                 }
 
                 <button type="button" (click)="handleSubmit()" [disabled]="!canSubmit()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                   <svg lucideSend class="w-4 h-4"></svg>
-                  Comunicar ampliación del plazo
+                  Registrar ampliación del plazo
                 </button>
               </div>
             }
@@ -451,25 +613,86 @@
                     </div>
                   </div>
 
-                  @if (decision() === 'entrega_total') {
-                    <app-multi-file-upload-zone [keyboardAccessible]="true"
-                      label="Documentos para el administrado"
-                      [required]="false"
-                      description="Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados."
-                      [(files)]="documentosEntrega"
-                      [showPreview]="true"
-                      addLabel="Añadir otro documento">
-                    </app-multi-file-upload-zone>
+                  @if (cronogramaDocumentosEntregados().length > 0 && (decision() === 'entrega_total' || decision() === 'entrega_parcial')) {
+                    <div class="rounded-lg p-4 space-y-3 animate-fade-in"
+                      style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.28); border-left: 3px solid var(--success)">
+                      <div class="flex items-start gap-2.5">
+                        <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="eyebrow" style="color: var(--success)">Documentos registrados en el cronograma</span>
+                            <span class="rounded-full px-2 py-0.5 text-[11px] font-mono font-semibold" style="background: rgba(5,150,105,0.12); color: var(--success)">
+                              {{ cronogramaDocumentosEntregados().length }} {{ cronogramaDocumentosEntregados().length === 1 ? 'archivo' : 'archivos' }}
+                            </span>
+                          </div>
+                          <p class="text-xs text-foreground/80 mt-1 leading-relaxed">
+                            Los archivos ya forman parte del expediente. Describa el resultado de toda la solicitud y adjunte solo documentos nuevos o de cierre, si corresponde.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="space-y-1.5">
+                        @for (doc of cronogramaDocumentosEntregados(); track doc.id) {
+                          <div class="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-xs"
+                            style="background: var(--card); border: 1px solid var(--border)">
+                            <div class="min-w-0 flex items-center gap-2">
+                              <svg aria-hidden="true" lucideFileText class="w-4 h-4 flex-shrink-0" style="color: var(--brand-700)"></svg>
+                              <div class="min-w-0">
+                                <div class="font-medium text-foreground truncate">{{ doc.nombre }}</div>
+                                <div class="text-[11px] text-muted-foreground font-mono">
+                                  Entrega {{ doc.entregaNumero }}
+                                  @if (doc.fechaEntregaReal) { · {{ doc.fechaEntregaReal | date:'dd/MM/yyyy' }} }
+                                  @if (doc.tamano) { · {{ doc.tamano }} }
+                                </div>
+                              </div>
+                            </div>
+                            <button type="button" (click)="abrirDocPreview(doc)" class="btn-ghost-brand !py-1 !px-2.5 text-[11px] shrink-0">
+                              <svg aria-hidden="true" lucideEye class="w-3.5 h-3.5"></svg>
+                              Ver
+                            </button>
+                          </div>
+                        }
+                      </div>
+
+                      @if ((decision() === 'entrega_total' ? documentosEntrega().length : documentosEntregaParcial().length) === 0 && !adjuntarAdicionalesEnCierre()) {
+                        <div class="pt-1">
+                          <button type="button" (click)="adjuntarAdicionalesEnCierre.set(true)"
+                            class="btn-ghost-brand !py-1.5 !px-3 text-xs" data-toggle-adicionales-cierre>
+                            + Adjuntar oficio o documento adicional de cierre (opcional)
+                          </button>
+                        </div>
+                      } @else if (adjuntarAdicionalesEnCierre() && (decision() === 'entrega_total' ? documentosEntrega().length : documentosEntregaParcial().length) === 0) {
+                        <div class="pt-1">
+                          <button type="button" (click)="adjuntarAdicionalesEnCierre.set(false)"
+                            class="text-xs font-medium text-muted-foreground hover:text-foreground underline">
+                            Ocultar adjuntos adicionales
+                          </button>
+                        </div>
+                      }
+                    </div>
                   }
-                  @if (decision() === 'entrega_parcial') {
-                    <app-multi-file-upload-zone [keyboardAccessible]="true"
-                      label="Documentos para el administrado"
-                      [required]="false"
-                      description="Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados."
-                      [(files)]="documentosEntregaParcial"
-                      [showPreview]="true"
-                      addLabel="Añadir otro documento">
-                    </app-multi-file-upload-zone>
+
+                  @if (cronogramaDocumentosEntregados().length === 0 || (decision() === 'entrega_total' ? documentosEntrega().length : documentosEntregaParcial().length) > 0 || adjuntarAdicionalesEnCierre()) {
+                    @if (decision() === 'entrega_total') {
+                      <app-multi-file-upload-zone [keyboardAccessible]="true"
+                        [label]="cronogramaDocumentosEntregados().length > 0 ? 'Documentos adicionales de cierre (opcional)' : 'Documentos para el administrado'"
+                        [required]="false"
+                        [description]="cronogramaDocumentosEntregados().length > 0 ? 'Opcional: adjunte solo si desea emitir un oficio final o anexo complementario distinto a lo ya entregado.' : 'Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados.'"
+                        [(files)]="documentosEntrega"
+                        [showPreview]="true"
+                        addLabel="Añadir otro documento">
+                      </app-multi-file-upload-zone>
+                    }
+                    @if (decision() === 'entrega_parcial') {
+                      <app-multi-file-upload-zone [keyboardAccessible]="true"
+                        [label]="cronogramaDocumentosEntregados().length > 0 ? 'Documentos adicionales de cierre (opcional)' : 'Documentos para el administrado'"
+                        [required]="false"
+                        [description]="cronogramaDocumentosEntregados().length > 0 ? 'Opcional: adjunte solo si desea emitir un oficio final o anexo complementario distinto a lo ya entregado.' : 'Adjuntos opcionales con la información solicitada. Se registrarán todos los archivos seleccionados.'"
+                        [(files)]="documentosEntregaParcial"
+                        [showPreview]="true"
+                        addLabel="Añadir otro documento">
+                      </app-multi-file-upload-zone>
+                    }
                   }
 
                   <!-- Cupón de pago (entrega física) -->
@@ -485,42 +708,101 @@
 
                       <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
                         <div class="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Liquidación · costo de reproducción</div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          <div class="field">
-                            <label class="field-label">Folios simples</label>
-                            <input type="number" min="0" class="field-input font-mono" [(ngModel)]="liqFolios" placeholder="0" />
+                        @if (liquidacionActiva(); as liqExistente) {
+                          <div class="rounded-lg p-3.5 bg-background border border-border space-y-1.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                              <span class="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Liquidación ya registrada · {{ liqExistente.codigoLiquidacion || ('#' + liqExistente.id) }}
+                              </span>
+                              <span class="font-mono font-semibold text-sm" style="color: var(--success)">
+                                S/ {{ (liqExistente.monto || 0) | number:'1.2-2' }} · {{ liqExistente.estadoLiquidacion }}
+                              </span>
+                            </div>
+                            <p class="text-xs text-muted-foreground">{{ liqExistente.concepto }}</p>
+                            @if (liqExistente.fechaLimiteRecojo) {
+                              <p class="text-xs text-muted-foreground">
+                                Plazo de recojo hasta el <span class="font-mono">{{ liqExistente.fechaLimiteRecojo | date:'dd/MM/yyyy' }}</span>.
+                              </p>
+                            }
                           </div>
-                          <div class="field">
-                            <label class="field-label">Costo x folio (S/)</label>
-                            <input type="number" min="0" step="0.01" class="field-input font-mono" [(ngModel)]="liqCostoFolio" />
+                        } @else {
+                          <p class="text-[11px] text-muted-foreground mb-2">
+                            Tarifas TUPA de referencia: copia simple S/ {{ tarifasConfig().copiaSimple | number:'1.2-2' }} · copia certificada S/ {{ tarifasConfig().copiaCertificada | number:'1.2-2' }} · soporte digital ref. S/ {{ tarifasConfig().soporteDigital | number:'1.2-2' }}.
+                          </p>
+
+                          @if (diasTranscurridos() > 9) {
+                            <div class="rounded-md p-2.5 mb-2 text-xs flex items-start gap-2" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); color: var(--brand-700)">
+                              <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 shrink-0 mt-0.5"></svg>
+                              <span>Han transcurrido más de 9 días hábiles desde la recepción; el servidor puede rechazar una nueva liquidación fuera de plazo si no se emitió previamente.</span>
+                            </div>
+                          }
+
+                          <div class="grid grid-cols-2 md:grid-cols-3 gap-3" [class.opacity-50]="sinCobroReproduccion()">
+                            <div class="field">
+                              <label class="field-label" for="liq-folios">Folios simples</label>
+                              <input id="liq-folios" type="number" min="0" step="1" class="field-input font-mono"
+                                [(ngModel)]="liqFolios" [disabled]="sinCobroReproduccion()" placeholder="0" />
+                            </div>
+                            <div class="field">
+                              <label class="field-label" for="liq-costo-folio">Costo x folio (S/)</label>
+                              <input id="liq-costo-folio" type="number" min="0" step="0.01" class="field-input font-mono"
+                                [(ngModel)]="liqCostoFolio" [disabled]="sinCobroReproduccion()" />
+                            </div>
+                            <div class="field">
+                              <label class="field-label" for="liq-certificadas">Copias certificadas</label>
+                              <input id="liq-certificadas" type="number" min="0" step="1" class="field-input font-mono"
+                                [(ngModel)]="liqCertificadas" [disabled]="sinCobroReproduccion()" placeholder="0" />
+                            </div>
+                            <div class="field">
+                              <label class="field-label" for="liq-costo-cert">Costo x certificada (S/)</label>
+                              <input id="liq-costo-cert" type="number" min="0" step="0.01" class="field-input font-mono"
+                                [(ngModel)]="liqCostoCert" [disabled]="sinCobroReproduccion()" />
+                            </div>
+                            <div class="field">
+                              <label class="field-label" for="liq-soporte">Soporte CD/USB (S/)</label>
+                              <input id="liq-soporte" type="number" min="0" step="0.01" class="field-input font-mono"
+                                [(ngModel)]="liqSoporte" [disabled]="sinCobroReproduccion()" />
+                            </div>
+                            <div class="field">
+                              <label class="field-label" for="cupon-lugar">Lugar de pago @if (!sinCobroReproduccion()) { <span class="req">*</span> }</label>
+                              <input id="cupon-lugar" class="field-input" placeholder="Ej: Caja sede central"
+                                [(ngModel)]="cuponLugar" [disabled]="sinCobroReproduccion()" />
+                            </div>
                           </div>
-                          <div class="field">
-                            <label class="field-label">Copias certificadas</label>
-                            <input type="number" min="0" class="field-input font-mono" [(ngModel)]="liqCertificadas" placeholder="0" />
+
+                          @if (desgloseLiquidacion().length > 0 && !sinCobroReproduccion()) {
+                            <p class="text-xs text-muted-foreground font-mono mt-2">
+                              {{ desgloseLiquidacion().join(' · ') }}
+                            </p>
+                          }
+
+                          <div class="flex items-center justify-between mt-2 pt-2" style="border-top: 1px dashed var(--border)">
+                            <span class="text-xs text-muted-foreground">Monto total del cupón</span>
+                            <span class="font-display text-lg font-semibold" [style.color]="liqTotal() > 0 ? 'var(--gold-dark)' : 'var(--muted-foreground)'">
+                              {{ cuponMonto() || 'S/ 0.00' }}
+                            </span>
                           </div>
-                          <div class="field">
-                            <label class="field-label">Costo x certificada (S/)</label>
-                            <input type="number" min="0" step="0.01" class="field-input font-mono" [(ngModel)]="liqCostoCert" />
-                          </div>
-                          <div class="field">
-                            <label class="field-label">Soporte CD/USB (S/)</label>
-                            <input type="number" min="0" step="0.01" class="field-input font-mono" [(ngModel)]="liqSoporte" />
-                          </div>
-                          <div class="field">
-                            <label class="field-label">Lugar de pago <span class="req">*</span></label>
-                            <input class="field-input" placeholder="Ej: Caja sede central" [(ngModel)]="cuponLugar" />
-                          </div>
-                        </div>
-                        <div class="flex items-center justify-between mt-2 pt-2" style="border-top: 1px dashed var(--border)">
-                          <span class="text-xs text-muted-foreground">Monto total del cupón</span>
-                          <span class="font-display text-lg" style="color: var(--gold-dark)">{{ cuponMonto() || 'S/ 0.00' }}</span>
-                        </div>
+                        }
                       </div>
 
-                      <label class="flex items-start gap-2.5 cursor-pointer">
-                        <input type="checkbox" class="mt-0.5" [(ngModel)]="cuponEnviado" />
-                        <span class="text-sm text-foreground/85">El cupón de pago fue emitido y enviado al administrado (dispone de 30 días para recoger).</span>
-                      </label>
+                      @if (!liquidacionActiva()) {
+                        <div class="space-y-2 pt-1">
+                          <label class="flex items-start gap-2.5 cursor-pointer" [class.opacity-50]="sinCobroReproduccion()">
+                            <input type="checkbox" class="mt-0.5" [(ngModel)]="cuponEnviado" [disabled]="sinCobroReproduccion()" />
+                            <span class="text-sm text-foreground/85">Confirmo la emisión del cupón de pago para notificación al administrado (dispone de 30 días calendario para recoger).</span>
+                          </label>
+                          <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="checkbox" class="mt-0.5" [checked]="sinCobroReproduccion()" (change)="sinCobroReproduccion.set($any($event.target).checked)" />
+                            <span class="text-xs text-muted-foreground">Entregar sin cobro de reproducción física (p. ej., envío digital íntegro o exoneración).</span>
+                          </label>
+                        </div>
+                      }
+
+                      @if (cuponError()) {
+                        <div role="alert" class="rounded-md p-3 text-sm" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); color: var(--destructive); border: 1px solid color-mix(in srgb, var(--destructive) 25%, transparent)">
+                          {{ cuponError() }}
+                        </div>
+                      }
                     </div>
                   }
                 </div>
@@ -591,16 +873,21 @@
                 </div>
               }
 
-              @if (decision() && !canSubmit()) {
+              @if (decision() && !canSubmit() && faltantesRespuesta().length > 0) {
                 <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
                   <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
-                  <p class="text-sm text-foreground/85">
-                    @if (decision() === 'denegacion_total') {
-                      Complete descripción y fundamento legal antes de enviar. Los adjuntos son opcionales.
+                  <div class="text-sm text-foreground/85 space-y-1">
+                    @if (faltantesRespuesta().length === 1) {
+                      <p>{{ faltantesRespuesta()[0] }} Los adjuntos son opcionales.</p>
                     } @else {
-                      Complete la descripción. Los adjuntos son opcionales.
+                      <p class="font-medium">Complete los requisitos pendientes antes de enviar (los adjuntos son opcionales):</p>
+                      <ul class="list-disc pl-4 space-y-0.5 text-xs">
+                        @for (falta of faltantesRespuesta(); track falta) {
+                          <li>{{ falta }}</li>
+                        }
+                      </ul>
                     }
-                  </p>
+                  </div>
                 </div>
               }
 
@@ -617,7 +904,10 @@
                     <ul class="text-sm text-foreground/80 space-y-1.5 mt-2 list-disc list-inside leading-relaxed">
                       <li><span class="font-mono font-semibold">10 días hábiles</span> para responder.</li>
                       <li>Si deniega, debe fundamentar legalmente (Art. 17° Ley 27806).</li>
-                      <li>El ciudadano puede apelar en <span class="font-mono font-semibold">15 días hábiles</span> ante el TTAIP.</li>
+                      <li>El plazo de <span class="font-mono font-semibold">15 días hábiles</span> corresponde a la apelación por una respuesta expresa.</li>
+                      @if (ampliacionRegistrada()?.cronograma?.length) {
+                        <li>El incumplimiento de una entrega programada habilita la apelación.</li>
+                      }
                       <li>Sin respuesta en plazo: silencio administrativo negativo.</li>
                     </ul>
                   </div>
@@ -824,7 +1114,7 @@
     [description]="respuestaConfirmDescription()"
     [summary]="respuestaConfirmSummary()"
     [warning]="respuestaWarning()"
-    [confirmLabel]="via() === 'precision' ? 'Enviar precisión' : (via() === 'prorroga' ? 'Comunicar ampliación' : 'Registrar respuesta')"
+    [confirmLabel]="via() === 'precision' ? 'Enviar precisión' : (via() === 'prorroga' ? 'Registrar ampliación' : 'Registrar respuesta')"
     (close)="confirmModalAbierto.set(false)"
     (confirm)="confirmarAccion()">
   </app-reference-confirm-modal>
@@ -838,18 +1128,18 @@
     [title]="respuestaSuccessTitle()"
     [description]="respuestaSuccessDescription()"
     [expediente]="solicitud()?.expediente || ''"
-    [expedienteHint]="'Respuesta registrada · ' + (solicitud()?.entidadNombre || 'Entidad pública')"
-    [plazoDias]="15"
+    [expedienteHint]="(via() === 'prorroga' ? 'Ampliación registrada · ' : 'Respuesta registrada · ') + (solicitud()?.entidadNombre || 'Entidad pública')"
+    [plazoDias]="via() === 'responder' ? 15 : null"
     plazoTipo="hábiles"
     plazoDescripcion="Plazo en que el ciudadano puede interponer recurso de apelación ante el TTAIP si no está conforme con la respuesta."
     plazoNorma="Ley N° 27806"
     [metadata]="respuestaSuccessMetadata()"
     [nextSteps]="respuestaNextSteps()"
     primaryLabel="Ir a mi panel"
-    secondaryLabel="Ver expediente"
+    [secondaryLabel]="via() === 'prorroga' ? 'Ver plan de atención' : 'Ver expediente'"
     (close)="irPanelFuncionario()"
     (primary)="irPanelFuncionario()"
-    (secondary)="irDetalleExpediente()">
+    (secondary)="via() === 'prorroga' ? abrirPlanAmpliacion() : irDetalleExpediente()">
   </app-reference-success-modal>
 
   <app-document-preview-modal

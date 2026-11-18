@@ -49,6 +49,35 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
+      @if (ampliaciones().length) {
+        @for (ampliacion of ampliaciones(); track ampliacion.id) {
+          @if (ampliacion.solicitudId === sol.id && ampliacion.estadoAmpliacion !== 'CANCELADA') {
+            @if (tieneCronograma(ampliacion)) {
+              <app-cronograma-entregas-panel
+                [ampliacion]="ampliacion"
+                [fechasReales]="fechaEntregaHito()"
+                [archivosPorHito]="archivosPorHito()"
+                [hitoRegistrandoId]="hitoRegistrandoId()"
+                [hitoExitoId]="hitoExitoId()"
+                [hitoError]="cronogramaHitoError()"
+                [readonly]="cronogramaSoloLectura(ampliacion)"
+                [disabled]="!contextoVigente()"
+                [mostrarAccionRespuestaFinal]="puedeResponder()"
+                (fechaChange)="actualizarFechaEntregaHito($event)"
+                (archivosChange)="actualizarArchivosHito($event)"
+                (registrarEntrega)="registrarEntregaDesdePanel(ampliacion, $event)"
+                (irARespuestaFinal)="irARespuestaFinal()"
+              ></app-cronograma-entregas-panel>
+            } @else {
+              <section class="rounded-lg border border-border p-5 space-y-3" style="border-left: 3px solid var(--gold)">
+                <span class="eyebrow">Ampliación registrada</span>
+                <h2 class="form-section-title">Atención con fecha única</h2>
+                <p class="text-sm">Nueva fecha límite <strong>{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</strong>.</p>
+              </section>
+            }
+          }
+        }
+      }
       @if (observacionPendiente(); as observacion) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">

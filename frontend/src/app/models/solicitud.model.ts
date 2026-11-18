@@ -18,6 +18,12 @@ export type EstadoObservacionSolicitud = 'PENDIENTE_SUBSANACION' | 'SUBSANADA' |
 export type ObservacionSolicitud = Required<ObservacionSolicitudDTO>;
 export type EstadoAmpliacionPlazo = 'REGISTRADA' | 'NOTIFICADA' | 'COMPLETADA' | 'CANCELADA' | 'VENCIDA';
 export type EstadoEntregaParcial = 'PROGRAMADA' | 'ENTREGADA' | 'OBSERVADA' | 'CANCELADA' | 'VENCIDA';
+export type DecisionEntregaProgramada = 'ENTREGA_TOTAL' | 'ENTREGA_PARCIAL' | 'DENEGACION_TOTAL';
+export const DECISIONES_ENTREGA: Record<DecisionEntregaProgramada, string> = {
+    ENTREGA_TOTAL: 'Entrega total del hito',
+    ENTREGA_PARCIAL: 'Entrega parcial del hito',
+    DENEGACION_TOTAL: 'Denegación del hito'
+};
 export type AlcanceEncauzamientoSolicitud = 'TOTAL' | 'PARCIAL';
 export type EstadoEncauzamientoSolicitud = 'REGISTRADO' | 'DERIVADO' | 'ATENDIDO' | 'CANCELADO' | 'VENCIDO';
 export type EstadoLiquidacionCosto = 'EMITIDA' | 'NOTIFICADA' | 'PAGADA' | 'RECOGIDA' | 'ARCHIVADA' | 'CANCELADA' | 'VENCIDA';
@@ -31,6 +37,18 @@ export interface CronogramaEntregaParcial {
     estado: EstadoEntregaParcial;
     fechaEntregaReal?: string | null;
     observacion?: string | null;
+    incumplida?: boolean;
+    documentos?: DocumentoMetadataDTO[];
+    decision?: DecisionEntregaProgramada | null;
+    fundamentoDecision?: string | null;
+}
+
+export interface PrevisionAmpliacion {
+    hoy: string;
+    fechaMaximaComunicacion: string;
+    fechaLimiteAmpliada?: string | null;
+    disponible: boolean;
+    requiereCronograma: boolean;
 }
 
 export interface AmpliacionPlazoSolicitud {
@@ -43,10 +61,27 @@ export interface AmpliacionPlazoSolicitud {
     fechaNotificacionAmpliacion: string;
     fechaLimiteOriginal: string;
     fechaLimiteAmpliada: string;
+    plazoOrdinarioVencido?: boolean;
     estadoAmpliacion: EstadoAmpliacionPlazo;
     responsable?: string | null;
     trazabilidad?: string | null;
     cronograma: CronogramaEntregaParcial[];
+}
+
+export function tieneCronogramaIncumplido(solicitud: Solicitud): boolean {
+    return solicitud.ampliacionesPlazo?.some(ampliacion => ampliacion.solicitudId === solicitud.id
+        && ampliacion.estadoAmpliacion !== 'CANCELADA'
+        && ampliacion.cronograma?.some(hito => hito.ampliacionId === ampliacion.id && hito.incumplida === true)) ?? false;
+}
+
+export function ampliacionParaApelar(solicitud: Solicitud): AmpliacionPlazoSolicitud | undefined {
+    return solicitud.ampliacionesPlazo?.find(a => a.solicitudId === solicitud.id && a.estadoAmpliacion !== 'CANCELADA');
+}
+
+export function tieneHitoDesfavorable(solicitud: Solicitud): boolean {
+    const ampliacion = ampliacionParaApelar(solicitud);
+    return ampliacion?.cronograma?.some(hito => hito.ampliacionId === ampliacion.id && hito.estado === 'ENTREGADA'
+        && (hito.decision === 'ENTREGA_PARCIAL' || hito.decision === 'DENEGACION_TOTAL')) ?? false;
 }
 
 export interface EncauzamientoSolicitud {
@@ -144,6 +179,7 @@ export interface RegistrarAmpliacionPlazoPayload {
     fechaNotificacionAmpliacion: string;
     responsable?: string;
     cronograma: RegistrarEntregaParcialPayload[];
+    diasHabilesAdicionales?: number;
 }
 
 export interface RegistrarEncauzamientoPayload {

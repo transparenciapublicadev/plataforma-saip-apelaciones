@@ -8,6 +8,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Solicitud } from '../../models/solicitud.model';
+import { hoyLima } from '../../models/calendario.model';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { EntidadService } from '../../services/entidad.service';
@@ -23,7 +24,8 @@ try {
 
 /** HTTP/storage are mocked here. PostgreSQL/LOCAL and rollback have a separate real integration suite. */
 describe('FuncionarioResponderComponent recepción coordinada', () => {
-  const solicitudes = { findByExpediente: vi.fn(), registrarAmpliacion: vi.fn(), observar: vi.fn() };
+  const solicitudes = { findByExpediente: vi.fn(), preverAmpliacion: vi.fn(), registrarAmpliacion: vi.fn(),
+    actualizarEntregaParcial: vi.fn(), registrarDocumentosEntregaParcial: vi.fn(), emitirLiquidacion: vi.fn(), observar: vi.fn() };
   const respuestas = { registrarConDocumentos: vi.fn(), consultarRecepcion: vi.fn(),
     crear: vi.fn(), aceptarSolicitud: vi.fn(), denegarSolicitud: vi.fn(), getCausalesDenegacion: vi.fn() };
   const documentos = { upload: vi.fn() };
@@ -58,10 +60,13 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
   });
   afterEach(() => { vi.restoreAllMocks(); sessionStorage.clear(); });
 
-  function pagina(files = [file()]) {
+  function vista(files = [file()]) {
     const fixture = TestBed.createComponent(FuncionarioResponderComponent); fixture.detectChanges();
     const c = fixture.componentInstance; c.decision.set('entrega_total');
-    c.descripcionAceptacion = 'Se entrega la información solicitada.'; c.documentosEntrega.set(files); return c;
+    c.descripcionAceptacion = 'Se entrega la información solicitada.'; c.documentosEntrega.set(files); return fixture;
+  }
+  function pagina(files = [file()]) {
+    return vista(files).componentInstance;
   }
   function recibo(clave: string, files: readonly File[], tipo = 'ENTREGA_TOTAL'): RespuestaSaipRecepcion {
     const docs = files.map((f, i) => ({ id: 71+i, respuestaId: 44, nombreOriginal: f.name, sizeBytes: f.size,
@@ -191,7 +196,9 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     const clave = JSON.parse(raw).claveOperacion; persistida = recibo(clave, [file()]); pendiente.next(persistida); pendiente.complete(); await envio;
   });
   it('no escribe si no puede conservar la identificación de recuperación', async () => {
-    const c = pagina(); vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('sin almacenamiento'); });
+    const c = pagina();
+    const almacenamiento = Object.hasOwn(sessionStorage, 'setItem') ? sessionStorage : Object.getPrototypeOf(sessionStorage);
+    vi.spyOn(almacenamiento, 'setItem').mockImplementation(() => { throw new Error('sin almacenamiento'); });
     await c.enviarRespuesta(); expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled(); expect(c.error()).toContain('recuperación');
   });
   it('mantiene indisponible el compuesto con encauzamiento', async () => {
@@ -206,33 +213,20 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     const c = pagina(); expect(c.respuestaSuccessTitle()).toContain('Respuesta enviada');
     expect(c.respuestaSuccessDescription()).toContain('entregada al ciudadano dentro del plazo');
   });
-  it('valida que la prórroga solo se permita dentro de los primeros 2 días hábiles y bloquee envío si venció', () => {
-    const c = pagina();
-    c.via.set('prorroga');
-    const today = new Date().toISOString().split('T')[0];
-    c.solicitud.set({ ...inicial(), fechaPresentacion: today, fechaLimite: '2026-11-20' });
-    expect(c.prorrogaPermitida()).toBe(true);
-
-    c.solicitud.set({ ...inicial(), fechaPresentacion: '2026-10-01', fechaLimite: '2026-10-15' });
-    expect(c.prorrogaPermitida()).toBe(false);
-    expect(c.canSubmit()).toBe(false);
-  });
-  it('calcula la nueva fecha límite proyectando días hábiles', () => {
-    const c = pagina();
-    c.via.set('prorroga');
-    c.solicitud.set({ ...inicial(), fechaLimite: '2026-11-02' });
-    c.prorrogaDias = '5';
-    expect(c.nuevaFechaLimite()).toBeTruthy();
-    expect(c.nuevaFechaLimiteDMY()).toBeTruthy();
-  });
   it('gestiona y valida cronograma estructurado de hitos para prórroga', () => {
-    const c = pagina();
+    const today = '2026-11-17';
+    solicitudes.preverAmpliacion.mockReturnValue(of({
+      hoy: today, fechaMaximaComunicacion: '2026-11-19', fechaLimiteAmpliada: '2026-11-27',
+      disponible: true, requiereCronograma: false
+    }));
+    const fixture = vista();
+    const c = fixture.componentInstance;
     c.via.set('prorroga');
-    const today = new Date().toISOString().split('T')[0];
     c.solicitud.set({ ...inicial(), fechaPresentacion: today, fechaLimite: '2026-11-20' });
     c.prorrogaMotivo = 'Búsqueda compleja de acervo documental';
     c.prorrogaDias = '5';
     c.usarCronograma.set(true);
+    fixture.detectChanges();
 
     c.hitos.set([]);
     expect(c.errorHitos()).toContain('al menos una entrega');
@@ -256,6 +250,105 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     expect(c.canSubmit()).toBe(true);
   });
 
+  it('inicializa via cronograma con fecha de hoy por defecto cuando existen hitos pendientes', () => {
+    const hitoPendiente = { id: 40, ampliacionId: 91, numeroEntrega: 1, descripcion: 'Primer bloque',
+      fechaProgramada: '2026-11-20', estado: 'PROGRAMADA' as const };
+    const ampliacion = { id: 91, solicitudId: 12, estadoAmpliacion: 'REGISTRADA',
+      fechaLimiteAmpliada: '2026-12-15', cronograma: [hitoPendiente] } as Solicitud['ampliacionesPlazo'][number];
+    solicitudes.findByExpediente.mockReturnValue(of({ ...inicial(), ampliacionesPlazo: [ampliacion] }));
+
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    expect(c.via()).toBe('cronograma');
+    expect(c.fechaEntrega()[40]).toBe(hoyLima());
+  });
+
+  it('valida sustento documental inline antes de registrar hito y ejecuta el envío multiparte', () => {
+    const c = pagina();
+    const hito = { id: 40, ampliacionId: 91, numeroEntrega: 1, descripcion: 'Primer bloque',
+      fechaProgramada: '2026-11-20', estado: 'PROGRAMADA' as const };
+    const ampliacion = { id: 91, solicitudId: 12, estadoAmpliacion: 'REGISTRADA',
+      fechaLimiteAmpliada: '2026-12-15', cronograma: [hito] } as Solicitud['ampliacionesPlazo'][number];
+    c.solicitud.set({ ...inicial(), ampliacionesPlazo: [ampliacion] });
+    c.fechaEntrega.set({ 40: '2026-11-19' });
+
+    c.registrarHito(ampliacion, hito);
+    expect(solicitudes.registrarDocumentosEntregaParcial).not.toHaveBeenCalled();
+    expect(c.cronogramaHitoError()).toEqual(expect.objectContaining({ hitoId: 40 }));
+
+    const doc = file();
+    const guardado = {
+      ...hito,
+      estado: 'ENTREGADA' as const,
+      decision: 'ENTREGA_TOTAL' as const,
+      fechaEntregaReal: '2026-11-19',
+      documentos: [{ id: 88, nombreOriginal: 'respuesta.pdf', contentType: 'application/pdf', sizeBytes: 9 }]
+    };
+    solicitudes.registrarDocumentosEntregaParcial.mockReturnValue(of(guardado));
+    solicitudes.findByExpediente.mockReturnValue(of({
+      ...inicial(), ampliacionesPlazo: [{ ...ampliacion, cronograma: [guardado] }]
+    }));
+
+    c.registrarHito(ampliacion, hito, [doc], 'ENTREGA_TOTAL');
+    expect(solicitudes.registrarDocumentosEntregaParcial).toHaveBeenCalledWith(12, 91, 40, '2026-11-19', [doc], 'ENTREGA_TOTAL', '');
+    expect(c.hitoExitoId()).toBe(40);
+    expect(c.cronogramaHitoError()).toBeNull();
+    expect(c.ampliacionRegistrada()?.cronograma[0].estado).toBe('ENTREGADA');
+    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled();
+  });
+
+  it('calcula y persiste cupón de entrega física reactivamente antes de registrar la respuesta', async () => {
+    solicitudes.findByExpediente.mockReturnValue(of({ ...inicial(), formatoFisico: true, formatoDigital: false }));
+    solicitudes.emitirLiquidacion.mockReturnValue(of({
+      id: 301, solicitudId: 12, codigoLiquidacion: 'LIQ-2026-00012', monto: 4.2, moneda: 'PEN',
+      estadoLiquidacion: 'EMITIDA', fechaEmision: '2026-11-17', fechaLimiteRecojo: '2026-12-17'
+    }));
+    const c = pagina();
+
+    expect(c.cuponValido()).toBe(false);
+    expect(c.faltantesRespuesta().some(msg => /cupón/i.test(msg))).toBe(true);
+    expect(c.faltantesRespuesta().some(msg => /descripción/i.test(msg))).toBe(false);
+
+    c.liqFolios = '2';
+    c.liqCostoFolio = '0.10';
+    c.liqCertificadas = '4';
+    c.liqCostoCert = '0.50';
+    c.liqSoporte = '2';
+    c.cuponLugar = 'Mesa de Partes Central';
+    c.cuponEnviado = true;
+
+    expect(c.cuponMonto()).toBe('S/ 4.20');
+    expect(c.cuponValido()).toBe(true);
+    expect(c.canSubmit()).toBe(true);
+
+    await c.enviarRespuesta();
+    expect(solicitudes.emitirLiquidacion).toHaveBeenCalledTimes(1);
+    expect(solicitudes.emitirLiquidacion).toHaveBeenCalledWith(12, expect.objectContaining({
+      monto: 4.2,
+      moneda: 'PEN',
+      concepto: expect.stringContaining('2 folios simples (S/ 0.20)'),
+      observacion: expect.stringContaining('Mesa de Partes Central')
+    }));
+    expect(respuestas.registrarConDocumentos).toHaveBeenCalledTimes(1);
+  });
+
+  it('detiene el envío de respuesta si emitirLiquidacion falla en el servidor', async () => {
+    solicitudes.findByExpediente.mockReturnValue(of({ ...inicial(), formatoFisico: true, formatoDigital: false }));
+    solicitudes.emitirLiquidacion.mockReturnValue(fallo(500));
+    const c = pagina();
+    c.liqFolios = '5';
+    c.liqCostoFolio = '0.20';
+    c.cuponLugar = 'Caja 1';
+    c.cuponEnviado = true;
+
+    await c.enviarRespuesta();
+    expect(c.cuponError()).not.toBe('');
+    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled();
+    expect(c.successModalAbierto()).toBe(false);
+  });
+
   it('envía el detalle de precisión como puntos numerados en el motivo existente', () => {
     solicitudes.observar.mockReturnValue(of({}));
     const c = pagina();
@@ -273,5 +366,251 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
       responsable: 'Funcionario'
     });
     expect(c.precisionPuntos()).toEqual(['Precise el periodo', '  Indique el formato  ']);
+  });
+});
+
+describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pago)', () => {
+  const file = () => new File(['documento'], 'entrega-hito.pdf', { type: 'application/pdf' });
+  let solicitudes: any;
+  let respuestas: any;
+
+  beforeEach(async () => {
+    sessionStorage.clear();
+    solicitudes = {
+      findByExpediente: vi.fn(),
+      preverAmpliacion: vi.fn(),
+      registrarAmpliacion: vi.fn(),
+      actualizarEntregaParcial: vi.fn(),
+      registrarDocumentosEntregaParcial: vi.fn(),
+      emitirLiquidacion: vi.fn(),
+      observar: vi.fn()
+    };
+    respuestas = {
+      registrarConDocumentos: vi.fn(),
+      consultarRecepcion: vi.fn(),
+      crear: vi.fn(),
+      aceptarSolicitud: vi.fn(),
+      denegarSolicitud: vi.fn(),
+      getCausalesDenegacion: vi.fn(() => of([]))
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [FuncionarioResponderComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { paramMap: new BehaviorSubject(convertToParamMap({ expediente: 'SAIP-2026-00012' })).asObservable() } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: SolicitudService, useValue: solicitudes },
+        { provide: RespuestaService, useValue: respuestas },
+        { provide: EntidadService, useValue: { findActivas: () => of([]) } },
+        { provide: DocumentoService, useValue: { upload: vi.fn() } },
+        { provide: AuthService, useValue: { obtenerSesion: () => ({ funcionarioId: 5, usuarioId: 5, token: 'sesion-a', nombre: 'Funcionario' }) } }
+      ]
+    }).compileComponents();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    sessionStorage.clear();
+  });
+
+  it('deja el vencimiento en la última entrega y ubica cada parcial antes de esa fecha', () => {
+    solicitudes.preverAmpliacion.mockReturnValue(of({
+      hoy: '2026-11-17', fechaMaximaComunicacion: '2026-11-19', fechaLimiteAmpliada: '2027-02-11',
+      disponible: true, requiereCronograma: true
+    }));
+    solicitudes.registrarAmpliacion.mockReturnValue(of({
+      id: 91, solicitudId: 12, fechaLimiteAmpliada: '2027-02-11', estadoAmpliacion: 'REGISTRADA', cronograma: [
+        { id: 10, ampliacionId: 91, descripcion: 'Primer bloque' },
+        { id: 11, ampliacionId: 91, descripcion: 'Segundo bloque' },
+        { id: 12, ampliacionId: 91, descripcion: 'Cierre del cronograma' }
+      ]
+    }));
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', fechaPresentacion: '2026-11-17',
+      diasRestantes: 5, formatoDigital: true, respuesta: null, ampliacionesPlazo: []
+    }));
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    c.setVia('prorroga');
+    c.prorrogaDias = '50';
+    c.prorrogaMotivo = 'Digitalización de expedientes';
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('#fecha-comunicacion-ampliacion')).toBeNull();
+    expect(root.textContent).toContain('Se comunica hoy');
+    expect(root.textContent).toContain('17/11/2026');
+    expect(c.hitos().at(-1)).toEqual({ fecha: '2027-02-11', entregable: '', cierre: true });
+    expect(root.textContent).not.toContain('Elija una fecha posterior a la entrega 1');
+
+    c.actualizarHitoFecha(0, '2027-02-12');
+    fixture.detectChanges();
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('11/02/2027');
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).not.toContain('posterior a la entrega 1');
+    c.handleSubmit();
+    expect(c.confirmModalAbierto()).toBe(false);
+
+    c.actualizarHitoFecha(0, '2026-12-15');
+    c.actualizarHitoEntregable(0, 'Primer bloque');
+    c.actualizarHitoEntregable(1, 'Cierre del cronograma');
+    c.agregarHito();
+    expect(c.hitos().at(-1)?.fecha).toBe('2027-02-11');
+    expect(c.hitos()[1].fecha).toBe('');
+    fixture.detectChanges();
+    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('min')).toBe('2027-01-12');
+    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('max')).toBe('2027-01-14');
+    c.actualizarHitoFecha(1, '2026-12-15');
+    fixture.detectChanges();
+    expect(root.querySelector('#cronograma-fecha-error-1')?.textContent).toContain('15/12/2026');
+
+    c.actualizarHitoFecha(1, '2027-01-15');
+    fixture.detectChanges();
+    expect(root.querySelector('#cronograma-fecha-error-1')?.textContent).toContain('30 días');
+    c.actualizarHitoFecha(1, '2027-01-14');
+    c.actualizarHitoEntregable(1, 'Segundo bloque');
+    c.handleSubmit();
+    expect(c.confirmModalAbierto()).toBe(true);
+    expect(c.respuestaConfirmSummary()).toContainEqual({ label: 'Entrega 2 · 14/01/2027', value: 'Segundo bloque' });
+    c.confirmarAccion();
+    expect(solicitudes.registrarAmpliacion).toHaveBeenCalledWith(12, expect.objectContaining({
+      fechaNotificacionAmpliacion: '2026-11-17',
+      diasHabilesAdicionales: 50,
+      cronograma: [
+        expect.objectContaining({ numeroEntrega: 1, fechaProgramada: '2026-12-15' }),
+        expect.objectContaining({ numeroEntrega: 2, fechaProgramada: '2027-01-14' }),
+        expect.objectContaining({ numeroEntrega: 3, fechaProgramada: '2027-02-11' })
+      ]
+    }));
+    expect(c.respuestaSuccessTitle()).toBe('Ampliación del plazo registrada');
+    expect(c.successModalAbierto()).toBe(true);
+  });
+
+  it('permite revisar o quitar archivos antes de confirmar la entrega parcial y evita duplicar el adjuntado al cerrar', () => {
+    const hito = {
+      id: 40, ampliacionId: 91, numeroEntrega: 1, descripcion: 'Entregable 01',
+      fechaProgramada: '2026-12-20', estado: 'PROGRAMADA' as const
+    };
+    const ampliacion = {
+      id: 91, solicitudId: 12, estadoAmpliacion: 'REGISTRADA',
+      fechaLimiteAmpliada: '2026-12-30', cronograma: [hito]
+    };
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
+      formatoDigital: true, respuesta: null, ampliacionesPlazo: [ampliacion]
+    }));
+
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Paso 1 · Entregas parciales del cronograma');
+    expect(root.textContent).toContain('Paso 2 · Resolución definitiva del expediente');
+    expect(root.textContent).not.toContain('Decisión institucional');
+    expect(root.querySelector('[data-hito-id="40"]')).not.toBeNull();
+
+    const pdfEquivocado = new File(['malo'], 'equivocado.pdf', { type: 'application/pdf' });
+    const pdfCorrecto = new File(['ok'], 'entrega-hito.pdf', { type: 'application/pdf' });
+
+    const inputEl = root.querySelector('input[data-hito-file-input="40"]') as HTMLInputElement;
+    Object.defineProperty(inputEl, 'files', { value: [pdfEquivocado], configurable: true });
+    inputEl.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    // No debe registrar automáticamente al solo adjuntar; permite revisar o quitar.
+    expect(solicitudes.registrarDocumentosEntregaParcial).not.toHaveBeenCalled();
+    expect(root.textContent).toContain('equivocado.pdf');
+    expect(root.querySelector('button[aria-label="Previsualizar equivocado.pdf"]')).not.toBeNull();
+
+    const btnQuitar = root.querySelector('button[aria-label="Quitar equivocado.pdf"]') as HTMLButtonElement | null;
+    expect(btnQuitar).not.toBeNull();
+    btnQuitar!.click();
+    fixture.detectChanges();
+    expect(root.textContent).not.toContain('equivocado.pdf');
+
+    Object.defineProperty(inputEl, 'files', { value: [pdfCorrecto], configurable: true });
+    inputEl.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(solicitudes.registrarDocumentosEntregaParcial).not.toHaveBeenCalled();
+
+    const guardado = {
+      ...hito, estado: 'ENTREGADA' as const, decision: 'ENTREGA_TOTAL' as const, fechaEntregaReal: hoyLima(),
+      documentos: [{ id: 88, nombreOriginal: 'entrega-hito.pdf', contentType: 'application/pdf', sizeBytes: 9 }]
+    };
+    solicitudes.registrarDocumentosEntregaParcial.mockReturnValue(of(guardado));
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
+      formatoDigital: true, respuesta: null,
+      ampliacionesPlazo: [{ ...ampliacion, estadoAmpliacion: 'COMPLETADA', cronograma: [guardado] }]
+    }));
+
+    const btnConfirmar = root.querySelector('button[data-hito-confirm="40"]') as HTMLButtonElement | null;
+    expect(btnConfirmar).not.toBeNull();
+    expect(btnConfirmar!.disabled).toBe(true);
+    const decision = root.querySelector<HTMLSelectElement>('#hito-decision-40')!;
+    decision.value = 'ENTREGA_PARCIAL';
+    decision.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(btnConfirmar!.disabled).toBe(true);
+    decision.value = 'ENTREGA_TOTAL';
+    decision.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(btnConfirmar!.disabled).toBe(false);
+    btnConfirmar!.click();
+    fixture.detectChanges();
+
+    expect(solicitudes.registrarDocumentosEntregaParcial).toHaveBeenCalledWith(12, 91, 40, hoyLima(), [pdfCorrecto], 'ENTREGA_TOTAL', '');
+    expect(root.textContent).toContain('entrega-hito.pdf');
+    expect(root.textContent).toContain('Continuar con respuesta final');
+
+    // Pasar al Paso 2: seleccionar Entrega total debe mostrar lo entregado y no duplicar de entrada la zona de arrastre.
+    const btnPaso2 = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.includes('Continuar con respuesta final')) as HTMLButtonElement | undefined;
+    expect(btnPaso2).toBeDefined();
+    btnPaso2!.click();
+    fixture.detectChanges();
+
+    const btnEntregaTotal = Array.from(root.querySelectorAll('button')).find(b => b.textContent?.includes('Entrega total')) as HTMLButtonElement | undefined;
+    expect(btnEntregaTotal).toBeDefined();
+    btnEntregaTotal!.click();
+    fixture.detectChanges();
+
+    expect(root.textContent).toContain('Documentos registrados en el cronograma');
+    expect(root.textContent).toContain('entrega-hito.pdf');
+    expect(root.textContent).not.toContain('Documentos adicionales de cierre (opcional)');
+
+    const btnOpcionales = root.querySelector('button[data-toggle-adicionales-cierre]') as HTMLButtonElement | null;
+    expect(btnOpcionales).not.toBeNull();
+    btnOpcionales!.click();
+    fixture.detectChanges();
+    expect(root.textContent).toContain('Documentos adicionales de cierre (opcional)');
+  });
+
+  it('refleja en tiempo real el cálculo del cupón de pago con OnPush y decimales con coma', () => {
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
+      formatoFisico: true, formatoDigital: false, respuesta: null, ampliacionesPlazo: []
+    }));
+
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+
+    c.decision.set('entrega_total');
+    c.descripcionAceptacion = 'Disponible en mesa de partes.';
+    c.liqFolios = '2';
+    c.liqCostoFolio = '0.10';
+    c.liqCertificadas = '4';
+    c.liqCostoCert = '0.50';
+    c.liqSoporte = '2';
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('S/ 4.20');
+
+    c.liqCostoFolio = '0,10';
+    c.liqCostoCert = '0,50';
+    fixture.detectChanges();
+    expect(root.textContent).toContain('S/ 4.20');
   });
 });

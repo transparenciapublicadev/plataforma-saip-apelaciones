@@ -4,7 +4,7 @@ import { falloConsulta } from '../../utils/consulta-remota.util';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SolicitudService, PlazoSeguimientoDTO } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { EntidadService } from '../../services/entidad.service';
@@ -12,6 +12,7 @@ import {
   AlcanceEncauzamientoSolicitud,
   AmpliacionPlazoSolicitud,
   CanalNotificacion,
+  CronogramaEntregaParcial,
   EncauzamientoSolicitud,
   LiquidacionCostoSolicitud,
   ObservacionSolicitud,
@@ -19,9 +20,16 @@ import {
   Solicitud
 } from '../../models/solicitud.model';
 import { Entidad } from '../../models/entidad.model';
+import { hoyLima } from '../../models/calendario.model';
 import { canNavigateToResponse, positiveId } from './funcionario-dashboard.model';
 import { documentosDelRecurso, modalidadesRegistradas, detalleConRelacionesVerificadas } from './entity-request-detail.model';
 import { DocumentoService } from '../../services/documento.service';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
+import {
+  CronogramaEntregasPanelComponent,
+  HitoPanelMessage,
+  RegistroEntregaHitoEvent
+} from '../../shared/cronograma-entregas-panel.component';
 import {
   DocumentPreviewModalComponent,
   DocumentPreviewTarget
@@ -66,6 +74,7 @@ import {
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
     AreaResponsablePanelComponent,
+    CronogramaEntregasPanelComponent,
     LucideArrowLeft, LucideSend, LucideClock,
     LucideAlertTriangle, LucideCalendar, LucideFileText, LucideCheckCircle2,
     LucideScale, LucideChevronRight, LucideEye, LucideDownload,
@@ -77,6 +86,7 @@ import {
 })
 export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router, { optional: true });
   private readonly solicitudService = inject(SolicitudService);
   private readonly documentoService = inject(DocumentoService);
   private readonly authService = inject(AuthService);
@@ -140,6 +150,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.observacionMotivo.set(''); this.observacionError.set(''); this.observacionSuccess.set(''); this.observacionLoading.set(false);
     this.ampliacionMotivo.set(''); this.ampliacionInforme.set(''); this.ampliacionError.set(''); this.ampliacionSuccess.set(''); this.ampliacionLoading.set(false);
     this.ampliacionFechaNotificacion.set(''); this.ampliacionCronograma.set([this.crearEntregaForm(1)]);
+    this.fechaEntregaHito.set({}); this.archivosPorHito.set({}); this.hitoRegistrandoId.set(null);
+    this.hitoExitoId.set(null); this.cronogramaHitoError.set(null);
     this.encauzamientoMotivo.set(''); this.encauzamientoSustento.set(''); this.encauzamientoEntidadDestinoId.set(null);
     this.encauzamientoError.set(''); this.encauzamientoSuccess.set(''); this.encauzamientoLoading.set(false);
     this.liquidacionCodigo.set(''); this.liquidacionMonto.set(''); this.liquidacionConcepto.set(''); this.liquidacionObservacion.set('');
@@ -162,6 +174,11 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   ampliacionLoading = signal<boolean>(false);
   ampliacionError = signal<string>('');
   ampliacionSuccess = signal<string>('');
+  fechaEntregaHito = signal<Record<number, string>>({});
+  archivosPorHito = signal<Record<number, File[]>>({});
+  hitoRegistrandoId = signal<number | null>(null);
+  hitoExitoId = signal<number | null>(null);
+  cronogramaHitoError = signal<HitoPanelMessage | null>(null);
   entidadesActivas = signal<Entidad[]>([]);
   encauzamientoEntidadDestinoId = signal<number | null>(null);
   encauzamientoAlcance = signal<AlcanceEncauzamientoSolicitud>('TOTAL');
@@ -511,6 +528,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         const verified = detalleConRelacionesVerificadas(data);
         this.sesionDetalle = sesion;
         this.solicitud.set(verified.solicitud); this.informacionIncompleta.set(verified.incompleta);
+        this.inicializarFechasCronograma(verified.solicitud);
         const initial = this.puedeVerRespuesta() ? 'respuesta' : 'solicitud';
         this.activeTab.set(preferredTab && this.tabs().some(tab => tab.id === preferredTab) ? preferredTab : initial);
         if (!this.enPrecision()) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
@@ -749,6 +767,160 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.ampliacionLoading.set(false);
       }
     }));
+  }
+
+  cronogramaSoloLectura(ampliacion: AmpliacionPlazoSolicitud): boolean {
+    const sol = this.solicitud();
+    if (!sol || this.informacionIncompleta()) return true;
+    if (ampliacion.estadoAmpliacion === 'CANCELADA') return true;
+    if (this.yaRespondida()) return true;
+    return ['CONCLUIDA', 'RESPONDIDA', 'DENEGADA', 'ENCAUZADA_TOTAL', 'PENDIENTE_INFORMACION', 'NO_ADMITIDA', 'ARCHIVADA']
+      .includes(sol.estado);
+  }
+
+  tieneCronograma(ampliacion: AmpliacionPlazoSolicitud): boolean {
+    return Array.isArray(ampliacion?.cronograma) && ampliacion.cronograma.length > 0;
+  }
+
+  actualizarFechaEntregaHito(event: { hitoId: number; fecha: string }): void {
+    this.fechaEntregaHito.update(prev => ({ ...prev, [event.hitoId]: event.fecha }));
+    if (this.cronogramaHitoError()?.hitoId === event.hitoId) {
+      this.cronogramaHitoError.set(null);
+    }
+  }
+
+  actualizarArchivosHito(event: { hitoId: number; archivos: File[] }): void {
+    this.archivosPorHito.update(prev => ({ ...prev, [event.hitoId]: event.archivos }));
+    if (this.cronogramaHitoError()?.hitoId === event.hitoId) {
+      this.cronogramaHitoError.set(null);
+    }
+  }
+
+  irARespuestaFinal(): void {
+    const sol = this.solicitud();
+    if (!sol || !this.puedeResponder()) return;
+    this.router?.navigate(['/funcionario/responder', sol.expediente]);
+  }
+
+  registrarEntregaDesdePanel(ampliacion: AmpliacionPlazoSolicitud, event: RegistroEntregaHitoEvent): void {
+    if (!this.contextoVigente() || this.cronogramaSoloLectura(ampliacion) || this.hitoRegistrandoId() !== null) return;
+    const sol = this.solicitud();
+    const { hito } = event;
+    const ampliacionId = ampliacion.id;
+    if (!sol?.id || ampliacion.solicitudId !== sol.id || hito.ampliacionId !== ampliacionId || !hito.id || !event.decision) return;
+
+    const fecha = (event.fecha || this.fechaEntregaHito()[hito.id] || '').trim();
+    if (!fecha) {
+      this.cronogramaHitoError.set({ hitoId: hito.id, mensaje: 'Indique la fecha real de entrega.' });
+      return;
+    }
+    if (hito.estado !== 'ENTREGADA' && fecha > hoyLima()) {
+      this.cronogramaHitoError.set({ hitoId: hito.id, mensaje: 'La fecha real de entrega no puede ser posterior a hoy.' });
+      return;
+    }
+    const minFecha = ampliacion.fechaNotificacionAmpliacion;
+    if (hito.estado !== 'ENTREGADA' && minFecha && fecha < minFecha) {
+      this.cronogramaHitoError.set({
+        hitoId: hito.id,
+        mensaje: `La fecha real no puede ser anterior a la notificación de la ampliación (${minFecha}).`
+      });
+      return;
+    }
+    const archivos = event.archivos?.length ? event.archivos : (this.archivosPorHito()[hito.id] ?? []);
+    if (!archivos.length) {
+      this.cronogramaHitoError.set({
+        hitoId: hito.id,
+        mensaje: 'Adjunte al menos un documento de respaldo para registrar esta entrega parcial.'
+      });
+      return;
+    }
+
+    const vigente = this.operacionVigente();
+    this.hitoRegistrandoId.set(hito.id);
+    this.hitoExitoId.set(null);
+    this.cronogramaHitoError.set(null);
+
+    this.consultas.add(
+      this.solicitudService.registrarDocumentosEntregaParcial(
+        sol.id,
+        ampliacionId,
+        hito.id,
+        fecha,
+        archivos,
+        event.decision,
+        event.fundamentoDecision
+      ).subscribe({
+        next: (guardado: CronogramaEntregaParcial) => {
+          if (!vigente()) return;
+          this.hitoRegistrandoId.set(null);
+          if (!guardado?.id || guardado.id !== hito.id || guardado.ampliacionId !== ampliacionId || guardado.estado !== 'ENTREGADA'
+              || guardado.decision !== event.decision || guardado.documentos?.length !== archivos.length) {
+            this.cronogramaHitoError.set({
+              hitoId: hito.id,
+              mensaje: 'La respuesta del servidor no confirmó la entrega parcial. Consulte el expediente antes de reintentar.'
+            });
+            return;
+          }
+          this.archivosPorHito.update(prev => {
+            const next = { ...prev };
+            delete next[hito.id];
+            return next;
+          });
+          this.solicitud.update(actual => {
+            if (!actual) return actual;
+            const ampliacionesActualizadas = (actual.ampliacionesPlazo ?? []).map(a =>
+              a.id !== ampliacion.id ? a : {
+                ...a,
+                cronograma: (a.cronograma ?? []).map(c => c.id === hito.id ? { ...c, ...guardado } : c)
+              }
+            );
+            return { ...actual, ampliacionesPlazo: ampliacionesActualizadas };
+          });
+          this.hitoExitoId.set(hito.id);
+          this.refrescarSolicitudSilencioso(sol.expediente, vigente);
+        },
+        error: err => {
+          if (!vigente()) return;
+          this.hitoRegistrandoId.set(null);
+          this.cronogramaHitoError.set({
+            hitoId: hito.id,
+            mensaje: problemDetailsMessage(err, 'No se pudo registrar la entrega parcial con sus documentos.')
+          });
+        }
+      })
+    );
+  }
+
+  private inicializarFechasCronograma(sol: Solicitud): void {
+    const hoy = hoyLima();
+    const actual = { ...this.fechaEntregaHito() };
+    for (const amp of sol.ampliacionesPlazo ?? []) {
+      const min = amp.fechaNotificacionAmpliacion;
+      const def = min && min > hoy ? min : hoy;
+      for (const h of amp.cronograma ?? []) {
+        if (h.estado !== 'ENTREGADA' && h.estado !== 'CANCELADA' && !actual[h.id]) {
+          actual[h.id] = def;
+        }
+      }
+    }
+    this.fechaEntregaHito.set(actual);
+  }
+
+  private refrescarSolicitudSilencioso(expediente: string, vigente: () => boolean): void {
+    this.consultas.add(
+      this.solicitudService.findByExpediente(expediente).subscribe({
+        next: data => {
+          if (!vigente() || !data || !positiveId(data.id) || data.expediente !== expediente) return;
+          const verified = detalleConRelacionesVerificadas(data);
+          this.solicitud.set(verified.solicitud);
+          this.informacionIncompleta.set(verified.incompleta);
+          this.inicializarFechasCronograma(verified.solicitud);
+        },
+        error: () => {
+          // Conserva el estado ya confirmado por POST cuando la recarga silenciosa falla.
+        }
+      })
+    );
   }
 
   registrarEncauzamiento(): void {
