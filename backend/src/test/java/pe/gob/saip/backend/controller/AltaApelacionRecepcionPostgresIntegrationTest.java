@@ -436,7 +436,7 @@ class AltaApelacionRecepcionPostgresIntegrationTest {
     @Test void flywayValidateYContratoCompletoReal()throws Exception {
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();assertThat(flyway.info().pending()).isEmpty();
         assertThat(Arrays.stream(flyway.info().applied()).map(m->m.getVersion().toString()).toList())
-            .containsExactly("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16");
+            .containsExactly("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17");
         String dir=System.getenv("ALTA_APELACION_POSTGRES_ARTIFACTS");if(dir!=null){var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString());
             assertThat(response.statusCode()).isEqualTo(200);
             var contract=json.readTree(response.body());var schemas=contract.path("components").path("schemas");

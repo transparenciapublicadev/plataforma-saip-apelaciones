@@ -38,6 +38,20 @@ class PlazoCalculadorServiceTest {
     }
 
     @Test
+    @DisplayName("Cien días hábiles se calculan y un conteo que sale del horizonte se rechaza")
+    void calcularFechaVencimiento_aceptaCienDiasYRechazaUnHorizonteInalcanzable() {
+        when(feriadoRepository.findByActivoTrue()).thenReturn(List.of());
+        LocalDate inicio = LocalDate.of(2026, 11, 17);
+
+        LocalDate vencimiento = plazoCalculadorService.calcularFechaVencimiento(inicio, 100, 3L);
+
+        assertThat(vencimiento).isAfter(inicio.plusDays(100));
+        assertThatThrownBy(() -> plazoCalculadorService.calcularFechaVencimiento(inicio, 100_000, 3L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no cubre esa cantidad de días hábiles");
+    }
+
+    @Test
     @DisplayName("Cálculo estándar de fechas de vencimiento sin cruce de feriados")
     void calcularFechaVencimiento_ShouldSucceedForStandardCases() {
         LocalDate miercoles = LocalDate.of(2026, 7, 1);

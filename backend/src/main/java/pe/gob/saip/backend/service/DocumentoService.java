@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -24,6 +25,7 @@ import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
+import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
 import pe.gob.saip.backend.model.entity.Respuesta;
@@ -98,7 +100,23 @@ public class DocumentoService {
         documento.setEstado(Documento.EstadoDocumento.ACTIVO);
         documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
         asociarRecurso(documento, request);
+        return DocumentoMetadataDTO.from(guardarArchivo(file, documento));
+    }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Documento subirDocumentoDeEntrega(MultipartFile archivo, CronogramaEntregaParcialSolicitud entrega) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new IllegalArgumentException("Los documentos de la entrega no pueden estar vacíos");
+        }
+        Documento documento = new Documento();
+        documento.setTipoDocumento(Documento.TipoDocumento.RESPUESTA_ENTIDAD);
+        documento.setEstado(Documento.EstadoDocumento.ACTIVO);
+        documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
+        documento.setEntregaParcial(entrega);
+        return guardarArchivo(archivo, documento);
+    }
+
+    private Documento guardarArchivo(MultipartFile file, Documento documento) {
         StorageProvider provider = providerFor(activeProvider);
         StorageUploadResult upload;
         AtomicBoolean cleanupAttempted;
@@ -127,7 +145,7 @@ public class DocumentoService {
         documento.setStorageKey(metadata.storageKey());
 
         try {
-            return DocumentoMetadataDTO.from(documentoRepository.save(documento));
+            return documentoRepository.save(documento);
         } catch (RuntimeException exception) {
             if (cleanupAttempted.compareAndSet(false, true)) {
                 try {
@@ -303,6 +321,9 @@ public class DocumentoService {
     public void eliminar(Long documentoId) {
         autorizacion.verificarAdministrador();
         Documento documento = buscarActivo(documentoId);
+        if (documento.getEntregaParcial() != null) {
+            throw new ConflictoEstadoException("El documento pertenece a una entrega parcial registrada");
+        }
         providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
         documento.setEstado(Documento.EstadoDocumento.ELIMINADO);
         documentoRepository.save(documento);
@@ -350,6 +371,10 @@ public class DocumentoService {
     }
 
     private void verificarAcceso(Documento documento) {
+        if (documento.getEntregaParcial() != null) {
+            autorizacion.verificarSolicitudAccesible(documento.getEntregaParcial().getAmpliacion().getSolicitud());
+            return;
+        }
         if (documento.getSolicitud() != null) {
             autorizacion.verificarSolicitudAccesible(documento.getSolicitud());
             return;

@@ -4,8 +4,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import pe.gob.saip.backend.model.entity.AmpliacionPlazoSolicitud;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+
+import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
 
 @Schema(description = "Ampliación de plazo SAIP con informe y cronograma de entregas parciales")
 public record AmpliacionPlazoSolicitudDTO(
@@ -21,7 +24,8 @@ public record AmpliacionPlazoSolicitudDTO(
         String estadoAmpliacion,
         String responsable,
         String trazabilidad,
-        List<CronogramaEntregaParcialDTO> cronograma
+        List<CronogramaEntregaParcialDTO> cronograma,
+        boolean plazoOrdinarioVencido
 ) {
     public static AmpliacionPlazoSolicitudDTO from(AmpliacionPlazoSolicitud ampliacion) {
         return new AmpliacionPlazoSolicitudDTO(
@@ -42,7 +46,8 @@ public record AmpliacionPlazoSolicitudDTO(
                                 .sorted(Comparator.comparing(CronogramaEntregaParcialSolicitud::getNumeroEntrega))
                                 .map(CronogramaEntregaParcialDTO::from)
                                 .toList()
-                        : List.of()
+                        : List.of(),
+                ampliacion.getFechaLimiteOriginal() != null && LocalDate.now(ZONA_LIMA).isAfter(ampliacion.getFechaLimiteOriginal())
         );
     }
 }

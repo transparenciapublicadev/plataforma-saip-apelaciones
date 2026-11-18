@@ -25,7 +25,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
 - El ciudadano puede registrar una apelacion externa sin SAIP local cuando la solicitud original fue tramitada fuera de la plataforma.
 - El TTAIP puede cerrar una apelacion con `ESTESE_A_LO_RESUELTO` o `NULIDAD_DEL_ACTO`, generando resolucion final, cedulas/notificaciones para ciudadano y entidad publica e historial del expediente.
-- SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
+- SAIP soporta ampliacion de plazo comunicada hasta el dia habil 2 de atencion, con informe formal y cronograma de entregas parciales progresivas cuando corresponde.
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
@@ -126,14 +126,14 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 ### Ampliacion de plazo
 
 - Si el pedido es amplio o requiere gran volumen de informacion, la entidad puede pedir ampliacion.
-- Debe notificarse un informe con cronograma de entregas parciales.
-- Cada entrega parcial no debe exceder 30 dias.
-- La ampliacion debe notificarse como maximo hasta el dia 4 de atencion.
+- Cuando el plazo supera los 30 dias habiles, se incluye un cronograma de entregas parciales progresivas (Mapa Integral, proceso de atencion SAIP; Reglamento de la Ley 27806, art. 23.3).
+- El incumplimiento de una fecha del cronograma constituye denegatoria. El art. 23.3 no fija un intervalo maximo entre entregas. El criterio de requisitos vigente limita ese intervalo a 30 dias calendario entre una fecha programada y la siguiente, incluida la ultima entrega del vencimiento.
+- La ampliacion se comunica como maximo hasta el dia habil 2 de atencion, contado desde el dia siguiente de la presentacion o de la subsanacion. La fecha de esa comunicacion es la del registro.
 - Si no se notifica dentro de ese limite, se mantiene el plazo ordinario de 10 dias habiles.
 - Implementacion actual: `AmpliacionPlazoSolicitud` registra motivo, informe, fecha de solicitud, fecha de notificacion, plazo original, plazo ampliado, estado, responsable, trazabilidad y `CronogramaEntregaParcialSolicitud`.
 - El backend solo permite registrar ampliacion en estados `RECEPCIONADA` o `EN_REVISION`, sin otra ampliacion activa, y actualiza `Solicitud.fechaLimite` al ultimo hito valido del cronograma.
-- El cronograma valida entregas progresivas: numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion; cada entrega debe ocurrir como maximo 30 dias despues del hito anterior.
-- Postman/Newman cubre el flujo positivo y una validacion negativa esperada para cronogramas que exceden 30 dias, manteniendo Problem Details RFC 9457.
+- El cronograma registra numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion. Las fechas programadas deben ir en orden y cada una a no mas de 30 dias calendario de la anterior. En el formulario la ultima entrega queda fija en el vencimiento ampliado y las anteriores se eligen antes de esa fecha.
+- La coleccion Postman incluye el flujo positivo y un caso negativo de entrega previa a la comunicacion, con Problem Details RFC 9457.
 
 ### Encauzamiento
 

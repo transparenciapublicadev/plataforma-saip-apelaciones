@@ -3,7 +3,7 @@ package pe.gob.saip.backend.model.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -23,16 +23,23 @@ public record RegistrarAmpliacionPlazoRequest(
         String informeAmpliacion,
 
         @NotNull(message = "La fecha de notificación de ampliación es obligatoria")
-        @Schema(description = "Fecha en que se notificó la ampliación al ciudadano", example = "2026-05-27")
+        @Schema(description = "Día en que se comunica la ampliación. Con días adicionales, es el día del registro.", example = "2026-05-27")
         LocalDate fechaNotificacionAmpliacion,
 
         @Schema(description = "Responsable que registra y notifica la ampliación", example = "Funcionario de Transparencia")
         @Size(max = 120, message = "El responsable no puede exceder 120 caracteres")
         String responsable,
 
-        @NotEmpty(message = "Debe registrar al menos una entrega parcial")
         @Size(max = 12, message = "El cronograma no puede exceder 12 entregas parciales")
         @Valid
-        List<RegistrarEntregaParcialRequest> cronograma
+        List<RegistrarEntregaParcialRequest> cronograma,
+
+        @Min(1)
+        @Schema(description = "Días hábiles adicionales sobre el vencimiento vigente, sin tope de producto. Si se omite, se conserva el cronograma del contrato anterior.")
+        Integer diasHabilesAdicionales
 ) {
+    public RegistrarAmpliacionPlazoRequest(String motivoAmpliacion, String informeAmpliacion,
+            LocalDate fechaNotificacionAmpliacion, String responsable, List<RegistrarEntregaParcialRequest> cronograma) {
+        this(motivoAmpliacion, informeAmpliacion, fechaNotificacionAmpliacion, responsable, cronograma, null);
+    }
 }

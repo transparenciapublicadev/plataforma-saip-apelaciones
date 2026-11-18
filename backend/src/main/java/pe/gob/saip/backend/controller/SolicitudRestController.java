@@ -14,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
@@ -29,8 +30,10 @@ import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PaginaDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarDocumentosEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
+import pe.gob.saip.backend.model.dto.PrevisionAmpliacionDTO;
 import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SolicitudResumenDTO;
@@ -306,10 +309,16 @@ public class SolicitudRestController {
         return ResponseEntity.ok(observaciones);
     }
 
-    @Operation(
-            summary = "Registrar ampliación de plazo SAIP",
-            description = "Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales."
-    )
+    @Operation(summary = "Consultar disponibilidad y límite de una ampliación SAIP")
+    @GetMapping("/{id}/ampliaciones/prevision")
+    public ResponseEntity<PrevisionAmpliacionDTO> preverAmpliacion(@PathVariable Long id,
+            @RequestParam(defaultValue = "0") int diasHabilesAdicionales) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(solicitudService.preverAmpliacion(id, diasHabilesAdicionales));
+    }
+
+    @Operation(summary = "Registrar ampliación de plazo SAIP",
+            description = "Registra el nuevo vencimiento y las entregas programadas dentro del plazo aplicable.")
     @PostMapping("/{id}/ampliaciones")
     public ResponseEntity<AmpliacionPlazoSolicitudDTO> registrarAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -323,11 +332,7 @@ public class SolicitudRestController {
     public ResponseEntity<List<AmpliacionPlazoSolicitudDTO>> listarAmpliaciones(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         autorizacionRecursosService.verificarSolicitudAccesible(id);
-        List<AmpliacionPlazoSolicitudDTO> ampliaciones = solicitudService.listarAmpliaciones(id)
-                .stream()
-                .map(AmpliacionPlazoSolicitudDTO::from)
-                .toList();
-        return ResponseEntity.ok(ampliaciones);
+        return ResponseEntity.ok(solicitudService.listarAmpliaciones(id));
     }
 
     @Operation(summary = "Consultar cronograma de entregas parciales de una SAIP")
@@ -335,11 +340,7 @@ public class SolicitudRestController {
     public ResponseEntity<List<CronogramaEntregaParcialDTO>> listarCronogramaAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         autorizacionRecursosService.verificarSolicitudAccesible(id);
-        List<CronogramaEntregaParcialDTO> entregas = solicitudService.listarCronogramaAmpliacion(id)
-                .stream()
-                .map(CronogramaEntregaParcialDTO::from)
-                .toList();
-        return ResponseEntity.ok(entregas);
+        return ResponseEntity.ok(solicitudService.listarCronogramaAmpliacion(id));
     }
 
     @Operation(summary = "Actualizar estado de una entrega parcial SAIP")
@@ -350,8 +351,21 @@ public class SolicitudRestController {
             @Parameter(description = "ID de la entrega parcial") @PathVariable Long entregaId,
             @Valid @RequestBody ActualizarEntregaParcialRequest request) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        return ResponseEntity.ok(CronogramaEntregaParcialDTO.from(
-                solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request)));
+        return ResponseEntity.ok(solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request));
+    }
+
+    @Operation(summary = "Registrar los archivos y la fecha real de una entrega programada SAIP",
+            description = "Requiere al menos un archivo. Ante incertidumbre consulte el cronograma antes de repetir.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = RegistrarDocumentosEntregaParcialRequest.class))))
+    @PostMapping(value = "/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CronogramaEntregaParcialDTO> registrarDocumentosEntregaParcial(@PathVariable Long id,
+            @PathVariable Long ampliacionId, @PathVariable Long entregaId,
+            @Valid @ModelAttribute RegistrarDocumentosEntregaParcialRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(solicitudService.registrarDocumentosEntregaParcial(id, ampliacionId, entregaId, request));
     }
 
     @Operation(

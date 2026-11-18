@@ -84,12 +84,18 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
             return fechaRegistro;
         }
 
+        List<FeriadoCalendario> suspensiones = entidadId != null && feriadoRepository != null
+                ? feriadoRepository.findByActivoTrue() : List.of();
         LocalDate fechaVencimiento = fechaRegistro;
+        LocalDate horizonte = fechaRegistro.plusYears(200);
         int diasContados = 0;
 
         while (diasContados < diasHabilesLimit) {
+            if (!fechaVencimiento.isBefore(horizonte)) {
+                throw new IllegalArgumentException("El calendario oficial no cubre esa cantidad de días hábiles");
+            }
             fechaVencimiento = fechaVencimiento.plusDays(1);
-            if (esDiaHabil(fechaVencimiento, entidadId)) {
+            if (diaHabil(fechaVencimiento, entidadId, suspensiones)) {
                 diasContados++;
             }
         }
@@ -115,31 +121,32 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
 
     @Override
     public boolean esDiaHabil(LocalDate fecha, Long entidadId) {
+        List<FeriadoCalendario> suspensiones = entidadId != null && feriadoRepository != null
+                ? feriadoRepository.findByActivoTrue() : List.of();
+        return diaHabil(fecha, entidadId, suspensiones);
+    }
+
+    private boolean diaHabil(LocalDate fecha, Long entidadId, List<FeriadoCalendario> suspensiones) {
         if (fecha == null) return false;
         DayOfWeek dw = fecha.getDayOfWeek();
         if (dw == DayOfWeek.SATURDAY || dw == DayOfWeek.SUNDAY) {
             return false;
         }
 
-        List<DiaInhabilDTO> inhabiles = obtenerInhabilesDelAnio(fecha.getYear());
-        for (DiaInhabilDTO inhabil : inhabiles) {
+        for (DiaInhabilDTO inhabil : obtenerInhabilesDelAnio(fecha.getYear())) {
             if (inhabil.fecha().equals(fecha)) {
                 return false;
             }
         }
 
-        // Verificar suspensiones locales por entidad si aplica
-        if (entidadId != null && feriadoRepository != null) {
-            List<FeriadoCalendario> activos = feriadoRepository.findByActivoTrue();
-            for (FeriadoCalendario f : activos) {
-                if ("suspension".equals(f.getTipo()) && Boolean.FALSE.equals(f.getAlcanceNacional())
-                        && f.getFecha() != null) {
-                    LocalDate fin = (f.getHasta() != null && !f.getHasta().isBefore(f.getFecha())) ? f.getHasta() : f.getFecha();
-                    if (!fecha.isBefore(f.getFecha()) && !fecha.isAfter(fin)) {
-                        if (f.getEntidadesIds() != null && f.getEntidadesIds().contains(String.valueOf(entidadId))) {
-                            return false;
-                        }
-                    }
+        if (entidadId == null || suspensiones == null) return true;
+        for (FeriadoCalendario f : suspensiones) {
+            if ("suspension".equals(f.getTipo()) && Boolean.FALSE.equals(f.getAlcanceNacional())
+                    && f.getFecha() != null) {
+                LocalDate fin = (f.getHasta() != null && !f.getHasta().isBefore(f.getFecha())) ? f.getHasta() : f.getFecha();
+                if (!fecha.isBefore(f.getFecha()) && !fecha.isAfter(fin)
+                        && f.getEntidadesIds() != null && f.getEntidadesIds().contains(String.valueOf(entidadId))) {
+                    return false;
                 }
             }
         }

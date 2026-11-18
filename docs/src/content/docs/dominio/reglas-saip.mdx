@@ -70,15 +70,14 @@ El cupón conserva trazabilidad mediante los estados `EMITIDA`, `NOTIFICADA`, `P
 
 ### BR-SAIP-005 — Ampliación de plazo
 
-Cuando el pedido es amplio o requiere un volumen alto de información, la entidad puede registrar una ampliación de plazo siempre que la notifique como máximo hasta el **día 4 de atención** de la SAIP.
+Cuando el pedido es amplio o requiere un volumen alto de información, la entidad puede registrar una ampliación de plazo siempre que la comunique como máximo hasta el **día hábil 2**, contado desde el día siguiente de la presentación. La fecha de esa comunicación es la del registro.
 
-El flujo implementado exige motivo, informe formal, fecha de notificación, responsable, plazo original, plazo ampliado y cronograma de entregas parciales.
+El flujo registra motivo, informe formal, fecha de notificación, responsable, plazo original y plazo ampliado. El artículo 23.3 del Reglamento de la Ley 27806 prevé un cronograma de entregas parciales progresivas cuando el plazo supera los **30 días hábiles**.
 
 | Regla | Implementación |
 | --- | --- |
-| Registro oportuno | Solo procede si la SAIP está `RECEPCIONADA` o `EN_REVISION` y la notificación ocurre hasta el día 4. |
-| Cronograma | Debe tener al menos una entrega parcial con número, descripción y fecha programada. |
-| Límite de entrega | Cada entrega parcial no puede exceder **30 días** respecto del hito anterior. |
+| Registro oportuno | Solo procede si la SAIP está `RECEPCIONADA` o `EN_REVISION` y la comunicación ocurre hasta el día hábil 2. |
+| Cronograma | Cada entrega tiene número, descripción y fecha programada. Las fechas avanzan en orden, con un máximo de 30 días calendario entre una y la siguiente. En el formulario, la última coincide con el nuevo vencimiento. |
 | Ampliación activa | No se permite más de una ampliación activa para la misma SAIP. |
 | Trazabilidad | Se conserva motivo, informe, responsable, plazo original, plazo ampliado y estado de cada entrega. |
 
