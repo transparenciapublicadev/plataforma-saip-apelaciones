@@ -50,7 +50,7 @@
                 @if (evaluadas()) {
                   <p>{{ registro.enPlazo }} de {{ evaluadas() }} solicitudes evaluadas</p>
                   @if (registro.fueraDePlazo > 0) { <p>{{ registro.fueraDePlazo }} fuera de plazo</p> }
-                } @else { <p>Aún no hay solicitudes evaluables</p> }
+                } @else { <p>0 respuestas registradas en plazo</p> }
                 @if (registro.pendientes > 0) { <p>{{ registro.pendientes }} pendientes</p> }
                 @if (registro.noEvaluadas > 0) { <p>{{ registro.noEvaluadas }} sin evaluación del plazo</p> }
               } @else {
