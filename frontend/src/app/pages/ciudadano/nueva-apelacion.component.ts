@@ -12,7 +12,7 @@ import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion, ApelacionCreate, ApelacionCreateAnteEntidad, ApelacionCreateExterna, CanalPresentacionApelacion, TipoDenegatoriaApelacion, TipoOrigenApelacion } from '../../models/apelacion.model';
 import { Entidad } from '../../models/entidad.model';
-import { Solicitud } from '../../models/solicitud.model';
+import { ampliacionParaApelar, Solicitud, tieneCronogramaIncumplido, tieneHitoDesfavorable } from '../../models/solicitud.model';
 import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
@@ -213,14 +213,18 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private solicitudCompatible(s: Solicitud): boolean {
     return this.idValido(s.id) && !!s.expediente?.trim() && s.ciudadanoId === this.authService.obtenerSesion()?.ciudadanoId && this.idValido(s.entidadId);
   }
-  /** Respuesta registrada por la entidad, de cualquier tipo, y todavía sin apelación. El silencio no es una respuesta. */
-  private conRespuestaDeEntidad(s: Solicitud): boolean {
+  private esApelableEnSelector(s: Solicitud): boolean {
     if (s.apelacion) return false;
+    if (tieneCronogramaIncumplido(s) || tieneHitoDesfavorable(s) || ampliacionParaApelar(s)?.plazoOrdinarioVencido === true) return true;
     const tipo = s.respuesta?.tipoRespuesta;
-    if (tipo === 'SILENCIO_ADMINISTRATIVO') return false;
     if (tipo) return true;
     const estado = (s.estado || '').toUpperCase();
-    return estado === 'RESPONDIDA' || estado === 'DENEGADA';
+    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA';
+  }
+  plazoOrdinarioPorVencer(s: Solicitud): string | null {
+    const ampliacion = ampliacionParaApelar(s);
+    return ampliacion && !this.esApelableEnSelector(s) && ampliacion.plazoOrdinarioVencido === false
+      ? ampliacion.fechaLimiteOriginal || null : null;
   }
   fechaVisible(s: Solicitud): string {
     const raw = s.respuesta?.fechaRespuesta || s.fechaPresentacion || '';
@@ -244,7 +248,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
       if (!Array.isArray(data) || data.some(s => !s || !this.solicitudCompatible(s)) || new Set(data.map(s => s.id)).size !== data.length) {
         this.estadoConsulta.set('error'); this.errorConsulta.set('La lista está incompleta o contiene una relación incompatible.'); this.reintentarConsulta.set(true); return;
       }
-      const apelables = data.filter(s => this.conRespuestaDeEntidad(s));
+      const apelables = data.filter(s => this.esApelableEnSelector(s));
       this.solicitudesApelables.set(apelables); this.estadoConsulta.set(apelables.length ? 'disponible' : 'vacio');
     }, error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'sus solicitudes'); this.estadoConsulta.set(fallo.estado);
       this.errorConsulta.set(fallo.mensaje); this.reintentarConsulta.set(fallo.reintentable); this.loadingSolicitud.set(false); } } }));

@@ -489,7 +489,7 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(c.documentosConsultados()?.[0].id).toBe(188); expect(c.archivos()[1][0]?.name).toBe('copia  real.txt');
   });
 
-  it('la bandeja solo ofrece SAIP con respuesta de la entidad y sin apelación', () => {
+  it('la bandeja considera la respuesta, el silencio y el vencimiento ordinario de la ampliación', () => {
     params.next(convertToParamMap({}));
     const f = TestBed.createComponent(NuevaApelacionComponent); f.detectChanges();
     http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]);
@@ -499,14 +499,18 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     const apelada = { ...solicitud, id: 31, expediente: 'SAIP-2026-00031', apelacion: { id: 9 } };
     const silencio = { ...solicitud, id: 32, expediente: 'SAIP-2026-00032', estado: 'VENCIDA',
       respuesta: { ...solicitud.respuesta, id: 93, tipoRespuesta: 'SILENCIO_ADMINISTRATIVO' }, apelacion: null };
-    http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([solicitud, parcial, pendiente, apelada, silencio]);
+    const ampliada = { ...pendiente, id: 33, expediente: 'SAIP-2026-00033', ampliacionesPlazo: [{
+      id: 55, solicitudId: 33, estadoAmpliacion: 'REGISTRADA', plazoOrdinarioVencido: true, cronograma: []
+    }] };
+    http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([solicitud, parcial, pendiente, apelada, silencio, ampliada]);
     f.detectChanges();
     const texto = f.nativeElement.textContent as string;
     expect(texto).toContain(expediente); expect(texto).toContain('SAIP-2026-00024');
     expect(texto).toContain('Expedientes apelables'); expect(texto).toContain('Denegada'); expect(texto).toContain('Respondida');
     expect(texto).not.toContain('Denegatoria total'); expect(texto).not.toContain('Entrega parcial');
-    expect(texto).not.toContain('SAIP-2026-00030'); expect(texto).not.toContain('SAIP-2026-00031'); expect(texto).not.toContain('SAIP-2026-00032');
-    expect(f.nativeElement.querySelectorAll('[aria-label^="Apelar expediente"]')).toHaveLength(2);
+    expect(texto).not.toContain('SAIP-2026-00030'); expect(texto).not.toContain('SAIP-2026-00031');
+    expect(texto).toContain('SAIP-2026-00032'); expect(texto).toContain('SAIP-2026-00033');
+    expect(f.nativeElement.querySelectorAll('[aria-label^="Apelar expediente"]')).toHaveLength(4);
   });
 
   it.each([{ hashSha256: null }, { hashSha256: 'incompleto' }, { sizeBytes: 0 }, { contentType: null }])('no ofrece clonar un antecedente sin versión recuperable: %j', cambio => {
