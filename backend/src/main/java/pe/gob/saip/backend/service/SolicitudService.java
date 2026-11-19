@@ -218,7 +218,7 @@ public class SolicitudService {
     private SolicitudDTO mapearDetalleAutorizado(Solicitud solicitud) {
         // Do not initialize detail collections until the current actor is authorized.
         // Map one request, not a list: each required LAZY collection is read in this session.
-        autorizacion.verificarSolicitudAccesible(solicitud);
+        autorizacion.verificarLecturaExpediente(solicitud);
         int diasRestantes = DiasHabilesUtil.diasHabilesVigentes(
                 inicioPlazoAtencion(solicitud), solicitud.getFechaLimite(), plazoCalculadorService.hoy());
         return SolicitudDTO.from(solicitud, diasRestantes);
@@ -564,9 +564,9 @@ public class SolicitudService {
         LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
                 ? solicitud.getFechaPresentacion().toLocalDate()
                 : hoy;
-        LocalDate fechaLimiteEncauzamiento = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, 2);
+        LocalDate fechaLimiteEncauzamiento = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, DIAS_HABILES_ENCAUZAMIENTO);
         if (hoy.isAfter(fechaLimiteEncauzamiento)) {
-            throw new IllegalArgumentException("El plazo de 2 días hábiles para encauzar la SAIP ya venció");
+            throw new IllegalArgumentException("El plazo de 4 días hábiles para encauzar la SAIP ya venció");
         }
 
         EncauzamientoSolicitud.AlcanceEncauzamiento alcance = parseAlcanceEncauzamiento(request.alcance());
@@ -596,6 +596,7 @@ public class SolicitudService {
         return encauzamientoRepository.save(encauzamiento);
     }
 
+    private static final int DIAS_HABILES_ENCAUZAMIENTO = 4;
     private static final int UMBRAL_CRONOGRAMA = 30;
     private static final int DIAS_HABILES_PARA_COMUNICAR_AMPLIACION = 2;
     private static final int DIAS_CALENDARIO_ENTRE_ENTREGAS = 30;

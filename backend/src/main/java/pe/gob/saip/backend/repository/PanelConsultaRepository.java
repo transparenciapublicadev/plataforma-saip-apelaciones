@@ -25,7 +25,13 @@ public class PanelConsultaRepository {
     private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " then 'resueltos' else 'otras' end";
     private static final String PENDING_OBSERVATION = "exists (select 1 from observaciones_solicitud o where o.id_solicitud=s.id_solicitud and o.estado='PENDIENTE_SUBSANACION')";
     private static final String CITIZEN_STAGE = "case when a.estado='EN_SUBSANACION' or (s.estado='PENDIENTE_INFORMACION' and " + PENDING_OBSERVATION + ") then 'accion' when a.estado in " + FINAL + " then 'resueltas' when a.id_apelacion is not null then 'tribunal' when s.estado in ('DENEGADA','VENCIDA') or (s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') and s.fecha_limite<=:vencida) then 'apelar' when s.estado='RESPONDIDA' then 'respondidas' when s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') then 'proceso' else 'otras' end";
-    private static final String ENTITY_STAGE = "case when s.estado in ('RESPONDIDA','DENEGADA') or rp.id_respuesta is not null then 'respondidas'"
+    /** Total referral keeps the same expediente at the destination. The origin still lists it, outside the work queues. */
+    private static final String DERIVADA_POR_ACTOR = """
+        exists (select 1 from encauzamientos_solicitud en
+            where en.id_solicitud=s.id_solicitud and en.id_entidad_origen=:entidadActor
+            and en.alcance='TOTAL' and en.estado_encauzamiento in ('DERIVADO','REGISTRADO'))""";
+    private static final String ENTITY_STAGE = "case when s.id_entidad<>:entidadActor and " + DERIVADA_POR_ACTOR + " then 'derivada'"
+        + " when s.estado in ('RESPONDIDA','DENEGADA') or rp.id_respuesta is not null then 'respondidas'"
         + " when s.estado='PENDIENTE_INFORMACION' or (" + PENDING_OBSERVATION + ") then 'precision'"
         + " when s.estado in ('RECEPCIONADA','EN_REVISION','VENCIDA') then"
         + " case when s.fecha_limite<:hoy then 'san' when s.fecha_limite<=:hastaUno then 'hoy'"
@@ -90,7 +96,11 @@ public class PanelConsultaRepository {
         String effectiveEntity = apelaciones ? "coalesce(s.id_entidad,a.id_entidad_apelada)" : "s.id_entidad";
         String scope = " where 1=1";
         if (alcance.ciudadanoId()!=null) scope += " and " + alias + ".id_ciudadano=:actor";
-        if (alcance.entidadId()!=null) scope += " and " + effectiveEntity + "=:entidadActor";
+        if (alcance.entidadId()!=null) {
+            scope += apelaciones
+                ? " and " + effectiveEntity + "=:entidadActor"
+                : " and (" + effectiveEntity + "=:entidadActor or (" + effectiveEntity + "<>:entidadActor and " + DERIVADA_POR_ACTOR + "))";
+        }
         String where = scope;
         if (filtro.entidadId()!=null) { where += " and " + effectiveEntity + "=:entidadFiltro"; params.addValue("entidadFiltro",filtro.entidadId()); }
         if (filtro.estado()!=null) { where += " and " + alias + ".estado=:estado"; params.addValue("estado",filtro.estado()); }
@@ -109,6 +119,12 @@ public class PanelConsultaRepository {
         long total = jdbc.queryForObject("select count(*) "+from+where,params,Long.class);
         String columns = apelaciones ? AP_COLUMNS : """
             s.id_solicitud,s.expediente,s.asunto,s.descripcion,s.estado,s.prioridad,s.tipo_informacion,
+            case
+                when exists (select 1 from encauzamientos_solicitud en where en.id_solicitud=s.id_solicitud
+                    and en.alcance='TOTAL' and en.estado_encauzamiento in ('DERIVADO','REGISTRADO')) then 'TOTAL'
+                when exists (select 1 from encauzamientos_solicitud en where en.id_solicitud=s.id_solicitud
+                    and en.alcance='PARCIAL' and en.estado_encauzamiento in ('DERIVADO','REGISTRADO')) then 'PARCIAL'
+            end encauzamiento_alcance,
             s.oficina_destinataria,s.area_responsable,s.encargado_area,
             s.fecha_presentacion,s.fecha_limite,s.id_ciudadano,c.nombre_completo ciudadano_nombre,
             s.id_entidad,e.nombre entidad_nombre,e.acronimo entidad_acronimo,
@@ -137,7 +153,10 @@ public class PanelConsultaRepository {
                 and not exists (select 1 from respuestas r where r.id_solicitud=s.id_solicitud)
                 and not (%s)
                 """.formatted(PENDING_OBSERVATION);
-            topics = group("s.tipo_informacion", enCurso + " and nullif(trim(s.tipo_informacion),'') is not null", params);
+            topics = group("s.tipo_informacion", """
+                from solicitudes s where nullif(trim(s.tipo_informacion),'') is not null
+                and (s.id_entidad=:entidadActor or (s.id_entidad<>:entidadActor and %s))
+                """.formatted(DERIVADA_POR_ACTOR), params);
             porDia = contarDiasRestantes(plazosAbiertos(enCurso, params), hoy);
             registroRespuestas = contarRegistroRespuestas(params);
         } else {
@@ -162,6 +181,7 @@ public class PanelConsultaRepository {
     private PanelResumenDTO.RegistroRespuestas contarRegistroRespuestas(MapSqlParameterSource params) {
         Map<String, Long> conteos = group("""
             case
+                when s.id_entidad<>:entidadActor then 'noEvaluada'
                 when s.estado='PENDIENTE_INFORMACION' or (%s) then 'pendiente'
                 when s.fecha_limite is null then 'noEvaluada'
                 when rp.id_respuesta is not null and rp.tipo_respuesta <> 'SILENCIO_ADMINISTRATIVO' then
@@ -173,8 +193,8 @@ public class PanelConsultaRepository {
             end
             """.formatted(PENDING_OBSERVATION), """
             from solicitudes s left join respuestas rp on rp.id_solicitud=s.id_solicitud
-            where s.id_entidad=:entidadActor
-            """, params);
+            where s.id_entidad=:entidadActor or (s.id_entidad<>:entidadActor and %s)
+            """.formatted(DERIVADA_POR_ACTOR), params);
         return new PanelResumenDTO.RegistroRespuestas(
             conteos.getOrDefault("enPlazo", 0L), conteos.getOrDefault("fueraDePlazo", 0L),
             conteos.getOrDefault("pendiente", 0L), conteos.getOrDefault("noEvaluada", 0L));

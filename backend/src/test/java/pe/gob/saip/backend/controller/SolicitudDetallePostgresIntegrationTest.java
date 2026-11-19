@@ -215,7 +215,8 @@ class SolicitudDetallePostgresIntegrationTest {
         assertThat(days.path(visibleDays).asInt()).isEqualTo(2);
         JsonNode topics = page.path("resumen").path("porTipoInformacion");
         assertThat(topics.path("Tema activo").asInt()).isEqualTo(2);
-        assertThat(topics.has("Tema cerrado")).isFalse();
+        assertThat(topics.path("Tema cerrado").asInt()).isEqualTo(1);
+        assertThat(topics.path("Tema anterior").asInt()).isEqualTo(1);
         assertThat(topics.has("Tema ajeno")).isFalse();
 
         HttpResponse<String> ownerPage = get("/api/panel/solicitudes", login(ownerEmail));

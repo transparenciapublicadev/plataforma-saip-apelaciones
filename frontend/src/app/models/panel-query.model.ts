@@ -9,6 +9,7 @@ export type PanelSolicitud = Pick<Solicitud, 'id' | 'expediente' | 'estado' | 'c
   respuesta?: { id?: number; tipoRespuesta?: string; fechaRespuesta?: string } | null;
   observaciones?: { id?: number; solicitudId?: number; estado?: string; fechaLimiteSubsanacion?: string; fechaObservacion?: string; fechaSubsanacion?: string; diasRestantes?: number }[];
   etapa?: string;
+  encauzamientoAlcance?: 'TOTAL' | 'PARCIAL' | null;
   apelacion?: PanelApelacion | null;
 };
 export type PanelApelacion = Pick<Apelacion, 'id' | 'expediente' | 'estado'>

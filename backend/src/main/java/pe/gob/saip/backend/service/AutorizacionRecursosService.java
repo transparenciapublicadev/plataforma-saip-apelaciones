@@ -114,6 +114,17 @@ public class AutorizacionRecursosService {
         verificarCiudadanoActual(solicitud.getCiudadano().getId());
     }
 
+    /** Read of the case file: the current entity, or an entity that sent or received its referral. */
+    public void verificarLecturaExpediente(Solicitud solicitud) {
+        if (esAdministradorOTtaip() || puedeAccederSolicitud(solicitud)) {
+            return;
+        }
+        if (esFuncionario() && solicitud.getId() != null && encauzamientoRelacionado(solicitud.getId())) {
+            return;
+        }
+        throw new AccessDeniedException("La solicitud SAIP no corresponde al usuario autenticado");
+    }
+
     public void verificarSolicitudAccesible(Solicitud solicitud) {
         if (esAdministradorOTtaip()) {
             return;
@@ -335,6 +346,15 @@ public class AutorizacionRecursosService {
 
     private boolean esCiudadano() {
         return hasRole(obtenerAutenticacion(), ROLE_CIUDADANO);
+    }
+
+    private boolean encauzamientoRelacionado(Long solicitudId) {
+        Long entidadFuncionarioId = obtenerEntidadFuncionarioActual();
+        return encauzamientoRepository
+                .findBySolicitud_IdSolicitudOrderByFechaEncauzamientoDesc(solicitudId)
+                .stream()
+                .anyMatch(encauzamiento -> entidadCoincide(encauzamiento.getEntidadOrigen(), entidadFuncionarioId)
+                        || entidadCoincide(encauzamiento.getEntidadDestino(), entidadFuncionarioId));
     }
 
     private boolean puedeAccederSolicitud(Solicitud solicitud) {
