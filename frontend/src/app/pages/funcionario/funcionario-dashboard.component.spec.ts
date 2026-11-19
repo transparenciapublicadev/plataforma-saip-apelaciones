@@ -9,7 +9,21 @@ import { authInterceptor } from '../../interceptors/auth.interceptor';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { environment } from '../../../environments/environment';
 import { PanelPage, PanelSolicitud } from '../../models/panel-query.model';
-import { queueItem } from './funcionario-dashboard.model';
+import { canNavigateToResponse, queueItem, readInstitutionList } from './funcionario-dashboard.model';
+
+describe('bandeja institucional', () => {
+  it('conserva la solicitud derivada en su bandeja y no la ofrece para responder', () => {
+    const derivada: PanelSolicitud = {
+      id: 8, expediente: 'SAIP-2026-00008', ciudadanoId: 1, entidadId: 9, estado: 'EN_REVISION',
+      etapa: 'derivada', asunto: 'Tema derivado', tipoInformacion: 'Presupuesto', fechaPresentacion: '2026-11-15',
+      observaciones: []
+    };
+    expect(readInstitutionList([derivada], 3)?.[0].expediente).toBe('SAIP-2026-00008');
+    expect(readInstitutionList([{ ...derivada, etapa: 'plazo' }], 3)).toBeNull();
+    expect(queueItem(derivada).bucket).toBe('derivadas');
+    expect(canNavigateToResponse(derivada)).toBe(false);
+  });
+});
 
 describe('EntityDashboard — consulta institucional y estados reales', () => {
   const api = environment.apiUrl;
@@ -226,7 +240,8 @@ describe('EntityDashboard — consulta institucional y estados reales', () => {
     const content = f.nativeElement.textContent;
     expect(content).toContain('En precisión');
     expect(content).not.toContain('PENDIENTE_INFORMACION');
-    expect(content).toContain('Fecha registrada para precisar');
+    expect(content).toContain('Plazo p/ precisar');
+    expect(content).not.toContain('Fecha registrada para precisar');
     expect(content).toContain('05/10/2026');
     const precision = [...(f.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[data-tour="e-buckets"] button')]
       .find(button => button.textContent.includes('En precisión'));

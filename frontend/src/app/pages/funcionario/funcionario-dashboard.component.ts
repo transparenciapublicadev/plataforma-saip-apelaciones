@@ -74,6 +74,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     { key: 'plazo', label: 'Cómodo en plazo', eyebrow: 'Más de 5 días háb.', icon: 'check', color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 10%, transparent)' },
     { key: 'precision', label: 'En precisión', eyebrow: 'En espera del administrado', icon: 'alert', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
     { key: 'respondidas', label: 'Respondidas', eyebrow: 'Con respuesta registrada', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
+    { key: 'derivadas', label: 'Derivadas', eyebrow: 'Mismo expediente · otra entidad', icon: 'inbox', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
   ];
   solicitudes = signal<Solicitud[]>([]);
   loading = signal(true);
@@ -95,10 +96,11 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     san: this.resumen()?.porEtapa['san'] ?? 0, hoy: this.resumen()?.porEtapa['hoy'] ?? 0,
     semana: this.resumen()?.porEtapa['semana'] ?? 0, plazo: this.resumen()?.porEtapa['plazo'] ?? 0,
     precision: this.resumen()?.porEtapa['precision'] ?? 0,
-    respondidas: this.resumen()?.porEtapa['respondidas'] ?? 0 }));
+    respondidas: this.resumen()?.porEtapa['respondidas'] ?? 0,
+    derivadas: this.resumen()?.porEtapa['derivada'] ?? 0 }));
   readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket()) ?? this.buckets[0]);
-  readonly totalActivas = computed(() => ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
-    .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0));
+  readonly totalActivas = computed(() => Math.max(0, ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
+    .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0) - (this.resumen()?.porEtapa['derivada'] ?? 0)));
   readonly registroRespuestas = computed(() => {
     if (!this.contextoVigente()) return null;
     const resumen = this.resumen();
@@ -264,8 +266,9 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     };
     const loadPage = (entidad: number) => {
       const page = this.paginaActual() - 1, size = this.pageSize;
+      const etapa = this.selectedBucket() === 'derivadas' ? 'derivada' : this.selectedBucket();
       this.read.add(this.panelService.solicitudes({ pagina: page, tamano: size, busqueda: this.busqueda().trim(),
-        etapa: this.selectedBucket() }).subscribe({
+        etapa }).subscribe({
         next: data => {
           if (!current()) return;
           const verified = validPanelPage<Solicitud>(data, page, size) ? readInstitutionList(data.contenido, entidad) : null;
@@ -305,7 +308,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     if (isResp) return 'Respondida el';
     const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
       || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
-    if (enPrecision) return 'Fecha registrada para precisar';
+    if (enPrecision) return 'Plazo p/ precisar';
     if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) return 'En silencio administrativo';
     return 'Plazo p/ responder';
   }
