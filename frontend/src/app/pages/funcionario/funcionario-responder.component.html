@@ -141,7 +141,7 @@
                 @if (yaPreciso()) {
                   <div class="mt-3 rounded-lg p-3 flex items-start gap-2.5 text-xs text-foreground/80" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
                     <svg lucideCheckCircle2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-                    <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">brindar respuesta a la SAIP</span>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
+                    <span>El administrado <span class="font-semibold">ya subsanó</span> la observación. La solicitud está en trámite; corresponde <span class="font-semibold">brindar respuesta a la SAIP</span>. @if (grupoSubsanaciones().length > 0) { El documento de la subsanación está en la pestaña } @else { Si adjuntó un archivo, queda en la pestaña } <button type="button" class="font-semibold underline" (click)="cambiarTab('adjuntos')">Documentos del administrado</button>. La observación de requisitos es un trámite único y no puede solicitarse nuevamente.</span>
                   </div>
                 }
 
@@ -607,7 +607,7 @@
                         }
                         <p class="text-[12px] text-muted-foreground mt-2 leading-relaxed">
                           La entidad debe atender la solicitud en el formato pedido (Ley N° 27806, art. 13).
-                          {{ requiereFisico() ? ' Al requerir soporte físico o copias, debe emitir el cupón de pago por el costo de reproducción.' : '' }}
+                          {{ requiereFisico() ? ' Emita el cupón solo por la modalidad de reproducción que pidió el administrado.' : '' }}
                         </p>
                       </div>
                     </div>
@@ -702,7 +702,11 @@
                         <svg lucideReceipt class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark)"></svg>
                         <div>
                           <span class="eyebrow" style="color: var(--gold-dark)">Cupón de pago (entrega física)</span>
-                          <p class="text-sm text-foreground/85 mt-1 leading-relaxed">La entrega física requiere el pago de la reproducción. Envíe el cupón indicando el monto y el lugar de pago. Desde su envío, el administrado dispone de <span class="font-mono font-semibold">30 días calendario</span> para recoger en la oficina de la entidad; de no recogerse, el expediente se archiva y se da por atendido.</p>
+                          @if (liquidacionActiva()) {
+                            <p class="text-sm text-foreground/85 mt-1 leading-relaxed">El cupón ya registrado cubre la reproducción solicitada: <span class="font-semibold">{{ conceptosCupon().join(' · ') }}</span>.</p>
+                          } @else {
+                            <p class="text-sm text-foreground/85 mt-1 leading-relaxed">El cupón cubre la reproducción solicitada: <span class="font-semibold">{{ conceptosCupon().join(' · ') }}</span>. Indique el monto y el lugar de pago. Desde su envío, el administrado dispone de <span class="font-mono font-semibold">30 días calendario</span> para recoger en la oficina de la entidad; de no recogerse, el expediente se archiva.</p>
+                          }
                         </div>
                       </div>
 
@@ -727,42 +731,51 @@
                           </div>
                         } @else {
                           <p class="text-[11px] text-muted-foreground mb-2">
-                            Tarifas TUPA de referencia: copia simple S/ {{ tarifasConfig().copiaSimple | number:'1.2-2' }} · copia certificada S/ {{ tarifasConfig().copiaCertificada | number:'1.2-2' }} · soporte digital ref. S/ {{ tarifasConfig().soporteDigital | number:'1.2-2' }}.
+                            Tarifas TUPA de referencia:
+                            @if (pideCopiaSimple()) { copia simple S/ {{ tarifasConfig().copiaSimple | number:'1.2-2' }} }
+                            @if (pideCopiaCertificada()) { · copia certificada S/ {{ tarifasConfig().copiaCertificada | number:'1.2-2' }} }
+                            @if (pideSoporte()) { · soporte digital ref. S/ {{ tarifasConfig().soporteDigital | number:'1.2-2' }} }.
                           </p>
 
                           @if (diasTranscurridos() > 9) {
                             <div class="rounded-md p-2.5 mb-2 text-xs flex items-start gap-2" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); color: var(--brand-700)">
                               <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 shrink-0 mt-0.5"></svg>
-                              <span>Han transcurrido más de 9 días hábiles desde la recepción; el servidor puede rechazar una nueva liquidación fuera de plazo si no se emitió previamente.</span>
+                              <span>Han transcurrido más de 9 días hábiles desde la recepción. Una liquidación nueva fuera de ese plazo puede rechazarse si no se emitió antes.</span>
                             </div>
                           }
 
                           <div class="grid grid-cols-2 md:grid-cols-3 gap-3" [class.opacity-50]="sinCobroReproduccion()">
-                            <div class="field">
-                              <label class="field-label" for="liq-folios">Folios simples</label>
-                              <input id="liq-folios" type="number" min="0" step="1" class="field-input font-mono"
-                                [(ngModel)]="liqFolios" [disabled]="sinCobroReproduccion()" placeholder="0" />
-                            </div>
-                            <div class="field">
-                              <label class="field-label" for="liq-costo-folio">Costo x folio (S/)</label>
-                              <input id="liq-costo-folio" type="number" min="0" step="0.01" class="field-input font-mono"
-                                [(ngModel)]="liqCostoFolio" [disabled]="sinCobroReproduccion()" />
-                            </div>
-                            <div class="field">
-                              <label class="field-label" for="liq-certificadas">Copias certificadas</label>
-                              <input id="liq-certificadas" type="number" min="0" step="1" class="field-input font-mono"
-                                [(ngModel)]="liqCertificadas" [disabled]="sinCobroReproduccion()" placeholder="0" />
-                            </div>
-                            <div class="field">
-                              <label class="field-label" for="liq-costo-cert">Costo x certificada (S/)</label>
-                              <input id="liq-costo-cert" type="number" min="0" step="0.01" class="field-input font-mono"
-                                [(ngModel)]="liqCostoCert" [disabled]="sinCobroReproduccion()" />
-                            </div>
-                            <div class="field">
-                              <label class="field-label" for="liq-soporte">Soporte CD/USB (S/)</label>
-                              <input id="liq-soporte" type="number" min="0" step="0.01" class="field-input font-mono"
-                                [(ngModel)]="liqSoporte" [disabled]="sinCobroReproduccion()" />
-                            </div>
+                            @if (pideCopiaSimple()) {
+                              <div class="field">
+                                <label class="field-label" for="liq-folios">Folios simples</label>
+                                <input id="liq-folios" type="number" min="0" step="1" class="field-input font-mono"
+                                  [(ngModel)]="liqFolios" [disabled]="sinCobroReproduccion()" placeholder="0" />
+                              </div>
+                              <div class="field">
+                                <label class="field-label" for="liq-costo-folio">Costo x folio (S/)</label>
+                                <input id="liq-costo-folio" type="number" min="0" step="0.01" class="field-input font-mono"
+                                  [(ngModel)]="liqCostoFolio" [disabled]="sinCobroReproduccion()" />
+                              </div>
+                            }
+                            @if (pideCopiaCertificada()) {
+                              <div class="field">
+                                <label class="field-label" for="liq-certificadas">Copias certificadas</label>
+                                <input id="liq-certificadas" type="number" min="0" step="1" class="field-input font-mono"
+                                  [(ngModel)]="liqCertificadas" [disabled]="sinCobroReproduccion()" placeholder="0" />
+                              </div>
+                              <div class="field">
+                                <label class="field-label" for="liq-costo-cert">Costo x certificada (S/)</label>
+                                <input id="liq-costo-cert" type="number" min="0" step="0.01" class="field-input font-mono"
+                                  [(ngModel)]="liqCostoCert" [disabled]="sinCobroReproduccion()" />
+                              </div>
+                            }
+                            @if (pideSoporte()) {
+                              <div class="field">
+                                <label class="field-label" for="liq-soporte">Soporte CD/USB (S/)</label>
+                                <input id="liq-soporte" type="number" min="0" step="0.01" class="field-input font-mono"
+                                  [(ngModel)]="liqSoporte" [disabled]="sinCobroReproduccion()" />
+                              </div>
+                            }
                             <div class="field">
                               <label class="field-label" for="cupon-lugar">Lugar de pago @if (!sinCobroReproduccion()) { <span class="req">*</span> }</label>
                               <input id="cupon-lugar" class="field-input" placeholder="Ej: Caja sede central"
@@ -809,30 +822,32 @@
               }
 
               <!-- Encauzamiento: solo entrega parcial y denegación total -->
-              @if (decision() === 'entrega_parcial' || decision() === 'denegacion_total') {
+              @if (decision() === 'entrega_parcial' || (decision() === 'denegacion_total' && causalDenegatoria === 'no_posee')) {
                 <div class="rounded-lg p-4 space-y-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand-500)">
+                  @if (dentroPlazoEncauzamiento()) {
                   <label class="flex items-start gap-2.5 cursor-pointer">
-                    <input type="checkbox" class="mt-0.5" [(ngModel)]="encauzar" [disabled]="!dentroPlazoEncauzamiento()" />
+                    <input type="checkbox" class="mt-0.5" [(ngModel)]="encauzar" />
                     <span>
                       <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
                         <svg lucideArrowRightLeft class="w-4 h-4" style="color: var(--brand-700)"></svg>
                         Encauzar a otra entidad
+                        <span class="text-[11px] font-medium text-muted-foreground">· opcional</span>
                       </span>
                       <span class="block text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        Márquelo solo si conoce la entidad competente. Si no la conoce, déjelo sin marcar y registre la entrega parcial o la denegatoria.
                         @if (decision() === 'denegacion_total') {
-                          Encauzamiento total: la solicitud no es de su competencia. Se deniega y se deriva a la entidad competente, que recibirá una nueva SAIP.
+                          Si lo marca, la solicitud se deriva y en esta entidad no se registra una denegatoria.
                         } @else {
-                          Encauzamiento parcial: parte se atiende y parte se deriva a la entidad competente. La respuesta será entrega parcial en ambas instituciones.
+                          Si lo marca, esta entidad entrega su parte y deriva el extremo que indique.
                         }
                       </span>
                     </span>
                   </label>
-
-                  @if (!dentroPlazoEncauzamiento()) {
-                    <p class="text-xs" style="color: var(--warning)">El encauzamiento solo está disponible hasta el 4.° día hábil de atención.</p>
+                  } @else {
+                    <p class="text-xs leading-relaxed text-muted-foreground">El plazo de 4 días hábiles para encauzar por falta de competencia ya venció. Esta entidad registra la respuesta y conserva la responsabilidad.</p>
                   }
 
-                  @if (encauzar) {
+                  @if (encauzamientoElegido()) {
                     <div class="space-y-4 pt-1">
                       <div class="field">
                         <label class="field-label">Entidad competente de destino <span class="req">*</span></label>
@@ -865,7 +880,7 @@
                       <div class="rounded-lg p-3.5 flex items-start gap-2.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                         <svg lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                         <p class="text-[12px] text-foreground/80 leading-relaxed">
-                          Al confirmar, se generará una nueva SAIP en la entidad de destino con los datos de esta solicitud y se notificará al administrado.
+                          Al confirmar, la derivación queda registrada hacia la entidad de destino. El administrado conserva este mismo expediente.
                         </p>
                       </div>
                     </div>
@@ -873,27 +888,23 @@
                 </div>
               }
 
-              @if (decision() && !canSubmit() && faltantesRespuesta().length > 0) {
-                <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
+              @if (decision() && !canSubmit() && avisosEnvio().length > 0) {
+                <div class="rounded-lg p-4 flex items-start gap-3" role="status" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
                   <svg lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                   <div class="text-sm text-foreground/85 space-y-1">
-                    @if (faltantesRespuesta().length === 1) {
-                      <p>{{ faltantesRespuesta()[0] }} Los adjuntos son opcionales.</p>
-                    } @else {
-                      <p class="font-medium">Complete los requisitos pendientes antes de enviar (los adjuntos son opcionales):</p>
-                      <ul class="list-disc pl-4 space-y-0.5 text-xs">
-                        @for (falta of faltantesRespuesta(); track falta) {
-                          <li>{{ falta }}</li>
-                        }
-                      </ul>
-                    }
+                    <p class="font-medium">Para habilitar «Enviar respuesta» falta lo siguiente. Los documentos adjuntos son opcionales.</p>
+                    <ul class="list-disc pl-4 space-y-0.5 text-xs">
+                      @for (falta of avisosEnvio(); track falta) {
+                        <li>{{ falta }}</li>
+                      }
+                    </ul>
                   </div>
                 </div>
               }
 
               <button type="button" (click)="handleSubmit()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg lucideSend class="w-4 h-4"></svg>
-                {{ loading() ? 'Enviando respuesta…' : 'Enviar respuesta' }}
+                {{ loading() ? 'Enviando…' : (encauzamientoElegido() && decision() === 'denegacion_total' ? 'Derivar solicitud' : 'Enviar respuesta') }}
               </button>
 
               <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
@@ -930,7 +941,7 @@
             <div>
               <span class="eyebrow">Descripción detallada</span>
               <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
-                {{ sol.descripcion }}
+                {{ descripcionVisible() }}
               </div>
             </div>
           </div>
