@@ -591,7 +591,7 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL);
         assertThat(resultado.getEstadoEncauzamiento()).isEqualTo(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
-        assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 2));
+        assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 4));
         assertThat(solicitud.getEntidad()).isEqualTo(destino);
         assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
         verify(solicitudRepository).save(solicitud);
@@ -653,7 +653,7 @@ class SolicitudServiceTest {
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("2 días hábiles");
+                .hasMessageContaining("4 días hábiles");
     }
 
     @Test

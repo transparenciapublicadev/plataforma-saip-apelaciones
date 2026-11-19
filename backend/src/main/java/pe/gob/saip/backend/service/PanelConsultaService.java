@@ -81,7 +81,7 @@ public class PanelConsultaService {
         etapa=blank(etapa); if("todas".equals(etapa)||"todos".equals(etapa))etapa=null;
         Set<String> stages=apelaciones?Set.of("elevacion","calificacion1","subsanacion","calificacion2","resolucion","resueltos","otras")
             :alcance.ciudadanoId()!=null?Set.of("accion","proceso","respondidas","apelar","tribunal","resueltas","otras")
-            :Set.of("san","hoy","semana","plazo","precision","respondidas","desconocido");
+            :Set.of("san","hoy","semana","plazo","precision","respondidas","derivada","desconocido");
         if(etapa!=null&&!stages.contains(etapa))throw new IllegalArgumentException("Etapa no válida para este panel");
         orden=blank(orden);if(orden==null)orden="recientes";
         if(!Set.of("recientes","antiguas").contains(orden))throw new IllegalArgumentException("Orden no válido");
@@ -112,7 +112,7 @@ public class PanelConsultaService {
                 text(o,"fecha_observacion"),text(o,"fecha_limite_subsanacion"),text(o,"fecha_subsanacion"),
                 date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion"), hoy))).toList(),
             id(r,"a_id")==null?null:apelacion(r),
-            oficina(r), str(r,"area_responsable"), str(r,"encargado_area"));
+            oficina(r), str(r,"area_responsable"), str(r,"encargado_area"), str(r,"encauzamiento_alcance"));
     }
     private static String oficina(Map<String,Object> r) {
         String guardada = str(r, "oficina_destinataria");
