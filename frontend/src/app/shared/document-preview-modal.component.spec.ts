@@ -94,12 +94,12 @@ describe('DocumentPreviewModalComponent — archivo real', () => {
     const f = abrir({ nombre: file.name, file });
     expect(documentos.download).not.toHaveBeenCalled();
     expect(URL.createObjectURL).toHaveBeenCalledWith(file);
-    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1');
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1&navpanes=0&view=FitH');
     expect(f.componentInstance.rawUrl()).toBe('blob:real');
     f.componentRef.setInput('open', false); f.detectChanges();
     expect(document.body.querySelector('iframe')).toBeNull();
     f.componentRef.setInput('open', true); f.detectChanges();
-    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1');
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1&navpanes=0&view=FitH');
   });
 
   it('contiene el foco del visor SAIP y lo devuelve al control que lo abrió', async () => {

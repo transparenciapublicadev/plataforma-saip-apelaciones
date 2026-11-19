@@ -219,7 +219,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     const blob = new Blob(['%PDF-real'], { type: 'application/pdf' });
     http.expectOne(`${base}/documentos/88/download`).flush(blob); f.detectChanges();
     expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
-    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1');
+    expect(document.body.querySelector('iframe')?.getAttribute('src')).toBe('blob:real#page=1&navpanes=0&view=FitH');
   });
 
   it('la descarga correcta utiliza los bytes reales y el nombre devuelto por el servidor', () => {

@@ -159,7 +159,7 @@ export class DocumentPreviewModalComponent implements OnChanges, OnDestroy {
 
   private setUrl(url: string): void {
     this.rawUrl.set(url);
-    const vistaInicial = this.isPdf() && url === this.activeObjectUrl ? `${url}#page=1` : url;
+    const vistaInicial = this.isPdf() ? `${url.split('#')[0]}#page=1&navpanes=0&view=FitH` : url;
     this.safeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(vistaInicial));
   }
 

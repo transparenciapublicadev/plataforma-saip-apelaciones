@@ -74,6 +74,7 @@ export interface MultiFileSlot {
               (dragleave)="handleDragLeave($event, slot.id)"
               (drop)="handleDrop($event, slot.id)"
               class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
+              [style.border-color]="slot.file ? '#059669' : null"
               [class.reference-upload-feedback]="!slot.file"
               [class.is-dragging]="slot.dragging"
               [ngClass]="{
@@ -136,7 +137,7 @@ export interface MultiFileSlot {
             </div>
 
             <!-- Botón flotante para quitar la ranura si hay más de una -->
-            @if (slots().length > 1) {
+            @if (!single() && slots().length > 1) {
               <button
                 type="button"
                 (click)="quitarSlot(slot.id)"
@@ -159,17 +160,18 @@ export interface MultiFileSlot {
         }
       </div>
 
-      <!-- Botón para añadir otra ranura de archivo -->
-      <button
-        type="button"
-        (click)="agregarSlot()"
-        [disabled]="!puedeAgregar()"
-        class="inline-flex items-center gap-1.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-        style="color: var(--brand-700)"
-      >
-        <svg lucidePlus class="w-4 h-4"></svg>
-        {{ addLabel() }}
-      </button>
+      @if (!single()) {
+        <button
+          type="button"
+          (click)="agregarSlot()"
+          [disabled]="!puedeAgregar()"
+          class="inline-flex items-center gap-1.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          style="color: var(--brand-700)"
+        >
+          <svg lucidePlus class="w-4 h-4"></svg>
+          {{ addLabel() }}
+        </button>
+      }
 
       <!-- Modal in-page de previsualización (réplica de FileUploadZone.tsx) -->
       @if (previewModalOpen() && previewSlot()) {
@@ -256,6 +258,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   readonly showPreview = input<boolean>(true);
   readonly allowZip = input<boolean>(false);
   readonly addLabel = input<string>('Añadir otro documento');
+  readonly single = input(false);
 
   readonly files = model<File[]>([]);
 
@@ -389,7 +392,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   }
 
   agregarSlot(): void {
-    if (!this.puedeAgregar()) return;
+    if (this.single() || !this.puedeAgregar()) return;
     this.slots.update((prev) => [...prev, { id: this.nextId++, file: null, dragging: false, objectUrl: null }]);
   }
 
@@ -404,6 +407,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   }
 
   private rehidratar(incoming: File[]): void {
+    if (this.single() && incoming.length > 1) incoming = incoming.slice(0, 1);
     const actuales = this.slots().map((slot) => slot.file).filter((file): file is File => !!file);
     if (actuales.length === incoming.length && actuales.every((file, index) => file === incoming[index])) return;
     for (const slot of this.slots()) {
@@ -425,7 +429,8 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
     if (!slot.file || !slot.objectUrl) return;
     this.previewSlot.set(slot);
     this.previewRawUrl.set(slot.objectUrl);
-    this.previewSafeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(slot.objectUrl));
+    const vista = this.isPdf(slot.file) ? `${slot.objectUrl}#page=1&navpanes=0&view=FitH` : slot.objectUrl;
+    this.previewSafeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(vista));
     this.previewModalOpen.set(true);
   }
 
