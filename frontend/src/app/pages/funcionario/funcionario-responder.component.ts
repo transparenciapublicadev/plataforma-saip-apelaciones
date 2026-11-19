@@ -57,8 +57,10 @@ import {
   HitoPanelMessage,
   RegistroEntregaHitoEvent
 } from '../../shared/cronograma-entregas-panel.component';
-import { habilesEntre, hoyLima, Tarifas } from '../../models/calendario.model';
-import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
+import { habilesEntre, hoyLima, sumarHabiles, Tarifas } from '../../models/calendario.model';
+import { descripcionSinNotasInternas, formatosEntregaSolicitados, pideSoporteMagnetico, requiereCuponReproduccion } from '../../utils/modalidad-entrega.util';
+
+const DIAS_HABILES_ENCAUZAMIENTO = 4;
 
 export interface HitoCronogramaItem {
   fecha: string;
@@ -101,7 +103,7 @@ export interface DocRowItem {
 }
 
 export const CAUSALES_DENEGATORIA = [
-  { value: 'no_posee', label: 'La entidad no posee la información y no está obligada a poseerla (corresponde encauzar)' },
+  { value: 'no_posee', label: 'La entidad no posee la información y no está obligada a poseerla' },
   { value: 'inexistente', label: 'La solicitud exige crear o producir información inexistente' },
   { value: 'evaluacion', label: 'La solicitud exige realizar evaluaciones o análisis' },
   { value: 'extraviada', label: 'La información se extravió, destruyó o no puede ubicarse pese a que debía poseerla' },
@@ -501,6 +503,16 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   get parteEncauzada(): string { return this.parteEncauzadaSignal(); }
   set parteEncauzada(v: string) { this.parteEncauzadaSignal.set(v ?? ''); }
 
+  private readonly borradorPorDecision = new Map<DecisionId, {
+    causal: string;
+    fundamento: string;
+    encauzar: boolean;
+    entidad: string;
+    motivo: string;
+    parte: string;
+  }>();
+  readonly derivacionTotalRegistrada = signal(false);
+
   // Cupón de pago (entrega física)
   readonly tarifasConfig = signal<Tarifas>({ copiaSimple: 0.10, copiaCertificada: 0.50, soporteDigital: 1.00 });
   readonly sinCobroReproduccion = signal(false);
@@ -574,10 +586,21 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   readonly formatosSolicitados = computed(() => formatosEntregaSolicitados(this.solicitud()));
 
-  readonly requiereFisico = computed(() => {
-    const s = this.solicitud();
-    return s?.formatoFisico === true || s?.copiaSimple === true || s?.copiaCertificada === true;
+  readonly pideCopiaSimple = computed(() => this.solicitud()?.copiaSimple === true);
+  readonly pideCopiaCertificada = computed(() => this.solicitud()?.copiaCertificada === true);
+  readonly pideSoporte = computed(() => pideSoporteMagnetico(this.solicitud()));
+  readonly requiereFisico = computed(() => requiereCuponReproduccion(this.solicitud()));
+  readonly conceptosCupon = computed(() => {
+    const conceptos: string[] = [];
+    if (this.pideCopiaSimple()) conceptos.push('copia simple');
+    if (this.pideCopiaCertificada()) conceptos.push('copia certificada');
+    if (this.pideSoporte()) conceptos.push('soporte CD/USB');
+    return conceptos;
   });
+
+  descripcionVisible(): string {
+    return descripcionSinNotasInternas(this.solicitud()?.descripcion) || 'Descripción no registrada';
+  }
 
   readonly yaPreciso = computed(() => {
     const sol = this.solicitud();
@@ -694,7 +717,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     : null);
 
   readonly dentroPlazoEncauzamiento = computed(() => {
-    return this.diasTranscurridos() <= 4;
+    const inicio = fechaIso(this.solicitud()?.fechaPresentacion);
+    if (!inicio) return true;
+    return hoyIso() <= sumarHabiles(inicio, DIAS_HABILES_ENCAUZAMIENTO);
   });
 
   readonly liquidacionActiva = computed<LiquidacionCostoSolicitud | null>(() => {
@@ -719,7 +744,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   readonly liqTotal = computed(() => {
     if (this.sinCobroReproduccion()) return 0;
-    return Math.round((this.liqFoliosSubtotal() + this.liqCertificadasSubtotal() + this.liqSoporteNum()) * 100) / 100;
+    const simple = this.pideCopiaSimple() ? this.liqFoliosSubtotal() : 0;
+    const certificada = this.pideCopiaCertificada() ? this.liqCertificadasSubtotal() : 0;
+    const soporte = this.pideSoporte() ? this.liqSoporteNum() : 0;
+    return Math.round((simple + certificada + soporte) * 100) / 100;
   });
 
   readonly cuponMonto = computed(() => {
@@ -729,13 +757,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   readonly desgloseLiquidacion = computed<string[]>(() => {
     const partes: string[] = [];
-    if (this.liqFoliosNum() > 0 && this.liqFoliosSubtotal() > 0) {
+    if (this.pideCopiaSimple() && this.liqFoliosNum() > 0 && this.liqFoliosSubtotal() > 0) {
       partes.push(`${this.liqFoliosNum()} folios simples (S/ ${this.liqFoliosSubtotal().toFixed(2)})`);
     }
-    if (this.liqCertificadasNum() > 0 && this.liqCertificadasSubtotal() > 0) {
+    if (this.pideCopiaCertificada() && this.liqCertificadasNum() > 0 && this.liqCertificadasSubtotal() > 0) {
       partes.push(`${this.liqCertificadasNum()} copias certificadas (S/ ${this.liqCertificadasSubtotal().toFixed(2)})`);
     }
-    if (this.liqSoporteNum() > 0) {
+    if (this.pideSoporte() && this.liqSoporteNum() > 0) {
       partes.push(`Soporte CD/USB (S/ ${this.liqSoporteNum().toFixed(2)})`);
     }
     return partes;
@@ -1012,6 +1040,24 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   seleccionarDecision(value: DecisionId): void {
+    const actual = this.decision();
+    if (actual && actual !== value) {
+      this.borradorPorDecision.set(actual, {
+        causal: this.causalDenegatoria,
+        fundamento: this.fundamentoLegal,
+        encauzar: this.encauzar,
+        entidad: this.entidadDestino,
+        motivo: this.motivoEncauzamiento,
+        parte: this.parteEncauzada
+      });
+      const siguiente = this.borradorPorDecision.get(value);
+      this.causalDenegatoria = siguiente?.causal ?? '';
+      this.fundamentoLegal = siguiente?.fundamento ?? '';
+      this.encauzar = siguiente?.encauzar ?? false;
+      this.entidadDestino = siguiente?.entidad ?? '';
+      this.motivoEncauzamiento = siguiente?.motivo ?? '';
+      this.parteEncauzada = siguiente?.parte ?? '';
+    }
     this.decision.set(value);
     this.error.set('');
   }
@@ -1100,11 +1146,11 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       if (!this.fundamentoLegal.trim()) faltantes.push('Ingrese el fundamento legal que respalda la denegación.');
     }
 
-    if (this.encauzar) {
-      if (!this.entidadDestino.trim()) faltantes.push('Seleccione la entidad destino para el encauzamiento.');
+    if (this.encauzamientoElegido()) {
+      if (!this.entidadDestinoId()) faltantes.push('Seleccione la entidad destino para el encauzamiento.');
       if (this.motivoEncauzamiento.trim().length < 10) faltantes.push('Indique el motivo del encauzamiento (mínimo 10 caracteres).');
       if (curDecision === 'entrega_parcial' && this.parteEncauzada.trim().length < 10) {
-        faltantes.push('Indique el extremo encauzado a la otra entidad (mínimo 10 caracteres).');
+        faltantes.push('Indique el extremo que se deriva a la otra entidad (mínimo 10 caracteres).');
       }
     }
 
@@ -1121,6 +1167,17 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
 
     return faltantes;
+  });
+
+  readonly avisosEnvio = computed(() => {
+    if (this.via() !== 'responder' || !this.decision()) return [];
+    const avisos = [...this.faltantesRespuesta()];
+    if (this.respuestaPendienteVerificacion()) {
+      avisos.push('Hay un envío anterior sin confirmar. Espere esa verificación antes de enviar otra respuesta.');
+    }
+    const motivo = this.motivoRespuestaNoDisponible();
+    if (motivo) avisos.push(motivo);
+    return avisos;
   });
 
   canSubmit(): boolean {
@@ -1142,8 +1199,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const curDecision = this.decision();
     if (!curDecision) return false;
 
-    const encauzamientoValido = !this.encauzar || (
-      !!this.entidadDestino.trim() &&
+    const encauzamientoValido = !this.encauzamientoElegido() || (
+      !!this.entidadDestinoId() &&
       this.motivoEncauzamiento.trim().length >= 10 &&
       (curDecision !== 'entrega_parcial' || this.parteEncauzada.trim().length >= 10)
     );
@@ -1392,9 +1449,52 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.revisarAmpliacion();
   }
 
+  encauzamientoElegido(): boolean {
+    const decision = this.decision();
+    const porCompetencia = decision === 'entrega_parcial'
+      || (decision === 'denegacion_total' && this.causalDenegatoria === 'no_posee');
+    return this.encauzar && this.dentroPlazoEncauzamiento() && porCompetencia;
+  }
+
+  private entidadDestinoId(): number | null {
+    const nombre = this.entidadDestino.trim();
+    if (!nombre) return null;
+    const entidad = this.entidades().find(item => item.nombre === nombre && typeof item.id === 'number');
+    return entidad?.id ?? null;
+  }
+
+  private async registrarEncauzamientoDeLaRespuesta(solicitudId: number, responsable: string, decision: DecisionId): Promise<boolean> {
+    const entidadDestinoId = this.entidadDestinoId();
+    if (!entidadDestinoId || this.motivoEncauzamiento.trim().length < 10) {
+      this.error.set('Seleccione la entidad destino e indique el motivo del encauzamiento (mínimo 10 caracteres).');
+      return false;
+    }
+    if (decision === 'entrega_parcial' && this.parteEncauzada.trim().length < 10) {
+      this.error.set('Indique el extremo que se deriva a la otra entidad (mínimo 10 caracteres).');
+      return false;
+    }
+    const sustento = decision === 'denegacion_total'
+      ? [this.descripcionDenegacion.trim(), this.fundamentoLegal.trim()].filter(Boolean).join('\n\n')
+      : this.parteEncauzada.trim();
+    try {
+      await firstValueFrom(this.solicitudService.registrarEncauzamiento(solicitudId, {
+        entidadDestinoId,
+        motivoEncauzamiento: this.motivoEncauzamiento.trim(),
+        alcance: decision === 'denegacion_total' ? 'TOTAL' : 'PARCIAL',
+        responsable,
+        observacionSustento: sustento || undefined
+      }));
+      return true;
+    } catch (err: unknown) {
+      const msg = problemDetailsMessage(err, 'No se pudo registrar el encauzamiento.');
+      if (/encauzamiento activo/i.test(msg)) return true;
+      this.error.set(msg);
+      return false;
+    }
+  }
+
   motivoRespuestaNoDisponible(): string {
     const sol = this.solicitud();
-    if (this.encauzar) return 'El compuesto con encauzamiento no está disponible de forma simultánea. Registre el encauzamiento desde su sección correspondiente.';
     if (sol?.observaciones?.some(o => o.estado === 'PENDIENTE_SUBSANACION')) return 'Existe una observación pendiente. Recupere la recepción de precisión y el estado vigente antes de responder.';
     if (sol && !this.puedeRegistrarRespuestaManual()) return 'El estado actual del expediente no permite registrar otra respuesta. Consulte la respuesta y sus documentos desde el detalle.';
     return '';
@@ -1412,6 +1512,26 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const motivo = this.motivoRespuestaNoDisponible();
     if (motivo || !this.puedeRegistrarRespuestaManual()) {
       this.error.set(motivo || 'El estado del expediente no permite registrar una respuesta. Recupere su estado actual.'); return;
+    }
+    this.derivacionTotalRegistrada.set(false);
+    if (this.encauzamientoElegido()) {
+      this.loading.set(true);
+      this.error.set('');
+      const derivado = await this.registrarEncauzamientoDeLaRespuesta(
+        sol.id, sesion.nombre || 'Funcionario de entidad', decision);
+      if (!derivado || this.destruido || this.solicitud()?.id !== sol.id) {
+        this.loading.set(false);
+        this.confirmModalAbierto.set(false);
+        return;
+      }
+      if (decision === 'denegacion_total') {
+        this.derivacionTotalRegistrada.set(true);
+        this.loading.set(false);
+        this.confirmModalAbierto.set(false);
+        this.successModalAbierto.set(true);
+        return;
+      }
+      this.loading.set(false);
     }
     const generacion = this.generacionRespuesta; const sesionClave = this.claveSesion();
 
@@ -1640,6 +1760,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   respuestaConfirmTitle(): string {
     if (this.via() === 'precision') return 'Confirme la solicitud de precisión';
     if (this.via() === 'prorroga') return 'Confirme la ampliación del plazo';
+    if (this.encauzamientoElegido() && this.decision() === 'denegacion_total') return 'Confirme el encauzamiento';
     return 'Confirme la respuesta';
   }
 
@@ -1649,6 +1770,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
     if (this.via() === 'prorroga') {
       return 'Revise el nuevo vencimiento y las entregas antes de registrar la ampliación en el expediente.';
+    }
+    if (this.encauzamientoElegido() && this.decision() === 'denegacion_total') {
+      return 'La solicitud se derivará a la entidad indicada. En esta entidad no se registra una denegatoria: el expediente continúa en la entidad competente.';
+    }
+    if (this.encauzamientoElegido() && this.decision() === 'entrega_parcial') {
+      return 'Se registrará la entrega parcial de lo que corresponde a esta entidad y el encauzamiento del extremo indicado.';
     }
     return 'Verifique la decisión y el sustento antes de notificar al ciudadano. Esta acción quedará registrada en el expediente.';
   }
@@ -1697,7 +1824,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const summary: ReferenceConfirmSummary[] = [
       { label: 'Expediente', value: exp, mono: true },
       { label: 'Ciudadano', value: ciu },
-      { label: 'Decisión', value: this.encauzar ? `${this.getDecisionTitle()} · Encauzamiento` : this.getDecisionTitle() },
+      { label: 'Decisión', value: this.encauzamientoElegido() ? `${this.getDecisionTitle()} · Encauzamiento` : this.getDecisionTitle() },
       { label: 'Documentos', value: countText }
     ];
 
@@ -1705,7 +1832,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       summary.splice(3, 0, { label: 'Causal', value: causalLabel });
     }
 
-    if (this.encauzar) {
+    if (this.encauzamientoElegido()) {
       summary.push({ label: 'Entidad destino', value: this.entidadDestino });
       if (decision === 'entrega_parcial' && this.parteEncauzada) {
         summary.push({ label: 'Extremo derivado', value: this.parteEncauzada });
@@ -1759,6 +1886,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   respuestaSuccessEyebrow(): string {
+    if (this.derivacionTotalRegistrada()) return 'Solicitud derivada';
     if (this.documentUploadWarning()) return 'Respuesta registrada · Documento pendiente';
     if (this.via() === 'precision') return 'Precisión solicitada';
     if (this.via() === 'prorroga') return 'Plazo ampliado';
@@ -1766,6 +1894,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   respuestaSuccessTitle(): string {
+    if (this.derivacionTotalRegistrada()) return 'Solicitud derivada a la entidad competente';
     if (this.documentUploadWarning()) return 'La respuesta se guardó con una incidencia documental';
     if (this.via() === 'precision') return 'Solicitud de precisión notificada';
     if (this.via() === 'prorroga') return 'Ampliación del plazo registrada';
@@ -1773,6 +1902,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   respuestaSuccessDescription(): string {
+    if (this.derivacionTotalRegistrada()) {
+      return 'La solicitud quedó en trámite en la entidad de destino. Aquí no se registró una denegatoria.';
+    }
     if (this.documentUploadWarning()) return this.documentUploadWarning();
     if (this.via() === 'precision') {
       return 'Se notificó al administrado por correo y plataforma. Dispone de 2 días hábiles para subsanar; si no responde, el expediente se archivará automáticamente.';

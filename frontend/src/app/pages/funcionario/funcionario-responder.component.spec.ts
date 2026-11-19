@@ -7,6 +7,7 @@ import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
 import { hoyLima } from '../../models/calendario.model';
 import { AuthService } from '../../services/auth.service';
@@ -25,7 +26,8 @@ try {
 /** HTTP/storage are mocked here. PostgreSQL/LOCAL and rollback have a separate real integration suite. */
 describe('FuncionarioResponderComponent recepción coordinada', () => {
   const solicitudes = { findByExpediente: vi.fn(), preverAmpliacion: vi.fn(), registrarAmpliacion: vi.fn(),
-    actualizarEntregaParcial: vi.fn(), registrarDocumentosEntregaParcial: vi.fn(), emitirLiquidacion: vi.fn(), observar: vi.fn() };
+    actualizarEntregaParcial: vi.fn(), registrarDocumentosEntregaParcial: vi.fn(), emitirLiquidacion: vi.fn(), observar: vi.fn(),
+    registrarEncauzamiento: vi.fn() };
   const respuestas = { registrarConDocumentos: vi.fn(), consultarRecepcion: vi.fn(),
     crear: vi.fn(), aceptarSolicitud: vi.fn(), denegarSolicitud: vi.fn(), getCausalesDenegacion: vi.fn() };
   const documentos = { upload: vi.fn() };
@@ -46,6 +48,7 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
       persistida = recibo(clave, files, datos.tipoRespuesta); return of(persistida);
     });
     respuestas.consultarRecepcion.mockImplementation((_id, clave) => persistida?.claveOperacion === clave ? of(persistida) : fallo(404));
+    solicitudes.registrarEncauzamiento.mockReturnValue(of({ id: 9, estadoEncauzamiento: 'DERIVADO' }));
     solicitudes.findByExpediente.mockImplementation(() => of(persistida ? {
       ...inicial(), estado: persistida.respuesta.tipoRespuesta === 'DENEGACION_TOTAL' ? 'DENEGADA' : 'RESPONDIDA', respuesta: persistida.respuesta
     } : inicial()));
@@ -201,9 +204,72 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     vi.spyOn(almacenamiento, 'setItem').mockImplementation(() => { throw new Error('sin almacenamiento'); });
     await c.enviarRespuesta(); expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled(); expect(c.error()).toContain('recuperación');
   });
-  it('mantiene indisponible el compuesto con encauzamiento', async () => {
-    const c = pagina(); c.encauzar = true; await c.enviarRespuesta();
-    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled(); expect(c.error()).toContain('encauzamiento');
+  it('no arrastra la causal ni el encauzamiento de la entrega parcial a la denegatoria', () => {
+    const c = pagina();
+    c.seleccionarDecision('entrega_parcial');
+    c.causalDenegatoria = 'reservada';
+    c.fundamentoLegal = 'Art. 17';
+    c.encauzar = true;
+    c.entidadDestino = 'SUNAT';
+    c.seleccionarDecision('denegacion_total');
+    expect(c.causalDenegatoria).toBe('');
+    expect(c.fundamentoLegal).toBe('');
+    expect(c.encauzar).toBe(false);
+    expect(c.entidadDestino).toBe('');
+    c.seleccionarDecision('entrega_parcial');
+    expect(c.causalDenegatoria).toBe('reservada');
+    expect(c.encauzar).toBe(true);
+    expect(c.entidadDestino).toBe('SUNAT');
+  });
+  it('indica qué falta para habilitar el envío de la entrega total', () => {
+    const c = pagina();
+    c.descripcionAceptacion = '   ';
+    expect(c.canSubmit()).toBe(false);
+    expect(c.avisosEnvio().join(' ')).toMatch(/descripción/i);
+  });
+  it('permite denegar sin entidad destino y solo la exige si se elige encauzar', async () => {
+    const c = pagina();
+    c.decision.set('denegacion_total');
+    c.descripcionDenegacion = 'Sustento de la denegatoria';
+    c.causalDenegatoria = 'no_posee';
+    c.fundamentoLegal = 'Artículo 15 de la Ley 27806';
+    expect(c.canSubmit()).toBe(true);
+    c.encauzar = true;
+    c.motivoEncauzamiento = 'La materia corresponde a otra entidad pública';
+    expect(c.canSubmit()).toBe(false);
+    expect(c.avisosEnvio().join(' ')).toMatch(/entidad destino/i);
+    await c.enviarRespuesta();
+    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled();
+    expect(solicitudes.registrarEncauzamiento).not.toHaveBeenCalled();
+    expect(c.error()).toMatch(/entidad destino/i);
+  });
+  it('deriva la solicitud sin registrar denegatoria cuando el encauzamiento total está completo', async () => {
+    const c = pagina();
+    c.entidades.set([{ id: 8, nombre: 'SUNAT' } as Entidad]);
+    c.decision.set('denegacion_total');
+    c.descripcionDenegacion = 'No es competencia de esta entidad.';
+    c.causalDenegatoria = 'no_posee';
+    c.fundamentoLegal = 'Ley 27806';
+    c.encauzar = true;
+    c.entidadDestino = 'SUNAT';
+    c.motivoEncauzamiento = 'La información corresponde a la administración tributaria.';
+    expect(c.canSubmit()).toBe(true);
+    await c.enviarRespuesta();
+    expect(solicitudes.registrarEncauzamiento).toHaveBeenCalledWith(12, expect.objectContaining({ entidadDestinoId: 8, alcance: 'TOTAL' }));
+    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled();
+    expect(c.successModalAbierto()).toBe(true);
+    expect(c.respuestaSuccessTitle()).toContain('derivada');
+  });
+  it('registra la denegatoria por información inexistente sin ofrecer encauzamiento', () => {
+    const c = pagina();
+    c.decision.set('denegacion_total');
+    c.descripcionDenegacion = 'La solicitud pide producir información que no existe.';
+    c.causalDenegatoria = 'inexistente';
+    c.fundamentoLegal = 'Ley 27806';
+    c.encauzar = true;
+    expect(c.encauzamientoElegido()).toBe(false);
+    expect(c.canSubmit()).toBe(true);
+    expect(c.avisosEnvio().join(' ')).not.toMatch(/encauz/i);
   });
   it('conserva el bloqueo de respuestas mientras hay subsanación pendiente', async () => {
     const c = pagina(); c.solicitud.set({ ...inicial(), estado: 'PENDIENTE_INFORMACION' }); await c.enviarRespuesta();
@@ -300,7 +366,10 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
   });
 
   it('calcula y persiste cupón de entrega física reactivamente antes de registrar la respuesta', async () => {
-    solicitudes.findByExpediente.mockReturnValue(of({ ...inicial(), formatoFisico: true, formatoDigital: false }));
+    solicitudes.findByExpediente.mockReturnValue(of({
+      ...inicial(), formatoFisico: true, formatoDigital: false, copiaSimple: true, copiaCertificada: true,
+      descripcion: '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nPedido'
+    }));
     solicitudes.emitirLiquidacion.mockReturnValue(of({
       id: 301, solicitudId: 12, codigoLiquidacion: 'LIQ-2026-00012', monto: 4.2, moneda: 'PEN',
       estadoLiquidacion: 'EMITIDA', fechaEmision: '2026-11-17', fechaLimiteRecojo: '2026-12-17'
@@ -335,7 +404,9 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
   });
 
   it('detiene el envío de respuesta si emitirLiquidacion falla en el servidor', async () => {
-    solicitudes.findByExpediente.mockReturnValue(of({ ...inicial(), formatoFisico: true, formatoDigital: false }));
+    solicitudes.findByExpediente.mockReturnValue(of({
+      ...inicial(), formatoFisico: true, formatoDigital: false, copiaSimple: true, copiaCertificada: false
+    }));
     solicitudes.emitirLiquidacion.mockReturnValue(fallo(500));
     const c = pagina();
     c.liqFolios = '5';
@@ -589,7 +660,9 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
   it('refleja en tiempo real el cálculo del cupón de pago con OnPush y decimales con coma', () => {
     solicitudes.findByExpediente.mockReturnValue(of({
       id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
-      formatoFisico: true, formatoDigital: false, respuesta: null, ampliacionesPlazo: []
+      formatoFisico: true, formatoDigital: false, copiaSimple: true, copiaCertificada: true,
+      descripcion: '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nPedido',
+      respuesta: null, ampliacionesPlazo: []
     }));
 
     const fixture = TestBed.createComponent(FuncionarioResponderComponent);
@@ -612,5 +685,52 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     c.liqCostoCert = '0,50';
     fixture.detectChanges();
     expect(root.textContent).toContain('S/ 4.20');
+  });
+
+  it('liquida solo la copia simple cuando esa es la modalidad pedida', () => {
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
+      formatoFisico: true, formatoDigital: true, copiaSimple: true, copiaCertificada: false,
+      descripcion: '[Oficina destinataria: Oficina de Hidrocarburo]\n\nSolo copias',
+      respuesta: null, ampliacionesPlazo: []
+    }));
+
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    c.decision.set('entrega_total');
+    c.descripcionAceptacion = 'Disponible en mesa de partes.';
+    c.liqFolios = '3';
+    c.liqCostoFolio = '0.10';
+    c.liqCertificadas = '4';
+    c.liqCostoCert = '0.50';
+    c.liqSoporte = '34';
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('#liq-folios')).not.toBeNull();
+    expect(root.querySelector('#liq-certificadas')).toBeNull();
+    expect(root.querySelector('#liq-soporte')).toBeNull();
+    expect(root.textContent).toContain('copia simple');
+    expect(root.textContent).not.toContain('copia certificada');
+    expect(root.textContent).not.toContain('soporte CD/USB');
+    expect(c.liqTotal()).toBe(0.3);
+    expect(c.descripcionVisible()).toBe('Solo copias');
+  });
+
+  it('oculta el cupón cuando la modalidad es solo correo electrónico', () => {
+    solicitudes.findByExpediente.mockReturnValue(of({
+      id: 12, expediente: 'SAIP-2026-00012', estado: 'EN_REVISION', diasRestantes: 5,
+      formatoFisico: false, formatoDigital: true, copiaSimple: false, copiaCertificada: false,
+      descripcion: 'Por correo', respuesta: null, ampliacionesPlazo: []
+    }));
+
+    const fixture = TestBed.createComponent(FuncionarioResponderComponent);
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    c.decision.set('entrega_total');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Cupón de pago (entrega física)');
+    expect(c.requiereFisico()).toBe(false);
   });
 });
