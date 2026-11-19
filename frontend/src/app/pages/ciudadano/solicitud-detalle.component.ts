@@ -19,7 +19,6 @@ import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shar
 import {
   LucideAlertCircle,
   LucideArrowLeft,
-  LucideArrowRightLeft,
   LucideBellRing,
   LucideCalendar,
   LucideCalendarClock,
@@ -28,14 +27,13 @@ import {
   LucideEye,
   LucideFileText,
   LucideHelpCircle,
-  LucideReceipt,
   LucideScale,
   LucideUser
 } from '@lucide/angular';
 
-import { formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
+import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo, formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 
-export type RequestTabId = 'solicitud' | 'respuesta' | 'notificaciones' | 'apelacion';
+export type RequestTabId = 'solicitud' | 'precision' | 'respuesta' | 'entrega' | 'notificaciones' | 'apelacion' | 'encauzamiento';
 
 export interface RequestTabItem {
   id: RequestTabId;
@@ -78,7 +76,6 @@ export interface NotifStageItem {
     TimelineComponent,
     LucideAlertCircle,
     LucideArrowLeft,
-    LucideArrowRightLeft,
     LucideBellRing,
     LucideCalendar,
     LucideCalendarClock,
@@ -87,7 +84,6 @@ export interface NotifStageItem {
     LucideEye,
     LucideFileText,
     LucideHelpCircle,
-    LucideReceipt,
     LucideScale,
     LucideUser,
     DocumentListComponent,
@@ -152,13 +148,17 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       }
       return this.getEstadoDisplay(est);
     }
+    if (this.liquidacionActiva()) return 'Información puesta a disposición';
     return this.estadoSaipLabel();
   });
 
   readonly tabs = computed<RequestTabItem[]>(() => {
     return [
       { id: 'solicitud', label: 'Solicitud' },
+      ...((this.observacionPendiente() || this.observacionSubsanada()) ? [{ id: 'precision' as const, label: 'Precisión' }] : []),
+      ...(this.encauzamientos().length ? [{ id: 'encauzamiento' as const, label: 'Encauzamiento' }] : []),
       { id: 'respuesta', label: 'Respuesta de la entidad' },
+      ...(this.liquidacionVisible() ? [{ id: 'entrega' as const, label: 'Entrega física' }] : []),
       ...(this.enApelacion()
         ? [{ id: 'notificaciones' as const, label: 'Resoluciones y cédulas' }]
         : [{ id: 'apelacion' as const, label: 'Apelación' }])
@@ -191,13 +191,16 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   readonly misDocumentos = computed<DocumentoDetalleItem[]>(() => {
     const sol = this.solicitud();
-    return sol ? this.mapDocumentos(sol.documentosMetadata ?? sol.documentos ?? [], 'ciudadano', { solicitudId: sol.id }) : [];
+    return sol
+      ? this.mapDocumentos(sol.documentosMetadata ?? sol.documentos ?? [], 'ciudadano', { solicitudId: sol.id })
+        .filter(doc => !esEvidenciaRecojo(doc.nombre))
+      : [];
   });
 
   readonly gruposMisDocumentos = computed(() => {
     const docs = this.misDocumentos();
     return [
-      { key: 'sol', title: 'Adjuntos de la solicitud', docs: docs.filter(d => !d.esSubsanacion) },
+      { key: 'sol', title: 'Adjuntos de la solicitud', docs: docs.filter(d => !d.esSubsanacion && !esEvidenciaRecojo(d.nombre)) },
       { key: 'sub', title: 'Subsanaciones presentadas', docs: docs.filter(d => d.esSubsanacion) }
     ].filter(grupo => grupo.docs.length > 0);
   });
@@ -211,7 +214,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly documentosSolicitudIncompletos = computed(() => {
     const sol = this.solicitud();
     const docs = sol?.documentosMetadata ?? sol?.documentos;
-    return !Array.isArray(docs) || docs.length !== this.misDocumentos().length;
+    if (!Array.isArray(docs)) return true;
+    const propios = docs.filter(doc => !esEvidenciaRecojo(
+      ('nombreOriginal' in doc && doc.nombreOriginal) || ('nombreArchivo' in doc && doc.nombreArchivo) || ''
+    ));
+    return propios.length !== this.misDocumentos().length;
   });
   readonly documentosRespuestaIncompletos = computed(() => {
     const resp = this.solicitud()?.respuesta;
@@ -367,6 +374,8 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
           return;
         }
         this.solicitud.set(data);
+        if (this.observacionPendiente()) this.activeTab.set('precision');
+        else if (this.encauzamientoActivo() && !this.yaRespondio()) this.activeTab.set('encauzamiento');
         this.tokenDetalle = token;
         this.sesionDetalle = sesion;
         this.estadoConsulta.set('disponible');
@@ -581,7 +590,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   encauzamientos(): EncauzamientoSolicitud[] {
     const sol = this.solicitud();
-    return (sol?.encauzamientos ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
+    return (sol?.encauzamientos ?? []).filter(item => this.idValido(item.id) && (item.solicitudId == null || item.solicitudId === sol?.id));
   }
 
   encauzamientoActivo(): EncauzamientoSolicitud | null {
@@ -593,9 +602,23 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return (sol?.liquidacionesCosto ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
   }
 
+  entregaFisicaEnPersona(): boolean {
+    return entregaFisicaSinPublicacionDigital(this.solicitud());
+  }
+
   liquidacionActiva(): LiquidacionCostoSolicitud | null {
     return this.liquidaciones().find((item) =>
       item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null;
+  }
+
+  liquidacionVisible(): LiquidacionCostoSolicitud | null {
+    return this.liquidacionActiva()
+      || this.liquidaciones().find((item) => item.estadoLiquidacion === 'RECOGIDA')
+      || null;
+  }
+
+  descripcionVisible(): string {
+    return descripcionSinNotasInternas(this.solicitud()?.descripcion) || 'Descripción no registrada';
   }
 
   getSolicitanteNombre(): string {
@@ -703,8 +726,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck', 30);
     }
     for (const enc of sol.encauzamientos ?? []) {
-      if (!this.idValido(enc.id) || enc.solicitudId !== sol.id) continue;
-      add('Encauzamiento registrado', enc.motivoEncauzamiento || 'Motivo no registrado.', enc.fechaEncauzamiento, 'search', 40);
+      if (!this.idValido(enc.id) || (enc.solicitudId != null && enc.solicitudId !== sol.id)) continue;
+      const origen = enc.entidadOrigenNombre || 'la entidad de origen';
+      const destino = enc.entidadDestinoNombre || 'la entidad de destino';
+      const motivo = enc.motivoEncauzamiento || 'Motivo no registrado.';
+      add('Encauzamiento registrado', `De ${origen} a ${destino}. ${motivo}`, enc.fechaEncauzamiento, 'search', 40);
     }
     for (const amp of sol.ampliacionesPlazo ?? []) {
       if (!this.idValido(amp.id) || amp.solicitudId !== sol.id) continue;
@@ -726,9 +752,9 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     }
     for (const liq of sol.liquidacionesCosto ?? []) {
       if (!this.idValido(liq.id) || liq.solicitudId !== sol.id) continue;
-      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail', 80);
-      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck', 81);
-      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck', 82);
+      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail', 95);
+      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck', 96);
+      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck', 97);
     }
     if (this.idValido(sol.respuesta?.id)) {
       add('Respuesta de la entidad', this.respLabel(), sol.respuesta?.fechaRespuesta, 'filecheck', 90);

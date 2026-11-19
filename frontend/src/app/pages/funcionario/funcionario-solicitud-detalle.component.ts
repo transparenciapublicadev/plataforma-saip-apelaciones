@@ -1,5 +1,6 @@
 import { ReferenceTabsDirective } from '../../shared/reference-tabs.directive';
-import { Subscription } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { falloConsulta } from '../../utils/consulta-remota.util';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, effect, computed, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -20,9 +21,10 @@ import {
   Solicitud
 } from '../../models/solicitud.model';
 import { Entidad } from '../../models/entidad.model';
-import { hoyLima } from '../../models/calendario.model';
+import { aISO, habilesEntre, hoyLima, sumarDias } from '../../models/calendario.model';
 import { canNavigateToResponse, positiveId } from './funcionario-dashboard.model';
 import { documentosDelRecurso, modalidadesRegistradas, detalleConRelacionesVerificadas } from './entity-request-detail.model';
+import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo } from '../../utils/modalidad-entrega.util';
 import { DocumentoService } from '../../services/documento.service';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
@@ -35,7 +37,7 @@ import {
   DocumentPreviewTarget
 } from '../../shared/document-preview-modal.component';
 
-type DetailTabId = 'respuesta' | 'solicitud' | 'ciudadano' | 'adjuntos' | 'notificaciones' | 'historial' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion';
+type DetailTabId = 'respuesta' | 'solicitud' | 'ciudadano' | 'adjuntos' | 'notificaciones' | 'historial' | 'observacion' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'cronograma';
 
 interface DetailTab {
   id: DetailTabId;
@@ -59,6 +61,7 @@ interface HistorialItem {
 }
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { MultiFileUploadZoneComponent } from '../../shared/multi-file-upload-zone.component';
 import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
 import {
   LucideArrowLeft, LucideSend, LucideClock,
@@ -73,6 +76,7 @@ import {
     CommonModule, FormsModule, RouterLink, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
     StatusBadgeComponent,
+    MultiFileUploadZoneComponent,
     AreaResponsablePanelComponent,
     CronogramaEntregasPanelComponent,
     LucideArrowLeft, LucideSend, LucideClock,
@@ -157,7 +161,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.liquidacionCodigo.set(''); this.liquidacionMonto.set(''); this.liquidacionConcepto.set(''); this.liquidacionObservacion.set('');
     this.liquidacionFechaNotificacion.set('');
     this.liquidacionError.set(''); this.liquidacionSuccess.set(''); this.liquidacionLoading.set(false); this.liquidacionUpdateLoading.set(false);
-    this.archivoComprobante.set(null); this.archivoIdentidad.set(null); this.motivoArchivo.set('NO_RECOJO');
+    this.archivoCargo.set(null); this.archivoComprobante.set(null); this.archivoIdentidad.set(null); this.motivoArchivo.set('NO_RECOJO');
   }
   ngOnDestroy(): void { this.destruido = true; this.generacion++; this.consultas.unsubscribe(); this.navegacion?.unsubscribe(); }
   reintentarConsulta(): void { if (this.reintentable()) this.cargarSolicitud(this.expedienteActual); }
@@ -198,6 +202,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
   liquidacionError = signal<string>('');
   liquidacionSuccess = signal<string>('');
   liquidacionUpdateLoading = signal<boolean>(false);
+  archivoCargo = signal<File | null>(null);
   archivoComprobante = signal<File | null>(null);
   archivoIdentidad = signal<File | null>(null);
   motivoArchivo = signal<'NO_RECOJO' | 'SIN_ACREDITACION_DE_PAGO'>('NO_RECOJO');
@@ -240,7 +245,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       .filter((d: any) => {
         const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
         const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
-        return tipo !== 'SUBSANACION' && !this.esAnexo(nombre);
+        return tipo !== 'SUBSANACION' && !this.esAnexo(nombre) && !esEvidenciaRecojo(nombre);
       })
       .map(d => this.mapToDocRow(d));
   });
@@ -250,7 +255,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       .filter((d: any) => {
         const tipo = (d.tipoDocumento || d.tipoArchivo || d.tipo || '').toUpperCase();
         const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || '';
-        return tipo !== 'SUBSANACION' && this.esAnexo(nombre);
+        return tipo !== 'SUBSANACION' && this.esAnexo(nombre) && !esEvidenciaRecojo(nombre);
       })
       .map(d => this.mapToDocRow(d));
   });
@@ -264,10 +269,23 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       .map(d => this.mapToDocRow(d));
   });
 
+  readonly evidenciasRecojo = computed<DocRowItem[]>(() => {
+    const respuesta = this.solicitud()?.respuesta;
+    const deRespuesta = respuesta
+      ? documentosDelRecurso(respuesta.documentosMetadata ?? respuesta.documentos, { respuestaId: respuesta.id })
+      : [];
+    return [...this.todosDocumentosAdministrado(), ...deRespuesta]
+      .filter((d: any) => esEvidenciaRecojo(d.nombreOriginal || d.nombreArchivo || d.nombre))
+      .map(d => this.mapToDocRow(d));
+  });
+
   readonly documentosRespuestaEntidad = computed<DocRowItem[]>(() => {
     const sol = this.solicitud();
     const respuesta = sol?.respuesta;
-    return respuesta ? documentosDelRecurso(respuesta.documentosMetadata ?? respuesta.documentos, { respuestaId: respuesta.id }).map(d => this.mapToDocRow(d)) : [];
+    if (!respuesta) return [];
+    return documentosDelRecurso(respuesta.documentosMetadata ?? respuesta.documentos, { respuestaId: respuesta.id })
+      .filter((d: any) => !esEvidenciaRecojo(d.nombreOriginal || d.nombreArchivo || d.nombre))
+      .map(d => this.mapToDocRow(d));
   });
 
   readonly formatoEntrega = computed<string>(() => {
@@ -302,7 +320,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     if (!this.contextoVigente()) return null;
     const id = doc?.raw?.id ?? doc?.id;
     return positiveId(id) ? [...this.todosDocumentosAdministrado().map(item => this.mapToDocRow(item)),
-      ...this.documentosRespuestaEntidad()].find(item => item.id === id) ?? null : null;
+      ...this.documentosRespuestaEntidad(),
+      ...this.evidenciasRecojo()].find(item => item.id === id) ?? null : null;
   }
 
   contextoVigente(): boolean {
@@ -364,6 +383,18 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     if (this.yaRespondida()) {
       base.push({ id: 'respuesta', label: 'Respuesta' });
     }
+    if (this.liquidaciones().length > 0) {
+      base.push({ id: 'liquidacion', label: 'Entrega física' });
+    }
+    if (this.enPrecision() || this.observaciones().length > 0) {
+      base.push({ id: 'observacion', label: 'Precisión' });
+    }
+    if (this.ampliaciones().some(item => item.estadoAmpliacion !== 'CANCELADA')) {
+      base.push({ id: 'cronograma', label: 'Cronograma' });
+    }
+    if (this.encauzamientos().length > 0) {
+      base.push({ id: 'encauzamiento', label: 'Encauzamiento' });
+    }
     base.push(
       { id: 'solicitud', label: 'Solicitud' },
       { id: 'ciudadano', label: 'Administrado' },
@@ -385,14 +416,17 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       return [];
     }
 
+    const origen = this.encauzamientos().find(item => item.entidadOrigenNombre)?.entidadOrigenNombre;
     const items: HistorialItem[] = [
       {
         accion: 'Solicitud presentada',
         fecha: sol.fechaPresentacion,
         responsable: 'Registrada en Yaiku',
-        detalle: sol.entidadNombre?.trim()
-          ? `Solicitud registrada y asignada a ${sol.entidadNombre.trim()}.`
-          : 'Solicitud registrada. La entidad responsable no figura en el expediente.',
+        detalle: origen
+          ? `El administrado presentó la solicitud ante ${origen}.`
+          : sol.entidadNombre?.trim()
+            ? `Solicitud registrada y asignada a ${sol.entidadNombre.trim()}.`
+            : 'Solicitud registrada. La entidad responsable no figura en el expediente.',
         color: 'brand'
       }
     ];
@@ -466,7 +500,10 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
       });
     }
 
-    return items;
+    return items
+      .map((item, orden) => ({ item, orden, fecha: aISO(item.fecha) ?? '' }))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.orden - a.orden)
+      .map(entry => entry.item);
   });
 
   readonly observaciones = computed<ObservacionSolicitud[]>(() => this.solicitud()?.observaciones || []);
@@ -529,15 +566,21 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
         this.sesionDetalle = sesion;
         this.solicitud.set(verified.solicitud); this.informacionIncompleta.set(verified.incompleta);
         this.inicializarFechasCronograma(verified.solicitud);
-        const initial = this.puedeVerRespuesta() ? 'respuesta' : 'solicitud';
+        const initial = this.observacionPendiente() && !this.yaRespondida()
+          ? 'observacion'
+          : this.cronogramaPendiente()
+            ? 'cronograma'
+            : this.encauzamientoActivo() && !this.yaRespondida()
+              ? 'encauzamiento'
+              : this.puedeVerRespuesta() ? 'respuesta' : 'solicitud';
         this.activeTab.set(preferredTab && this.tabs().some(tab => tab.id === preferredTab) ? preferredTab : initial);
         if (!this.enPrecision()) this.consultas.add(this.solicitudService.obtenerSeguimientoPlazo(data.id).subscribe({
           next: plazo => {
             if (!vigente()) return;
             if (plazo && Number.isSafeInteger(plazo.diasRestantes)) this.plazoSeguimiento.set(plazo);
-            else this.plazoError.set('Seguimiento del plazo incompleto.');
+            else if (this.getDiasRestantes() === null) this.plazoError.set('Seguimiento del plazo incompleto.');
           },
-          error: () => { if (vigente()) this.plazoError.set('Seguimiento del plazo no disponible. Se conserva la fecha límite registrada.'); }
+          error: () => { if (vigente() && this.getDiasRestantes() === null) this.plazoError.set('Seguimiento del plazo no disponible. Se conserva la fecha límite registrada.'); }
         }));
         if (data.ciudadanoId) this.cargarSolicitudesPrevias(data.ciudadanoId, data.expediente, vigente);
       },
@@ -585,13 +628,29 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     if (this.tabs().some(item => item.id === tab)) this.activeTab.set(tab);
   }
 
+  esEntidadResponsable(): boolean {
+    const sol = this.solicitud();
+    const entidad = this.authService.obtenerSesion()?.entidadId;
+    if (!sol || !entidad) return true;
+    return sol.entidadId === entidad;
+  }
+
   puedeResponder(): boolean {
     const sol = this.solicitud();
-    if (!sol) {
+    if (!sol || !this.esEntidadResponsable()) {
       return false;
     }
 
     return this.contextoVigente() && !this.informacionIncompleta() && canNavigateToResponse(sol);
+  }
+
+  private cronogramaPendiente(): boolean {
+    return this.ampliaciones().some(ampliacion =>
+      ampliacion.estadoAmpliacion !== 'CANCELADA'
+      && this.tieneCronograma(ampliacion)
+      && !this.cronogramaSoloLectura(ampliacion)
+      && (ampliacion.cronograma ?? []).some(hito => hito.estado !== 'ENTREGADA' && hito.estado !== 'CANCELADA')
+    );
   }
 
   puedeVerRespuesta(): boolean {
@@ -644,6 +703,15 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     }
 
     return 'var(--brand-700)';
+  }
+
+  descripcionVisible(): string {
+    return descripcionSinNotasInternas(this.solicitud()?.descripcion) || 'Descripción no registrada';
+  }
+
+  estadoExpedienteVisible(): string {
+    if (this.liquidacionActiva()) return 'Información puesta a disposición';
+    return this.getEstadoDisplay(this.solicitud()?.estado);
   }
 
   getEstadoDisplay(value: string | undefined): string {
@@ -1048,22 +1116,21 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     }));
   }
 
-  onComprobantePagoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] || null;
-    this.archivoComprobante.set(file);
-    if (file) {
-      this.liquidacionError.set('');
-    }
+  entregaFisicaEnPersona(): boolean {
+    return entregaFisicaSinPublicacionDigital(this.solicitud());
   }
 
-  onDocumentoIdentidadSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] || null;
-    this.archivoIdentidad.set(file);
-    if (file) {
-      this.liquidacionError.set('');
-    }
+  private archivoConPrefijo(archivo: File, prefijo: string): File {
+    const nombre = archivo.name.replace(/^.*[\\/]/, '');
+    return new File([archivo], `${prefijo}-${nombre}`, { type: archivo.type });
+  }
+
+  fijarEvidencia(destino: 'cargo' | 'comprobante' | 'identidad', archivos: File[]): void {
+    const archivo = archivos[0] ?? null;
+    if (destino === 'cargo') this.archivoCargo.set(archivo);
+    if (destino === 'comprobante') this.archivoComprobante.set(archivo);
+    if (destino === 'identidad') this.archivoIdentidad.set(archivo);
+    if (archivo) this.liquidacionError.set('');
   }
 
   isRecojoVencido(liq: LiquidacionCostoSolicitud): boolean {
@@ -1085,8 +1152,8 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
 
   confirmarRecojoFisico(liquidacion: LiquidacionCostoSolicitud): void {
     if (!this.contextoVigente() || this.liquidacionUpdateLoading() || !this.liquidaciones().some(item => item.id === liquidacion.id)) return;
-    if (!this.archivoComprobante() || !this.archivoIdentidad()) {
-      this.liquidacionError.set('Adjunte el comprobante de pago y el documento de identidad.');
+    if (!this.archivoCargo() || !this.archivoComprobante() || !this.archivoIdentidad()) {
+      this.liquidacionError.set('Adjunte el cargo de entrega, la foto del comprobante de pago y la copia del DNI de quien recibe.');
       return;
     }
     const vigente = this.operacionVigente();
@@ -1097,30 +1164,32 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     this.liquidacionError.set('');
     this.liquidacionSuccess.set('');
 
-    this.consultas.add(this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
+    const respuestaId = sol.respuesta?.id;
+    if ((sol.estado === 'RESPONDIDA' || sol.estado === 'VENCIDA') && !respuestaId) {
+      this.liquidacionError.set('No hay una respuesta registrada para asociar las constancias de la entrega.');
+      this.liquidacionUpdateLoading.set(false);
+      return;
+    }
+    const relacion = respuestaId ? { respuestaId } : { solicitudId: sol.id };
+    const evidencias = [
+      this.archivoConPrefijo(this.archivoCargo()!, 'cargo-entrega'),
+      this.archivoConPrefijo(this.archivoComprobante()!, 'comprobante-pago'),
+      this.archivoConPrefijo(this.archivoIdentidad()!, 'dni-receptor')
+    ];
+    this.consultas.add(forkJoin(evidencias.map(archivo =>
+      this.documentoService.upload(archivo, 'DOCUMENTO_ADJUNTO', relacion)
+    )).pipe(switchMap(() => this.solicitudService.actualizarLiquidacion(sol.id, liquidacion.id, {
       estado: 'RECOGIDA',
       responsable: this.authService.obtenerSesion()?.nombre || 'Funcionario de entidad'
-    }).subscribe({
+    }))).subscribe({
       next: () => {
         if (!vigente()) return;
-        this.solicitudService.cambiarEstado(sol.id, 'RESPONDIDA').subscribe({
-          next: () => {
-            if (!vigente()) return;
-            this.liquidacionSuccess.set('Entrega física registrada. La información fue recogida y el expediente queda atendido.');
-            this.liquidacionUpdateLoading.set(false);
-            this.archivoComprobante.set(null);
-            this.archivoIdentidad.set(null);
-            this.cargarSolicitud(sol.expediente);
-          },
-          error: () => {
-            if (!vigente()) return;
-            this.liquidacionSuccess.set('Entrega física registrada; consulte el estado del expediente.');
-            this.liquidacionUpdateLoading.set(false);
-            this.archivoComprobante.set(null);
-            this.archivoIdentidad.set(null);
-            this.cargarSolicitud(sol.expediente);
-          }
-        });
+        this.liquidacionSuccess.set('Entrega física registrada. La información fue recogida y el expediente queda en entrega total.');
+        this.liquidacionUpdateLoading.set(false);
+        this.archivoCargo.set(null);
+        this.archivoComprobante.set(null);
+        this.archivoIdentidad.set(null);
+        this.cargarSolicitud(sol.expediente);
       },
       error: (error) => {
         if (!vigente()) return;
@@ -1239,7 +1308,12 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
 
   getDiasRestantes(): number | null {
     const value = this.plazoSeguimiento()?.diasRestantes;
-    return Number.isSafeInteger(value) ? value! : null;
+    if (Number.isSafeInteger(value)) return value!;
+    const limite = aISO(this.solicitud()?.fechaLimite);
+    if (!limite) return null;
+    const hoy = hoyLima();
+    if (hoy > limite) return -habilesEntre(sumarDias(limite, -1), hoy);
+    return habilesEntre(sumarDias(hoy, -1), limite);
   }
 
   getDiasRestantesColor(): string {
@@ -1374,6 +1448,15 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     const generacion = this.generacion, sesion = this.claveSesion(), id = this.solicitud()?.id;
     return () => this.contextoVigente() && generacion === this.generacion && sesion === this.claveSesion()
       && this.solicitud()?.id === id;
+  }
+
+  fechaCalendario(value: unknown): string {
+    if (typeof value !== 'string' || !value) return 'No disponible';
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    const latina = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (latina) return `${latina[1].padStart(2, '0')}/${latina[2].padStart(2, '0')}/${latina[3]}`;
+    return value;
   }
 
   fechaVisible(value: unknown): string | null {

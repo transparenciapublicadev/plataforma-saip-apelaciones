@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { habilesEntre, hoyLima, sumarDias } from '../../models/calendario.model';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { EntidadService } from '../../services/entidad.service';
@@ -68,9 +69,9 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
       respuesta: { id: 11, tipoRespuesta: 'ENTREGA_TOTAL', contenido: 'Texto del funcionario', fechaRespuesta: '2026-11-12', funcionarioNombre: 'Funcionario sintético' } })));
     const f = page();
     const items = f.componentInstance.historialItems();
-    expect(items[0]).toEqual(expect.objectContaining({
+    expect(items[0]?.accion).toBe('Respuesta registrada · Entrega total');
+    expect(items[1]).toEqual(expect.objectContaining({
       responsable: 'Registrada en Yaiku', detalle: 'Solicitud registrada y asignada a Entidad sintética.' }));
-    expect(items[1]?.accion).toBe('Respuesta registrada · Entrega total');
     expect(f.componentInstance.temaInformacion()).toBe('Ejecución presupuestal');
     f.componentInstance.activeTab.set('historial'); f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Registrada en Yaiku');
@@ -219,9 +220,42 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     expect(solicitudes.findByCiudadanoId).not.toHaveBeenCalled();
     expect(f.nativeElement.querySelector('a[href="/funcionario/solicitud/SAIP-2026-00102"]')).toBeNull();
   });
-  it('el seguimiento ausente o fallido no toma el plazo de la solicitud ni calcula desde su límite', () => {
+  it('si el seguimiento institucional no está disponible, cuenta los días hábiles de la fecha límite registrada', () => {
     solicitudes.obtenerSeguimientoPlazo.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 503 })));
-    const f = page(); expect(f.componentInstance.getDiasRestantes()).toBeNull(); expect(f.nativeElement.textContent).toContain('Sin dato');
+    const f = page();
+    const limite = '2026-11-01';
+    const hoy = hoyLima();
+    const esperado = hoy <= limite ? habilesEntre(sumarDias(hoy, -1), limite) : -habilesEntre(sumarDias(limite, -1), hoy);
+    expect(f.componentInstance.getDiasRestantes()).toBe(esperado);
+    expect(f.componentInstance.getDiasRestantes()).not.toBe(3);
+    expect(f.nativeElement.textContent).not.toContain('Sin dato');
+  });
+  it('guarda el encauzamiento en su pestaña y el historial empieza por esa actuación', () => {
+    solicitudes.obtenerSeguimientoPlazo.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+    solicitudes.findByExpediente.mockReturnValue(of(row({
+      fechaPresentacion: '2026-11-18T09:00:00', fechaLimite: '2026-12-02', diasRestantes: null,
+      encauzamientos: [{
+        id: 7, solicitudId: 101, alcance: 'TOTAL', estadoEncauzamiento: 'DERIVADO',
+        fechaEncauzamiento: '2026-11-18T15:00:00', entidadOrigenNombre: 'Ministerio de Educación',
+        entidadDestinoNombre: 'Ministerio de Salud', motivoEncauzamiento: 'Competencia de la materia',
+        responsable: 'Funcionario de origen',
+      }],
+    })));
+    const f = page();
+    expect(f.componentInstance.activeTab()).toBe('encauzamiento');
+    expect(f.nativeElement.textContent).toContain('Encauzamiento total');
+    expect(f.nativeElement.textContent).toContain('Ministerio de Salud');
+    f.componentInstance.cambiarTab('solicitud');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Competencia de la materia');
+    const items = f.componentInstance.historialItems();
+    expect(items[0]?.accion).toContain('Encauzamiento TOTAL');
+    expect(items.at(-1)?.detalle).toContain('El administrado presentó la solicitud ante Ministerio de Educación.');
+    const limite = '2026-12-02';
+    const hoy = hoyLima();
+    const esperado = hoy <= limite ? habilesEntre(sumarDias(hoy, -1), limite) : -habilesEntre(sumarDias(limite, -1), hoy);
+    expect(f.componentInstance.getDiasRestantes()).toBe(esperado);
+    expect(f.nativeElement.textContent).not.toContain('Sin dato');
   });
   it('el seguimiento de plazos prioriza la respuesta del servicio especializado', () => {
     const f = page(); expect(f.componentInstance.getDiasRestantes()).toBe(5); expect(f.componentInstance.solicitud()?.diasRestantes).toBe(3);
@@ -235,9 +269,11 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     const f = page();
     const cards = [...f.nativeElement.querySelectorAll('.stat-card')].map(card => card.textContent).join(' ');
     expect(f.nativeElement.textContent).toContain('En precisión');
-    expect(cards).toContain('Fecha registrada para precisar');
+    expect(cards).toContain('Plazo p/ precisar');
     expect(cards).toContain('17/11/2026');
-    expect(cards).toContain('El plazo legal se cuenta desde el día siguiente a la notificación válida.');
+    expect(cards).not.toContain('Fecha registrada para precisar');
+    expect(f.nativeElement.textContent).toContain('El plazo legal se cuenta desde el día siguiente a la notificación válida.');
+    expect(f.nativeElement.textContent).toContain('Observación registrada · en espera de subsanación');
     expect(cards).not.toContain('Plazo de precisión');
     expect(cards).not.toContain('27/11/2026');
     expect(cards).not.toContain('14 días');
@@ -252,7 +288,7 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
     })));
     const f = page();
     const card = [...f.nativeElement.querySelectorAll('.stat-card')]
-      .find(el => el.textContent?.includes('Fecha registrada para precisar'));
+      .find(el => el.textContent?.includes('Plazo p/ precisar'));
     expect(card?.textContent).toContain('Sin fecha registrada');
     expect(card?.textContent).not.toContain('01/11/2026');
   });

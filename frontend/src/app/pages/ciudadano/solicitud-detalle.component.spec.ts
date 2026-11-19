@@ -69,6 +69,29 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(solicitud.documentos).toEqual([]);
   });
 
+  it('guarda el encauzamiento en su pestaña y lo deja en la línea de tiempo', () => {
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      encauzamientos: [{
+        id: 4, solicitudId: 23, alcance: 'TOTAL', estadoEncauzamiento: 'DERIVADO',
+        fechaEncauzamiento: '2026-11-18T12:00:00',
+        entidadOrigenNombre: 'Ministerio de Educación',
+        entidadDestinoNombre: 'Ministerio de Salud',
+        motivoEncauzamiento: 'Competencia exclusiva de salud pública',
+      }],
+    });
+    expect(f.componentInstance.activeTab()).toBe('encauzamiento');
+    expect(f.nativeElement.textContent).toContain('Encauzamiento total');
+    expect(f.nativeElement.textContent).toContain('De Ministerio de Educación a Ministerio de Salud');
+    f.componentInstance.cambiarTab('solicitud');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Informe de encauzamiento');
+    const linea = f.nativeElement.querySelector('aside[aria-label="Actuaciones registradas"]');
+    expect(linea.textContent).toContain('Encauzamiento registrado');
+    expect(linea.textContent).toContain('De Ministerio de Educación a Ministerio de Salud');
+  });
+
   it('una respuesta sin documentos no inventa adjuntos ni datos personales', () => {
     const f = pagina();
     responder(f, { ...solicitud, ciudadanoNombre: null, ciudadanoDni: null, ciudadanoEmail: null,
@@ -274,11 +297,14 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
       formatoFisico: true,
       copiaSimple: true,
       copiaCertificada: false,
-      descripcion: '[Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nTexto de la solicitud',
+      descripcion: '[Oficina destinataria: Oficina de Hidrocarburo] [Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nTexto de la solicitud',
     });
     const formatos = f.componentInstance.formatosSeleccionados();
     expect(formatos).toEqual(['Correo electrónico', 'Copia simple / fotocopia', 'Soportes magnéticos o digitales']);
     expect(f.nativeElement.textContent).toContain('Correo electrónico');
+    expect(f.nativeElement.textContent).toContain('Texto de la solicitud');
+    expect(f.nativeElement.textContent).not.toContain('[Oficina destinataria:');
+    expect(f.nativeElement.textContent).not.toContain('[Modalidad requerida:');
     expect(f.nativeElement.textContent).not.toContain('Digital');
     expect(formatos).not.toContain('Físico');
   });
@@ -344,7 +370,9 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(timeline.textContent).toContain('Solicitud de precisión');
     expect(timeline.textContent).toContain('En espera de su precisión.');
     expect(timeline.textContent).not.toContain('Indique el periodo');
-    expect(f.nativeElement.textContent).toContain(motivo);
+    expect(f.componentInstance.activeTab()).toBe('precision');
+    expect(f.nativeElement.querySelector('#panel-precision').textContent).toContain(motivo);
+    expect(f.nativeElement.querySelector('#panel-precision').textContent).toContain('Responder precisión');
     for (const tab of ['respuesta', 'apelacion'] as const) {
       f.componentInstance.cambiarTab(tab);
       f.detectChanges();
@@ -392,10 +420,52 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
   it('una liquidación no permite confirmar un recojo solo en el navegador', () => {
     const f = pagina(); responder(f, { ...solicitud, liquidacionesCosto: [{ id: 6, solicitudId: 23,
       estadoLiquidacion: 'PAGADA', moneda: 'PEN', monto: '2.50', concepto: 'Copias', codigoLiquidacion: 'L-6' }] });
+    expect(f.nativeElement.textContent).not.toContain('Ya recogí');
+    f.componentInstance.cambiarTab('entrega');
+    f.detectChanges();
     const button = [...f.nativeElement.querySelectorAll('button')].find((b: any) => b.textContent.includes('Ya recogí')) as HTMLButtonElement;
     expect(button?.disabled).toBe(true);
     expect(f.nativeElement.textContent).toContain('no está disponible en esta pantalla');
+    expect(f.nativeElement.textContent).toContain('Información puesta a disposición');
     expect(f.nativeElement.textContent).not.toContain('Recojo confirmado');
+  });
+
+  it('conserva la pestaña de entrega física cuando el recojo ya fue registrado', () => {
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      estado: 'RESPONDIDA',
+      descripcion: '[Oficina destinataria: Oficina de Hidrocarburo]\n\nPedido de actas',
+      liquidacionesCosto: [{
+        id: 6, solicitudId: 23, estadoLiquidacion: 'RECOGIDA', moneda: 'PEN', monto: '36.80',
+        concepto: 'Copias', codigoLiquidacion: 'CUPON-2026-00008-001', fechaRecojo: '2026-11-18'
+      }]
+    });
+    expect(f.componentInstance.estadoBadge()).toBe('Respondida');
+    expect(f.componentInstance.tabs().map(tab => tab.label)).toContain('Entrega física');
+    expect(f.nativeElement.textContent).toContain('Pedido de actas');
+    expect(f.nativeElement.textContent).not.toContain('[Oficina destinataria:');
+    f.componentInstance.cambiarTab('entrega');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Recojo registrado');
+    expect(f.nativeElement.textContent).toContain('18/11/2026');
+    expect(f.nativeElement.textContent).not.toContain('Ya recogí mi información');
+  });
+
+  it('muestra la liquidación antes que la respuesta cuando ambas son del mismo día', () => {
+    const f = pagina();
+    responder(f, solicitud);
+    const orden = f.componentInstance.buildCitizenTimeline({
+      ...solicitud,
+      fechaPresentacion: '2026-11-17T10:00:00',
+      respuesta: { id: 4, tipoRespuesta: 'ENTREGA_TOTAL', fechaRespuesta: '2026-11-17T18:00:00' },
+      liquidacionesCosto: [{
+        id: 8, solicitudId: 23, estadoLiquidacion: 'NOTIFICADA', concepto: 'Copias',
+        fechaEmision: '2026-11-17T12:00:00'
+      }]
+    } as never);
+    expect(f.componentInstance.timelineDisplayOrder(orden).map(evento => evento.title))
+      .toEqual(['Liquidación registrada', 'Respuesta de la entidad', 'Solicitud presentada']);
   });
 
   it('la precisión navega al caso de uso existente con el expediente exacto sin otro formulario inline', () => {
