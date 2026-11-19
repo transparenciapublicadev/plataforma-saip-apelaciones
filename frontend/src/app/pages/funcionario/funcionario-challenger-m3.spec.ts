@@ -580,9 +580,10 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
           provideHttpClient(),
           provideHttpClientTesting(),
           { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ expediente: 'SAIP-2026-00012' }) } } },
-          { provide: SolicitudService, useValue: mockSolicitudes },
-          { provide: AuthService, useValue: mockAuthService },
-          { provide: EntidadService, useValue: { findActivas: () => of([]) } }
+        { provide: SolicitudService, useValue: mockSolicitudes },
+        { provide: DocumentoService, useValue: { upload: vi.fn(() => of({ id: 1 })), download: vi.fn() } },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: EntidadService, useValue: { findActivas: () => of([]) } }
         ]
       }).compileComponents();
     });
@@ -594,36 +595,44 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       const dummyFile1 = new File(['voucher'], 'voucher.pdf', { type: 'application/pdf' });
       const dummyFile2 = new File(['dni'], 'dni.jpg', { type: 'image/jpeg' });
+      const dummyCargo = new File(['cargo'], 'cargo.pdf', { type: 'application/pdf' });
+      const mensaje = 'Adjunte el cargo de entrega, la foto del comprobante de pago y la copia del DNI de quien recibe.';
 
-      // Scenario A: Neither file provided
+      comp.archivoCargo.set(null);
       comp.archivoComprobante.set(null);
       comp.archivoIdentidad.set(null);
       comp.confirmarRecojoFisico(activeLiquidacion);
-      expect(comp.liquidacionError()).toBe('Adjunte el comprobante de pago y el documento de identidad.');
+      expect(comp.liquidacionError()).toBe(mensaje);
       expect(mockSolicitudes.actualizarLiquidacion).not.toHaveBeenCalled();
 
-      // Scenario B: Only voucher provided
       comp.archivoComprobante.set(dummyFile1);
       comp.archivoIdentidad.set(null);
       comp.confirmarRecojoFisico(activeLiquidacion);
-      expect(comp.liquidacionError()).toBe('Adjunte el comprobante de pago y el documento de identidad.');
+      expect(comp.liquidacionError()).toBe(mensaje);
       expect(mockSolicitudes.actualizarLiquidacion).not.toHaveBeenCalled();
 
-      // Scenario C: Only identity document provided
       comp.archivoComprobante.set(null);
       comp.archivoIdentidad.set(dummyFile2);
       comp.confirmarRecojoFisico(activeLiquidacion);
-      expect(comp.liquidacionError()).toBe('Adjunte el comprobante de pago y el documento de identidad.');
+      expect(comp.liquidacionError()).toBe(mensaje);
       expect(mockSolicitudes.actualizarLiquidacion).not.toHaveBeenCalled();
 
-      // Scenario D: Both files provided -> proceeds to update liquidation and close request
+      comp.archivoCargo.set(null);
+      comp.archivoComprobante.set(dummyFile1);
+      comp.archivoIdentidad.set(dummyFile2);
+      comp.confirmarRecojoFisico(activeLiquidacion);
+      expect(comp.liquidacionError()).toBe(mensaje);
+      expect(mockSolicitudes.actualizarLiquidacion).not.toHaveBeenCalled();
+
+      comp.archivoCargo.set(dummyCargo);
       comp.archivoComprobante.set(dummyFile1);
       comp.archivoIdentidad.set(dummyFile2);
       comp.confirmarRecojoFisico(activeLiquidacion);
       expect(mockSolicitudes.actualizarLiquidacion).toHaveBeenCalledWith(12, 55, expect.objectContaining({
         estado: 'RECOGIDA'
       }));
-      expect(mockSolicitudes.cambiarEstado).toHaveBeenCalledWith(12, 'RESPONDIDA');
+      expect(mockSolicitudes.cambiarEstado).not.toHaveBeenCalled();
+      expect(comp.archivoCargo()).toBeNull();
       expect(comp.archivoComprobante()).toBeNull();
       expect(comp.archivoIdentidad()).toBeNull();
     });

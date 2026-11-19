@@ -33,7 +33,7 @@
                   {{ sol.prioridad }}
                 </span>
               }
-              <app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge>
+              <app-status-badge [status]="estadoExpedienteVisible()"></app-status-badge>
             </div>
             <h1 class="font-display mt-3 break-words" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.02em;">{{ sol.asunto || 'Asunto no informado' }}</h1>
           </div>
@@ -49,168 +49,6 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      @if (ampliaciones().length) {
-        @for (ampliacion of ampliaciones(); track ampliacion.id) {
-          @if (ampliacion.solicitudId === sol.id && ampliacion.estadoAmpliacion !== 'CANCELADA') {
-            @if (tieneCronograma(ampliacion)) {
-              <app-cronograma-entregas-panel
-                [ampliacion]="ampliacion"
-                [fechasReales]="fechaEntregaHito()"
-                [archivosPorHito]="archivosPorHito()"
-                [hitoRegistrandoId]="hitoRegistrandoId()"
-                [hitoExitoId]="hitoExitoId()"
-                [hitoError]="cronogramaHitoError()"
-                [readonly]="cronogramaSoloLectura(ampliacion)"
-                [disabled]="!contextoVigente()"
-                [mostrarAccionRespuestaFinal]="puedeResponder()"
-                (fechaChange)="actualizarFechaEntregaHito($event)"
-                (archivosChange)="actualizarArchivosHito($event)"
-                (registrarEntrega)="registrarEntregaDesdePanel(ampliacion, $event)"
-                (irARespuestaFinal)="irARespuestaFinal()"
-              ></app-cronograma-entregas-panel>
-            } @else {
-              <section class="rounded-lg border border-border p-5 space-y-3" style="border-left: 3px solid var(--gold)">
-                <span class="eyebrow">Ampliación registrada</span>
-                <h2 class="form-section-title">Atención con fecha única</h2>
-                <p class="text-sm">Nueva fecha límite <strong>{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</strong>.</p>
-              </section>
-            }
-          }
-        }
-      }
-      @if (observacionPendiente(); as observacion) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg aria-hidden="true" lucideClock class="w-5 h-5 text-white"></svg>
-          </div>
-          <div class="flex-1">
-            @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
-              <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
-            } @else {
-              <span class="eyebrow" style="color: var(--warning)">Subsanación presentada · pendiente de evaluación</span>
-              <p class="text-sm text-foreground/85 mt-1.5">El administrado subsanó el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaSubsanacion) ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : '—' }}</span>. Evalúe si la observación quedó subsanada.</p>
-              <div class="mt-2 rounded-md p-3 text-sm text-foreground/80" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="font-semibold">Respuesta del administrado:</span> {{ observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Sin detalle' }}
-              </div>
-              <div class="flex flex-wrap gap-2 mt-3">
-                <button
-                  type="button"
-                  (click)="evaluarSubsanacion(observacion, true)"
-                  class="btn-brand !py-2 !text-[13px]">
-                  <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4"></svg> Aceptar subsanación · pasar a trámite
-                </button>
-                <button
-                  type="button"
-                  (click)="evaluarSubsanacion(observacion, false)"
-                  class="btn-ghost-brand !py-2 !text-[13px]">
-                  <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4"></svg> No subsanada · archivar
-                </button>
-              </div>
-            }
-            @if (observacion.motivoObservacion) {
-              <p class="text-sm text-foreground/70 mt-2 leading-relaxed whitespace-pre-line break-words">{{ observacion.motivoObservacion }}</p>
-            }
-          </div>
-        </div>
-      }
-
-      @if (encauzamientoActivo(); as encauzamiento) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-            <svg aria-hidden="true" lucideScale class="w-5 h-5 text-white"></svg>
-          </div>
-          <div>
-            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ (fechaVisible(encauzamiento.fechaEncauzamiento) | date:'dd/MM/yyyy') || 'No informada' }}</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Derivada a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. {{ encauzamiento.motivoEncauzamiento }}</p>
-            @if (encauzamiento.observacionSustento) {
-              <p class="text-sm text-foreground/70 mt-1.5"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
-            }
-          </div>
-        </div>
-      }
-
-      @if (liquidacionActiva(); as liquidacion) {
-        @if (isRecojoVencido(liquidacion)) {
-          <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-              <svg aria-hidden="true" lucideArchive class="w-5 h-5 text-white"></svg>
-            </div>
-            <div class="flex-1 space-y-3">
-              <div>
-                <span class="eyebrow" style="color: var(--brand-700)">Plazo de recojo vencido · {{ fechaVisible(liquidacion.fechaLimiteRecojo) ? (liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy') : liquidacion.fechaLimiteRecojo }}</span>
-                <p class="text-sm text-foreground/85 mt-1.5">Transcurrieron los 30 días calendario sin que se registre la entrega. Archive el expediente indicando el motivo.</p>
-              </div>
-
-              <fieldset class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <legend class="sr-only">Motivo del archivo</legend>
-                <label class="rounded-md p-3 cursor-pointer text-sm" [style.background]="'var(--card)'" [style.border]="motivoArchivo() === 'NO_RECOJO' ? '1px solid var(--brand-600)' : '1px solid var(--border)'">
-                  <span class="flex items-center gap-2 font-semibold">
-                    <input type="radio" name="motivo-archivo-{{ sol.expediente }}" [checked]="motivoArchivo() === 'NO_RECOJO'" (change)="motivoArchivo.set('NO_RECOJO')" />
-                    No recogió la información
-                  </span>
-                  <span class="block text-[12px] text-muted-foreground mt-1">La información estuvo puesta a disposición y el administrado no se presentó.</span>
-                </label>
-                <label class="rounded-md p-3 cursor-pointer text-sm" [style.background]="'var(--card)'" [style.border]="motivoArchivo() === 'SIN_ACREDITACION_DE_PAGO' ? '1px solid var(--brand-600)' : '1px solid var(--border)'">
-                  <span class="flex items-center gap-2 font-semibold">
-                    <input type="radio" name="motivo-archivo-{{ sol.expediente }}" [checked]="motivoArchivo() === 'SIN_ACREDITACION_DE_PAGO'" (change)="motivoArchivo.set('SIN_ACREDITACION_DE_PAGO')" />
-                    No acreditó el pago
-                  </span>
-                  <span class="block text-[12px] text-muted-foreground mt-1">El administrado no presentó el comprobante del costo de reproducción.</span>
-                </label>
-              </fieldset>
-
-              <button type="button" (click)="archivarLiquidacion(liquidacion)" [disabled]="liquidacionUpdateLoading()" class="btn-brand !py-2 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg aria-hidden="true" lucideArchive class="w-4 h-4"></svg>
-                <span>{{ liquidacionUpdateLoading() ? 'Archivando…' : 'Archivar expediente' }}</span>
-              </button>
-            </div>
-          </div>
-        } @else {
-          <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
-              <svg aria-hidden="true" lucidePackageCheck class="w-5 h-5 text-white"></svg>
-            </div>
-            <div class="flex-1 space-y-3">
-              <div>
-                <span class="eyebrow" style="color: var(--gold-dark)">Información puesta a disposición · registrar entrega</span>
-                <p class="text-sm text-foreground/85 mt-1.5">Cuando el administrado se presente, valide su comprobante de pago y su documento de identidad y registre la entrega (mismo acto, sin estado «pagada»). Plazo para recoger: hasta el <span class="font-mono font-semibold">{{ fechaVisible(liquidacion.fechaLimiteRecojo) ? (liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy') : liquidacion.fechaLimiteRecojo }}</span> (30 días calendario).</p>
-                <p class="text-xs text-muted-foreground mt-1">Monto de liquidación: <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span> · Concepto: {{ liquidacion.concepto }}</p>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div class="field">
-                  <label for="comprobante-pago-input" class="field-label text-xs">Comprobante de pago <span class="req">*</span></label>
-                  <input id="comprobante-pago-input" type="file" (change)="onComprobantePagoSelected($event)" class="field-input text-xs" accept=".pdf,.png,.jpg,.jpeg" />
-                  <span class="text-[11px] text-muted-foreground">Voucher o recibo emitido por la caja.</span>
-                </div>
-                <div class="field">
-                  <label for="documento-identidad-input" class="field-label text-xs">Documento de identidad <span class="req">*</span></label>
-                  <input id="documento-identidad-input" type="file" (change)="onDocumentoIdentidadSelected($event)" class="field-input text-xs" accept=".pdf,.png,.jpg,.jpeg" />
-                  <span class="text-[11px] text-muted-foreground">DNI, CE o carta poder escaneada.</span>
-                </div>
-              </div>
-              <button type="button" (click)="confirmarRecojoFisico(liquidacion)" [disabled]="liquidacionUpdateLoading() || !archivoComprobante() || !archivoIdentidad()" class="btn-brand !py-2 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4"></svg>
-                <span>{{ liquidacionUpdateLoading() ? 'Registrando…' : 'Registrar entrega de la información' }}</span>
-              </button>
-            </div>
-          </div>
-        }
-      } @else {
-        @for (liq of liquidaciones(); track liq.id) {
-          @if (liq.estadoLiquidacion === 'RECOGIDA') {
-            <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
-              <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
-                <svg aria-hidden="true" lucideFileText class="w-5 h-5 text-white"></svg>
-              </div>
-              <div>
-                <span class="eyebrow" style="color: var(--gold-dark)">Entrega física registrada · atendida</span>
-                <p class="text-sm text-foreground/85 mt-1.5">Monto <span class="font-semibold">{{ liq.moneda }} {{ liq.monto }}</span> · {{ liq.concepto }}. La información fue entregada con comprobante de pago e identidad validados.</p>
-              </div>
-            </div>
-          }
-        }
-      }
-
       @if (isUrgente()) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
           <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
@@ -276,11 +114,11 @@
             <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--info)">{{ (fechaVisible(sol.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</div>
           </div>
 
-          <div class="stat-card" [class]="enPrecision() ? 'md:col-span-2' : ''">
+          <div class="stat-card">
             <span class="stat-card-bar" style="background: var(--warning)"></span>
             <div class="flex items-center gap-2 mb-2">
               <svg aria-hidden="true" lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
-              <span class="eyebrow">{{ enPrecision() ? 'Fecha registrada para precisar' : 'Fecha límite para responder' }}</span>
+              <span class="eyebrow">{{ enPrecision() ? 'Plazo p/ precisar' : 'Fecha límite para responder' }}</span>
             </div>
             <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">
               @if (enPrecision()) {
@@ -289,9 +127,6 @@
                 {{ (fechaVisible(sol.fechaLimite) | date:'dd/MM/yyyy') || 'No informada' }}
               }
             </div>
-            @if (enPrecision()) {
-              <p class="mt-2 text-sm text-muted-foreground">El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.</p>
-            }
           </div>
 
           @if (!enPrecision()) {
@@ -329,7 +164,7 @@
         </p>
       }
       <app-area-responsable-panel [expediente]="sol.expediente" [entidad]="sol.entidadNombre" [solicitudId]="sol.id"
-        [readOnly]="yaRespondida()" [oficinaIndicada]="sol.oficinaDestinataria" [areaGuardada]="sol.areaResponsable"
+        [readOnly]="yaRespondida() || !esEntidadResponsable()" [oficinaIndicada]="sol.oficinaDestinataria" [areaGuardada]="sol.areaResponsable"
         [encargadoGuardado]="sol.encargadoArea" [fechaGuardada]="sol.fechaAsignacionArea" (guardada)="aplicarArea($event)"></app-area-responsable-panel>
 
       <div class="form-shell" data-reveal>
@@ -352,6 +187,93 @@
         </div>
 
         <div id="response-tabpanel" role="tabpanel" tabindex="0" [attr.aria-labelledby]="'response-tab-' + activeTab()">
+        @if (activeTab() === 'encauzamiento') {
+          <div class="p-6 md:p-8 space-y-4 animate-fade-in">
+            @for (encauzamiento of encauzamientos(); track encauzamiento.id) {
+              <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
+                <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ (fechaVisible(encauzamiento.fechaEncauzamiento) | date:'dd/MM/yyyy') || 'No informada' }}</span>
+                <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
+                  @if (encauzamiento.alcance === 'TOTAL') {
+                    {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} derivó toda la solicitud a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. El expediente sigue siendo el mismo y queda en revisión de la entidad que la recibe.
+                  } @else {
+                    {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} registró un encauzamiento parcial hacia <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>.
+                  }
+                  {{ encauzamiento.motivoEncauzamiento }}
+                </p>
+                @if (encauzamiento.observacionSustento) {
+                  <p class="text-sm text-foreground/70 mt-1.5"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+        @if (activeTab() === 'cronograma') {
+          <div class="p-6 md:p-8 space-y-4 animate-fade-in">
+            @for (ampliacion of ampliaciones(); track ampliacion.id) {
+              @if (ampliacion.solicitudId === sol.id && ampliacion.estadoAmpliacion !== 'CANCELADA') {
+                @if (tieneCronograma(ampliacion)) {
+                  <app-cronograma-entregas-panel
+                    [ampliacion]="ampliacion"
+                    [fechasReales]="fechaEntregaHito()"
+                    [archivosPorHito]="archivosPorHito()"
+                    [hitoRegistrandoId]="hitoRegistrandoId()"
+                    [hitoExitoId]="hitoExitoId()"
+                    [hitoError]="cronogramaHitoError()"
+                    [readonly]="cronogramaSoloLectura(ampliacion)"
+                    [disabled]="!contextoVigente() || !esEntidadResponsable()"
+                    [mostrarAccionRespuestaFinal]="puedeResponder()"
+                    (fechaChange)="actualizarFechaEntregaHito($event)"
+                    (archivosChange)="actualizarArchivosHito($event)"
+                    (registrarEntrega)="registrarEntregaDesdePanel(ampliacion, $event)"
+                    (irARespuestaFinal)="irARespuestaFinal()"
+                  ></app-cronograma-entregas-panel>
+                } @else {
+                  <section class="rounded-lg border border-border p-5 space-y-3" style="border-left: 3px solid var(--gold)">
+                    <span class="eyebrow">Ampliación registrada</span>
+                    <h2 class="form-section-title">Atención con fecha única</h2>
+                    <p class="text-sm">Nueva fecha límite <strong>{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</strong>.</p>
+                  </section>
+                }
+              }
+            }
+          </div>
+        }
+        @if (activeTab() === 'observacion') {
+          <div class="p-6 md:p-8 space-y-4 animate-fade-in">
+            @if (observacionPendiente(); as observacion) {
+              <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
+                <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+                  <svg aria-hidden="true" lucideClock class="w-5 h-5 text-white"></svg>
+                </div>
+                <div class="flex-1">
+                  @if (!observacion.fechaSubsanacion && !observacion.comentarioSubsanacion) {
+                    <span class="eyebrow" style="color: var(--warning)">Observación registrada · en espera de subsanación</span>
+                    <p class="text-sm text-foreground/85 mt-1.5">El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.</p>
+                  } @else {
+                    <span class="eyebrow" style="color: var(--warning)">Subsanación presentada · pendiente de evaluación</span>
+                    <p class="text-sm text-foreground/85 mt-1.5">El administrado subsanó el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaSubsanacion) ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : '—' }}</span>. Evalúe si la observación quedó subsanada.</p>
+                    <div class="mt-2 rounded-md p-3 text-sm text-foreground/80" style="background: var(--card); border: 1px solid var(--border)">
+                      <span class="font-semibold">Respuesta del administrado:</span> {{ observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Sin detalle' }}
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      <button type="button" (click)="evaluarSubsanacion(observacion, true)" class="btn-brand !py-2 !text-[13px]">
+                        <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4"></svg> Aceptar subsanación · pasar a trámite
+                      </button>
+                      <button type="button" (click)="evaluarSubsanacion(observacion, false)" class="btn-ghost-brand !py-2 !text-[13px]">
+                        <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4"></svg> No subsanada · archivar
+                      </button>
+                    </div>
+                  }
+                  @if (observacion.motivoObservacion) {
+                    <p class="text-sm text-foreground/70 mt-2 leading-relaxed whitespace-pre-line break-words">{{ observacion.motivoObservacion }}</p>
+                  }
+                </div>
+              </div>
+            } @else {
+              <p class="text-sm text-muted-foreground">No hay una precisión pendiente en este expediente.</p>
+            }
+          </div>
+        }
         @if (activeTab() === 'respuesta') {
           @if (puedeVerRespuesta()) {
             <div class="p-6 md:p-8 space-y-5 animate-fade-in">
@@ -426,6 +348,11 @@
                 </div>
               }
               @if (sol.respuesta && sol.respuesta.tipoRespuesta !== 'SILENCIO_ADMINISTRATIVO') {
+                @if (entregaFisicaEnPersona()) {
+                  <div class="rounded-lg p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
+                    La información se entrega en soporte físico. Esta pantalla no publica esos documentos para descarga. El cargo de entrega, la foto del comprobante pagado y la copia del DNI de quien recibe se registran en la pestaña Entrega física.
+                  </div>
+                } @else {
                 <div>
                   <span class="eyebrow">Documentos registrados con la respuesta</span>
                   <div class="space-y-2 mt-2">
@@ -460,6 +387,7 @@
                     }
                   </div>
                 </div>
+                }
               }
             </div>
           } @else {
@@ -468,6 +396,133 @@
               <p class="text-sm text-muted-foreground">Aún no existe respuesta registrada.</p>
             </div>
           }
+        }
+
+        @if (activeTab() === 'liquidacion') {
+          <div class="p-6 md:p-8 space-y-5 animate-fade-in">
+            @if (liquidacionActiva(); as liquidacion) {
+              @if (isRecojoVencido(liquidacion)) {
+                <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
+                    <svg aria-hidden="true" lucideArchive class="w-5 h-5 text-white"></svg>
+                  </div>
+                  <div class="flex-1 space-y-3">
+                    <div>
+                      <span class="eyebrow" style="color: var(--brand-700)">Plazo de recojo vencido · {{ fechaCalendario(liquidacion.fechaLimiteRecojo) }}</span>
+                      <p class="text-sm text-foreground/85 mt-1.5">Transcurrieron los 30 días calendario sin que se registre la entrega. Archive el expediente indicando el motivo.</p>
+                    </div>
+                    <fieldset class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <legend class="sr-only">Motivo del archivo</legend>
+                      <label class="rounded-md p-3 cursor-pointer text-sm" [style.background]="'var(--card)'" [style.border]="motivoArchivo() === 'NO_RECOJO' ? '1px solid var(--brand-600)' : '1px solid var(--border)'">
+                        <span class="flex items-center gap-2 font-semibold">
+                          <input type="radio" name="motivo-archivo-{{ sol.expediente }}" [checked]="motivoArchivo() === 'NO_RECOJO'" (change)="motivoArchivo.set('NO_RECOJO')" />
+                          No recogió la información
+                        </span>
+                        <span class="block text-[12px] text-muted-foreground mt-1">La información estuvo puesta a disposición y el administrado no se presentó.</span>
+                      </label>
+                      <label class="rounded-md p-3 cursor-pointer text-sm" [style.background]="'var(--card)'" [style.border]="motivoArchivo() === 'SIN_ACREDITACION_DE_PAGO' ? '1px solid var(--brand-600)' : '1px solid var(--border)'">
+                        <span class="flex items-center gap-2 font-semibold">
+                          <input type="radio" name="motivo-archivo-{{ sol.expediente }}" [checked]="motivoArchivo() === 'SIN_ACREDITACION_DE_PAGO'" (change)="motivoArchivo.set('SIN_ACREDITACION_DE_PAGO')" />
+                          No acreditó el pago
+                        </span>
+                        <span class="block text-[12px] text-muted-foreground mt-1">El administrado no presentó el comprobante del costo de reproducción.</span>
+                      </label>
+                    </fieldset>
+                    <button type="button" (click)="archivarLiquidacion(liquidacion)" [disabled]="liquidacionUpdateLoading()" class="btn-brand !py-2 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <svg aria-hidden="true" lucideArchive class="w-4 h-4"></svg>
+                      <span>{{ liquidacionUpdateLoading() ? 'Archivando…' : 'Archivar expediente' }}</span>
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
+                    <svg aria-hidden="true" lucidePackageCheck class="w-5 h-5 text-white"></svg>
+                  </div>
+                  <div class="flex-1 space-y-3">
+                    <div>
+                      <span class="eyebrow" style="color: var(--gold-dark)">Entrega física · registrar recojo</span>
+                      <p class="text-sm text-foreground/85 mt-1.5">La información no se publica en formato digital. El expediente sigue en <span class="font-semibold">información puesta a disposición</span>: no es un estado distinto ni un pago registrado. La entrega total queda cuando usted valida el recojo. El pago se acredita en ese mismo acto.</p>
+                      <p class="text-sm text-foreground/85 mt-1.5">Cuando la persona se presente, adjunte el cargo de entrega, la foto del comprobante pagado y la copia del DNI de quien recibe. Plazo para recoger: hasta el <span class="font-mono font-semibold">{{ fechaCalendario(liquidacion.fechaLimiteRecojo) }}</span>. Son 30 días calendario contados desde el día siguiente a la notificación del cupón.</p>
+                      <p class="text-xs text-muted-foreground mt-1">Monto de liquidación: <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span> · Concepto: {{ liquidacion.concepto }}</p>
+                    </div>
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                      <app-multi-file-upload-zone
+                        label="Cargo de entrega"
+                        description="Cargo o constancia firmada de la entrega."
+                        [required]="true"
+                        [single]="true"
+                        [keyboardAccessible]="true"
+                        [showPreview]="true"
+                        [files]="archivoCargo() ? [archivoCargo()!] : []"
+                        (filesChange)="fijarEvidencia('cargo', $event)" />
+                      <app-multi-file-upload-zone
+                        label="Comprobante de pago"
+                        description="Foto del voucher o recibo pagado."
+                        [required]="true"
+                        [single]="true"
+                        [keyboardAccessible]="true"
+                        [showPreview]="true"
+                        [files]="archivoComprobante() ? [archivoComprobante()!] : []"
+                        (filesChange)="fijarEvidencia('comprobante', $event)" />
+                      <app-multi-file-upload-zone
+                        label="DNI de quien recibe"
+                        description="Copia del DNI de la persona que recibe."
+                        [required]="true"
+                        [single]="true"
+                        [keyboardAccessible]="true"
+                        [showPreview]="true"
+                        [files]="archivoIdentidad() ? [archivoIdentidad()!] : []"
+                        (filesChange)="fijarEvidencia('identidad', $event)" />
+                    </div>
+                    <button type="button" (click)="confirmarRecojoFisico(liquidacion)" [disabled]="liquidacionUpdateLoading() || !archivoCargo() || !archivoComprobante() || !archivoIdentidad()" class="btn-brand !py-2 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4"></svg>
+                      <span>{{ liquidacionUpdateLoading() ? 'Registrando…' : 'Registrar entrega de la información' }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            } @else {
+              @for (liq of liquidaciones(); track liq.id) {
+                @if (liq.estadoLiquidacion === 'RECOGIDA') {
+                  <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
+                    <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
+                      <svg aria-hidden="true" lucideFileText class="w-5 h-5 text-white"></svg>
+                    </div>
+                    <div>
+                      <span class="eyebrow" style="color: var(--gold-dark)">Entrega física registrada · atendida</span>
+                      <p class="text-sm text-foreground/85 mt-1.5">Monto <span class="font-semibold">{{ liq.moneda }} {{ liq.monto }}</span> · {{ liq.concepto }}. La información fue entregada con cargo, comprobante de pago y DNI de quien recibe.</p>
+                    </div>
+                  </div>
+                }
+              }
+            }
+            @if (evidenciasRecojo().length) {
+              <div>
+                <span class="eyebrow">Constancias de la entrega</span>
+                <div class="space-y-2 mt-2">
+                  @for (d of evidenciasRecojo(); track d.id || d.nombre) {
+                    <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium truncate">{{ d.nombre }}</div>
+                        <div class="font-mono text-[11px] text-muted-foreground">{{ d.tamano }}</div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button type="button" (click)="abrirDocPreview(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" [attr.aria-label]="'Ver ' + d.nombre">
+                          <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
+                          <span>Ver</span>
+                        </button>
+                        <button type="button" (click)="descargarDoc(d)" class="btn-ghost-brand !px-3 !py-2 !text-[13px]" [attr.aria-label]="'Descargar ' + d.nombre">
+                          <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
+                          <span>Descargar</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
         }
 
         @if (activeTab() === 'solicitud') {
@@ -499,7 +554,7 @@
               </div>
               <div>
                 <span class="eyebrow">Estado actual</span>
-                <div class="mt-1.5 text-sm"><app-status-badge [status]="getEstadoDisplay(sol.estado)"></app-status-badge></div>
+                <div class="mt-1.5 text-sm"><app-status-badge [status]="estadoExpedienteVisible()"></app-status-badge></div>
               </div>
             </div>
             <div class="rule-ornament"></div>
@@ -510,7 +565,7 @@
             <div>
               <span class="eyebrow">Descripción detallada</span>
               <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
-                {{ sol.descripcion }}
+                {{ descripcionVisible() }}
               </div>
             </div>
             @for (observacion of observacionesAnteriores(); track observacion.id) {

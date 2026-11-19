@@ -2,10 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Solicitud } from '../../models/solicitud.model';
 import { SolicitudService } from '../../services/solicitud.service';
+import { DocumentoService } from '../../services/documento.service';
 import { AuthService } from '../../services/auth.service';
 import { EntidadService } from '../../services/entidad.service';
 import { FuncionarioSolicitudDetalleComponent } from './funcionario-solicitud-detalle.component';
@@ -31,6 +32,10 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
   const mockEntidadService = {
     findActivas: vi.fn(() => of([]))
   };
+  const mockDocumentoService = {
+    upload: vi.fn(() => of({ id: 1 })),
+    download: vi.fn()
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -43,6 +48,7 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
         provideHttpClientTesting(),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'SAIP-2026-00012' } } } },
         { provide: SolicitudService, useValue: mockSolicitudService },
+        { provide: DocumentoService, useValue: mockDocumentoService },
         { provide: AuthService, useValue: mockAuthService },
         { provide: EntidadService, useValue: mockEntidadService }
       ]
@@ -79,6 +85,28 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
     expect(texto).toContain('No subsanada · archivar');
   });
 
+  it('guarda el cronograma completado en su pestaña y abre la respuesta', () => {
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      estado: 'DENEGADA',
+      tipoInformacion: 'Presupuesto',
+      respuesta: { id: 4, tipoRespuesta: 'DENEGACION_TOTAL', causalDenegatoria: 'inexistente' },
+      ampliacionesPlazo: [{
+        id: 9, solicitudId: 12, estadoAmpliacion: 'COMPLETADA', fechaLimiteAmpliada: '2026-12-30',
+        cronograma: [{ id: 41, numeroEntrega: 1, estado: 'ENTREGADA', descripcion: 'Primera parte', fechaProgramada: '2026-12-01' }]
+      }]
+    } as Solicitud));
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const tabs = [...fixture.nativeElement.querySelectorAll('[role="tab"]')].map((tab: HTMLElement) => tab.textContent?.trim());
+    expect(tabs).toContain('Cronograma');
+    expect(fixture.componentInstance.activeTab()).toBe('respuesta');
+    expect(fixture.nativeElement.querySelector('app-cronograma-entregas-panel')).toBeNull();
+    fixture.componentInstance.cambiarTab('cronograma');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-cronograma-entregas-panel')).not.toBeNull();
+  });
+
   it('debería incluir el panel de área responsable con el expediente de la solicitud', () => {
     const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
     fixture.detectChanges();
@@ -92,6 +120,7 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
       codigoLiquidacion: 'LIQ-001',
       monto: 15.50,
       estado: 'PAGADA',
+      estadoLiquidacion: 'PAGADA',
       fechaEmision: '2026-10-15',
       fechaLimiteRecojo: '2026-11-20'
     };
@@ -105,21 +134,103 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
     const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
     fixture.detectChanges();
     const comp = fixture.componentInstance;
+    expect(fixture.nativeElement.textContent).not.toContain('Cargo de entrega');
+    expect(comp.tabs().some(tab => tab.id === 'liquidacion')).toBe(true);
     comp.activeTab.set('liquidacion');
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Cargo de entrega');
 
     comp.confirmarRecojoFisico(mockLiq as any);
-    expect(comp.liquidacionError()).toContain('comprobante de pago y el documento de identidad');
+    expect(comp.liquidacionError()).toContain('cargo de entrega, la foto del comprobante de pago y la copia del DNI');
     expect(mockSolicitudService.actualizarLiquidacion).not.toHaveBeenCalled();
 
+    comp.archivoCargo.set(new File(['cargo'], 'cargo.pdf', { type: 'application/pdf' }));
     comp.archivoComprobante.set(new File(['voucher'], 'voucher.pdf', { type: 'application/pdf' }));
     comp.archivoIdentidad.set(new File(['dni'], 'dni.pdf', { type: 'application/pdf' }));
     comp.confirmarRecojoFisico(mockLiq as any);
 
+    expect(mockDocumentoService.upload).toHaveBeenCalledTimes(3);
+    expect(mockDocumentoService.upload).toHaveBeenCalledWith(expect.any(File), 'DOCUMENTO_ADJUNTO', { solicitudId: 12 });
     expect(mockSolicitudService.actualizarLiquidacion).toHaveBeenCalledWith(12, 55, expect.objectContaining({
       estado: 'RECOGIDA'
     }));
-    expect(mockSolicitudService.cambiarEstado).toHaveBeenCalledWith(12, 'RESPONDIDA');
+    expect(mockSolicitudService.cambiarEstado).not.toHaveBeenCalled();
+  });
+
+  it('asocia las constancias a la respuesta cuando el expediente ya está respondido', () => {
+    const mockLiq = {
+      id: 55,
+      codigoLiquidacion: 'LIQ-001',
+      monto: 36.8,
+      estadoLiquidacion: 'NOTIFICADA',
+      fechaLimiteRecojo: '2027-01-04'
+    };
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'RESPONDIDA',
+      respuesta: { id: 9 },
+      liquidacionesCosto: [mockLiq]
+    } as any));
+
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    expect(comp.estadoExpedienteVisible()).toBe('Información puesta a disposición');
+    comp.archivoCargo.set(new File(['cargo'], 'cargo.pdf', { type: 'application/pdf' }));
+    comp.archivoComprobante.set(new File(['voucher'], 'voucher.pdf', { type: 'application/pdf' }));
+    comp.archivoIdentidad.set(new File(['dni'], 'dni.pdf', { type: 'application/pdf' }));
+    comp.confirmarRecojoFisico(mockLiq as any);
+
+    expect(mockDocumentoService.upload).toHaveBeenCalledWith(expect.any(File), 'DOCUMENTO_ADJUNTO', { respuestaId: 9 });
+    expect(mockDocumentoService.upload).not.toHaveBeenCalledWith(expect.any(File), 'DOCUMENTO_ADJUNTO', { solicitudId: 12 });
+    expect(mockSolicitudService.actualizarLiquidacion).toHaveBeenCalledWith(12, 55, expect.objectContaining({
+      estado: 'RECOGIDA'
+    }));
+    expect(mockSolicitudService.cambiarEstado).not.toHaveBeenCalled();
+  });
+
+  it('abre y descarga las constancias cuando la entrega física ya fue atendida', () => {
+    mockDocumentoService.download.mockReturnValue(NEVER);
+    mockSolicitudService.findByExpediente.mockReturnValue(of({
+      ...base,
+      id: 12,
+      estado: 'RESPONDIDA',
+      descripcion: '[Oficina destinataria: Oficina de Hidrocarburo] [Modalidad requerida: Soportes magnéticos o digitales (CD/DVD/USB)]\n\nCopia de actas',
+      respuesta: {
+        id: 9,
+        documentosMetadata: [
+          { id: 77, respuestaId: 9, nombreOriginal: 'cargo-entrega-acta.pdf', contentType: 'application/pdf', sizeBytes: 16 },
+          { id: 78, respuestaId: 9, nombreOriginal: 'comprobante-pago-acta.pdf', contentType: 'application/pdf', sizeBytes: 16 },
+          { id: 79, respuestaId: 9, nombreOriginal: 'dni-receptor-acta.pdf', contentType: 'application/pdf', sizeBytes: 16 }
+        ]
+      },
+      liquidacionesCosto: [{ id: 55, estadoLiquidacion: 'RECOGIDA', monto: 36.8, moneda: 'PEN', concepto: 'Copias' }]
+    } as any));
+
+    const fixture = TestBed.createComponent(FuncionarioSolicitudDetalleComponent);
+    fixture.detectChanges();
+    const comp = fixture.componentInstance;
+    expect(comp.descripcionVisible()).toBe('Copia de actas');
+    comp.activeTab.set('solicitud');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Copia de actas');
+    expect(fixture.nativeElement.textContent).not.toContain('[Oficina destinataria:');
+    expect(fixture.nativeElement.textContent).not.toContain('[Modalidad requerida:');
+
+    comp.activeTab.set('liquidacion');
+    fixture.detectChanges();
+    const ver = [...fixture.nativeElement.querySelectorAll('button')]
+      .find((b: HTMLButtonElement) => b.getAttribute('aria-label') === 'Ver cargo-entrega-acta.pdf') as HTMLButtonElement;
+    expect(ver).toBeTruthy();
+    ver.click();
+    expect(comp.previewTarget()?.id).toBe(77);
+    expect(comp.documentoError()).toBe('');
+
+    const descargar = [...fixture.nativeElement.querySelectorAll('button')]
+      .find((b: HTMLButtonElement) => b.getAttribute('aria-label') === 'Descargar cargo-entrega-acta.pdf') as HTMLButtonElement;
+    descargar.click();
+    expect(mockDocumentoService.download).toHaveBeenCalledWith(77, 'cargo-entrega-acta.pdf');
   });
 
   it('cancelar liquidación no envía una observación fáctica inventada', () => {

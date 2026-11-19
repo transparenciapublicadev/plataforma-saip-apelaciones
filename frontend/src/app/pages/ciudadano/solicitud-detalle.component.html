@@ -67,122 +67,6 @@
       @if (documentoError()) {
         <div role="alert" class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">{{ documentoError() }}</div>
       }
-      <!-- Precision uses the existing coordinated reception, not an inline legacy write. -->
-      @if (observacionPendiente(); as observacion) {
-        <div class="detail-notice rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
-            <svg aria-hidden="true" lucideHelpCircle class="w-5 h-5 text-white"></svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <span class="eyebrow" style="color: var(--warning)">Solicitud de precisión registrada</span>
-            <p class="text-sm text-foreground/85 mt-1.5">Revise lo que le pide la entidad y presente su precisión.</p>
-            <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
-              <span class="eyebrow">Observaciones de la entidad</span>
-              <p class="mt-1.5 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
-            </div>
-            <p class="text-xs text-muted-foreground mt-3">
-              @if (observacion.fechaLimiteSubsanacion) {
-                Fecha registrada para precisar: {{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}.
-              } @else { Sin fecha registrada para precisar. }
-              El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.
-            </p>
-            <a [routerLink]="['/ciudadano/precision', sol.expediente]" class="btn-brand mt-3 inline-flex !py-2 !px-4 !text-[13px]">Responder precisión</a>
-          </div>
-        </div>
-      }
-
-      <!-- Subsanación ya presentada -->
-      @if (observacionSubsanada(); as obs) {
-        @if (!observacionPendiente()) {
-          <div class="rounded-lg p-5 flex items-start gap-4" style="background: color-mix(in srgb, var(--success) 8%, transparent); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-left: 3px solid var(--success)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--success)">
-              <svg aria-hidden="true" lucideHelpCircle class="w-5 h-5 text-white"></svg>
-            </div>
-            <div class="flex-1">
-              <span class="eyebrow" style="color: var(--success)">Subsanación presentada · {{ obs.fechaSubsanacion | date:'dd/MM/yyyy' }}</span>
-              <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">Su precisión está registrada. Consulte el estado actual de la solicitud para conocer su atención.</p>
-              @if (obs.comentarioSubsanacion || obs.documentoSubsanacionNombre) {
-                <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
-                  <span class="eyebrow">Su respuesta</span>
-                  <p class="mt-1.5 leading-relaxed">{{ obs.comentarioSubsanacion || obs.documentoSubsanacionNombre }}</p>
-                </div>
-              }
-            </div>
-          </div>
-        }
-      }
-
-      <!-- Encauzamiento — informe de derivación a la entidad competente -->
-      @if (encauzamientoActivo(); as encauzamiento) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-700)">
-            <svg aria-hidden="true" lucideArrowRightLeft class="w-5 h-5 text-white"></svg>
-          </div>
-          <div class="flex-1">
-            <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
-            <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-              @if (encauzamiento.alcance === 'TOTAL') {
-                Su solicitud no correspondía a la competencia de <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> y tiene un encauzamiento registrado a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>, según la actuación registrada.
-              } @else {
-                Hay un encauzamiento parcial registrado por <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> con destino a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span> por corresponder a su competencia.
-              }
-            </p>
-            <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
-              <span class="eyebrow">Informe de encauzamiento</span>
-              <p class="mt-1.5 leading-relaxed">{{ encauzamiento.motivoEncauzamiento }}</p>
-              @if (encauzamiento.observacionSustento) {
-                <p class="mt-2 leading-relaxed"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
-              }
-            </div>
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                <span class="eyebrow">Expediente original</span>
-                <div class="font-mono text-sm font-semibold mt-1">{{ sol.expediente }}</div>
-                <p class="text-[12px] text-muted-foreground mt-1">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</p>
-              </div>
-              <div class="rounded-md p-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <span class="eyebrow" style="color: var(--brand-700)">Entidad receptora</span>
-                <div class="font-mono text-sm font-semibold mt-1">{{ encauzamiento.entidadDestinoNombre }}</div>
-                <p class="text-[12px] text-muted-foreground mt-1">Trámite encauzado</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Ampliación de plazo y entregas parciales se muestran en la pestaña "Respuesta de la entidad" -->
-
-      <!-- Cupón de pago — entrega física -->
-      @if (liquidacionActiva(); as liquidacion) {
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(176,136,66,0.08); border: 1px solid rgba(176,136,66,0.3); border-left: 3px solid var(--gold-dark)">
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--gold-dark)">
-            <svg aria-hidden="true" lucideReceipt class="w-5 h-5 text-white"></svg>
-          </div>
-          <div class="flex-1">
-            <span class="eyebrow" style="color: var(--gold-dark)">Cupón de pago · recojo en oficina</span>
-            <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-              Importe registrado para la entrega física: <span class="font-semibold">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span>. Fecha límite de recojo registrada: <span class="font-semibold">{{ (liquidacion.fechaLimiteRecojo | date:'dd/MM/yyyy') || 'No disponible' }}</span>. Estado: {{ getEstadoDisplay(liquidacion.estadoLiquidacion) }}. Este registro no acredita que la información haya sido entregada.
-            </p>
-            <div class="mt-3 rounded-md p-3 text-xs" style="background: var(--card); border: 1px solid var(--border)">
-              <div class="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Detalle de liquidación · Cupón {{ liquidacion.codigoLiquidacion }}</div>
-              <p class="text-foreground/80 font-mono">{{ liquidacion.concepto }}</p>
-              <div class="flex items-center justify-between mt-1.5 pt-1.5" style="border-top: 1px dashed var(--border)">
-                <span class="text-muted-foreground">Total</span>
-                <span class="font-semibold" style="color: var(--gold-dark)">{{ liquidacion.moneda }} {{ liquidacion.monto }}</span>
-              </div>
-            </div>
-            @if (liquidacion.estadoLiquidacion === 'RECOGIDA') {
-              <p class="text-sm mt-3 font-semibold" style="color: var(--success)">Recojo registrado por la entidad · {{ (liquidacion.fechaRecojo | date:'dd/MM/yyyy') || 'Fecha no registrada' }}.</p>
-            } @else {
-              <button type="button" class="btn-brand !py-2 !px-4 !text-[13px] mt-3 disabled:opacity-50" disabled aria-describedby="recojo-no-disponible">
-                Ya recogí mi información
-              </button>
-              <p id="recojo-no-disponible" class="text-xs text-muted-foreground mt-2">La confirmación de recojo no está disponible en esta pantalla. Consulte con la entidad; no se modifica el expediente localmente.</p>
-            }
-          </div>
-        </div>
-      }
-
       <!-- Subsanación ante el TTAIP — el Tribunal declaró INADMISIBLE el recurso -->
       @if (showSubsanarAction()) {
         <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)">
@@ -291,6 +175,88 @@
               }
             </div>
 
+            @if (activeTab() === 'encauzamiento') {
+              <div role="tabpanel" id="panel-encauzamiento" aria-labelledby="tab-encauzamiento" tabindex="0" class="detail-panel p-6 md:p-8 space-y-4">
+                @for (encauzamiento of encauzamientos(); track encauzamiento.id) {
+                  <div class="rounded-lg p-5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-600)">
+                    <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
+                    <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
+                      @if (encauzamiento.alcance === 'TOTAL') {
+                        Su solicitud no correspondía a la competencia de <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> y quedó encauzada a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. Conserva este mismo expediente: no se creó otra solicitud ni se registró una denegatoria.
+                      } @else {
+                        Hay un encauzamiento parcial registrado por <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> con destino a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span> por corresponder a su competencia.
+                      }
+                    </p>
+                    <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                      <span class="eyebrow">Informe de encauzamiento</span>
+                      <p class="mt-1.5 leading-relaxed">{{ encauzamiento.motivoEncauzamiento }}</p>
+                      @if (encauzamiento.observacionSustento) {
+                        <p class="mt-2 leading-relaxed"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
+                      }
+                    </div>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+                        <span class="eyebrow">Expediente original</span>
+                        <div class="font-mono text-sm font-semibold mt-1">{{ sol.expediente }}</div>
+                        <p class="text-[12px] text-muted-foreground mt-1">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</p>
+                      </div>
+                      <div class="rounded-md p-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <span class="eyebrow" style="color: var(--brand-700)">Entidad receptora</span>
+                        <div class="font-mono text-sm font-semibold mt-1">{{ encauzamiento.entidadDestinoNombre }}</div>
+                        <p class="text-[12px] text-muted-foreground mt-1">Trámite encauzado</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (activeTab() === 'precision') {
+              <div role="tabpanel" id="panel-precision" aria-labelledby="tab-precision" tabindex="0" class="detail-panel p-6 md:p-8 space-y-4">
+                @if (observacionPendiente(); as observacion) {
+                  <div class="rounded-lg p-5 flex items-start gap-4" style="background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.3); border-left: 3px solid var(--warning)">
+                    <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+                      <svg aria-hidden="true" lucideHelpCircle class="w-5 h-5 text-white"></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <span class="eyebrow" style="color: var(--warning)">Solicitud de precisión registrada</span>
+                      <p class="text-sm text-foreground/85 mt-1.5">Revise lo que le pide la entidad y presente su precisión. Esta actuación no es la respuesta de la entidad.</p>
+                      <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                        <span class="eyebrow">Observaciones de la entidad</span>
+                        <p class="mt-1.5 leading-relaxed whitespace-pre-line">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-3">
+                        @if (observacion.fechaLimiteSubsanacion) {
+                          Fecha registrada para precisar: {{ observacion.fechaLimiteSubsanacion | date:'dd/MM/yyyy' }}.
+                        } @else { Sin fecha registrada para precisar. }
+                        El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.
+                      </p>
+                      <a [routerLink]="['/ciudadano/precision', sol.expediente]" class="btn-brand mt-3 inline-flex !py-2 !px-4 !text-[13px]">Responder precisión</a>
+                    </div>
+                  </div>
+                }
+                @if (observacionSubsanada(); as obs) {
+                  @if (!observacionPendiente()) {
+                    <div class="rounded-lg p-5 flex items-start gap-4" style="background: color-mix(in srgb, var(--success) 8%, transparent); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-left: 3px solid var(--success)">
+                      <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--success)">
+                        <svg aria-hidden="true" lucideHelpCircle class="w-5 h-5 text-white"></svg>
+                      </div>
+                      <div class="flex-1">
+                        <span class="eyebrow" style="color: var(--success)">Subsanación presentada · {{ obs.fechaSubsanacion | date:'dd/MM/yyyy' }}</span>
+                        <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">Su precisión está registrada. Consulte el estado actual de la solicitud para conocer su atención.</p>
+                        @if (obs.comentarioSubsanacion || obs.documentoSubsanacionNombre) {
+                          <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                            <span class="eyebrow">Su respuesta</span>
+                            <p class="mt-1.5 leading-relaxed">{{ obs.comentarioSubsanacion || obs.documentoSubsanacionNombre }}</p>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            }
+
             <!-- TAB 1: SOLICITUD -->
             @if (activeTab() === 'solicitud') {
               <div role="tabpanel" id="panel-solicitud" aria-labelledby="tab-solicitud" tabindex="0" class="detail-panel p-6 md:p-8 space-y-5">
@@ -322,7 +288,7 @@
                 <div>
                   <span class="eyebrow">03 · Descripción</span>
                   <div class="mt-2 rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-300)">
-                    {{ sol.descripcion || 'Descripción no registrada' }}
+                    {{ descripcionVisible() }}
                   </div>
                 </div>
 
@@ -481,8 +447,11 @@
                                     @if (entrega.fundamentoDecision) {
                                       <p class="whitespace-pre-line break-words"><strong>Fundamento</strong> · {{ entrega.fundamentoDecision }}</p>
                                     }
-                                    @if (entrega.documentos && entrega.documentos.length > 0) {
+                                    @if (entrega.documentos && entrega.documentos.length > 0 && !entregaFisicaEnPersona()) {
                                       <app-document-list [documents]="entrega.documentos" [readOnly]="true" />
+                                    }
+                                    @if (entrega.documentos && entrega.documentos.length > 0 && entregaFisicaEnPersona()) {
+                                      <p>La información de este hito se entrega en soporte físico.</p>
                                     }
                                   </li>
                                 }
@@ -501,6 +470,8 @@
                       <span class="eyebrow" [style.color]="respDenegada() ? 'var(--brand-700)' : 'var(--success)'">Respuesta de la entidad · {{ respLabel() }}</span>
                       @if (respDenegada()) {
                         <p class="text-sm text-foreground/85 mt-1.5">La entidad denegó el acceso a la información solicitada.</p>
+                      } @else if (entregaFisicaEnPersona()) {
+                        <p class="text-sm text-foreground/85 mt-1.5">La información se entrega en soporte físico. El cupón y el plazo de recojo están en la pestaña Entrega física.</p>
                       } @else if (adjuntosRespuesta().length) {
                         <p class="text-sm text-foreground/85 mt-1.5">Consulte los documentos adjuntos a continuación.</p>
                       }
@@ -553,6 +524,11 @@
 
                   <div class="rule-ornament"></div>
 
+                  @if (entregaFisicaEnPersona()) {
+                    <div class="rounded-lg p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--card); border: 1px solid var(--border)">
+                      Esta pantalla no publica los documentos de la información para descarga. La entidad los entrega en el soporte solicitado.
+                    </div>
+                  } @else {
                   <div>
                     <span class="eyebrow">Documentos adjuntos de la respuesta</span>
                     <div class="space-y-3 mt-3">
@@ -588,6 +564,7 @@
                       }
                     </div>
                   </div>
+                  }
                   @if (ampliacionActiva()) {
                     <div class="rule-ornament"></div>
                     <ng-container [ngTemplateOutlet]="ampliacionCronogramaCard"></ng-container>
@@ -644,6 +621,61 @@
                       El contenido de la respuesta no está disponible en el detalle del expediente.
                     </p>
                   </div>
+                }
+              </div>
+            }
+
+            @if (activeTab() === 'entrega') {
+              <div role="tabpanel" id="panel-entrega" aria-labelledby="tab-entrega" tabindex="0" class="detail-panel p-6 md:p-8">
+                @if (liquidacionVisible(); as liquidacion) {
+                  <article class="coupon" aria-labelledby="cupon-titulo">
+                    <div class="coupon-main">
+                      <div class="coupon-kicker">
+                        <span class="eyebrow" style="color: var(--gold-dark)">Cupón de reproducción</span>
+                        <span class="coupon-state">{{ liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'Recojo registrado' : 'Información puesta a disposición' }}</span>
+                      </div>
+                      <h2 id="cupon-titulo" class="coupon-code">{{ liquidacion.codigoLiquidacion || 'Cupón sin código' }}</h2>
+                      <p class="coupon-concept">{{ liquidacion.concepto || 'Concepto no registrado' }}</p>
+                      <dl class="coupon-meta">
+                        <div>
+                          <dt>Notificado el</dt>
+                          <dd>{{ textoFecha(liquidacion.fechaNotificacion) || 'No disponible' }}</dd>
+                        </div>
+                        <div>
+                          <dt>Vigente hasta</dt>
+                          <dd>{{ textoFecha(liquidacion.fechaLimiteRecojo) || 'No disponible' }}</dd>
+                        </div>
+                        <div>
+                          <dt>Recojo</dt>
+                          <dd>En oficina</dd>
+                        </div>
+                      </dl>
+                      @if (liquidacion.estadoLiquidacion === 'RECOGIDA') {
+                        <p class="coupon-rule">La entidad registró la entrega con el cargo, el comprobante de pago y el documento de quien recibió. El expediente queda en entrega total.</p>
+                      } @else {
+                        <p class="coupon-rule">
+                          El plazo es de 30 días calendario, contados desde el día siguiente a la notificación de este cupón.
+                          El pago se acredita cuando usted recoge la información; no hay un estado de pago aparte.
+                          Si ese plazo vence sin recojo o sin acreditar el pago, el expediente se archiva.
+                        </p>
+                      }
+                    </div>
+                    <div class="coupon-stub">
+                      <span class="coupon-stub-label">Importe</span>
+                      <strong class="coupon-amount">{{ liquidacion.moneda || 'PEN' }} {{ liquidacion.monto }}</strong>
+                      <span class="coupon-stub-note">Presente este cupón en la oficina</span>
+                    </div>
+                    <div class="coupon-foot">
+                      @if (liquidacion.estadoLiquidacion === 'RECOGIDA') {
+                        <p class="text-sm font-semibold" style="color: var(--success)">Recojo registrado por la entidad · {{ textoFecha(liquidacion.fechaRecojo) || 'Fecha no registrada' }}.</p>
+                      } @else {
+                        <button type="button" class="btn-brand !py-2 !px-4 !text-[13px] disabled:opacity-50" disabled aria-describedby="recojo-no-disponible">
+                          Ya recogí mi información
+                        </button>
+                        <p id="recojo-no-disponible" class="text-xs text-muted-foreground">La confirmación de recojo no está disponible en esta pantalla. Consulte con la entidad; no se modifica el expediente localmente.</p>
+                      }
+                    </div>
+                  </article>
                 }
               </div>
             }
