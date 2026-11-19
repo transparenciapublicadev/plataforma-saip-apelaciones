@@ -1,6 +1,6 @@
 import { PanelSolicitud as Solicitud } from '../../models/panel-query.model';
 
-export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'precision' | 'respondidas';
+export type BucketKey = 'todas' | 'san' | 'hoy' | 'semana' | 'plazo' | 'precision' | 'respondidas' | 'derivadas';
 export interface QueueItem {
   solicitud: Solicitud;
   bucket: Exclude<BucketKey, 'todas'>;
@@ -17,7 +17,8 @@ export function readInstitutionList(value: unknown, entidad: number): Solicitud[
   if (!Array.isArray(value)) return null;
   const ids = new Set<number>(), codes = new Set<string>();
   for (const row of value) {
-    if (!row || !positiveId(row.id) || row.entidadId !== entidad || typeof row.expediente !== 'string'
+    const derivada = row?.etapa === 'derivada';
+    if (!row || !positiveId(row.id) || (derivada ? !positiveId(row.entidadId) : row.entidadId !== entidad) || typeof row.expediente !== 'string'
       || !/^SAIP-\d{4}-\d{5,}$/.test(row.expediente) || typeof row.estado !== 'string' || !row.estado.trim()
       || ids.has(row.id) || codes.has(row.expediente)) return null;
     for (const field of ['asunto', 'ciudadanoNombre', 'tipoInformacion', 'fechaPresentacion', 'oficinaDestinataria', 'areaResponsable', 'encargadoArea']) {
@@ -31,7 +32,9 @@ export function readInstitutionList(value: unknown, entidad: number): Solicitud[
 export function queueItem(solicitud: Solicitud): QueueItem {
   const days = Number.isSafeInteger(solicitud.diasRestantes) ? solicitud.diasRestantes! : null;
   let bucket: QueueItem['bucket'] = 'plazo';
-  if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA' || solicitud.respuesta != null) {
+  if (solicitud.etapa === 'derivada') {
+    bucket = 'derivadas';
+  } else if (solicitud.estado === 'RESPONDIDA' || solicitud.estado === 'DENEGADA' || solicitud.respuesta != null) {
     bucket = 'respondidas';
   } else if (solicitud.estado === 'PENDIENTE_INFORMACION'
     || (Array.isArray(solicitud.observaciones) && solicitud.observaciones.some(o => o?.estado === 'PENDIENTE_SUBSANACION'))) {
@@ -54,7 +57,7 @@ export function queueItem(solicitud: Solicitud): QueueItem {
 
 // Navigation is enabled for active un-responded requests that are not in precision
 export function canNavigateToResponse(solicitud: Solicitud): boolean {
-  if (!solicitud) return false;
+  if (!solicitud || solicitud.etapa === 'derivada') return false;
   if (['CONCLUIDA', 'PENDIENTE_INFORMACION', 'RESPONDIDA', 'DENEGADA'].includes(solicitud.estado)) return false;
   if (solicitud.respuesta !== null) return false;
   if (!Array.isArray(solicitud.observaciones)) return false;
