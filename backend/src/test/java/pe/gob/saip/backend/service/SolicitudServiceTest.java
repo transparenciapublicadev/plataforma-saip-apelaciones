@@ -24,6 +24,7 @@ import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.LiquidacionCostoSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
+import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
@@ -682,7 +683,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void emitirLiquidacion_debeCalcularLimiteRecojo30DiasHabiles() {
+    void emitirLiquidacion_debeCalcularLimiteRecojo30DiasCalendario() {
         LocalDate hoy = LocalDate.now();
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFormatoFisico(true);
@@ -714,7 +715,7 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getCodigoLiquidacion()).startsWith("CUPON-" + hoy.getYear() + "-00001-");
         assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
-        assertThat(resultado.getFechaLimiteRecojo()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(hoy, 30));
+        assertThat(resultado.getFechaLimiteRecojo()).isEqualTo(hoy.plusDays(30));
         assertThat(resultado.getMedioNotificacion()).isEqualTo(Solicitud.CanalNotificacion.CASILLA_ELECTRONICA);
         verify(liquidacionRepository).save(any(LiquidacionCostoSolicitud.class));
     }
@@ -801,6 +802,34 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void actualizarLiquidacion_recojoCuandoLaInformacionYaEstaPuestaADisposicion() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RESPONDIDA);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(4L);
+        solicitud.setRespuesta(respuesta);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(70L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setMonto(new BigDecimal("36.80"));
+        liquidacion.setTrazabilidad("Cupón notificado");
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(70L)).thenReturn(Optional.of(liquidacion));
+        when(liquidacionRepository.save(liquidacion)).thenReturn(liquidacion);
+
+        LiquidacionCostoSolicitud resultado = solicitudService.actualizarLiquidacion(
+                1L,
+                70L,
+                new ActualizarLiquidacionCostoRequest("RECOGIDA", null, LocalDate.now(), "Funcionario", "Recojo con cargo, voucher y DNI")
+        );
+
+        assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RESPONDIDA);
+        verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
     void procesarLiquidacionesVencidas_debeArchivarPorNoRecojo() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         var liquidacion = new LiquidacionCostoSolicitud();
@@ -822,6 +851,32 @@ class SolicitudServiceTest {
         assertThat(resultado.getFirst().getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
         assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
         verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
+    void procesarLiquidacionesVencidas_archivaAunqueLaRespuestaFisicaYaExista() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00008", Solicitud.EstadoSolicitud.RESPONDIDA);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(8L);
+        solicitud.setRespuesta(respuesta);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(80L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setFechaLimiteRecojo(LocalDate.now().minusDays(1));
+        liquidacion.setTrazabilidad("Cupón notificado");
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(liquidacion.getId())).thenReturn(Optional.of(liquidacion));
+        when(liquidacionRepository.findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(anyList(), any(LocalDate.class)))
+                .thenReturn(List.of(liquidacion));
+        when(liquidacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<LiquidacionCostoSolicitud> resultado = solicitudService.procesarLiquidacionesVencidas();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.getFirst().getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
     }
 
     @Test

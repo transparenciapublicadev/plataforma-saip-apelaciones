@@ -421,7 +421,7 @@ public class SolicitudService {
 
         String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
         LocalDateTime ahora = LocalDateTime.now();
-        LocalDate fechaLimiteRecojo = DiasHabilesUtil.sumarDiasHabiles(fechaNotificacion, 30);
+        LocalDate fechaLimiteRecojo = fechaNotificacion.plusDays(30);
 
         LiquidacionCostoSolicitud liquidacion = new LiquidacionCostoSolicitud();
         liquidacion.setSolicitud(solicitud);
@@ -451,7 +451,9 @@ public class SolicitudService {
         entityManager.refresh(liquidacion);
         LiquidacionCostoSolicitud.EstadoLiquidacion nuevoEstado = parseEstadoLiquidacionOperativo(request.estado());
         validarLiquidacionNoCerrada(liquidacion);
-        if (nuevoEstado != LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA) {
+        boolean recojoDeEntregaYaRegistrada = nuevoEstado == LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA
+                && solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA;
+        if (nuevoEstado != LiquidacionCostoSolicitud.EstadoLiquidacion.CANCELADA && !recojoDeEntregaYaRegistrada) {
             validarSolicitudEnAtencion(solicitud);
         }
         if (nuevoEstado == liquidacion.getEstadoLiquidacion()
@@ -518,11 +520,16 @@ public class SolicitudService {
             if (!ESTADOS_LIQUIDACION_ACTIVA.contains(liquidacion.getEstadoLiquidacion())
                     || liquidacion.getFechaLimiteRecojo() == null
                     || !liquidacion.getFechaLimiteRecojo().isBefore(LocalDate.now())
-                    || !esSolicitudEnAtencion(solicitud) || solicitud.getRespuesta() != null) continue;
+                    || !puedeCerrarPorRecojoVencido(solicitud)) continue;
             archivarLiquidacionPorNoRecojo(liquidacion);
             procesadas.add(liquidacion);
         }
         return liquidacionRepository.saveAll(procesadas);
+    }
+
+    private boolean puedeCerrarPorRecojoVencido(Solicitud solicitud) {
+        return esSolicitudEnAtencion(solicitud)
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.RESPONDIDA;
     }
 
     private boolean esSolicitudEnAtencion(Solicitud solicitud) {
@@ -1266,7 +1273,7 @@ public class SolicitudService {
         liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
         liquidacion.setTrazabilidad(agregarTraza(
                 liquidacion.getTrazabilidad(),
-                "%s - Archivo por no recojo dentro de 30 días hábiles desde la notificación del cupón."
+                "%s - Archivo por no recojo dentro de 30 días calendario desde el día siguiente a la notificación del cupón."
                         .formatted(ahora)));
         if (liquidacion.getSolicitud() != null) {
             liquidacion.getSolicitud().setEstado(Solicitud.EstadoSolicitud.CONCLUIDA);

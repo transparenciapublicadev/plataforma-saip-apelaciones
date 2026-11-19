@@ -2823,7 +2823,7 @@
           "Solicitudes SAIP"
         ],
         "summary": "Emitir liquidación o cupón SAIP",
-        "description": "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.",
+        "description": "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días calendario para el recojo, contados desde el día siguiente a la notificación.",
         "operationId": "emitirLiquidacion",
         "parameters": [
           {
@@ -3048,7 +3048,7 @@
           "Solicitudes SAIP"
         ],
         "summary": "Procesar liquidaciones vencidas por no recojo",
-        "description": "Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.",
+        "description": "Archiva solicitudes con liquidación notificada cuyo plazo de recojo de 30 días calendario venció, también si la información ya estaba puesta a disposición.",
         "operationId": "procesarLiquidacionesVencidas",
         "responses": {
           "200": {
@@ -4321,7 +4321,7 @@
             }
           },
           "409": {
-            "description": "Solicitud incompatible, ya respondida o con observación pendiente",
+            "description": "Actuación incompatible con el estado de la solicitud o con una observación pendiente. El recojo sigue disponible cuando la información ya está puesta a disposición.",
             "content": {
               "application/problem+json": {
                 "schema": {

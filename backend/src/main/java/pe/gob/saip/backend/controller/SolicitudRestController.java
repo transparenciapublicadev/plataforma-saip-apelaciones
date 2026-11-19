@@ -406,7 +406,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Emitir liquidación o cupón SAIP",
-            description = "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo."
+            description = "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días calendario para el recojo, contados desde el día siguiente a la notificación."
     )
     @PostMapping("/{id}/liquidaciones")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> emitirLiquidacion(
@@ -444,7 +444,7 @@ public class SolicitudRestController {
 
     @ApiResponses({
         @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=LiquidacionCostoSolicitudDTO.class))),
-        @ApiResponse(responseCode="409", description="Solicitud incompatible, ya respondida o con observación pendiente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+        @ApiResponse(responseCode="409", description="Actuación incompatible con el estado de la solicitud o con una observación pendiente. El recojo sigue disponible cuando la información ya está puesta a disposición.", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
     })
     @PatchMapping("/{id}/liquidaciones/{liquidacionId}")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> actualizarLiquidacion(
@@ -458,7 +458,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Procesar liquidaciones vencidas por no recojo",
-            description = "Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció."
+            description = "Archiva solicitudes con liquidación notificada cuyo plazo de recojo de 30 días calendario venció, también si la información ya estaba puesta a disposición."
     )
     @PostMapping("/liquidaciones/vencidas/procesar")
     public ResponseEntity<List<LiquidacionCostoSolicitudDTO>> procesarLiquidacionesVencidas() {
