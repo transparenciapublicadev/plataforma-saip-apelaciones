@@ -149,14 +149,15 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 ### Liquidacion de costos y entrega fisica
 
 - Si la entrega es fisica, la entidad debe notificar el cupon o liquidacion de pago antes del vencimiento legal, operacionalmente hasta el dia 9.
-- El ciudadano tiene 30 dias habiles desde la notificacion del cupon para recoger las copias o coordinar entrega fisica.
-- Si no recoge dentro de 30 dias habiles, se archiva el expediente.
+- El ciudadano tiene 30 dias calendario, contados desde el dia siguiente a la notificacion del cupon, para recoger las copias o acreditar el pago.
+- Mientras el cupon esta vigente, la situacion visible es informacion puesta a disposicion. No se crea un estado de pago: el pago se valida en el mismo acto del recojo.
+- Si no recoge o no acredita el pago dentro de esos 30 dias calendario, se archiva el expediente.
 - La liquidacion aplica solo cuando la SAIP solicita entrega fisica, copia simple o copia certificada.
 - El sistema registra codigo de liquidacion, monto, moneda, concepto, fecha de emision, fecha de notificacion, fecha limite de recojo, medio de notificacion, responsable, observacion y trazabilidad.
-- La fecha limite de recojo se calcula sumando 30 dias habiles desde la fecha de notificacion del cupon.
+- La fecha limite de recojo se calcula sumando 30 dias calendario a la fecha de notificacion del cupon.
 - No se permite mas de una liquidacion activa para la misma SAIP.
 - Estados operativos: `EMITIDA`, `NOTIFICADA`, `PAGADA`, `RECOGIDA`, `ARCHIVADA`, `CANCELADA` y `VENCIDA`.
-- Si el ciudadano paga o recoge la informacion, se registra fecha de pago/recojo; al marcar `RECOGIDA`, la SAIP queda `RESPONDIDA` bajo el modelo actual.
+- Al marcar `RECOGIDA`, la SAIP queda `RESPONDIDA` (entrega total). El recojo tambien procede si la respuesta fisica ya dejo la solicitud en `RESPONDIDA` y el cupon sigue vigente.
 - Si vence el plazo de recojo sin que el ciudadano recoja la informacion, el procesamiento de vencidas marca la liquidacion como `ARCHIVADA` y la SAIP como `CONCLUIDA`.
 - Implementacion actual: `LiquidacionCostoSolicitud` conserva cupon, fechas, responsable, trazabilidad y estado. Postman/Newman valida emision, consulta, rechazo de duplicado activo, pago, recojo y procesamiento de vencidas.
 
