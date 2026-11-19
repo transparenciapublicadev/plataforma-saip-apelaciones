@@ -13,6 +13,7 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelQuery } from '../../models/panel-query.model';
+import { hoyLima } from '../../models/calendario.model';
 
 try {
   getTestBed().initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
@@ -249,6 +250,13 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(find).toHaveBeenCalledWith(7);
     expect(component.pipeline().find(p => p.key === 'todas')?.count).toBe(2);
     expect(component.pipeline().find(p => p.key === 'respondidas')?.count).toBe(1);
+    component.resumen.set({ total: 6, porEstado: {}, porEtapa: { accion: 1, proceso: 4, respondidas: 1 }, porResultado: {}, porTipoInformacion: {}, porEntidad: {} });
+    component.todasSolicitudes.set([request(), request(72), request(73), request(74)]);
+    expect(component.pipeline().find(p => p.key === 'todas')?.count).toBe(6);
+    component.selectedStageKey.set('respondidas');
+    component.todasSolicitudes.set([request(89, 'RESPONDIDA')]);
+    expect(component.pipeline().find(p => p.key === 'todas')?.count).toBe(6);
+    expect(component.pipeline().find(p => p.key === 'respondidas')?.count).toBe(1);
     component.selectStage('respondidas'); fixture.detectChanges();
     expect(component.stageVisible().map(s => s.id)).toEqual([89]);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
@@ -291,14 +299,25 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(pasos.indexOf('Plazo prolongado')).toBeGreaterThan(-1);
     expect(pasos.indexOf('Plazo prolongado')).toBeLessThan(pasos.indexOf('Plazo de la entidad'));
     const texto = fixture.nativeElement.textContent as string;
-    expect(texto).toContain('Comunicado el 16/11/2026');
+    expect(texto).toContain('Plazo prolongado');
     expect(texto).toContain('01/12/2026');
     expect(texto).toContain('20/01/2027');
     expect(texto).not.toContain('01/01/2028');
-    expect(texto.indexOf('Primer bloque')).toBeLessThan(texto.indexOf('Cierre'));
-    expect(texto).toContain('Entrega parcial del hito');
-    expect(texto).toContain('Fecha de la entrega: 15/12/2026');
-    expect(texto).toContain('Pendiente');
+    expect(texto).not.toContain('Comunicado el 16/11/2026');
+    expect(texto).not.toContain('Primer bloque');
+    expect(texto).not.toContain('Entrega parcial del hito');
+  });
+
+  it('cuenta los días hábiles para apelar desde la respuesta registrada', () => {
+    const denied = {
+      ...request(91, 'DENEGADA'),
+      respuesta: { id: 3, tipoRespuesta: 'DENEGACION_TOTAL', fechaRespuesta: hoyLima() },
+    } as Solicitud;
+    expect(component.filaUrgencia(denied)).toMatchObject({ value: 15, unit: 'días hábiles para apelar' });
+    component.todasSolicitudes.set([denied]);
+    component.selectedSolicitudId.set(91);
+    expect(component.accionPrincipal()?.metricValue).toBe('15');
+    expect(component.accionPrincipal()?.metricUnit).toBe('días hábiles para apelar');
   });
 
   it('supports keyboard result selection, stable option IDs, Escape and focus after clearing', () => {

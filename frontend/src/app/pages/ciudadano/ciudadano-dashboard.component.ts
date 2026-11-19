@@ -5,13 +5,14 @@ import { DatePipe } from '@angular/common';
 import { PanelQueryService } from '../../services/panel-query.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
-import { AmpliacionPlazoSolicitud, CronogramaEntregaParcial, DECISIONES_ENTREGA } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud } from '../../models/solicitud.model';
 import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
 import { ProfileDialogService } from '../../services/profile-dialog.service';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { aISO, habilesEntre, hoyLima, sumarDias, sumarHabiles } from '../../models/calendario.model';
 import { parseISO } from 'date-fns';
 
 interface DashboardAction {
@@ -43,23 +44,6 @@ interface PlazoEntidadView {
   restantes: number | null;
   tone: string;
   fechaLimite?: string;
-}
-
-interface EntregaProlongadaView {
-  id: number;
-  numero: number;
-  descripcion: string;
-  fechaProgramada?: string;
-  estado: string;
-  decision?: string;
-  fechaReal?: string;
-}
-
-interface SeguimientoPlazoView {
-  comunicada?: string;
-  original?: string;
-  ampliada?: string;
-  entregas: EntregaProlongadaView[];
 }
 
 interface IndicadorBandeja {
@@ -317,21 +301,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     };
   });
 
-  readonly seguimientoPlazo = computed<SeguimientoPlazoView | null>(() => {
-    const solicitud = this.solicitudPrincipal();
-    const ampliacion = this.ampliacionCoincidente(solicitud);
-    if (!ampliacion) return null;
-    return {
-      comunicada: this.formatDate(ampliacion.fechaNotificacionAmpliacion),
-      original: this.formatDate(ampliacion.fechaLimiteOriginal),
-      ampliada: this.formatDate(ampliacion.fechaLimiteAmpliada),
-      entregas: [...(ampliacion.cronograma ?? [])]
-        .filter(hito => Number.isSafeInteger(hito.numeroEntrega))
-        .sort((a, b) => a.numeroEntrega - b.numeroEntrega)
-        .map(hito => this.entregaVisible(hito)),
-    };
-  });
-
   readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
     const solicitud = this.solicitudPrincipal();
     if (!solicitud || this.enPrecision(solicitud) || this.esSilencioAdministrativo(solicitud)) return null;
@@ -428,9 +397,13 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly pipeline = computed<PipelineStage[]>(() => {
-    const b = this.resumen()?.porEtapa ?? {};
+    const resumen = this.resumen();
+    const b = resumen?.porEtapa ?? {};
     const buckets = this.stageBuckets();
-    const countFor = (key: keyof typeof buckets) => (b[key] !== undefined && b[key] > 0) ? b[key] : (buckets[key]?.length ?? b[key] ?? 0);
+    const countFor = (key: keyof typeof buckets) => {
+      if (key === 'todas') return resumen?.total ?? buckets.todas.length;
+      return (b[key] !== undefined && b[key] > 0) ? b[key] : (buckets[key]?.length ?? b[key] ?? 0);
+    };
     return [
       { key: 'todas', num: '00', iconName: 'layers', color: 'var(--foreground)', bg: 'var(--muted)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: countFor('todas') },
       { key: 'accion', num: '01', iconName: 'alertTriangle', color: 'var(--warning)', bg: 'var(--warning-subtle)', label: 'Requieren su acción', desc: 'Subsane ante la entidad (1ª) o el Tribunal (2ª), o recoja su información', count: countFor('accion') },
@@ -876,7 +849,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return { value: 'Plazo vencido', unit: 'silencio administrativo negativo', tone: 'var(--brand-700)' };
     }
     if (estado === 'DENEGADA') {
-      return { value: 'No disponible', unit: 'días para apelar', tone: 'var(--gold-dark)' };
+      return this.indicadorApelacion(s);
     }
     if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(s);
@@ -1094,6 +1067,24 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       };
     }
 
+    if (solicitud.encauzamientoAlcance === 'TOTAL' && (estado === 'RECEPCIONADA' || estado === 'EN_REVISION') && !solicitud.respuesta) {
+      return {
+        eyebrow: 'Solicitud encauzada a otra entidad',
+        titulo: 'Su solicitud fue derivada',
+        detalle: `El expediente ${expediente} sigue siendo el mismo. Ahora lo atiende ${entidad}. No se creó otra solicitud ni se registró una denegatoria.`,
+        metricValue: '→',
+        metricUnit: 'derivada',
+        ctaLabel: 'Ver encauzamiento',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'scale',
+        toneColor: 'var(--info)',
+        toneBg: 'linear-gradient(135deg, rgba(29,78,216,0.10), var(--card) 70%)',
+        toneSoft: 'rgba(29,78,216,0.25)',
+        expediente,
+        entidad,
+      };
+    }
+
     if (estado === 'ENCAUZADA') {
       return {
         eyebrow: 'Solicitud encauzada a otra entidad',
@@ -1114,14 +1105,15 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
     if (estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
       const esSilencio = estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud);
+      const apelacion = this.indicadorApelacion(solicitud);
       return {
         eyebrow: esSilencio ? 'Silencio administrativo · puede apelar' : 'Consulta de apelación',
         titulo: 'Revise las opciones de apelación',
         detalle: esSilencio
           ? 'La entidad no respondió dentro del plazo legal. Puede presentar apelación por silencio administrativo negativo.'
-          : 'La entidad denegó su solicitud. Puede presentar apelación dentro del plazo legal aplicable.',
-        metricValue: esSilencio ? 'Sin' : 'No disponible',
-        metricUnit: esSilencio ? 'plazo perentorio' : 'días para apelar',
+          : 'La entidad denegó su solicitud. Puede presentar apelación dentro de 15 días hábiles desde el día siguiente a la respuesta registrada.',
+        metricValue: String(apelacion.value),
+        metricUnit: apelacion.unit,
         ctaLabel: 'Apelar al Tribunal',
         route: ['/ciudadano/nueva-apelacion'],
         queryParams: { solicitudId: solicitud.id },
@@ -1200,6 +1192,14 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
           date: this.formatDate(obs.fechaSubsanacion), status: 'done',
         });
       }
+    }
+
+    if (solicitud.encauzamientoAlcance === 'TOTAL' || solicitud.encauzamientoAlcance === 'PARCIAL') {
+      steps.push({
+        key: 'encauzamiento',
+        label: solicitud.encauzamientoAlcance === 'TOTAL' ? 'Encauzada a otra entidad' : 'Encauzamiento parcial',
+        status: 'done',
+      });
     }
 
     const ampliacion = this.ampliacionCoincidente(solicitud);
@@ -1381,17 +1381,30 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     return ampliacion;
   }
 
-  private entregaVisible(hito: CronogramaEntregaParcial): EntregaProlongadaView {
-    const entregada = hito.estado === 'ENTREGADA';
+  private indicadorApelacion(solicitud: Solicitud): IndicadorBandeja {
+    if ((solicitud.estado || '').toUpperCase() === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+      return { value: 'Sin', unit: 'plazo perentorio', tone: 'var(--gold-dark)' };
+    }
+    const dias = this.diasParaApelar(solicitud);
+    if (dias === null) return { value: 'No disponible', unit: 'días para apelar', tone: 'var(--gold-dark)' };
+    if (dias < 0) return { value: 'Vencido', unit: 'plazo para apelar', tone: 'var(--brand-700)' };
+    if (dias === 0) return { value: 'Último día', unit: 'para apelar', tone: 'var(--brand-700)' };
     return {
-      id: hito.id,
-      numero: hito.numeroEntrega,
-      descripcion: hito.descripcion,
-      fechaProgramada: this.formatDate(hito.fechaProgramada),
-      estado: entregada ? 'Entregada' : hito.incumplida ? 'Fuera de plazo' : 'Pendiente',
-      decision: entregada && hito.decision ? DECISIONES_ENTREGA[hito.decision] : undefined,
-      fechaReal: entregada ? this.formatDate(hito.fechaEntregaReal ?? undefined) : undefined,
+      value: dias,
+      unit: dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar',
+      tone: dias <= 3 ? 'var(--brand-700)' : 'var(--gold-dark)',
     };
+  }
+
+  /** 15 días hábiles del mapa, contados desde el día siguiente a la respuesta registrada. */
+  private diasParaApelar(solicitud: Solicitud): number | null {
+    const ancla = aISO(solicitud.respuesta?.fechaRespuesta);
+    if (!ancla) return null;
+    const limite = sumarHabiles(ancla, 15);
+    const hoy = hoyLima();
+    if (hoy > limite) return -1;
+    const desde = hoy <= ancla ? ancla : sumarDias(hoy, -1);
+    return habilesEntre(desde, limite);
   }
 
   private diasRestantesParaEntidad(solicitud: Solicitud): number | null {
