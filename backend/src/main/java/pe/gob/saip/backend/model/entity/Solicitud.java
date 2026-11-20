@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import pe.gob.saip.backend.config.ClockConfig;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.LocalDate;
@@ -145,8 +146,8 @@ public class Solicitud {
     @PrePersist
     protected void onCreate() {
         fechaPresentacion = LocalDateTime.now();
-        // BR-SAIP-001/002: Plazo de 10 días hábiles (excluye fines de semana y feriados peruanos)
-        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 10);
+        // BR-SAIP-001/002: 10 días hábiles desde el día siguiente, en el calendario de Lima.
+        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(ClockConfig.ZONA_LIMA), 10);
         if (estado == null) {
             estado = EstadoSolicitud.RECEPCIONADA;
         }
@@ -205,7 +206,7 @@ public class Solicitud {
             return 0;
         }
         LocalDate ancla = fechaPresentacion == null ? null : fechaPresentacion.toLocalDate();
-        return DiasHabilesUtil.diasHabilesVigentes(ancla, fechaLimite);
+        return DiasHabilesUtil.diasHabilesVigentes(ancla, fechaLimite, LocalDate.now(ClockConfig.ZONA_LIMA));
     }
 
     /**
