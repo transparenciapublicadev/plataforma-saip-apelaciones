@@ -689,6 +689,7 @@ public class SolicitudService {
         ampliacion.setCronograma(entregas);
 
         solicitud.setFechaLimite(fechaLimiteAmpliada);
+        marcarAtencionPorAmpliacion(solicitud);
         solicitudRepository.save(solicitud);
         return ampliacionRepository.save(ampliacion);
     }
@@ -723,7 +724,7 @@ public class SolicitudService {
     @Transactional
     public CronogramaEntregaParcialDTO registrarDocumentosEntregaParcial(Long solicitudId, Long ampliacionId,
             Long entregaId, RegistrarDocumentosEntregaParcialRequest request) {
-        bloquearSolicitudInstitucional(solicitudId);
+        marcarAtencionPorAmpliacion(bloquearSolicitudInstitucional(solicitudId));
         AmpliacionPlazoSolicitud ampliacion = buscarAmpliacionDeSolicitud(solicitudId, ampliacionId);
         CronogramaEntregaParcialSolicitud entrega = buscarEntregaDeAmpliacion(ampliacionId, entregaId);
         if (ampliacion.getEstadoAmpliacion() == AmpliacionPlazoSolicitud.EstadoAmpliacion.CANCELADA
@@ -1279,6 +1280,12 @@ public class SolicitudService {
         if (liquidacion.getSolicitud() != null) {
             liquidacion.getSolicitud().setEstado(Solicitud.EstadoSolicitud.CONCLUIDA);
             solicitudRepository.save(liquidacion.getSolicitud());
+        }
+    }
+
+    private void marcarAtencionPorAmpliacion(Solicitud solicitud) {
+        if (solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA) {
+            solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
         }
     }
 
