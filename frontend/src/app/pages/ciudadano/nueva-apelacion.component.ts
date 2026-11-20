@@ -12,7 +12,8 @@ import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion, ApelacionCreate, ApelacionCreateAnteEntidad, ApelacionCreateExterna, CanalPresentacionApelacion, TipoDenegatoriaApelacion, TipoOrigenApelacion } from '../../models/apelacion.model';
 import { Entidad } from '../../models/entidad.model';
-import { ampliacionParaApelar, Solicitud, tieneCronogramaIncumplido, tieneHitoDesfavorable } from '../../models/solicitud.model';
+import { aISO, hoyLima } from '../../models/calendario.model';
+import { ampliacionParaApelar, ampliacionPermiteApelar, Solicitud, tienePlazoAmpliadoVigente } from '../../models/solicitud.model';
 import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
@@ -215,16 +216,25 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   }
   private esApelableEnSelector(s: Solicitud): boolean {
     if (s.apelacion) return false;
-    if (tieneCronogramaIncumplido(s) || tieneHitoDesfavorable(s) || ampliacionParaApelar(s)?.plazoOrdinarioVencido === true) return true;
+    if (ampliacionPermiteApelar(ampliacionParaApelar(s))) return true;
     const tipo = s.respuesta?.tipoRespuesta;
     if (tipo) return true;
     const estado = (s.estado || '').toUpperCase();
     return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA';
   }
-  plazoOrdinarioPorVencer(s: Solicitud): string | null {
-    const ampliacion = ampliacionParaApelar(s);
-    return ampliacion && !this.esApelableEnSelector(s) && ampliacion.plazoOrdinarioVencido === false
-      ? ampliacion.fechaLimiteOriginal || null : null;
+  avisoPlazoAmpliacion(s: Solicitud): string | null {
+    if (this.esApelableEnSelector(s)) return null;
+    const ancla = aISO(ampliacionParaApelar(s)?.fechaLimiteOriginal);
+    if (!ancla) return null;
+    const fecha = this.fechaCorta(ancla);
+    if (hoyLima() <= ancla) {
+      return `Puede apelar el cronograma desde el día hábil siguiente al ${fecha}, durante 15 días hábiles. Recibió la ampliación, así que no es silencio administrativo.`;
+    }
+    return 'El plazo de 15 días hábiles para apelar el cronograma ya terminó. Podrá presentar su apelación cuando reciba una entrega.';
+  }
+  private fechaCorta(iso: string): string {
+    const [anio, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${anio}`;
   }
   fechaVisible(s: Solicitud): string {
     const raw = s.respuesta?.fechaRespuesta || s.fechaPresentacion || '';
@@ -233,6 +243,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   estadoVisible(s: Solicitud): string {
     const estado = (s.estado || '').toUpperCase();
     if (estado === 'RESPONDIDA' || estado === 'DENEGADA') return estado;
+    if (tienePlazoAmpliadoVigente(s)) return 'PLAZO_AMPLIADO';
     return s.estado || '';
   }
   vinoDesdeLista(): boolean { return !this.entrada.expediente && !this.entrada.id; }
@@ -393,6 +404,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     } else {
       const s = this.solicitud();
       if (!s || !this.solicitudCompatible(s) || s.apelacion !== null || s.respuesta === undefined || s.respuesta && !this.idValido(s.respuesta.id)) e['solicitud'] = 'La solicitud está incompleta o ya registra una apelación. Actualice su consulta.';
+      if (s && !this.esApelableEnSelector(s)) e['plazo'] = this.avisoPlazoAmpliacion(s) ?? 'Esta solicitud no está en plazo de apelación.';
       if (!this.archivos()[1].length && !this.documentosPara(1).some(d => d.tipoDocumento === 'SOLICITUD_ORIGINAL')) e['documentos'] = 'Seleccione una copia real de la SAIP original o un antecedente registrado.';
       if (this.requiereRespuesta() && !this.archivos()[2].length && !this.documentosPara(2).length) e['respuesta'] = 'Incluya al menos un documento de la respuesta de la entidad.';
       if (this.esPresentacionAnteEntidad() && (!this.fechaPresentacionAnteEntidad || !this.referenciaCargoPresentacionEntidad.trim()

@@ -18,6 +18,9 @@ import pe.gob.saip.backend.model.dto.*;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.*;
 import pe.gob.saip.backend.storage.StorageException;
+import pe.gob.saip.backend.util.PlazoApelacionAmpliacion;
+
+import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
 
 /** Coordinates only citizen creation; subsequent TTAIP commands retain their own preconditions. */
 @Service
@@ -65,6 +68,7 @@ public class AltaApelacionRecepcionService {
             if(solicitud.getRespuesta()!=null && solicitud.getRespuesta().getTipoRespuesta()!=Respuesta.TipoRespuesta.SILENCIO_ADMINISTRATIVO
                     && manifest.stream().noneMatch(d->"RESPUESTA_ENTIDAD".equals(d.tipo())))
                 throw new IllegalArgumentException("Adjunte la respuesta de la entidad o seleccione su antecedente");
+            PlazoApelacionAmpliacion.validar(solicitud, java.time.LocalDate.now(ZONA_LIMA));
         }
         for(Archivo archivo:manifest) if(archivo.origenId()!=null) verificarOrigen(archivo,solicitud);
         Apelacion apelacion;

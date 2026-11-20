@@ -5,7 +5,7 @@ import { DatePipe } from '@angular/common';
 import { PanelQueryService } from '../../services/panel-query.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
-import { AmpliacionPlazoSolicitud } from '../../models/solicitud.model';
+import { AmpliacionPlazoSolicitud, ampliacionPermiteApelar, diasApelacionCronograma, diasHabilesParaApelar, entregaApelable } from '../../models/solicitud.model';
 import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
@@ -387,10 +387,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
           && !this.tieneApelacionActiva(s) && !this.requiereAccion(s) && !this.esSilencioAdministrativo(s);
       }),
       respondidas: historicos1,
-      apelar: activos.filter(s => {
-        const st = (s.estado || '').toUpperCase();
-        return (st === 'DENEGADA' || st === 'VENCIDA' || this.esSilencioAdministrativo(s)) && !this.tieneApelacionActiva(s) && !this.requiereAccion(s);
-      }),
+      apelar: activos.filter(s => this.puedePresentarApelacion(s) && !this.requiereAccion(s)),
       tribunal: activos.filter(s => this.tieneApelacionActiva(s) && !this.requiereSubsanacionTTAIP(s)),
       resueltas: historicos2,
     };
@@ -681,7 +678,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return false;
     }
     const estado = (solicitud.estado || '').toUpperCase();
-    return estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud);
+    return estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)
+      || ampliacionPermiteApelar(this.ampliacionDe(solicitud));
   }
 
   esSolicitudAtendida(solicitud: Solicitud | null): boolean {
@@ -769,6 +767,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return 'Etapa por confirmar';
     }
     const estado = (s.estado || '').toUpperCase();
+    if ((estado === 'RECEPCIONADA' || estado === 'EN_REVISION') && this.ampliacionCoincidente(s) && !s.respuesta) return 'PLAZO_AMPLIADO';
     if (estado === 'RECEPCIONADA') return 'Recepcionada';
     if (estado === 'EN_REVISION') return 'En revisión';
     if (this.enPrecision(s)) return 'En precisión';
@@ -852,6 +851,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return this.indicadorApelacion(s);
     }
     if (this.estadosEnProceso.has(estado)) {
+      const plazo = this.indicadorPlazoAmpliacion(s);
+      if (plazo) return plazo;
       const dias = this.diasRestantesParaEntidad(s);
       if (dias === null) {
         return { value: 'No disponible', unit: 'días háb. para que la entidad responda', tone: 'var(--info)' };
@@ -1144,6 +1145,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       };
     }
 
+    const plazoAmpliacion = this.accionPlazoAmpliacion(solicitud, expediente, entidad);
+    if (plazoAmpliacion) return plazoAmpliacion;
+
     if (!this.estadosEnProceso.has(estado)) return null;
     const diasEntidad = this.diasRestantesParaEntidad(solicitud);
     const diasVal = diasEntidad === null ? 'No disponible' : diasEntidad === 0 ? 'Último día' : String(diasEntidad);
@@ -1382,6 +1386,54 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const ampliacion = lista?.find(item => item.solicitudId === id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
     this.ampliacionSolicitudId.set(id);
     this.ampliacionVista.set(ampliacion);
+  }
+
+  private ampliacionDe(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {
+    const cargada = this.ampliacionCoincidente(solicitud);
+    if (cargada) return cargada;
+    const propias = (solicitud as { ampliacionesPlazo?: AmpliacionPlazoSolicitud[] | null } | null)?.ampliacionesPlazo;
+    return propias?.find(item => item.solicitudId === solicitud?.id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
+  }
+
+  private diasDeAmpliacion(ampliacion: AmpliacionPlazoSolicitud): number | null {
+    const cronograma = diasApelacionCronograma(ampliacion);
+    if (cronograma !== null && cronograma >= 0) return cronograma;
+    const entrega = entregaApelable(ampliacion);
+    if (!entrega) return null;
+    return diasHabilesParaApelar(aISO(entrega.fechaEntregaReal) ?? aISO(entrega.fechaProgramada));
+  }
+
+  private indicadorPlazoAmpliacion(solicitud: Solicitud): IndicadorBandeja | null {
+    const ampliacion = this.ampliacionDe(solicitud);
+    if (!ampliacion || !ampliacionPermiteApelar(ampliacion)) return null;
+    const dias = this.diasDeAmpliacion(ampliacion);
+    if (dias === null || dias < 0) return { value: 'Sí', unit: 'puede apelar el cronograma', tone: 'var(--gold-dark)' };
+    if (dias === 0) return { value: 'Último día', unit: 'para apelar', tone: 'var(--brand-700)' };
+    return { value: dias, unit: dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar', tone: 'var(--gold-dark)' };
+  }
+
+  private accionPlazoAmpliacion(solicitud: Solicitud, expediente: string, entidad: string): DashboardAction | null {
+    const ampliacion = this.ampliacionDe(solicitud);
+    if (!ampliacion || !ampliacionPermiteApelar(ampliacion) || solicitud.respuesta) return null;
+    const dias = this.diasDeAmpliacion(ampliacion);
+    const porEntrega = diasApelacionCronograma(ampliacion) === null || (diasApelacionCronograma(ampliacion) ?? -1) < 0;
+    return {
+      eyebrow: porEntrega ? 'Entrega recibida · puede apelar' : 'Cronograma · puede apelar',
+      titulo: porEntrega ? 'Puede apelar la entrega recibida' : 'Puede apelar el cronograma de ampliación',
+      detalle: porEntrega
+        ? 'Recibió una entrega del cronograma. Puede presentar su apelación durante 15 días hábiles. El Tribunal evaluará si procede.'
+        : 'El plazo ordinario ya terminó. Tiene 15 días hábiles para apelar la ampliación. Recibió el cronograma, así que no es silencio administrativo.',
+      metricValue: dias === null || dias < 0 ? 'Sí' : String(dias),
+      metricUnit: dias === null || dias < 0 ? 'puede apelar' : dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar',
+      ctaLabel: 'Apelar al Tribunal',
+      route: ['/ciudadano/apelacion/nueva', expediente],
+      icon: 'scale',
+      toneColor: 'var(--gold-dark)',
+      toneBg: 'linear-gradient(135deg, rgba(146, 100, 14, 0.12), var(--card) 70%)',
+      toneSoft: 'rgba(146, 100, 14, 0.28)',
+      expediente,
+      entidad,
+    };
   }
 
   private ampliacionCoincidente(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {

@@ -45,6 +45,8 @@ const STATUS_TO_TONE: Record<string, BadgeTone> = {
   'INFORMACION_PUESTA_A_DISPOSICION': 'gold',
   'Recepcionada': 'slate',
   'RECEPCIONADA': 'slate',
+  'Plazo ampliado': 'gold',
+  'PLAZO_AMPLIADO': 'gold',
   'En revisión': 'info',
   'EN_REVISION': 'info',
   'En Revisión Requisitos': 'info',
@@ -154,6 +156,7 @@ const STATUS_TO_TONE: Record<string, BadgeTone> = {
 const STATUS_LABELS: Record<string, string> = {
   'EN_PROCESO': 'En trámite',
   'RECEPCIONADA': 'Recepcionada',
+  'PLAZO_AMPLIADO': 'Plazo ampliado',
   'EN_REVISION': 'En revisión',
   'EN_REVISION_REQUISITOS': 'En revisión de requisitos',
   'OBSERVADA': 'Observada (en precisión)',

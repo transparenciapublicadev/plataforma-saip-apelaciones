@@ -38,6 +38,9 @@ import pe.gob.saip.backend.repository.LiquidacionCostoSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
+import pe.gob.saip.backend.util.PlazoApelacionAmpliacion;
+
+import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -97,6 +100,20 @@ public class SolicitudService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
         entityManager.refresh(solicitud);
         return solicitud;
+    }
+
+    @Transactional(readOnly = true)
+    public void validarOportunidadDeApelacion(Long id) {
+        Solicitud solicitud = solicitudRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
+        if (solicitud.getAmpliacionesPlazo() != null) {
+            for (AmpliacionPlazoSolicitud ampliacion : solicitud.getAmpliacionesPlazo()) {
+                if (ampliacion.getCronograma() != null) {
+                    ampliacion.getCronograma().size();
+                }
+            }
+        }
+        PlazoApelacionAmpliacion.validar(solicitud, LocalDate.now(ZONA_LIMA));
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
