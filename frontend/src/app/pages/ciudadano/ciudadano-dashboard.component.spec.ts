@@ -270,7 +270,7 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(pasos).not.toContain('Respuesta registrada');
   });
 
-  it('muestra el plazo prolongado y las entregas parciales de la solicitud que se está viendo', () => {
+  it('muestra el plazo prolongado dentro del plazo de la entidad, sin un paso aparte', () => {
     const enRevision = { ...request(10006, 'EN_REVISION'), fechaLimite: '2027-01-20', diasRestantes: 43 };
     find.mockReturnValue(of([enRevision]));
     detalle.mockReturnValue(of({
@@ -295,11 +295,18 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     fixture.detectChanges();
     fixture.detectChanges();
 
-    const pasos = component.timelinePrincipal().map(paso => paso.label);
-    expect(pasos.indexOf('Plazo prolongado')).toBeGreaterThan(-1);
-    expect(pasos.indexOf('Plazo prolongado')).toBeLessThan(pasos.indexOf('Plazo de la entidad'));
+    const pasos = component.timelinePrincipal();
+    const plazo = pasos.filter(paso => paso.key === 'plazo-entidad' || paso.key === 'plazo-prolongado');
+    expect(plazo).toEqual([expect.objectContaining({
+      key: 'plazo-entidad',
+      label: 'Plazo de la entidad',
+      status: 'active',
+    })]);
+    expect(plazo[0].meta).toContain('43 días hábiles');
+    expect(plazo[0].meta).toContain('prolongado de 01/12/2026 a 20/01/2027');
     const texto = fixture.nativeElement.textContent as string;
-    expect(texto).toContain('Plazo prolongado');
+    expect(texto).toContain('Plazo de la entidad');
+    expect(texto).not.toContain('Plazo prolongado');
     expect(texto).toContain('01/12/2026');
     expect(texto).toContain('20/01/2027');
     expect(texto).not.toContain('01/01/2028');
