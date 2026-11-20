@@ -7,6 +7,7 @@ import pe.gob.saip.backend.model.dto.CalendarioAnioResumenDTO;
 import pe.gob.saip.backend.model.dto.DiaInhabilDTO;
 import pe.gob.saip.backend.model.entity.FeriadoCalendario;
 import pe.gob.saip.backend.repository.FeriadoCalendarioRepository;
+import pe.gob.saip.backend.util.DiasHabilesUtil;
 
 import java.time.*;
 import java.util.*;
@@ -283,7 +284,7 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
         }
 
         // 3. Feriados móviles: Jueves y Viernes Santo (Semana Santa)
-        LocalDate pascua = domingoPascua(anio);
+        LocalDate pascua = DiasHabilesUtil.domingoPascua(anio);
         LocalDate juevesSanto = pascua.minusDays(3);
         LocalDate viernesSanto = pascua.minusDays(2);
         map.put(juevesSanto, new DiaInhabilDTO(juevesSanto, "Jueves Santo", "feriado", true, "movil-jueves-santo-" + anio, "D. Leg. N.° 713 y modificatorias"));
@@ -339,16 +340,4 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
         );
     }
 
-    /**
-     * Algoritmo gregoriano anónimo para el cálculo del Domingo de Pascua.
-     */
-    public static LocalDate domingoPascua(int y) {
-        int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4;
-        int f = (b + 8) / 25, g = (b - f + 1) / 3;
-        int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4;
-        int l = (32 + 2 * e + 2 * i - h - k) % 7, m = (a + 11 * h + 22 * l) / 451;
-        int mes = (h + l - 7 * m + 114) / 31;
-        int dia = ((h + l - 7 * m + 114) % 31) + 1;
-        return LocalDate.of(y, mes, dia);
-    }
 }

@@ -45,10 +45,29 @@ public final class DiasHabilesUtil {
     }
 
     /**
-     * Verifica si una fecha es feriado nacional peruano.
+     * Feriado nacional, Jueves o Viernes Santo, o día no laborable del sector público ya fijado.
+     * El conjunto fijo sigue el mismo calendario que el cálculo de la ampliación.
      */
     public static boolean esFeriado(LocalDate fecha) {
-        return FERIADOS_FIJOS.contains(MonthDay.from(fecha));
+        if (FERIADOS_FIJOS.contains(MonthDay.from(fecha))) {
+            return true;
+        }
+        LocalDate pascua = domingoPascua(fecha.getYear());
+        if (fecha.equals(pascua.minusDays(3)) || fecha.equals(pascua.minusDays(2))) {
+            return true;
+        }
+        return fecha.equals(LocalDate.of(2026, 1, 2)) || fecha.equals(LocalDate.of(2026, 7, 27));
+    }
+
+    /** Domingo de Pascua, mismo algoritmo gregoriano que usa el calendario de plazos. */
+    public static LocalDate domingoPascua(int y) {
+        int a = y % 19, b = y / 100, c = y % 100, d = b / 4, e = b % 4;
+        int f = (b + 8) / 25, g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30, i = c / 4, k = c % 4;
+        int l = (32 + 2 * e + 2 * i - h - k) % 7, m = (a + 11 * h + 22 * l) / 451;
+        int mes = (h + l - 7 * m + 114) / 31;
+        int dia = ((h + l - 7 * m + 114) % 31) + 1;
+        return LocalDate.of(y, mes, dia);
     }
 
     /**
