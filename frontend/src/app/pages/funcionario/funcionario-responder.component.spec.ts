@@ -513,8 +513,17 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     expect(root.querySelector('#fecha-comunicacion-ampliacion')).toBeNull();
     expect(root.textContent).toContain('Se comunica hoy');
     expect(root.textContent).toContain('17/11/2026');
+    expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('min')).toBe('2026-11-17');
+    expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('max')).toBe('2026-12-17');
+    expect(root.textContent).toContain('Desde hoy, 17/11/2026');
+    expect(root.textContent).toContain('como máximo 30 días');
     expect(c.hitos().at(-1)).toEqual({ fecha: '2027-02-11', entregable: '', cierre: true });
     expect(root.textContent).not.toContain('Elija una fecha posterior a la entrega 1');
+
+    c.actualizarHitoFecha(0, '2026-12-20');
+    fixture.detectChanges();
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('30 días desde hoy');
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('17/12/2026');
 
     c.actualizarHitoFecha(0, '2027-02-12');
     fixture.detectChanges();

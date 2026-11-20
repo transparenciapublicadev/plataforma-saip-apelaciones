@@ -124,7 +124,7 @@
               @if (enPrecision()) {
                 {{ (fechaVisible(observacionPendiente()?.fechaLimiteSubsanacion) | date:'dd/MM/yyyy') || 'Sin fecha registrada' }}
               } @else {
-                {{ (fechaVisible(sol.fechaLimite) | date:'dd/MM/yyyy') || 'No informada' }}
+                {{ sol.fechaLimite ? fechaCalendario(sol.fechaLimite) : 'No informada' }}
               }
             </div>
           </div>
@@ -231,7 +231,7 @@
                   <section class="rounded-lg border border-border p-5 space-y-3" style="border-left: 3px solid var(--gold)">
                     <span class="eyebrow">Ampliación registrada</span>
                     <h2 class="form-section-title">Atención con fecha única</h2>
-                    <p class="text-sm">Nueva fecha límite <strong>{{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}</strong>.</p>
+                    <p class="text-sm">Nueva fecha límite <strong>{{ fechaCalendario(ampliacion.fechaLimiteAmpliada) }}</strong>.</p>
                   </section>
                 }
               }
