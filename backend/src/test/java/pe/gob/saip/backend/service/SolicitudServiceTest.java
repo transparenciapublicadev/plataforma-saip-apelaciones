@@ -364,7 +364,7 @@ class SolicitudServiceTest {
         LocalDate fechaLimiteOriginal = DiasHabilesUtil.sumarDiasHabiles(hoy, 10);
         LocalDate entrega1 = hoy.plusDays(15);
         LocalDate entrega2 = entrega1.plusDays(30);
-        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
         solicitud.setFechaPresentacion(LocalDateTime.now());
         solicitud.setFechaLimite(fechaLimiteOriginal);
 
@@ -396,6 +396,7 @@ class SolicitudServiceTest {
         assertThat(resultado.getFechaLimiteAmpliada()).isEqualTo(entrega2);
         assertThat(resultado.getCronograma()).hasSize(2);
         assertThat(solicitud.getFechaLimite()).isEqualTo(entrega2);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
         verify(solicitudRepository).save(solicitud);
         verify(ampliacionRepository).save(any(AmpliacionPlazoSolicitud.class));
     }
