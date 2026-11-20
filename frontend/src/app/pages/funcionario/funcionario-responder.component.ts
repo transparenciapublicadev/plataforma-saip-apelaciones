@@ -410,9 +410,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const previa = this.fechaParcialVecina(index, -1);
     let min = previa ? desplazarDia(previa, 1) : hoy;
     const limite = this.nuevaFechaLimite();
-    if (limite && this.esUltimaParcial(index)) {
+    if (previa && limite && this.esUltimaParcial(index)) {
       const antesDelVencimiento = desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS);
-      if (!min || antesDelVencimiento > min) min = antesDelVencimiento;
+      const topeTreinta = desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS);
+      const antesDelCierre = desplazarDia(limite, -1);
+      const maxAlcanzable = topeTreinta < antesDelCierre ? topeTreinta : antesDelCierre;
+      if (antesDelVencimiento <= maxAlcanzable && (!min || antesDelVencimiento > min)) min = antesDelVencimiento;
     }
     return hoy && min && min < hoy ? hoy : min;
   }
@@ -420,18 +423,25 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   maxFechaParcial(index: number): string | null {
     const limite = this.nuevaFechaLimite();
     if (!limite) return null;
-    let max = desplazarDia(limite, -1);
+    const hoy = this.previsionVigente()?.hoy ?? null;
+    const previa = this.fechaParcialVecina(index, -1);
+    const ancla = previa ?? hoy;
+    let max = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : desplazarDia(limite, -1);
+    const antesDelCierre = desplazarDia(limite, -1);
+    if (max > antesDelCierre) max = antesDelCierre;
     const posterior = this.fechaParcialVecina(index, 1);
     if (posterior) {
       const anteriorALaSiguiente = desplazarDia(posterior, -1);
       if (anteriorALaSiguiente < max) max = anteriorALaSiguiente;
     }
-    const previa = this.fechaParcialVecina(index, -1);
-    if (previa) {
-      const tope = desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS);
-      if (tope < max) max = tope;
-    }
     return max;
+  }
+
+  fechaParcialSeleccionable(index: number): boolean {
+    if (this.hitos().slice(0, index).some(h => !h.cierre && !h.fecha)) return false;
+    const min = this.minFechaParcial(index);
+    const max = this.maxFechaParcial(index);
+    return !min || !max || min <= max;
   }
 
   pistaFechaParcial(index: number): string {
@@ -450,6 +460,10 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     }
     const previaVacia = this.hitos().slice(0, index).some(h => !h.cierre && !h.fecha);
     if (previaVacia) return `Complete antes la fecha de la entrega anterior. El ${fechaDmy(limite)} queda reservado para la última entrega.`;
+    const hoy = this.previsionVigente()?.hoy;
+    if (!this.fechaParcialVecina(index, -1) && hoy && min === hoy) {
+      return `Desde hoy, ${fechaDmy(hoy)}, hasta el ${fechaDmy(max)}. Este calendario admite como máximo 30 días. Si desde esa fecha no alcanza el vencimiento, añada otra entrega.`;
+    }
     return `Elija del ${fechaDmy(min ?? max)} al ${fechaDmy(max)}. Entre una entrega y la siguiente no pueden pasar más de 30 días.`;
   }
 
@@ -666,9 +680,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const min = this.minFechaParcial(index);
     if (max && hito.fecha > max) {
       const previa = this.fechaParcialVecina(index, -1);
-      const topeTreinta = previa ? desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
+      const ancla = previa ?? hoy;
+      const topeTreinta = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
       if (topeTreinta && hito.fecha > topeTreinta && hito.fecha < limite) {
-        return `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa!)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
+        return previa
+          ? `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa)}). Elija hasta el ${fechaDmy(topeTreinta)}.`
+          : `Esta entrega solo puede programarse dentro de los 30 días desde hoy (${fechaDmy(ancla!)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
       }
       const posterior = this.fechaParcialVecina(index, 1);
       if (posterior && hito.fecha >= posterior && hito.fecha < limite) {

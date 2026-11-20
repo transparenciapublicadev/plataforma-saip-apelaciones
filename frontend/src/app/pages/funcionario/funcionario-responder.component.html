@@ -73,7 +73,7 @@
             <svg lucideClock class="w-4 h-4" style="color: var(--warning)"></svg>
             <span class="eyebrow">Fecha límite</span>
           </div>
-          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ sol.fechaLimite | date:'dd/MM/yyyy' }}</div>
+          <div class="font-display" style="font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--warning)">{{ textoFecha(sol.fechaLimite) || 'No informada' }}</div>
         </div>
 
         <div class="stat-card" data-motion-item>
@@ -262,11 +262,11 @@
                   <div class="flex flex-wrap items-center justify-between gap-2">
                     <span class="eyebrow" style="color: var(--gold-dark)">Plazo ampliado · Atención con fecha única</span>
                     <span class="rounded-full px-2.5 py-0.5 text-[11px] font-mono font-semibold" style="background: rgba(176,136,66,0.14); color: var(--gold-dark)">
-                      Límite {{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}
+                      Límite {{ textoFecha(ampliacion.fechaLimiteAmpliada) }}
                     </span>
                   </div>
                   <p class="text-xs text-foreground/85 leading-relaxed">
-                    Prórroga comunicada el {{ ampliacion.fechaNotificacionAmpliacion | date:'dd/MM/yyyy' }} — {{ ampliacion.motivoAmpliacion || ampliacion.informeAmpliacion }}.
+                    Prórroga comunicada el {{ textoFecha(ampliacion.fechaNotificacionAmpliacion) }} — {{ ampliacion.motivoAmpliacion || ampliacion.informeAmpliacion }}.
                   </p>
                 </div>
               }
@@ -304,7 +304,7 @@
                         {{ tieneHitosPendientes() ? 'Cronograma en curso:' : 'Cronograma completado:' }}
                       </span>
                       <span class="text-muted-foreground ml-1">
-                        {{ cronogramaEntregadas() }} de {{ cronogramaTotal() }} hitos respondidos (límite {{ ampliacion.fechaLimiteAmpliada | date:'dd/MM/yyyy' }}).
+                        {{ cronogramaEntregadas() }} de {{ cronogramaTotal() }} hitos respondidos (límite {{ textoFecha(ampliacion.fechaLimiteAmpliada) }}).
                       </span>
                     </div>
                     <button type="button" class="btn-ghost-brand shrink-0 !py-1.5 !px-3 text-xs" (click)="setVia('cronograma')">
@@ -437,7 +437,7 @@
                             <label class="field-label" [for]="'cronograma-fecha-' + $index">Entrega parcial {{ indiceParcial($index) }}</label>
                             <input type="date" class="field-input font-mono !py-[9px]" [id]="'cronograma-fecha-' + $index" [attr.aria-label]="'Fecha de la entrega parcial ' + indiceParcial($index)"
                               [attr.min]="minFechaParcial($index)" [attr.max]="maxFechaParcial($index)" [value]="h.fecha"
-                              [disabled]="!prorrogaPermitida()"
+                              [disabled]="!prorrogaPermitida() || !fechaParcialSeleccionable($index)"
                               [attr.aria-invalid]="errorFecha ? 'true' : null"
                               [attr.aria-describedby]="(errorFecha ? 'cronograma-fecha-error-' + $index + ' ' : '') + 'cronograma-fecha-pista-' + $index"
                               (input)="actualizarHitoFecha($index, $any($event.target).value)" />
