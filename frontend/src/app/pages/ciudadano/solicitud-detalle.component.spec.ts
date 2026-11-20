@@ -7,6 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SolicitudDetalleComponent } from './solicitud-detalle.component';
 import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
+import { esHabil, hoyLima, sumarDias } from '../../models/calendario.model';
+import { CronogramaEntregaParcial } from '../../models/solicitud.model';
+
+function habilAnterior(iso: string): string {
+  let dia = sumarDias(iso, -1);
+  while (!esHabil(dia)) dia = sumarDias(dia, -1);
+  return dia;
+}
 
 const expediente = 'SAIP-2026-00023';
 const solicitud = {
@@ -678,9 +686,9 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     });
 
     const root = f.nativeElement as HTMLElement;
-    // No debe duplicar el bloque de ampliación ni sus documentos fuera de la pestaña Respuesta de la entidad.
+    // La insignia dice plazo ampliado. El bloque y sus documentos siguen solo en la pestaña Respuesta de la entidad.
+    expect(f.componentInstance.estadoSaipLabel()).toBe('Plazo ampliado');
     expect(root.querySelector('#panel-respuesta')).toBeNull();
-    expect(root.textContent).not.toContain('Plazo ampliado');
     expect(root.textContent).not.toContain('entrega-hito-1.pdf');
     expect(root.textContent).toContain('Entrega parcial 1');
     expect(root.querySelector('#tab-respuesta')?.textContent).toContain('1/1');
@@ -728,17 +736,32 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     req.flush(new Blob(['pdf'], { type: 'application/pdf' }));
   });
 
-  it('ofrece la apelación por la ampliación tras el vencimiento ordinario informado por el backend', () => {
+  it('abre la apelación del cronograma el día hábil siguiente al plazo ordinario, por 15 días hábiles', () => {
     const f = pagina();
+    const hoy = hoyLima();
     const ampliacion = { id: 50, solicitudId: 23, estadoAmpliacion: 'REGISTRADA' as const,
       expediente: 'SAIP-2026-00023', motivoAmpliacion: 'Volumen documental', informeAmpliacion: 'Informe de ampliación',
       fechaSolicitudAmpliacion: '2026-11-05', fechaNotificacionAmpliacion: '2026-11-05',
-      fechaLimiteOriginal: '2026-11-17', fechaLimiteAmpliada: '2026-12-20',
-      plazoOrdinarioVencido: false, cronograma: [] };
-    responder(f, { ...solicitud, estado: 'EN_REVISION', respuesta: null, ampliacionesPlazo: [ampliacion] });
+      fechaLimiteOriginal: hoy, fechaLimiteAmpliada: '2026-12-20',
+      plazoOrdinarioVencido: false, cronograma: [] as CronogramaEntregaParcial[] };
+    responder(f, { ...solicitud, estado: 'EN_REVISION', respuesta: null, diasRestantes: 40, ampliacionesPlazo: [ampliacion] });
     const componente = f.componentInstance;
     expect(componente.puedeApelar()).toBe(false);
-    componente.solicitud.update(sol => sol && ({ ...sol, ampliacionesPlazo: [{ ...ampliacion, plazoOrdinarioVencido: true }] }));
+    expect(componente.textoEsperaApelacion()).toContain('día hábil siguiente');
+
+    componente.solicitud.update(sol => sol && ({ ...sol, ampliacionesPlazo: [{ ...ampliacion, fechaLimiteOriginal: habilAnterior(hoy) }] }));
     expect(componente.puedeApelar()).toBe(true);
+    expect(componente.diasCronogramaParaApelar()).toBe(15);
+
+    componente.solicitud.update(sol => sol && ({ ...sol, ampliacionesPlazo: [{ ...ampliacion, fechaLimiteOriginal: '2020-01-06', cronograma: [] }] }));
+    expect(componente.puedeApelar()).toBe(false);
+    expect(componente.textoEsperaApelacion()).toContain('cuando reciba una entrega');
+
+    componente.solicitud.update(sol => sol && ({ ...sol, ampliacionesPlazo: [{ ...ampliacion, fechaLimiteOriginal: '2020-01-06', cronograma: [{
+      id: 9, ampliacionId: 50, numeroEntrega: 1, descripcion: 'Primera entrega', fechaProgramada: hoy,
+      estado: 'ENTREGADA' as const, fechaEntregaReal: hoy, incumplida: false
+    }] }] }));
+    expect(componente.puedeApelar()).toBe(true);
+    expect(componente.recibioEntregaApelable()).toBe(true);
   });
 });

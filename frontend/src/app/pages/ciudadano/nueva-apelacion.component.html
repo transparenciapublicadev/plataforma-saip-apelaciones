@@ -69,8 +69,8 @@
       }
       @if (solicitud(); as s) { <section class="rounded-lg p-5" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><span class="eyebrow">Expediente vinculado</span><p class="text-sm mt-2 font-medium">{{ s.asunto || 'Asunto no recuperado' }}</p><p class="text-sm mt-1">{{ s.entidadNombre || 'Nombre de entidad no recuperado' }}</p></section> }
       @if (solicitud(); as s) {
-        @if (plazoOrdinarioPorVencer(s); as fecha) {
-          <p class="rounded-lg border border-border p-4 text-sm" role="status">El plazo ordinario termina el {{ fecha | date:'dd/MM/yyyy' }}. Si su único motivo es cuestionar la ampliación, se recomienda esperar a que termine ese día. El Tribunal podría considerar prematuro el recurso.</p>
+        @if (avisoPlazoAmpliacion(s); as aviso) {
+          <p class="rounded-lg border border-border p-4 text-sm" role="status">{{ aviso }}</p>
         }
       }
       <div class="rounded-lg p-5 flex items-start gap-4" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background:var(--brand-700)"><svg aria-hidden="true" lucideAlertCircle class="w-5 h-5 text-white"></svg></div><div><span class="eyebrow" style="color:var(--brand-700)">Documentos del recurso</span><p class="text-sm text-foreground/85 leading-relaxed mt-1.5">{{ esApelacionExterna() ? 'Puede adjuntar copias de la solicitud, de la respuesta y del sustento que tenga disponible.' : 'Los documentos de la solicitud y de la respuesta se incluyen automáticamente cuando están disponibles. Puede añadir otros archivos o excluir alguno solo de esta apelación.' }}</p></div></div>

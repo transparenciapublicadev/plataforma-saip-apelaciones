@@ -9,7 +9,8 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
-import { ampliacionParaApelar, AmpliacionPlazoSolicitud, DECISIONES_ENTREGA, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud, tieneHitoDesfavorable } from '../../models/solicitud.model';
+import { aISO, hoyLima } from '../../models/calendario.model';
+import { ampliacionPermiteApelar, AmpliacionPlazoSolicitud, DECISIONES_ENTREGA, diasApelacionCronograma, entregaApelable, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud, tienePlazoAmpliadoVigente } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { DocumentoRelation, DocumentoListItem, DOCUMENTO_RELATION_KEYS, getDocumentoRelationEntry } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -123,7 +124,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return est ? this.getEstadoDisplay(est) : 'Sin estado registrado';
   });
 
-  readonly estadoSaipLabel = computed(() => this.getEstadoDisplay(this.solicitud()?.estado));
+  readonly estadoSaipLabel = computed(() => {
+    const sol = this.solicitud();
+    if (sol && tienePlazoAmpliadoVigente(sol)) return 'Plazo ampliado';
+    return this.getEstadoDisplay(sol?.estado);
+  });
 
   readonly estadoBadge = computed<string>(() => {
     const sol = this.solicitud();
@@ -578,14 +583,28 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   readonly etiquetasDecisionHito = DECISIONES_ENTREGA;
 
-  hitoDesfavorable(): boolean {
-    const sol = this.solicitud();
-    return !!sol && tieneHitoDesfavorable(sol);
+  diasCronogramaParaApelar(): number | null {
+    const dias = diasApelacionCronograma(this.ampliacionActiva());
+    return dias !== null && dias >= 0 ? dias : null;
   }
 
-  ampliacionApelable(): AmpliacionPlazoSolicitud | undefined {
-    const sol = this.solicitud();
-    return sol ? ampliacionParaApelar(sol) : undefined;
+  recibioEntregaApelable(): boolean {
+    return entregaApelable(this.ampliacionActiva()) != null;
+  }
+
+  tituloEsperaApelacion(): string {
+    const ancla = aISO(this.ampliacionActiva()?.fechaLimiteOriginal);
+    if (!ancla) return 'Aún no puede apelar';
+    return hoyLima() <= ancla ? 'El plazo ordinario sigue abierto' : 'El plazo para apelar el cronograma terminó';
+  }
+
+  textoEsperaApelacion(): string | null {
+    const ancla = aISO(this.ampliacionActiva()?.fechaLimiteOriginal);
+    if (!ancla) return null;
+    if (hoyLima() <= ancla) {
+      return `Puede apelar el cronograma desde el día hábil siguiente al ${this.textoFecha(ancla)}, durante 15 días hábiles. Recibió la ampliación, así que no es silencio administrativo.`;
+    }
+    return 'Esos 15 días hábiles ya terminaron. Podrá presentar su apelación cuando reciba una entrega.';
   }
 
   encauzamientos(): EncauzamientoSolicitud[] {
@@ -668,9 +687,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
 
   puedeApelar(): boolean {
     const sol = this.solicitud();
-    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA'
-      || this.esSilencioAdministrativo() || this.cronogramaIncumplido() || this.hitoDesfavorable()
-      || this.ampliacionApelable()?.plazoOrdinarioVencido === true) && !this.enApelacion();
+    if (!sol || this.enApelacion()) return false;
+    const estado = (sol.estado || '').toUpperCase();
+    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA'
+      || this.esSilencioAdministrativo() || this.cronogramaIncumplido()
+      || ampliacionPermiteApelar(this.ampliacionActiva());
   }
 
   esSilencioAdministrativo(): boolean {

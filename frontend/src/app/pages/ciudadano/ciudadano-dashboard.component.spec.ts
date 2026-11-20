@@ -13,7 +13,7 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelQuery } from '../../models/panel-query.model';
-import { hoyLima } from '../../models/calendario.model';
+import { esHabil, hoyLima, sumarDias } from '../../models/calendario.model';
 
 try {
   getTestBed().initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
@@ -518,6 +518,18 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
 
     const inProcess = { ...request(97, 'EN_REVISION'), apelacion: null } as unknown as Solicitud;
     expect(component.puedePresentarApelacion(inProcess)).toBe(false);
+
+    const hoy = hoyLima();
+    let anterior = sumarDias(hoy, -1);
+    while (!esHabil(anterior)) anterior = sumarDias(anterior, -1);
+    const ampliada = { ...request(100, 'EN_REVISION'), apelacion: null, diasRestantes: 40, ampliacionesPlazo: [{
+      id: 4, solicitudId: 100, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: anterior, cronograma: []
+    }] } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(ampliada)).toBe(true);
+    const temprana = { ...request(101, 'EN_REVISION'), apelacion: null, diasRestantes: 40, ampliacionesPlazo: [{
+      id: 5, solicitudId: 101, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: hoy, cronograma: []
+    }] } as unknown as Solicitud;
+    expect(component.puedePresentarApelacion(temprana)).toBe(false);
 
     const sanRequest = { ...request(96, 'EN_REVISION'), diasRestantes: -60, apelacion: null } as unknown as Solicitud;
     expect(component.puedePresentarApelacion(sanRequest)).toBe(true);

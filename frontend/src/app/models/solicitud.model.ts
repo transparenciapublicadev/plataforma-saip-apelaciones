@@ -6,6 +6,7 @@ import type {
     Prioridad as _Prioridad,
     SemaforoEstado as _SemaforoEstado
 } from '../api/types';
+import { aISO, habilesEntre, hoyLima, sumarDias, sumarHabiles } from './calendario.model';
 
 export type EstadoSolicitud = _EstadoSolicitud;
 export type Prioridad = _Prioridad;
@@ -78,10 +79,66 @@ export function ampliacionParaApelar(solicitud: Solicitud): AmpliacionPlazoSolic
     return solicitud.ampliacionesPlazo?.find(a => a.solicitudId === solicitud.id && a.estadoAmpliacion !== 'CANCELADA');
 }
 
+/** La ampliación sigue en curso y la entidad aún no cerró la SAIP con una respuesta. */
+export function tienePlazoAmpliadoVigente(solicitud: Solicitud): boolean {
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (estado !== 'RECEPCIONADA' && estado !== 'EN_REVISION' && estado !== 'EN_PROCESO') return false;
+    if (solicitud.respuesta) return false;
+    return ampliacionParaApelar(solicitud) != null;
+}
+
 export function tieneHitoDesfavorable(solicitud: Solicitud): boolean {
     const ampliacion = ampliacionParaApelar(solicitud);
     return ampliacion?.cronograma?.some(hito => hito.ampliacionId === ampliacion.id && hito.estado === 'ENTREGADA'
         && (hito.decision === 'ENTREGA_PARCIAL' || hito.decision === 'DENEGACION_TOTAL')) ?? false;
+}
+
+/** Días hábiles que quedan para apelar, contados desde el día siguiente al ancla e incluyendo hoy. */
+export function diasHabilesParaApelar(ancla?: string | null, hoy = hoyLima()): number | null {
+    const inicio = aISO(ancla);
+    if (!inicio) return null;
+    const limite = sumarHabiles(inicio, 15);
+    if (hoy > limite) return -1;
+    const desde = hoy <= inicio ? inicio : sumarDias(hoy, -1);
+    return habilesEntre(desde, limite);
+}
+
+/**
+ * Null hasta el día hábil siguiente al vencimiento ordinario.
+ * Cero o más durante los 15 días hábiles. -1 cuando ese plazo ya terminó.
+ */
+export function diasApelacionCronograma(ampliacion?: AmpliacionPlazoSolicitud | null, hoy = hoyLima()): number | null {
+    if (!ampliacion || ampliacion.estadoAmpliacion === 'CANCELADA') return null;
+    const ancla = aISO(ampliacion.fechaLimiteOriginal);
+    if (!ancla || hoy <= ancla) return null;
+    return diasHabilesParaApelar(ancla, hoy);
+}
+
+export function entregaApelable(ampliacion?: AmpliacionPlazoSolicitud | null, hoy = hoyLima()): CronogramaEntregaParcial | null {
+    if (!ampliacion || ampliacion.estadoAmpliacion === 'CANCELADA') return null;
+    let elegida: CronogramaEntregaParcial | null = null;
+    let anclaElegida = '';
+    for (const hito of ampliacion.cronograma ?? []) {
+        if (hito.estado !== 'ENTREGADA' || (hito.ampliacionId != null && hito.ampliacionId !== ampliacion.id)) continue;
+        const ancla = aISO(hito.fechaEntregaReal) ?? aISO(hito.fechaProgramada);
+        if (!ancla) return hito;
+        const dias = diasHabilesParaApelar(ancla, hoy);
+        if (dias !== null && dias >= 0 && ancla >= anclaElegida) {
+            elegida = hito;
+            anclaElegida = ancla;
+        }
+    }
+    return elegida;
+}
+
+/** El cronograma se apela 15 días hábiles desde el día 11. Cada entrega recibida abre otro plazo igual. */
+export function ampliacionPermiteApelar(ampliacion?: AmpliacionPlazoSolicitud | null, hoy = hoyLima()): boolean {
+    if (!ampliacion || ampliacion.estadoAmpliacion === 'CANCELADA') return false;
+    const dias = diasApelacionCronograma(ampliacion, hoy);
+    if (dias !== null && dias >= 0) return true;
+    if (entregaApelable(ampliacion, hoy)) return true;
+    return (ampliacion.cronograma ?? []).some(hito => hito.incumplida === true
+        && (hito.ampliacionId == null || hito.ampliacionId === ampliacion.id));
 }
 
 export interface EncauzamientoSolicitud {

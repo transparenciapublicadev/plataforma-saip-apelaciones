@@ -8,6 +8,13 @@ import { NuevaApelacionComponent } from './nueva-apelacion.component';
 import { AuthService } from '../../services/auth.service';
 import { authInterceptor } from '../../interceptors/auth.interceptor';
 import { environment } from '../../../environments/environment';
+import { esHabil, hoyLima, sumarDias } from '../../models/calendario.model';
+
+function habilAnterior(iso: string): string {
+  let dia = sumarDias(iso, -1);
+  while (!esHabil(dia)) dia = sumarDias(dia, -1);
+  return dia;
+}
 
 describe('AppealForm — origen, documentos y registro autorizado', () => {
   const base = environment.apiUrl, expediente = 'SAIP-2026-00023';
@@ -500,7 +507,8 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     const silencio = { ...solicitud, id: 32, expediente: 'SAIP-2026-00032', estado: 'VENCIDA',
       respuesta: { ...solicitud.respuesta, id: 93, tipoRespuesta: 'SILENCIO_ADMINISTRATIVO' }, apelacion: null };
     const ampliada = { ...pendiente, id: 33, expediente: 'SAIP-2026-00033', ampliacionesPlazo: [{
-      id: 55, solicitudId: 33, estadoAmpliacion: 'REGISTRADA', plazoOrdinarioVencido: true, cronograma: []
+      id: 55, solicitudId: 33, estadoAmpliacion: 'REGISTRADA', plazoOrdinarioVencido: true,
+      fechaLimiteOriginal: habilAnterior(hoyLima()), cronograma: []
     }] };
     http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([solicitud, parcial, pendiente, apelada, silencio, ampliada]);
     f.detectChanges();
@@ -510,7 +518,31 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(texto).not.toContain('Denegatoria total'); expect(texto).not.toContain('Entrega parcial');
     expect(texto).not.toContain('SAIP-2026-00030'); expect(texto).not.toContain('SAIP-2026-00031');
     expect(texto).toContain('SAIP-2026-00032'); expect(texto).toContain('SAIP-2026-00033');
+    expect(texto).toContain('Plazo ampliado'); expect(texto).not.toContain('Recepcionada');
     expect(f.nativeElement.querySelectorAll('[aria-label^="Apelar expediente"]')).toHaveLength(4);
+  });
+
+  it('cierra la apelación del cronograma fuera de los 15 días y la reabre al recibir una entrega', () => {
+    params.next(convertToParamMap({}));
+    const f = TestBed.createComponent(NuevaApelacionComponent); f.detectChanges();
+    http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]);
+    const baseAmpliada = { ...solicitud, estado: 'EN_REVISION', respuesta: null, apelacion: null };
+    const temprana = { ...baseAmpliada, id: 40, expediente: 'SAIP-2026-00040', ampliacionesPlazo: [{
+      id: 70, solicitudId: 40, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: hoyLima(), cronograma: []
+    }] };
+    const vencida = { ...baseAmpliada, id: 41, expediente: 'SAIP-2026-00041', ampliacionesPlazo: [{
+      id: 71, solicitudId: 41, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: '2020-01-06', cronograma: []
+    }] };
+    const entregada = { ...baseAmpliada, id: 42, expediente: 'SAIP-2026-00042', ampliacionesPlazo: [{
+      id: 72, solicitudId: 42, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: '2020-01-06',
+      cronograma: [{ id: 9, ampliacionId: 72, numeroEntrega: 1, estado: 'ENTREGADA', fechaEntregaReal: hoyLima(), fechaProgramada: hoyLima(), incumplida: false }]
+    }] };
+    http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([temprana, vencida, entregada]);
+    f.detectChanges();
+    const texto = f.nativeElement.textContent as string;
+    expect(texto).not.toContain('SAIP-2026-00040');
+    expect(texto).not.toContain('SAIP-2026-00041');
+    expect(texto).toContain('SAIP-2026-00042');
   });
 
   it.each([{ hashSha256: null }, { hashSha256: 'incompleto' }, { sizeBytes: 0 }, { contentType: null }])('no ofrece clonar un antecedente sin versión recuperable: %j', cambio => {

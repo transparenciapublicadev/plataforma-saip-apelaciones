@@ -185,6 +185,7 @@ public class ApelacionRestController {
         if (solicitud.getApelacion() != null) {
             throw new IllegalArgumentException("La solicitud ya tiene una apelación asociada");
         }
+        solicitudService.validarOportunidadDeApelacion(solicitud.getId());
 
         Ciudadano ciudadano = ciudadanoService.findById(apelacionDTO.ciudadanoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Ciudadano no encontrado con ID: " + apelacionDTO.ciudadanoId()));

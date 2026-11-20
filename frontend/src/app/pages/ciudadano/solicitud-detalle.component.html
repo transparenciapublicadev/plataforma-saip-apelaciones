@@ -100,14 +100,14 @@
             <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
               @if (cronogramaIncumplido()) {
                 La entidad incumplió una fecha del cronograma de entregas. Puede apelar ante el TTAIP.
-              } @else if (hitoDesfavorable()) {
-                Puede apelar si no está conforme con la decisión registrada para una entrega del cronograma.
+              } @else if (diasCronogramaParaApelar(); as dias) {
+                El plazo ordinario ya terminó. {{ dias === 1 ? 'Le queda 1 día hábil' : 'Le quedan ' + dias + ' días hábiles' }} para apelar la ampliación. Recibió el cronograma, así que no es silencio administrativo.
+              } @else if (recibioEntregaApelable()) {
+                Recibió una entrega del cronograma. Puede apelar durante 15 días hábiles. El Tribunal evaluará si procede.
               } @else if (sol.estado === 'DENEGADA') {
                 Su solicitud fue <span class="font-semibold">denegada</span>. Puede <span class="font-semibold">apelar ante el TTAIP</span>.
               } @else if (sol.estado === 'VENCIDA' || esSilencioAdministrativo()) {
                 Su solicitud <span class="font-semibold">no fue respondida en plazo</span> (silencio administrativo). Puede <span class="font-semibold">apelar ante el TTAIP</span>.
-              } @else if (!sol.respuesta && ampliacionApelable()?.plazoOrdinarioVencido) {
-                El plazo ordinario terminó. Puede cuestionar la ampliación ante el TTAIP aunque la primera entrega siga programada.
               } @else {
                 Si no está conforme con la <span class="font-semibold">respuesta de la entidad</span>, puede <span class="font-semibold">apelar ante el TTAIP</span>.
               }
@@ -779,10 +779,10 @@
                       <svg aria-hidden="true" lucideClock class="w-7 h-7" style="color: var(--muted-foreground)"></svg>
                     </div>
                     <span class="eyebrow">Apelación</span>
-                    <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">{{ ampliacionApelable()?.fechaLimiteOriginal ? 'El plazo ordinario sigue abierto' : 'Aún no puede apelar' }}</h3>
+                    <h3 class="font-display mt-1.5" style="font-size: 22px; letter-spacing: -0.01em">{{ tituloEsperaApelacion() }}</h3>
                     <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                      @if (ampliacionApelable(); as ampliacion) {
-                        Si su motivo es cuestionar la ampliación, se recomienda esperar a que termine el plazo ordinario del {{ ampliacion.fechaLimiteOriginal | date:'dd/MM/yyyy' }}. El Tribunal podría considerar prematura una apelación presentada antes.
+                      @if (textoEsperaApelacion(); as aviso) {
+                        {{ aviso }}
                       } @else if (observacionPendiente()) {
                         La entidad le pidió precisar su solicitud. Consulte el requerimiento en este expediente.
                       } @else {
@@ -790,11 +790,6 @@
                       }
                       Estado actual: <span class="font-medium text-foreground/80">{{ estadoSaipLabel() }}</span>.
                     </p>
-                    @if (ampliacionApelable(); as ampliacion) {
-                      @if (ampliacion.plazoOrdinarioVencido === false && ampliacion.fechaLimiteOriginal && !enApelacion()) {
-                        <a [routerLink]="['/ciudadano/apelacion/nueva', sol.expediente]" class="btn-ghost-brand inline-flex mt-4">Ir al formulario de apelación</a>
-                      }
-                    }
                   </div>
                 }
               </div>
