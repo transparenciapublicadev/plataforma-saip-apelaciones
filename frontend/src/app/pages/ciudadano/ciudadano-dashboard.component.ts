@@ -1203,7 +1203,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
 
     const ampliacion = this.ampliacionCoincidente(solicitud);
-    if (ampliacion) {
+    const atiendePlazo = this.estadosEnProceso.has(estado)
+      && !this.enPrecision(solicitud)
+      && !this.archivadaSinPrecision(solicitud)
+      && !this.esSilencioAdministrativo(solicitud);
+    if (ampliacion && !atiendePlazo) {
       const original = this.formatDate(ampliacion.fechaLimiteOriginal);
       const ampliada = this.formatDate(ampliacion.fechaLimiteAmpliada);
       steps.push({
@@ -1228,10 +1232,15 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       const vencimiento = this.formatDate(solicitud.fechaLimite);
       const diasLabel = dias === null ? 'Plazo en evaluación' : dias === 0 ? 'Último día para responder'
         : `${dias} ${dias === 1 ? 'día hábil' : 'días hábiles'}`;
+      const original = ampliacion ? this.formatDate(ampliacion.fechaLimiteOriginal) : '';
+      const ampliada = ampliacion ? this.formatDate(ampliacion.fechaLimiteAmpliada) : '';
+      const meta = original && ampliada
+        ? `${diasLabel} - prolongado de ${original} a ${ampliada}`
+        : `${diasLabel}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`;
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
-        meta: `${diasLabel}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`,
+        meta,
         status: 'active'
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
