@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { OfficialDocsSectionComponent } from './official-docs-section.component';
 import { OfficialPreviewComponent } from './official-preview.component';
 import { buildCtx, buildDocWord, buildResolucionBlob, cedulaTexto, resultadoLabel, buildPdf, resolucionArticulos } from './official-docs.util';
+import { TtaipActuacionesService } from '../../../services/ttaip-actuaciones.service';
 
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -59,6 +61,39 @@ describe('R2: borradores sin emisión acreditada', () => {
     expect(fixture.nativeElement.textContent).not.toMatch(/EMITIDO|ARCHIVADO|RESERVADO|Sala del borrador|PDF borrador/);
     expect(find('Emitir')).toBeUndefined();
     expect(find('Reservar')?.disabled).toBe(true);
+  });
+
+  it('conserva los correlativos del servidor y exige cada archivo firmado de la decisión', () => {
+    const preparar = vi.fn((_: number, __: string, clave: string, decision: string, sala?: string, _numero?: string, archivo?: File) => of({
+      clave, decision, sala, numero: clave === 'RESOLUCION' ? 'RESOLUCIÓN N.° 001596-2026-JUS/TTAIP-PRIMERA SALA' : '15203-2026-JUS/TTAIP',
+      archivo: archivo ? { id: clave === 'RESOLUCION' ? 51 : 52, nombreOriginal: archivo.name } : null,
+    }));
+    TestBed.configureTestingModule({ providers: [
+      { provide: TtaipActuacionesService, useValue: { documentos: () => of([]), preparar } },
+    ] });
+    const fixture = TestBed.createComponent(OfficialDocsSectionComponent);
+    fixture.componentRef.setInput('expediente', '00024-2026-JUS/TTAIP');
+    fixture.componentRef.setInput('expedienteId', 24);
+    fixture.componentRef.setInput('decision', 'inadmisible');
+    fixture.componentRef.setInput('decisionBackend', 'INADMISIBLE');
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    expect(c.entries().map(d => d.tipo)).toEqual(['resolucion', 'cedula']);
+    c.seleccionarSala(c.entries()[0].localId, 'primera_sala');
+    c.guardar(c.entries()[0]);
+    expect(c.entries()[0].numeroCompleto).toContain('001596');
+    expect(c.documentosListos()).toBe(false);
+    const archivo = new File(['%PDF-1.4'], 'firmado.pdf', { type: 'application/pdf' });
+    c.guardar(c.entries()[0], archivo);
+    c.guardar(c.entries()[1]);
+    c.guardar(c.entries()[1], archivo);
+    expect(c.documentosListos()).toBe(true);
+    expect(preparar.mock.calls.every(call => call[2] !== 'ENTIDAD_PUBLICA')).toBe(true);
+    fixture.componentRef.setInput('decision', 'admisible');
+    fixture.componentRef.setInput('decisionBackend', 'ADMISIBLE');
+    fixture.detectChanges();
+    expect(c.documentosListos()).toBe(false);
+    expect(c.entries().some(d => d.destinatario === 'entidad')).toBe(true);
   });
 
   it('la vista previa no afirma autenticidad ni muestra firmantes predeterminados', () => {

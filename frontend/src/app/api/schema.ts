@@ -855,7 +855,7 @@ export interface paths {
         put?: never;
         /**
          * Emitir liquidación o cupón SAIP
-         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.
+         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días calendario para el recojo, contados desde el día siguiente a la notificación.
          */
         post: operations["emitirLiquidacion"];
         delete?: never;
@@ -937,7 +937,7 @@ export interface paths {
         put?: never;
         /**
          * Procesar liquidaciones vencidas por no recojo
-         * @description Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.
+         * @description Archiva solicitudes con liquidación notificada cuyo plazo de recojo de 30 días calendario venció, también si la información ya estaba puesta a disposición.
          */
         post: operations["procesarLiquidacionesVencidas"];
         delete?: never;
@@ -3170,6 +3170,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}/{clave}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["preparar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/destino": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["destino"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/archivos/{tipo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["subir"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["informacion"];
+        put?: never;
+        post: operations["solicitar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria/{solicitudId}/respuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["responder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revisar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/publicacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publicar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["documentos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["actos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5048,6 +5192,77 @@ export interface components {
             decision: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
             fundamentoDecision?: string;
             archivos: string[];
+        };
+        Acto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            resolucionId?: number;
+            numeroResolucion?: string;
+            etapa?: string;
+            decision?: string;
+            destinatario?: string;
+            nombre?: string;
+            numero?: string;
+            tipo?: string;
+            medio?: string;
+            direccion?: string;
+            estado?: string;
+            /** Format: date-time */
+            fechaEficacia?: string;
+            publicada?: boolean;
+            historica?: boolean;
+            requiereExpediente?: boolean;
+            firmado?: components["schemas"]["DocumentoMetadataDTO"];
+            cargo?: components["schemas"]["DocumentoMetadataDTO"];
+            acuse?: components["schemas"]["DocumentoMetadataDTO"];
+            anexos?: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        Consulta: {
+            etapa?: string;
+            entidad?: string;
+            puedeSolicitar?: boolean;
+            /** Format: date */
+            fechaLimiteCalificacion?: string;
+            /** Format: int32 */
+            diasSuspendidos?: number;
+            solicitudes?: components["schemas"]["Solicitud"][];
+        };
+        Destino: {
+            /** @enum {string} */
+            medio?: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
+            direccion?: string;
+            /** @enum {string} */
+            tipo?: "CEDULA" | "CARTA";
+        };
+        Preparado: {
+            clave?: string;
+            decision?: string;
+            numero?: string;
+            sala?: string;
+            archivo?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        Revision: {
+            valida: boolean;
+            /** Format: date-time */
+            fechaEficacia?: string;
+            observacion: string;
+        };
+        Solicitud: {
+            /** Format: int64 */
+            id?: number;
+            etapa?: string;
+            solicitud?: string;
+            /** Format: date */
+            fechaSolicitud?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            estado?: string;
+            respuesta?: string;
+            /** Format: date-time */
+            fechaRespuesta?: string;
+            adjuntos?: components["schemas"]["DocumentoMetadataDTO"][];
+            adjuntosRespuesta?: components["schemas"]["DocumentoMetadataDTO"][];
         };
     };
     responses: never;
@@ -7872,7 +8087,7 @@ export interface operations {
                     "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"];
                 };
             };
-            /** @description Solicitud incompatible, ya respondida o con observación pendiente */
+            /** @description Actuación incompatible con el estado de la solicitud o con una observación pendiente. El recojo sigue disponible cuando la información ya está puesta a disposición. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10696,6 +10911,277 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    preparar: {
+        parameters: {
+            query: {
+                decision: "ADMISIBLE" | "INADMISIBLE" | "IMPROCEDENTE" | "ADMITIDO" | "TENER_POR_NO_PRESENTADO" | "FUNDADO" | "FUNDADO_EN_PARTE" | "INFUNDADO" | "INFUNDADO_EN_PARTE" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "ESTESE_A_LO_RESUELTO" | "NULIDAD_DEL_ACTO";
+                sala?: string;
+                numero?: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+                etapa: "PRIMERA_CALIFICACION" | "SEGUNDA_CALIFICACION" | "RESOLUCION_FINAL";
+                clave: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    archivo?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preparado"];
+                };
+            };
+        };
+    };
+    destino: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Destino"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    subir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+                tipo: "FIRMADO" | "CARGO" | "ACUSE";
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    archivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    informacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    solicitar: {
+        parameters: {
+            query: {
+                texto: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    responder: {
+        parameters: {
+            query: {
+                texto: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+                solicitudId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    revisar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Revision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    publicar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    documentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                etapa: "PRIMERA_CALIFICACION" | "SEGUNDA_CALIFICACION" | "RESOLUCION_FINAL";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preparado"][];
+                };
+            };
+        };
+    };
+    actos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"][];
                 };
             };
         };

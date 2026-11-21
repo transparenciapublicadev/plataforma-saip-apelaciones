@@ -117,6 +117,8 @@ public class TTAIPService {
     public List<ApelacionDTO> listarResueltas() {
         return apelacionService.findAll().stream()
                 .filter(Apelacion::isResuelta)
+                .filter(ap -> ap.getResoluciones() == null || ap.getResoluciones().stream()
+                        .noneMatch(r -> r.isActosDocumentales() && r.getFechaValidacionActos() == null))
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
     }
@@ -384,6 +386,7 @@ public class TTAIPService {
     @Transactional
     public IntentoNotificacionDTO enviarNotificacion(Long expedienteId, Long notificacionId, EnviarNotificacionRequest request) {
         transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return IntentoNotificacionDTO.from(motorNotificacionesService.enviarNotificacionTtaip(expedienteId, notificacionId, request));
     }
 
@@ -391,6 +394,7 @@ public class TTAIPService {
     public ReprocesoNotificacionDTO reprocesarNotificacionFallida(ReprocesarNotificacionRequest request) {
         CedulaNotificacion.DestinatarioNotificacion destinatario = parseDestinatario(request.destinatario());
         transiciones.bloquearReproceso(request.numeroCedulaOriginal(), destinatario);
+        expedienteTtaipService.verificarNotificacionHistorica(request.numeroCedulaOriginal(), destinatario);
         return ReprocesoNotificacionDTO.from(expedienteTtaipService.reprocesarNotificacionFallida(
                 request.numeroCedulaOriginal(),
                 destinatario,
@@ -417,6 +421,7 @@ public class TTAIPService {
                                                          Long notificacionId,
                                                          RegistrarConstanciaEnvioNotificacionRequest request) {
         transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarConstanciaEnvio(expedienteId, notificacionId, request));
     }
@@ -426,6 +431,7 @@ public class TTAIPService {
                                                          Long notificacionId,
                                                          RegistrarAcuseAutomaticoNotificacionRequest request) {
         transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarAcuseAutomatico(expedienteId, notificacionId, request));
     }
@@ -435,6 +441,7 @@ public class TTAIPService {
                                                                Long notificacionId,
                                                                ValidarNotificacionManualRequest request) {
         transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.validarNotificacionManualmente(expedienteId, notificacionId, request));
     }

@@ -14,8 +14,9 @@ public record PanelApelacionDTO(Long id, String expediente, String fundamentos, 
     PlazoSubsanacionTtaipDTO plazoSubsanacion,
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(description = "Plazo de primera calificación si consta el ingreso al Tribunal y todavía no se registró la calificación")
-    PanelPlazoPrimeraCalificacionDTO plazoPrimeraCalificacion) {
+    PanelPlazoPrimeraCalificacionDTO plazoPrimeraCalificacion,
+    boolean actosNotificacionPendientes, boolean informacionComplementariaPendiente) {
     public record PanelExpedienteDTO(Long id, PanelOpcionDTO sala) {}
     public record PanelResolucionDTO(Long id, String tipoResolucion, String decision, String fechaResolucion) {}
-    public record PanelPlazoPrimeraCalificacionDTO(int diasRestantes, boolean vencido) {}
+    public record PanelPlazoPrimeraCalificacionDTO(int diasRestantes, boolean vencido, int diasSuspendidos, java.time.LocalDate fechaLimite) {}
 }

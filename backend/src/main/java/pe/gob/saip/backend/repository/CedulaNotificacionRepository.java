@@ -15,6 +15,9 @@ public interface CedulaNotificacionRepository extends JpaRepository<CedulaNotifi
             CedulaNotificacion.DestinatarioNotificacion destinatario
     );
 
+    Optional<CedulaNotificacion> findByResolucion_IdResolucionAndDestinatario(
+            Long resolucionId, CedulaNotificacion.DestinatarioNotificacion destinatario);
+
     long countByNumeroCedulaStartingWith(String prefix);
 
     Optional<CedulaNotificacion> findFirstByResolucion_IdResolucionOrderByIdCedulaAsc(Long resolucionId);

@@ -1,3 +1,4 @@
+import { BandejaTribunalComponent } from '../ttaip/shared/bandeja-tribunal.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -33,7 +34,7 @@ import {
 
 @Component({
   selector: 'app-funcionario-dashboard',
-  imports: [
+  imports: [BandejaTribunalComponent,
     RouterLink, FormsModule, DatePipe,
     StatusBadgeComponent, PaginationComponent,
     LucideBuilding2, LucideCompass, LucideShieldAlert,

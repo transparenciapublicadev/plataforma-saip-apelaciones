@@ -1,3 +1,5 @@
+import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
+import { of as respuestaActuaciones } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -25,6 +27,13 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
   beforeEach(() => {
     localStorage.clear(); sessionStorage.clear(); params = new BehaviorSubject(convertToParamMap({ expediente }));
     TestBed.configureTestingModule({ imports: [TtaipSegundaCalificacionComponent], providers: [provideRouter([]),
+      { provide: TtaipActuacionesService, useValue: {
+        documentos: () => respuestaActuaciones(['RESOLUCION', 'CIUDADANO', 'ENTIDAD_PUBLICA'].map((clave, i) => ({
+          clave, decision: 'ADMITIDO', numero: '2026-' + i, sala: 'PRIMERA SALA', archivo: { id: 90 + i, nombreOriginal: 'firmado.pdf' },
+        }))),
+        informacion: () => respuestaActuaciones({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+      } },
+
       provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
@@ -340,7 +349,7 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
     const f = page(); const firstTab = f.nativeElement.querySelector('#second-tab-subsanacion') as HTMLButtonElement; firstTab.focus();
     firstTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     http.match(req => req.url === api + '/documentos').forEach(req => req.flush([])); f.detectChanges();
-    const lastTab = f.nativeElement.querySelector('#second-tab-adjuntos') as HTMLButtonElement;
+    const lastTab = f.nativeElement.querySelector('#second-tab-subprocesos') as HTMLButtonElement;
     expect(document.activeElement).toBe(lastTab); expect(lastTab.getAttribute('aria-selected')).toBe('true'); expect(firstTab.tabIndex).toBe(-1);
     lastTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })); f.detectChanges();
     expect(document.activeElement).toBe(firstTab); expect(f.nativeElement.querySelector('#second-panel-adjuntos').hidden).toBe(true);

@@ -1,3 +1,4 @@
+import { LucideEye } from '@lucide/angular';
 import { HttpClient } from '@angular/common/http';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -28,7 +29,7 @@ import {
 
 @Component({
   selector: 'app-ttaip-dashboard',
-  imports: [
+  imports: [LucideEye,
     RouterLink, FormsModule, DatePipe, DecimalPipe, StatusBadgeComponent, PaginationComponent,
     LucideGavel, LucideCompass, LucideLayers, LucideScale, LucideHourglass, LucideCheckCircle2,
     LucideSearch, LucideInbox, LucideArrowRight, LucideBuilding2, LucideActivity, LucideClock,
@@ -57,6 +58,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   private focusStageFromState: StageKey | null = null;
 
   readonly stageCatalog = signal<StageMeta[]>(stagesConPlazos(null));
+  readonly filtrosEtapa = computed(() => this.stageCatalog().filter(stage => stage.key !== 'elevacion'));
   private readonly calendario = signal<CalendarioConfig | null>(null);
   readonly apelaciones = signal<Apelacion[]>([]);
   readonly loading = signal(true);
@@ -86,7 +88,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
 
   constructor() {
     const focus = (this.router.getCurrentNavigation()?.extras.state as { focusStage?: StageKey } | undefined)?.focusStage;
-    if (focus && stages.some(stage => stage.key === focus)) this.focusStageFromState = focus;
+    if (focus && this.filtrosEtapa().some(stage => stage.key === focus)) this.focusStageFromState = focus;
     effect(() => {
       const rev = this.authService.cambiosSesion?.() ?? 0;
       if (this.initialized && rev !== this.revision) untracked(() => this.cargarDashboard());
@@ -102,11 +104,12 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
 
   readonly queueItems = computed(() => this.apelaciones().map(apelacion => {
     const catalog = this.stageCatalog();
-    const stage = catalog.find(s => s.key === stageOf(apelacion.estado)) ?? catalog[0];
+    const stageKey = apelacion.etapa === 'notificaciones' ? 'notificaciones' : stageOf(apelacion.estado);
+    const stage = catalog.find(s => s.key === stageKey) ?? catalog[0];
     const status = computePlazoStatus(apelacion, stage, this.hoyISO(), this.calendario());
     return {
       apelacion,
-      stageKey: stageOf(apelacion.estado),
+      stageKey,
       stage,
       status,
       ciudadano: apelacion.ciudadanoNombre || 'Administrado no informado',
@@ -126,6 +129,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
     subsanacion: this.resumen()?.porEtapa['subsanacion'] ?? 0,
     calificacion2: this.resumen()?.porEtapa['calificacion2'] ?? 0,
     resolucion: this.resumen()?.porEtapa['resolucion'] ?? 0,
+    notificaciones: this.resumen()?.porEtapa['notificaciones'] ?? 0,
     resueltos: this.resumen()?.porEtapa['resueltos'] ?? 0,
     otras: this.resumen()?.porEtapa['otras'] ?? 0
   }));
@@ -144,7 +148,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   readonly totalFinales = computed(() => Object.values(this.resumen()?.porResultado ?? {}).reduce((sum, n) => sum + n, 0));
 
   readonly resoluciones = computed(() => this.apelaciones().filter(a =>
-    a.resuelta === true || stageOf(a.estado) === 'resueltos' || finalStates.has(a.estado)
+    !a.actosNotificacionPendientes && (a.resuelta === true || stageOf(a.estado) === 'resueltos' || finalStates.has(a.estado))
   ));
 
   readonly tiempoPromedio = computed(() => {

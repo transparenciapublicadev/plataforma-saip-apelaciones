@@ -1,3 +1,5 @@
+import { ActosNotificacionComponent } from './shared/actos-notificacion.component';
+import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { Observable, Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { positiveId, apelacionCompatible, motivoPrimera } from './ttaip-calificar.model';
@@ -54,11 +56,11 @@ import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
 
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [
+  imports: [ActosNotificacionComponent, InformacionComplementariaComponent,
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
     DocumentPreviewModalComponent, RecepcionInstitucionalComponent, TtaipInformeOralComponent,
     LucideEye, LucideDownload, LucideFileText, LucideScale,
-    LucideCheckCircle2, LucideMail, LucideGlobe,
+    LucideMail, LucideGlobe,
     LucideMonitor, LucidePackage, LucideShieldCheck
   ],
   templateUrl: './ttaip-resolucion-detalle.component.html',
@@ -359,7 +361,11 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private sessionKey(): string { try { const s = this.auth.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.entidadId]); } catch { return ''; } }
   contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
   private current(query: number): boolean { return query === this.documentQuery && this.contextoVigente(); }
-  ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => this.cargarApelacion(p.get('expediente') || '')); }
+  ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => {
+    const tab = this.route.snapshot?.queryParamMap?.get('tab');
+    if (tab === 'notificaciones' || tab === 'subprocesos') this.activeTab.set(tab);
+    this.cargarApelacion(p.get('expediente') || '');
+  }); }
   ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
   cargarApelacion(expediente: string): void {
     if (this.destroyed) return;
@@ -556,15 +562,10 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     return 'pill pill-medium';
   }
 
-  esSuspensionAdicionalActiva(suspension: SuspensionPlazoTtaip): boolean {
+  private esSuspensionAdicionalActiva(suspension: SuspensionPlazoTtaip): boolean {
     const motivo = this.normalizeKey(suspension.motivoSuspension);
     return suspension.estadoSuspension === 'ACTIVA'
       && (motivo === 'INFORME_ORAL' || motivo === 'INFORMACION_COMPLEMENTARIA');
-  }
-
-  formatSuspensionLabel(value?: string | null): string {
-    const normalized = this.normalizeKey(value);
-    return normalized ? normalized.replaceAll('_', ' ') : 'SUSPENSION';
   }
 
   private parseEstadoAcuse(value: string): 'ENTREGADO' | 'FALLIDO' | 'NO_RECIBIDO' | 'OBSERVADO' | null {

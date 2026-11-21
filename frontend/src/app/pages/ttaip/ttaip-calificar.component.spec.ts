@@ -1,3 +1,5 @@
+import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
+import { of as respuestaActuaciones } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -27,6 +29,13 @@ describe('ResolutionForm — primera calificación real', { timeout: 15000 }, ()
   beforeEach(() => {
     localStorage.clear(); sessionStorage.clear(); params = new BehaviorSubject(convertToParamMap({ expediente }));
     TestBed.configureTestingModule({ imports: [TtaipCalificarComponent], providers: [provideRouter([]),
+      { provide: TtaipActuacionesService, useValue: {
+        documentos: () => respuestaActuaciones(['RESOLUCION', 'CIUDADANO', 'ENTIDAD_PUBLICA'].map((clave, i) => ({
+          clave, decision: 'ADMISIBLE', numero: '2026-' + i, sala: 'PRIMERA SALA', archivo: { id: 90 + i, nombreOriginal: 'firmado.pdf' },
+        }))),
+        informacion: () => respuestaActuaciones({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+      } },
+
       provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
@@ -356,7 +365,7 @@ describe('ResolutionForm — primera calificación real', { timeout: 15000 }, ()
     const second = f.nativeElement.querySelector('#qual-tab-adjuntos') as HTMLButtonElement;
     second.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })); f.detectChanges();
     expect(document.activeElement?.id).toBe('qual-tab-apelacion'); expect(first.getAttribute('aria-controls')).toBe('qual-panel-apelacion');
-    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); f.detectChanges(); expect(document.activeElement?.id).toBe('qual-tab-adjuntos');
+    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); f.detectChanges(); expect(document.activeElement?.id).toBe('qual-tab-subprocesos');
     http.expectNone(req => req.method !== 'GET');
   });
   it('confirmación contiene foco, admite Escape y lo devuelve sin registrar', async () => {
