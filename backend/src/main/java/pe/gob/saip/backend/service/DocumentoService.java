@@ -3,8 +3,10 @@ package pe.gob.saip.backend.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -227,6 +229,68 @@ public class DocumentoService {
             }
             throw exception;
         }
+    }
+
+    private static final Set<Documento.TipoDocumento> DOCUMENTOS_DEL_ADMINISTRADO = EnumSet.of(
+            Documento.TipoDocumento.SOLICITUD_ORIGINAL,
+            Documento.TipoDocumento.DOCUMENTO_ADJUNTO,
+            Documento.TipoDocumento.SUBSANACION,
+            Documento.TipoDocumento.OTRO);
+
+    /**
+     * El expediente de destino recibe los archivos que el administrado presentó ante la entidad de origen.
+     * Conservan el expediente y la entidad de esa gestión para no leerse como una precisión nueva.
+     */
+    @Transactional
+    public void copiarDocumentosDelAdministrado(Solicitud origen, Solicitud destino) {
+        if (origen == null || destino == null || origen.getId() == null || destino.getId() == null) {
+            return;
+        }
+        String expediente = origen.getExpediente();
+        String entidad = origen.getEntidad() != null ? origen.getEntidad().getNombre() : null;
+        List<Documento> fuentes = documentoRepository.findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
+                origen.getId(), Documento.EstadoDocumento.ACTIVO);
+        for (Documento fuente : fuentes) {
+            if (!esDocumentoDelAdministrado(fuente)) {
+                continue;
+            }
+            Documento copia = new Documento();
+            copia.setNombreOriginal(fuente.getNombreOriginal());
+            copia.setStorageKey(fuente.getStorageKey());
+            copia.setContentType(fuente.getContentType());
+            copia.setSizeBytes(fuente.getSizeBytes());
+            copia.setHashSha256(fuente.getHashSha256());
+            copia.setStorageProvider(fuente.getStorageProvider() != null
+                    ? fuente.getStorageProvider() : StorageProviderType.LOCAL);
+            copia.setStorageBucket(fuente.getStorageBucket());
+            copia.setTipoDocumento(fuente.getTipoDocumento());
+            copia.setEstado(Documento.EstadoDocumento.ACTIVO);
+            copia.setFechaCreacion(fuente.getFechaCreacion());
+            copia.setCreadoPor(fuente.getCreadoPor());
+            copia.setSolicitud(destino);
+            copia.setExpedienteOrigen(expediente);
+            copia.setEntidadOrigen(entidad);
+            documentoRepository.save(copia);
+        }
+    }
+
+    private static boolean esDocumentoDelAdministrado(Documento documento) {
+        return documento.getNombreOriginal() != null
+                && !documento.getNombreOriginal().isBlank()
+                && documento.getStorageKey() != null
+                && !documento.getStorageKey().isBlank()
+                && documento.getContentType() != null
+                && !documento.getContentType().isBlank()
+                && documento.getTipoDocumento() != null
+                && DOCUMENTOS_DEL_ADMINISTRADO.contains(documento.getTipoDocumento())
+                && !documento.isBorradorTtaip()
+                && !documento.isSoloInstitucionalTtaip()
+                && documento.getRespuesta() == null
+                && documento.getApelacion() == null
+                && documento.getResolucion() == null
+                && documento.getExpedienteTtaip() == null
+                && documento.getCedulaNotificacion() == null
+                && documento.getEntregaParcial() == null;
     }
 
     @Transactional(readOnly = true)

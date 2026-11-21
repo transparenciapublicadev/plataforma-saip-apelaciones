@@ -33,6 +33,7 @@ import {
 } from '@lucide/angular';
 
 import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo, formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
+import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
 
 export type RequestTabId = 'solicitud' | 'precision' | 'respuesta' | 'entrega' | 'notificaciones' | 'apelacion' | 'encauzamiento';
 
@@ -49,6 +50,9 @@ export interface DocumentoDetalleItem {
   fecha: string;
   esSubsanacion: boolean;
   tipoOrigen: 'ciudadano' | 'subsanacion' | 'entidad' | 'resolucion';
+  procedencia?: string;
+  expedienteOrigen?: string;
+  entidadOrigen?: string;
 }
 
 export interface NotifStageItem {
@@ -188,7 +192,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   });
 
   readonly respLabel = computed<string>(() => {
-    if (this.respDenegada()) return 'Denegada';
+    if (this.respDenegada()) return 'Denegación total';
     if (this.respParcial()) return 'Entrega parcial';
     if (this.solicitud()?.respuesta?.tipoRespuesta === 'ENTREGA_TOTAL') return 'Entrega total';
     return 'Tipo no registrado';
@@ -202,11 +206,15 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       : [];
   });
 
+  readonly avisoProcedencia = computed(() => avisoDocumentosEncauzados(this.misDocumentos(), 'ciudadano'));
+
   readonly gruposMisDocumentos = computed(() => {
     const docs = this.misDocumentos();
+    const solicitud = docs.filter(d => !d.esSubsanacion && !esEvidenciaRecojo(d.nombre));
+    const precision = docs.filter(d => d.esSubsanacion);
     return [
-      { key: 'sol', title: 'Adjuntos de la solicitud', docs: docs.filter(d => !d.esSubsanacion && !esEvidenciaRecojo(d.nombre)) },
-      { key: 'sub', title: 'Subsanaciones presentadas', docs: docs.filter(d => d.esSubsanacion) }
+      { key: 'sol', title: solicitud.some(d => d.procedencia) ? 'Documentos presentados ante la otra entidad' : 'Adjuntos de la solicitud', docs: solicitud },
+      { key: 'sub', title: precision.some(d => d.procedencia) ? 'Precisión presentada ante la otra entidad' : 'Subsanaciones presentadas', docs: precision }
     ].filter(grupo => grupo.docs.length > 0);
   });
 
@@ -267,12 +275,17 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     }).map(doc => {
       const metadata = 'nombreOriginal' in doc ? doc : null;
       const legacy = 'nombreArchivo' in doc ? doc : null;
+      const procedenciaDoc = doc as DocumentoListItem & ProcedenciaDocumental;
+      const procedencia = procedenciaEncauzada(procedenciaDoc);
       return {
         id: doc.id, nombre: metadata?.nombreOriginal || legacy?.nombreArchivo || 'Documento sin nombre',
         contentType: metadata?.contentType || legacy?.tipoArchivo,
         tamano: this.formatBytes(metadata?.sizeBytes ?? legacy?.tamanio),
         fecha: this.formatTimelineDate(metadata?.fechaCreacion || legacy?.fechaSubida),
-        esSubsanacion: doc.tipoDocumento === 'SUBSANACION', tipoOrigen: origen
+        esSubsanacion: doc.tipoDocumento === 'SUBSANACION', tipoOrigen: origen,
+        procedencia: procedencia || undefined,
+        expedienteOrigen: procedenciaDoc.expedienteOrigen?.trim() || undefined,
+        entidadOrigen: procedenciaDoc.entidadOrigen?.trim() || undefined
       };
     });
   }
@@ -616,6 +629,37 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     return this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null;
   }
 
+  denegatoriaEncauzada(): boolean {
+    const sol = this.solicitud();
+    const enc = this.encauzamientoActivo();
+    return !!sol && (sol.estado || '').toUpperCase() === 'DENEGADA' && this.respDenegada() && enc?.alcance === 'TOTAL';
+  }
+
+  origenDenegatoria(): string {
+    return this.encauzamientoActivo()?.entidadOrigenNombre?.trim() || 'la entidad de origen';
+  }
+
+  destinoEncauzado(): string {
+    return this.encauzamientoActivo()?.entidadDestinoNombre?.trim() || 'la entidad competente';
+  }
+
+  expedienteDestino(): string {
+    const enc = this.encauzamientoActivo();
+    const directo = enc?.expedienteDerivado?.trim();
+    if (directo) return directo;
+    return /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1] ?? '';
+  }
+
+  textoContinuacion(enc?: EncauzamientoSolicitud | null): string {
+    const destino = enc?.entidadDestinoNombre?.trim() || this.destinoEncauzado();
+    const numero = enc?.expedienteDerivado?.trim()
+      || /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1]
+      || this.expedienteDestino();
+    return numero
+      ? `${destino} abrió el expediente ${numero}, que empieza desde su ingreso. Este expediente conserva el historial hasta el encauzamiento.`
+      : `${destino} abre un expediente nuevo, que empieza desde su ingreso. Este expediente conserva el historial hasta el encauzamiento.`;
+  }
+
   liquidaciones(): LiquidacionCostoSolicitud[] {
     const sol = this.solicitud();
     return (sol?.liquidacionesCosto ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
@@ -740,22 +784,29 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
         fechaOrden: diaCalendario(date), secuencia
       });
     };
-    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud SAIP.', sol.fechaPresentacion, 'mail', 10);
+    const respondida = this.idValido(sol.respuesta?.id);
+    const encTotal = (sol.encauzamientos ?? []).find(enc =>
+      this.idValido(enc.id)
+      && (enc.solicitudId == null || enc.solicitudId === sol.id)
+      && enc.alcance === 'TOTAL'
+      && (enc.estadoEncauzamiento === 'DERIVADO' || enc.estadoEncauzamiento === 'REGISTRADO'));
+    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud.', sol.fechaPresentacion, 'mail', 10);
     for (const obs of sol.observaciones ?? []) {
       if (!this.idValido(obs.id) || (obs.solicitudId != null && obs.solicitudId !== sol.id)) continue;
       add('Solicitud de precisión', this.resumenPrecision(obs.estado), obs.fechaObservacion, 'search', 20);
-      if (obs.estado === 'SUBSANADA') add('Precisión registrada', obs.comentarioSubsanacion || 'Respuesta del administrado registrada.', obs.fechaSubsanacion, 'filecheck', 30);
+      if (obs.estado === 'SUBSANADA') add('Precisión registrada', 'Precisión registrada.', obs.fechaSubsanacion, 'filecheck', 30);
     }
     for (const enc of sol.encauzamientos ?? []) {
       if (!this.idValido(enc.id) || (enc.solicitudId != null && enc.solicitudId !== sol.id)) continue;
       const origen = enc.entidadOrigenNombre || 'la entidad de origen';
       const destino = enc.entidadDestinoNombre || 'la entidad de destino';
-      const motivo = enc.motivoEncauzamiento || 'Motivo no registrado.';
-      add('Encauzamiento registrado', `De ${origen} a ${destino}. ${motivo}`, enc.fechaEncauzamiento, 'search', 40);
+      const numero = enc.expedienteDerivado?.trim()
+        || /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc.trazabilidad ?? '')?.[1];
+      add('Encauzamiento registrado', numero ? `De ${origen} a ${destino}. Continúa en ${numero}.` : `De ${origen} a ${destino}.`, enc.fechaEncauzamiento, 'search', respondida ? 92 : 40);
     }
     for (const amp of sol.ampliacionesPlazo ?? []) {
       if (!this.idValido(amp.id) || amp.solicitudId !== sol.id) continue;
-      add('Ampliación registrada', amp.motivoAmpliacion || amp.informeAmpliacion || 'Motivo no registrado.', amp.fechaSolicitudAmpliacion || amp.fechaNotificacionAmpliacion, 'search', 50);
+      add('Ampliación registrada', 'Plazo ampliado.', amp.fechaSolicitudAmpliacion || amp.fechaNotificacionAmpliacion, 'search', 50);
       for (const hito of [...(amp.cronograma ?? [])].sort((a, b) => a.numeroEntrega - b.numeroEntrega)) {
         if (hito.estado !== 'ENTREGADA') continue;
         const docsCount = (hito.documentos ?? []).filter(d => this.idValido(d?.id)).length;
@@ -778,7 +829,15 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck', 97);
     }
     if (this.idValido(sol.respuesta?.id)) {
-      add('Respuesta de la entidad', this.respLabel(), sol.respuesta?.fechaRespuesta, 'filecheck', 90);
+      const denegada = sol.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+      const origen = encTotal?.entidadOrigenNombre?.trim();
+      add(
+        denegada ? 'Denegatoria total' : 'Respuesta de la entidad',
+        denegada ? (origen ? `Denegatoria de ${origen}.` : 'Denegatoria total.') : this.respLabel(),
+        sol.respuesta?.fechaRespuesta,
+        'filecheck',
+        90
+      );
     }
     const ap = sol.apelacion;
     if (this.idValido(ap?.id)) {
@@ -794,6 +853,10 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
         }
       }
     }
+    if (respondida && encTotal) {
+      const actual = events.find(event => event.secuencia === 92 && event.title === 'Encauzamiento registrado');
+      if (actual) actual.status = 'current';
+    }
     const dated = events.filter(event => event.fechaOrden !== null)
       .sort((a, b) => a.fechaOrden! - b.fechaOrden! || a.secuencia - b.secuencia);
     const undated = events.filter(event => event.fechaOrden === null).sort((a, b) => a.secuencia - b.secuencia);
@@ -807,10 +870,10 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   private resumenPrecision(estado: string): string {
     switch (estado) {
       case 'PENDIENTE_SUBSANACION': return 'En espera de su precisión.';
-      case 'SUBSANADA': return 'La observación fue subsanada.';
-      case 'NO_SUBSANADA': return 'La observación quedó sin subsanar.';
-      case 'ARCHIVADA': return 'La observación fue archivada.';
-      default: return 'La entidad pidió precisar su solicitud.';
+      case 'SUBSANADA': return 'Precisión solicitada.';
+      case 'NO_SUBSANADA': return 'Precisión sin subsanar.';
+      case 'ARCHIVADA': return 'Precisión archivada.';
+      default: return 'Precisión solicitada.';
     }
   }
 }

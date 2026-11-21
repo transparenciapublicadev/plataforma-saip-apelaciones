@@ -208,7 +208,7 @@
                           @if (solicitud.apelacion?.expediente) {
                             <span class="code-chip code-chip-alt" style="font-size: 11px"><span aria-hidden="true">TTAIP</span> {{ solicitud.apelacion.expediente }}</span>
                           }
-                          <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
+                          <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
                         </div>
                         <div class="text-sm text-foreground mt-1 truncate" [title]="solicitud.entidadNombre + ' · ' + solicitud.asunto">
                           <span class="font-semibold">{{ solicitud.entidadNombre }}</span> · {{ solicitud.asunto }}
@@ -293,7 +293,7 @@
         }
 
         <!-- ── ESTÁ VIENDO ESTA SOLICITUD (TIMELINE) ────────────────── -->
-        @if (solicitudPrincipal(); as principal) {
+        @if (solicitudTrazada(); as principal) {
           <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-start gap-4">
               <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
@@ -317,7 +317,7 @@
                       <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion.expediente }}</span>
                     </span>
                   }
-                  <app-status-badge [status]="estadoInsignia(principal)"></app-status-badge>
+                  <app-status-badge [status]="estadoInsignia(principal)" [raw]="denegatoriaEncauzada(principal)" [toneOverride]="denegatoriaEncauzada(principal) ? 'rose' : null"></app-status-badge>
                 </div>
                 <h3 class="font-display mt-2" style="font-size: 20px; letter-spacing: -0.015em; line-height: 1.25">{{ principal.asunto }}</h3>
                 <p class="text-sm text-[var(--muted-foreground)] mt-0.5">{{ principal.entidadNombre }} · presentada el {{ principal.fechaPresentacion | date:'dd/MM/yyyy' }}</p>
@@ -325,7 +325,7 @@
 
                 <!-- ¿Dónde está ahora? — location chip -->
                 @if (ubicacionPrincipal(); as ubic) {
-                  <div class="mt-3 inline-flex items-center gap-2.5 rounded-lg pl-2.5 pr-3.5 py-2" [style.border-left]="'3px solid ' + ubic.tone" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="mt-3 inline-flex max-w-full items-center gap-2.5 overflow-x-auto rounded-lg py-2 pl-2.5 pr-3.5 [scrollbar-width:thin]" [style.border-left]="'3px solid ' + ubic.tone" style="background: var(--card); border: 1px solid var(--border)">
                     @switch (ubic.iconName) {
                       @case ('gavel') { <svg lucideGavel class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('scale') { <svg lucideScale class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
@@ -336,7 +336,7 @@
                     }
                     <div class="leading-tight">
                       <div class="text-[10px] tracking-widest uppercase text-muted-foreground">¿Donde esta ahora?</div>
-                      <div class="text-sm font-semibold" [style.color]="ubic.tone">{{ ubic.label }}</div>
+                      <div class="whitespace-nowrap text-sm font-semibold" [style.color]="ubic.tone">{{ ubic.label }}</div>
                     </div>
                     <span class="text-[11px] text-muted-foreground border-l border-border pl-2.5 ml-1 self-stretch flex items-center">{{ ubic.instancia }}</span>
                   </div>
@@ -344,46 +344,42 @@
               </div>
             </div>
 
-            <div class="p-6 md:p-8">
-              <div class="relative">
-                @if (timelinePrincipal().length <= 5) {
-                  <div class="hidden md:block absolute top-[18px] left-0 right-0 h-px" style="background: var(--border)"></div>
-                }
-
-
-                <ol aria-label="Seguimiento de la solicitud" class="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-2 relative">
-                  @for (step of timelinePrincipal(); track step.key) {
-                    <li data-motion-item class="flex md:flex-col gap-3 md:gap-2 md:text-center" [attr.aria-current]="step.status === 'active' ? 'step' : null">
-                      <div class="relative md:flex md:justify-center">
+            <div class="px-6 py-6 md:px-8 md:py-8">
+              <div class="overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]" tabindex="0" aria-label="Recorrido de la solicitud. Deslice horizontalmente para ver los pasos que no caben.">
+                <div class="relative inline-flex min-w-full">
+                  <div class="pointer-events-none absolute top-[18px] right-6 left-6 h-px" style="background: var(--border)" aria-hidden="true"></div>
+                  <ol aria-label="Seguimiento de la solicitud" class="relative flex min-w-full flex-nowrap items-start justify-between gap-1">
+                    @for (step of timelinePrincipal(); track step.key) {
+                      <li data-motion-item class="flex shrink-0 flex-col items-center gap-2 px-3 text-center" [attr.aria-current]="step.status === 'active' ? 'step' : null">
                         <div
-                          class="w-9 h-9 rounded-full flex items-center justify-center relative z-10 transition-all duration-300"
+                          class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300"
                           [style.background]="timelineDotBackground(step.status)"
                           [style.border]="timelineDotBorder(step.status)"
                           [style.box-shadow]="timelineDotShadow(step.status)"
                         >
                           @if (step.status === 'done') {
-                            <svg lucideCheckCircle2 class="w-4 h-4 text-white"></svg>
+                            <svg lucideCheckCircle2 class="h-4 w-4 text-white"></svg>
                           } @else if (step.status === 'active') {
-                            <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
+                            <span class="h-2.5 w-2.5 rounded-full bg-white"></span>
                           } @else if (step.status === 'skipped') {
-                            <span class="text-white text-xs font-bold leading-none">!</span>
+                            <span class="text-xs font-bold leading-none text-white">!</span>
                           } @else {
-                            <span class="w-1.5 h-1.5 rounded-full opacity-40" style="background: var(--muted-foreground)"></span>
+                            <span class="h-1.5 w-1.5 rounded-full opacity-40" style="background: var(--muted-foreground)"></span>
                           }
                         </div>
-                      </div>
-                      <div class="flex-1 md:flex-none">
-                        <div class="text-xs font-semibold tracking-tight" [style.color]="timelineLabelColor(step.status)">{{ step.label }}</div>
-                        @if (step.date) {
-                          <div class="font-mono text-[11px] text-[var(--muted-foreground)] mt-0.5">{{ step.date }}</div>
-                        }
-                        @if (step.meta) {
-                          <div class="text-[11px] mt-0.5" [style.color]="timelineMetaColor(step.status)">{{ step.meta }}</div>
-                        }
-                      </div>
-                    </li>
-                  }
-                </ol>
+                        <div>
+                          <div class="whitespace-nowrap text-xs font-semibold tracking-tight" [style.color]="timelineLabelColor(step.status)">{{ step.label }}</div>
+                          @if (step.date) {
+                            <div class="mt-0.5 whitespace-nowrap font-mono text-[11px] text-[var(--muted-foreground)]">{{ step.date }}</div>
+                          }
+                          @if (step.meta) {
+                            <div class="mt-0.5 whitespace-nowrap text-[11px]" [style.color]="timelineMetaColor(step.status)">{{ step.meta }}</div>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ol>
+                </div>
               </div>
 
               @if (precisionPrincipal(); as precision) {
@@ -605,10 +601,10 @@
                           @if (esResueltas && solicitud.apelacion?.resultado) {
                             <span class="inline-flex items-center gap-1 text-[11px] font-semibold">
                               <span class="text-[10px] tracking-wide uppercase text-muted-foreground">Resultado:</span>
-                              <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
+                              <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
                             </span>
                           } @else {
-                            <app-status-badge [status]="estadoInsignia(solicitud)"></app-status-badge>
+                            <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
                           }
                           @if (isActive) {
                             <span class="text-[10px] tracking-wide uppercase font-semibold" style="color: var(--brand-700)">Viendo ahora</span>

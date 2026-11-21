@@ -21,7 +21,9 @@ public record EncauzamientoSolicitudDTO(
         String estadoEncauzamiento,
         String responsable,
         String observacionSustento,
-        String trazabilidad
+        String trazabilidad,
+        Long solicitudDerivadaId,
+        String expedienteDerivado
 ) {
     public static EncauzamientoSolicitudDTO from(EncauzamientoSolicitud encauzamiento) {
         return new EncauzamientoSolicitudDTO(
@@ -41,7 +43,9 @@ public record EncauzamientoSolicitudDTO(
                 encauzamiento.getEstadoEncauzamiento() != null ? encauzamiento.getEstadoEncauzamiento().name() : null,
                 encauzamiento.getResponsable(),
                 encauzamiento.getObservacionSustento(),
-                encauzamiento.getTrazabilidad()
+                encauzamiento.getTrazabilidad(),
+                encauzamiento.getSolicitudDerivada() != null ? encauzamiento.getSolicitudDerivada().getId() : null,
+                encauzamiento.getSolicitudDerivada() != null ? encauzamiento.getSolicitudDerivada().getExpediente() : null
         );
     }
 }

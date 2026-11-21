@@ -77,6 +77,23 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(solicitud.documentos).toEqual([]);
   });
 
+  it('muestra los documentos encauzados como gestión de la entidad de origen', () => {
+    const f = pagina();
+    responder(f, {
+      ...solicitud,
+      documentosMetadata: [
+        { ...documento, expedienteOrigen: 'SAIP-2026-10006', entidadOrigen: 'Ministerio de Educación' },
+        { ...documento, id: 89, tipoDocumento: 'DOCUMENTO_ADJUNTO', nombreOriginal: 'anexo.pdf', expedienteOrigen: 'SAIP-2026-10006', entidadOrigen: 'Ministerio de Educación' }
+      ]
+    });
+    const texto = f.nativeElement.textContent;
+    expect(texto).toContain('Presentó estos documentos ante Ministerio de Educación · SAIP-2026-10006');
+    expect(texto).toContain('Precisión presentada ante la otra entidad');
+    expect(texto).toContain('Documentos presentados ante la otra entidad');
+    expect(texto).toContain('Ante Ministerio de Educación · SAIP-2026-10006');
+    expect(texto).not.toContain('Subsanaciones presentadas');
+  });
+
   it('guarda el encauzamiento en su pestaña y lo deja en la línea de tiempo', () => {
     const f = pagina();
     responder(f, {

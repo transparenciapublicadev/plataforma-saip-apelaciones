@@ -29,6 +29,7 @@ import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.LiquidacionCostoSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
+import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
@@ -601,16 +602,50 @@ public class SolicitudService {
         encauzamiento.setEstadoEncauzamiento(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
         encauzamiento.setResponsable(responsable);
         encauzamiento.setObservacionSustento(trimToNull(request.observacionSustento()));
-        encauzamiento.setTrazabilidad("%s - Encauzamiento %s registrado por %s. Origen: %s; destino: %s; límite legal: %s."
-                .formatted(ahora, alcance, responsable, origen.getAcronimo(), destino.getAcronimo(), fechaLimiteEncauzamiento));
-
         if (alcance == EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL) {
-            solicitud.setEntidad(destino);
-            solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
-            solicitudRepository.save(solicitud);
+            Solicitud derivada = abrirExpedienteDestino(solicitud, destino);
+            encauzamiento.setSolicitudDerivada(derivada);
+            encauzamiento.setTrazabilidad("%s - Encauzamiento %s registrado por %s. Origen: %s; destino: %s; límite legal: %s. Expediente de destino: %s."
+                    .formatted(ahora, alcance, responsable, origen.getAcronimo(), destino.getAcronimo(), fechaLimiteEncauzamiento, derivada.getExpediente()));
+        } else {
+            encauzamiento.setTrazabilidad("%s - Encauzamiento %s registrado por %s. Origen: %s; destino: %s; límite legal: %s."
+                    .formatted(ahora, alcance, responsable, origen.getAcronimo(), destino.getAcronimo(), fechaLimiteEncauzamiento));
         }
 
         return encauzamientoRepository.save(encauzamiento);
+    }
+
+    /**
+     * El encauzamiento total cierra el historial del expediente de origen y abre otro
+     * en la entidad de destino, con el mismo pedido y el plazo ordinario de una solicitud nueva.
+     */
+    private Solicitud abrirExpedienteDestino(Solicitud origen, Entidad destino) {
+        if (origen.getCiudadano() == null || origen.getCiudadano().getId() == null) {
+            throw new IllegalArgumentException("La solicitud no tiene administrado para abrir el expediente de destino");
+        }
+        LocalDate hoy = LocalDate.now(ZONA_LIMA);
+        Solicitud derivada = new Solicitud();
+        derivada.setExpediente(generarExpediente());
+        derivada.setAsunto(origen.getAsunto());
+        derivada.setDescripcion(origen.getDescripcion());
+        derivada.setCiudadano(origen.getCiudadano());
+        derivada.setEntidad(destino);
+        derivada.setEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        derivada.setPrioridad(origen.getPrioridad() != null ? origen.getPrioridad() : Solicitud.Prioridad.MEDIA);
+        derivada.setFormatoDigital(origen.getFormatoDigital());
+        derivada.setFormatoFisico(origen.getFormatoFisico());
+        derivada.setCopiaSimple(origen.getCopiaSimple());
+        derivada.setCopiaCertificada(origen.getCopiaCertificada());
+        derivada.setTipoInformacion(origen.getTipoInformacion());
+        derivada.setConsentimientoDatosPersonales(origen.getConsentimientoDatosPersonales());
+        derivada.setCanalNotificacion(origen.getCanalNotificacion() != null
+                ? origen.getCanalNotificacion() : Solicitud.CanalNotificacion.CASILLA_ELECTRONICA);
+        derivada.setFechaPresentacion(hoy.atStartOfDay());
+        derivada.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+        Solicitud guardada = solicitudRepository.save(derivada);
+        Solicitud creada = guardada != null ? guardada : derivada;
+        documentoService.copiarDocumentosDelAdministrado(origen, creada);
+        return creada;
     }
 
     private static final int DIAS_HABILES_ENCAUZAMIENTO = 4;
@@ -935,7 +970,11 @@ public class SolicitudService {
                     || s.getRespuesta() != null || s.getFechaLimite() == null
                     || !s.getFechaLimite().isBefore(LocalDate.now())
                     || observacionRepository.existsBySolicitud_IdSolicitudAndEstado(s.getId(),
-                            ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION)) continue;
+                            ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION)
+                    || encauzamientoRepository.existsBySolicitud_IdSolicitudAndAlcanceAndEstadoEncauzamientoInAndSolicitudDerivadaIsNotNull(
+                            s.getId(),
+                            EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL,
+                            List.of(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO, EncauzamientoSolicitud.EstadoEncauzamiento.REGISTRADO))) continue;
             s.setEstado(Solicitud.EstadoSolicitud.VENCIDA);
             procesadas.add(s);
         }
@@ -1068,11 +1107,18 @@ public class SolicitudService {
     }
 
     private void validarPuedeEncauzar(Solicitud solicitud) {
-        if (solicitud.getEstado() == null
-                || !(solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
-                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)) {
+        boolean abierta = solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
+                || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION;
+        if (!abierta && !denegatoriaTotalRegistrada(solicitud)) {
             throw new IllegalArgumentException("La solicitud no está en un estado válido para encauzar");
         }
+    }
+
+    private boolean denegatoriaTotalRegistrada(Solicitud solicitud) {
+        Respuesta respuesta = solicitud.getRespuesta();
+        return solicitud.getEstado() == Solicitud.EstadoSolicitud.DENEGADA
+                && respuesta != null
+                && respuesta.getTipoRespuesta() == Respuesta.TipoRespuesta.DENEGACION_TOTAL;
     }
 
     private void validarPuedeEmitirLiquidacion(Solicitud solicitud) {
@@ -1143,11 +1189,7 @@ public class SolicitudService {
                 throw new IllegalArgumentException("La fecha de la entrega %d no puede ser anterior a hoy".formatted(hito.numeroEntrega()));
             }
         }
-        List<RegistrarEntregaParcialRequest> ordenado = validarCronogramaAmpliacion(hitos, fechaComunicacion, fechaOriginal, true);
-        if (!ordenado.getLast().fechaProgramada().equals(prevision.fechaLimiteAmpliada())) {
-            throw new IllegalArgumentException("La última entrega debe coincidir con la nueva fecha límite");
-        }
-        return ordenado;
+        return validarCronogramaAmpliacion(hitos, fechaComunicacion, fechaOriginal, true);
     }
 
     private List<RegistrarEntregaParcialRequest> validarCronogramaAmpliacion(List<RegistrarEntregaParcialRequest> cronograma,
@@ -1193,7 +1235,7 @@ public class SolicitudService {
             anterior = entrega;
         }
 
-        if (!ordenado.getLast().fechaProgramada().isAfter(fechaLimiteOriginal)) {
+        if (!fechasDistintas && !ordenado.getLast().fechaProgramada().isAfter(fechaLimiteOriginal)) {
             throw new IllegalArgumentException("La fecha límite ampliada debe ser posterior al plazo ordinario de la SAIP");
         }
 

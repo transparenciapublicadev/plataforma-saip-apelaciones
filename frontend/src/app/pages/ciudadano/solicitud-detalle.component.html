@@ -12,11 +12,21 @@
             <span class="eyebrow">{{ enApelacion() ? 'Expediente en segunda instancia · TTAIP' : 'Expediente · Solicitud SAIP' }}</span>
             <div class="flex items-center gap-3 mt-2 flex-wrap">
               <span class="code-chip" style="font-size: 13px">{{ enApelacion() ? (expedienteTTAIP() || 'Numeración TTAIP no registrada') : sol.expediente }}</span>
-              <app-status-badge [status]="estadoBadge()"></app-status-badge>
+              <app-status-badge [status]="estadoBadge()" [raw]="denegatoriaEncauzada()" [toneOverride]="denegatoriaEncauzada() ? 'rose' : null"></app-status-badge>
             </div>
             <h1 class="font-display mt-3" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.08; letter-spacing: -0.02em;">
               <span class="italic" style="color: var(--brand-700)">{{ sol.entidadNombre || 'Entidad no registrada' }}</span>
             </h1>
+            @if (denegatoriaEncauzada()) {
+              <p class="mt-2 max-w-2xl text-sm text-foreground/80">
+                {{ origenDenegatoria() }} denegó este expediente y aquí termina su historial.
+                @if (expedienteDestino(); as numero) {
+                  {{ destinoEncauzado() }} abrió {{ numero }}, que empieza desde su ingreso.
+                } @else {
+                  {{ destinoEncauzado() }} abre un expediente nuevo, que empieza desde su ingreso.
+                }
+              </p>
+            }
             <p class="text-sm text-muted-foreground mt-2 max-w-2xl">{{ sol.asunto || 'Asunto no registrado' }}</p>
 
             <!-- Identificadores del trámite — SAIP (1ra instancia) y TTAIP (apelación) -->
@@ -104,6 +114,8 @@
                 El plazo ordinario ya terminó. {{ dias === 1 ? 'Le queda 1 día hábil' : 'Le quedan ' + dias + ' días hábiles' }} para apelar la ampliación. Recibió el cronograma, así que no es silencio administrativo.
               } @else if (recibioEntregaApelable()) {
                 Recibió una entrega del cronograma. Puede apelar durante 15 días hábiles. El Tribunal evaluará si procede.
+              } @else if (denegatoriaEncauzada()) {
+                {{ origenDenegatoria() }} denegó este expediente. {{ textoContinuacion() }} Puede apelar esta denegatoria.
               } @else if (sol.estado === 'DENEGADA') {
                 Su solicitud fue <span class="font-semibold">denegada</span>. Puede <span class="font-semibold">apelar ante el TTAIP</span>.
               } @else if (sol.estado === 'VENCIDA' || esSilencioAdministrativo()) {
@@ -114,7 +126,7 @@
             </p>
           </div>
           <a [routerLink]="['/ciudadano/apelacion/nueva', sol.expediente]" class="btn-brand !py-2 !px-4 !text-[13px] flex-shrink-0">
-            Apelar
+            {{ denegatoriaEncauzada() ? 'Apelar la denegatoria' : 'Apelar' }}
           </a>
         </div>
       }
@@ -182,7 +194,11 @@
                     <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ encauzamiento.fechaEncauzamiento | date:'dd/MM/yyyy' }}</span>
                     <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
                       @if (encauzamiento.alcance === 'TOTAL') {
-                        Su solicitud no correspondía a la competencia de <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> y quedó encauzada a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. Conserva este mismo expediente: no se creó otra solicitud ni se registró una denegatoria.
+                        @if (yaRespondio() && respDenegada()) {
+                          <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> registró una denegatoria total. De <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. {{ textoContinuacion(encauzamiento) }}
+                        } @else {
+                          De <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. {{ textoContinuacion(encauzamiento) }}
+                        }
                       } @else {
                         Hay un encauzamiento parcial registrado por <span class="font-semibold">{{ encauzamiento.entidadOrigenNombre || sol.entidadNombre }}</span> con destino a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span> por corresponder a su competencia.
                       }
@@ -190,7 +206,7 @@
                     <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
                       <span class="eyebrow">Informe de encauzamiento</span>
                       <p class="mt-1.5 leading-relaxed">{{ encauzamiento.motivoEncauzamiento }}</p>
-                      @if (encauzamiento.observacionSustento) {
+                      @if (encauzamiento.observacionSustento && !(encauzamiento.alcance === 'TOTAL' && yaRespondio())) {
                         <p class="mt-2 leading-relaxed"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
                       }
                     </div>
@@ -242,12 +258,16 @@
                         <svg aria-hidden="true" lucideHelpCircle class="w-5 h-5 text-white"></svg>
                       </div>
                       <div class="flex-1">
-                        <span class="eyebrow" style="color: var(--success)">Subsanación presentada · {{ obs.fechaSubsanacion | date:'dd/MM/yyyy' }}</span>
+                        <span class="eyebrow" style="color: var(--success)">Precisión registrada · {{ obs.fechaSubsanacion | date:'dd/MM/yyyy' }}</span>
                         <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">Su precisión está registrada. Consulte el estado actual de la solicitud para conocer su atención.</p>
-                        @if (obs.comentarioSubsanacion || obs.documentoSubsanacionNombre) {
+                        <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                          <span class="eyebrow">Observación de la entidad</span>
+                          <p class="mt-1.5 leading-relaxed whitespace-pre-line">{{ obs.motivoObservacion || 'Motivo no registrado' }}</p>
+                        </div>
+                        @if (obs.comentarioSubsanacion) {
                           <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
                             <span class="eyebrow">Su respuesta</span>
-                            <p class="mt-1.5 leading-relaxed">{{ obs.comentarioSubsanacion || obs.documentoSubsanacionNombre }}</p>
+                            <p class="mt-1.5 leading-relaxed">{{ obs.comentarioSubsanacion }}</p>
                           </div>
                         }
                       </div>
@@ -292,19 +312,6 @@
                   </div>
                 </div>
 
-                @for (obs of observaciones(); track obs.id) {
-                  @if (obs.id !== observacionPendiente()?.id && obs.motivoObservacion) {
-                    <details class="rounded-md border border-border p-4 text-sm">
-                      <summary class="cursor-pointer font-semibold">Ver observación de precisión
-                        @if (obs.fechaObservacion) {
-                          <span class="font-normal text-muted-foreground">· {{ obs.fechaObservacion | date:'dd/MM/yyyy' }}</span>
-                        }
-                      </summary>
-                      <p class="mt-3 whitespace-pre-line break-words">{{ obs.motivoObservacion }}</p>
-                    </details>
-                  }
-                }
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
                     <div class="eyebrow">Formato de entrega solicitado</div>
@@ -332,6 +339,9 @@
                 <!-- Documentos que el administrado adjuntó — agrupados por tipo -->
                 <div>
                   <span class="eyebrow">04 · Documentos que adjuntó</span>
+                  @if (avisoProcedencia()) {
+                    <p role="note" class="text-sm text-foreground/80 mt-3 rounded-md p-3 leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ avisoProcedencia() }}</p>
+                  }
                   @if (documentosSolicitudIncompletos()) {
                     <p role="status" class="text-sm text-muted-foreground mt-3">La información documental está incompleta o contiene referencias que no corresponden a esta solicitud. Solo se muestran archivos identificados del recurso.</p>
                   }
@@ -363,6 +373,9 @@
                                   </div>
                                   <div class="min-w-0">
                                     <div class="text-sm font-medium text-foreground truncate">{{ doc.nombre }}</div>
+                                    @if (doc.procedencia) {
+                                      <div class="text-[11px] text-foreground/70">{{ doc.procedencia }}</div>
+                                    }
                                     <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tamano }} · {{ doc.fecha }}</div>
                                   </div>
                                 </div>
@@ -564,10 +577,6 @@
                       }
                     </div>
                   </div>
-                  }
-                  @if (ampliacionActiva()) {
-                    <div class="rule-ornament"></div>
-                    <ng-container [ngTemplateOutlet]="ampliacionCronogramaCard"></ng-container>
                   }
                 } @else if (ampliacionActiva(); as ampliacion) {
                   <div class="rounded-lg p-5 flex items-start gap-4 animate-fade-in"

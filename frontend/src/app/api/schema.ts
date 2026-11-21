@@ -3463,6 +3463,8 @@ export interface components {
             resolucionId?: number;
             /** Format: int64 */
             cedulaNotificacionId?: number;
+            expedienteOrigen?: string;
+            entidadOrigen?: string;
         };
         /** @description Elevación formal de una apelación presentada ante una entidad pública */
         ElevacionApelacionTtaipDTO: {
