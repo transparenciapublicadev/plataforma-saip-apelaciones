@@ -12,6 +12,8 @@ public interface ReprocesoNotificacionRepository extends JpaRepository<Reproceso
 
     List<ReprocesoNotificacion> findByExpediente_IdExpedienteTtaipOrderByFechaCreacionAsc(Long expedienteId);
 
+    java.util.Optional<ReprocesoNotificacion> findFirstByNotificacion_IdNotificacion(Long id);
+
     long countByCedulaOriginal_IdCedulaAndDestinatario(
             Long cedulaOriginalId,
             CedulaNotificacion.DestinatarioNotificacion destinatario

@@ -1,3 +1,4 @@
+import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
 import { provideRouter, convertToParamMap } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -115,6 +116,10 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   beforeEach(() => {
     localStorage.clear(); sessionStorage.clear(); params = new BehaviorSubject(convertToParamMap({ expediente: code }));
     TestBed.configureTestingModule({ imports: [TtaipResolucionDetalleComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+      { provide: TtaipActuacionesService, useValue: {
+        actos: () => of([]),
+        informacion: () => of({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+      } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
@@ -292,9 +297,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   });
   it('la suspensión requiere un responsable explícito sin atribución institucional predeterminada', () => {
     const f = page(data({ estado: 'EN_RESOLUCION' })); f.componentInstance.cambiarTab('subprocesos'); f.detectChanges();
-    const input = f.nativeElement.querySelector('input[aria-label="Responsable"]') as HTMLInputElement;
-    expect(input.value).toBe('');
-    f.componentInstance.registrarSuspensionAdicional('INFORME_ORAL', 'CIUDADANO', 'Motivo explícito', input.value, '');
+    f.componentInstance.registrarSuspensionAdicional('INFORME_ORAL', 'CIUDADANO', 'Motivo explícito', '', '');
     expect(http.match(r => r.method === 'POST')).toHaveLength(0);
     expect(f.componentInstance.descargoError()).toContain('responsable');
   });

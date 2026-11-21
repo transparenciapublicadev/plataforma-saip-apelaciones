@@ -19,7 +19,9 @@ export type PanelApelacion = Pick<Apelacion, 'id' | 'expediente' | 'estado'>
   resultado?: string;
   resuelta?: boolean;
   etapa?: string;
-  plazoPrimeraCalificacion?: { diasRestantes: number; vencido: boolean } | null;
+  actosNotificacionPendientes?: boolean;
+  informacionComplementariaPendiente?: boolean;
+  plazoPrimeraCalificacion?: { diasRestantes: number; vencido: boolean; diasSuspendidos?: number; fechaLimite?: string } | null;
   elevacion?: { fechaLimiteElevacion?: string };
   resolucion?: { id?: number; tipoResolucion?: string; decision?: string; fechaResolucion?: string } | null;
   resolucionPrimeraCalificacion?: { id?: number } | null;

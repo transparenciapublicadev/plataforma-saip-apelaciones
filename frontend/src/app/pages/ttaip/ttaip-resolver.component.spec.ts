@@ -1,3 +1,5 @@
+import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
+import { of as respuestaActuaciones } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -32,7 +34,14 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   let http: HttpTestingController; let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   beforeEach(() => {
     localStorage.clear(); sessionStorage.clear(); params = new BehaviorSubject(convertToParamMap({ expediente }));
-    TestBed.configureTestingModule({ imports: [TtaipResolverComponent], providers: [provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])),
+    TestBed.configureTestingModule({ imports: [TtaipResolverComponent], providers: [provideRouter([]),
+      { provide: TtaipActuacionesService, useValue: {
+        documentos: () => respuestaActuaciones(['RESOLUCION', 'CIUDADANO', 'ENTIDAD_PUBLICA'].map((clave, i) => ({
+          clave, decision: 'INFUNDADO', numero: '2026-' + i, sala: 'PRIMERA SALA', archivo: { id: 90 + i, nombreOriginal: 'firmado.pdf' },
+        }))),
+        informacion: () => respuestaActuaciones({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+      } },
+ provideHttpClient(withInterceptors([authInterceptor])),
       provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
   });
@@ -263,7 +272,7 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   });
   it('durante el comando no permite cambiar decisión ni descartar archivos para alterar la operación capturada', () => {
     const f = page(); prepare(f); const c = f.componentInstance; c.documentosSeleccionados.set([new File(['x'], 'uno.txt', { type: 'text/plain' })]); c.enviarResolucion();
-    c.seleccionarDecision('fundado'); c.removerDocumento(0); expect(c.selectedDecision()).toBe('infundado'); expect(c.documentosSeleccionados()).toHaveLength(1); http.expectOne(api + '/ttaip/resolucion/31/infundado').flush(null, { status: 422, statusText: 'Rejected' });
+    c.seleccionarDecision('fundado'); c.seleccionarDocumentos([]); expect(c.selectedDecision()).toBe('infundado'); expect(c.documentosSeleccionados()).toHaveLength(1); http.expectOne(api + '/ttaip/resolucion/31/infundado').flush(null, { status: 422, statusText: 'Rejected' });
   });
   it('la navegación del resultado dirige al expediente real en vez de volver siempre al panel', () => {
     const c = page(resolved()).componentInstance; const nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true); c.irExpediente(); expect(nav).toHaveBeenCalledExactlyOnceWith(['/ttaip/apelacion', expediente]);
@@ -319,16 +328,16 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   });
   it('la selección valida los archivos, conserva los aceptados y los diferencia de documentos registrados', () => {
     const f = page(); const c = f.componentInstance; const valid = new File(['texto'], 'anexo.txt', { type: 'text/plain' });
-    const input = { files: [valid, new File(['exe'], 'no.exe', { type: 'application/octet-stream' })], value: 'selección' }; c.seleccionarDocumento({ target: input } as unknown as Event);
-    expect(input.value).toBe(''); expect(c.documentosSeleccionados()).toEqual([valid]); expect(c.archivos()).toEqual([]); expect(c.error()).not.toBe(''); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
-    c.removerDocumento(0); expect(c.documentosSeleccionados()).toEqual([]);
+    c.seleccionarDocumentos([valid, new File(['exe'], 'no.exe', { type: 'application/octet-stream' })]);
+    expect(c.documentosSeleccionados()).toEqual([valid]); expect(c.archivos()).toEqual([]); expect(c.error()).not.toBe(''); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+    c.seleccionarDocumentos([]); expect(c.documentosSeleccionados()).toEqual([]);
   });
-  it('las tres pestañas tienen nombre, panel y recorrido de teclado con foco', () => {
+  it('las pestañas tienen nombre, panel y recorrido de teclado con foco', () => {
     const f = page(); const firstTab = f.nativeElement.querySelector('#final-tab-apelacion') as HTMLButtonElement; firstTab.focus();
     firstTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); f.detectChanges(); const desc = f.nativeElement.querySelector('#final-tab-descargos') as HTMLButtonElement;
     expect(document.activeElement).toBe(desc); expect(desc.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#final-panel-apelacion').hidden).toBe(true);
     desc.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); http.match(r => r.url === api + '/documentos').forEach(r => r.flush([])); f.detectChanges();
-    expect(document.activeElement).toBe(f.nativeElement.querySelector('#final-tab-adjuntos'));
+    expect(document.activeElement).toBe(f.nativeElement.querySelector('#final-tab-subprocesos'));
   });
   it('la revisión contiene el foco y Escape devuelve al control sin ejecutar un comando', async () => {
     const f = page(); prepare(f); f.detectChanges(); const button = f.nativeElement.querySelector('#final-review') as HTMLButtonElement; button.focus(); button.click(); f.detectChanges(); await Promise.resolve();

@@ -17,6 +17,10 @@ export interface DocContext {
   folios: number | null;
   driveUrl: string;
   destinatarioDocumento?: string;
+  numeroDocumento?: string;
+  considerando?: string;
+  destinoNotificacion?: string;
+  medioNotificacion?: string;
   sala?: 'primera_sala' | 'segunda_sala';
 }
 
@@ -269,6 +273,7 @@ export function resolucionTexto(stage: OfficialStage, decision: string | undefin
   push('', false);
   push('CONSIDERANDO:', true);
   para(`Que, el derecho de acceso a la informacion publica esta reconocido en el numeral 5 del articulo 2 de la Constitucion Politica del Peru y en el Texto Unico Ordenado de la Ley N.o 27806.`);
+  if (ctx.considerando) para(ctx.considerando);
   para(`Que, evaluados los actuados, corresponde declarar ${label} el recurso de apelacion.`);
   push('', false);
   push('SE RESUELVE:', true);
@@ -295,12 +300,12 @@ export function cedulaTexto(variant: CedulaVariant, recipient: CedulaRecipient, 
     ? (ctx.recurrenteTipo === 'juridica' ? 'Razon social' : 'Senor(a)')
     : 'Entidad';
   push(`${trato.padEnd(14, ' ')}: ${recipient === 'recurrente' ? ctx.recurrente : ctx.entidad}`);
-  push(`Domicilio      : ${recipient === 'recurrente' ? ctx.correo : ctx.direccionEntidad}`);
+  push(`Domicilio      : ${ctx.destinoNotificacion || (recipient === 'recurrente' ? ctx.correo : ctx.direccionEntidad)}`);
   push('', false);
   para(`Por disposicion del Tribunal de Transparencia y Acceso a la Informacion Publica se propone la notificacion de la RESOLUCION N.o ${ctx.resolucionNro} de fecha ${ctx.fechaResolucion}, la cual declara ${decl} el recurso. Folios: ${ctx.folios === null ? 'No registrados' : `${numeroEnLetras(ctx.folios)} (${ctx.folios})`}.`);
   para(ctx.driveUrl ? `Enlace registrado de los actuados: ${ctx.driveUrl}` : 'Enlace de actuados no disponible.');
   if (variant === 'fundado') para('Finalmente, ponemos en su conocimiento la nota informativa a tener en cuenta en caso de incumplimiento de la entidad respecto de lo ordenado.');
-  if (recipient === 'recurrente' && variant !== 'otro') para('La presente notificacion se realiza al correo electronico consignado por usted, en senal de autorizacion expresa para ser notificado por este medio.');
+  if (ctx.medioNotificacion) para('Medio registrado: ' + ctx.medioNotificacion + '.');
   push('', false);
   push(`Miraflores, ${ctx.fechaCedula}`);
   push('Secretario tecnico: no disponible. Sin verificacion de firma digital.');
@@ -336,7 +341,7 @@ export function cartaOficioPdf(
     { text: 'REPUBLICA DEL PERU', bold: false, size: 10 },
     { text: 'Tribunal de Transparencia y Acceso a la Informacion Publica', bold: false, size: 10 },
     { text: '', bold: false },
-    { text: `${title} — SIN NUMERACION ASIGNADA`, bold: true, size: 12 },
+    { text: `${title} — ${ctx.numeroDocumento || "SIN NUMERACION ASIGNADA"}`, bold: true, size: 12 },
     { text: '', bold: false },
     { text: `Expediente N.o : ${ctx.expediente}` },
     { text: `Destinatario   : ${ctx.destinatarioDocumento || 'No registrado'}` },
@@ -383,6 +388,7 @@ export function buildDocWord(
   } else {
     lines = [
       { text: tipo === 'carta' ? 'CARTA OFICIAL TTAIP' : 'OFICIO TTAIP', bold: true, size: 14 },
+      { text: 'Número: ' + (ctx.numeroDocumento || 'Sin numeración asignada') },
       { text: `Expediente: ${ctx.expediente}` },
       { text: `Destinatario: ${ctx.destinatarioDocumento || 'No registrado'}` },
       { text: `Fecha: ${ctx.fechaResolucion}` },

@@ -1,3 +1,4 @@
+import { MultiFileUploadZoneComponent } from '../../../shared/multi-file-upload-zone.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -6,9 +7,15 @@ import {
   OnInit,
   SimpleChanges,
   signal,
+  inject,
+  Injector,
+  DestroyRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DocumentoPreparado, errorActuacion, EtapaActuacion, TtaipActuacionesService } from '../../../services/ttaip-actuaciones.service';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../../shared/document-preview-modal.component';
 import {
   LucideGavel,
   LucideMail,
@@ -37,6 +44,9 @@ export interface DocEntry {
   sala?: 'primera_sala' | 'segunda_sala';
   destinatario?: 'recurrente' | 'entidad' | 'general';
   numeroCompleto?: string;
+  clave?: string;
+  numeroPropio?: string;
+  preparado?: DocumentoPreparado;
   estado: EntryEstado;
   asunto?: string;
   destinatarioNombre?: string;
@@ -47,6 +57,7 @@ export interface DocEntry {
   selector: 'app-official-docs-section',
   standalone: true,
   imports: [
+    MultiFileUploadZoneComponent,
     CommonModule,
     FormsModule,
     LucideGavel,
@@ -55,6 +66,7 @@ export interface DocEntry {
     LucideDownload,
     LucideTrash2,
     LucidePlus,
+    DocumentPreviewModalComponent,
   ],
   template: `
     <section class="form-shell">
@@ -66,6 +78,10 @@ export interface DocEntry {
       <div class="p-5 space-y-3">
         @if (draftError()) {
           <p role="alert" class="text-sm" style="color: var(--danger)">{{ draftError() }}</p>
+        }
+        @if (busy()) { <p role="status" class="text-sm">Comprobando documentos oficiales…</p> }
+        @if (requiereConsulta()) {
+          <button type="button" class="btn-ghost-brand" (click)="consultar()">Consultar documentos oficiales</button>
         }
         @if (entries().length === 0) {
           <div
@@ -118,12 +134,12 @@ export interface DocEntry {
 
                 @if (entry.numeroCompleto) {
                   <div class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ entry.numeroCompleto }}</div>
-                } @else {
+                } @else if (entry.tipo === 'resolucion' || entry.tipo === 'cedula') {
                   <div class="text-[11px] text-muted-foreground mt-0.5">Número pendiente de reserva</div>
                 }
               </div>
 
-              @if (entry.estado === 'borrador' && !entry.isAutoAdded) {
+              @if (entry.estado === 'borrador' && !entry.isAutoAdded && !entry.preparado) {
                 <button
                   type="button"
                   (click)="eliminarEntry(entry.localId)"
@@ -136,7 +152,7 @@ export interface DocEntry {
               }
             </div>
 
-            @if (entry.tipo === 'resolucion' && entry.estado === 'borrador') {
+            @if (entry.tipo === 'resolucion' && !entry.numeroCompleto) {
               <div class="space-y-1.5">
                 <span class="eyebrow">Sala colegiada <span style="color: var(--brand-600)">*</span></span>
                 <div class="flex gap-2">
@@ -155,9 +171,15 @@ export interface DocEntry {
             }
 
             <div class="flex items-center gap-2 flex-wrap">
-              @if (!entry.numeroCompleto) {
-                <button type="button" disabled title="La reserva del correlativo requiere la operación documental persistida"
+              @if (!entry.numeroCompleto && (entry.tipo === 'resolucion' || entry.tipo === 'cedula')) {
+                <button type="button" (click)="guardar(entry)" [disabled]="!expedienteId || !decisionBackend || busy() || requiereConsulta() || (entry.tipo === 'resolucion' && !entry.sala)"
                   class="btn-brand !py-1.5 !px-3 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed">Reservar N.°</button>
+              }
+              @if (entry.tipo === 'oficio' || entry.tipo === 'carta') {
+                <label class="text-sm">Número propio
+                  <input class="field-input" maxlength="120" [ngModel]="entry.numeroPropio || ''"
+                    (ngModelChange)="actualizarNumero(entry, $event)" />
+                </label>
               }
               <button type="button" (click)="descargarPdf(entry)"
                 class="btn-ghost-brand !py-1.5 !px-3 !text-[13px] inline-flex items-center gap-1.5"
@@ -169,7 +191,27 @@ export interface DocEntry {
                 title="Descargar formato Word editable">
                 <svg lucideFileText class="w-3.5 h-3.5"></svg> Word
               </button>
+              @if (expedienteId && (entry.numeroCompleto || entry.numeroPropio?.trim())) {
+                @if (entry.preparado?.archivo && entry.preparado.decision === decisionBackend) {
+                  <button type="button" class="btn-ghost-brand" (click)="verFirmado(entry)">Ver {{ getTipoLabel(entry.tipo).toLowerCase() }} {{ entry.tipo === 'oficio' ? 'firmado' : 'firmada' }}</button>
+                }
+
+              }
+              @if (entry.preparado?.archivo && entry.preparado.decision !== decisionBackend) {
+                <p class="text-xs text-muted-foreground">Cargue el archivo firmado correspondiente a la decisión seleccionada.</p>
+              }
             </div>
+            @if (expedienteId && (entry.numeroCompleto || entry.numeroPropio?.trim())) {
+              <app-multi-file-upload-zone #firmado [single]="true" [pdfOnly]="true" [keyboardAccessible]="true"
+                [disabled]="!decisionBackend || busy() || requiereConsulta()"
+                [label]="entry.tipo === 'resolucion' ? 'Resolución firmada' : entry.tipo === 'cedula' ? 'Cédula firmada' : 'Documento firmado'" />
+              @if (firmado.files()[0]; as archivo) {
+                <button type="button" class="btn-brand" [disabled]="!decisionBackend || busy() || requiereConsulta()"
+                  (click)="guardar(entry, archivo, firmado)">
+                  Subir {{ entry.tipo === 'resolucion' ? 'resolución firmada' : entry.tipo === 'cedula' ? 'cédula firmada' : 'documento firmado' }}
+                </button>
+              }
+            }
           </div>
         }
 
@@ -178,23 +220,10 @@ export interface DocEntry {
             <span class="eyebrow">Documento</span>
             <select class="field-input !py-2 !text-[13px]" [ngModel]="pickTipo()" (ngModelChange)="elegirTipo($event)" name="documento-oficial">
               <option value="">Seleccione un documento…</option>
-              <option value="resolucion">Resolución</option>
-              <option value="cedula_recurrente">Cédula — Administrado</option>
-              @if (!esInadmisible()) { <option value="cedula_entidad">Cédula — Entidad</option> }
               <option value="carta">Carta</option>
               <option value="oficio">Oficio</option>
             </select>
           </label>
-          @if (pickTipo() === 'resolucion') {
-            <label class="flex flex-col gap-1 min-w-[160px]">
-              <span class="eyebrow">Sala <span style="color: var(--brand-600)">*</span></span>
-              <select class="field-input !py-2 !text-[13px]" [ngModel]="pickSala()" (ngModelChange)="elegirSala($event)" name="sala-oficial">
-                <option value="">Seleccione…</option>
-                <option value="primera_sala">Primera Sala</option>
-                <option value="segunda_sala">Segunda Sala</option>
-              </select>
-            </label>
-          }
           <button type="button" (click)="agregarSeleccionado()" [disabled]="!puedeAgregar()"
             class="btn-brand !py-2 !px-3 !text-[13px] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5">
             <svg lucidePlus class="w-4 h-4"></svg>
@@ -203,6 +232,9 @@ export interface DocEntry {
         </div>
       </div>
     </section>
+    @if (preview(); as documento) {
+      <app-document-preview-modal [open]="true" [doc]="documento" [manageFocus]="true" (close)="preview.set(null)" />
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -211,13 +243,114 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   @Input({ required: true }) stage: OfficialStage = 'primera';
   @Input() decision: string | null | undefined = null;
   @Input() ctx: Partial<DocContext> = {};
+  @Input() considerando = "";
+  @Input() expedienteId?: number | null;
+  @Input() decisionBackend?: string | null;
+  private readonly injector = inject(Injector);
+  private readonly destroy = inject(DestroyRef);
+  readonly busy = signal(false);
+  readonly requiereConsulta = signal(false);
+  readonly preview = signal<DocumentPreviewTarget | null>(null);
+  private registrados: DocumentoPreparado[] = [];
+
+  private get etapa(): EtapaActuacion {
+    if (this.decisionBackend === 'TENER_POR_NO_PRESENTADO') return 'PRIMERA_CALIFICACION';
+    return this.stage === 'primera' ? 'PRIMERA_CALIFICACION' : this.stage === 'segunda' ? 'SEGUNDA_CALIFICACION' : 'RESOLUCION_FINAL';
+  }
+
+  private get api() { return this.injector.get(TtaipActuacionesService); }
+
+  documentosListos(): boolean {
+    return !this.expedienteId || (!!this.decisionBackend && !this.busy() && !this.requiereConsulta()
+      && this.entries().every(e => e.preparado?.archivo && e.preparado.decision === this.decisionBackend));
+  }
+
+  consultar(): void {
+    const id = this.expedienteId, etapa = this.etapa;
+    if (!id) { this.busy.set(false); return; }
+    this.busy.set(true);
+    this.draftError.set('');
+    this.api.documentos(id, etapa).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next: documentos => {
+        if (id !== this.expedienteId || etapa !== this.etapa) return;
+        this.registrados = documentos;
+        this.aplicarPreparados();
+        this.requiereConsulta.set(false);
+        this.busy.set(false);
+      },
+      error: () => {
+        if (id !== this.expedienteId || etapa !== this.etapa) return;
+        this.busy.set(false);
+        this.requiereConsulta.set(true);
+        this.draftError.set('No se pudieron consultar los documentos oficiales.');
+      },
+    });
+  }
+
+  guardar(entry: DocEntry, archivo?: File, selector?: MultiFileUploadZoneComponent): void {
+    const id = this.expedienteId, etapa = this.etapa, decision = this.decisionBackend;
+    if (!id || !decision || this.busy() || this.requiereConsulta() || !this.entries().includes(entry)) return;
+    const clave = this.clave(entry);
+    const sala = entry.sala === 'primera_sala' ? 'PRIMERA SALA' : entry.sala === 'segunda_sala' ? 'SEGUNDA SALA' : undefined;
+    this.busy.set(true);
+    this.draftError.set('');
+    this.api.preparar(id, etapa, clave, decision, sala, entry.numeroPropio, archivo)
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: preparado => {
+          if (id !== this.expedienteId || etapa !== this.etapa) return;
+          this.registrados = [...this.registrados.filter(d => d.clave !== clave), preparado];
+          this.aplicarPreparados();
+          selector?.files.set([]);
+          this.busy.set(false);
+        },
+        error: e => {
+          if (id !== this.expedienteId || etapa !== this.etapa) return;
+          this.requiereConsulta.set(true);
+          this.busy.set(false);
+          this.draftError.set(errorActuacion(e, 'Consulte los documentos oficiales para verificar si se guardó la operación.'));
+        },
+      });
+  }
+
+  actualizarNumero(entry: DocEntry, valor: string): void {
+    this.entries.update(entries => entries.map(e => e === entry ? { ...e, numeroPropio: valor } : e));
+  }
+
+  verFirmado(entry: DocEntry): void {
+    const doc = entry.preparado?.archivo;
+    if (doc?.id) this.preview.set({ id: doc.id, nombre: doc.nombreOriginal || 'Documento firmado', tipo: doc.contentType });
+  }
+
+  private clave(entry: DocEntry): string {
+    if (entry.tipo === 'resolucion') return 'RESOLUCION';
+    if (entry.tipo === 'cedula') return entry.destinatario === 'entidad' ? 'ENTIDAD_PUBLICA' : 'CIUDADANO';
+    return entry.clave!;
+  }
+
+  private aplicarPreparados(): void {
+    const entradas = [...this.entries()];
+    for (const preparado of this.registrados) {
+      if (entradas.some(e => this.clave(e) === preparado.clave)) continue;
+      if (!preparado.clave.startsWith('CARTA-') && !preparado.clave.startsWith('OFICIO-')) continue;
+      entradas.push({
+        localId: this.generarId(), clave: preparado.clave, estado: 'borrador',
+        tipo: preparado.clave.startsWith('CARTA-') ? 'carta' : 'oficio', numeroPropio: preparado.numero ?? undefined,
+      });
+    }
+    this.entries.set(entradas.map(entry => {
+      const preparado = this.registrados.find(d => d.clave === this.clave(entry));
+      if (!preparado) return entry;
+      const sala = preparado.sala === 'PRIMERA SALA' ? 'primera_sala'
+        : preparado.sala === 'SEGUNDA SALA' ? 'segunda_sala' : entry.sala;
+      return { ...entry, preparado, sala, numeroCompleto: preparado.numero ?? undefined };
+    }));
+  }
 
   readonly salas = [
     { id: 'primera_sala' as const, label: 'Primera Sala' },
     { id: 'segunda_sala' as const, label: 'Segunda Sala' },
   ];
-  readonly pickTipo = signal<'' | 'resolucion' | 'cedula_recurrente' | 'cedula_entidad' | 'carta' | 'oficio'>('');
-  readonly pickSala = signal<'' | 'primera_sala' | 'segunda_sala'>('');
+  readonly pickTipo = signal<'' | 'carta' | 'oficio'>('');
   readonly entries = signal<DocEntry[]>([]);
   readonly draftError = signal('');
 
@@ -225,19 +358,25 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   addFormDestinatario = '';
 
   ngOnInit(): void {
-    this.rebuildDefaultEntries();
+    if (!this.entries().length) this.rebuildDefaultEntries();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     this.draftError.set('');
-    if (changes['expediente'] || changes['stage']) {
+    if (changes['expediente'] || changes['stage'] || changes['expedienteId']
+        || (changes['decisionBackend'] && [changes['decisionBackend'].previousValue, changes['decisionBackend'].currentValue]
+          .includes('TENER_POR_NO_PRESENTADO'))) {
+      this.registrados = [];
+      this.requiereConsulta.set(false);
+      this.preview.set(null);
       this.addFormAsunto = '';
       this.addFormDestinatario = '';
       this.pickTipo.set('');
-      this.pickSala.set('');
       this.rebuildDefaultEntries();
+      this.consultar();
     } else if (changes['decision']) {
       this.syncEntriesWithDecision();
+      this.aplicarPreparados();
     }
   }
 
@@ -246,60 +385,25 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
   }
 
   elegirTipo(valor: string): void {
-    const tipo = valor === 'resolucion' || valor === 'cedula_recurrente' || valor === 'cedula_entidad' || valor === 'carta' || valor === 'oficio' ? valor : '';
-    this.pickTipo.set(tipo);
-    this.pickSala.set('');
-  }
-
-  elegirSala(valor: string): void {
-    this.pickSala.set(valor === 'primera_sala' || valor === 'segunda_sala' ? valor : '');
+    this.pickTipo.set(valor === 'carta' || valor === 'oficio' ? valor : '');
   }
 
   puedeAgregar(): boolean {
-    const tipo = this.pickTipo();
-    if (tipo === 'resolucion') return this.pickSala() !== '' && !this.tieneResolucion();
-    if (tipo === 'cedula_recurrente') return !this.tieneCedulaRecurrente();
-    if (tipo === 'cedula_entidad') return !this.esInadmisible() && !this.tieneCedulaEntidad();
-    return tipo === 'carta' || tipo === 'oficio';
+    return !!this.pickTipo();
   }
 
   agregarSeleccionado(): void {
-    if (!this.puedeAgregar()) return;
     const tipo = this.pickTipo();
-    if (tipo === 'resolucion') {
-      const sala = this.pickSala();
-      if (sala !== 'primera_sala' && sala !== 'segunda_sala') return;
-      this.entries.update((list) => [...list, {
-        localId: this.generarId(), tipo: 'resolucion', sala, estado: 'borrador', isAutoAdded: false,
-      }]);
-    } else if (tipo === 'cedula_recurrente') {
-      this.agregarCedulaManual('recurrente');
-    } else if (tipo === 'cedula_entidad') {
-      this.agregarCedulaManual('entidad');
-    } else if (tipo === 'carta' || tipo === 'oficio') {
-      this.entries.update((list) => [...list, {
-        localId: this.generarId(), tipo, destinatario: 'general', estado: 'borrador',
-      }]);
-    }
+    if (!tipo) return;
+    this.entries.update(list => [...list, {
+      localId: this.generarId(), clave: tipo.toUpperCase() + '-' + crypto.randomUUID(),
+      tipo, destinatario: 'general', estado: 'borrador',
+    }]);
     this.pickTipo.set('');
-    this.pickSala.set('');
   }
 
   eliminarEntry(localId: string): void {
-    this.entries.set(this.entries().filter((e) => e.localId !== localId));
-  }
-
-  agregarCedulaManual(destinatario: 'recurrente' | 'entidad'): void {
-    this.entries.update((p) => [
-      ...p,
-      {
-        localId: this.generarId(),
-        tipo: 'cedula',
-        destinatario,
-        estado: 'borrador',
-        isAutoAdded: false,
-      },
-    ]);
+    this.entries.update(entries => entries.filter(e => e.localId !== localId || !!e.preparado || !!e.isAutoAdded));
   }
 
   descargarPdf(entry: DocEntry): void {
@@ -336,23 +440,6 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
     } catch {
       this.draftError.set('No se pudo descargar el borrador. Reintente. No se ha emitido ningún documento.');
     }
-  }
-
-  esInadmisible(): boolean {
-    const d = (this.decision || '').toLowerCase();
-    return (this.stage === 'primera' || this.stage === 'segunda') && d.startsWith('inadm');
-  }
-
-  tieneResolucion(): boolean {
-    return this.entries().some((e) => e.tipo === 'resolucion');
-  }
-
-  tieneCedulaRecurrente(): boolean {
-    return this.entries().some((e) => e.tipo === 'cedula' && e.destinatario === 'recurrente');
-  }
-
-  tieneCedulaEntidad(): boolean {
-    return this.entries().some((e) => e.tipo === 'cedula' && e.destinatario === 'entidad');
   }
 
   private rebuildDefaultEntries(): void {
@@ -432,10 +519,11 @@ export class OfficialDocsSectionComponent implements OnInit, OnChanges {
     return {
       ...this.ctx,
       expediente: this.expediente,
-      // No registered numbers are assigned to a new draft or another document type.
-      resolucionNro: undefined,
-      cedulaNro: undefined,
+      resolucionNro: this.entries().find(e => e.tipo === 'resolucion')?.numeroCompleto?.replace(/^RESOLUCIÓN N.° /, ''),
+      cedulaNro: entry.tipo === 'cedula' ? entry.numeroCompleto : undefined,
+      numeroDocumento: entry.tipo === 'carta' || entry.tipo === 'oficio' ? entry.numeroPropio || entry.numeroCompleto : undefined,
       sala: entry.sala,
+      considerando: this.considerando?.trim(),
       sumilla: entry.asunto || this.ctx.sumilla,
       destinatarioDocumento: entry.destinatarioNombre,
     };

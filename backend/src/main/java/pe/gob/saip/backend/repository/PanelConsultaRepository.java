@@ -22,9 +22,14 @@ public class PanelConsultaRepository {
     public PanelConsultaRepository(NamedParameterJdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     private static final String FINAL = "('RESUELTO','RESUELTO_FUNDADO','RESUELTO_FUNDADO_EN_PARTE','RESUELTO_INFUNDADO','RESUELTO_INFUNDADO_EN_PARTE','RESUELTO_IMPROCEDENTE','RESUELTO_ESTESE_A_LO_RESUELTO','RESUELTO_NULIDAD_ACTO','TENER_POR_NO_PRESENTADO','CONCLUSION_SUSTRACCION_MATERIA','CONCLUSION_DESISTIMIENTO')";
-    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " then 'resueltos' else 'otras' end";
+    private static final String ACTOS_PENDIENTES = """
+        ((r1.actos_documentales is true and r1.fecha_validacion_actos is null)
+          or (r2.actos_documentales is true and r2.fecha_validacion_actos is null)
+          or (rf.actos_documentales is true and rf.fecha_validacion_actos is null))
+        """;
+    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " and " + ACTOS_PENDIENTES + " then 'notificaciones' when a.estado in " + FINAL + " then 'resueltos'  else 'otras' end";
     private static final String PENDING_OBSERVATION = "exists (select 1 from observaciones_solicitud o where o.id_solicitud=s.id_solicitud and o.estado='PENDIENTE_SUBSANACION')";
-    private static final String CITIZEN_STAGE = "case when a.estado='EN_SUBSANACION' or (s.estado='PENDIENTE_INFORMACION' and " + PENDING_OBSERVATION + ") then 'accion' when a.estado in " + FINAL + " then 'resueltas' when a.id_apelacion is not null then 'tribunal' when s.estado in ('DENEGADA','VENCIDA') or (s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') and s.fecha_limite<=:vencida) then 'apelar' when s.estado='RESPONDIDA' then 'respondidas' when s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') then 'proceso' else 'otras' end";
+    private static final String CITIZEN_STAGE = "case when a.estado='EN_SUBSANACION' or (s.estado='PENDIENTE_INFORMACION' and " + PENDING_OBSERVATION + ") then 'accion' when a.estado in " + FINAL + " and not " + ACTOS_PENDIENTES + " then 'resueltas' when a.id_apelacion is not null then 'tribunal' when s.estado in ('DENEGADA','VENCIDA') or (s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') and s.fecha_limite<=:vencida) then 'apelar' when s.estado='RESPONDIDA' then 'respondidas' when s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') then 'proceso' else 'otras' end";
     /** Total referral keeps the same expediente at the destination. The origin still lists it, outside the work queues. */
     private static final String DERIVADA_POR_ACTOR = """
         exists (select 1 from encauzamientos_solicitud en
@@ -56,6 +61,15 @@ public class PanelConsultaRepository {
             when ev.id_apelacion is null and ra.modalidad in ('DIRECTA_TTAIP','EXTERNA')
                 then cast(ra.fecha_recepcion as date)
         end a_recepcion_tribunal,
+        ((r1.actos_documentales is true and r1.fecha_validacion_actos is null)
+          or (r2.actos_documentales is true and r2.fecha_validacion_actos is null)
+          or (rf.actos_documentales is true and rf.fecha_validacion_actos is null)) actos_pendientes,
+        (select coalesce(sum(sp.dias_suspendidos),0) from suspensiones_plazo_ttaip sp
+            where sp.id_expediente_ttaip=ex.id_expediente_ttaip
+              and sp.etapa_complementaria='PRIMERA_CALIFICACION') dias_suspension_primera,
+        exists (select 1 from suspensiones_plazo_ttaip sp
+            where sp.id_expediente_ttaip=ex.id_expediente_ttaip and sp.etapa_complementaria is not null
+              and sp.estado_suspension='ACTIVA' and sp.fecha_fin_suspension>=:hoy) informacion_pendiente,
         r1.id_resolucion r1_id, r1.decision r1_decision, r1.fecha_resolucion r1_fecha,
         r2.id_resolucion r2_id, r2.decision r2_decision, r2.fecha_resolucion r2_fecha,
         rf.id_resolucion rf_id, rf.decision rf_decision, rf.fecha_resolucion rf_fecha,
@@ -66,13 +80,13 @@ public class PanelConsultaRepository {
         left join entidades ae on ae.id_entidad=coalesce(s.id_entidad,a.id_entidad_apelada)
         left join expedientes_ttaip ex on ex.id_apelacion=a.id_apelacion
         left join salas_ttaip sala on sala.id_sala_ttaip=ex.id_sala_ttaip
-        left join lateral (select id_resolucion,decision,fecha_resolucion from resoluciones
+        left join lateral (select id_resolucion,decision,fecha_resolucion,actos_documentales,fecha_validacion_actos from resoluciones
             where id_apelacion=a.id_apelacion and tipo_resolucion='PRIMERA_CALIFICACION'
             order by fecha_resolucion desc nulls last,id_resolucion desc limit 1) r1 on true
-        left join lateral (select id_resolucion,decision,fecha_resolucion from resoluciones
+        left join lateral (select id_resolucion,decision,fecha_resolucion,actos_documentales,fecha_validacion_actos from resoluciones
             where id_apelacion=a.id_apelacion and tipo_resolucion='SEGUNDA_CALIFICACION'
             order by fecha_resolucion desc nulls last,id_resolucion desc limit 1) r2 on true
-        left join lateral (select id_resolucion,decision,fecha_resolucion from resoluciones
+        left join lateral (select id_resolucion,decision,fecha_resolucion,actos_documentales,fecha_validacion_actos from resoluciones
             where id_apelacion=a.id_apelacion and tipo_resolucion='RESOLUCION_FINAL'
             order by fecha_resolucion desc nulls last,id_resolucion desc limit 1) rf on true
         left join inicios_plazo_subsanacion_ttaip ip on ip.id_requerimiento=r1.id_resolucion and ip.id_ciudadano=a.id_ciudadano
@@ -142,7 +156,7 @@ public class PanelConsultaRepository {
             +" order by "+date+direction+" nulls last,"+id+direction+" limit :limit offset :offset",params);
         Map<String,Long> states = group(alias+".estado",from+scope,params);
         Map<String,Long> stages = group(stage,from+scope,params);
-        Map<String,Long> result = apelaciones ? group("rf.decision",from+scope+" and a.estado in "+FINAL+" and rf.decision is not null",params) : Map.of();
+        Map<String,Long> result = apelaciones ? group("rf.decision",from+scope+" and a.estado in "+FINAL+" and not "+ACTOS_PENDIENTES+" and rf.decision is not null",params) : Map.of();
         Map<String,Long> topics;
         Map<String,Long> porDia = null;
         PanelResumenDTO.RegistroRespuestas registroRespuestas = null;

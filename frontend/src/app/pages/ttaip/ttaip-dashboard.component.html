@@ -93,7 +93,7 @@
             </p>
             <div class="flex items-center gap-2 mt-3 flex-wrap">
               @for (item of riesgo().slice(0, 3); track item.apelacion.expediente) {
-                <a [routerLink]="item.action.route" class="code-chip hover:bg-[color:var(--brand-100)] transition-colors">
+                <a [routerLink]="item.action.route" [queryParams]="item.action.tab ? { tab: item.action.tab } : null" class="code-chip hover:bg-[color:var(--brand-100)] transition-colors">
                   {{ item.apelacion.expediente }}
                 </a>
               }
@@ -112,7 +112,7 @@
           <span class="text-xs text-muted-foreground hidden md:inline">Seleccione una etapa para enfocar su cola</span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-          @for (s of stageCatalog(); track s.key; let idx = $index; let last = $last) {
+          @for (s of filtrosEtapa(); track s.key; let idx = $index; let last = $last) {
             <button type="button" (click)="selectStage(s.key)" [disabled]="counts()[s.key] === 0"
                     [attr.aria-pressed]="stageKey() === s.key"
                     [attr.title]="counts()[s.key] === 0 ? 'Sin expedientes en esta etapa' : null"
@@ -129,7 +129,7 @@
                 <span aria-hidden="true" class="absolute left-0 top-0 bottom-0 w-1" [style.background]="s.color"></span>
               }
               <div class="flex items-start justify-between mb-1.5">
-                <span class="font-mono text-[11px] tracking-widest font-semibold" [style.color]="s.color">{{ s.num }}</span>
+                <span class="font-mono text-[11px] tracking-widest font-semibold" [style.color]="s.color">{{ idx.toString().padStart(2, '0') }}</span>
                 @switch (s.icon) {
                   @case ('scale') { <svg aria-hidden="true" lucideScale class="w-4 h-4" [style.color]="s.color"></svg> }
                   @case ('hourglass') { <svg aria-hidden="true" lucideHourglass class="w-4 h-4" [style.color]="s.color"></svg> }
@@ -246,7 +246,7 @@
                       </div>
                       }
                       @if (item.status.suspendido > 0) {
-                        <div class="inline-flex items-center gap-1 text-[10px] font-medium" style="color: var(--gold-dark)" title="El contador de 10 días se suspende durante descargos, informe oral e información complementaria.">
+                        <div class="inline-flex items-center gap-1 text-[10px] font-medium" style="color: var(--gold-dark)" title="Días hábiles de suspensión registrados para esta etapa.">
                           <svg aria-hidden="true" lucidePauseCircle class="w-3 h-3"></svg>
                           <span>suspendido {{ item.status.suspendido }}d</span>
                         </div>
@@ -261,7 +261,11 @@
                         <svg aria-hidden="true" lucideHourglass class="w-3.5 h-3.5"></svg> Esperando administrado
                       </span>
                     }
-                    <a [routerLink]="item.action.route" [class]="item.action.primary ? 'btn-brand !px-4 !py-2 !text-[13px]' : 'btn-ghost-brand !px-3 !py-2 !text-[12px]'">
+                    <a class="btn-ghost-brand !px-3 !py-2" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]"
+                      [attr.aria-label]="'Ver expediente ' + item.apelacion.expediente" title="Ver expediente">
+                      <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
+                    </a>
+                    <a [routerLink]="item.action.route" [queryParams]="item.action.tab ? { tab: item.action.tab } : null" [class]="item.action.primary ? 'btn-brand !px-4 !py-2 !text-[13px]' : 'btn-ghost-brand !px-3 !py-2 !text-[12px]'">
                       {{ item.action.label }}
                       <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
                     </a>

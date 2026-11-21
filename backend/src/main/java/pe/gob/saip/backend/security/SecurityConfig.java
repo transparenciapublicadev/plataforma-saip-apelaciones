@@ -132,6 +132,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/apelaciones")).hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/apelaciones")).hasRole("ADMINISTRADOR")
 
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/informacion-complementaria").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/actos-notificacion").hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/informacion-complementaria/*/respuesta").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/descargos/*/presentar").hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/descargos/activo").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
