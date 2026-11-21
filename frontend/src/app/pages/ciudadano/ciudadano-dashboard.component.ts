@@ -1,3 +1,4 @@
+import { BandejaTribunalComponent } from '../ttaip/shared/bandeja-tribunal.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked, ElementRef, HostListener } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -99,7 +100,7 @@ import { PaginationComponent } from '../../shared/pagination.component';
 
 @Component({
   selector: 'app-ciudadano-dashboard',
-  imports: [
+  imports: [BandejaTribunalComponent,
     RouterLink, FormsModule, DatePipe,
     StatusBadgeComponent, PaginationComponent,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,

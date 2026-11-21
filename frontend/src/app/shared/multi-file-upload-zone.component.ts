@@ -85,7 +85,8 @@ export interface MultiFileSlot {
               }"
               (click)="onSlotClick(slot)"
               [attr.role]="keyboardAccessible() && !slot.file ? 'button' : null"
-              [attr.tabindex]="keyboardAccessible() && !slot.file ? 0 : null"
+              [attr.tabindex]="keyboardAccessible() && !slot.file && !disabled() ? 0 : null"
+              [attr.aria-disabled]="disabled() ? true : null"
               [attr.aria-label]="keyboardAccessible() && !slot.file ? label() + ': seleccionar archivo ' + (idx + 1) : null"
               (keydown)="onSlotKey($event, slot)"
             >
@@ -96,7 +97,7 @@ export interface MultiFileSlot {
                     Arrastra tu archivo aquí o <span class="text-[color:var(--brand-700)] font-medium">haz clic para seleccionar</span>
                   </p>
                   <p class="text-xs text-muted-foreground">
-                    {{ allowZip() ? 'PDF, JPG, PNG o ZIP' : 'PDF, JPG o PNG' }} (máx. 10MB)
+                    {{ formatos() }} (máx. 10 MB)
                   </p>
                   @if (slot.error) {
                     <p class="text-xs text-destructive font-medium mt-1">{{ slot.error }}</p>
@@ -126,6 +127,7 @@ export interface MultiFileSlot {
                     <button
                       type="button"
                       class="btn-outline !py-1 !px-3 !text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                      [disabled]="disabled()"
                       (click)="eliminarArchivo(slot.id)"
                     >
                       <svg lucideX class="w-3.5 h-3.5"></svg>
@@ -141,6 +143,7 @@ export interface MultiFileSlot {
               <button
                 type="button"
                 (click)="quitarSlot(slot.id)"
+                [disabled]="disabled()"
                 class="absolute -top-2 -right-2 z-10 text-[11px] px-2 py-0.5 rounded-full transition-colors hover:bg-muted cursor-pointer"
                 style="background: var(--card); border: 1px solid var(--border); color: var(--muted-foreground)"
               >
@@ -154,6 +157,8 @@ export interface MultiFileSlot {
               [attr.data-slot-id]="slot.id"
               class="hidden"
               [accept]="acceptTypes()"
+              [multiple]="batch() && !single()"
+              [disabled]="disabled()"
               (change)="onFileInputChange($event, slot.id)"
             />
           </div>
@@ -164,7 +169,7 @@ export interface MultiFileSlot {
         <button
           type="button"
           (click)="agregarSlot()"
-          [disabled]="!puedeAgregar()"
+          [disabled]="disabled() || !puedeAgregar()"
           class="inline-flex items-center gap-1.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           style="color: var(--brand-700)"
         >
@@ -257,6 +262,10 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   readonly description = input<string>('');
   readonly showPreview = input<boolean>(true);
   readonly allowZip = input<boolean>(false);
+  readonly allowText = input(false);
+  readonly pdfOnly = input(false);
+  readonly disabled = input(false);
+  readonly batch = input(false);
   readonly addLabel = input<string>('Añadir otro documento');
   readonly single = input(false);
 
@@ -270,9 +279,15 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   readonly previewSafeUrl = signal<SafeResourceUrl | null>(null);
   readonly previewRawUrl = signal<string | null>(null);
 
-  readonly acceptTypes = computed(() =>
-    this.allowZip() ? '.pdf,.jpg,.jpeg,.png,.zip' : '.pdf,.jpg,.jpeg,.png'
-  );
+  readonly acceptTypes = computed(() => this.pdfOnly() ? '.pdf'
+    : '.pdf,.jpg,.jpeg,.png' + (this.allowText() ? ',.txt' : '') + (this.allowZip() ? ',.zip' : ''));
+  readonly formatos = computed(() => {
+    if (this.pdfOnly()) return 'PDF';
+    const formatos = ['PDF', 'JPG', 'PNG'];
+    if (this.allowText()) formatos.push('TXT');
+    if (this.allowZip()) formatos.push('ZIP');
+    return formatos.slice(0, -1).join(', ') + ' o ' + formatos.at(-1);
+  });
 
   readonly cargados = computed(() => this.slots().filter((s) => !!s.file).length);
   readonly puedeAgregar = computed(() => this.slots().every((s) => !!s.file));
@@ -291,7 +306,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   }
 
   onSlotClick(slot: MultiFileSlot): void {
-    if (slot.file) return;
+    if (slot.file || this.disabled()) return;
     const inputEl = this.elRef.nativeElement.querySelector(`input[data-slot-id="${slot.id}"]`) as HTMLInputElement | null;
     if (inputEl) {
       inputEl.click();
@@ -300,6 +315,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
 
   handleDragOver(e: DragEvent, slotId: number): void {
     e.preventDefault();
+    if (this.disabled()) return;
     this.slots.update((prev) =>
       prev.map((s) => (s.id === slotId ? { ...s, dragging: true } : s))
     );
@@ -314,14 +330,24 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
 
   handleDrop(e: DragEvent, slotId: number): void {
     e.preventDefault();
-    const droppedFile = e.dataTransfer?.files?.[0] || null;
-    this.processFile(droppedFile, slotId);
+    this.processFiles(Array.from(e.dataTransfer?.files ?? []), slotId);
   }
 
   onFileInputChange(e: Event, slotId: number): void {
     const inputEl = e.target as HTMLInputElement;
-    const file = inputEl.files?.[0] || null;
-    this.processFile(file, slotId);
+    this.processFiles(Array.from(inputEl.files ?? []), slotId);
+    inputEl.value = '';
+  }
+
+  private processFiles(files: File[], slotId: number): void {
+    if (this.disabled()) return;
+    this.processFile(files[0] ?? null, slotId);
+    if (!this.batch() || this.single()) return;
+    for (const file of files.slice(1)) {
+      const id = this.nextId++;
+      this.slots.update(slots => [...slots, { id, file: null, objectUrl: null, dragging: false }]);
+      this.processFile(file, id);
+    }
   }
 
   private processFile(file: File | null, slotId: number): void {
@@ -332,9 +358,10 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
       return;
     }
 
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const validTypes = this.pdfOnly() ? ['application/pdf'] : ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!this.pdfOnly() && this.allowText()) validTypes.push('text/plain');
     const zipTypes = ['application/zip', 'application/x-zip-compressed', 'multipart/x-zip'];
-    const isZip = this.allowZip() && (zipTypes.includes(file.type) || file.name.toLowerCase().endsWith('.zip'));
+    const isZip = !this.pdfOnly() && this.allowZip() && (zipTypes.includes(file.type) || file.name.toLowerCase().endsWith('.zip'));
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!validTypes.includes(file.type) && !isZip) {
@@ -344,9 +371,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
             ? {
                 ...s,
                 dragging: false,
-                error: this.allowZip()
-                  ? 'Solo se permiten archivos PDF, JPG, PNG o ZIP'
-                  : 'Solo se permiten archivos PDF, JPG o PNG'
+                error: 'Formato permitido: ' + this.formatos()
               }
             : s
         )
@@ -379,6 +404,7 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   }
 
   eliminarArchivo(slotId: number): void {
+    if (this.disabled()) return;
     this.slots.update((prev) =>
       prev.map((s) => {
         if (s.id === slotId) {
@@ -392,11 +418,12 @@ export class MultiFileUploadZoneComponent implements OnDestroy {
   }
 
   agregarSlot(): void {
-    if (this.single() || !this.puedeAgregar()) return;
+    if (this.single() || this.disabled() || !this.puedeAgregar()) return;
     this.slots.update((prev) => [...prev, { id: this.nextId++, file: null, dragging: false, objectUrl: null }]);
   }
 
   quitarSlot(slotId: number): void {
+    if (this.disabled()) return;
     this.slots.update((prev) => {
       const target = prev.find((s) => s.id === slotId);
       if (target?.objectUrl) URL.revokeObjectURL(target.objectUrl);

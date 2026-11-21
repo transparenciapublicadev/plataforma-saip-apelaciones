@@ -124,6 +124,117 @@ class TransicionesTtaipPostgresIntegrationTest {
     }
     String estado() { return jdbc.queryForObject("select estado from apelaciones where id_apelacion=?", String.class, apelacionId); }
 
+    @Test
+    void tramitaInformacionComplementariaYActosDocumentalesEnPostgres() throws Exception {
+        String tribunal = tribunal();
+        String funcionario = login("funcionario@example.invalid");
+        String ajeno = login("ajeno@example.invalid");
+        String ciudadano = login("persona@example.invalid");
+        String url = "/api/ttaip/expedientes/" + expedienteId;
+        String info = url + "/informacion-complementaria";
+        var acta = archivoTtaip("archivos", "solicitud.pdf");
+        var solicitud = respuestaJson(mvc.perform(multipart(info).file(acta)
+                .param("texto", "Identifique las actuaciones solicitadas")
+                .header("Authorization", "Bearer " + tribunal)));
+        assertThat(solicitud.path("diasSuspendidos").asInt()).isEqualTo(3);
+        var requerimiento = solicitud.path("solicitudes").get(0);
+        long adjunto = requerimiento.path("adjuntos").get(0).path("id").asLong();
+        long id = requerimiento.path("id").asLong();
+        mvc.perform(get(info).header("Authorization", "Bearer " + ajeno)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/documentos/" + adjunto + "/download").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/documentos/" + adjunto + "/download").header("Authorization", "Bearer " + funcionario))
+                .andExpect(status().isOk()).andExpect(content().bytes(acta.getBytes()));
+        comando("calificacion/{id}/admitir", tribunal).andExpect(status().isConflict());
+        String respuesta = info + "/" + id + "/respuesta";
+        mvc.perform(multipart(respuesta).param("texto", "Respuesta ajena")
+                .header("Authorization", "Bearer " + ajeno)).andExpect(status().isForbidden());
+        var recibida = respuestaJson(mvc.perform(multipart(respuesta).file(archivoTtaip("archivos", "uno.pdf"))
+                .file(archivoTtaip("archivos", "dos.pdf")).param("texto", "Se presenta la información solicitada")
+                .header("Authorization", "Bearer " + funcionario))).path("solicitudes").get(0);
+        assertThat(recibida.path("estado").asString()).isEqualTo("RESPONDIDA");
+        assertThat(recibida.path("adjuntosRespuesta").size()).isEqualTo(2);
+
+        jdbc.update("update salas_ttaip set nombre='PRIMERA SALA' where nombre='Sala sintética'");
+        String preparados = url + "/documentos-oficiales/PRIMERA_CALIFICACION/";
+        var reserva = respuestaJson(mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, preparados + "RESOLUCION")
+                .param("sala", "PRIMERA SALA").param("decision", "ADMISIBLE").header("Authorization", "Bearer " + tribunal)));
+        String numero = reserva.path("numero").asString();
+        assertThat(numero).contains("PRIMERA SALA");
+        comando("calificacion/{id}/admitir", tribunal).andExpect(status().isConflict());
+        var firmado = archivoTtaip("archivo", "firmado.pdf");
+        long borrador = 0;
+        for (String clave : List.of("RESOLUCION", "CIUDADANO", "ENTIDAD_PUBLICA")) {
+            var documento = respuestaJson(mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, preparados + clave)
+                    .file(firmado).param("decision", "ADMISIBLE").header("Authorization", "Bearer " + tribunal)));
+            if ("RESOLUCION".equals(clave)) {
+                assertThat(documento.path("numero").asString()).isEqualTo(numero);
+                borrador = documento.path("archivo").path("id").asLong();
+            }
+        }
+        mvc.perform(get("/api/documentos/" + borrador + "/download").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isForbidden());
+        var emitida = respuestaJson(comando("calificacion/{id}/admitir", tribunal));
+        assertThat(emitida.path("resolucionPrimeraCalificacion").path("numeroResolucion").asString()).isEqualTo(numero);
+        mvc.perform(get("/api/documentos/" + borrador + "/download").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isOk()).andExpect(content().bytes(firmado.getBytes()));
+        var lista = respuestaJson(mvc.perform(get(url + "/actos-notificacion").header("Authorization", "Bearer " + tribunal)));
+        assertThat(lista.size()).isEqualTo(2);
+        var paraEntidad = respuestaJson(mvc.perform(get(url + "/actos-notificacion").header("Authorization", "Bearer " + funcionario)));
+        assertThat(paraEntidad.size()).isEqualTo(1);
+        assertThat(paraEntidad.get(0).path("destinatario").asString()).isEqualTo("ENTIDAD_PUBLICA");
+        long ciudadanoDoc = lista.get(0).path("firmado").path("id").asLong();
+        mvc.perform(get("/api/documentos/" + ciudadanoDoc + "/download").header("Authorization", "Bearer " + funcionario))
+                .andExpect(status().isForbidden());
+
+        String original = url + "/actos-notificacion/" + lista.get(0).path("id").asLong();
+        String valida = json.writeValueAsString(Map.of("valida", true, "fechaEficacia",
+                java.time.LocalDateTime.now().toString(), "observacion", "Comprobación sintética"));
+        mvc.perform(post(original + "/revision").contentType("application/json").content(valida)
+                .header("Authorization", "Bearer " + tribunal)).andExpect(status().isConflict());
+        var nuevo = respuestaJson(mvc.perform(post(original + "/revision").contentType("application/json")
+                .content("{\"valida\":false,\"observacion\":\"Domicilio incorrecto\"}")
+                .header("Authorization", "Bearer " + tribunal)));
+        assertThat(nuevo.path("numero").asString()).isNotEqualTo(lista.get(0).path("numero").asString());
+        String reproceso = url + "/actos-notificacion/" + nuevo.path("id").asLong();
+        mvc.perform(put(reproceso + "/destino").contentType("application/json")
+                .content("{\"medio\":\"FISICA\",\"direccion\":\"Dirección sintética\",\"tipo\":\"CARTA\"}")
+                .header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
+        subirActo(reproceso, "FIRMADO", tribunal);
+        mvc.perform(post(reproceso + "/publicacion").header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
+        String entidad = url + "/actos-notificacion/" + paraEntidad.get(0).path("id").asLong();
+        for (String acto : List.of(reproceso, entidad)) {
+            var cargo = subirActo(acto, "CARGO", tribunal);
+            assertThat(cargo.path("cargo").path("nombreOriginal").asString()).startsWith("Cargo de notificación ");
+            var acuse = subirActo(acto, "ACUSE", tribunal);
+            assertThat(acuse.path("acuse").path("nombreOriginal").asString()).startsWith("Acuse de notificación ");
+            LocalDate hoy = LocalDate.now();
+            mvc.perform(post(acto + "/revision").contentType("application/json")
+                    .content(json.writeValueAsString(Map.of("valida", true, "fechaEficacia", hoy.minusDays(1) + "T00:00:00")))
+                    .header("Authorization", "Bearer " + tribunal)).andExpect(status().isBadRequest());
+            mvc.perform(post(acto + "/revision").contentType("application/json")
+                    .content(json.writeValueAsString(Map.of("valida", true, "fechaEficacia", hoy + "T00:00:00",
+                            "observacion", "Se verificaron ambos documentos")))
+                    .header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
+        }
+        assertThat(jdbc.queryForObject("select count(*) from resoluciones where fecha_validacion_actos is not null", Long.class))
+                .isEqualTo(1L);
+    }
+
+    private org.springframework.mock.web.MockMultipartFile archivoTtaip(String campo, String nombre) {
+        return new org.springframework.mock.web.MockMultipartFile(campo, nombre, "application/pdf",
+                "%PDF-1.4\nArchivo sintético\n%%EOF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private JsonNode subirActo(String url, String tipo, String token) throws Exception {
+        return respuestaJson(mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, url + "/archivos/" + tipo)
+                .file(archivoTtaip("archivo", "evidencia.pdf")).header("Authorization", "Bearer " + token)));
+    }
+
+    private JsonNode respuestaJson(ResultActions accion) throws Exception {
+        return json.readTree(accion.andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+    }
+
     String consultaRecepcion(long requerimientoId) {
         return "/api/ttaip/expedientes/"+expedienteId+"/requerimientos/"+requerimientoId+"/subsanacion/recepcion";
     }

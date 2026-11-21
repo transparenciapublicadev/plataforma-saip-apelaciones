@@ -69,6 +69,11 @@
             }
             @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
           </div>
+          <div role="tabpanel" id="qual-panel-subprocesos" aria-labelledby="qual-tab-subprocesos" [hidden]="activeTab() !== 'subprocesos'" class="p-6">
+            @if (activeTab() === 'subprocesos' && expedienteActuacion(); as expedienteId) {
+              <app-informacion-complementaria [expedienteId]="expedienteId" [tribunal]="true" />
+            }
+          </div>
         </section>
         <div class="space-y-5 min-w-0">
           @if (motivoNoDisponible()) { <p role="status" class="rounded-lg p-4 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ motivoNoDisponible() }}</p> }
@@ -111,16 +116,20 @@
               <div class="field"><label for="qualification-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="qualification-grounds" [(ngModel)]="fundamentos" [disabled]="!puedeCalificar() || loading()" aria-required="true" aria-describedby="grounds-hint qualification-validation" [attr.aria-invalid]="validationAttempted() && (!fundamentos.trim() || fundamentos.trim().length > 5000)" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos legales y fácticos de la calificación…"></textarea><p id="grounds-hint" class="field-hint font-mono">{{ fundamentos.length }} caracteres</p></div>
             </div>
           </section>
-          <app-official-docs-section [expediente]="ap.expediente" stage="primera" [decision]="selectedDecision()" [ctx]="docCtx()"></app-official-docs-section>
+          <a class="btn-ghost-brand" [routerLink]="['/ttaip/apelacion', ap.expediente]" [queryParams]="{ tab: 'notificaciones' }">Ver actos de notificación del expediente</a>
+          <app-official-docs-section #oficiales [expediente]="ap.expediente" [expedienteId]="expedienteActuacion()" [decisionBackend]='selectedOption()?.decision' stage="primera" [decision]="selectedDecision()" [ctx]="docCtx()" [considerando]="fundamentos"></app-official-docs-section>
           <button type="button" class="btn-ghost-brand w-full justify-center !py-3" (click)="togglePreview()" [disabled]="!selectedDecision()" [attr.aria-expanded]="showPreview()" aria-controls="qualification-draft">@if (showPreview()) { <svg aria-hidden="true" lucideEyeOff class="w-4 h-4"></svg> } @else { <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg> }{{ showPreview() ? 'Ocultar' : 'Previsualizar' }} PDF de calificación</button>
           @if (showPreview()) { <div id="qualification-draft"><app-official-preview stage="primera" [decision]="selectedDecision()" [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'" [cedulaVariant]="cedulaVariant()" [ctx]="docCtx()"></app-official-preview></div> }
           <p id="qualification-validation" role="status" class="sr-only">{{ validacionTexto() }}</p>
-          <button id="qualification-submit" type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>{{ loading() ? 'Comprobando registro…' : 'Emitir calificación' }}</button>
+          @if (selectedDecision() && !oficiales.documentosListos()) {
+            <p class="text-sm text-muted-foreground" role="status">Cargue la resolución y las cédulas firmadas para emitir y enviar la decisión.</p>
+          }
+          <button id="qualification-submit" type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || !oficiales.documentosListos()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>{{ loading() ? 'Comprobando registro…' : 'Emitir y enviar calificación' }}</button>
         </div>
       </div>
     </div>
   }
-  <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" [submitting]="loading()" title="Confirme la calificación" titleLead="Confirme" titleEmphasis="la calificación" eyebrow="Revisión final · 1ra Calificación" description="Revise decisión, fundamentos y observaciones. Se registrará una actuación; no se acredita emisión documental ni notificación eficaz." [summary]="calificacionConfirmSummary()" [warning]="calificacionWarning()" confirmLabel="Registrar calificación" (close)="confirmModalAbierto.set(false)" (confirm)="enviarCalificacion()"></app-reference-confirm-modal>
-  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente()" [manageFocus]="true" variant="calificacion-1ra" [tone]="calificacionSuccessTone()" eyebrow="1ra calificación registrada y recuperada" [title]="calificacionSuccessTitle()" description="Actuación identificada y recuperada del servidor. No acredita firma digital ni emisión de un archivo oficial. Consulte sus documentos y la eficacia de la notificación en el expediente." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="apelacion()?.resolucionPrimeraCalificacion?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="calificacionSuccessMetadata()" [nextSteps]="calificacionNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelTtaip()" (secondary)="irExpediente()"></app-reference-success-modal>
+  <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" [submitting]="loading()" title="Confirme la calificación" titleLead="Confirme" titleEmphasis="la calificación" eyebrow="Revisión final · 1ra Calificación" description="Revise la decisión y los documentos firmados. Se registrarán y quedarán disponibles en el panel de los destinatarios." [summary]="calificacionConfirmSummary()" [warning]="calificacionWarning()" confirmLabel="Emitir y enviar calificación" (close)="confirmModalAbierto.set(false)" (confirm)="enviarCalificacion()"></app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente()" [manageFocus]="true" variant="calificacion-1ra" [tone]="calificacionSuccessTone()" eyebrow="1ra calificación registrada y recuperada" [title]="calificacionSuccessTitle()" description="Actuación identificada y recuperada del servidor. Consulte los documentos emitidos y registre el cargo y el acuse en Notificaciones." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="apelacion()?.resolucionPrimeraCalificacion?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="calificacionSuccessMetadata()" [nextSteps]="calificacionNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Subir actos de notificación" (close)="cerrarResultado()" (primary)="irPanelTtaip()" (secondary)="irNotificaciones()"></app-reference-success-modal>
   <app-document-preview-modal [doc]="previewTarget()" [open]="!!previewTarget() && contextoVigente()" [manageFocus]="true" (close)="previewTarget.set(null)"></app-document-preview-modal>
 </div>

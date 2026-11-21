@@ -110,6 +110,12 @@ public class NotificacionTtaip {
     @Column(columnDefinition = "TEXT")
     private String trazabilidad;
 
+    @Column(name = "direccion_destino", length = 500)
+    private String direccionDestino;
+
+    @Column(name = "fecha_eficacia")
+    private LocalDateTime fechaEficacia;
+
     @PrePersist
     protected void onCreate() {
         fechaNotificacion = fechaNotificacion != null ? fechaNotificacion : LocalDateTime.now();

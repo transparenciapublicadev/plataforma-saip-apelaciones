@@ -23,14 +23,16 @@ public class TransicionesApelacionTtaipService {
     private final DescargoEntidadTtaipRepository descargos;
     private final AutorizacionRecursosService autorizacion;
     private final EntityManager em;
+    private final SuspensionPlazoTtaipRepository suspensiones;
 
     public TransicionesApelacionTtaipService(ApelacionRepository apelaciones, ResolucionRepository resoluciones,
             SubsanacionTtaipRecepcionRepository recepciones, NotificacionTtaipRepository notificaciones,
             HistorialTtaipRepository historial, DescargoEntidadTtaipRepository descargos,
-            AutorizacionRecursosService autorizacion, EntityManager em) {
+            AutorizacionRecursosService autorizacion, EntityManager em, SuspensionPlazoTtaipRepository suspensiones) {
         this.apelaciones=apelaciones; this.resoluciones=resoluciones; this.recepciones=recepciones;
         this.notificaciones=notificaciones; this.historial=historial; this.autorizacion=autorizacion; this.em=em;
         this.descargos=descargos;
+        this.suspensiones=suspensiones;
     }
 
     /** All mutation use cases hold the same database row lock until their transaction commits. */
@@ -93,6 +95,11 @@ public class TransicionesApelacionTtaipService {
 
     @Transactional(propagation=Propagation.MANDATORY)
     public void validarActuacion(Apelacion ap, Resolucion.TipoResolucion tipo, Resolucion.DecisionResolucion decision) {
+        if (ap.getExpedienteTtaip() != null) {
+            exigir(suspensiones.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(ap.getExpedienteTtaip().getId())
+                    .stream().noneMatch(s -> s.getEtapaComplementaria() == tipo && InformacionComplementariaTtaipService.pendiente(s)),
+                    "Hay un requerimiento de información complementaria pendiente en esta etapa");
+        }
         if (tipo==Resolucion.TipoResolucion.RESOLUCION_FINAL) {
             exigir(ap.getEstado()==Apelacion.EstadoApelacion.EN_RESOLUCION && !ap.isResuelta(),
                 "La resolución final requiere una apelación en EN_RESOLUCION");
@@ -117,6 +124,8 @@ public class TransicionesApelacionTtaipService {
         } else if (tipo==Resolucion.TipoResolucion.SEGUNDA_CALIFICACION) {
             exigir(ap.getEstado()==Apelacion.EstadoApelacion.EN_CALIFICACION_2,"La segunda calificación requiere EN_CALIFICACION_2");
             exigirSubsanacion(ap);
+            Resolucion primera = ultima(ap, Resolucion.TipoResolucion.PRIMERA_CALIFICACION);
+            if (primera != null && primera.isActosDocumentales()) exigirNotificaciones(ap, primera);
             exigir(ultima(ap,tipo)==null,"La segunda calificación ya está registrada");
         }
     }
@@ -166,16 +175,21 @@ public class TransicionesApelacionTtaipService {
     }
     private void exigirNotificaciones(Apelacion ap, Resolucion r) {
         for (var destinatario : CedulaNotificacion.DestinatarioNotificacion.values()) {
+            if (r.getDecision() == Resolucion.DecisionResolucion.INADMISIBLE
+                    && destinatario == CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA) continue;
             boolean eficaz=notificaciones.findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(r.getId(),destinatario)
                 .stream().anyMatch(n -> n.getExpediente()!=null && n.getExpediente().getId().equals(ap.getExpedienteTtaip().getId())
                     && n.getCedula()!=null && n.getCedula().getDestinatario()==destinatario && evidenciaEficaz(n));
-            exigir(eficaz,"Falta notificación eficaz acreditada de la admisión para "+destinatario);
+            exigir(eficaz,"Valide los actos de notificación de " + r.getNumeroResolucion() + " para " + destinatario);
         }
     }
     private boolean evidenciaEficaz(NotificacionTtaip n) {
         // Provider sends can overwrite operational fields while an old receipt remains in history.
         // They never acquire legal efficacy by borrowing that earlier event.
         if(n.getResultadoNotificacion()!=null && n.getResultadoNotificacion().startsWith("ENTREGADA_POR_")) return false;
+        if (n.getCedula().getResolucion().isActosDocumentales() || n.getCedula().getTipoActo() != null) {
+            return "VALIDADA".equals(n.getEstado()) && n.getFechaEficacia() != null;
+        }
         Long expedienteId=n.getExpediente().getId();
         if ("VALIDADA".equals(n.getEstado()) && Boolean.TRUE.equals(n.getValidadaManualmente())
                 && n.getFechaValidacionManual()!=null && texto(n.getResponsableValidacion()) && texto(n.getObservacionValidacion())) {

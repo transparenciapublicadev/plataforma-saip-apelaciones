@@ -1,3 +1,4 @@
+import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,7 +28,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
+    InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
     LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown, LucideSend],
   templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -56,13 +57,17 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   private previousRequirement: number | null = null;
   private docsLoaded = false;
   readonly apelacion = signal<Apelacion | null>(null);
+  readonly expedienteActuacion = computed(() => {
+    const ap = this.apelacion(), exp = ap?.expedienteTtaip;
+    return positiveId(exp?.id) && exp?.numeroExpediente === ap?.expediente ? exp.id : null;
+  });
   readonly loadingApelacion = signal(true);
   readonly loadError = signal('');
   readonly error = signal('');
   readonly confirmModalAbierto = signal(false);
   /** A consulted persisted act, never a confirmation of a new submission. */
   readonly successModalAbierto = signal(false);
-  readonly activeTab = signal<'subsanacion' | 'adjuntos'>('subsanacion');
+  readonly activeTab = signal<'subsanacion' | 'adjuntos' | 'subprocesos'>('subsanacion');
   readonly selectedDecision = signal<SegundaDecision | null>(null);
   readonly showPreview = signal(false);
   readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
@@ -80,7 +85,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   readonly resultadoConfirmado = signal(false);
   readonly registroObservado = signal<number | null>(null);
   readonly rechazoBloqueante = signal(false);
-  readonly tabs = [{ id: 'subsanacion' as const, label: 'Subsanación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
+  readonly tabs = [{ id: 'subsanacion' as const, label: 'Subsanación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }, { id: 'subprocesos' as const, label: 'Subprocesos' }];
   readonly options = segundaOpciones;
   readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
   efectoVerificacion(): string {
@@ -298,10 +303,14 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
     if (this.contexto() === 'incompatible') return 'Estado incompatible con la preparación de segunda calificación: ' + this.getEstadoDisplay(this.apelacion()?.estado) + '.';
     return 'Revise la recepción del requerimiento antes de registrar la segunda calificación. Los borradores no son documentos emitidos.';
   }
-  cambiarTab(tab: 'subsanacion' | 'adjuntos'): void { this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded) this.cargarDocumentos(); }
-  onTabKey(event: KeyboardEvent, tab: 'subsanacion' | 'adjuntos'): void {
+  cambiarTab(tab: 'subsanacion' | 'adjuntos' | 'subprocesos'): void { this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded) this.cargarDocumentos(); }
+  onTabKey(event: KeyboardEvent, tab: 'subsanacion' | 'adjuntos' | 'subprocesos'): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault(); const next = event.key === 'Home' ? 'subsanacion' : event.key === 'End' ? 'adjuntos' : tab === 'subsanacion' ? 'adjuntos' : 'subsanacion';
+    event.preventDefault();
+    const i = this.tabs.findIndex(t => t.id === tab);
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1
+      : (i + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length;
+    const next = this.tabs[index].id;
     this.cambiarTab(next); this.host.nativeElement.querySelector<HTMLElement>('#second-tab-' + next)?.focus();
   }
   cargarDocumentos(): void {
@@ -386,5 +395,11 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
       { label: 'Consulte la pestaña Notificaciones del expediente. La fecha base del plazo final continúa pendiente de definición de dominio.' }];
   }
   irPanelTtaip(): void { if (this.contextoVigente()) void this.router.navigate(['/ttaip']); }
+  irNotificaciones(): void {
+    const expediente = this.apelacion()?.expediente;
+    if (expediente && this.contextoVigente()) {
+      void this.router.navigate(['/ttaip/apelacion', expediente], { queryParams: { tab: 'notificaciones' } });
+    }
+  }
   irExpediente(): void { if (this.contextoVigente() && this.apelacion()) void this.router.navigate(['/ttaip/apelacion', this.apelacion()!.expediente]); }
 }

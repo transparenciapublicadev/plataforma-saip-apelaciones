@@ -1,3 +1,4 @@
+import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -26,7 +27,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
 @Component({
   selector: 'app-ttaip-calificar',
   imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideEye, LucideEyeOff,
+    InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideEye, LucideEyeOff,
     LucideXCircle, LucideCheckCircle2, LucideAlertCircle, LucideArrowLeft, LucideFileText, LucideDownload, LucideSend, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-calificar.component.html', styleUrl: './ttaip-calificar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,6 +55,10 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
   private operation: CalificacionOperacion | null = null;
   private docsLoaded = false;
   readonly apelacion = signal<Apelacion | null>(null);
+  readonly expedienteActuacion = computed(() => {
+    const ap = this.apelacion(), exp = ap?.expedienteTtaip;
+    return positiveId(exp?.id) && exp?.numeroExpediente === ap?.expediente ? exp.id : null;
+  });
   readonly solicitudOrigen = signal<Solicitud | null>(null);
   readonly loading = signal(false);
   readonly loadingApelacion = signal(true);
@@ -64,7 +69,7 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
   readonly registroObservado = signal<number | null>(null);
   readonly confirmModalAbierto = signal(false);
   readonly successModalAbierto = signal(false);
-  readonly activeTab = signal<'apelacion' | 'adjuntos'>('apelacion');
+  readonly activeTab = signal<'apelacion' | 'adjuntos' | 'subprocesos'>('apelacion');
   readonly selectedDecision = signal<CalificacionDecision | null>(null);
   readonly showPreview = signal(false);
   readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
@@ -90,7 +95,7 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
   fundamentos = '';
   observacionesList = signal<string[]>(['']);
   readonly diasSubsanacion = 2;
-  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
+  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }, { id: 'subprocesos' as const, label: 'Subprocesos' }];
   readonly options = calificacionOpciones;
   readonly selectedOption = computed(() => this.options.find(option => option.id === this.selectedDecision()));
   efectoCalificacion(): string {
@@ -290,12 +295,16 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
       error: () => { if (this.current(generation) && this.operation === operation) this.marcarIncierto('No se pudo recuperar la actuación. Los fundamentos se conservan; consulte nuevamente sin reenviar el comando.'); }
     }));
   }
-  cambiarTab(tab: 'apelacion' | 'adjuntos'): void {
+  cambiarTab(tab: 'apelacion' | 'adjuntos' | 'subprocesos'): void {
     this.activeTab.set(tab); if (tab === 'adjuntos' && !this.docsLoaded && !this.loadingDocuments()) this.cargarDocumentos();
   }
-  onTabKey(event: KeyboardEvent, tab: 'apelacion' | 'adjuntos'): void {
+  onTabKey(event: KeyboardEvent, tab: 'apelacion' | 'adjuntos' | 'subprocesos'): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault(); const next = event.key === 'Home' ? 'apelacion' : event.key === 'End' ? 'adjuntos' : tab === 'apelacion' ? 'adjuntos' : 'apelacion';
+    event.preventDefault();
+    const i = this.tabs.findIndex(t => t.id === tab);
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1
+      : (i + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length;
+    const next = this.tabs[index].id;
     this.cambiarTab(next); this.host.nativeElement.querySelector<HTMLElement>('#qual-tab-' + next)?.focus();
   }
   cargarDocumentos(): void {
@@ -396,5 +405,11 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
     queueMicrotask(() => { if (this.contextoVigente()) this.host.nativeElement.querySelector<HTMLElement>('#qualification-result')?.focus(); });
   }
   irPanelTtaip(): void { if (this.contextoVigente()) void this.router.navigate(['/ttaip']); }
+  irNotificaciones(): void {
+    const expediente = this.apelacion()?.expediente;
+    if (expediente && this.contextoVigente()) {
+      void this.router.navigate(['/ttaip/apelacion', expediente], { queryParams: { tab: 'notificaciones' } });
+    }
+  }
   irExpediente(): void { if (this.contextoVigente() && this.apelacion()) void this.router.navigate(['/ttaip/apelacion', this.apelacion()!.expediente]); }
 }
