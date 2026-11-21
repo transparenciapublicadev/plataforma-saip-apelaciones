@@ -139,6 +139,8 @@ public class PanelConsultaRepository {
                 when exists (select 1 from encauzamientos_solicitud en where en.id_solicitud=s.id_solicitud
                     and en.alcance='PARCIAL' and en.estado_encauzamiento in ('DERIVADO','REGISTRADO')) then 'PARCIAL'
             end encauzamiento_alcance,
+            exists (select 1 from ampliaciones_plazo_solicitud amp where amp.id_solicitud=s.id_solicitud
+                and amp.estado_ampliacion<>'CANCELADA') plazo_ampliado,
             s.oficina_destinataria,s.area_responsable,s.encargado_area,
             s.fecha_presentacion,s.fecha_limite,s.id_ciudadano,c.nombre_completo ciudadano_nombre,
             s.id_entidad,e.nombre entidad_nombre,e.acronimo entidad_acronimo,
