@@ -112,7 +112,7 @@ public class PanelConsultaService {
                 text(o,"fecha_observacion"),text(o,"fecha_limite_subsanacion"),text(o,"fecha_subsanacion"),
                 date(o,"fecha_limite_subsanacion")==null?null:DiasHabilesUtil.diasHabilesVigentes(day(o,"fecha_observacion"), date(o,"fecha_limite_subsanacion"), hoy))).toList(),
             id(r,"a_id")==null?null:apelacion(r),
-            oficina(r), str(r,"area_responsable"), str(r,"encargado_area"), str(r,"encauzamiento_alcance"));
+            oficina(r), str(r,"area_responsable"), str(r,"encargado_area"), str(r,"encauzamiento_alcance"), flag(r,"plazo_ampliado"));
     }
     private static String oficina(Map<String,Object> r) {
         String guardada = str(r, "oficina_destinataria");
@@ -159,6 +159,7 @@ public class PanelConsultaService {
             days,DiasHabilesUtil.diasHabilesVigentes(effective.toLocalDate(), limit),str(r,"ip_fuente"));
     }
     private static Long id(Map<String,Object> r,String key){return r.get(key)==null?null:((Number)r.get(key)).longValue();}
+    private static Boolean flag(Map<String,Object> r,String key){Object value=r.get(key);return value instanceof Boolean bool?bool:value instanceof Number number&&number.intValue()!=0;}
     private static String str(Map<String,Object> r,String key){return (String)r.get(key);}
     private static LocalDate date(Map<String,Object> r,String key){return r.get(key)==null?null:((java.sql.Date)r.get(key)).toLocalDate();}
     private static LocalDate day(Map<String,Object> r,String key){
