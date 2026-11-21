@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector, OnDestroy, OnInit, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -48,6 +48,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   private readonly entidadService = inject(EntidadService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
   readonly formatos = FORMATOS;
   readonly mediosNotificacion = MEDIOS_NOTIFICACION;
   readonly modelos = MODELOS;
@@ -201,10 +202,23 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     if (!this.actual() || this.bloqueado() || paso < 1 || paso > 4) return;
     const errors = paso > this.step() ? this.validar(Math.min(paso - 1, 3)) : {};
     this.errores.set(errors); this.error.set(Object.keys(errors).length ? 'Revise los campos señalados antes de continuar.' : '');
-    if (Object.keys(errors).length) { this.enfocar('saip-errores'); return; }
-    this.step.set(paso); this.enfocar('saip-paso-titulo');
+    if (Object.keys(errors).length) { this.subir('saip-errores'); return; }
+    this.step.set(paso); this.subir('saip-paso-titulo');
   }
-  private enfocar(id: string): void { const gen = this.generacion; queueMicrotask(() => { if (this.actual(gen)) document.getElementById(id)?.focus(); }); }
+  private subir(id: string): void {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.enfocar(id);
+  }
+  private enfocar(id: string): void {
+    const gen = this.generacion;
+    afterNextRender(() => {
+      if (!this.actual(gen) || typeof document === 'undefined') return;
+      const nodo = document.getElementById(id);
+      if (!nodo) return;
+      try { nodo.scrollIntoView({ block: 'start' }); } catch { /* el entorno de prueba no desplaza la vista */ }
+      nodo.focus();
+    }, { injector: this.injector });
+  }
   usarModelo(texto: string, asunto?: string): void {
     if (this.bloqueado() || !this.actual()) return;
     if (this.descripcion.trim()) { this.modeloPendiente.set({ texto, asunto }); return; }
