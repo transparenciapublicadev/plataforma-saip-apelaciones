@@ -22,7 +22,9 @@ public record DocumentoMetadataDTO(
         Long apelacionId,
         Long expedienteTtaipId,
         Long resolucionId,
-        Long cedulaNotificacionId) {
+        Long cedulaNotificacionId,
+        String expedienteOrigen,
+        String entidadOrigen) {
 
     public static DocumentoMetadataDTO from(Documento documento) {
         return new DocumentoMetadataDTO(
@@ -43,7 +45,9 @@ public record DocumentoMetadataDTO(
                 documento.getResolucion() != null ? documento.getResolucion().getIdResolucion() : null,
                 documento.getCedulaNotificacion() != null
                         ? documento.getCedulaNotificacion().getIdCedula()
-                        : null);
+                        : null,
+                blankToNull(documento.getExpedienteOrigen()),
+                blankToNull(documento.getEntidadOrigen()));
     }
 
     public static List<DocumentoMetadataDTO> fromActive(List<Documento> documentos) {
@@ -61,5 +65,12 @@ public record DocumentoMetadataDTO(
 
     private static String enumName(Enum<?> value) {
         return value != null ? value.name() : null;
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

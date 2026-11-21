@@ -194,13 +194,17 @@
                 <span class="eyebrow" style="color: var(--brand-700)">Encauzamiento {{ encauzamiento.alcance === 'TOTAL' ? 'total' : 'parcial' }} · {{ (fechaVisible(encauzamiento.fechaEncauzamiento) | date:'dd/MM/yyyy') || 'No informada' }}</span>
                 <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
                   @if (encauzamiento.alcance === 'TOTAL') {
-                    {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} derivó toda la solicitud a <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>. El expediente sigue siendo el mismo y queda en revisión de la entidad que la recibe.
+                    @if (yaRespondida() && sol.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL') {
+                      {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} registró una denegatoria total. {{ encauzamiento.entidadDestinoNombre }} abre un expediente nuevo, que empieza desde su ingreso. Este expediente conserva el historial hasta aquí.
+                    } @else {
+                      {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} encauzó toda la solicitud. {{ encauzamiento.entidadDestinoNombre }} abre un expediente nuevo, que empieza desde su ingreso. Este expediente conserva el historial hasta aquí.
+                    }
                   } @else {
                     {{ encauzamiento.entidadOrigenNombre || 'La entidad de origen' }} registró un encauzamiento parcial hacia <span class="font-semibold">{{ encauzamiento.entidadDestinoNombre }}</span>.
                   }
                   {{ encauzamiento.motivoEncauzamiento }}
                 </p>
-                @if (encauzamiento.observacionSustento) {
+                @if (encauzamiento.observacionSustento && !(encauzamiento.alcance === 'TOTAL' && yaRespondida())) {
                   <p class="text-sm text-foreground/70 mt-1.5"><span class="font-semibold">Extremo derivado:</span> {{ encauzamiento.observacionSustento }}</p>
                 }
               </div>
@@ -230,8 +234,11 @@
                 } @else {
                   <section class="rounded-lg border border-border p-5 space-y-3" style="border-left: 3px solid var(--gold)">
                     <span class="eyebrow">Ampliación registrada</span>
-                    <h2 class="form-section-title">Atención con fecha única</h2>
+                    <h2 class="form-section-title">{{ yaRespondida() ? 'Ampliación cerrada' : 'Atención con fecha única' }}</h2>
                     <p class="text-sm">Nueva fecha límite <strong>{{ fechaCalendario(ampliacion.fechaLimiteAmpliada) }}</strong>.</p>
+                    @if (yaRespondida()) {
+                      <p class="text-sm text-muted-foreground">Esta ampliación quedó cerrada. La entidad ya registró su respuesta.</p>
+                    }
                   </section>
                 }
               }
@@ -253,7 +260,7 @@
                     <span class="eyebrow" style="color: var(--warning)">Subsanación presentada · pendiente de evaluación</span>
                     <p class="text-sm text-foreground/85 mt-1.5">El administrado subsanó el <span class="font-mono font-semibold">{{ fechaVisible(observacion.fechaSubsanacion) ? (observacion.fechaSubsanacion | date:'dd/MM/yyyy') : '—' }}</span>. Evalúe si la observación quedó subsanada.</p>
                     <div class="mt-2 rounded-md p-3 text-sm text-foreground/80" style="background: var(--card); border: 1px solid var(--border)">
-                      <span class="font-semibold">Respuesta del administrado:</span> {{ observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Sin detalle' }}
+                      <span class="font-semibold">Respuesta del administrado:</span> {{ observacion.comentarioSubsanacion || 'Sin detalle' }}
                     </div>
                     <div class="flex flex-wrap gap-2 mt-3">
                       <button type="button" (click)="evaluarSubsanacion(observacion, true)" class="btn-brand !py-2 !text-[13px]">
@@ -269,8 +276,25 @@
                   }
                 </div>
               </div>
-            } @else {
+            } @else if (observacionesAnteriores().length === 0) {
               <p class="text-sm text-muted-foreground">No hay una precisión pendiente en este expediente.</p>
+            }
+            @for (observacion of observacionesAnteriores(); track observacion.id) {
+              <div class="rounded-lg p-5" style="background: color-mix(in srgb, var(--success) 8%, transparent); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent); border-left: 3px solid var(--success)">
+                <span class="eyebrow" style="color: var(--success)">Precisión registrada
+                  @if (fechaVisible(observacion.fechaSubsanacion); as fecha) {
+                    · {{ fecha | date:'dd/MM/yyyy' }}
+                  }
+                </span>
+                <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                  <span class="font-semibold">Observación de la entidad</span>
+                  <p class="mt-1.5 leading-relaxed whitespace-pre-line break-words">{{ observacion.motivoObservacion || 'Motivo no registrado' }}</p>
+                </div>
+                <div class="mt-3 rounded-md p-3 text-sm text-foreground/85" style="background: var(--card); border: 1px solid var(--border)">
+                  <span class="font-semibold">Respuesta del administrado</span>
+                  <p class="mt-1.5 leading-relaxed whitespace-pre-line break-words">{{ observacion.comentarioSubsanacion || 'Sin respuesta registrada' }}</p>
+                </div>
+              </div>
             }
           </div>
         }
@@ -568,19 +592,6 @@
                 {{ descripcionVisible() }}
               </div>
             </div>
-            @for (observacion of observacionesAnteriores(); track observacion.id) {
-              @if (observacion.motivoObservacion) {
-                <details class="rounded-md border border-border p-4 text-sm">
-                  <summary class="cursor-pointer font-semibold">
-                    Ver observación de precisión
-                    @if (fechaVisible(observacion.fechaObservacion); as fecha) {
-                      <span class="font-normal text-muted-foreground">· {{ fecha | date:'dd/MM/yyyy' }}</span>
-                    }
-                  </summary>
-                  <p class="mt-3 whitespace-pre-line break-words text-foreground/85">{{ observacion.motivoObservacion }}</p>
-                </details>
-              }
-            }
           </div>
         }
 
@@ -632,6 +643,9 @@
 
         @if (activeTab() === 'adjuntos') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            @if (avisoDocumentosEncauzados()) {
+              <p role="note" class="text-sm text-foreground/80 rounded-md p-3 leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ avisoDocumentosEncauzados() }}</p>
+            }
             @if (todosDocumentosAdministrado().length === 0) {
               <div class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
                 {{ informacionIncompleta() ? 'No hay documentos verificables en la información recibida.' : 'La consulta no contiene documentos del administrado asociados a esta solicitud.' }}
@@ -659,6 +673,9 @@
                             </span>
                             <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                           </div>
+                          @if (d.procedencia) {
+                            <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                          }
                           <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                             {{ d.tipo }} · {{ d.tamano }}
                           </div>
@@ -693,6 +710,9 @@
                                 </span>
                                 <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                               </div>
+                              @if (d.procedencia) {
+                                <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                              }
                               <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                                 {{ d.tipo }} · {{ d.tamano }}
                               </div>
@@ -720,7 +740,7 @@
             @if (grupoSubsanaciones().length > 0) {
               <div>
                 <div class="flex items-center justify-between mb-2.5">
-                  <span class="eyebrow" style="color: var(--warning)">Subsanaciones presentadas</span>
+                  <span class="eyebrow" style="color: var(--warning)">{{ subsanacionesEncauzadas() ? 'Precisión llegada con el encauzamiento' : 'Subsanaciones presentadas' }}</span>
                   <span class="text-[11px] text-muted-foreground">{{ grupoSubsanaciones().length }} documento(s)</span>
                 </div>
                 <div class="space-y-2">
@@ -733,10 +753,13 @@
                         <div>
                           <div class="flex items-center gap-2">
                             <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style="background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning)">
-                              Subsanación
+                              {{ d.procedencia ? 'Precisión encauzada' : 'Subsanación' }}
                             </span>
                             <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                           </div>
+                          @if (d.procedencia) {
+                            <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                          }
                           <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                             {{ d.tipo }} · {{ d.tamano }}
                           </div>

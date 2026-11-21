@@ -22,4 +22,10 @@ public interface EncauzamientoSolicitudRepository extends JpaRepository<Encauzam
             Long solicitudId,
             Collection<EncauzamientoSolicitud.EstadoEncauzamiento> estados
     );
+
+    boolean existsBySolicitud_IdSolicitudAndAlcanceAndEstadoEncauzamientoInAndSolicitudDerivadaIsNotNull(
+            Long solicitudId,
+            EncauzamientoSolicitud.AlcanceEncauzamiento alcance,
+            Collection<EncauzamientoSolicitud.EstadoEncauzamiento> estados
+    );
 }

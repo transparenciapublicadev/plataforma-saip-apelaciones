@@ -114,6 +114,14 @@ public class Documento {
     @Column(name = "solo_institucional_ttaip", nullable = false)
     private boolean soloInstitucionalTtaip;
 
+    /** Expediente en el que el administrado presentó el archivo, cuando llegó por encauzamiento. */
+    @Column(name = "expediente_origen", length = 40)
+    private String expedienteOrigen;
+
+    /** Entidad ante la que el administrado presentó el archivo, cuando llegó por encauzamiento. */
+    @Column(name = "entidad_origen", length = 200)
+    private String entidadOrigen;
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();

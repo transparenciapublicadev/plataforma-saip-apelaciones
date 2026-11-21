@@ -6,7 +6,7 @@ import { DatePipe } from '@angular/common';
 import { PanelQueryService } from '../../services/panel-query.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
-import { AmpliacionPlazoSolicitud, ampliacionPermiteApelar, diasApelacionCronograma, diasHabilesParaApelar, entregaApelable } from '../../models/solicitud.model';
+import { Solicitud as ExpedienteDetalle, AmpliacionPlazoSolicitud, ampliacionPermiteApelar, diasApelacionCronograma, diasHabilesParaApelar, entregaApelable } from '../../models/solicitud.model';
 import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
@@ -226,6 +226,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   accionResaltada = signal<boolean>(false);
   private readonly ampliacionVista = signal<AmpliacionPlazoSolicitud | null>(null);
   private readonly ampliacionSolicitudId = signal<number | null>(null);
+  private readonly detalleVista = signal<ExpedienteDetalle | null>(null);
 
   // Pipeline state
   selectedStageKey = signal<'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('todas');
@@ -264,6 +265,23 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     return todas[0];
   });
 
+  readonly solicitudTrazada = computed(() => {
+    const base = this.solicitudPrincipal();
+    const detalle = this.detalleVista();
+    if (!base || !detalle || detalle.id !== base.id) return base;
+    const alcance = base.encauzamientoAlcance
+      ?? (detalle.encauzamientos?.some(item => item.alcance === 'TOTAL') ? 'TOTAL' as const
+        : detalle.encauzamientos?.some(item => item.alcance === 'PARCIAL') ? 'PARCIAL' as const
+          : null);
+    return {
+      ...base,
+      estado: detalle.estado || base.estado,
+      respuesta: detalle.respuesta ?? base.respuesta,
+      entidadNombre: detalle.entidadNombre || base.entidadNombre,
+      encauzamientoAlcance: alcance,
+    };
+  });
+
   readonly solicitudesSecundarias = computed(() => {
     const principal = this.solicitudPrincipal();
     if (!principal) return this.solicitudesActivas();
@@ -281,7 +299,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly accionPrincipal = computed(() => {
-    const principalAction = this.construirAccionPrincipal(this.solicitudPrincipal());
+    const principalAction = this.construirAccionPrincipal(this.solicitudTrazada());
     if (principalAction) return principalAction;
 
     for (const solicitud of this.todasSolicitudes()) {
@@ -290,7 +308,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
     return null;
   });
-  readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
+  readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudTrazada()));
   readonly precisionPrincipal = computed(() => {
     const solicitud = this.solicitudPrincipal();
     if (!solicitud || !this.enPrecision(solicitud)) return null;
@@ -303,8 +321,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
-    const solicitud = this.solicitudPrincipal();
-    if (!solicitud || this.enPrecision(solicitud) || this.esSilencioAdministrativo(solicitud)) return null;
+    const solicitud = this.solicitudTrazada();
+    if (!solicitud || this.enPrecision(solicitud) || this.esSilencioAdministrativo(solicitud) || this.encauzamientoCierraOrigen(solicitud)) return null;
 
     const estado = (solicitud.estado || '').toUpperCase();
     if (!this.estadosEnProceso.has(estado)) return null;
@@ -533,7 +551,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
   });
 
   readonly ubicacionPrincipal = computed<UbicacionTramite | null>(() => {
-    const s = this.solicitudPrincipal();
+    const s = this.solicitudTrazada();
     return s ? this.ubicacionTramite(s) : null;
   });
 
@@ -553,15 +571,19 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         untracked(() => {
           this.ampliacionVista.set(null);
           this.ampliacionSolicitudId.set(null);
+          this.detalleVista.set(null);
         });
         return;
       }
       untracked(() => {
-        if (this.ampliacionSolicitudId() !== id) this.ampliacionVista.set(null);
+        if (this.ampliacionSolicitudId() !== id) {
+          this.ampliacionVista.set(null);
+          this.detalleVista.set(null);
+        }
       });
       const sub = this.solicitudService.findById(id).subscribe({
-        next: detalle => this.aplicarAmpliacion(id, detalle.ampliacionesPlazo),
-        error: () => this.aplicarAmpliacion(id, null),
+        next: detalle => this.aplicarDetalle(id, detalle),
+        error: () => this.aplicarDetalle(id, null),
       });
       onCleanup(() => sub.unsubscribe());
     });
@@ -768,10 +790,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return 'Etapa por confirmar';
     }
     const estado = (s.estado || '').toUpperCase();
-    if ((estado === 'RECEPCIONADA' || estado === 'EN_REVISION') && this.ampliacionCoincidente(s) && !s.respuesta) return 'PLAZO_AMPLIADO';
+    if (this.plazoAmpliadoVisible(s)) return 'PLAZO_AMPLIADO';
     if (estado === 'RECEPCIONADA') return 'Recepcionada';
     if (estado === 'EN_REVISION') return 'En revisión';
     if (this.enPrecision(s)) return 'En precisión';
+    if (this.encauzamientoCierraOrigen(s)) return 'Encauzada';
     if (estado === 'POR_RECOGER') return 'Por Recoger';
     if (estado === 'ENCAUZADA') return 'Encauzada';
     return this.formatoEstado(s.estado);
@@ -805,11 +828,24 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     if (estado === 'RESPONDIDA') {
       return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
     }
+    if (this.encauzamientoCierraOrigen(s)) {
+      const numero = this.expedienteDestino(s);
+      const destino = this.entidadDestinoEncauzada(s) || 'la entidad competente';
+      return {
+        label: numero ? `Continúa en ${numero}` : `Encauzada a ${destino}`,
+        instancia: 'Expediente nuevo',
+        tone: 'var(--info)',
+        iconName: 'scale',
+      };
+    }
     if (estado === 'DENEGADA') {
       return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
     }
     if (estado === 'VENCIDA' || this.esSilencioAdministrativo(s)) {
       return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
+    }
+    if (this.plazoAmpliadoVisible(s)) {
+      return { label: 'Plazo ampliado', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'building' };
     }
     return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
   }
@@ -852,8 +888,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       return this.indicadorApelacion(s);
     }
     if (this.estadosEnProceso.has(estado)) {
-      const plazo = this.indicadorPlazoAmpliacion(s);
-      if (plazo) return plazo;
       const dias = this.diasRestantesParaEntidad(s);
       if (dias === null) {
         return { value: 'No disponible', unit: 'días háb. para que la entidad responda', tone: 'var(--info)' };
@@ -1069,11 +1103,15 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       };
     }
 
-    if (solicitud.encauzamientoAlcance === 'TOTAL' && (estado === 'RECEPCIONADA' || estado === 'EN_REVISION') && !solicitud.respuesta) {
+    if (this.encauzamientoCierraOrigen(solicitud)) {
+      const destino = this.entidadDestinoEncauzada(solicitud) || 'la entidad competente';
+      const numero = this.expedienteDestino(solicitud);
       return {
         eyebrow: 'Solicitud encauzada a otra entidad',
-        titulo: 'Su solicitud fue derivada',
-        detalle: `El expediente ${expediente} sigue siendo el mismo. Ahora lo atiende ${entidad}. No se creó otra solicitud ni se registró una denegatoria.`,
+        titulo: 'Este expediente termina aquí',
+        detalle: numero
+          ? `Su historial en ${entidad} termina en el encauzamiento. ${destino} abrió ${numero}, que empieza desde su ingreso.`
+          : `Su historial en ${entidad} termina en el encauzamiento. ${destino} abre un expediente nuevo, que empieza desde su ingreso.`,
         metricValue: '→',
         metricUnit: 'derivada',
         ctaLabel: 'Ver encauzamiento',
@@ -1100,6 +1138,32 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         toneColor: 'var(--info)',
         toneBg: 'linear-gradient(135deg, rgba(29,78,216,0.10), var(--card) 70%)',
         toneSoft: 'rgba(29,78,216,0.25)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (this.denegatoriaEncauzada(solicitud)) {
+      const enc = this.encauzamientoVisible(solicitud);
+      const origen = enc?.entidadOrigenNombre?.trim() || entidad;
+      const destino = enc?.entidadDestinoNombre?.trim() || 'la entidad competente';
+      const numero = this.expedienteDestino(solicitud);
+      const apelacion = this.indicadorApelacion(solicitud);
+      return {
+        eyebrow: 'Denegatoria de este expediente',
+        titulo: 'Puede apelar esta denegatoria',
+        detalle: numero
+          ? `${origen} denegó este expediente y ahí termina su historial. ${destino} abrió ${numero}, que empieza desde su ingreso. La apelación es contra esta denegatoria.`
+          : `${origen} denegó este expediente y lo encauzó a ${destino}. ${destino} abre un expediente nuevo, que empieza desde su ingreso. La apelación es contra esta denegatoria.`,
+        metricValue: String(apelacion.value),
+        metricUnit: apelacion.unit,
+        ctaLabel: 'Apelar la denegatoria',
+        route: ['/ciudadano/nueva-apelacion'],
+        queryParams: { solicitudId: solicitud.id },
+        icon: 'scale',
+        toneColor: 'var(--brand-700)',
+        toneBg: 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)',
+        toneSoft: 'var(--brand-200)',
         expediente,
         entidad,
       };
@@ -1200,11 +1264,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     }
 
     if (solicitud.encauzamientoAlcance === 'TOTAL' || solicitud.encauzamientoAlcance === 'PARCIAL') {
-      steps.push({
-        key: 'encauzamiento',
-        label: solicitud.encauzamientoAlcance === 'TOTAL' ? 'Encauzada a otra entidad' : 'Encauzamiento parcial',
-        status: 'done',
-      });
+      if (!this.respuestaRegistrada(solicitud)) this.agregarPasoEncauzamiento(steps, solicitud);
     }
 
     const ampliacion = this.ampliacionCoincidente(solicitud);
@@ -1213,13 +1273,10 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       && !this.archivadaSinPrecision(solicitud)
       && !this.esSilencioAdministrativo(solicitud);
     if (ampliacion && !atiendePlazo) {
-      const original = this.formatDate(ampliacion.fechaLimiteOriginal);
-      const ampliada = this.formatDate(ampliacion.fechaLimiteAmpliada);
       steps.push({
         key: 'plazo-prolongado',
         label: 'Plazo prolongado',
-        date: this.formatDate(ampliacion.fechaNotificacionAmpliacion),
-        meta: original && ampliada ? `De ${original} a ${ampliada}` : undefined,
+        date: this.formatDate(ampliacion.fechaNotificacionAmpliacion || ampliacion.fechaSolicitudAmpliacion),
         status: 'done',
       });
     }
@@ -1232,6 +1289,8 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
       steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
       steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+    } else if (this.encauzamientoCierraOrigen(solicitud)) {
+      // El paso de encauzamiento ya cerró el historial de este expediente.
     } else if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(solicitud);
       const vencimiento = this.formatDate(solicitud.fechaLimite);
@@ -1257,10 +1316,18 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         date: this.formatDate(solicitud.respuesta?.fechaRespuesta),
         status: 'done'
       });
+      this.agregarPasoEncauzamiento(steps, solicitud);
     } else if (estado === 'DENEGADA') {
-      steps.push({ key: 'plazo-entidad', label: 'Denegatoria registrada', status: 'done' });
-      steps.push({ key: 'respuesta', label: 'Denegada por la entidad', date: this.formatDate(solicitud.respuesta?.fechaRespuesta), status: 'done' });
-      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+      steps.push({
+        key: 'respuesta',
+        label: 'Denegatoria total',
+        date: this.formatDate(solicitud.respuesta?.fechaRespuesta),
+        status: 'done'
+      });
+      this.agregarPasoEncauzamiento(steps, solicitud);
+      if (!this.denegatoriaEncauzada(solicitud)) {
+        steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+      }
     }
 
     if (this.tieneApelacionActiva(solicitud)) {
@@ -1382,6 +1449,75 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     return { value: dias, unit: dias === 1 ? 'día hábil para precisar' : 'días hábiles para precisar', tone, nota };
   }
 
+  private aplicarDetalle(id: number, detalle: ExpedienteDetalle | null): void {
+    if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
+    this.detalleVista.set(detalle && detalle.id === id ? detalle : null);
+    this.aplicarAmpliacion(id, detalle?.ampliacionesPlazo ?? null);
+  }
+
+  private respuestaRegistrada(solicitud: Solicitud): boolean {
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (estado === 'DENEGADA' || estado === 'RESPONDIDA' || estado === 'CONCLUIDA') return true;
+    const id = solicitud.respuesta?.id;
+    return typeof id === 'number' && id > 0;
+  }
+
+  private encauzamientoCierraOrigen(solicitud: Solicitud | null): boolean {
+    if (!solicitud || solicitud.encauzamientoAlcance !== 'TOTAL' || this.respuestaRegistrada(solicitud)) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    return estado === 'RECEPCIONADA' || estado === 'EN_REVISION' || estado === 'PENDIENTE_INFORMACION';
+  }
+
+  private expedienteDestino(solicitud: Solicitud | null): string {
+    return this.numeroDeEncauzamiento(this.encauzamientoVisible(solicitud));
+  }
+
+  private numeroDeEncauzamiento(enc: { expedienteDerivado?: string | null; trazabilidad?: string | null } | null | undefined): string {
+    const directo = enc?.expedienteDerivado?.trim();
+    if (directo) return directo;
+    return /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1] ?? '';
+  }
+
+  denegatoriaEncauzada(solicitud: Solicitud | null): boolean {
+    if (!solicitud) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    const denegada = estado === 'DENEGADA' || solicitud.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+    return denegada && solicitud.encauzamientoAlcance === 'TOTAL';
+  }
+
+  private encauzamientoVisible(solicitud: Solicitud | null) {
+    const detalle = this.detalleVista();
+    if (!solicitud || !detalle || detalle.id !== solicitud.id) return null;
+    return (detalle.encauzamientos ?? []).find(item =>
+      item.alcance === 'TOTAL'
+      && (item.estadoEncauzamiento === 'DERIVADO' || item.estadoEncauzamiento === 'REGISTRADO')) ?? null;
+  }
+
+  private entidadDestinoEncauzada(solicitud: Solicitud): string {
+    return this.encauzamientoVisible(solicitud)?.entidadDestinoNombre?.trim()
+      || solicitud.entidadNombre?.trim()
+      || '';
+  }
+
+  private agregarPasoEncauzamiento(steps: TimelineStep[], solicitud: Solicitud): void {
+    if (solicitud.encauzamientoAlcance !== 'TOTAL' && solicitud.encauzamientoAlcance !== 'PARCIAL') return;
+    const detalle = this.detalleVista();
+    const enc = detalle && detalle.id === solicitud.id
+      ? (detalle.encauzamientos ?? []).find(item =>
+        item.estadoEncauzamiento === 'DERIVADO' || item.estadoEncauzamiento === 'REGISTRADO')
+      : undefined;
+    const destino = enc?.entidadDestinoNombre?.trim();
+    const total = solicitud.encauzamientoAlcance === 'TOTAL';
+    const numero = total ? this.numeroDeEncauzamiento(enc) : '';
+    steps.push({
+      key: 'encauzamiento',
+      label: total ? (destino ? `Encauzada a ${destino}` : 'Encauzada a otra entidad') : 'Encauzamiento parcial',
+      date: this.formatDate(enc?.fechaEncauzamiento),
+      meta: numero ? `Continúa en ${numero}` : undefined,
+      status: 'done',
+    });
+  }
+
   private aplicarAmpliacion(id: number, lista: AmpliacionPlazoSolicitud[] | null): void {
     if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
     const ampliacion = lista?.find(item => item.solicitudId === id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
@@ -1402,15 +1538,6 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const entrega = entregaApelable(ampliacion);
     if (!entrega) return null;
     return diasHabilesParaApelar(aISO(entrega.fechaEntregaReal) ?? aISO(entrega.fechaProgramada));
-  }
-
-  private indicadorPlazoAmpliacion(solicitud: Solicitud): IndicadorBandeja | null {
-    const ampliacion = this.ampliacionDe(solicitud);
-    if (!ampliacion || !ampliacionPermiteApelar(ampliacion)) return null;
-    const dias = this.diasDeAmpliacion(ampliacion);
-    if (dias === null || dias < 0) return { value: 'Sí', unit: 'puede apelar el cronograma', tone: 'var(--gold-dark)' };
-    if (dias === 0) return { value: 'Último día', unit: 'para apelar', tone: 'var(--brand-700)' };
-    return { value: dias, unit: dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar', tone: 'var(--gold-dark)' };
   }
 
   private accionPlazoAmpliacion(solicitud: Solicitud, expediente: string, entidad: string): DashboardAction | null {
@@ -1435,6 +1562,13 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       expediente,
       entidad,
     };
+  }
+
+  private plazoAmpliadoVisible(solicitud: Solicitud): boolean {
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (solicitud.respuesta) return false;
+    if (estado !== 'RECEPCIONADA' && estado !== 'EN_REVISION' && estado !== 'EN_PROCESO') return false;
+    return solicitud.plazoAmpliado === true || this.ampliacionCoincidente(solicitud) != null;
   }
 
   private ampliacionCoincidente(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {

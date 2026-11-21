@@ -221,6 +221,68 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     expect(c.encauzar).toBe(true);
     expect(c.entidadDestino).toBe('SUNAT');
   });
+  it('conserva por separado el cupón de la entrega total y el de la entrega parcial', () => {
+    const c = pagina();
+    c.seleccionarDecision('entrega_total');
+    c.cuponLugar = 'Caja Municipal';
+    c.liqFolios = '2';
+    c.liqCostoFolio = '0.25';
+    c.cuponEnviado = true;
+    c.seleccionarDecision('entrega_parcial');
+    expect(c.cuponLugar).toBe('');
+    expect(c.liqFolios).toBe('');
+    expect(c.liqCostoFolio).toBe('0.10');
+    expect(c.cuponEnviado).toBe(false);
+    c.cuponLugar = 'Mesa de partes';
+    c.liqFolios = '4';
+    c.seleccionarDecision('entrega_total');
+    expect(c.cuponLugar).toBe('Caja Municipal');
+    expect(c.liqFolios).toBe('2');
+    expect(c.liqCostoFolio).toBe('0.25');
+    expect(c.cuponEnviado).toBe(true);
+    c.seleccionarDecision('entrega_parcial');
+    expect(c.cuponLugar).toBe('Mesa de partes');
+    expect(c.liqFolios).toBe('4');
+  });
+  it('ofrece encauzar la denegatoria con cualquier causal y lo deja sin marcar', () => {
+    const c = pagina();
+    c.decision.set('denegacion_total');
+    for (const causal of ['', 'secreta', 'inexistente', 'confidencial', 'no_posee']) {
+      c.causalDenegatoria = causal;
+      expect(c.encauzamientoOfrecido()).toBe(true);
+      expect(c.encauzamientoElegido()).toBe(false);
+    }
+    c.causalDenegatoria = 'secreta';
+    c.encauzar = true;
+    expect(c.encauzamientoElegido()).toBe(true);
+  });
+  it('abre el cronograma cuando hay entregas y el expediente cuando la ampliación no tiene plan', () => {
+    const c = pagina();
+    const router = TestBed.inject(Router);
+    c.via.set('prorroga');
+    c.reciboAmpliacion.set({
+      id: 4, solicitudId: 12, expediente: 'SAIP-2026-00012', motivoAmpliacion: 'Acervo',
+      informeAmpliacion: 'Acervo', fechaSolicitudAmpliacion: '2026-11-20', fechaNotificacionAmpliacion: '2026-11-20',
+      fechaLimiteOriginal: '2026-12-04', fechaLimiteAmpliada: '2027-01-21', estadoAmpliacion: 'REGISTRADA', cronograma: []
+    });
+    expect(c.etiquetaExitoSecundaria()).toBe('Ver expediente');
+    c.accionExitoSecundaria();
+    expect(router.navigate).toHaveBeenCalledWith(['/funcionario/solicitud', 'SAIP-2026-00012']);
+    c.via.set('prorroga');
+    c.reciboAmpliacion.set({
+      ...c.reciboAmpliacion()!,
+      cronograma: [{
+        id: 1, ampliacionId: 4, numeroEntrega: 1, descripcion: 'Primer bloque',
+        fechaProgramada: '2026-12-15', estado: 'PROGRAMADA'
+      }]
+    });
+    expect(c.etiquetaExitoSecundaria()).toBe('Ver plan de atención');
+    c.accionExitoSecundaria();
+    expect(c.via()).toBe('cronograma');
+    expect(c.successModalAbierto()).toBe(false);
+    expect(c.solicitud()?.ampliacionesPlazo?.[0]?.cronograma.length).toBe(1);
+    expect(router.navigate).toHaveBeenCalledTimes(1);
+  });
   it('indica qué falta para habilitar el envío de la entrega total', () => {
     const c = pagina();
     c.descripcionAceptacion = '   ';
@@ -243,7 +305,7 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     expect(solicitudes.registrarEncauzamiento).not.toHaveBeenCalled();
     expect(c.error()).toMatch(/entidad destino/i);
   });
-  it('deriva la solicitud sin registrar denegatoria cuando el encauzamiento total está completo', async () => {
+  it('registra la denegatoria y luego deriva cuando el encauzamiento total está completo', async () => {
     const c = pagina();
     c.entidades.set([{ id: 8, nombre: 'SUNAT' } as Entidad]);
     c.decision.set('denegacion_total');
@@ -255,21 +317,27 @@ describe('FuncionarioResponderComponent recepción coordinada', () => {
     c.motivoEncauzamiento = 'La información corresponde a la administración tributaria.';
     expect(c.canSubmit()).toBe(true);
     await c.enviarRespuesta();
+    expect(respuestas.registrarConDocumentos).toHaveBeenCalledWith(
+      12, expect.stringMatching(/^[a-f0-9-]{36}$/), expect.objectContaining({ tipoRespuesta: 'DENEGACION_TOTAL' }), expect.any(Array));
     expect(solicitudes.registrarEncauzamiento).toHaveBeenCalledWith(12, expect.objectContaining({ entidadDestinoId: 8, alcance: 'TOTAL' }));
-    expect(respuestas.registrarConDocumentos).not.toHaveBeenCalled();
+    expect(respuestas.registrarConDocumentos.mock.invocationCallOrder[0])
+      .toBeLessThan(solicitudes.registrarEncauzamiento.mock.invocationCallOrder[0]);
     expect(c.successModalAbierto()).toBe(true);
     expect(c.respuestaSuccessTitle()).toContain('derivada');
   });
-  it('registra la denegatoria por información inexistente sin ofrecer encauzamiento', () => {
+  it('registra la denegatoria con cualquier causal y solo exige destino si se marca encauzar', () => {
     const c = pagina();
     c.decision.set('denegacion_total');
     c.descripcionDenegacion = 'La solicitud pide producir información que no existe.';
     c.causalDenegatoria = 'inexistente';
     c.fundamentoLegal = 'Ley 27806';
-    c.encauzar = true;
+    expect(c.encauzamientoOfrecido()).toBe(true);
     expect(c.encauzamientoElegido()).toBe(false);
     expect(c.canSubmit()).toBe(true);
-    expect(c.avisosEnvio().join(' ')).not.toMatch(/encauz/i);
+    c.encauzar = true;
+    expect(c.encauzamientoElegido()).toBe(true);
+    expect(c.canSubmit()).toBe(false);
+    expect(c.avisosEnvio().join(' ')).toMatch(/entidad destino/i);
   });
   it('conserva el bloqueo de respuestas mientras hay subsanación pendiente', async () => {
     const c = pagina(); c.solicitud.set({ ...inicial(), estado: 'PENDIENTE_INFORMACION' }); await c.enviarRespuesta();
@@ -486,7 +554,7 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     sessionStorage.clear();
   });
 
-  it('deja el vencimiento en la última entrega y ubica cada parcial antes de esa fecha', () => {
+  it('deja elegir la última entrega sin fijarla en el vencimiento y mantiene los 30 días', () => {
     solicitudes.preverAmpliacion.mockReturnValue(of({
       hoy: '2026-11-17', fechaMaximaComunicacion: '2026-11-19', fechaLimiteAmpliada: '2027-02-11',
       disponible: true, requiereCronograma: true
@@ -517,7 +585,10 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('max')).toBe('2026-12-17');
     expect(root.textContent).toContain('Desde hoy, 17/11/2026');
     expect(root.textContent).toContain('como máximo 30 días');
-    expect(c.hitos().at(-1)).toEqual({ fecha: '2027-02-11', entregable: '', cierre: true });
+    expect(c.hitos().every(h => !h.cierre)).toBe(true);
+    expect(c.hitos().at(-1)?.fecha).toBe('');
+    expect(root.textContent).not.toContain('queda fija');
+    expect(root.textContent).not.toContain('Esta fecha es el vencimiento');
     expect(root.textContent).not.toContain('Elija una fecha posterior a la entrega 1');
 
     c.actualizarHitoFecha(0, '2026-12-20');
@@ -534,12 +605,12 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
 
     c.actualizarHitoFecha(0, '2026-12-15');
     c.actualizarHitoEntregable(0, 'Primer bloque');
-    c.actualizarHitoEntregable(1, 'Cierre del cronograma');
     c.agregarHito();
-    expect(c.hitos().at(-1)?.fecha).toBe('2027-02-11');
+    expect(c.hitos().at(-1)).toEqual({ fecha: '', entregable: '' });
+    c.quitarHito(2);
     expect(c.hitos()[1].fecha).toBe('');
     fixture.detectChanges();
-    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('min')).toBe('2027-01-12');
+    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('min')).toBe('2026-12-16');
     expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('max')).toBe('2027-01-14');
     c.actualizarHitoFecha(1, '2026-12-15');
     fixture.detectChanges();
@@ -559,8 +630,7 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
       diasHabilesAdicionales: 50,
       cronograma: [
         expect.objectContaining({ numeroEntrega: 1, fechaProgramada: '2026-12-15' }),
-        expect.objectContaining({ numeroEntrega: 2, fechaProgramada: '2027-01-14' }),
-        expect.objectContaining({ numeroEntrega: 3, fechaProgramada: '2027-02-11' })
+        expect.objectContaining({ numeroEntrega: 2, fechaProgramada: '2027-01-14' })
       ]
     }));
     expect(c.respuestaSuccessTitle()).toBe('Ampliación del plazo registrada');

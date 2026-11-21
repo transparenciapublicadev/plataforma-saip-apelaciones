@@ -415,46 +415,31 @@
                 @if (usarCronograma() || cronogramaRequerido()) {
                   <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
                     <span class="eyebrow">Cronograma de entrega <span class="req">*</span></span>
-                    <p class="text-sm text-muted-foreground">Primero las entregas parciales, cada una en un día posterior a la anterior y a no más de 30 días. La última entrega queda fija en el nuevo vencimiento.</p>
+                    <p class="text-sm text-muted-foreground">Cada entrega en un día posterior a la anterior y a no más de 30 días. Usted elige la fecha de la última entrega; puede ser anterior o igual al vencimiento de la ampliación.</p>
                     @for (h of hitos(); track $index) {
                       @let errorFecha = erroresFechaHitos()[$index];
-                      @if (h.cierre) {
-                        <div class="rounded-md p-3 space-y-2" style="background: var(--paper); border: 1px solid var(--border)">
-                          <div class="text-[10px] uppercase tracking-widest text-muted-foreground">Última entrega</div>
-                          <div class="font-mono text-sm" style="color: var(--brand-700)">{{ nuevaFechaLimiteDMY() }}</div>
-                          <p class="text-[11px] text-muted-foreground">Esta fecha es el vencimiento de la ampliación.</p>
-                          @if (errorFecha) {
-                            <p class="text-xs text-destructive" role="status">{{ errorFecha }}</p>
-                          }
-                          <div class="field">
-                            <label class="field-label" [for]="'cronograma-entregable-' + $index">Qué se entrega ese día <span class="req">*</span></label>
-                            <input class="field-input" [id]="'cronograma-entregable-' + $index" [attr.aria-label]="'Entregable de la última entrega'" placeholder="Ej.: Resto del expediente" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" [disabled]="!prorrogaPermitida()" />
-                          </div>
+                      <div class="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
+                        <div class="field">
+                          <label class="field-label" [for]="'cronograma-fecha-' + $index">Entrega {{ indiceParcial($index) }}</label>
+                          <input type="date" class="field-input font-mono !py-[9px]" [id]="'cronograma-fecha-' + $index" [attr.aria-label]="'Fecha de la entrega ' + indiceParcial($index)"
+                            [attr.min]="minFechaParcial($index)" [attr.max]="maxFechaParcial($index)" [value]="h.fecha"
+                            [disabled]="!prorrogaPermitida() || !fechaParcialSeleccionable($index)"
+                            [attr.aria-invalid]="errorFecha ? 'true' : null"
+                            [attr.aria-describedby]="(errorFecha ? 'cronograma-fecha-error-' + $index + ' ' : '') + 'cronograma-fecha-pista-' + $index"
+                            (input)="actualizarHitoFecha($index, $any($event.target).value)" />
                         </div>
-                      } @else {
-                        <div class="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
-                          <div class="field">
-                            <label class="field-label" [for]="'cronograma-fecha-' + $index">Entrega parcial {{ indiceParcial($index) }}</label>
-                            <input type="date" class="field-input font-mono !py-[9px]" [id]="'cronograma-fecha-' + $index" [attr.aria-label]="'Fecha de la entrega parcial ' + indiceParcial($index)"
-                              [attr.min]="minFechaParcial($index)" [attr.max]="maxFechaParcial($index)" [value]="h.fecha"
-                              [disabled]="!prorrogaPermitida() || !fechaParcialSeleccionable($index)"
-                              [attr.aria-invalid]="errorFecha ? 'true' : null"
-                              [attr.aria-describedby]="(errorFecha ? 'cronograma-fecha-error-' + $index + ' ' : '') + 'cronograma-fecha-pista-' + $index"
-                              (input)="actualizarHitoFecha($index, $any($event.target).value)" />
-                          </div>
-                          <div class="field">
-                            <label class="field-label" [for]="'cronograma-entregable-' + $index">Qué se entrega</label>
-                            <input class="field-input" [id]="'cronograma-entregable-' + $index" [attr.aria-label]="'Entregable de la entrega parcial ' + indiceParcial($index)" placeholder="Ej.: Contratos de 2024 (folios 1-200)" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" [disabled]="!prorrogaPermitida()" />
-                          </div>
-                          <button type="button" (click)="quitarHito($index)" [attr.aria-label]="'Quitar entrega parcial ' + indiceParcial($index)" [disabled]="!puedeQuitarHito($index)" class="btn-ghost-brand !px-3 !py-[9px] disabled:opacity-40">Quitar</button>
-                          <p [id]="'cronograma-fecha-pista-' + $index" class="sm:col-span-3 text-xs text-muted-foreground">{{ pistaFechaParcial($index) }}</p>
-                          @if (errorFecha) {
-                            <p [id]="'cronograma-fecha-error-' + $index" class="sm:col-span-3 text-xs text-destructive" role="status">{{ errorFecha }}</p>
-                          }
+                        <div class="field">
+                          <label class="field-label" [for]="'cronograma-entregable-' + $index">Qué se entrega</label>
+                          <input class="field-input" [id]="'cronograma-entregable-' + $index" [attr.aria-label]="'Entregable de la entrega ' + indiceParcial($index)" placeholder="Ej.: Contratos de 2024 (folios 1-200)" [value]="h.entregable" (input)="actualizarHitoEntregable($index, $any($event.target).value)" [disabled]="!prorrogaPermitida()" />
                         </div>
-                      }
+                        <button type="button" (click)="quitarHito($index)" [attr.aria-label]="'Quitar entrega ' + indiceParcial($index)" [disabled]="!puedeQuitarHito($index)" class="btn-ghost-brand !px-3 !py-[9px] disabled:opacity-40">Quitar</button>
+                        <p [id]="'cronograma-fecha-pista-' + $index" class="sm:col-span-3 text-xs text-muted-foreground">{{ pistaFechaParcial($index) }}</p>
+                        @if (errorFecha) {
+                          <p [id]="'cronograma-fecha-error-' + $index" class="sm:col-span-3 text-xs text-destructive" role="status">{{ errorFecha }}</p>
+                        }
+                      </div>
                     }
-                    <button type="button" (click)="agregarHito()" [disabled]="!puedeAgregarParcial()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px]">Añadir entrega parcial</button>
+                    <button type="button" (click)="agregarHito()" [disabled]="!puedeAgregarParcial()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px]">Añadir entrega</button>
                     <div class="field">
                       <label class="field-label">Nota del cronograma (opcional)</label>
                       <textarea class="field-input" rows="2" style="resize: vertical" placeholder="Precisiones sobre la forma de entrega de cada parte…" [(ngModel)]="prorrogaCronograma"></textarea>
@@ -821,8 +806,8 @@
                 </div>
               }
 
-              <!-- Encauzamiento: solo entrega parcial y denegación total -->
-              @if (decision() === 'entrega_parcial' || (decision() === 'denegacion_total' && causalDenegatoria === 'no_posee')) {
+              <!-- Encauzamiento opcional: entrega parcial y denegación total, con cualquier causal -->
+              @if (decision() === 'entrega_parcial' || decision() === 'denegacion_total') {
                 <div class="rounded-lg p-4 space-y-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand-500)">
                   @if (dentroPlazoEncauzamiento()) {
                   <label class="flex items-start gap-2.5 cursor-pointer">
@@ -836,7 +821,7 @@
                       <span class="block text-xs text-muted-foreground mt-0.5 leading-relaxed">
                         Márquelo solo si conoce la entidad competente. Si no la conoce, déjelo sin marcar y registre la entrega parcial o la denegatoria.
                         @if (decision() === 'denegacion_total') {
-                          Si lo marca, la solicitud se deriva y en esta entidad no se registra una denegatoria.
+                          Si lo marca, este expediente termina en la denegatoria y la entidad de destino recibe un expediente nuevo.
                         } @else {
                           Si lo marca, esta entidad entrega su parte y deriva el extremo que indique.
                         }
@@ -880,7 +865,11 @@
                       <div class="rounded-lg p-3.5 flex items-start gap-2.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                         <svg lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
                         <p class="text-[12px] text-foreground/80 leading-relaxed">
-                          Al confirmar, la derivación queda registrada hacia la entidad de destino. El administrado conserva este mismo expediente.
+                          @if (decision() === 'denegacion_total') {
+                            Al confirmar, este expediente termina en la denegatoria. La entidad de destino recibe un expediente nuevo, que empieza desde su ingreso.
+                          } @else {
+                            Al confirmar, este expediente sigue aquí y solo se deriva el extremo indicado.
+                          }
                         </p>
                       </div>
                     </div>
@@ -971,6 +960,9 @@
 
         @if (activeTab() === 'adjuntos') {
           <div class="p-6 md:p-8 space-y-6 animate-fade-in">
+            @if (avisoDocumentosEncauzados()) {
+              <p role="note" class="text-sm text-foreground/80 rounded-md p-3 leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ avisoDocumentosEncauzados() }}</p>
+            }
             @if (loadingSolicitud()) {
               <p class="text-sm text-muted-foreground">Cargando documentos del expediente…</p>
             }
@@ -1002,6 +994,9 @@
                             </span>
                             <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                           </div>
+                          @if (d.procedencia) {
+                            <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                          }
                           <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                             {{ d.tipo }} · {{ d.tamano }}
                           </div>
@@ -1036,6 +1031,9 @@
                                 </span>
                                 <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                               </div>
+                              @if (d.procedencia) {
+                                <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                              }
                               <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                                 {{ d.tipo }} · {{ d.tamano }}
                               </div>
@@ -1063,7 +1061,7 @@
             @if (grupoSubsanaciones().length > 0) {
               <div>
                 <div class="flex items-center justify-between mb-2.5">
-                  <span class="eyebrow" style="color: var(--warning)">Subsanaciones presentadas</span>
+                  <span class="eyebrow" style="color: var(--warning)">{{ subsanacionesEncauzadas() ? 'Precisión llegada con el encauzamiento' : 'Subsanaciones presentadas' }}</span>
                   <span class="text-[11px] text-muted-foreground">{{ grupoSubsanaciones().length }} documento(s)</span>
                 </div>
                 <div class="space-y-2">
@@ -1076,10 +1074,13 @@
                         <div>
                           <div class="flex items-center gap-2">
                             <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style="background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning)">
-                              Subsanación
+                              {{ d.procedencia ? 'Precisión encauzada' : 'Subsanación' }}
                             </span>
                             <span class="text-sm font-medium">{{ limpiarNombre(d.nombre) }}</span>
                           </div>
+                          @if (d.procedencia) {
+                            <div class="text-[11px] text-foreground/70 mt-0.5">{{ d.procedencia }}</div>
+                          }
                           <div class="font-mono text-[11px] text-muted-foreground mt-0.5">
                             {{ d.tipo }} · {{ d.tamano }}
                           </div>
@@ -1147,10 +1148,10 @@
     [metadata]="respuestaSuccessMetadata()"
     [nextSteps]="respuestaNextSteps()"
     primaryLabel="Ir a mi panel"
-    [secondaryLabel]="via() === 'prorroga' ? 'Ver plan de atención' : 'Ver expediente'"
+    [secondaryLabel]="etiquetaExitoSecundaria()"
     (close)="irPanelFuncionario()"
     (primary)="irPanelFuncionario()"
-    (secondary)="via() === 'prorroga' ? abrirPlanAmpliacion() : irDetalleExpediente()">
+    (secondary)="accionExitoSecundaria()">
   </app-reference-success-modal>
 
   <app-document-preview-modal

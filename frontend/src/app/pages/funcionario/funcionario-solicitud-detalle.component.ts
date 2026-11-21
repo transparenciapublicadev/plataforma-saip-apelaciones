@@ -25,6 +25,7 @@ import { aISO, habilesEntre, hoyLima, sumarDias } from '../../models/calendario.
 import { canNavigateToResponse, positiveId } from './funcionario-dashboard.model';
 import { documentosDelRecurso, modalidadesRegistradas, detalleConRelacionesVerificadas } from './entity-request-detail.model';
 import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo } from '../../utils/modalidad-entrega.util';
+import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
 import { DocumentoService } from '../../services/documento.service';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
@@ -50,6 +51,7 @@ export interface DocRowItem {
   nombre: string;
   tipo: string;
   tamano: string;
+  procedencia?: string;
 }
 
 interface HistorialItem {
@@ -228,15 +230,22 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     return documentosDelRecurso(sol.documentosMetadata ?? sol.documentos, { solicitudId: sol.id });
   });
 
+  readonly avisoDocumentosEncauzados = computed(() =>
+    avisoDocumentosEncauzados(this.todosDocumentosAdministrado() as ProcedenciaDocumental[], 'funcionario'));
+
+  readonly subsanacionesEncauzadas = computed(() => this.grupoSubsanaciones().some(d => !!d.procedencia));
+
   private mapToDocRow(d: any): DocRowItem {
     const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || 'Documento';
     const tipo = d.contentType || d.tipoArchivo || d.tipoDocumento || 'Tipo no informado';
+    const procedencia = procedenciaEncauzada(d);
     return {
       id: d.id,
       raw: d,
       nombre,
       tipo,
-      tamano: this.tamanoDoc(d)
+      tamano: this.tamanoDoc(d),
+      procedencia: procedencia || undefined
     };
   }
 
@@ -432,11 +441,17 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
     ];
 
     if (positiveId(sol.respuesta?.id)) {
+      const destino = this.encauzamientos().find(item => item.alcance === 'TOTAL')?.entidadDestinoNombre?.trim();
+      const denegatoria = sol.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
       items.push({
         accion: `Respuesta registrada · ${this.getResultadoLabel()}`,
         fecha: sol.respuesta!.fechaRespuesta || '',
         responsable: sol.respuesta!.funcionarioNombre || 'Funcionario no informado',
-        detalle: 'La entidad registró respuesta para el ciudadano.',
+        detalle: denegatoria
+          ? (destino
+            ? `Denegatoria total registrada. ${destino} abre un expediente nuevo, que empieza desde su ingreso.`
+            : 'Denegatoria total registrada.')
+          : 'La entidad registró respuesta para el ciudadano.',
         color: this.esRespuestaEntrega() ? 'success' : 'warning'
       });
     }
@@ -454,7 +469,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
           accion: 'Subsanación ciudadana recibida',
         fecha: observacion.fechaSubsanacion || '',
           responsable: observacion.responsableSubsanacion || 'Ciudadano',
-          detalle: observacion.comentarioSubsanacion || observacion.documentoSubsanacionNombre || 'Subsanación registrada.',
+          detalle: observacion.comentarioSubsanacion || 'Subsanación registrada.',
           color: 'success'
         });
       }
@@ -606,7 +621,7 @@ export class FuncionarioSolicitudDetalleComponent implements OnInit, OnDestroy {
 
   getResultadoLabel(): string {
     const tipo = this.getTipoRespuestaDisplay();
-    if (tipo === 'DENEGACION_TOTAL') return 'Denegada';
+    if (tipo === 'DENEGACION_TOTAL') return 'Denegación total';
     if (tipo === 'ENTREGA_PARCIAL') return 'Entrega parcial';
     if (tipo === 'ENTREGA_TOTAL') return 'Entrega total';
     if (tipo === 'SILENCIO_ADMINISTRATIVO') return 'Silencio administrativo';

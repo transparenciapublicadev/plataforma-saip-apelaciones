@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,7 @@ import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Documento;
+import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
@@ -490,6 +492,54 @@ class DocumentoServiceTest {
         assertThat(dto.nombreOriginal()).isEqualTo("resolucion.pdf");
     }
 
+
+    @Test
+    void copiarDocumentosDelAdministrado_conservaOrigenYOmiteLaRespuestaDeLaEntidad() {
+        Entidad origenEntidad = new Entidad();
+        origenEntidad.setNombre("Ministerio de Educación");
+        Solicitud origen = new Solicitud();
+        origen.setIdSolicitud(8L);
+        origen.setExpediente("SAIP-2026-10008");
+        origen.setEntidad(origenEntidad);
+        Solicitud destino = new Solicitud();
+        destino.setIdSolicitud(9L);
+        destino.setExpediente("SAIP-2026-10009");
+
+        Documento precision = documentoActivo();
+        precision.setIdDocumento(1L);
+        precision.setNombreOriginal("precision.pdf");
+        precision.setTipoDocumento(Documento.TipoDocumento.SUBSANACION);
+        precision.setStorageKey("2026/11/precision.pdf");
+        precision.setSolicitud(origen);
+
+        Documento respuesta = documentoActivo();
+        respuesta.setIdDocumento(2L);
+        respuesta.setTipoDocumento(Documento.TipoDocumento.RESPUESTA_ENTIDAD);
+        respuesta.setStorageKey("2026/11/respuesta.pdf");
+        respuesta.setSolicitud(origen);
+        respuesta.setRespuesta(new Respuesta());
+
+        Documento informe = documentoActivo();
+        informe.setIdDocumento(3L);
+        informe.setTipoDocumento(Documento.TipoDocumento.INFORME);
+        informe.setStorageKey("2026/11/informe.pdf");
+        informe.setSolicitud(origen);
+
+        when(documentoRepository.findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
+                8L, Documento.EstadoDocumento.ACTIVO)).thenReturn(List.of(precision, respuesta, informe));
+        when(documentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.copiarDocumentosDelAdministrado(origen, destino);
+
+        ArgumentCaptor<Documento> copiado = ArgumentCaptor.forClass(Documento.class);
+        verify(documentoRepository, times(1)).save(copiado.capture());
+        assertThat(copiado.getValue().getSolicitud()).isSameAs(destino);
+        assertThat(copiado.getValue().getTipoDocumento()).isEqualTo(Documento.TipoDocumento.SUBSANACION);
+        assertThat(copiado.getValue().getStorageKey()).isEqualTo("2026/11/precision.pdf");
+        assertThat(copiado.getValue().getExpedienteOrigen()).isEqualTo("SAIP-2026-10008");
+        assertThat(copiado.getValue().getEntidadOrigen()).isEqualTo("Ministerio de Educación");
+        assertThat(copiado.getValue().getRespuesta()).isNull();
+    }
 
     private Documento documentoActivo() {
         Documento documento = new Documento();

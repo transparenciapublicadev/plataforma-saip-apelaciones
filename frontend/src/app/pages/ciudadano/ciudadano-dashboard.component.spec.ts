@@ -270,6 +270,50 @@ describe('Panel ciudadano — consultas y presentación verificables', () => {
     expect(pasos).not.toContain('Respuesta registrada');
   });
 
+  it('muestra Plazo ampliado en la lista y en la búsqueda cuando el panel informa la ampliación', () => {
+    const ampliada = { ...request(10006, 'EN_REVISION'), plazoAmpliado: true, diasRestantes: 60 };
+    const ordinaria = request(10008, 'EN_REVISION');
+    find.mockReturnValue(of([ampliada, ordinaria]));
+    fixture.detectChanges();
+    const fila = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find(boton => boton.textContent?.includes('SAIP-2026-10006'));
+    expect(fila?.textContent).toContain('Plazo ampliado');
+    expect(component.ubicacionTramite(ordinaria).label).toBe('En revisión de la entidad');
+    const respondida = { ...ampliada, estado: 'RESPONDIDA' as const, respuesta: { id: 3 } };
+    expect(component.estadoInsignia(respondida)).toBe('Respondida');
+    const input = fixture.nativeElement.querySelector('[role="combobox"]') as HTMLInputElement;
+    input.value = 'sa';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#citizen-result-10006')?.textContent).toContain('Plazo ampliado');
+    expect(fixture.nativeElement.querySelector('#citizen-result-10008')?.textContent).toContain('En revisión');
+    expect(fixture.nativeElement.querySelector('#citizen-result-10008')?.textContent).not.toContain('Plazo ampliado');
+  });
+
+  it('mantiene los días de respuesta de la entidad al seleccionar un plazo ampliado', () => {
+    const ampliada = { ...request(10006, 'EN_REVISION'), plazoAmpliado: true, diasRestantes: 60 };
+    find.mockReturnValue(of([ampliada]));
+    detalle.mockReturnValue(of({
+      id: 10006,
+      ampliacionesPlazo: [{
+        id: 4, solicitudId: 10006, estadoAmpliacion: 'NOTIFICADA',
+        fechaLimiteOriginal: '2026-12-04', fechaLimiteAmpliada: '2027-02-04',
+        cronograma: [{
+          id: 1, ampliacionId: 4, numeroEntrega: 1, descripcion: 'Primer bloque',
+          fechaProgramada: hoyLima(), estado: 'ENTREGADA', fechaEntregaReal: hoyLima(),
+        }],
+      }],
+    }));
+    fixture.detectChanges();
+    fixture.detectChanges();
+    const principal = component.solicitudPrincipal();
+    expect(component.filaUrgencia(principal!)).toMatchObject({
+      value: 60, unit: 'días háb. para que la entidad responda',
+    });
+    expect(component.accionPrincipal()?.metricValue).toBe('15');
+    expect(component.accionPrincipal()?.metricUnit).toBe('días hábiles para apelar');
+  });
+
   it('muestra el plazo prolongado dentro del plazo de la entidad, sin un paso aparte', () => {
     const enRevision = { ...request(10006, 'EN_REVISION'), fechaLimite: '2027-01-20', diasRestantes: 43 };
     find.mockReturnValue(of([enRevision]));

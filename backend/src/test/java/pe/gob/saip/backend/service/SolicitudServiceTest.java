@@ -75,6 +75,7 @@ class SolicitudServiceTest {
 
     @Mock AutorizacionRecursosService autorizacion;
     @Mock EntityManager entityManager;
+    @Mock DocumentoService documentoService;
     @InjectMocks
     SolicitudService solicitudService;
 
@@ -538,6 +539,41 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void registrarAmpliacion_conDias_aceptaUltimaEntregaDistintaDelVencimientoLegal() {
+        LocalDate hoy = LocalDate.of(2026, 11, 20);
+        LocalDate ordinario = LocalDate.of(2026, 12, 4);
+        LocalDate legal = LocalDate.of(2027, 2, 4);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(50), eq(3L))).thenReturn(legal);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10008", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(hoy.atStartOfDay());
+        solicitud.setFechaLimite(ordinario);
+        solicitud.setEntidad(crearEntidad(3L, "MINEDU", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(ampliacionRepository.save(any(AmpliacionPlazoSolicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AmpliacionPlazoSolicitud resultado = solicitudService.registrarAmpliacion(
+                1L,
+                new RegistrarAmpliacionPlazoRequest(
+                        "Pedido voluminoso",
+                        "Informe con cronograma de entregas",
+                        hoy,
+                        "Funcionario",
+                        List.of(
+                                new RegistrarEntregaParcialRequest(1, "Primer bloque", LocalDate.of(2026, 11, 25), null),
+                                new RegistrarEntregaParcialRequest(2, "Último bloque", LocalDate.of(2026, 12, 15), null)
+                        ),
+                        50));
+
+        assertThat(resultado.getFechaLimiteAmpliada()).isEqualTo(legal);
+        assertThat(solicitud.getFechaLimite()).isEqualTo(legal);
+        assertThat(resultado.getCronograma()).hasSize(2);
+        assertThat(resultado.getCronograma().getLast().getFechaProgramada()).isEqualTo(LocalDate.of(2026, 12, 15));
+    }
+
+    @Test
     void registrarAmpliacion_conAmpliacionActiva_debeLanzarReglaNegocio() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now());
@@ -562,7 +598,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void registrarEncauzamientoTotal_debeCambiarEntidadResponsable() {
+    void registrarEncauzamientoTotal_abreExpedienteNuevoYConservaElOrigen() {
         var origen = crearEntidad(1L, "MINJUS", true);
         var destino = crearEntidad(2L, "MINEDU", true);
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
@@ -573,6 +609,8 @@ class SolicitudServiceTest {
         when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
                 .thenReturn(false);
         when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(solicitudRepository.findMaxExpedienteNumber(anyString())).thenReturn(41);
+        when(solicitudRepository.save(any(Solicitud.class))).thenAnswer(inv -> inv.getArgument(0));
         when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> {
             EncauzamientoSolicitud encauzamiento = inv.getArgument(0);
             encauzamiento.setIdEncauzamiento(60L);
@@ -593,10 +631,76 @@ class SolicitudServiceTest {
         assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL);
         assertThat(resultado.getEstadoEncauzamiento()).isEqualTo(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
         assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 4));
-        assertThat(solicitud.getEntidad()).isEqualTo(destino);
-        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
-        verify(solicitudRepository).save(solicitud);
+        assertThat(solicitud.getEntidad()).isEqualTo(origen);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada()).isNotNull();
+        assertThat(resultado.getSolicitudDerivada().getEntidad()).isEqualTo(destino);
+        assertThat(resultado.getSolicitudDerivada().getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada().getExpediente()).isEqualTo("SAIP-" + LocalDate.now().getYear() + "-00042");
+        assertThat(resultado.getSolicitudDerivada().getAsunto()).isEqualTo(solicitud.getAsunto());
+        assertThat(resultado.getSolicitudDerivada().getFechaLimite())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 10));
+        assertThat(resultado.getTrazabilidad()).contains("Expediente de destino: SAIP-" + LocalDate.now().getYear() + "-00042");
         verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
+        verify(documentoService).copiarDocumentosDelAdministrado(eq(solicitud), eq(resultado.getSolicitudDerivada()));
+    }
+
+    @Test
+    void registrarEncauzamientoTotal_conDenegatoria_conservaDenegadaYAbreExpedienteNuevo() {
+        var origen = crearEntidad(1L, "MINEDU", true);
+        var destino = crearEntidad(2L, "MINSA", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10008", Solicitud.EstadoSolicitud.DENEGADA);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        Respuesta respuesta = new Respuesta();
+        respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.DENEGACION_TOTAL);
+        solicitud.setRespuesta(respuesta);
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(solicitudRepository.findMaxExpedienteNumber(anyString())).thenReturn(10008);
+        when(solicitudRepository.save(any(Solicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EncauzamientoSolicitud resultado = solicitudService.registrarEncauzamiento(
+                1L,
+                new RegistrarEncauzamientoSolicitudRequest(
+                        2L,
+                        "La información solicitada corresponde a MINSA",
+                        "TOTAL",
+                        "Funcionario",
+                        null
+                )
+        );
+
+        assertThat(solicitud.getEntidad()).isEqualTo(origen);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.DENEGADA);
+        assertThat(resultado.getSolicitudDerivada().getEntidad()).isEqualTo(destino);
+        assertThat(resultado.getSolicitudDerivada().getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada().getRespuesta()).isNull();
+    }
+
+    @Test
+    void registrarEncauzamiento_denegadaSinRespuesta_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.DENEGADA);
+        solicitud.setEntidad(crearEntidad(1L, "MINEDU", true));
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarEncauzamiento(
+                        1L,
+                        new RegistrarEncauzamientoSolicitudRequest(
+                                2L,
+                                "La información solicitada corresponde a otra entidad",
+                                "TOTAL",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("estado válido");
     }
 
     @Test
@@ -627,6 +731,7 @@ class SolicitudServiceTest {
         assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.PARCIAL);
         assertThat(solicitud.getEntidad()).isEqualTo(origen);
         verify(solicitudRepository, never()).save(solicitud);
+        verify(documentoService, never()).copiarDocumentosDelAdministrado(any(), any());
         verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
     }
 

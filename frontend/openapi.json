@@ -9333,6 +9333,12 @@
           "cedulaNotificacionId": {
             "type": "integer",
             "format": "int64"
+          },
+          "expedienteOrigen": {
+            "type": "string"
+          },
+          "entidadOrigen": {
+            "type": "string"
           }
         }
       },

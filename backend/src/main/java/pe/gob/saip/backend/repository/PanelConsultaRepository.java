@@ -167,6 +167,7 @@ public class PanelConsultaRepository {
                 from solicitudes s where s.id_entidad=:entidadActor
                 and s.estado in ('RECEPCIONADA','EN_REVISION')
                 and not exists (select 1 from respuestas r where r.id_solicitud=s.id_solicitud)
+                and not exists (select 1 from encauzamientos_solicitud en where en.id_solicitud=s.id_solicitud and en.alcance='TOTAL' and en.estado_encauzamiento in ('DERIVADO','REGISTRADO') and en.id_solicitud_derivada is not null)
                 and not (%s)
                 """.formatted(PENDING_OBSERVATION);
             topics = group("s.tipo_informacion", """

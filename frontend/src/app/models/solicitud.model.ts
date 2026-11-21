@@ -159,6 +159,8 @@ export interface EncauzamientoSolicitud {
     responsable?: string | null;
     observacionSustento?: string | null;
     trazabilidad?: string | null;
+    solicitudDerivadaId?: number | null;
+    expedienteDerivado?: string | null;
 }
 
 export interface LiquidacionCostoSolicitud {

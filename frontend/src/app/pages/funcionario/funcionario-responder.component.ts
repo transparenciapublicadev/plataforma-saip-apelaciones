@@ -31,6 +31,7 @@ import { environment } from '../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
 import {
   ReferenceConfirmModalComponent,
   ReferenceConfirmSummary,
@@ -100,6 +101,7 @@ export interface DocRowItem {
   nombre: string;
   tipo: string;
   tamano: string;
+  procedencia?: string;
 }
 
 export const CAUSALES_DENEGATORIA = [
@@ -197,7 +199,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       const activo = this.usarCronograma() || this.cronogramaRequerido();
       if (!activo || !limite) return;
       const requerido = this.cronogramaRequerido();
-      this.hitos.update(lista => cronogramaConCierre(lista, limite, requerido));
+      this.hitos.update(lista => normalizarCronograma(lista, limite, requerido));
     });
   }
   reintentarConsulta(): void { if (this.consultaReintentable()) this.cargarSolicitud(this.expedienteActual); }
@@ -362,12 +364,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   agregarHito(): void {
-    this.hitos.update(prev => {
-      const cierre = prev.find(h => h.cierre);
-      if (!cierre) return prev.length < 12 ? [...prev, { fecha: '', entregable: '' }] : prev;
-      const parciales = prev.filter(h => !h.cierre);
-      return parciales.length >= 11 ? prev : [...parciales, { fecha: '', entregable: '' }, cierre];
-    });
+    this.hitos.update(prev => prev.length < 12 ? [...prev, { fecha: '', entregable: '' }] : prev);
   }
 
   quitarHito(index: number): void {
@@ -376,20 +373,17 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   puedeAgregarParcial(): boolean {
-    return this.prorrogaPermitida() && this.hitos().filter(h => !h.cierre).length < 11;
+    return this.prorrogaPermitida() && this.hitos().length < 12;
   }
 
   puedeQuitarHito(index: number): boolean {
     const hitos = this.hitos();
-    const hito = hitos[index];
-    if (!hito || hito.cierre) return false;
-    const parciales = hitos.filter(h => !h.cierre).length;
-    if (this.cronogramaRequerido() && parciales <= 1) return false;
-    return hitos.some(h => h.cierre) || hitos.length > 1;
+    if (!hitos[index]) return false;
+    const minimo = this.cronogramaRequerido() ? 2 : 1;
+    return hitos.length > minimo;
   }
 
   actualizarHitoFecha(index: number, fecha: string): void {
-    if (this.hitos()[index]?.cierre) return;
     this.hitos.update(prev => prev.map((h, i) => i === index ? { ...h, fecha } : h));
   }
 
@@ -402,21 +396,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   indiceParcial(index: number): number {
-    return this.hitos().slice(0, index + 1).filter(h => !h.cierre).length;
+    return index + 1;
   }
 
   minFechaParcial(index: number): string | null {
     const hoy = this.previsionVigente()?.hoy ?? null;
     const previa = this.fechaParcialVecina(index, -1);
-    let min = previa ? desplazarDia(previa, 1) : hoy;
-    const limite = this.nuevaFechaLimite();
-    if (previa && limite && this.esUltimaParcial(index)) {
-      const antesDelVencimiento = desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS);
-      const topeTreinta = desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS);
-      const antesDelCierre = desplazarDia(limite, -1);
-      const maxAlcanzable = topeTreinta < antesDelCierre ? topeTreinta : antesDelCierre;
-      if (antesDelVencimiento <= maxAlcanzable && (!min || antesDelVencimiento > min)) min = antesDelVencimiento;
-    }
+    const min = previa ? desplazarDia(previa, 1) : hoy;
     return hoy && min && min < hoy ? hoy : min;
   }
 
@@ -426,9 +412,8 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const hoy = this.previsionVigente()?.hoy ?? null;
     const previa = this.fechaParcialVecina(index, -1);
     const ancla = previa ?? hoy;
-    let max = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : desplazarDia(limite, -1);
-    const antesDelCierre = desplazarDia(limite, -1);
-    if (max > antesDelCierre) max = antesDelCierre;
+    let max = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : limite;
+    if (max > limite) max = limite;
     const posterior = this.fechaParcialVecina(index, 1);
     if (posterior) {
       const anteriorALaSiguiente = desplazarDia(posterior, -1);
@@ -438,7 +423,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   fechaParcialSeleccionable(index: number): boolean {
-    if (this.hitos().slice(0, index).some(h => !h.cierre && !h.fecha)) return false;
+    if (this.hitos().slice(0, index).some(h => !h.fecha)) return false;
     const min = this.minFechaParcial(index);
     const max = this.maxFechaParcial(index);
     return !min || !max || min <= max;
@@ -450,25 +435,14 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const limite = this.nuevaFechaLimite();
     if (!max || !limite) return 'Espere el cálculo del nuevo vencimiento.';
     if (min && min > max) {
-      const previa = this.fechaParcialVecina(index, -1);
-      const tope = previa ? desplazarDia(previa, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
-      const desdeVencimiento = this.esUltimaParcial(index) ? desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
-      if (tope && desdeVencimiento && tope < desdeVencimiento) {
-        return 'Hay más de 30 días entre la entrega anterior y el vencimiento. Añada una entrega intermedia.';
-      }
       return 'No queda un día entre la entrega anterior y el vencimiento. Quite esta entrega o aumente los días de la ampliación.';
     }
-    const previaVacia = this.hitos().slice(0, index).some(h => !h.cierre && !h.fecha);
-    if (previaVacia) return `Complete antes la fecha de la entrega anterior. El ${fechaDmy(limite)} queda reservado para la última entrega.`;
+    if (this.hitos().slice(0, index).some(h => !h.fecha)) return 'Complete antes la fecha de la entrega anterior.';
     const hoy = this.previsionVigente()?.hoy;
     if (!this.fechaParcialVecina(index, -1) && hoy && min === hoy) {
-      return `Desde hoy, ${fechaDmy(hoy)}, hasta el ${fechaDmy(max)}. Este calendario admite como máximo 30 días. Si desde esa fecha no alcanza el vencimiento, añada otra entrega.`;
+      return `Desde hoy, ${fechaDmy(hoy)}, hasta el ${fechaDmy(max)}. Este calendario admite como máximo 30 días. La última entrega la elige usted y puede quedar antes del vencimiento (${fechaDmy(limite)}).`;
     }
     return `Elija del ${fechaDmy(min ?? max)} al ${fechaDmy(max)}. Entre una entrega y la siguiente no pueden pasar más de 30 días.`;
-  }
-
-  private esUltimaParcial(index: number): boolean {
-    return this.hitos().slice(index + 1).every(h => !!h.cierre);
   }
 
   private fechaParcialVecina(index: number, sentido: -1 | 1): string | null {
@@ -524,6 +498,16 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     entidad: string;
     motivo: string;
     parte: string;
+  }>();
+  private readonly cuponPorDecision = new Map<DecisionId, {
+    enviado: boolean;
+    lugar: string;
+    folios: string | number;
+    costoFolio: string | number;
+    certificadas: string | number;
+    costoCert: string | number;
+    soporte: string | number;
+    sinCobro: boolean;
   }>();
   readonly derivacionTotalRegistrada = signal(false);
 
@@ -582,6 +566,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.liqSoporte = '0';
     this.sinCobroReproduccion.set(false);
     this.cuponError.set('');
+    this.cuponPorDecision.clear();
     this.adjuntarAdicionalesEnCierre.set(false);
     this.precisionPuntos.set(['']);
   }
@@ -645,86 +630,41 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   readonly erroresFechaHitos = computed(() => {
     const hoy = this.previsionVigente()?.hoy;
     const limite = this.nuevaFechaLimite();
-    const hitos = this.hitos();
-    if (hitos.some(h => h.cierre)) {
-      return hitos.map((hito, index) => this.errorFechaConCierre(hito, index, hoy, limite));
-    }
-    return hitos.map(({ fecha }, index) => {
-      if (!fecha || !hoy || !limite) return null;
-      if (fecha < hoy) return 'Las fechas del cronograma no pueden ser anteriores a hoy.';
-      if (fecha > limite) return `Las entregas deben programarse hasta la nueva fecha límite (${fechaDmy(limite)}).`;
-      const anterior = hitos[index - 1]?.fecha;
-      if (anterior && fecha <= anterior) return `Elija una fecha posterior a la entrega ${index} (${fechaDmy(anterior)}).`;
-      if (anterior && diasEntre(anterior, fecha) > DIAS_CALENDARIO_ENTRE_ENTREGAS) {
-        return `Hay más de 30 días entre esta entrega y la anterior (${fechaDmy(anterior)}).`;
+    return this.hitos().map((hito, index) => {
+      if (!hito.fecha || !hoy || !limite) return null;
+      if (hito.fecha < hoy) return 'Esta entrega no puede ser anterior a hoy.';
+      if (hito.fecha > limite) return `Las entregas deben programarse hasta la nueva fecha límite (${fechaDmy(limite)}).`;
+      const max = this.maxFechaParcial(index);
+      const min = this.minFechaParcial(index);
+      if (max && hito.fecha > max) {
+        const previa = this.fechaParcialVecina(index, -1);
+        const ancla = previa ?? hoy;
+        const topeTreinta = desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS);
+        if (hito.fecha > topeTreinta) {
+          return previa
+            ? `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa)}). Elija hasta el ${fechaDmy(topeTreinta)}.`
+            : `Esta entrega solo puede programarse dentro de los 30 días desde hoy (${fechaDmy(ancla)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
+        }
+        const posterior = this.fechaParcialVecina(index, 1);
+        if (posterior && hito.fecha >= posterior) return `Elija una fecha anterior a la siguiente entrega (${fechaDmy(posterior)}).`;
+        return `Las entregas deben programarse hasta la nueva fecha límite (${fechaDmy(limite)}).`;
       }
-      if (index === hitos.length - 1 && fecha !== limite) {
-        return `La última entrega debe coincidir con la nueva fecha límite (${fechaDmy(limite)}).`;
+      if (min && hito.fecha < min) {
+        const previa = this.fechaParcialVecina(index, -1);
+        return previa ? `Elija una fecha posterior al ${fechaDmy(previa)}.` : `Elija una fecha desde el ${fechaDmy(min)}.`;
       }
       return null;
     });
   });
 
-  private errorFechaConCierre(hito: HitoCronogramaItem, index: number, hoy: string | undefined, limite: string | null): string | null {
-    if (hito.cierre) {
-      if (!limite || !hito.fecha || hito.fecha !== limite) return limite ? `La última entrega queda el ${fechaDmy(limite)}.` : null;
-      const inmediata = this.hitos()[index - 1];
-      if (inmediata?.fecha && diasEntre(inmediata.fecha, limite) > DIAS_CALENDARIO_ENTRE_ENTREGAS) {
-        return `La última entrega queda a más de 30 días de la anterior (${fechaDmy(inmediata.fecha)}). Acerque esa fecha o añada una entrega intermedia.`;
-      }
-      return null;
-    }
-    if (!hito.fecha || !hoy || !limite) return null;
-    if (hito.fecha < hoy) return 'Esta entrega no puede ser anterior a hoy.';
-    const max = this.maxFechaParcial(index);
-    const min = this.minFechaParcial(index);
-    if (max && hito.fecha > max) {
-      const previa = this.fechaParcialVecina(index, -1);
-      const ancla = previa ?? hoy;
-      const topeTreinta = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : null;
-      if (topeTreinta && hito.fecha > topeTreinta && hito.fecha < limite) {
-        return previa
-          ? `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa)}). Elija hasta el ${fechaDmy(topeTreinta)}.`
-          : `Esta entrega solo puede programarse dentro de los 30 días desde hoy (${fechaDmy(ancla!)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
-      }
-      const posterior = this.fechaParcialVecina(index, 1);
-      if (posterior && hito.fecha >= posterior && hito.fecha < limite) {
-        return `Elija una fecha anterior a la siguiente entrega (${fechaDmy(posterior)}).`;
-      }
-      return `Esta fecha llega al vencimiento o lo pasa. Elija hasta el ${fechaDmy(max)}; la última entrega ya queda el ${fechaDmy(limite)}.`;
-    }
-    if (min && hito.fecha < min) {
-      const previa = this.fechaParcialVecina(index, -1);
-      const desdeVencimiento = desplazarDia(limite, -DIAS_CALENDARIO_ENTRE_ENTREGAS);
-      if (this.esUltimaParcial(index) && hito.fecha < desdeVencimiento && (!previa || hito.fecha > previa)) {
-        return `Esta entrega queda a más de 30 días del vencimiento (${fechaDmy(limite)}). Elija desde el ${fechaDmy(desdeVencimiento)} o añada una entrega intermedia.`;
-      }
-      return previa ? `Elija una fecha posterior al ${fechaDmy(previa)}.` : `Elija una fecha desde el ${fechaDmy(min)}.`;
-    }
-    return null;
-  }
-
   readonly errorEstructuraCronograma = computed<string | null>(() => {
     if (!this.cronogramaRequerido() && !this.usarCronograma()) return null;
-
     const todos = this.hitos();
-    const cierre = todos.find(h => h.cierre);
-    if (cierre) {
-      const parciales = todos.filter(h => !h.cierre);
-      if (this.cronogramaRequerido() && parciales.length < 1) return 'Registre al menos una entrega parcial antes del vencimiento.';
-      if (!cierre.fecha || cierre.entregable.trim().length === 0 || parciales.some(h => !h.fecha || h.entregable.trim().length === 0)) {
-        return 'Complete la fecha y el entregable de cada entrega. La última queda en el vencimiento.';
-      }
-      return null;
-    }
-
     const validos = this.hitosValidos();
     if (validos.length === 0) return 'Registre al menos una entrega con fecha y descripción.';
-
     if (todos.some(h => !h.fecha || h.entregable.trim().length === 0)) {
       return 'Complete la fecha y entregable de cada hito agregado o elimine los hitos vacíos.';
     }
-
     if (this.cronogramaRequerido() && validos.length < 2) return 'Registre al menos dos entregas.';
     return null;
   });
@@ -819,15 +759,22 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       : (sol.documentos || []);
   });
 
+  readonly avisoDocumentosEncauzados = computed(() =>
+    avisoDocumentosEncauzados(this.todosDocumentosAdministrado() as ProcedenciaDocumental[], 'funcionario'));
+
+  readonly subsanacionesEncauzadas = computed(() => this.grupoSubsanaciones().some(d => !!d.procedencia));
+
   private mapToDocRow(d: any): DocRowItem {
     const nombre = d.nombreOriginal || d.nombreArchivo || d.nombre || 'Documento';
     const tipo = d.tipoDocumento || d.tipoArchivo || d.tipo || 'PDF';
+    const procedencia = procedenciaEncauzada(d);
     return {
       id: d.id,
       raw: d,
       nombre,
       tipo,
-      tamano: this.tamanoDoc(d)
+      tamano: this.tamanoDoc(d),
+      procedencia: procedencia || undefined
     };
   }
 
@@ -1067,6 +1014,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
         motivo: this.motivoEncauzamiento,
         parte: this.parteEncauzada
       });
+      if (actual === 'entrega_total' || actual === 'entrega_parcial') {
+        this.cuponPorDecision.set(actual, this.capturarCupon());
+      }
       const siguiente = this.borradorPorDecision.get(value);
       this.causalDenegatoria = siguiente?.causal ?? '';
       this.fundamentoLegal = siguiente?.fundamento ?? '';
@@ -1074,9 +1024,59 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       this.entidadDestino = siguiente?.entidad ?? '';
       this.motivoEncauzamiento = siguiente?.motivo ?? '';
       this.parteEncauzada = siguiente?.parte ?? '';
+      if (value === 'entrega_total' || value === 'entrega_parcial') {
+        this.aplicarCupon(this.cuponPorDecision.get(value));
+      }
     }
     this.decision.set(value);
     this.error.set('');
+  }
+
+  private capturarCupon() {
+    return {
+      enviado: this.cuponEnviadoSignal(),
+      lugar: this.cuponLugarSignal(),
+      folios: this.liqFoliosSignal(),
+      costoFolio: this.liqCostoFolioSignal(),
+      certificadas: this.liqCertificadasSignal(),
+      costoCert: this.liqCostoCertSignal(),
+      soporte: this.liqSoporteSignal(),
+      sinCobro: this.sinCobroReproduccion()
+    };
+  }
+
+  private aplicarCupon(guardado?: {
+    enviado: boolean;
+    lugar: string;
+    folios: string | number;
+    costoFolio: string | number;
+    certificadas: string | number;
+    costoCert: string | number;
+    soporte: string | number;
+    sinCobro: boolean;
+  }): void {
+    const tarifas = this.tarifasConfig();
+    this.cuponError.set('');
+    if (!guardado) {
+      this.cuponEnviadoSignal.set(false);
+      this.cuponLugarSignal.set('');
+      this.liqFoliosSignal.set('');
+      this.liqCostoFolioSignal.set(tarifas.copiaSimple.toFixed(2));
+      this.liqCertificadasSignal.set('');
+      this.liqCostoCertSignal.set(tarifas.copiaCertificada.toFixed(2));
+      this.liqSoporteSignal.set('0');
+      this.sinCobroReproduccion.set(false);
+      return;
+    }
+    this.tarifasEditadas = true;
+    this.cuponEnviadoSignal.set(guardado.enviado);
+    this.cuponLugarSignal.set(guardado.lugar);
+    this.liqFoliosSignal.set(guardado.folios);
+    this.liqCostoFolioSignal.set(guardado.costoFolio);
+    this.liqCertificadasSignal.set(guardado.certificadas);
+    this.liqCostoCertSignal.set(guardado.costoCert);
+    this.liqSoporteSignal.set(guardado.soporte);
+    this.sinCobroReproduccion.set(guardado.sinCobro);
   }
 
   onDocumentosEntregaSelected(event: Event): void {
@@ -1283,12 +1283,11 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       const generacion = this.generacionRespuesta;
       const claveSesion = this.claveSesion();
       this.loading.set(true);
-      const vencimiento = this.nuevaFechaLimite();
       const hitosAEnviar = this.prorrogaTipo() === 'programada'
         ? this.hitosValidos().map((h, i) => ({
             numeroEntrega: i + 1,
             descripcion: h.entregable.trim(),
-            fechaProgramada: h.cierre && vencimiento ? vencimiento : h.fecha,
+            fechaProgramada: h.fecha,
             observacion: this.prorrogaCronograma.trim() || undefined
           }))
         : [];
@@ -1450,9 +1449,12 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     this.solicitudService.findByExpediente(expediente).subscribe({
       next: actualizada => {
         if (!this.contextoAmpliacionVigente(generacion, sesion) || !actualizada) return;
+        const recibo = this.reciboAmpliacion();
+        if (recibo && actualizada.id === recibo.solicitudId
+            && !(actualizada.ampliacionesPlazo ?? []).some(item => item.id === recibo.id)) return;
         this.solicitud.set(actualizada);
       },
-      error: () => { /* Se conserva la actualización ya devuelta por POST cronograma */ }
+      error: () => { /* Se conserva la actualización ya devuelta por la actuación */ }
     });
   }
 
@@ -1460,17 +1462,47 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.expedienteActual && !this.loading()) this.cargarSolicitud(this.expedienteActual);
   }
 
+  hayPlanDeAtencion(): boolean {
+    return (this.reciboAmpliacion()?.cronograma?.length ?? 0) > 0;
+  }
+
+  etiquetaExitoSecundaria(): string {
+    return this.via() === 'prorroga' && this.hayPlanDeAtencion() ? 'Ver plan de atención' : 'Ver expediente';
+  }
+
+  accionExitoSecundaria(): void {
+    if (this.via() === 'prorroga' && this.hayPlanDeAtencion()) {
+      this.abrirPlanAmpliacion();
+      return;
+    }
+    this.irDetalleExpediente();
+  }
+
   abrirPlanAmpliacion(): void {
+    const ampliacion = this.reciboAmpliacion();
+    const sol = this.solicitud();
     this.successModalAbierto.set(false);
-    this.via.set(this.tieneCronogramaActivo() ? 'cronograma' : 'responder');
-    this.revisarAmpliacion();
+    if (!ampliacion?.cronograma.length || !sol || ampliacion.solicitudId !== sol.id) {
+      this.irDetalleExpediente();
+      return;
+    }
+    this.solicitud.set({
+      ...sol,
+      fechaLimite: ampliacion.fechaLimiteAmpliada || sol.fechaLimite,
+      ampliacionesPlazo: [ampliacion, ...(sol.ampliacionesPlazo ?? []).filter(item => item.id !== ampliacion.id)]
+    });
+    this.inicializarCronogramaSolicitud(this.solicitud());
+    this.via.set('cronograma');
+    if (sol.expediente) this.refrescarSolicitudSilencioso(sol.expediente, this.generacionRespuesta, this.claveSesion());
+  }
+
+  encauzamientoOfrecido(): boolean {
+    const decision = this.decision();
+    return decision === 'entrega_parcial' || decision === 'denegacion_total';
   }
 
   encauzamientoElegido(): boolean {
-    const decision = this.decision();
-    const porCompetencia = decision === 'entrega_parcial'
-      || (decision === 'denegacion_total' && this.causalDenegatoria === 'no_posee');
-    return this.encauzar && this.dentroPlazoEncauzamiento() && porCompetencia;
+    return this.encauzar && this.dentroPlazoEncauzamiento() && this.encauzamientoOfrecido();
   }
 
   private entidadDestinoId(): number | null {
@@ -1490,9 +1522,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       this.error.set('Indique el extremo que se deriva a la otra entidad (mínimo 10 caracteres).');
       return false;
     }
-    const sustento = decision === 'denegacion_total'
-      ? [this.descripcionDenegacion.trim(), this.fundamentoLegal.trim()].filter(Boolean).join('\n\n')
-      : this.parteEncauzada.trim();
+    const sustento = decision === 'denegacion_total' ? '' : this.parteEncauzada.trim();
     try {
       await firstValueFrom(this.solicitudService.registrarEncauzamiento(solicitudId, {
         entidadDestinoId,
@@ -1531,7 +1561,13 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       this.error.set(motivo || 'El estado del expediente no permite registrar una respuesta. Recupere su estado actual.'); return;
     }
     this.derivacionTotalRegistrada.set(false);
-    if (this.encauzamientoElegido()) {
+    if (decision === 'denegacion_total' && this.encauzamientoElegido()
+        && (!this.entidadDestinoId() || this.motivoEncauzamiento.trim().length < 10)) {
+      this.error.set('Seleccione la entidad destino e indique el motivo del encauzamiento (mínimo 10 caracteres).');
+      this.confirmModalAbierto.set(false);
+      return;
+    }
+    if (this.encauzamientoElegido() && decision !== 'denegacion_total') {
       this.loading.set(true);
       this.error.set('');
       const derivado = await this.registrarEncauzamientoDeLaRespuesta(
@@ -1539,13 +1575,6 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       if (!derivado || this.destruido || this.solicitud()?.id !== sol.id) {
         this.loading.set(false);
         this.confirmModalAbierto.set(false);
-        return;
-      }
-      if (decision === 'denegacion_total') {
-        this.derivacionTotalRegistrada.set(true);
-        this.loading.set(false);
-        this.confirmModalAbierto.set(false);
-        this.successModalAbierto.set(true);
         return;
       }
       this.loading.set(false);
@@ -1676,6 +1705,19 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       this.solicitud.set(recuperada); this.recepcionRespuesta.set(dto);
       this.decision.set(dto.respuesta.tipoRespuesta === 'ENTREGA_TOTAL' ? 'entrega_total'
         : dto.respuesta.tipoRespuesta === 'ENTREGA_PARCIAL' ? 'entrega_parcial' : 'denegacion_total');
+      if (dto.respuesta.tipoRespuesta === 'DENEGACION_TOTAL' && this.encauzamientoElegido()) {
+        const sesionUsuario = this.authService.obtenerSesion();
+        const derivado = await this.registrarEncauzamientoDeLaRespuesta(
+          intento.solicitudId, sesionUsuario?.nombre || 'Funcionario de entidad', 'denegacion_total');
+        if (!this.vigenteRespuesta(intento, generacion, sesion)) return;
+        if (!derivado) {
+          this.loading.set(false);
+          this.confirmModalAbierto.set(false);
+          if (!this.error()) this.error.set('La denegatoria quedó registrada, pero no se pudo derivar la solicitud.');
+          return;
+        }
+        this.derivacionTotalRegistrada.set(true);
+      }
       this.resultadoRespuesta.set('recibido'); this.respuestaPendienteVerificacion.set(false); this.puedeReintentarRespuesta.set(false);
       this.error.set(''); this.documentUploadWarning.set('');
       this.mensaje.set('Respuesta y todos sus archivos seleccionados registrados y recuperados.');
@@ -1789,7 +1831,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       return 'Revise el nuevo vencimiento y las entregas antes de registrar la ampliación en el expediente.';
     }
     if (this.encauzamientoElegido() && this.decision() === 'denegacion_total') {
-      return 'La solicitud se derivará a la entidad indicada. En esta entidad no se registra una denegatoria: el expediente continúa en la entidad competente.';
+      return 'Se registrará la denegatoria en este expediente y la entidad de destino recibirá un expediente nuevo, que empieza desde su ingreso.';
     }
     if (this.encauzamientoElegido() && this.decision() === 'entrega_parcial') {
       return 'Se registrará la entrega parcial de lo que corresponde a esta entidad y el encauzamiento del extremo indicado.';
@@ -1903,7 +1945,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   respuestaSuccessEyebrow(): string {
-    if (this.derivacionTotalRegistrada()) return 'Solicitud derivada';
+    if (this.derivacionTotalRegistrada()) return 'Denegatoria y derivación';
     if (this.documentUploadWarning()) return 'Respuesta registrada · Documento pendiente';
     if (this.via() === 'precision') return 'Precisión solicitada';
     if (this.via() === 'prorroga') return 'Plazo ampliado';
@@ -1911,7 +1953,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
   }
 
   respuestaSuccessTitle(): string {
-    if (this.derivacionTotalRegistrada()) return 'Solicitud derivada a la entidad competente';
+    if (this.derivacionTotalRegistrada()) return 'Denegatoria registrada y solicitud derivada';
     if (this.documentUploadWarning()) return 'La respuesta se guardó con una incidencia documental';
     if (this.via() === 'precision') return 'Solicitud de precisión notificada';
     if (this.via() === 'prorroga') return 'Ampliación del plazo registrada';
@@ -1920,7 +1962,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
 
   respuestaSuccessDescription(): string {
     if (this.derivacionTotalRegistrada()) {
-      return 'La solicitud quedó en trámite en la entidad de destino. Aquí no se registró una denegatoria.';
+      return 'Se registró la denegatoria en este expediente. La entidad de destino tiene un expediente nuevo, que empieza desde su ingreso. Este conserva el historial hasta el encauzamiento.';
     }
     if (this.documentUploadWarning()) return this.documentUploadWarning();
     if (this.via() === 'precision') {
@@ -2067,12 +2109,6 @@ function fechaDmy(iso: string): string {
 
 const DIAS_CALENDARIO_ENTRE_ENTREGAS = 30;
 
-function diasEntre(desde: string, hasta: string): number {
-  const inicio = Date.parse(`${desde}T00:00:00Z`);
-  const fin = Date.parse(`${hasta}T00:00:00Z`);
-  return Math.round((fin - inicio) / 86_400_000);
-}
-
 function desplazarDia(iso: string, dias: number): string {
   const [anio, mes, dia] = iso.split('-').map(Number);
   const fecha = new Date(Date.UTC(anio, mes - 1, dia + dias));
@@ -2081,19 +2117,13 @@ function desplazarDia(iso: string, dias: number): string {
   return `${fecha.getUTCFullYear()}-${mesTexto}-${diaTexto}`;
 }
 
-function cronogramaConCierre(lista: HitoCronogramaItem[], limite: string, requerido: boolean): HitoCronogramaItem[] {
-  const cierrePrevio = lista.find(h => h.cierre);
-  let parciales = lista.filter(h => !h.cierre);
-  if (!cierrePrevio && parciales.length === 1 && !parciales[0].fecha && !parciales[0].entregable) {
-    parciales = [{ fecha: '', entregable: '' }];
-  }
-  parciales = parciales.map(h => h.fecha >= limite ? { fecha: '', entregable: h.entregable } : { fecha: h.fecha, entregable: h.entregable });
-  if (requerido && parciales.length === 0) parciales = [{ fecha: '', entregable: '' }];
-  const siguiente: HitoCronogramaItem[] = [
-    ...parciales,
-    { fecha: limite, entregable: cierrePrevio?.entregable ?? '', cierre: true }
-  ];
-  const igual = lista.length === siguiente.length && lista.every((h, i) =>
-    h.fecha === siguiente[i].fecha && h.entregable === siguiente[i].entregable && !!h.cierre === !!siguiente[i].cierre);
-  return igual ? lista : siguiente;
+function normalizarCronograma(lista: HitoCronogramaItem[], limite: string, requerido: boolean): HitoCronogramaItem[] {
+  const editables = lista
+    .filter(h => !h.cierre)
+    .map(h => ({ fecha: h.fecha > limite ? '' : h.fecha, entregable: h.entregable }));
+  const minimo = requerido ? 2 : 1;
+  while (editables.length < minimo) editables.push({ fecha: '', entregable: '' });
+  const igual = lista.length === editables.length && lista.every((h, i) =>
+    !h.cierre && h.fecha === editables[i].fecha && h.entregable === editables[i].entregable);
+  return igual ? lista : editables;
 }
