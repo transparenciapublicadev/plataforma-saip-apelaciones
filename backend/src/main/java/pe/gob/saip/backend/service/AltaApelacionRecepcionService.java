@@ -142,9 +142,18 @@ public class AltaApelacionRecepcionService {
             && solicitud.getId().equals(d.solicitudId()) && d.respuestaId()==null;
         boolean respuesta="RESPUESTA_ENTIDAD".equals(archivo.tipo()) && "RESPUESTA_ENTIDAD".equals(d.tipoDocumento())
             && d.solicitudId()==null && solicitud.getRespuesta()!=null && solicitud.getRespuesta().getId().equals(d.respuestaId());
-        if(!sinOtras || !(original||respuesta)) throw new ConflictoEstadoException("El antecedente no corresponde a la SAIP o respuesta de origen");
+        boolean entrega="RESPUESTA_ENTIDAD".equals(archivo.tipo()) && "RESPUESTA_ENTIDAD".equals(d.tipoDocumento())
+            && d.solicitudId()==null && d.respuestaId()==null && perteneceAEntregaDe(source, solicitud);
+        if(!sinOtras || !(original||respuesta||entrega)) throw new ConflictoEstadoException("El antecedente no corresponde a la SAIP o respuesta de origen");
         if(!archivo.hash().equals(d.hashSha256())) throw new ConflictoEstadoException("La versión seleccionada del antecedente cambió");
         archivo.size=d.sizeBytes();archivo.nombre=d.nombreOriginal();archivo.mime=d.contentType();
+    }
+    private boolean perteneceAEntregaDe(Documento source, Solicitud solicitud) {
+        CronogramaEntregaParcialSolicitud entrega = source.getEntregaParcial();
+        if (entrega == null || entrega.getEstado() != CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA) return false;
+        AmpliacionPlazoSolicitud ampliacion = entrega.getAmpliacion();
+        if (ampliacion == null || ampliacion.getEstadoAmpliacion() == AmpliacionPlazoSolicitud.EstadoAmpliacion.CANCELADA) return false;
+        return ampliacion.getSolicitud() != null && solicitud.getId().equals(ampliacion.getSolicitud().getId());
     }
     private static final class Archivo {
         final String tipo,hash;final Long origenId;final MultipartFile file;long size;String nombre,mime;

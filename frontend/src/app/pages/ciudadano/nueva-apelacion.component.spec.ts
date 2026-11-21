@@ -545,6 +545,32 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(texto).toContain('SAIP-2026-00042');
   });
 
+  it('abre el formulario desde el inicio y muestra el entregable en la respuesta de la entidad', () => {
+    params.next(convertToParamMap({}));
+    const f = TestBed.createComponent(NuevaApelacionComponent); f.detectChanges();
+    http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]);
+    const entregable = { id: 90, tipoDocumento: 'RESPUESTA_ENTIDAD', estado: 'ACTIVO', nombreOriginal: 'entregable.pdf',
+      sizeBytes: 12, contentType: 'application/pdf', hashSha256: 'd'.repeat(64) };
+    const ampliada = { ...solicitud, id: 42, expediente: 'SAIP-2026-00042', estado: 'EN_REVISION', respuesta: null, apelacion: null,
+      documentosMetadata: [{ ...original, solicitudId: 42 }],
+      ampliacionesPlazo: [{ id: 72, solicitudId: 42, estadoAmpliacion: 'NOTIFICADA', fechaLimiteOriginal: '2020-01-06',
+        cronograma: [{ id: 9, ampliacionId: 72, numeroEntrega: 1, estado: 'ENTREGADA', fechaEntregaReal: hoyLima(),
+          fechaProgramada: hoyLima(), documentos: [entregable] }] }] };
+    http.expectOne(`${base}/solicitudes/ciudadano/5`).flush([ampliada]);
+    f.detectChanges();
+    (f.nativeElement.querySelector('[aria-label="Apelar expediente SAIP-2026-00042"]') as HTMLButtonElement).click();
+    http.expectOne(`${base}/solicitudes/42`).flush(ampliada);
+    http.expectOne(`${base}/entidades/activas`).flush([{ id: 3, nombre: 'Entidad sintética' }]);
+    f.detectChanges();
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
+    expect(f.nativeElement.querySelector('#apelacion-titulo')?.textContent).toContain('Interponer apelación ante TTAIP');
+    const grupo = f.nativeElement.querySelector('#apelacion-grupo-2')?.closest('[role="group"]') as HTMLElement;
+    expect(grupo.textContent).toContain('Respuesta de la entidad');
+    expect(grupo.textContent).toContain('entregable.pdf');
+    expect(grupo.textContent).toContain('En expediente');
+    expect(f.componentInstance.documentosPara(2).map(d => d.id)).toEqual([90]);
+  });
+
   it.each([{ hashSha256: null }, { hashSha256: 'incompleto' }, { sizeBytes: 0 }, { contentType: null }])('no ofrece clonar un antecedente sin versión recuperable: %j', cambio => {
     const f = preparar({ ...solicitud, documentosMetadata: [{ ...original, ...cambio }] }), c = f.componentInstance;
     expect(c.documentosPara(1)).toEqual([]); expect(c.documentosIncompletos()).toBe(true); expect(c.puedeEnviar()).toBe(false);

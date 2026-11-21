@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, OnDestroy, OnInit, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -45,6 +45,7 @@ interface Intento { clave: string; comando: Comando; documentos: DocumentoEnvio[
 })
 export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly apelacionService = inject(ApelacionService);
@@ -195,6 +196,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   cargarSolicitudPorId(id: number, expediente?: string): void { this.consultarSolicitud({ id, expediente }); }
   private consultarSolicitud(ref: { id?: number; expediente?: string }): void {
     this.limpiarContexto(); this.modoSeleccion.set(false); this.estadoConsulta.set('cargando'); this.loadingSolicitud.set(true); this.cargarEntidades();
+    this.subirAlInicio();
     this.fuenteActual = ref;
     if (!this.actual() || ref.id !== undefined && !this.idValido(ref.id) || !ref.id && !ref.expediente?.trim()) {
       this.estadoConsulta.set('validacion'); this.errorConsulta.set('No se pudo identificar la solicitud y el ciudadano.'); this.loadingSolicitud.set(false); return;
@@ -268,7 +270,7 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     if (!this.actual() || !this.solicitudesApelables().some(s => s.id === sol.id && s.expediente === sol.expediente)) return;
     this.cargarSolicitudPorId(sol.id, sol.expediente);
   }
-  iniciarApelacionExterna(): void { if (this.destruido) return; this.limpiarContexto(); this.fuenteActual = null; this.tipoOrigen.set('EXTERNA'); this.modoSeleccion.set(false); this.estadoConsulta.set('disponible'); this.cargarEntidades(); }
+  iniciarApelacionExterna(): void { if (this.destruido) return; this.limpiarContexto(); this.fuenteActual = null; this.tipoOrigen.set('EXTERNA'); this.modoSeleccion.set(false); this.estadoConsulta.set('disponible'); this.cargarEntidades(); this.subirAlInicio(); }
   volverASeleccion(): void { if (!this.destruido) this.cargarSolicitudesApelables(); }
   reintentarFuente(): void { if (this.fuenteActual) this.consultarSolicitud(this.fuenteActual); else this.cargarEntrada(); }
   esApelacionExterna(): boolean { return this.tipoOrigen() === 'EXTERNA'; }
@@ -290,10 +292,31 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private inicializarDocumentos(s: Solicitud): void {
     const fuente1 = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
     const fuente2 = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
+    const entregables = this.entregablesRecibidos(s);
     this.documentosIncompletos.set(!Array.isArray(s.documentosMetadata)
       || fuente1.filter(d => d?.tipoDocumento === 'SOLICITUD_ORIGINAL' || d?.tipoDocumento === 'DOCUMENTO_ADJUNTO').length !== this.antecedentes(1).length
       || this.requiereRespuesta() && (!Array.isArray(s.respuesta?.documentosMetadata)
-        || fuente2.filter(d => d?.tipoDocumento === 'RESPUESTA_ENTIDAD').length !== this.antecedentes(2).length));
+        || fuente2.filter(d => d?.tipoDocumento === 'RESPUESTA_ENTIDAD').length + entregables.length !== this.antecedentes(2).length)
+      || this.entregableIncompleto(s));
+  }
+  private entregableIncompleto(s: Solicitud): boolean {
+    const ampliacion = ampliacionParaApelar(s);
+    return (ampliacion?.cronograma ?? []).some(hito => hito.ampliacionId === ampliacion?.id && hito.estado === 'ENTREGADA'
+      && Array.isArray(hito.documentos) && hito.documentos.some(d => !this.metadataEntregable(d)));
+  }
+  private entregablesRecibidos(s: Solicitud): DocumentoMetadata[] {
+    const ampliacion = ampliacionParaApelar(s);
+    if (!ampliacion) return [];
+    return (ampliacion.cronograma ?? [])
+      .filter(hito => hito.ampliacionId === ampliacion.id && hito.estado === 'ENTREGADA' && Array.isArray(hito.documentos))
+      .flatMap(hito => hito.documentos ?? [])
+      .filter(d => this.metadataEntregable(d));
+  }
+  private metadataEntregable(d: DocumentoMetadata | null | undefined): d is DocumentoMetadata {
+    return !!d && this.idValido(d.id) && d.tipoDocumento === 'RESPUESTA_ENTIDAD' && d.estado === 'ACTIVO'
+      && !!d.nombreOriginal && typeof d.sizeBytes === 'number' && d.sizeBytes > 0 && !!d.contentType?.trim()
+      && /^[a-f0-9]{64}$/.test(d.hashSha256 || '')
+      && DOCUMENTO_RELATION_KEYS.every(k => d[k] == null);
   }
   private antecedentes(n: GrupoDocumental): DocumentoMetadata[] {
     const s = this.solicitud();
@@ -301,12 +324,13 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
     const respuestaId = s.respuesta?.id;
     const originales = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
     const respuestas = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
+    const deRespuesta = this.requiereRespuesta() && this.idValido(respuestaId)
+      ? respuestas.filter(d => this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', respuestaId))
+      : [];
     const documentos = n === 1
       ? originales.filter(d => this.metadataFuente(d, 'SOLICITUD_ORIGINAL', 'solicitudId', s.id)
         || this.metadataFuente(d, 'DOCUMENTO_ADJUNTO', 'solicitudId', s.id))
-      : this.requiereRespuesta() && this.idValido(respuestaId)
-        ? respuestas.filter(d => this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', respuestaId))
-        : [];
+      : [...deRespuesta, ...this.entregablesRecibidos(s)];
     return [...new Map(documentos.map(d => [d.id, d])).values()];
   }
   documentosPara(n: GrupoDocumental): DocumentoMetadata[] {
@@ -647,4 +671,13 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   verSolicitudOrigen(): void { if (this.actual() && this.solicitud()) this.router.navigate(['/ciudadano/solicitud', this.solicitud()!.expediente]); }
   cerrarResultado(): void { this.successModalAbierto.set(false); this.enfocar('apelacion-resultado'); }
   private enfocar(id: string): void { const gen = this.generacion; queueMicrotask(() => { if (this.actual(gen)) document.getElementById(id)?.focus(); }); }
+  private subirAlInicio(): void {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
+    const gen = this.generacion;
+    afterNextRender(() => {
+      if (!this.actual(gen) || typeof window === 'undefined') return;
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      document.getElementById('apelacion-titulo')?.focus();
+    }, { injector: this.injector });
+  }
 }
