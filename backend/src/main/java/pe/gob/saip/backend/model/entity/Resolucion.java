@@ -89,6 +89,12 @@ public class Resolucion {
     @OneToOne(mappedBy="requerimiento", fetch=FetchType.LAZY)
     private InicioPlazoSubsanacionTtaip inicioPlazoSubsanacion;
 
+    @Column(name = "actos_documentales", nullable = false)
+    private boolean actosDocumentales;
+
+    @Column(name = "fecha_validacion_actos")
+    private LocalDateTime fechaValidacionActos;
+
     @PrePersist
     protected void onCreate() {
         fechaResolucion = LocalDateTime.now();

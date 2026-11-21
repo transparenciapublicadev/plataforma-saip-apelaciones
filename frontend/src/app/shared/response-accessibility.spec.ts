@@ -16,4 +16,27 @@ describe('Adjuntos de respuesta: acceso por teclado opt-in', () => {
     const f = TestBed.createComponent(MultiFileUploadZoneComponent); f.detectChanges();
     expect(f.nativeElement.querySelector('[role="button"]')).toBeNull();
   });
+  it('muestra y previsualiza los archivos elegidos juntos antes de enviarlos', () => {
+    const fixture = TestBed.createComponent(MultiFileUploadZoneComponent);
+    fixture.componentRef.setInput('batch', true);
+    fixture.componentRef.setInput('allowText', true);
+    fixture.detectChanges();
+
+    const root: HTMLElement = fixture.nativeElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const pdf = new File(['%PDF-1.4'], 'resolucion.pdf', { type: 'application/pdf' });
+    const texto = new File(['nota'], 'nota.txt', { type: 'text/plain' });
+    Object.defineProperty(input, 'files', { value: [pdf, texto] });
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(input.multiple).toBe(true);
+    expect(fixture.componentInstance.files()).toEqual([pdf, texto]);
+    const preview = [...root.querySelectorAll('button')].find(button => button.textContent?.trim() === 'Previsualizar');
+    expect(preview).toBeDefined();
+    preview!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.previewSlot()?.file).toBe(pdf);
+    expect(root.ownerDocument.querySelector('iframe[title="resolucion.pdf"]')).not.toBeNull();
+  });
 });

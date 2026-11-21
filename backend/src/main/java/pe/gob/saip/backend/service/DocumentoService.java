@@ -116,13 +116,27 @@ public class DocumentoService {
         return guardarArchivo(archivo, documento);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Documento subirActoTtaip(MultipartFile archivo, Documento documento, String nombre) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new IllegalArgumentException("El archivo documental es obligatorio");
+        }
+        documento.setEstado(Documento.EstadoDocumento.ACTIVO);
+        documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
+        return guardarArchivo(archivo, documento, nombre);
+    }
+
     private Documento guardarArchivo(MultipartFile file, Documento documento) {
+        return guardarArchivo(file, documento, null);
+    }
+
+    private Documento guardarArchivo(MultipartFile file, Documento documento, String nombre) {
         StorageProvider provider = providerFor(activeProvider);
         StorageUploadResult upload;
         AtomicBoolean cleanupAttempted;
         try (InputStream content = file.getInputStream()) {
             upload = provider.upload(new StorageUploadRequest(
-                    file.getOriginalFilename(),
+                    nombre != null ? nombre : file.getOriginalFilename(),
                     file.getContentType(),
                     file.getSize(),
                     content));
@@ -286,6 +300,7 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         } else if (request.resolucionId() != null) {
             Resolucion resolucion = buscarResolucion(request.resolucionId());
+            verificarResolucionNotificable(resolucion);
             autorizacion.verificarApelacionAccesible(resolucion.getApelacion());
             documentos = documentoRepository
                     .findByResolucion_IdResolucionAndEstadoOrderByFechaCreacionDesc(
@@ -293,6 +308,7 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         } else {
             CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            verificarDestinatario(cedula);
             autorizacion.verificarApelacionAccesible(cedula.getResolucion().getApelacion());
             documentos = documentoRepository
                     .findByCedulaNotificacion_IdCedulaAndEstadoOrderByFechaCreacionDesc(
@@ -300,7 +316,9 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         }
 
-        return documentos.stream().map(DocumentoMetadataDTO::from).toList();
+        return documentos.stream()
+                .filter(doc -> !doc.isSoloInstitucionalTtaip() || autorizacion.esAdministradorOTtaip() || autorizacion.esFuncionario())
+                .map(DocumentoMetadataDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -324,6 +342,11 @@ public class DocumentoService {
         if (documento.getEntregaParcial() != null) {
             throw new ConflictoEstadoException("El documento pertenece a una entrega parcial registrada");
         }
+        if (documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
+                || (documento.getCedulaNotificacion() != null && documento.getCedulaNotificacion().getTipoActo() != null)
+                || (documento.getResolucion() != null && documento.getResolucion().isActosDocumentales())) {
+            throw new ConflictoEstadoException("El archivo pertenece a una actuación documental TTAIP");
+        }
         providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
         documento.setEstado(Documento.EstadoDocumento.ELIMINADO);
         documentoRepository.save(documento);
@@ -336,6 +359,7 @@ public class DocumentoService {
         if (request == null || request.tipoDocumento() == null) {
             throw new IllegalArgumentException("El tipo de documento es obligatorio");
         }
+        validarTipoCargaGeneral(request.tipoDocumento());
         if (request.relationCount() != 1) {
             throw new IllegalArgumentException(
                     "El documento debe asociarse exactamente a un recurso de negocio");
@@ -366,11 +390,21 @@ public class DocumentoService {
         } else if (request.resolucionId() != null) {
             documento.setResolucion(buscarResolucion(request.resolucionId()));
         } else if (request.cedulaNotificacionId() != null) {
-            documento.setCedulaNotificacion(buscarCedula(request.cedulaNotificacionId()));
+            CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            if (cedula.getTipoActo() != null) throw new ConflictoEstadoException("Use los actos documentales de la notificación");
+            documento.setCedulaNotificacion(cedula);
         }
     }
 
     private void verificarAcceso(Documento documento) {
+        if (documento.isBorradorTtaip()) {
+            autorizacion.verificarTtaipOAdministrador();
+            return;
+        }
+        if (documento.isSoloInstitucionalTtaip()) {
+            autorizacion.verificarExpedienteTtaipInstitucional(documento.getExpedienteTtaip().getId());
+            return;
+        }
         if (documento.getEntregaParcial() != null) {
             autorizacion.verificarSolicitudAccesible(documento.getEntregaParcial().getAmpliacion().getSolicitud());
             return;
@@ -393,15 +427,32 @@ public class DocumentoService {
             return;
         }
         if (documento.getResolucion() != null) {
+            verificarResolucionNotificable(documento.getResolucion());
             autorizacion.verificarApelacionAccesible(documento.getResolucion().getApelacion());
             return;
         }
         if (documento.getCedulaNotificacion() != null) {
+            verificarDestinatario(documento.getCedulaNotificacion());
             autorizacion.verificarApelacionAccesible(
                     documento.getCedulaNotificacion().getResolucion().getApelacion());
             return;
         }
         throw new IllegalStateException("El documento no tiene una relación de negocio válida");
+    }
+
+    private void verificarResolucionNotificable(Resolucion resolucion) {
+        if (resolucion.isActosDocumentales() && resolucion.getDecision() == Resolucion.DecisionResolucion.INADMISIBLE
+                && autorizacion.esFuncionario()) {
+            throw new org.springframework.security.access.AccessDeniedException("La inadmisibilidad se notifica al recurrente");
+        }
+    }
+
+    private void verificarDestinatario(CedulaNotificacion cedula) {
+        if (cedula.getTipoActo() != null && !autorizacion.esAdministradorOTtaip()
+                && ("BORRADOR_REPROCESO".equals(cedula.getEstado())
+                || autorizacion.esFuncionario() != (cedula.getDestinatario() == CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA))) {
+            throw new org.springframework.security.access.AccessDeniedException("El documento corresponde al otro destinatario");
+        }
     }
 
     private Documento buscarActivo(Long documentoId) {
@@ -486,10 +537,19 @@ public class DocumentoService {
         }
     }
 
+    private void validarTipoCargaGeneral(Documento.TipoDocumento tipo) {
+        if (List.of(Documento.TipoDocumento.CARGO_NOTIFICACION_TTAIP, Documento.TipoDocumento.ACUSE_NOTIFICACION_TTAIP,
+                Documento.TipoDocumento.CARTA_NOTIFICACION_TTAIP, Documento.TipoDocumento.OFICIO_CARTA_TTAIP)
+                .contains(tipo)) {
+            throw new IllegalArgumentException("Use la operación de actos documentales TTAIP");
+        }
+    }
+
     private void validarCargaClonacion(DocumentoUploadRequest request) {
         if (request == null || request.tipoDocumento() == null) {
             throw new IllegalArgumentException("El tipo de documento es obligatorio");
         }
+        validarTipoCargaGeneral(request.tipoDocumento());
         if (request.relationCount() != 1) {
             throw new IllegalArgumentException(
                     "El documento debe asociarse exactamente a un recurso de negocio");

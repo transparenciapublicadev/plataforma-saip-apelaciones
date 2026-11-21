@@ -8391,6 +8391,556 @@
           }
         }
       }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}/{clave}": {
+      "put": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "preparar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "etapa",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRIMERA_CALIFICACION",
+                "SEGUNDA_CALIFICACION",
+                "RESOLUCION_FINAL"
+              ]
+            }
+          },
+          {
+            "name": "clave",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "decision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMISIBLE",
+                "INADMISIBLE",
+                "IMPROCEDENTE",
+                "ADMITIDO",
+                "TENER_POR_NO_PRESENTADO",
+                "FUNDADO",
+                "FUNDADO_EN_PARTE",
+                "INFUNDADO",
+                "INFUNDADO_EN_PARTE",
+                "CONCLUSION_SUSTRACCION_MATERIA",
+                "CONCLUSION_DESISTIMIENTO",
+                "ESTESE_A_LO_RESUELTO",
+                "NULIDAD_DEL_ACTO"
+              ]
+            }
+          },
+          {
+            "name": "sala",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archivo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preparado"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/destino": {
+      "put": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "destino",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Destino"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/archivos/{tipo}": {
+      "put": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "subir",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "FIRMADO",
+                "CARGO",
+                "ACUSE"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archivo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "archivo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria": {
+      "get": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "informacion",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Consulta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "solicitar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "texto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archivos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Consulta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria/{solicitudId}/respuesta": {
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "responder",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "solicitudId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "texto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archivos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Consulta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/revision": {
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "revisar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Revision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/publicacion": {
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "publicar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "notificacionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}": {
+      "get": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "documentos",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "etapa",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRIMERA_CALIFICACION",
+                "SEGUNDA_CALIFICACION",
+                "RESOLUCION_FINAL"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Preparado"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion": {
+      "get": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "actos",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Acto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -13048,6 +13598,217 @@
           "decision",
           "fechaEntregaReal"
         ]
+      },
+      "Acto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resolucionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroResolucion": {
+            "type": "string"
+          },
+          "etapa": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "destinatario": {
+            "type": "string"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "medio": {
+            "type": "string"
+          },
+          "direccion": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fechaEficacia": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicada": {
+            "type": "boolean"
+          },
+          "historica": {
+            "type": "boolean"
+          },
+          "requiereExpediente": {
+            "type": "boolean"
+          },
+          "firmado": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          },
+          "acuse": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          }
+        }
+      },
+      "Consulta": {
+        "type": "object",
+        "properties": {
+          "etapa": {
+            "type": "string"
+          },
+          "entidad": {
+            "type": "string"
+          },
+          "puedeSolicitar": {
+            "type": "boolean"
+          },
+          "fechaLimiteCalificacion": {
+            "type": "string",
+            "format": "date"
+          },
+          "diasSuspendidos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "solicitudes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Solicitud"
+            }
+          }
+        }
+      },
+      "Destino": {
+        "type": "object",
+        "properties": {
+          "medio": {
+            "type": "string",
+            "enum": [
+              "CORREO_ELECTRONICO",
+              "CASILLA_ELECTRONICA",
+              "PLATAFORMA",
+              "FISICA"
+            ]
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "CEDULA",
+              "CARTA"
+            ]
+          }
+        }
+      },
+      "Preparado": {
+        "type": "object",
+        "properties": {
+          "clave": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "string"
+          },
+          "sala": {
+            "type": "string"
+          },
+          "archivo": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          }
+        }
+      },
+      "Revision": {
+        "type": "object",
+        "properties": {
+          "valida": {
+            "type": "boolean"
+          },
+          "fechaEficacia": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observacion": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "observacion",
+          "valida"
+        ]
+      },
+      "Solicitud": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "etapa": {
+            "type": "string"
+          },
+          "solicitud": {
+            "type": "string"
+          },
+          "fechaSolicitud": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "format": "date"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "respuesta": {
+            "type": "string"
+          },
+          "fechaRespuesta": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "adjuntos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          },
+          "adjuntosRespuesta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          }
+        }
       }
     },
     "securitySchemes": {

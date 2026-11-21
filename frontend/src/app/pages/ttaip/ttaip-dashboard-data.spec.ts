@@ -130,7 +130,8 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(card('Res. Final')?.textContent).toContain('10 días háb.');
     expect(card('Subsanación')?.disabled).toBe(true);
     expect(card('Resueltos')?.disabled).toBe(true);
-    expect(card('Elevación')?.disabled).toBe(false);
+    expect(cards).toHaveLength(7);
+    expect(card('Elevación')).toBeUndefined();
     f.componentInstance.selectStage('subsanacion');
     http.expectNone(panelRequest);
     expect(f.componentInstance.stageKey()).toBe('todos');

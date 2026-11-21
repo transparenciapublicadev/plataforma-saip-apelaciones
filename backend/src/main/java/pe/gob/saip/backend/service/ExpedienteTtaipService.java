@@ -38,8 +38,6 @@ public class ExpedienteTtaipService {
 
     private static final String PRIMERA_SALA = "PRIMERA SALA";
     private static final String SEGUNDA_SALA = "SEGUNDA SALA";
-    private static final int RESOLUCION_BASE = 1595;
-    private static final int CEDULA_BASE = 15203;
     private static final int DIAS_SUSPENSION_ADICIONAL = 3;
     private static final int DIAS_CUMPLIMIENTO_RESOLUCION_FUNDADA = 7;
 
@@ -55,6 +53,7 @@ public class ExpedienteTtaipService {
     private final SuspensionPlazoTtaipRepository suspensionRepository;
     private final CumplimientoResolucionTtaipRepository cumplimientoRepository;
     private final InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
+    private final DocumentosOficialesTtaipService documentosOficiales;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
                                   SalaTtaipRepository salaRepository,
@@ -67,7 +66,8 @@ public class ExpedienteTtaipService {
                                   DescargoEntidadTtaipRepository descargoRepository,
                                   SuspensionPlazoTtaipRepository suspensionRepository,
                                   CumplimientoResolucionTtaipRepository cumplimientoRepository,
-                                  InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion) {
+                                  InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion,
+                                  DocumentosOficialesTtaipService documentosOficiales) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
         this.miembroService = miembroService;
@@ -80,6 +80,7 @@ public class ExpedienteTtaipService {
         this.suspensionRepository = suspensionRepository;
         this.cumplimientoRepository = cumplimientoRepository;
         this.inicioPlazoSubsanacion = inicioPlazoSubsanacion;
+        this.documentosOficiales = documentosOficiales;
     }
 
     @Transactional
@@ -103,8 +104,9 @@ public class ExpedienteTtaipService {
         resolucion.setExpedienteTtaip(expediente);
         resolucion.setSalaTtaip(expediente.getSala());
 
+        documentosOficiales.aplicarNumero(resolucion);
         if (resolucion.getNumeroResolucion() == null || resolucion.getNumeroResolucion().isBlank()) {
-            resolucion.setNumeroResolucion(generarNumeroResolucion(expediente));
+            resolucion.setNumeroResolucion(documentosOficiales.numeroResolucion(expediente.getSala()));
         }
 
         return resolucion;
@@ -148,6 +150,7 @@ public class ExpedienteTtaipService {
         if (debeNotificarEntidadPublica(resolucion)) {
             crearCedulaYNotificacionSiFalta(resolucion, expediente, CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA);
         }
+        if (resolucion.isActosDocumentales()) documentosOficiales.publicar(resolucion);
     }
 
     @Transactional
@@ -167,6 +170,21 @@ public class ExpedienteTtaipService {
     public List<NotificacionTtaip> listarNotificaciones(Long expedienteId) {
         buscarExpediente(expedienteId);
         return notificacionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaNotificacionAsc(expedienteId);
+    }
+
+    void verificarNotificacionHistorica(Long expedienteId, Long notificacionId) {
+        verificarNotificacionHistorica(buscarNotificacion(expedienteId, notificacionId));
+    }
+
+    void verificarNotificacionHistorica(String numero, CedulaNotificacion.DestinatarioNotificacion destino) {
+        notificacionRepository.findByCedula_NumeroCedulaAndDestinatario(numero, destino)
+                .ifPresent(this::verificarNotificacionHistorica);
+    }
+
+    private void verificarNotificacionHistorica(NotificacionTtaip n) {
+        if (n.getCedula().getResolucion().isActosDocumentales() || n.getCedula().getTipoActo() != null) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Use los actos documentales de la notificación");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -1250,12 +1268,23 @@ public class ExpedienteTtaipService {
         return Math.max(0, DiasHabilesUtil.contarDiasHabiles(fechaInicio.plusDays(1), fechaFin));
     }
 
-    private void recalcularFechaLimiteResolucion(ExpedienteTtaip expediente) {
+    void recalcularFechaLimiteResolucion(ExpedienteTtaip expediente) {
+        Resolucion admision = expediente.getApelacion().getResolucionSegundaCalificacion();
+        if (admision == null) admision = expediente.getApelacion().getResolucionPrimeraCalificacion();
         LocalDate inicio = fechaInicioPlazoResolucion(expediente);
+        if (admision != null && admision.isActosDocumentales()) {
+            if (admision.getFechaValidacionActos() == null) return;
+            Long id = admision.getId();
+            inicio = notificacionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaNotificacionAsc(expediente.getId())
+                    .stream().filter(n -> id.equals(n.getCedula().getResolucion().getId()) && "VALIDADA".equals(n.getEstado()))
+                    .map(NotificacionTtaip::getFechaEficacia).filter(java.util.Objects::nonNull)
+                    .max(LocalDateTime::compareTo).map(LocalDateTime::toLocalDate).orElseThrow();
+        }
         LocalDate base = DiasHabilesUtil.sumarDiasHabiles(inicio, 10);
         int totalDiasSuspendidos = suspensionRepository
                 .findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(expediente.getId())
                 .stream()
+                .filter(s -> s.getEtapaComplementaria() == null || s.getEtapaComplementaria() == Resolucion.TipoResolucion.RESOLUCION_FINAL)
                 .mapToInt(suspension -> suspension.getDiasSuspendidos() != null ? suspension.getDiasSuspendidos() : 0)
                 .sum();
         expediente.setFechaLimiteResolucion(DiasHabilesUtil.sumarDiasHabiles(base, totalDiasSuspendidos));
@@ -1319,45 +1348,10 @@ public class ExpedienteTtaipService {
         return salaRepository.save(sala);
     }
 
-    private String generarNumeroResolucion(ExpedienteTtaip expediente) {
-        int year = LocalDate.now().getYear();
-        long sequence = RESOLUCION_BASE + resolucionRepository.countByNumeroResolucionContaining("-" + year + "-JUS/TTAIP") + 1;
-        return "RESOLUCIÓN N.° %06d-%d-JUS/TTAIP-%s".formatted(sequence, year, expediente.getSala().getNombre());
-    }
-
     private String obtenerNumeroCedulaParaResolucion(Resolucion resolucion) {
         return cedulaRepository.findFirstByResolucion_IdResolucionOrderByIdCedulaAsc(resolucion.getId())
                 .map(CedulaNotificacion::getNumeroCedula)
-                .orElseGet(this::generarSiguienteNumeroCedula);
-    }
-
-    private String generarSiguienteNumeroCedula() {
-        int year = LocalDate.now().getYear();
-        String suffix = "-" + year + "-JUS/TTAIP";
-        int sequence = cedulaRepository.findByNumeroCedulaEndingWith(suffix)
-                .stream()
-                .map(CedulaNotificacion::getNumeroCedula)
-                .mapToInt(this::extraerSecuenciaCedula)
-                .max()
-                .orElse(CEDULA_BASE - 1) + 1;
-        return "%05d-%d-JUS/TTAIP".formatted(sequence, year);
-    }
-
-    private int extraerSecuenciaCedula(String numeroCedula) {
-        if (numeroCedula == null || numeroCedula.isBlank()) {
-            return CEDULA_BASE - 1;
-        }
-
-        int separator = numeroCedula.indexOf('-');
-        if (separator <= 0) {
-            return CEDULA_BASE - 1;
-        }
-
-        try {
-            return Integer.parseInt(numeroCedula.substring(0, separator));
-        } catch (NumberFormatException e) {
-            return CEDULA_BASE - 1;
-        }
+                .orElseGet(documentosOficiales::numeroCedula);
     }
 
     private void crearCedulaYNotificacionSiFalta(Resolucion resolucion,
@@ -1367,13 +1361,22 @@ public class ExpedienteTtaipService {
             return;
         }
 
-        String numeroCedula = obtenerNumeroCedulaParaResolucion(resolucion);
+        String numeroCedula = resolucion.isActosDocumentales()
+                ? documentosOficiales.numeroReservadoCedula(resolucion, destinatario)
+                : obtenerNumeroCedulaParaResolucion(resolucion);
         CedulaNotificacion cedula = new CedulaNotificacion();
         cedula.setResolucion(resolucion);
         cedula.setNumeroCedula(numeroCedula);
         cedula.setDestinatario(destinatario);
         cedula.setDestinatarioNombre(resolveNombreDestinatario(expediente, destinatario));
         cedula.setDestinatarioEmail(resolveEmailDestinatario(expediente, destinatario));
+        if (resolucion.isActosDocumentales()) {
+            cedula.setTipoActo("CEDULA");
+            Solicitud solicitud = expediente.getApelacion().getSolicitud();
+            cedula.setCanal(destinatario == CedulaNotificacion.DestinatarioNotificacion.CIUDADANO
+                    && solicitud != null && solicitud.getCanalNotificacion() != null
+                    ? solicitud.getCanalNotificacion().name() : "CORREO_ELECTRONICO");
+        }
         cedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + numeroCedula);
         CedulaNotificacion savedCedula = cedulaRepository.save(cedula);
         sincronizarCedulaEnResolucion(resolucion, savedCedula);
@@ -1394,6 +1397,9 @@ public class ExpedienteTtaipService {
             notificacion.setDestinatario(destinatario);
             notificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
             notificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
+            if (resolucion.isActosDocumentales() && "FISICA".equals(savedCedula.getCanal())) {
+                notificacion.setDireccionDestino(expediente.getApelacion().getCiudadano().getDireccion());
+            }
             notificacion.setMedio(savedCedula.getCanal());
             notificacion.setMedioNotificacion(savedCedula.getCanal());
             notificacion.setEstado("PENDIENTE");
@@ -1455,12 +1461,13 @@ public class ExpedienteTtaipService {
 
         CedulaNotificacion nuevaCedula = new CedulaNotificacion();
         nuevaCedula.setResolucion(resolucion);
-        nuevaCedula.setNumeroCedula(generarSiguienteNumeroCedula());
+        nuevaCedula.setNumeroCedula(documentosOficiales.numeroCedula());
         nuevaCedula.setDestinatario(destinatario);
         nuevaCedula.setDestinatarioNombre(cedulaOriginal.getDestinatarioNombre());
         nuevaCedula.setDestinatarioEmail(cedulaOriginal.getDestinatarioEmail());
         nuevaCedula.setCanal(cedulaOriginal.getCanal());
-        nuevaCedula.setEstado("EMITIDA_REPROCESO");
+        nuevaCedula.setTipoActo(cedulaOriginal.getTipoActo());
+        nuevaCedula.setEstado(nuevaCedula.getTipoActo() != null ? "BORRADOR_REPROCESO" : "EMITIDA_REPROCESO");
         nuevaCedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + nuevaCedula.getNumeroCedula());
         CedulaNotificacion savedCedula = cedulaRepository.save(nuevaCedula);
 
@@ -1471,6 +1478,7 @@ public class ExpedienteTtaipService {
         nuevaNotificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
         nuevaNotificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
         nuevaNotificacion.setMedio(notificacionOriginal.getMedio());
+        nuevaNotificacion.setDireccionDestino(notificacionOriginal.getDireccionDestino());
         nuevaNotificacion.setMedioNotificacion(normalizarNullable(notificacionOriginal.getMedioNotificacion()) != null
                 ? notificacionOriginal.getMedioNotificacion()
                 : notificacionOriginal.getMedio());

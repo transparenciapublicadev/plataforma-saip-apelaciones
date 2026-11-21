@@ -1,7 +1,7 @@
 import { PanelApelacion as Apelacion } from '../../models/panel-query.model';
 import { CalendarioConfig, PLAZO_META_POR_CLAVE, PlazoClave, habilesEntre, recepcionEfectiva, sumarHabiles } from '../../models/calendario.model';
 
-export type StageKey = 'todos' | 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos' | 'otras';
+export type StageKey = 'todos' | 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'notificaciones' | 'resueltos' | 'otras';
 
 export interface StageMeta {
   key: StageKey;
@@ -25,7 +25,8 @@ export const stages: StageMeta[] = [
   { key: 'subsanacion',   num: '03', label: 'Subsanación',           shortLabel: 'Subsanación',plazoDias: 0, plazoLabel: 'plazo no informado', norma: 'Espera del administrado', color: 'var(--gold-dark)', bg: 'rgba(176,136,66,0.10)',                              icon: 'hourglass', esperaExterna: true },
   { key: 'calificacion2', num: '04', label: '2da Calificación',      shortLabel: '2da Calif.', plazoDias: 0, plazoLabel: 'plazo no informado', norma: 'Plazo operativo',         color: 'var(--brand-600)', bg: 'var(--brand-subtle)',                          icon: 'layers' },
   { key: 'resolucion',    num: '05', label: 'Resolución Final',      shortLabel: 'Res. Final', plazoDias: 0, plazoLabel: 'plazo no informado', norma: 'Reglamento TTAIP',        color: 'var(--brand-700)', bg: 'var(--brand-subtle)',                          icon: 'gavel' },
-  { key: 'resueltos',     num: '06', label: 'Resueltos',             shortLabel: 'Resueltos',  plazoDias: 0,  plazoLabel: 'Cerrados',         norma: 'Archivo',                 color: 'var(--success)',  bg: 'color-mix(in srgb, var(--success) 10%, transparent)', icon: 'check', isResolved: true },
+  { key: 'notificaciones', num: '06', label: 'Notificaciones pendientes', shortLabel: 'Notificaciones', plazoDias: 0, plazoLabel: 'Validación pendiente', norma: 'Actos de notificación', color: 'var(--gold-dark)', bg: 'var(--muted)', icon: 'inbox' },
+  { key: 'resueltos',     num: '07', label: 'Resueltos',             shortLabel: 'Resueltos',  plazoDias: 0,  plazoLabel: 'Cerrados',         norma: 'Archivo',                 color: 'var(--success)',  bg: 'color-mix(in srgb, var(--success) 10%, transparent)', icon: 'check', isResolved: true },
 ];
 
 export const positiveId = (id: unknown): id is number => Number.isSafeInteger(id) && (id as number) > 0;
@@ -99,7 +100,14 @@ export interface PlazoStatusResult {
  * y los feriados del calendario oficial. Sin calendario o sin fecha, el saldo queda sin informar.
  */
 export function computePlazoStatus(ap: Apelacion, s: StageMeta, hoyISO: string, cfg: CalendarioConfig | null = null): PlazoStatusResult {
-  if (s.isResolved || finalStates.has(ap.estado)) {
+  if (s.key === 'calificacion1' && ap.plazoPrimeraCalificacion?.fechaLimite) {
+    const { diasRestantes, vencido, diasSuspendidos, fechaLimite } = ap.plazoPrimeraCalificacion;
+    const efectivos = Math.max(0, 7 - diasRestantes);
+    return { restantes: diasRestantes, pct: Math.min(100, efectivos / 7 * 100),
+      tone: vencido ? 'critical' : diasRestantes <= 2 ? 'warn' : 'ok',
+      suspendido: diasSuspendidos ?? 0, efectivos, informado: true, vencido, limite: fechaLimite };
+  }
+  if (s.isResolved || (finalStates.has(ap.estado) && !ap.actosNotificacionPendientes)) {
     return { restantes: 0, pct: 100, tone: 'done', suspendido: 0, efectivos: 0, informado: true, vencido: false, limite: null };
   }
 
@@ -213,12 +221,17 @@ export function plazoEtapaCaption(key: StageKey): string {
   return 'plazo no informado';
 }
 
-export function actionFor(ap: Apelacion): { route: string[]; label: string; reason: string; primary: boolean } {
+export function actionFor(ap: Apelacion): { route: string[]; label: string; reason: string; primary: boolean; tab?: string } {
+  if (ap.actosNotificacionPendientes) {
+    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Validar notificaciones',
+      reason: 'El expediente requiere validar los actos de notificación antes de continuar.',
+      primary: true, tab: 'notificaciones' };
+  }
   if (ap.estado === 'EN_CALIFICACION_1') {
     if (Object.hasOwn(ap, 'calificacionPrimera') && ap.calificacionPrimera !== null) {
       return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'Primera calificación ya registrada.', primary: false };
     }
-    return { route: ['/ttaip/calificar', ap.expediente], label: 'Calificar', reason: '', primary: true };
+    return { route: ['/ttaip/calificar', ap.expediente], label: 'Resolver', reason: '', primary: true };
   }
   if (ap.estado === 'EN_CALIFICACION_2') {
     if (ap.calificacionPrimera === 'INADMISIBLE' || (ap as any).fechaSubsanacion || ap.plazoSubsanacion) {

@@ -108,6 +108,12 @@ public class Documento {
     @JoinColumn(name = "id_entrega_parcial")
     private CronogramaEntregaParcialSolicitud entregaParcial;
 
+    @Column(name = "borrador_ttaip", nullable = false)
+    private boolean borradorTtaip;
+
+    @Column(name = "solo_institucional_ttaip", nullable = false)
+    private boolean soloInstitucionalTtaip;
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();
@@ -127,6 +133,10 @@ public class Documento {
         RECURSO_APELACION,
         RESOLUCION_TTAIP,
         CEDULA_NOTIFICACION,
+        CARGO_NOTIFICACION_TTAIP,
+        ACUSE_NOTIFICACION_TTAIP,
+        CARTA_NOTIFICACION_TTAIP,
+        OFICIO_CARTA_TTAIP,
         EXPEDIENTE_ADMINISTRATIVO,
         INFORME,
         DOCUMENTO_ADJUNTO,

@@ -81,6 +81,24 @@ public class SuspensionPlazoTtaip {
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "etapa_complementaria", length = 30)
+    private Resolucion.TipoResolucion etapaComplementaria;
+
+    @Column(name = "respuesta_complementaria", columnDefinition = "TEXT")
+    private String respuestaComplementaria;
+
+    @Column(name = "fecha_respuesta_complementaria")
+    private LocalDateTime fechaRespuestaComplementaria;
+
+    @ElementCollection
+    @CollectionTable(name = "documentos_informacion_complementaria", joinColumns = @JoinColumn(name = "id_suspension"))
+    @MapKeyColumn(name = "id_documento")
+    @Column(name = "respuesta", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private java.util.Map<Long, Boolean> documentosComplementarios = new java.util.LinkedHashMap<>();
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();

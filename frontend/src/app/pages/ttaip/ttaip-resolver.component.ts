@@ -1,3 +1,5 @@
+import { MultiFileUploadZoneComponent } from '../../shared/multi-file-upload-zone.component';
+import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -23,12 +25,12 @@ import { consultarRecepcionInstitucional, sinConsultaRecepcion } from './recepci
 import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
-type ResolverTab = 'apelacion' | 'descargos' | 'adjuntos';
+type ResolverTab = 'apelacion' | 'descargos' | 'adjuntos' | 'subprocesos';
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-resolver',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
-    OfficialDocsSectionComponent, OfficialPreviewComponent, RecepcionInstitucionalComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
+  imports: [MultiFileUploadZoneComponent, CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
+    InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, RecepcionInstitucionalComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
     LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-resolver.component.html', styleUrl: './ttaip-resolver.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -56,6 +58,10 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   private docsLoaded = false;
   private operation: FinalOperacion | null = null;
   readonly apelacion = signal<Apelacion | null>(null);
+  readonly expedienteActuacion = computed(() => {
+    const ap = this.apelacion(), exp = ap?.expedienteTtaip;
+    return positiveId(exp?.id) && exp?.numeroExpediente === ap?.expediente ? exp.id : null;
+  });
   readonly recepcion = signal(sinConsultaRecepcion());
   readonly loadingApelacion = signal(true);
   readonly loadError = signal('');
@@ -83,9 +89,10 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   readonly documentSearch = signal('');
   readonly documentFilter = signal('');
   readonly closedGroups = signal<Record<string, boolean>>({});
-  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'descargos' as const, label: 'Descargos de la entidad' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }];
+  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'descargos' as const, label: 'Descargos de la entidad' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }, { id: 'subprocesos' as const, label: 'Subprocesos' }];
   readonly options = [...finalOpciones, { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No es resolución final: requiere EN_SUBSANACION, ausencia de recepción y reloj acreditado', accent: 'var(--muted-foreground)' }];
   readonly selectedOption = computed(() => this.options.find(o => o.id === this.selectedDecision()));
+  readonly decisionDocumental = computed(() => finalOpciones.find(o => o.id === this.selectedDecision())?.decision);
   efectoResolucion(): string {
     switch (this.selectedDecision()) {
       case 'fundado': return 'Se ampara totalmente el recurso. Se ordenará a la entidad la entrega de la información solicitada en el plazo establecido.';
@@ -270,13 +277,18 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
       else { this.mensaje.set('Resolución registrada y recuperada. Consulte por separado el estado de los archivos.'); this.successModalAbierto.set(true); }
     }, error: () => { if (this.current(generation) && this.operation === op) this.marcarIncierto('No se pudo recuperar la resolución. Se conserva el contenido en memoria; consulte de nuevo sin reenviar.'); } }));
   }
-  seleccionarDocumento(event: Event): void {
-    const input = event.target as HTMLInputElement; if (!this.puedePrepararBorrador()) { input.value = ''; return; }
-    const errors: string[] = []; const accepted: File[] = [];
-    for (const file of Array.from(input.files || [])) { const error = validarDocumento(file); if (error) errors.push(error); else accepted.push(file); }
-    this.documentosSeleccionados.update(files => [...files, ...accepted]); this.error.set(errors.join(' ')); input.value = '';
+  seleccionarDocumentos(files: File[]): void {
+    if (!this.puedePrepararBorrador()) return;
+    const errors: string[] = [];
+    const accepted: File[] = [];
+    for (const file of files) {
+      const error = validarDocumento(file);
+      if (error) errors.push(error);
+      else accepted.push(file);
+    }
+    this.documentosSeleccionados.set(accepted);
+    this.error.set(errors.join(' '));
   }
-  removerDocumento(index: number): void { if (this.puedePrepararBorrador()) this.documentosSeleccionados.update(files => files.filter((_, i) => i !== index)); }
   private updateArchivo(entry: ArchivoFinal, values: Partial<ArchivoFinal>): void { Object.assign(entry, values); this.archivos.update(files => [...files]); }
   private subirSiguiente(op: FinalOperacion, generation: number): void {
     if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision || !this.resultadoConfirmado() || !positiveId(op.resolucionId)) return;
@@ -346,7 +358,6 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   fechaVisible(value: unknown): string | null { return fechaRegistrada(value) ? value : null; }
   getInitials(name: string | undefined | null): string { return name?.trim().split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '—'; }
   getDecisionLabel(decision: string | null): string { return this.options.find(o => o.id === decision)?.label || 'No seleccionada'; }
-  formatFileSize(size: number): string { return (size / 1024).toFixed(1); }
   resolucionConfirmSummary(): ReferenceConfirmSummary[] { return [{ label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true }, { label: 'Admisión · ID', value: this.admision()?.id?.toString() || 'No identificada', mono: true }, { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) }, { label: 'Fundamentos', value: this.fundamentos.trim().length + ' caracteres' }, { label: 'Archivos seleccionados · subida independiente', value: this.documentosSeleccionados().length.toString() }]; }
   resolucionWarning(): ReferenceConfirmWarning { return { label: 'Registro y documentos son operaciones distintas', detail: 'El registro no acredita emisión formal, firma, entrega, notificación eficaz ni cumplimiento. Los archivos se suben después; sus errores no revierten la decisión. No repita la decisión para reintentar archivos.' }; }
   resolucionSuccessTone(): ReferenceSuccessTone { return this.archivos().some(f => f.estado !== 'registrado') ? 'warning' : 'brand'; }
@@ -357,6 +368,12 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   resolucionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte los documentos y la evidencia de notificación de esta resolución en el expediente.' }, { label: 'Registro no equivale a entrega, firma ni cumplimiento. La base acreditada del plazo de cumplimiento continúa pendiente; no se calcula aquí.' }]; }
   verResolucionRegistrada(): void { if (this.contextoVigente() && this.resolucionRegistrada() && !this.loadError()) this.successModalAbierto.set(true); }
   cerrarResultado(): void { const generation = this.generation; this.successModalAbierto.set(false); queueMicrotask(() => { if (this.current(generation)) this.host.nativeElement.querySelector<HTMLElement>('#final-view-record')?.focus(); }); }
+  irNotificaciones(): void {
+    const expediente = this.apelacion()?.expediente;
+    if (expediente && this.contextoVigente()) {
+      void this.router.navigate(['/ttaip/apelacion', expediente], { queryParams: { tab: 'notificaciones' } });
+    }
+  }
   irExpediente(): void { if (this.contextoVigente() && this.apelacion()) void this.router.navigate(['/ttaip/apelacion', this.apelacion()!.expediente]); }
   irPanelTtaip(): void { if (this.contextoVigente()) void this.router.navigate(['/ttaip'], { state: { focusStage: 'resueltos' } }); }
 }
