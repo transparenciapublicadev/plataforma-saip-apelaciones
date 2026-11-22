@@ -1,3 +1,4 @@
+import { PresentacionesAdmisionComponent } from './shared/presentaciones-admision.component';
 import { MultiFileUploadZoneComponent } from '../../shared/multi-file-upload-zone.component';
 import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
@@ -25,11 +26,11 @@ import { consultarRecepcionInstitucional, sinConsultaRecepcion } from './recepci
 import { RecepcionInstitucionalComponent } from './recepcion-institucional.component';
 import { LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo, LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown } from '@lucide/angular';
 
-type ResolverTab = 'apelacion' | 'descargos' | 'adjuntos' | 'subprocesos';
+type ResolverTab = 'apelacion' | 'adjuntos' | 'subprocesos';
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-resolver',
-  imports: [MultiFileUploadZoneComponent, CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
+  imports: [PresentacionesAdmisionComponent, MultiFileUploadZoneComponent, CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
     InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, RecepcionInstitucionalComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
     LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-resolver.component.html', styleUrl: './ttaip-resolver.component.css', changeDetection: ChangeDetectionStrategy.OnPush
@@ -89,7 +90,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   readonly documentSearch = signal('');
   readonly documentFilter = signal('');
   readonly closedGroups = signal<Record<string, boolean>>({});
-  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'descargos' as const, label: 'Descargos de la entidad' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }, { id: 'subprocesos' as const, label: 'Subprocesos' }];
+  readonly tabs = [{ id: 'apelacion' as const, label: 'Apelación' }, { id: 'adjuntos' as const, label: 'Documentos del expediente' }, { id: 'subprocesos' as const, label: 'Subprocesos' }];
   readonly options = [...finalOpciones, { id: 'no_presentado' as const, label: 'TENER POR NO PRESENTADO', description: 'No es resolución final: requiere EN_SUBSANACION, ausencia de recepción y reloj acreditado', accent: 'var(--muted-foreground)' }];
   readonly selectedOption = computed(() => this.options.find(o => o.id === this.selectedDecision()));
   readonly decisionDocumental = computed(() => finalOpciones.find(o => o.id === this.selectedDecision())?.decision);
@@ -192,7 +193,8 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     return '';
   }
   puedeEmitirResolucion(): boolean { return !this.motivoNoDisponible(); }
-  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && !!this.apelacion() && this.apelacion()?.estado === 'EN_RESOLUCION' && !this.resolucionRegistrada() && !this.operation && !this.loading(); }
+  puedePrepararBorrador(): boolean { return this.contextoVigente() && !this.loadingApelacion() && !this.loadError() && !!this.apelacion() && (this.apelacion()?.estado === 'EN_RESOLUCION'
+    || (this.apelacion()?.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION' && !motivoFinal(this.apelacion(), this.recepcion()))) && !this.resolucionRegistrada() && !this.operation && !this.loading(); }
   private observacionesTexto(): string | undefined {
     if (this.showNulidad()) {
       const etapaObj = ETAPAS_RETROACCION.find(e => e.id === this.retrotraeA);

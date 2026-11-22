@@ -25,7 +25,7 @@ public class PanelConsultaRestController {
     public ResponseEntity<PanelPaginaDTO<PanelApelacionDTO>> apelaciones(@RequestParam(defaultValue="0") int pagina,
         @RequestParam(defaultValue="10") int tamano,@RequestParam(required=false) String busqueda,@RequestParam(required=false) String estado,
         @RequestParam(required=false) String etapa,@RequestParam(defaultValue="recientes") String orden,@RequestParam(required=false) Long entidadId,
-        @RequestParam(required=false) String sala) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.apelaciones(pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala));
+        @RequestParam(required=false) String sala, @RequestParam(defaultValue="false") boolean descargosPresentados) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.apelaciones(pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala,descargosPresentados));
     }
 }

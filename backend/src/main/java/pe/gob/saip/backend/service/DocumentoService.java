@@ -30,6 +30,7 @@ import pe.gob.saip.backend.model.entity.CedulaNotificacion;
 import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
+import pe.gob.saip.backend.model.entity.PresentacionAdmisionTtaip;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Solicitud;
@@ -381,6 +382,7 @@ public class DocumentoService {
         }
 
         return documentos.stream()
+                .filter(doc -> doc.getPresentacionAdmision() == null || puedeLeerPresentacion(doc))
                 .filter(doc -> !doc.isSoloInstitucionalTtaip() || autorizacion.esAdministradorOTtaip() || autorizacion.esFuncionario())
                 .map(DocumentoMetadataDTO::from).toList();
     }
@@ -406,7 +408,7 @@ public class DocumentoService {
         if (documento.getEntregaParcial() != null) {
             throw new ConflictoEstadoException("El documento pertenece a una entrega parcial registrada");
         }
-        if (documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
+        if (documento.getPresentacionAdmision() != null || documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
                 || (documento.getCedulaNotificacion() != null && documento.getCedulaNotificacion().getTipoActo() != null)
                 || (documento.getResolucion() != null && documento.getResolucion().isActosDocumentales())) {
             throw new ConflictoEstadoException("El archivo pertenece a una actuación documental TTAIP");
@@ -460,7 +462,21 @@ public class DocumentoService {
         }
     }
 
+    private boolean puedeLeerPresentacion(Documento documento) {
+        var parte = autorizacion.esFuncionario() ? CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA
+                : CedulaNotificacion.DestinatarioNotificacion.CIUDADANO;
+        return autorizacion.esAdministradorOTtaip() || documento.getPresentacionAdmision().visiblePara(parte,
+                documento.getClaseAdjuntoAdmision() == PresentacionAdmisionTtaip.Adjunto.RESPUESTA);
+    }
+
     private void verificarAcceso(Documento documento) {
+        if (documento.getPresentacionAdmision() != null) {
+            autorizacion.verificarApelacionAccesible(documento.getPresentacionAdmision().getExpediente().getApelacion());
+            if (!puedeLeerPresentacion(documento)) {
+                throw new org.springframework.security.access.AccessDeniedException("El escrito corresponde a la otra parte");
+            }
+            return;
+        }
         if (documento.isBorradorTtaip()) {
             autorizacion.verificarTtaipOAdministrador();
             return;

@@ -765,6 +765,15 @@
               </div>
             }
 
+            @if (expedienteParaSolicitudes(); as id) {
+              <div role="tabpanel" id="panel-solicitudes-tribunal" aria-labelledby="tab-solicitudes-tribunal" tabindex="0"
+                [hidden]="activeTab() !== 'solicitudes-tribunal'" class="detail-panel p-4 sm:p-6">
+                <app-presentaciones-admision [expedienteId]="id" [numeroExpediente]="apelacionDetalle()?.expediente || ''"
+                  contexto="ciudadano" vista="solicitudes" [ocultarSinAdmision]="true"
+                  (disponibilidad)="actualizarDisponibilidadSolicitudes($event)" />
+              </div>
+            }
+
             <!-- TAB 3: APELACIÓN (SI NO ESTÁ EN APELACIÓN) -->
             @if (activeTab() === 'apelacion') {
               <div role="tabpanel" id="panel-apelacion" aria-labelledby="tab-apelacion" tabindex="0" class="detail-panel">

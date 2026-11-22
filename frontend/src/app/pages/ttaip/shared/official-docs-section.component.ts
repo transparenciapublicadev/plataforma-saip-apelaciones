@@ -193,7 +193,7 @@ export interface DocEntry {
               </button>
               @if (expedienteId && (entry.numeroCompleto || entry.numeroPropio?.trim())) {
                 @if (entry.preparado?.archivo && entry.preparado.decision === decisionBackend) {
-                  <button type="button" class="btn-ghost-brand" (click)="verFirmado(entry)">Ver {{ getTipoLabel(entry.tipo).toLowerCase() }} {{ entry.tipo === 'oficio' ? 'firmado' : 'firmada' }}</button>
+                  <button type="button" class="btn-brand !py-1.5 !px-3 !text-[13px]" (click)="verFirmado(entry)">Ver {{ getTipoLabel(entry.tipo).toLowerCase() }} {{ entry.tipo === 'oficio' ? 'firmado' : 'firmada' }}</button>
                 }
 
               }

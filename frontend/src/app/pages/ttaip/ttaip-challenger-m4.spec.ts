@@ -589,7 +589,11 @@ describe('Adversarial Challenge Suite — Hito 4 TTAIP (teamwork_challenger_m4_i
     });
 
     afterEach(() => {
-      try { http.verify({ ignoreCancelled: true }); } finally {}
+      try {
+        http.verify({ ignoreCancelled: true });
+      } finally {
+        TestBed.resetTestingModule();
+      }
     });
 
     it('F04-APERCIBIMIENTO-01: cuando plazo está VENCIDO y recepción AUSENTE, habilita no_presentado e inhabilita admitido e improcedente', () => {
@@ -625,6 +629,7 @@ describe('Adversarial Challenge Suite — Hito 4 TTAIP (teamwork_challenger_m4_i
       });
 
       fixture.detectChanges();
+      http.expectOne(api + '/ttaip/expedientes/41/documentos-oficiales/SEGUNDA_CALIFICACION').flush([]);
       const comp = fixture.componentInstance;
 
       // Verificación de apercibimiento
@@ -680,6 +685,7 @@ describe('Adversarial Challenge Suite — Hito 4 TTAIP (teamwork_challenger_m4_i
       });
 
       fixture.detectChanges();
+      http.expectOne(api + '/ttaip/expedientes/41/documentos-oficiales/SEGUNDA_CALIFICACION').flush([]);
       const comp = fixture.componentInstance;
 
       // No es apercibimiento porque sí se recibió subsanación

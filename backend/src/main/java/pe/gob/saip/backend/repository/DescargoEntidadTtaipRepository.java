@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.entity.DescargoEntidadTtaip;
 
@@ -23,8 +24,10 @@ public interface DescargoEntidadTtaipRepository extends JpaRepository<DescargoEn
             List<DescargoEntidadTtaip.EstadoDescargo> estados
     );
 
-    List<DescargoEntidadTtaip> findByEstadoDescargoInAndFechaLimiteDescargoBefore(
-            List<DescargoEntidadTtaip.EstadoDescargo> estados,
-            LocalDate fecha
-    );
+    @Query("""
+            select distinct d.expediente.idExpedienteTtaip from DescargoEntidadTtaip d
+            where d.estadoDescargo = :estado and d.fechaLimiteDescargo < :fecha
+            order by d.expediente.idExpedienteTtaip
+            """)
+    List<Long> expedientesConDescargosVencidos(DescargoEntidadTtaip.EstadoDescargo estado, LocalDate fecha);
 }

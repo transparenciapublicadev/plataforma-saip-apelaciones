@@ -22,6 +22,8 @@ export type PanelApelacion = Pick<Apelacion, 'id' | 'expediente' | 'estado'>
   etapa?: string;
   actosNotificacionPendientes?: boolean;
   informacionComplementariaPendiente?: boolean;
+  descargosPendientes?: boolean;
+  plazoResolucion?: { diasRestantes: number; vencido: boolean; diasAdicionales: number; fechaLimite: string } | null;
   plazoPrimeraCalificacion?: { diasRestantes: number; vencido: boolean; diasSuspendidos?: number; fechaLimite?: string } | null;
   elevacion?: { fechaLimiteElevacion?: string };
   resolucion?: { id?: number; tipoResolucion?: string; decision?: string; fechaResolucion?: string } | null;
@@ -66,6 +68,7 @@ export interface PanelQuery {
   etapa?: string;
   orden?: 'recientes' | 'antiguas';
   sala?: number | 'SIN_SALA';
+  descargosPresentados?: boolean;
 }
 
 /** Reject incompatible pages rather than turn a malformed result into an empty list. */
