@@ -50,7 +50,7 @@ public class InformacionComplementariaTtaipService {
                 .mapToInt(SuspensionPlazoTtaip::getDiasSuspendidos).sum();
         LocalDate ingreso = etapa == Resolucion.TipoResolucion.PRIMERA_CALIFICACION ? fechaIngreso(expediente) : null;
         LocalDate limite = ingreso != null ? calendario.calcularFechaVencimiento(ingreso, PLAZO_PRIMERA + dias)
-                : etapa == Resolucion.TipoResolucion.RESOLUCION_FINAL ? expediente.getFechaLimiteResolucion() : null;
+                : etapa == Resolucion.TipoResolucion.RESOLUCION_FINAL ? expedienteService.fechaLimiteResolucionConsultada(expediente) : null;
         return new Consulta(etapa == null ? null : etapa.name(), apelacion.getEntidadNombreEfectivo(),
                 etapa != null && apelacion.getEntidadApeladaEfectiva() != null
                         && registros.stream().noneMatch(s -> s.getEtapaComplementaria() == etapa && pendiente(s)),
@@ -118,6 +118,8 @@ public class InformacionComplementariaTtaipService {
             case EN_CALIFICACION_1 -> Resolucion.TipoResolucion.PRIMERA_CALIFICACION;
             case EN_CALIFICACION_2 -> Resolucion.TipoResolucion.SEGUNDA_CALIFICACION;
             case EN_RESOLUCION -> Resolucion.TipoResolucion.RESOLUCION_FINAL;
+            case NOTIFICACION_SEGUNDA_CALIFICACION -> TransicionesApelacionTtaipService
+                    .admisionDocumentalValidada(ap.getResolucionSegundaCalificacion()) ? Resolucion.TipoResolucion.RESOLUCION_FINAL : null;
             default -> null;
         };
     }

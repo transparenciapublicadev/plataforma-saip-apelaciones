@@ -194,6 +194,13 @@ describe('V4: continuidad del detalle TTAIP', () => {
     http.expectNone(r => r.method !== 'GET');
   });
 
+  it('una segunda admisión histórica con ambas notificaciones acreditadas permite acceder a resolución final', () => {
+    const data = appeal(true);
+    const segunda = { ...data.resolucionSegundaCalificacion!, fechaValidacionActos: '2026-10-02T10:30:00' };
+    const f = page({ ...data, resolucionSegundaCalificacion: segunda, estado: 'NOTIFICACION_SEGUNDA_CALIFICACION' });
+    expect(f.componentInstance.navegacionFinal()).toBe(true);
+  });
+
   it.each(['PENDIENTE', 'FALLIDA', 'OBSERVADA'])('notificación %s mantiene bloqueada la final aunque exista recepción', estado => {
     const data = appeal(true); data.expedienteTtaip.notificaciones = notifications.map((n, i) => i ? n : { ...n, estado });
     const f = page(data); expect(f.componentInstance.navegacionFinal()).toBe(false);
@@ -205,13 +212,13 @@ describe('V4: continuidad del detalle TTAIP', () => {
     expect(page(data).componentInstance.navegacionFinal()).toBe(false);
   });
 
-  it.each(['sin-descargos', 'pendiente', 'otra-apelacion', 'sin-traza'])('la recepción no sustituye otras precondiciones: %s', issue => {
+  it.each(['sin-descargos', 'pendiente', 'otra-apelacion', 'sin-traza'])('la emisión requiere notificaciones válidas y admite cualquier estado de descargos: %s', issue => {
     const data = appeal(true);
     if (issue === 'sin-descargos') data.expedienteTtaip.descargosEntidad = [];
     if (issue === 'pendiente') data.expedienteTtaip.descargosEntidad[0].estadoDescargo = 'REQUERIDO';
     if (issue === 'otra-apelacion') data.expedienteTtaip.descargosEntidad[0].apelacionId = 999;
     if (issue === 'sin-traza') data.expedienteTtaip.historial = [];
-    const f = page(data); expect(f.componentInstance.navegacionFinal()).toBe(false);
+    const f = page(data); expect(f.componentInstance.navegacionFinal()).toBe(issue !== 'sin-traza');
   });
 
   it('resolución final previa impide ofrecer otro registro aunque el estado diga EN_RESOLUCION', () => {
@@ -245,7 +252,8 @@ describe('V4: continuidad del detalle TTAIP', () => {
     const f = page({ ...appeal(true), estado: 'NOTIFICACION_SEGUNDA_CALIFICACION' });
     const button = Array.from(f.nativeElement.querySelectorAll('button')).find((b: any) => b.textContent.includes('Revisar evidencias de notificación')) as HTMLButtonElement;
     button.click(); f.detectChanges(); expect(f.componentInstance.activeTab()).toBe('notificaciones');
-    for (const [key, id, count] of [['resolucionId', 71, 1], ['resolucionId', 72, 1], ['cedulaNotificacionId', 61, 2], ['cedulaNotificacionId', 62, 2]] as const) {
+    http.expectOne(api + '/ttaip/expedientes/41/actos-notificacion').flush([]);
+    for (const [key, id, count] of [['resolucionId', 71, 1], ['resolucionId', 72, 1], ['cedulaNotificacionId', 61, 1], ['cedulaNotificacionId', 62, 1]] as const) {
       const documents = http.match(`${api}/documentos?${key}=${id}`);
       expect(documents).toHaveLength(count); documents.forEach(r => r.flush([]));
     }

@@ -13,6 +13,7 @@ export class PanelQueryService {
       const value = query[key];
       if (value !== undefined && value !== '') params = params.set(key, value);
     }
+    if (query.descargosPresentados) params = params.set('descargosPresentados', true);
     return params;
   }
   solicitudes(query: PanelQuery): Observable<PanelPage<PanelSolicitud>> {

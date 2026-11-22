@@ -1,20 +1,56 @@
 import { MultiFileUploadZoneComponent } from '../../../shared/multi-file-upload-zone.component';
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
+import { LucideMail } from '@lucide/angular';
+import { enOrdenDeEnvio, TtaipDocumentoFilaComponent } from './ttaip-documento-fila.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../../shared/document-preview-modal.component';
 import type { DocumentoMetadata } from '../../../models/documento.model';
 import {
-  ActoNotificacion, ArchivoNotificacion, errorActuacion, ETAPAS, MedioNotificacion, TipoActo, TtaipActuacionesService,
+  ActoNotificacion, ArchivoNotificacion, errorActuacion, ETAPAS, EtapaActuacion, MedioNotificacion, TipoActo, TtaipActuacionesService,
 } from '../../../services/ttaip-actuaciones.service';
 import { buildDocWord, cartaOficioPdf, cedulaPdf, cedulaVariantForStage, DocContext, downloadBlob } from './official-docs.util';
 
+const ETAPAS_EN_ORDEN: EtapaActuacion[] = ['PRIMERA_CALIFICACION', 'SEGUNDA_CALIFICACION', 'RESOLUCION_FINAL'];
+
+function agruparAnexos(documentos: readonly DocumentoMetadata[]) {
+  const grupos = new Map<string, { doc: DocumentoMetadata; etiqueta: string }[]>();
+  for (const doc of enOrdenDeEnvio(documentos)) {
+    const [titulo, etiqueta] = identificarAnexo(doc);
+    const fila = { doc, etiqueta };
+    const grupo = grupos.get(titulo);
+    if (grupo) grupo.push(fila);
+    else grupos.set(titulo, [fila]);
+  }
+  return Array.from(grupos, ([titulo, filas]) => ({ titulo, filas }));
+}
+
+function identificarAnexo(doc: DocumentoMetadata): [string, string] {
+  if (doc.resolucionId || doc.tipoDocumento === 'RESOLUCION_TTAIP') return ['Documentos de la resolución', 'Resolución'];
+  if (doc.respuestaId || doc.tipoDocumento === 'RESPUESTA_ENTIDAD') return ['Respuesta de la entidad', ''];
+  if (doc.solicitudId || doc.tipoDocumento === 'SOLICITUD_ORIGINAL') {
+    return ['Solicitud de acceso a la información', doc.tipoDocumento === 'SOLICITUD_ORIGINAL' ? 'Solicitud original' : 'Anexo de la solicitud'];
+  }
+  if (doc.tipoDocumento === 'SUBSANACION') return ['Apelación', 'Documento de subsanación'];
+  if (doc.tipoDocumento === 'RECURSO_APELACION') return ['Apelación', 'Recurso de apelación'];
+  if (doc.apelacionId) return ['Apelación', 'Anexo de la apelación'];
+  return ['Documentos del expediente', ''];
+}
+
 @Component({
   selector: 'app-actos-notificacion',
-  imports: [MultiFileUploadZoneComponent, DatePipe, FormsModule, DocumentPreviewModalComponent],
+  imports: [MultiFileUploadZoneComponent, DatePipe, FormsModule, DocumentPreviewModalComponent, LucideMail, TtaipDocumentoFilaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .revision-dialog {
+      margin: auto;
+      width: min(28rem, calc(100% - 2rem));
+      max-height: calc(100dvh - 2rem);
+      overflow: auto;
+    }
+  `,
   template: `
     <section class="space-y-4">
       <h3 class="font-display text-base font-semibold">Constancias, acuses y validación</h3>
@@ -23,93 +59,115 @@ import { buildDocWord, cartaOficioPdf, cedulaPdf, cedulaVariantForStage, DocCont
         <button type="button" class="btn-ghost-brand" (click)="consultar()">Consultar notificaciones</button>
       }
       @if (ocupado()) { <p role="status" class="text-sm">Comprobando notificaciones…</p> }
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        @for (acto of actos(); track acto.id) {
-          <article class="rounded-lg border border-border bg-card p-4 text-sm space-y-3">
-            <div class="flex justify-between gap-2">
-              <div>
-                <h4 class="font-semibold">{{ acto.destinatario === 'CIUDADANO' ? 'Notificación al ciudadano' : 'Notificación a la entidad pública' }}</h4>
-                <p class="text-xs text-muted-foreground">{{ etapas[acto.etapa] }} · {{ acto.nombre }}</p>
-              </div>
-              <strong>{{ estado(acto) }}</strong>
-            </div>
-            <dl class="grid grid-cols-2 gap-2">
-              <div><dt class="eyebrow">{{ acto.tipo === 'CARTA' ? 'Número de carta' : 'Número de cédula' }}</dt><dd class="font-mono">{{ acto.numero }}</dd></div>
-              <div><dt class="eyebrow">Medio</dt><dd>{{ medios[acto.medio] || acto.medio || 'Pendiente' }}</dd></div>
-              @if (acto.direccion) { <div class="col-span-2"><dt class="eyebrow">Destino</dt><dd class="break-all">{{ acto.direccion }}</dd></div> }
-              @if (acto.fechaEficacia) { <div class="col-span-2"><dt class="eyebrow">Fecha eficaz</dt><dd>{{ acto.fechaEficacia | date:'dd/MM/yyyy' }}</dd></div> }
-            </dl>
-            @if (editable(acto) && tribunal()) {
-              @if (editando() === acto.id) {
-                <div class="space-y-2">
+      @for (bloque of bloques(); track bloque.etapa) {
+        <section class="overflow-hidden rounded-lg border border-border" [attr.aria-label]="etapas[bloque.etapa]">
+          <header class="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
+            <svg aria-hidden="true" lucideMail class="size-4 shrink-0" style="color: var(--brand-700)"></svg>
+            <h4 class="font-display text-base font-semibold">{{ etapas[bloque.etapa] }}</h4>
+          </header>
+          <div class="grid gap-3 p-3" [class]="bloque.actos.length > 1 ? 'xl:grid-cols-2' : ''">
+            @for (item of bloque.actos; track item.acto.id) {
+              @let acto = item.acto;
+              <article class="min-w-0 rounded-lg border border-border bg-card p-4 text-sm space-y-3">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <h5 class="font-semibold">{{ acto.destinatario === 'CIUDADANO' ? 'Notificación al ciudadano' : 'Notificación a la entidad pública' }}</h5>
+                    <p class="text-xs text-muted-foreground">{{ acto.nombre }}</p>
+                  </div>
+                  <strong class="pill whitespace-normal">{{ estado(acto) }}</strong>
+                </div>
+                <dl class="grid grid-cols-2 gap-2">
+                  <div><dt class="eyebrow">{{ acto.tipo === 'CARTA' ? 'Número de carta' : 'Número de cédula' }}</dt><dd class="font-mono">{{ acto.numero }}</dd></div>
+                  <div><dt class="eyebrow">Medio</dt><dd>{{ medios[acto.medio] || acto.medio || 'Pendiente' }}</dd></div>
+                  @if (acto.direccion) { <div class="col-span-2"><dt class="eyebrow">Destino</dt><dd class="break-all">{{ acto.direccion }}</dd></div> }
+                  @if (acto.fechaEficacia) { <div class="col-span-2"><dt class="eyebrow">Fecha eficaz</dt><dd>{{ acto.fechaEficacia | date:'dd/MM/yyyy' }}</dd></div> }
+                </dl>
+                @if (editable(acto) && tribunal()) {
+                  @if (editando() === acto.id) {
+                    <div class="space-y-2">
+                      @if (!acto.firmado) {
+                        <label class="block">Documento
+                          <select class="field-input" [(ngModel)]="tipo">
+                            <option value="CEDULA">Cédula de notificación</option><option value="CARTA">Carta de notificación</option>
+                          </select>
+                        </label>
+                      }
+                      <label class="block">Medio
+                        <select class="field-input" [(ngModel)]="medio">
+                          @for (m of opciones; track m) { <option [value]="m">{{ medios[m] }}</option> }
+                        </select>
+                      </label>
+                      @if (medio === 'CORREO_ELECTRONICO' || medio === 'FISICA') {
+                        <label class="block">Dirección a notificar<input class="field-input" [type]="medio === 'CORREO_ELECTRONICO' ? 'email' : 'text'" maxlength="500" [(ngModel)]="direccion" /></label>
+                      }
+                      <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="guardarDestino(acto)">Guardar destino</button>
+                    </div>
+                  } @else if (!acto.cargo && !acto.acuse) {
+                    <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!error()" (click)="editar(acto)">Editar dirección a notificar</button>
+                  }
                   @if (!acto.firmado) {
-                    <label class="block">Documento
-                      <select class="field-input" [(ngModel)]="tipo">
-                        <option value="CEDULA">Cédula de notificación</option><option value="CARTA">Carta de notificación</option>
-                      </select>
-                    </label>
-                  }
-                  <label class="block">Medio
-                    <select class="field-input" [(ngModel)]="medio">
-                      @for (m of opciones; track m) { <option [value]="m">{{ medios[m] }}</option> }
-                    </select>
-                  </label>
-                  @if (medio === 'CORREO_ELECTRONICO' || medio === 'FISICA') {
-                    <label class="block">Dirección a notificar<input class="field-input" [type]="medio === 'CORREO_ELECTRONICO' ? 'email' : 'text'" maxlength="500" [(ngModel)]="direccion" /></label>
-                  }
-                  <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="guardarDestino(acto)">Guardar destino</button>
-                </div>
-              } @else if (!acto.cargo && !acto.acuse) {
-                <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!error()" (click)="editar(acto)">Editar dirección a notificar</button>
-              }
-              @if (!acto.firmado) {
-                <div class="flex gap-2 flex-wrap">
-                  <button type="button" class="btn-ghost-brand" (click)="modelo(acto, false)">PDF</button>
-                  <button type="button" class="btn-ghost-brand" (click)="modelo(acto, true)">Word</button>
-                </div>
-                <app-multi-file-upload-zone #firmado [single]="true" [pdfOnly]="true" [keyboardAccessible]="true"
-                  [disabled]="ocupado() || !!error()" [label]="acto.tipo === 'CARTA' ? 'Carta firmada' : 'Cédula firmada'" />
-                @if (firmado.files().length) {
-                  <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="subir(acto, 'FIRMADO', firmado)">Subir documento firmado</button>
-                }
-              }
-            }
-            <div class="flex flex-wrap gap-2">
-              @if (acto.firmado) { <button type="button" class="btn-ghost-brand" (click)="ver(acto.firmado)">{{ acto.tipo === 'CARTA' ? 'Ver carta' : 'Ver cédula' }}</button> }
-              @for (anexo of acto.anexos; track anexo.id) { <button type="button" class="btn-ghost-brand" (click)="ver(anexo)">{{ anexo.nombreOriginal }}</button> }
-              @if (acto.requiereExpediente && tribunal()) { <button type="button" class="btn-ghost-brand" (click)="verExpediente.emit()">Ver expediente anexo</button> }
-            </div>
-            @if (acto.cargo) { <button type="button" class="btn-ghost-brand" (click)="ver(acto.cargo)">{{ acto.cargo.nombreOriginal }}</button> }
-            @if (acto.acuse) { <button type="button" class="btn-ghost-brand" (click)="ver(acto.acuse)">{{ acto.acuse.nombreOriginal }}</button> }
-            @if (tribunal() && editable(acto)) {
-              @if (acto.firmado && !acto.publicada) {
-                <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="publicar(acto)">
-                  Enviar nueva notificación en la plataforma
-                </button>
-              }
-              @if (acto.firmado && acto.publicada) {
-                @for (item of evidencias; track item.tipo) {
-                  <app-multi-file-upload-zone #adjunto [single]="true" [allowText]="true" [keyboardAccessible]="true"
-                    [disabled]="ocupado() || !!error()" [label]="item.label" />
-                  @if (adjunto.files().length) {
-                    <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()"
-                      (click)="subir(acto, item.tipo, adjunto)">{{ item.accion }}</button>
+                    <div class="flex gap-2 flex-wrap">
+                      <button type="button" class="btn-ghost-brand" (click)="modelo(acto, false)">PDF</button>
+                      <button type="button" class="btn-ghost-brand" (click)="modelo(acto, true)">Word</button>
+                    </div>
+                    <app-multi-file-upload-zone #firmado [single]="true" [pdfOnly]="true" [keyboardAccessible]="true"
+                      [disabled]="ocupado() || !!error()" [label]="acto.tipo === 'CARTA' ? 'Carta firmada' : 'Cédula firmada'" />
+                    @if (firmado.files().length) {
+                      <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="subir(acto, 'FIRMADO', firmado)">Subir documento firmado</button>
+                    }
                   }
                 }
-              }
-              <div class="flex flex-wrap gap-2">
-                <button type="button" class="btn-brand" [disabled]="ocupado() || !!error() || !acto.publicada || !acto.cargo || !acto.acuse"
-                  (click)="abrirRevision(acto, true, confirmacion)">Validar notificación</button>
-                <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!error()"
-                  (click)="abrirRevision(acto, false, confirmacion)">Declarar notificación fallida</button>
-              </div>
+                @if (acto.firmado; as firmado) {
+                  <app-ttaip-documento-fila [documento]="firmado" [etiqueta]="acto.tipo === 'CARTA' ? 'Carta firmada' : 'Cédula firmada'" (abrir)="ver($event)" />
+                }
+                @for (grupo of item.documentos; track grupo.titulo) {
+                  <section class="space-y-2" [attr.aria-label]="grupo.titulo">
+                    <h6 class="font-semibold">{{ grupo.titulo }}</h6>
+                    @for (fila of grupo.filas; track fila.doc.id) {
+                      <app-ttaip-documento-fila [documento]="fila.doc" [etiqueta]="fila.etiqueta" (abrir)="ver($event)" />
+                    }
+                  </section>
+                }
+                @if (acto.cargo; as cargo) {
+                  <app-ttaip-documento-fila [documento]="cargo" etiqueta="Cargo de notificación" (abrir)="ver($event)" />
+                }
+                @if (acto.acuse; as acuse) {
+                  <app-ttaip-documento-fila [documento]="acuse" etiqueta="Acuse de notificación" (abrir)="ver($event)" />
+                }
+                @if (acto.requiereExpediente && tribunal()) {
+                  <button type="button" class="btn-ghost-brand" (click)="verExpediente.emit()">Ver expediente anexo</button>
+                }
+                @if (tribunal() && editable(acto)) {
+                  @if (acto.firmado && !acto.publicada) {
+                    <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()" (click)="publicar(acto)">
+                      Enviar nueva notificación en la plataforma
+                    </button>
+                  }
+                  @if (acto.firmado && acto.publicada) {
+                    @for (item of evidencias; track item.tipo) {
+                      <app-multi-file-upload-zone #adjunto [single]="true" [allowText]="true" [keyboardAccessible]="true"
+                        [disabled]="ocupado() || !!error()" [label]="item.label" />
+                      @if (adjunto.files().length) {
+                        <button type="button" class="btn-brand" [disabled]="ocupado() || !!error()"
+                          (click)="subir(acto, item.tipo, adjunto)">{{ item.accion }}</button>
+                      }
+                    }
+                  }
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" class="btn-brand" [disabled]="ocupado() || !!error() || !acto.publicada || !acto.cargo || !acto.acuse"
+                      (click)="abrirRevision(acto, true, confirmacion)">Validar notificación</button>
+                    <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!error()"
+                      (click)="abrirRevision(acto, false, confirmacion)">Declarar notificación fallida</button>
+                  </div>
+                }
+              </article>
             }
-          </article>
-        } @empty {
-          @if (!ocupado() && !error()) { <p class="text-sm text-muted-foreground">Sin notificaciones registradas para este expediente.</p> }
-        }
-      </div>
-      <dialog #confirmacion class="rounded-lg border border-border bg-card p-5 text-foreground max-w-md" aria-labelledby="titulo-validacion">
+          </div>
+        </section>
+      } @empty {
+        @if (!ocupado() && !error()) { <p class="text-sm text-muted-foreground">Sin notificaciones registradas para este expediente.</p> }
+      }
+      <dialog #confirmacion class="revision-dialog rounded-lg border border-border bg-card p-5 text-foreground" aria-labelledby="titulo-validacion">
         <h4 id="titulo-validacion" class="font-display text-base font-semibold">{{ validar ? 'Validar notificación' : 'Declarar notificación fallida' }}</h4>
         <p class="text-sm mt-2">{{ validar ? 'Confirme que el cargo y el acuse corresponden al documento y acreditan la notificación.' : 'Se conservará el intento y se asignará un nuevo número al documento de reemplazo.' }}</p>
         @if (validar) {
@@ -143,6 +201,13 @@ export class ActosNotificacionComponent {
     CORREO_ELECTRONICO: 'Correo electrónico', FISICA: 'Física', CASILLA_ELECTRONICA: 'Casilla electrónica', PLATAFORMA: 'Plataforma',
   };
   readonly actos = signal<ActoNotificacion[]>([]);
+  readonly bloques = computed(() => {
+    const actos = this.actos();
+    return ETAPAS_EN_ORDEN.map(etapa => ({
+      etapa,
+      actos: actos.filter(acto => acto.etapa === etapa).map(acto => ({ acto, documentos: agruparAnexos(acto.anexos ?? []) })),
+    })).filter(bloque => bloque.actos.length > 0);
+  });
   readonly ocupado = signal(false);
   readonly error = signal('');
   readonly preview = signal<DocumentPreviewTarget | null>(null);

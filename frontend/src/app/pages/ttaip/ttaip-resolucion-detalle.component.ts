@@ -1,3 +1,4 @@
+import { PresentacionesAdmisionComponent } from './shared/presentaciones-admision.component';
 import { ActosNotificacionComponent } from './shared/actos-notificacion.component';
 import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { Observable, Subscription } from 'rxjs';
@@ -24,14 +25,14 @@ import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shar
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { resolucionPdf, buildResolucionBlob, DocContext, OfficialStage } from './shared/official-docs.util';
 import {
-  LucideEye, LucideDownload, LucideFileText, LucideBuilding2,
+  LucideEye, LucideDownload, LucideBuilding2, LucideFolderOpen, LucideFileText,
   LucideCalendar, LucideHash, LucideScale, LucideCheckCircle2,
   LucideXCircle, LucideAlertCircle, LucideClock, LucideMail,
   LucideGlobe, LucideMonitor, LucidePackage, LucideArrowLeft,
   LucideRefreshCw, LucideShieldCheck, LucideUser
 } from '@lucide/angular';
 
-type DetailTab = 'apelacion' | 'subprocesos' | 'notificaciones' | 'adjuntos';
+type DetailTab = 'apelacion' | 'subprocesos' | 'requerimientos' | 'notificaciones' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
 type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
 type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
@@ -50,18 +51,17 @@ interface ResultadoMeta {
   accent: string;
 }
 
-import { TtaipInformeOralComponent } from './ttaip-informe-oral.component';
 import { AudienciaInformeOral } from './ttaip-informe-oral.model';
 import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
 
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [ActosNotificacionComponent, InformacionComplementariaComponent,
+  imports: [PresentacionesAdmisionComponent, ActosNotificacionComponent, InformacionComplementariaComponent,
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
-    DocumentPreviewModalComponent, RecepcionInstitucionalComponent, TtaipInformeOralComponent,
-    LucideEye, LucideDownload, LucideFileText, LucideScale,
+    DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
+    LucideEye, LucideDownload, LucideScale,
     LucideMail, LucideGlobe,
-    LucideMonitor, LucidePackage, LucideShieldCheck
+    LucideMonitor, LucidePackage, LucideShieldCheck, LucideFolderOpen, LucideFileText, LucideRefreshCw
   ],
   templateUrl: './ttaip-resolucion-detalle.component.html',
   styleUrl: './ttaip-resolucion-detalle.component.css',
@@ -105,12 +105,16 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private documentQuery = 0;
   readonly previewModalOpen = signal<boolean>(false);
   readonly previewModalDoc = signal<DocumentPreviewTarget | null>(null);
-  readonly tabs: { id: DetailTab; label: string }[] = [
-    { id: 'apelacion', label: 'Apelación' },
-    { id: 'subprocesos', label: 'Descargos y subprocesos' },
-    { id: 'notificaciones', label: 'Notificaciones' },
-    { id: 'adjuntos', label: 'Documentos del expediente' }
-  ];
+  get tabs(): { id: DetailTab; label: string }[] {
+    const tribunal = this.rolInstitucional();
+    return [
+      { id: 'apelacion', label: 'Apelación' },
+      { id: 'subprocesos', label: tribunal ? 'Descargos y cumplimiento' : 'Requerimientos del Tribunal' },
+      ...(tribunal ? [{ id: 'requerimientos' as const, label: 'Requerimientos del administrado y de la entidad' }] : []),
+      { id: 'notificaciones', label: 'Notificaciones' },
+      { id: 'adjuntos', label: 'Documentos del expediente' },
+    ];
+  }
 
   private readonly routeExpediente = signal<string>('');
 
@@ -123,6 +127,8 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly cedulasExpediente = computed(() => this.detalle().cedulas.data ?? []);
   readonly notificacionesExpediente = computed(() => this.detalle().notificaciones.data ?? []);
   readonly historialExpediente = computed(() => this.detalle().historial.data ?? []);
+  readonly historialVisible = computed(() => this.historialExpediente()
+    .filter(evento => evento.tipoEvento !== 'SUSPENSION_PLAZO'));
   readonly reprocesosExpediente = computed(() => this.detalle().reprocesos.data ?? []);
   readonly descargosExpediente = computed(() => this.detalle().descargosEntidad.data ?? []);
   readonly suspensionesExpediente = computed(() => this.detalle().suspensionesPlazo.data ?? []);
@@ -363,7 +369,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private current(query: number): boolean { return query === this.documentQuery && this.contextoVigente(); }
   ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => {
     const tab = this.route.snapshot?.queryParamMap?.get('tab');
-    if (tab === 'notificaciones' || tab === 'subprocesos') this.activeTab.set(tab);
+    if (tab === 'notificaciones' || tab === 'subprocesos' || (tab === 'requerimientos' && this.rolInstitucional())) this.activeTab.set(tab);
     this.cargarApelacion(p.get('expediente') || '');
   }); }
   ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
@@ -419,7 +425,16 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     this.cambiarTab('notificaciones'); this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-notificaciones')?.focus();
   }
   seleccionarActuacion(value: string): void { const id = Number(value); this.cerrarPreviewModal(); this.draftError.set(''); this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); }
-  onTabKey(event: KeyboardEvent, tab: DetailTab): void { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const i = this.tabs.findIndex(t => t.id === tab); const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.tabs.length - 1 : (i + (event.key === 'ArrowLeft' ? -1 : 1) + this.tabs.length) % this.tabs.length; this.cambiarTab(this.tabs[next].id); this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-' + this.tabs[next].id)?.focus(); }
+  onTabKey(event: KeyboardEvent, tab: DetailTab): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const tabs = this.tabs;
+    const i = tabs.findIndex(t => t.id === tab);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+      : (i + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length;
+    this.cambiarTab(tabs[next].id);
+    this.host.nativeElement.querySelector<HTMLElement>('#detail-tab-' + tabs[next].id)?.focus();
+  }
   nombreSalaResolucion(r: { sala?: { nombre?: string } | null }): string { return r.sala?.nombre || 'Sala no informada'; }
   eficaciaLabel(n: NotificacionTtaip): string { if (this.detalle().historial.error) return 'Evidencia de eficacia incompleta'; return eficaciaConsultada(n, this.detalle().historial.data) ? 'Evidencia de eficacia consultada' : 'Eficacia no acreditada en los datos consultados'; }
   onDocumentoSubido(): void {
@@ -604,6 +619,13 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   }
 
   etiquetaEvento(value?: string | null): string { return this.formatEventoTtaip(value); }
+  iconoTrazabilidad(tipo?: string | null): 'inicio' | 'resolucion' | 'notificacion' | 'estado' | 'documento' {
+    if (tipo === 'APERTURA_EXPEDIENTE') return 'inicio';
+    if (tipo === 'RESOLUCION_EMITIDA') return 'resolucion';
+    if (tipo === 'CAMBIO_ESTADO') return 'estado';
+    if (tipo?.includes('NOTIFICACION') || tipo === 'CEDULA_EMITIDA' || tipo === 'REPROCESO_REGISTRADO') return 'notificacion';
+    return 'documento';
+  }
   private buildTimeline(): TimelineItem[] {
     const apelacion = this.apelacion();
     if (!apelacion) return [];

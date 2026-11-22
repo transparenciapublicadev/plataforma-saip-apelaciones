@@ -1,4 +1,4 @@
-import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
+import { ConsultaAdmision, InformacionComplementaria, PresentacionAdmision, TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
 import { of as respuestaActuaciones } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -40,6 +40,7 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
           clave, decision: 'INFUNDADO', numero: '2026-' + i, sala: 'PRIMERA SALA', archivo: { id: 90 + i, nombreOriginal: 'firmado.pdf' },
         }))),
         informacion: () => respuestaActuaciones({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+        presentacionesAdmision: () => respuestaActuaciones({ descargo: null, presentaciones: [] }),
       } },
  provideHttpClient(withInterceptors([authInterceptor])),
       provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
@@ -54,8 +55,8 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   it('una consulta fallida elimina el expediente previo', () => {
     const c = page().componentInstance; c.cargarApelacion('OTRO'); http.expectOne(api + '/apelaciones/expediente/OTRO').flush(null, { status: 503, statusText: 'Unavailable' }); expect(c.apelacion()).toBeNull();
   });
-  it('no usa solo EN_RESOLUCION para permitir resolver sin descargos', () => {
-    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+  it('con notificaciones acreditadas permite resolver sin descargos', () => {
+    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
   });
   it('una resolución final previa impide otra operación incluso con estado incoherente', () => { const f = page(resolved({ estado: 'EN_RESOLUCION' })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false); });
   it('tener por no presentado no es una resolución final desde EN_RESOLUCION', () => { const c = page().componentInstance; c.seleccionarDecision('no_presentado'); expect(c.selectedDecision()).toBeNull(); });
@@ -116,7 +117,7 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   });
   it.each([
     { notificaciones: notifications.slice(0, 1) }, { notificaciones: notifications.map(n => ({ ...n, estado: 'FALLIDA' })) },
-    { descargosEntidad: [] }, { descargosEntidad: [{ ...descargo, estadoDescargo: 'REQUERIDO' }] }, { historial: [] }
+    { historial: [] }
   ])('la recepción no sustituye otras precondiciones finales: %j', patch => {
     const f = page(afterSecond({ expedienteTtaip: { ...appeal().expedienteTtaip, ...patch } })); http.expectOne(receiptUrl).flush(receipt()); prepare(f);
     expect(f.componentInstance.canSubmit()).toBe(false); f.componentInstance.enviarResolucion(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
@@ -158,14 +159,14 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
     { ...descargo, estadoDescargo: 'REQUERIDO' }, { ...descargo, apelacionId: 999 }, { ...descargo, entidadId: 999 },
     { ...descargo, expedienteTtaipId: 999 }, { ...descargo, numeroExpediente: 'OTRO' }, { ...descargo, fechaRequerimiento: '2026-09-01' },
     { ...descargo, fechaPresentacion: null }, { ...descargo, resumenDescargo: '' }, { ...descargo, estadoDescargo: 'CANCELADO' }, { ...descargo, estadoDescargo: 'DESCONOCIDO' }
-  ])('descargo incompatible o pendiente no permite resolver: %j', d => {
-    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [d] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+  ])('los datos de descargos no condicionan la emisión: %j', d => {
+    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [d] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
   });
   it.each(['PRESENTADO_EXTEMPORANEO', 'VENCIDO_SIN_PRESENTACION'])('usa el estado %s del servidor sin recalcular días', estadoDescargo => {
     const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [{ ...descargo, estadoDescargo, fechaLimiteDescargo: '2026-10-10' }] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
   });
-  it('un requerimiento todavía pendiente bloquea aunque exista otro presentado', () => {
-    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [descargo, { ...descargo, id: 82, estadoDescargo: 'REQUERIDO' }] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
+  it('un requerimiento todavía pendiente no bloquea una resolución', () => {
+    const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, descargosEntidad: [descargo, { ...descargo, id: 82, estadoDescargo: 'REQUERIDO' }] } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
   });
   it('sin miembro identificado no utiliza el autor predeterminado del backend', () => {
     TestBed.inject(AuthService).guardarSesion({ ...session, miembroId: undefined }); const f = page(); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false); f.componentInstance.enviarResolucion(); expect(http.match(req => req.method !== 'GET')).toHaveLength(0);
@@ -334,11 +335,72 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   });
   it('las pestañas tienen nombre, panel y recorrido de teclado con foco', () => {
     const f = page(); const firstTab = f.nativeElement.querySelector('#final-tab-apelacion') as HTMLButtonElement; firstTab.focus();
-    firstTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); f.detectChanges(); const desc = f.nativeElement.querySelector('#final-tab-descargos') as HTMLButtonElement;
-    expect(document.activeElement).toBe(desc); expect(desc.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#final-panel-apelacion').hidden).toBe(true);
-    desc.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); http.match(r => r.url === api + '/documentos').forEach(r => r.flush([])); f.detectChanges();
+    firstTab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); f.detectChanges(); const documentos = f.nativeElement.querySelector('#final-tab-adjuntos') as HTMLButtonElement;
+    expect(document.activeElement).toBe(documentos); expect(documentos.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#final-panel-apelacion').hidden).toBe(true);
+    http.match(r => r.url === api + '/documentos').forEach(r => r.flush([]));
+    const actuaciones = TestBed.inject(TtaipActuacionesService);
+    const basePresentacion: Omit<PresentacionAdmision, 'id' | 'tipo'> = {
+      origen: 'CIUDADANO', operacion: 'operación-sintética', texto: null, numeroOficio: null,
+      fechaPresentacion: '2026-11-21T10:30:00', aceptada: null, fechaRespuesta: null,
+      operacionRespuesta: null, documentos: [], respuesta: null,
+    };
+    vi.spyOn(actuaciones, 'presentacionesAdmision').mockReturnValue(respuestaActuaciones<ConsultaAdmision>({
+      puedePresentarSolicitudes: false, puedeResponderInformeOral: true, fechaLimiteResolucion: '2026-12-17',
+      descargo: { id: 81, estado: 'PRESENTADO', fechaLimite: '2026-11-30', fechaPresentacion: null, resumen: null, referencia: null, puedePresentar: false },
+      presentaciones: [
+        { ...basePresentacion, id: 1, tipo: 'DESCARGOS', numeroOficio: 'OF-SINTÉTICO', documentos: [{ id: 10, nombreOriginal: 'oficio.pdf' }] },
+        { ...basePresentacion, id: 2, tipo: 'INFORME_ORAL', origen: 'CIUDADANO', texto: 'Sustento de la audiencia', documentos: [] },
+        { ...basePresentacion, id: 3, tipo: 'DOCUMENTACION_ADICIONAL', origen: 'ENTIDAD_PUBLICA', documentos: [{ id: 11, nombreOriginal: 'escrito.pdf' }] },
+      ],
+    }));
+    vi.spyOn(actuaciones, 'informacion').mockReturnValue(respuestaActuaciones<InformacionComplementaria>({
+      etapa: 'RESOLUCION_FINAL', puedeSolicitar: true, entidad: 'Entidad sintética', fechaLimiteCalificacion: null, diasSuspendidos: 0, solicitudes: [],
+    }));
+    documentos.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    f.detectChanges();
     expect(document.activeElement).toBe(f.nativeElement.querySelector('#final-tab-subprocesos'));
+    const panel = f.nativeElement.querySelector('#final-panel-subprocesos') as HTMLElement;
+    expect([...panel.querySelectorAll('h3')].map(h => h.textContent.trim())).toEqual([
+      'Descargos de la entidad', 'Informe oral', 'Documentación adicional', 'Información complementaria',
+    ]);
+    expect(panel.querySelector('[aria-label="Previsualizar oficio.pdf"]')).not.toBeNull();
+    expect(panel.querySelector('[aria-label="Previsualizar escrito.pdf"]')).not.toBeNull();
+    expect(panel.textContent).toContain('Responder solicitud');
+    expect(panel.textContent).toContain('Solicitar información complementaria');
   });
+  it('ofrece documentos adicionales después de los documentos firmados y emite sin seleccionarlos', () => {
+    const f = page();
+    const root = f.nativeElement as HTMLElement;
+    expect(root.querySelector('#final-optional-attachments')).toBeNull();
+    prepare(f);
+    f.detectChanges();
+    const oficiales = root.querySelector('app-official-docs-section')!;
+    const adicionales = root.querySelector('#final-optional-attachments')!;
+    expect(oficiales.compareDocumentPosition(adicionales) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(adicionales.textContent).toContain('Documentos adicionales (opcional)');
+    const emitir = root.querySelector<HTMLButtonElement>('#final-review')!;
+    expect(emitir.disabled).toBe(false);
+    emitir.click();
+    f.detectChanges();
+    f.componentInstance.enviarResolucion();
+    http.expectOne({ url: api + '/ttaip/resolucion/31/infundado', method: 'POST' }).flush(resolved());
+    http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(resolved());
+    expect(f.componentInstance.resultadoConfirmado()).toBe(true);
+    http.expectNone({ url: api + '/documentos', method: 'POST' });
+  });
+
+  it('espera que se carguen ambas cédulas antes de mostrar los adjuntos opcionales', () => {
+    vi.spyOn(TestBed.inject(TtaipActuacionesService), 'documentos').mockReturnValue(respuestaActuaciones([
+      { clave: 'RESOLUCION', decision: 'INFUNDADO', numero: '2026-90', sala: 'PRIMERA SALA', archivo: { id: 90 } },
+      { clave: 'CIUDADANO', decision: 'INFUNDADO', numero: '2026-91', sala: 'PRIMERA SALA', archivo: { id: 91 } },
+    ]));
+    const f = page();
+    prepare(f);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('#final-optional-attachments')).toBeNull();
+    expect(f.nativeElement.querySelector('#final-review').disabled).toBe(true);
+  });
+
   it('la revisión contiene el foco y Escape devuelve al control sin ejecutar un comando', async () => {
     const f = page(); prepare(f); f.detectChanges(); const button = f.nativeElement.querySelector('#final-review') as HTMLButtonElement; button.focus(); button.click(); f.detectChanges(); await Promise.resolve();
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!; expect(dialog.getAttribute('aria-label')).toBe('Confirme el registro de la resolución'); expect(dialog.contains(document.activeElement)).toBe(true);
