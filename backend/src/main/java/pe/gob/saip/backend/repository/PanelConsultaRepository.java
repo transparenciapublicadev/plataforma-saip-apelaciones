@@ -14,7 +14,7 @@ import pe.gob.saip.backend.util.DiasHabilesUtil;
 public class PanelConsultaRepository {
     public record Alcance(Long ciudadanoId, Long entidadId, String nombre) {}
     public record Filtro(int pagina, int tamano, String busqueda, String estado, String etapa,
-                         String orden, Long entidadId, String sala) {}
+                         String orden, Long entidadId, String sala, boolean descargosPresentados) {}
     public record Datos(List<Map<String,Object>> filas, long total, PanelResumenDTO resumen,
                         List<PanelOpcionDTO> entidades, List<PanelOpcionDTO> salas, boolean opcionesLimitadas,
                         Map<Long,List<Map<String,Object>>> observaciones) {}
@@ -27,7 +27,7 @@ public class PanelConsultaRepository {
           or (r2.actos_documentales is true and r2.fecha_validacion_actos is null)
           or (rf.actos_documentales is true and rf.fecha_validacion_actos is null))
         """;
-    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " and " + ACTOS_PENDIENTES + " then 'notificaciones' when a.estado in " + FINAL + " then 'resueltos'  else 'otras' end";
+    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado='NOTIFICACION_SEGUNDA_CALIFICACION' and r2.actos_documentales is true and r2.fecha_validacion_actos is not null and r2.decision in ('ADMISIBLE','ADMITIDO') then 'resolucion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " and " + ACTOS_PENDIENTES + " then 'notificaciones' when a.estado in " + FINAL + " then 'resueltos'  else 'otras' end";
     private static final String PENDING_OBSERVATION = "exists (select 1 from observaciones_solicitud o where o.id_solicitud=s.id_solicitud and o.estado='PENDIENTE_SUBSANACION')";
     private static final String CITIZEN_STAGE = "case when a.estado='EN_SUBSANACION' or (s.estado='PENDIENTE_INFORMACION' and " + PENDING_OBSERVATION + ") then 'accion' when a.estado in " + FINAL + " and not " + ACTOS_PENDIENTES + " then 'resueltas' when a.id_apelacion is not null then 'tribunal' when s.estado in ('DENEGADA','VENCIDA') or (s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') and s.fecha_limite<=:vencida) then 'apelar' when s.estado='RESPONDIDA' then 'respondidas' when s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') then 'proceso' else 'otras' end";
     /** Total referral keeps the same expediente at the destination. The origin still lists it, outside the work queues. */
@@ -43,6 +43,10 @@ public class PanelConsultaRepository {
         + " when s.fecha_limite<=:hastaCinco then 'semana' when s.fecha_limite is not null then 'plazo' else 'desconocido' end"
         + " else 'desconocido' end";
 
+    private static final String DESCARGOS_PRESENTADOS = """
+        exists (select 1 from descargos_entidad_ttaip d where d.id_expediente_ttaip=ex.id_expediente_ttaip
+            and d.estado_descargo in ('PRESENTADO', 'PRESENTADO_EXTEMPORANEO') and d.fecha_presentacion is not null)
+        """;
     private static final String AP_COLUMNS = """
         a.id_apelacion a_id, a.expediente a_expediente, a.estado a_estado, a.fundamentos a_fundamentos,
         a.resultado a_resultado, a.fecha_apelacion a_fecha, a.id_solicitud a_solicitud_id,
@@ -70,6 +74,22 @@ public class PanelConsultaRepository {
         exists (select 1 from suspensiones_plazo_ttaip sp
             where sp.id_expediente_ttaip=ex.id_expediente_ttaip and sp.etapa_complementaria is not null
               and sp.estado_suspension='ACTIVA' and sp.fecha_fin_suspension>=:hoy) informacion_pendiente,
+        exists (select 1 from descargos_entidad_ttaip d
+            where d.id_expediente_ttaip=ex.id_expediente_ttaip
+              and a.estado in ('EN_RESOLUCION','NOTIFICACION_SEGUNDA_CALIFICACION')
+              and d.estado_descargo='REQUERIDO' and d.fecha_limite_descargo>=:hoy) descargos_pendientes,
+        (select min(cast(n.fecha_eficacia as date)) from notificaciones_ttaip n
+            join cedulas_notificacion nc on nc.id_cedula=n.id_cedula
+            where n.id_expediente_ttaip=ex.id_expediente_ttaip
+              and nc.id_resolucion=coalesce(r2.id_resolucion,r1.id_resolucion)
+              and n.destinatario='ENTIDAD_PUBLICA' and nc.destinatario='ENTIDAD_PUBLICA'
+              and n.estado='VALIDADA' and left(coalesce(n.resultado_notificacion,''),14)<>'ENTREGADA_POR_'
+              and coalesce(r2.actos_documentales,r1.actos_documentales) is true
+              and coalesce(r2.decision,r1.decision) in ('ADMISIBLE','ADMITIDO')
+              and a.estado in ('EN_RESOLUCION','NOTIFICACION_SEGUNDA_CALIFICACION')) inicio_resolucion_entidad,
+        (select sum(sp.dias_suspendidos) from suspensiones_plazo_ttaip sp
+            where sp.id_expediente_ttaip=ex.id_expediente_ttaip and sp.motivo_suspension<>'DESCARGOS_ENTIDAD'
+              and (sp.etapa_complementaria is null or sp.etapa_complementaria='RESOLUCION_FINAL')) dias_adicionales_resolucion,
         r1.id_resolucion r1_id, r1.decision r1_decision, r1.fecha_resolucion r1_fecha,
         r2.id_resolucion r2_id, r2.decision r2_decision, r2.fecha_resolucion r2_fecha,
         rf.id_resolucion rf_id, rf.decision rf_decision, rf.fecha_resolucion rf_fecha,
@@ -116,6 +136,7 @@ public class PanelConsultaRepository {
                 : " and (" + effectiveEntity + "=:entidadActor or (" + effectiveEntity + "<>:entidadActor and " + DERIVADA_POR_ACTOR + "))";
         }
         String where = scope;
+        if (filtro.descargosPresentados()) where += " and " + DESCARGOS_PRESENTADOS;
         if (filtro.entidadId()!=null) { where += " and " + effectiveEntity + "=:entidadFiltro"; params.addValue("entidadFiltro",filtro.entidadId()); }
         if (filtro.estado()!=null) { where += " and " + alias + ".estado=:estado"; params.addValue("estado",filtro.estado()); }
         if (filtro.etapa()!=null) { where += " and ("+stage+")=:etapa"; params.addValue("etapa",filtro.etapa()); }

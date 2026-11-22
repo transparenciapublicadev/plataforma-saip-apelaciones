@@ -17,6 +17,8 @@ public record ResolucionDTO(
     String fundamentoLegal,
     String observaciones,
     String fechaResolucion,
+    @Schema(description = "Fecha en que se acreditaron los actos documentales de notificación de la resolución")
+    String fechaValidacionActos,
     Long miembroTTAIPId,
     String miembroTTAIPNombre,
     Boolean iniciarProcesoDisciplinario,
@@ -35,6 +37,7 @@ public record ResolucionDTO(
             r.getFundamentoLegal(),
             r.getObservaciones(),
             r.getFechaResolucion() != null ? r.getFechaResolucion().toString() : null,
+            r.isActosDocumentales() && r.getFechaValidacionActos() != null ? r.getFechaValidacionActos().toString() : null,
             r.getMiembroTTAIP() != null ? r.getMiembroTTAIP().getId() : null,
             r.getMiembroTTAIP() != null ? r.getMiembroTTAIP().getNombreCompleto() : null,
             r.getIniciarProcesoDisciplinario(),

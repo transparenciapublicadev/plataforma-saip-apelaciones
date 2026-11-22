@@ -8941,6 +8941,234 @@
           }
         }
       }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision": {
+      "get": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "presentaciones",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaPresentacionesAdmisionTtaip"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "presentar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/EscritoAdmisionTtaip"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentacionAdmisionTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision/{id}/respuesta": {
+      "post": {
+        "tags": [
+          "actuaciones-ttaip-rest-controller"
+        ],
+        "operationId": "responderInformeOral",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RespuestaInformeOralTtaip"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentacionAdmisionTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/panel/apelaciones": {
+      "get": {
+        "tags": [
+          "panel-consulta-rest-controller"
+        ],
+        "summary": "Consultar página y agregados TTAIP del actor actual",
+        "description": "Titular o entidad desde la identidad actual; TTAIP/administración conservan su alcance autorizado. Plazos de primera calificación y subsanación cuando consta el inicio correspondiente.",
+        "operationId": "apelaciones",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "etapa",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orden",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "recientes"
+            }
+          },
+          {
+            "name": "entidadId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "sala",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "descargosPresentados",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelPaginaDTOPanelApelacionDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -10765,6 +10993,10 @@
             "items": {
               "$ref": "#/components/schemas/CedulaNotificacionDTO"
             }
+          },
+          "fechaValidacionActos": {
+            "type": "string",
+            "description": "Fecha en que se acreditaron los actos documentales de notificación de la resolución"
           }
         }
       },
@@ -13813,6 +14045,495 @@
             "items": {
               "$ref": "#/components/schemas/DocumentoMetadataDTO"
             }
+          }
+        }
+      },
+      "ConsultaPresentacionesAdmisionTtaip": {
+        "type": "object",
+        "properties": {
+          "puedePresentarSolicitudes": {
+            "type": "boolean"
+          },
+          "puedeResponderInformeOral": {
+            "type": "boolean"
+          },
+          "fechaLimiteResolucion": {
+            "type": "string",
+            "format": "date"
+          },
+          "descargo": {
+            "$ref": "#/components/schemas/DescargoEnAdmisionTtaip"
+          },
+          "presentaciones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresentacionAdmisionTtaip"
+            }
+          }
+        }
+      },
+      "DescargoEnAdmisionTtaip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaPresentacion": {
+            "type": "string",
+            "format": "date"
+          },
+          "resumen": {
+            "type": "string"
+          },
+          "referencia": {
+            "type": "string"
+          },
+          "puedePresentar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PresentacionAdmisionTtaip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "DESCARGOS",
+              "INFORME_ORAL",
+              "DOCUMENTACION_ADICIONAL"
+            ]
+          },
+          "origen": {
+            "type": "string",
+            "enum": [
+              "CIUDADANO",
+              "ENTIDAD_PUBLICA"
+            ]
+          },
+          "texto": {
+            "type": "string"
+          },
+          "numeroOficio": {
+            "type": "string"
+          },
+          "fechaPresentacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aceptada": {
+            "type": "boolean"
+          },
+          "fechaRespuesta": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operacionRespuesta": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentoMetadataDTO"
+            }
+          },
+          "respuesta": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          }
+        }
+      },
+      "EscritoAdmisionTtaip": {
+        "type": "object",
+        "properties": {
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "DESCARGOS",
+              "INFORME_ORAL",
+              "DOCUMENTACION_ADICIONAL"
+            ]
+          },
+          "descargoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "numeroOficio": {
+            "type": "string"
+          },
+          "archivo": {
+            "type": "string",
+            "format": "binary"
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "required": [
+          "operacion",
+          "tipo"
+        ]
+      },
+      "RespuestaInformeOralTtaip": {
+        "type": "object",
+        "properties": {
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aceptada": {
+            "type": "boolean"
+          },
+          "archivo": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "aceptada",
+          "archivo",
+          "operacion"
+        ]
+      },
+      "PanelPaginaDTOPanelApelacionDTO": {
+        "type": "object",
+        "properties": {
+          "contenido": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PanelApelacionDTO"
+            }
+          },
+          "pagina": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tamano": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElementos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPaginas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ultima": {
+            "type": "boolean"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/PanelResumenDTO"
+          },
+          "entidades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PanelOpcionDTO"
+            }
+          },
+          "salas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PanelOpcionDTO"
+            }
+          },
+          "opcionesLimitadas": {
+            "type": "boolean"
+          },
+          "alcance": {
+            "type": "string"
+          },
+          "fuentePlazo": {
+            "type": "string"
+          }
+        }
+      },
+      "PanelApelacionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expediente": {
+            "type": "string"
+          },
+          "fundamentos": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "fechaApelacion": {
+            "type": "string"
+          },
+          "solicitudId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "solicitudExpediente": {
+            "type": "string"
+          },
+          "solicitudAsunto": {
+            "type": "string"
+          },
+          "ciudadanoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ciudadanoNombre": {
+            "type": "string"
+          },
+          "entidadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entidadNombre": {
+            "type": "string"
+          },
+          "entidadExternaNombre": {
+            "type": "string"
+          },
+          "resumenSolicitudOriginal": {
+            "type": "string"
+          },
+          "tipoOrigen": {
+            "type": "string"
+          },
+          "numeroSolicitudExterna": {
+            "type": "string"
+          },
+          "calificacionPrimera": {
+            "type": "string"
+          },
+          "calificacionSegunda": {
+            "type": "string"
+          },
+          "resuelta": {
+            "type": "boolean"
+          },
+          "etapa": {
+            "type": "string"
+          },
+          "expedienteTtaip": {
+            "$ref": "#/components/schemas/PanelExpedienteDTO"
+          },
+          "resolucion": {
+            "$ref": "#/components/schemas/PanelResolucionDTO"
+          },
+          "resolucionPrimeraCalificacion": {
+            "$ref": "#/components/schemas/PanelResolucionDTO"
+          },
+          "resolucionSegundaCalificacion": {
+            "$ref": "#/components/schemas/PanelResolucionDTO"
+          },
+          "plazoSubsanacion": {
+            "$ref": "#/components/schemas/PlazoSubsanacionTtaipDTO"
+          },
+          "plazoPrimeraCalificacion": {
+            "$ref": "#/components/schemas/PanelPlazoPrimeraCalificacionDTO",
+            "description": "Plazo de primera calificación si consta el ingreso al Tribunal y todavía no se registró la calificación"
+          },
+          "actosNotificacionPendientes": {
+            "type": "boolean"
+          },
+          "informacionComplementariaPendiente": {
+            "type": "boolean"
+          },
+          "descargosPendientes": {
+            "type": "boolean"
+          },
+          "plazoResolucion": {
+            "$ref": "#/components/schemas/PanelPlazoResolucionDTO",
+            "description": "Plazo de resolución desde la notificación eficaz de la admisión a la entidad"
+          }
+        }
+      },
+      "PanelExpedienteDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sala": {
+            "$ref": "#/components/schemas/PanelOpcionDTO"
+          }
+        }
+      },
+      "PanelOpcionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nombre": {
+            "type": "string"
+          }
+        }
+      },
+      "PanelResolucionDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoResolucion": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "fechaResolucion": {
+            "type": "string"
+          }
+        }
+      },
+      "PanelPlazoPrimeraCalificacionDTO": {
+        "type": "object",
+        "properties": {
+          "diasRestantes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vencido": {
+            "type": "boolean"
+          },
+          "diasSuspendidos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "PanelResumenDTO": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "porEstado": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "porEtapa": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "porResultado": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "porTipoInformacion": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "porEntidad": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "porDiasRestantes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "registroRespuestas": {
+            "$ref": "#/components/schemas/RegistroRespuestas"
+          }
+        }
+      },
+      "RegistroRespuestas": {
+        "type": "object",
+        "properties": {
+          "enPlazo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fueraDePlazo": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendientes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "noEvaluadas": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PanelPlazoResolucionDTO": {
+        "type": "object",
+        "properties": {
+          "diasRestantes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vencido": {
+            "type": "boolean"
+          },
+          "diasAdicionales": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "format": "date"
           }
         }
       }

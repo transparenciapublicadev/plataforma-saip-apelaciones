@@ -149,7 +149,12 @@ public class ActosNotificacionTtaipService {
             return acto(expedientes.reprocesarNotificacionFallida(c.getNumeroCedula(), c.getDestinatario(),
                     revision.observacion(), actor()).getNotificacionNueva());
         }
-        if ("VALIDADA".equals(n.getEstado()) && n.getFechaEficacia() != null) return acto(n);
+        if ("VALIDADA".equals(n.getEstado()) && n.getFechaEficacia() != null) {
+            expedientes.abrirDescargosPorNotificacion(n, actor());
+            var resolucion = n.getCedula().getResolucion();
+            if (resolucion.isActosDocumentales()) cerrarActosSiCompletos(n.getExpediente(), resolucion);
+            return acto(n);
+        }
         editable(n);
         var fecha = revision.fechaEficacia();
         var emision = n.getCedula().getFechaEmision();
@@ -170,6 +175,7 @@ public class ActosNotificacionTtaipService {
         var validada = expedientes.validarNotificacionManualmente(expedienteId, id,
                 new ValidarNotificacionManualRequest(null, actor(), revision.observacion(), null, null, fecha));
         Resolucion resolucion = n.getCedula().getResolucion();
+        expedientes.abrirDescargosPorNotificacion(validada, actor());
         if (resolucion.isActosDocumentales()) cerrarActosSiCompletos(validada.getExpediente(), resolucion);
         return acto(validada);
     }
@@ -182,14 +188,17 @@ public class ActosNotificacionTtaipService {
         for (var destinatario : destinatarios) {
             boolean validada = notificaciones.findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
                     resolucion.getId(), destinatario).stream()
-                    .anyMatch(n -> "VALIDADA".equals(n.getEstado()) && n.getFechaEficacia() != null);
+                    .anyMatch(n -> expediente.getId().equals(n.getExpediente().getId())
+                            && n.getCedula().getDestinatario() == destinatario && transiciones.evidenciaEficaz(n));
             if (!validada) return;
         }
-        resolucion.setFechaValidacionActos(LocalDateTime.now());
-        if (resolucion.getDecision() == Resolucion.DecisionResolucion.ADMISIBLE
-                || resolucion.getDecision() == Resolucion.DecisionResolucion.ADMITIDO) {
-            expedientes.recalcularFechaLimiteResolucion(expediente);
+        if (resolucion.getFechaValidacionActos() == null) resolucion.setFechaValidacionActos(LocalDateTime.now());
+        var admision = ExpedienteTtaipService.resolucionAdmision(expediente);
+        if (!ExpedienteTtaipService.admisionAbierta(expediente) || !Objects.equals(resolucion.getId(), admision == null ? null : admision.getId())) return;
+        if (expediente.getApelacion().getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION) {
+            transiciones.validarAvanceSegunda(expediente.getApelacion());
         }
+        expedientes.avanzarSegundaNotificada(expediente);
     }
 
     private NotificacionTtaip bloquear(Long expedienteId, Long id) {
@@ -238,6 +247,7 @@ public class ActosNotificacionTtaipService {
     private void agregarAnexos(java.util.Map<Long, DocumentoMetadataDTO> resultado, List<Documento> adjuntos) {
         if (adjuntos == null) return;
         adjuntos.stream().filter(d -> d.getEstado() == Documento.EstadoDocumento.ACTIVO
+                        && d.getPresentacionAdmision() == null
                         && (!d.isSoloInstitucionalTtaip() || autorizacion.esFuncionario() || autorizacion.esAdministradorOTtaip()))
                 .map(DocumentoMetadataDTO::from).forEach(d -> resultado.putIfAbsent(d.id(), d));
     }

@@ -5,6 +5,39 @@ import type { DocumentoMetadata } from '../models/documento.model';
 
 export type EtapaActuacion = 'PRIMERA_CALIFICACION' | 'SEGUNDA_CALIFICACION' | 'RESOLUCION_FINAL';
 
+export type TipoPresentacionAdmision = 'DESCARGOS' | 'INFORME_ORAL' | 'DOCUMENTACION_ADICIONAL';
+
+export interface PresentacionAdmision {
+  id: number;
+  operacion: string | null;
+  tipo: TipoPresentacionAdmision;
+  origen: 'CIUDADANO' | 'ENTIDAD_PUBLICA';
+  texto: string | null;
+  numeroOficio: string | null;
+  fechaPresentacion: string | null;
+  aceptada: boolean | null;
+  fechaRespuesta: string | null;
+  operacionRespuesta: string | null;
+  documentos: DocumentoMetadata[];
+  respuesta: DocumentoMetadata | null;
+}
+
+export interface ConsultaAdmision {
+  puedePresentarSolicitudes: boolean;
+  puedeResponderInformeOral: boolean;
+  fechaLimiteResolucion: string | null;
+  descargo: {
+    id: number;
+    estado: string;
+    fechaLimite: string;
+    fechaPresentacion: string | null;
+    resumen: string | null;
+    referencia: string | null;
+    puedePresentar: boolean;
+  } | null;
+  presentaciones: PresentacionAdmision[];
+}
+
 export interface DocumentoPreparado {
   clave: string;
   decision: string;
@@ -99,6 +132,15 @@ export class TtaipActuacionesService {
 
   informacion(id: number) {
     return this.http.get<InformacionComplementaria>(this.url(id, 'informacion-complementaria'));
+  }
+
+  presentacionesAdmision(id: number) {
+    return this.http.get<ConsultaAdmision>(this.url(id, 'presentaciones-admision'));
+  }
+
+  enviarPresentacionAdmision(id: number, body: FormData, respuestaId?: number) {
+    const ruta = respuestaId == null ? 'presentaciones-admision' : `presentaciones-admision/${respuestaId}/respuesta`;
+    return this.http.post<PresentacionAdmision>(this.url(id, ruta), body);
   }
 
   enviarInformacion(id: number, texto: string, archivos: File[], solicitud?: number) {

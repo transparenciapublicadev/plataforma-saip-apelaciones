@@ -33,7 +33,7 @@ public class PanelConsultaService {
     public PanelPaginaDTO<PanelSolicitudDTO> solicitudes(int pagina,int tamano,String busqueda,String estado,String etapa,
                                                         String orden,Long entidadId) {
         var alcance=alcance();
-        var filtro=filtro(false,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,null);
+        var filtro=filtro(false,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,null,false);
         LocalDate today=calendario.hoy();
         var datos=repository.consultar(false,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
         var rows=datos.filas().stream().map(row->solicitud(row,datos.observaciones().getOrDefault(id(row,"id_solicitud"),List.of()),today)).toList();
@@ -41,10 +41,11 @@ public class PanelConsultaService {
     }
     @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
     public PanelPaginaDTO<PanelApelacionDTO> apelaciones(int pagina,int tamano,String busqueda,String estado,String etapa,
-                                                       String orden,Long entidadId,String sala) {
+                                                       String orden,Long entidadId,String sala,boolean descargosPresentados) {
         var alcance=alcance();
-        var filtro=filtro(true,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala);
-        LocalDate today=LocalDate.now();
+        if (descargosPresentados) autorizacion.verificarTtaipOAdministrador();
+        var filtro=filtro(true,alcance,pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala,descargosPresentados);
+        LocalDate today=calendario.hoy();
         var datos=repository.consultar(true,alcance,filtro,today,threshold(today,-1),threshold(today,1),threshold(today,5));
         return pagina(datos.filas().stream().map(this::apelacion).toList(),datos,filtro,alcance,"INICIO_ACREDITADO_SUBSANACION_TTAIP;RECEPCION_TTAIP_PRIMERA_CALIFICACION");
     }
@@ -67,7 +68,7 @@ public class PanelConsultaService {
         return new PanelConsultaRepository.Alcance(user.getIdUsuario(),null,"CIUDADANO");
     }
     private PanelConsultaRepository.Filtro filtro(boolean apelaciones,PanelConsultaRepository.Alcance alcance,int pagina,int tamano,
-                                                  String busqueda,String estado,String etapa,String orden,Long entidadId,String sala) {
+                                                  String busqueda,String estado,String etapa,String orden,Long entidadId,String sala,boolean descargosPresentados) {
         if(pagina<0||pagina>10000)throw new IllegalArgumentException("La página debe estar entre 0 y 10000");
         if(tamano<1||tamano>100)throw new IllegalArgumentException("El tamaño debe estar entre 1 y 100");
         if(busqueda!=null&&busqueda.length()>120)throw new IllegalArgumentException("La búsqueda admite hasta 120 caracteres");
@@ -89,7 +90,7 @@ public class PanelConsultaService {
         if(entidadId!=null&&alcance.entidadId()!=null&&!entidadId.equals(alcance.entidadId()))throw new AccessDeniedException("La entidad no corresponde al actor");
         sala=blank(sala);
         if(sala!=null&&!sala.equals("SIN_SALA"))try {if(Long.parseLong(sala)<1)throw new NumberFormatException();}catch(NumberFormatException ex){throw new IllegalArgumentException("Sala no válida");}
-        return new PanelConsultaRepository.Filtro(pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala);
+        return new PanelConsultaRepository.Filtro(pagina,tamano,busqueda,estado,etapa,orden,entidadId,sala,descargosPresentados);
     }
     private static String blank(String value){return value==null||value.isBlank()?null:value.trim();}
     /** SQL bands use the existing SAIP clock; no calendar or efficacy policy is changed. */
@@ -125,7 +126,7 @@ public class PanelConsultaService {
             str(r,"numero_solicitud_externa"),str(r,"calificacion_primera"),str(r,"calificacion_segunda"),"resueltos".equals(str(r,"a_etapa")),str(r,"a_etapa"),
             id(r,"id_expediente_ttaip")==null?null:new PanelApelacionDTO.PanelExpedienteDTO(id(r,"id_expediente_ttaip"),id(r,"id_sala_ttaip")==null?null:new PanelOpcionDTO(id(r,"id_sala_ttaip"),str(r,"sala_nombre"))),
             resolution(r,"rf","RESOLUCION_FINAL"),resolution(r,"r1","PRIMERA_CALIFICACION"),resolution(r,"r2","SEGUNDA_CALIFICACION"),clock(r),
-            plazoPrimeraCalificacion(r), Boolean.TRUE.equals(r.get("actos_pendientes")), Boolean.TRUE.equals(r.get("informacion_pendiente")));
+            plazoPrimeraCalificacion(r), plazoResolucion(r), Boolean.TRUE.equals(r.get("actos_pendientes")), Boolean.TRUE.equals(r.get("informacion_pendiente")), Boolean.TRUE.equals(r.get("descargos_pendientes")));
     }
     private PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO plazoPrimeraCalificacion(Map<String,Object> row) {
         if (!"EN_CALIFICACION_1".equals(str(row,"a_estado")) || id(row,"id_expediente_ttaip") == null
@@ -144,6 +145,17 @@ public class PanelConsultaService {
         int diasRestantes = vencido ? 0 : calendario.contarDiasHabiles(desde, limite);
         return new PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO(diasRestantes, vencido, suspendidos, limite);
     }
+    private PanelApelacionDTO.PanelPlazoResolucionDTO plazoResolucion(Map<String,Object> fila) {
+        LocalDate inicio = day(fila, "inicio_resolucion_entidad");
+        if (inicio == null) return null;
+        Number suspension = (Number) fila.get("dias_adicionales_resolucion");
+        int diasAdicionales = suspension == null ? 0 : suspension.intValue();
+        LocalDate limite = ExpedienteTtaipService.limiteDocumental(inicio, diasAdicionales);
+        LocalDate hoy = calendario.hoy();
+        return new PanelApelacionDTO.PanelPlazoResolucionDTO(DiasHabilesUtil.diasHabilesVigentes(inicio, limite, hoy),
+                hoy.isAfter(limite), diasAdicionales, limite);
+    }
+
     private PanelApelacionDTO.PanelResolucionDTO resolution(Map<String,Object> r,String prefix,String type) {
         return id(r,prefix+"_id")==null?null:new PanelApelacionDTO.PanelResolucionDTO(id(r,prefix+"_id"),type,str(r,prefix+"_decision"),text(r,prefix+"_fecha"));
     }

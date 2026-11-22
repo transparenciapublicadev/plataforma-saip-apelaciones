@@ -96,7 +96,7 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     const req = http.expectOne(r => r.url.endsWith('/calendario'));
     req.flush({ plazos });
   }
-  it('cada etapa abierta cuenta el saldo desde el ingreso con el plazo oficial, y la fecha aparece una sola vez', () => {
+  it('usa el plazo de resolución informado por el servidor y conserva el reloj de calificación', () => {
     const f = page();
     f.componentInstance.hoyISO.set('2026-11-11');
     calendario({ TTAIP_ELEVACION: 2, TTAIP_CALIFICACION_1: 8, TTAIP_SUBSANACION: 2, TTAIP_CALIFICACION_2: 10, TTAIP_RESOLUCION: 10 });
@@ -104,7 +104,8 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
       row({ estado: 'EN_CALIFICACION_2', fechaApelacion: '2026-11-07' }),
       row({ id: 22, expediente: 'EXP-22', estado: 'PENDIENTE_ELEVACION', fechaApelacion: '2026-11-07' }),
       row({ id: 23, expediente: 'EXP-23', estado: 'EN_CALIFICACION_1', fechaApelacion: '2026-11-07' }),
-      row({ id: 24, expediente: 'EXP-24', estado: 'EN_RESOLUCION', fechaApelacion: '2026-11-07', calificacionPrimera: 'ADMISIBLE' }),
+      row({ id: 24, expediente: 'EXP-24', estado: 'EN_RESOLUCION', fechaApelacion: '2026-11-07', calificacionPrimera: 'ADMISIBLE',
+        plazoResolucion: { diasRestantes: 15, vencido: false, diasAdicionales: 0, fechaLimite: '2026-12-02' } }),
     ]);
     f.detectChanges();
     const rows = [...f.nativeElement.querySelectorAll('.tribunal-row')].map((node: HTMLElement) => node.textContent);
@@ -122,12 +123,13 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(rows[2]).toContain('6d');
     expect(rows[2]).not.toContain('7 días háb.');
     expect(rows[2]).not.toContain('8 días háb.');
-    expect(rows[3]).toContain('8d');
+    expect(rows[3]).toContain('15d');
+    expect(rows[3]).toContain('límite 02/12/2026');
     expect(rows[3]).toContain('restantes');
     expect(rows[3]).not.toContain('10 días háb.');
     expect(card('1ra Calif.')?.textContent).toContain('8 días háb.');
     expect(card('1ra Calif.')?.textContent).not.toContain('7 días háb.');
-    expect(card('Res. Final')?.textContent).toContain('10 días háb.');
+    expect(card('Res. Final')?.textContent).toContain('17 días háb. de base');
     expect(card('Subsanación')?.disabled).toBe(true);
     expect(card('Resueltos')?.disabled).toBe(true);
     expect(cards).toHaveLength(7);

@@ -34,6 +34,9 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
             Long cedulaId,
             Documento.EstadoDocumento estado);
 
+    List<Documento> findByPresentacionAdmision_IdAndEstadoOrderByIdDocumentoAsc(
+            Long presentacionId, Documento.EstadoDocumento estado);
+
     Optional<Documento> findByIdDocumentoAndEstado(
             Long documentoId,
             Documento.EstadoDocumento estado);

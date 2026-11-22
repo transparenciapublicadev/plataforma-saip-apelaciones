@@ -37,12 +37,6 @@
               <div class="rounded-md p-3 border border-border"><h2 class="eyebrow">Admisión y notificaciones</h2><p class="font-mono text-xs mt-2">Admisión ID {{ admision()?.id || 'No identificada' }}</p><p role="status" class="text-xs mt-2">{{ notificacionesTexto() }}</p><p class="text-xs text-muted-foreground mt-2">Se contrastan cédula, destinatario y evidencia registrada de esa actuación. Un envío técnico no acredita eficacia ni firma.</p></div>
             </section>
           </div>
-          <div role="tabpanel" id="final-panel-descargos" aria-labelledby="final-tab-descargos" [hidden]="activeTab() !== 'descargos'" class="p-6 space-y-4">
-            <h2 class="font-display text-xl">Descargos de la entidad</h2><p role="status" class="text-sm text-muted-foreground">{{ descargosTexto() }}</p>
-            @if (descargos(); as values) { @for (d of values; track d.id) { <section class="rounded-md p-4 border border-border bg-card text-sm"><h3 class="font-mono text-xs">Requerimiento ID {{ d.id }} · Entidad ID {{ d.entidadId }}</h3><p class="mt-2 font-semibold">{{ getEstadoDisplay(d.estadoDescargo) }}</p><dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-xs"><div><dt class="eyebrow">Requerido</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaRequerimiento) | date:'dd/MM/yyyy') || 'No informado' }}</dd></div><div><dt class="eyebrow">Límite registrado</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaLimiteDescargo) | date:'dd/MM/yyyy') || 'No informado' }}</dd></div><div><dt class="eyebrow">Presentación</dt><dd class="font-mono mt-1">{{ (fechaVisible(d.fechaPresentacion) | date:'dd/MM/yyyy') || 'No informada' }}</dd></div></dl><p class="whitespace-pre-wrap mt-3">{{ d.resumenDescargo || 'Resumen no informado' }}</p><p class="text-xs text-muted-foreground mt-2">Referencia declarada: {{ d.documentoDescargo || 'No informada' }}. No se convierte esta referencia en descarga ni firma verificada.</p></section> } @empty { <p role="status" class="text-sm text-muted-foreground">La consulta no devuelve requerimientos de descargos registrados.</p> } }
-            <p class="text-xs text-muted-foreground">El servidor determina la presentación o el vencimiento. No se calcula ni procesa un plazo desde este formulario. Se muestran descargos asociados a esta apelación y entidad. Su relación con la admisión sigue el criterio vigente del servidor por expediente, entidad y fecha.</p>
-            <a [routerLink]="['/ttaip/apelacion', ap.expediente]" class="btn-ghost-brand">Consultar actuaciones y notificaciones del expediente</a>
-          </div>
           <div role="tabpanel" id="final-panel-adjuntos" aria-labelledby="final-tab-adjuntos" [hidden]="activeTab() !== 'adjuntos'" class="p-6">
             @if (loadingDocuments()) { <p role="status">Consultando documentos por relación…</p> }
             @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" (click)="cargarDocumentos()" class="btn-ghost-brand mt-3">Reintentar consulta documental</button> }
@@ -54,9 +48,10 @@
             }
             @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
           </div>
-          <div role="tabpanel" id="final-panel-subprocesos" aria-labelledby="final-tab-subprocesos" [hidden]="activeTab() !== 'subprocesos'" class="p-6">
+          <div role="tabpanel" id="final-panel-subprocesos" aria-labelledby="final-tab-subprocesos" tabindex="0" [hidden]="activeTab() !== 'subprocesos'" class="p-4 sm:p-6 space-y-8">
             @if (activeTab() === 'subprocesos' && expedienteActuacion(); as expedienteId) {
-              <app-informacion-complementaria [expedienteId]="expedienteId" [tribunal]="true" />
+              <app-presentaciones-admision [expedienteId]="expedienteId" [numeroExpediente]="ap.expediente" contexto="tribunal" />
+              <app-informacion-complementaria class="block border-t border-border pt-6" [expedienteId]="expedienteId" [tribunal]="true" />
             }
           </div>
         </section>
@@ -144,16 +139,39 @@
             </section>
           }
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">03 · Sustento</span><h2 class="form-section-title">Fundamentos de la resolución</h2></div><div class="p-6 space-y-4"><div class="field"><label for="final-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="final-grounds" class="field-input" rows="8" style="resize: vertical; min-height: 160px" [(ngModel)]="fundamentos" [disabled]="!puedePrepararBorrador()" aria-required="true" aria-describedby="final-grounds-hint final-validation" [attr.aria-invalid]="fundamentos.trim().length > 5000"></textarea><p id="final-grounds-hint" class="field-hint font-mono">{{ fundamentos.trim().length }} / 5000 caracteres</p></div>@if (showNulidad() || selectedDecision() === 'estese_a_lo_resuelto') { <div class="field"><label for="final-observations" class="field-label">Sustento específico o referencia al pronunciamiento previo</label><textarea id="final-observations" class="field-input" rows="3" [(ngModel)]="observacionesResolucion" [disabled]="!puedePrepararBorrador()" aria-describedby="final-validation"></textarea></div> }<p id="final-validation" role="status" class="field-hint">{{ validacionTexto() }}</p></div></section>
-          <section class="form-shell"><div class="form-section-header"><span class="eyebrow">04 · Archivos seleccionados</span><h2 class="form-section-title">Adjuntos opcionales · subida independiente</h2></div><div class="p-6 space-y-3">@if (!archivos().length) {
-            <app-multi-file-upload-zone label="Adjuntos de la resolución" [keyboardAccessible]="true" [batch]="true" [allowText]="true"
-              [files]="documentosSeleccionados()" (filesChange)="seleccionarDocumentos($event)" [disabled]="!puedePrepararBorrador()" />
-          }
-          <p class="field-hint">Los adjuntos se suben después de registrar la decisión. Puedes consultar su estado y reintentar las subidas pendientes desde aquí.</p>
-          @for (item of archivos(); track item.file) { <div class="rounded-md p-3 border border-border text-sm"><p class="font-medium">{{ item.file.name }}</p><p role="status" class="text-xs mt-1">{{ getEstadoDisplay(item.estado) }}{{ item.documentoId ? ' · Documento ID ' + item.documentoId : '' }}</p><p class="text-xs text-muted-foreground mt-1">{{ item.mensaje || 'La selección local no acredita almacenamiento.' }}</p>@if (item.estado === 'incierto' && item.documentoId) { <button type="button" class="btn-ghost-brand mt-2" [disabled]="loading()" (click)="recuperarArchivo(item)">Consultar este documento sin subir de nuevo</button> }</div> }@if (resultadoConfirmado() && archivos().length) { <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="reintentarArchivos()">Subir solo pendientes o rechazados</button><p class="field-hint">No repite la resolución ni los archivos registrados o inciertos. Una subida incierta sin ID requiere revisar el expediente.</p> }</div></section>
           <a class="btn-ghost-brand" [routerLink]="['/ttaip/apelacion', ap.expediente]" [queryParams]="{ tab: 'notificaciones' }">Ver actos de notificación del expediente</a>
           <app-official-docs-section #oficiales [expediente]="ap.expediente" [expedienteId]="expedienteActuacion()" [decisionBackend]="decisionDocumental()" stage="final" [decision]="selectedDecision()" [ctx]="docCtx()" [considerando]="fundamentos"></app-official-docs-section>
           <button type="button" class="btn-ghost-brand w-full justify-center !py-3" [disabled]="!selectedDecision()" [attr.aria-expanded]="showPreview()" aria-controls="final-draft" (click)="togglePreview()">@if (showPreview()) { <svg aria-hidden="true" lucideEyeOff class="w-4 h-4"></svg> } @else { <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg> }{{ showPreview() ? 'Ocultar' : 'Previsualizar' }} PDF de resolución final</button>
           @if (showPreview()) { <div id="final-draft"><app-official-preview stage="final" [decision]="selectedDecision()" [considerando]="fundamentos || 'Fundamentos locales pendientes de completar.'" [cedulaVariant]="cedulaVariant()" [ctx]="docCtx()"></app-official-preview></div> }
+          @if ((selectedDecision() && oficiales.documentosListos()) || archivos().length) {
+            <section id="final-optional-attachments" class="form-shell">
+              <div class="form-section-header">
+                <h2 class="form-section-title">Documentos adicionales (opcional)</h2>
+              </div>
+              <div class="p-6 space-y-3">
+                @if (!archivos().length) {
+                  <app-multi-file-upload-zone label="Documentos adicionales" [keyboardAccessible]="true" [batch]="true"
+                    [allowText]="true" [files]="documentosSeleccionados()" (filesChange)="seleccionarDocumentos($event)"
+                    [disabled]="!puedePrepararBorrador()" />
+                  <p class="field-hint">Puede emitir y enviar con la resolución y las cédulas firmadas. Si agrega documentos adicionales, se subirán por separado después del registro.</p>
+                }
+                @for (item of archivos(); track item.file) {
+                  <div class="rounded-md p-3 border border-border text-sm">
+                    <p class="font-medium">{{ item.file.name }}</p>
+                    <p role="status" class="text-xs mt-1">{{ getEstadoDisplay(item.estado) }}{{ item.documentoId ? ' · Documento ID ' + item.documentoId : '' }}</p>
+                    <p class="text-xs text-muted-foreground mt-1">{{ item.mensaje || 'La selección local no acredita almacenamiento.' }}</p>
+                    @if (item.estado === 'incierto' && item.documentoId) {
+                      <button type="button" class="btn-ghost-brand mt-2" [disabled]="loading()" (click)="recuperarArchivo(item)">Consultar este documento sin subir de nuevo</button>
+                    }
+                  </div>
+                }
+                @if (resultadoConfirmado() && archivos().length) {
+                  <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="reintentarArchivos()">Subir solo pendientes o rechazados</button>
+                  <p class="field-hint">No repite la resolución ni los archivos registrados o inciertos. Una subida incierta sin ID requiere revisar el expediente.</p>
+                }
+              </div>
+            </section>
+          }
           <p class="text-xs text-muted-foreground">Borradores, selección de archivos y seguimiento del envío permanecen solo en memoria. Se pierden al cambiar expediente, antecedentes o sesión, o al recargar. Mientras haya un registro pendiente no se puede cambiar su decisión. Cancelar una petición del cliente no revierte una escritura aceptada por el servidor.</p>
           @if (selectedDecision() && !oficiales.documentosListos()) {
             <p class="text-sm text-muted-foreground" role="status">Cargue la resolución y las cédulas firmadas para emitir y enviar la decisión.</p>

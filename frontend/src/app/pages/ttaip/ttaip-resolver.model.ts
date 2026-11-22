@@ -1,3 +1,4 @@
+import { hoyLima } from '../../models/calendario.model';
 import { Apelacion } from '../../models/apelacion.model';
 import { DocumentoMetadata } from '../../models/documento.model';
 import { positiveId, documentosRelacionados } from './ttaip-calificar.model';
@@ -98,18 +99,25 @@ export function descargosConsultados(ap: Apelacion | null) {
 export function estadoDescargos(ap: Apelacion | null): string {
   const values = descargosConsultados(ap), r = admisionFinal(ap);
   if (!values || !r || !positiveId(ap?.entidadId) || !fechaRegistrada(r.fechaResolucion)) return 'Información incompleta de descargos';
-  if (values.some(d => d.estadoDescargo === 'REQUERIDO')) return 'Descargos pendientes de presentación o procesamiento por el servidor';
+  const hoy = hoyLima();
+  const vencido = (fecha: string | null | undefined) => fechaRegistrada(fecha) && fecha.slice(0, 10) < hoy;
+  if (values.some(d => d.estadoDescargo === 'REQUERIDO' && !vencido(d.fechaLimiteDescargo))) return 'Descargos pendientes de presentación o procesamiento por el servidor';
   const concluded = values.some(d => fechaRegistrada(d.fechaRequerimiento) && d.fechaRequerimiento.slice(0, 10) >= r.fechaResolucion!.slice(0, 10)
     && (['PRESENTADO', 'PRESENTADO_EXTEMPORANEO'].includes(d.estadoDescargo || '') ? fechaRegistrada(d.fechaPresentacion) && text(d.resumenDescargo)
       : d.estadoDescargo === 'VENCIDO_SIN_PRESENTACION' && fechaRegistrada(d.fechaLimiteDescargo)));
-  return concluded ? 'Presentación o vencimiento registrado por el servidor' : 'No consta un requerimiento concluido compatible con la admisión';
+  if (concluded) return 'Presentación o vencimiento registrado por el servidor';
+  if (values.some(d => d.estadoDescargo === 'REQUERIDO' && vencido(d.fechaLimiteDescargo) && fechaRegistrada(d.fechaRequerimiento)
+    && d.fechaRequerimiento.slice(0, 10) >= r.fechaResolucion!.slice(0, 10))) return 'Plazo de descargos vencido';
+  return 'No consta un requerimiento concluido compatible con la admisión';
 }
 export function motivoFinal(ap: Apelacion | null, recepcion?: ConsultaRecepcion): string {
   if (!ap) return 'No se ha recuperado la apelación.';
   if (finalConsultada(ap)) return 'Ya existe una resolución final registrada. Consulte la actuación; no se permite otra.';
   if (ap.resolucion !== null || ap.resuelta !== false || ap.resultado !== null || !Array.isArray(ap.resoluciones)
     || ap.resoluciones.some(r => r.tipoResolucion === 'RESOLUCION_FINAL')) return 'Información incompleta o contradictoria de la resolución final previa.';
-  if (ap.estado !== 'EN_RESOLUCION') return 'Estado incompatible con resolución final: ' + ap.estado + '.';
+  const segundaDocumentalValidada = ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION'
+    && fechaRegistrada(ap.resolucionSegundaCalificacion?.fechaValidacionActos);
+  if (ap.estado !== 'EN_RESOLUCION' && !segundaDocumentalValidada) return 'Estado incompatible con resolución final: ' + ap.estado + '.';
   const aggregate = ap.expedienteTtaip;
   if (!positiveId(aggregate?.id) || aggregate?.numeroExpediente !== ap.expediente) return 'Información incompleta del expediente TTAIP.';
   if (ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null || ap.resoluciones.some(r => r.tipoResolucion === 'SEGUNDA_CALIFICACION')) {
@@ -118,7 +126,6 @@ export function motivoFinal(ap: Apelacion | null, recepcion?: ConsultaRecepcion)
     const reason = motivoRecepcion(ap, req.id!, recepcion); if (reason) return reason;
   } else if (ap.resolucionSegundaCalificacion !== null || ap.calificacionSegunda !== null || !admisionFinal(ap)) return 'Información incompleta de la admisión correspondiente.';
   if (eficaciaAdmision(ap) !== 'Ambas evidencias de eficacia consultadas') return eficaciaAdmision(ap);
-  if (estadoDescargos(ap) !== 'Presentación o vencimiento registrado por el servidor') return estadoDescargos(ap);
   return '';
 }
 export function finalCompatible(ap: Apelacion, op: FinalOperacion): boolean {

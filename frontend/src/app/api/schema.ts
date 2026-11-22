@@ -3314,6 +3314,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["presentaciones"];
+        put?: never;
+        post: operations["presentar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision/{id}/respuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["responderInformeOral"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/panel/apelaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar página y agregados TTAIP del actor actual
+         * @description Titular o entidad desde la identidad actual; TTAIP/administración conservan su alcance autorizado. Plazos de primera calificación y subsanación cuando consta el inicio correspondiente.
+         */
+        get: operations["apelaciones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4035,6 +4087,8 @@ export interface components {
             /** @description Metadatos documentales seguros asociados directamente a la resolución */
             documentos?: components["schemas"]["DocumentoMetadataDTO"][];
             cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
+            /** @description Fecha en que se acreditaron los actos documentales de notificación de la resolución */
+            fechaValidacionActos?: string;
         };
         /** @description Sala del Tribunal de Transparencia asignada a un expediente */
         SalaTtaipDTO: {
@@ -5265,6 +5319,192 @@ export interface components {
             fechaRespuesta?: string;
             adjuntos?: components["schemas"]["DocumentoMetadataDTO"][];
             adjuntosRespuesta?: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        ConsultaPresentacionesAdmisionTtaip: {
+            puedePresentarSolicitudes?: boolean;
+            puedeResponderInformeOral?: boolean;
+            /** Format: date */
+            fechaLimiteResolucion?: string;
+            descargo?: components["schemas"]["DescargoEnAdmisionTtaip"];
+            presentaciones?: components["schemas"]["PresentacionAdmisionTtaip"][];
+        };
+        DescargoEnAdmisionTtaip: {
+            /** Format: int64 */
+            id?: number;
+            estado?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            /** Format: date */
+            fechaPresentacion?: string;
+            resumen?: string;
+            referencia?: string;
+            puedePresentar?: boolean;
+        };
+        PresentacionAdmisionTtaip: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            operacion?: string;
+            /** @enum {string} */
+            tipo?: "DESCARGOS" | "INFORME_ORAL" | "DOCUMENTACION_ADICIONAL";
+            /** @enum {string} */
+            origen?: "CIUDADANO" | "ENTIDAD_PUBLICA";
+            texto?: string;
+            numeroOficio?: string;
+            /** Format: date-time */
+            fechaPresentacion?: string;
+            aceptada?: boolean;
+            /** Format: date-time */
+            fechaRespuesta?: string;
+            /** Format: uuid */
+            operacionRespuesta?: string;
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
+            respuesta?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        EscritoAdmisionTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** @enum {string} */
+            tipo: "DESCARGOS" | "INFORME_ORAL" | "DOCUMENTACION_ADICIONAL";
+            /** Format: int64 */
+            descargoId?: number;
+            texto?: string;
+            numeroOficio?: string;
+            /** Format: binary */
+            archivo?: string;
+            anexos?: string[];
+        };
+        RespuestaInformeOralTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            aceptada: boolean;
+            /** Format: binary */
+            archivo: string;
+        };
+        PanelPaginaDTOPanelApelacionDTO: {
+            contenido?: components["schemas"]["PanelApelacionDTO"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+            ultima?: boolean;
+            resumen?: components["schemas"]["PanelResumenDTO"];
+            entidades?: components["schemas"]["PanelOpcionDTO"][];
+            salas?: components["schemas"]["PanelOpcionDTO"][];
+            opcionesLimitadas?: boolean;
+            alcance?: string;
+            fuentePlazo?: string;
+        };
+        PanelApelacionDTO: {
+            /** Format: int64 */
+            id?: number;
+            expediente?: string;
+            fundamentos?: string;
+            estado?: string;
+            resultado?: string;
+            fechaApelacion?: string;
+            /** Format: int64 */
+            solicitudId?: number;
+            solicitudExpediente?: string;
+            solicitudAsunto?: string;
+            /** Format: int64 */
+            ciudadanoId?: number;
+            ciudadanoNombre?: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            entidadExternaNombre?: string;
+            resumenSolicitudOriginal?: string;
+            tipoOrigen?: string;
+            numeroSolicitudExterna?: string;
+            calificacionPrimera?: string;
+            calificacionSegunda?: string;
+            resuelta?: boolean;
+            etapa?: string;
+            expedienteTtaip?: components["schemas"]["PanelExpedienteDTO"];
+            resolucion?: components["schemas"]["PanelResolucionDTO"];
+            resolucionPrimeraCalificacion?: components["schemas"]["PanelResolucionDTO"];
+            resolucionSegundaCalificacion?: components["schemas"]["PanelResolucionDTO"];
+            plazoSubsanacion?: components["schemas"]["PlazoSubsanacionTtaipDTO"];
+            /** @description Plazo de primera calificación si consta el ingreso al Tribunal y todavía no se registró la calificación */
+            plazoPrimeraCalificacion?: components["schemas"]["PanelPlazoPrimeraCalificacionDTO"];
+            actosNotificacionPendientes?: boolean;
+            informacionComplementariaPendiente?: boolean;
+            descargosPendientes?: boolean;
+            /** @description Plazo de resolución desde la notificación eficaz de la admisión a la entidad */
+            plazoResolucion?: components["schemas"]["PanelPlazoResolucionDTO"];
+        };
+        PanelExpedienteDTO: {
+            /** Format: int64 */
+            id?: number;
+            sala?: components["schemas"]["PanelOpcionDTO"];
+        };
+        PanelOpcionDTO: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+        };
+        PanelResolucionDTO: {
+            /** Format: int64 */
+            id?: number;
+            tipoResolucion?: string;
+            decision?: string;
+            fechaResolucion?: string;
+        };
+        PanelPlazoPrimeraCalificacionDTO: {
+            /** Format: int32 */
+            diasRestantes?: number;
+            vencido?: boolean;
+            /** Format: int32 */
+            diasSuspendidos?: number;
+            /** Format: date */
+            fechaLimite?: string;
+        };
+        PanelResumenDTO: {
+            /** Format: int64 */
+            total?: number;
+            porEstado?: {
+                [key: string]: number;
+            };
+            porEtapa?: {
+                [key: string]: number;
+            };
+            porResultado?: {
+                [key: string]: number;
+            };
+            porTipoInformacion?: {
+                [key: string]: number;
+            };
+            porEntidad?: {
+                [key: string]: number;
+            };
+            porDiasRestantes?: {
+                [key: string]: number;
+            };
+            registroRespuestas?: components["schemas"]["RegistroRespuestas"];
+        };
+        RegistroRespuestas: {
+            /** Format: int64 */
+            enPlazo?: number;
+            /** Format: int64 */
+            fueraDePlazo?: number;
+            /** Format: int64 */
+            pendientes?: number;
+            /** Format: int64 */
+            noEvaluadas?: number;
+        };
+        PanelPlazoResolucionDTO: {
+            /** Format: int32 */
+            diasRestantes?: number;
+            vencido?: boolean;
+            /** Format: int32 */
+            diasAdicionales?: number;
+            /** Format: date */
+            fechaLimite?: string;
         };
     };
     responses: never;
@@ -11184,6 +11424,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Acto"][];
+                };
+            };
+        };
+    };
+    presentaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaPresentacionesAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    presentar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["EscritoAdmisionTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresentacionAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    responderInformeOral: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RespuestaInformeOralTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresentacionAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    apelaciones: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+                busqueda?: string;
+                estado?: string;
+                etapa?: string;
+                orden?: string;
+                entidadId?: number;
+                sala?: string;
+                descargosPresentados?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelPaginaDTOPanelApelacionDTO"];
                 };
             };
         };

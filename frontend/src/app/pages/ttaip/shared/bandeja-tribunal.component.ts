@@ -1,3 +1,4 @@
+import { PresentacionesAdmisionComponent } from './presentaciones-admision.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -8,13 +9,13 @@ import { ActosNotificacionComponent } from './actos-notificacion.component';
 
 @Component({
   selector: 'app-bandeja-tribunal',
-  imports: [RouterLink, ActosNotificacionComponent],
+  imports: [RouterLink, ActosNotificacionComponent, PresentacionesAdmisionComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="form-shell mb-6">
       <div class="form-section-header">
         <button type="button" class="btn-ghost-brand" [attr.aria-expanded]="abierta()" (click)="alternar()">
-          {{ entidad() ? 'Comunicaciones del Tribunal' : 'Apelaciones y notificaciones del Tribunal' }}
+          {{ entidad() ? 'Comunicaciones del Tribunal' : 'Apelaciones y comunicaciones del Tribunal' }}
         </button>
       </div>
       @if (abierta()) {
@@ -30,6 +31,11 @@ import { ActosNotificacionComponent } from './actos-notificacion.component';
                 <div class="flex flex-wrap gap-2 justify-between items-center">
                   <span class="font-mono">{{ ap.expediente }}</span>
                   @if (entidad()) {
+                    @if (ap.descargosPendientes) {
+                      <a class="btn-brand" [routerLink]="['/funcionario/apelaciones', ap.expediente]" [queryParams]="{ tab: 'subprocesos' }">
+                        Descargos requeridos por el Tribunal
+                      </a>
+                    }
                     @if (ap.informacionComplementariaPendiente) {
                       <a class="btn-brand" [routerLink]="['/funcionario/apelaciones', ap.expediente]" [queryParams]="{ tab: 'subprocesos' }">
                         Responder información complementaria
@@ -40,11 +46,15 @@ import { ActosNotificacionComponent } from './actos-notificacion.component';
                     </a>
                   } @else if (ap.expedienteTtaip?.id) {
                     <button type="button" class="btn-ghost-brand" [attr.aria-expanded]="seleccion() === ap.id"
-                      (click)="seleccion.set(seleccion() === ap.id ? null : ap.id)">Ver notificaciones</button>
+                      (click)="seleccion.set(seleccion() === ap.id ? null : ap.id)">Ver expediente y actuaciones</button>
                   }
                 </div>
                 @if (seleccion() === ap.id && ap.expedienteTtaip?.id; as id) {
-                  <div class="mt-3"><app-actos-notificacion [expedienteId]="id" [expediente]="ap.expediente" /></div>
+                  <div class="mt-3 space-y-4">
+                    <app-actos-notificacion [expedienteId]="id" [expediente]="ap.expediente" />
+                    <app-presentaciones-admision [expedienteId]="id" [numeroExpediente]="ap.expediente"
+                      contexto="ciudadano" [ocultarSinAdmision]="true" />
+                  </div>
                 }
               </article>
             } @empty {

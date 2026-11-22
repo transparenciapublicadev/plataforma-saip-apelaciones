@@ -1,4 +1,4 @@
-import { TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
+import { ConsultaAdmision, InformacionComplementaria, PresentacionAdmision, TtaipActuacionesService } from '../../services/ttaip-actuaciones.service';
 import { provideRouter, convertToParamMap } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -119,6 +119,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
       { provide: TtaipActuacionesService, useValue: {
         actos: () => of([]),
         informacion: () => of({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
+        presentacionesAdmision: () => of({ descargo: null, presentaciones: [] }),
       } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);
@@ -258,6 +259,34 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
     const f = page(); const tab = f.nativeElement.querySelector('#detail-tab-apelacion') as HTMLButtonElement; tab.focus(); tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); f.detectChanges();
     const next = f.nativeElement.querySelector('#detail-tab-subprocesos') as HTMLButtonElement; expect(document.activeElement).toBe(next); expect(next.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#detail-panel-subprocesos')).not.toBeNull(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
   });
+  it('el Tribunal recibe los escritos en su propia pestaña del expediente', () => {
+    const f = page(data({ estado: 'EN_RESOLUCION' }));
+    const tab = f.nativeElement.querySelector('#detail-tab-requerimientos') as HTMLButtonElement;
+    expect(tab.textContent).toContain('Requerimientos del administrado');
+    const actuaciones = TestBed.inject(TtaipActuacionesService);
+    const basePresentacion: Omit<PresentacionAdmision, 'id' | 'tipo'> = {
+      origen: 'CIUDADANO', operacion: 'operación-sintética', texto: null, numeroOficio: null,
+      fechaPresentacion: '2026-11-21T10:30:00', aceptada: null, fechaRespuesta: null,
+      operacionRespuesta: null, documentos: [], respuesta: null,
+    };
+    vi.spyOn(actuaciones, 'presentacionesAdmision').mockReturnValue(of<ConsultaAdmision>({
+      puedePresentarSolicitudes: false, puedeResponderInformeOral: true, fechaLimiteResolucion: null, descargo: null,
+      presentaciones: [
+        { ...basePresentacion, id: 2, tipo: 'INFORME_ORAL', origen: 'CIUDADANO', texto: 'Motivo de la audiencia', documentos: [] },
+        { ...basePresentacion, id: 3, tipo: 'DOCUMENTACION_ADICIONAL', origen: 'ENTIDAD_PUBLICA', numeroOficio: 'OF-01',
+          documentos: [{ id: 11, nombreOriginal: 'sustento.pdf' }] },
+      ],
+    }));
+    vi.spyOn(actuaciones, 'informacion').mockReturnValue(of<InformacionComplementaria>({ etapa: 'RESOLUCION_FINAL', entidad: 'Entidad sintética', puedeSolicitar: false, fechaLimiteCalificacion: null, diasSuspendidos: 0, solicitudes: [] }));
+    tab.click();
+    f.detectChanges();
+    const panel = f.nativeElement.querySelector('#detail-panel-requerimientos') as HTMLElement;
+    expect(panel.textContent).toContain('Motivo de la audiencia');
+    expect(panel.textContent).toContain('Responder solicitud');
+    expect(panel.textContent).toContain('OF-01');
+    expect(panel.querySelector('[aria-label="Previsualizar sustento.pdf"]')).not.toBeNull();
+  });
+
   it('una sesión ilegible no deja datos anteriores ni inicia una consulta privada', () => {
     localStorage.setItem('usuario', '{'); const f = TestBed.createComponent(TtaipResolucionDetalleComponent); expect(() => f.detectChanges()).not.toThrow(); expect(f.componentInstance.apelacion()).toBeNull(); expect(http.match(() => true)).toHaveLength(0);
   });
