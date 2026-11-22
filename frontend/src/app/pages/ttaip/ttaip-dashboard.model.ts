@@ -100,6 +100,14 @@ export interface PlazoStatusResult {
  * y los feriados del calendario oficial. Sin calendario o sin fecha, el saldo queda sin informar.
  */
 export function computePlazoStatus(ap: Apelacion, s: StageMeta, hoyISO: string, cfg: CalendarioConfig | null = null): PlazoStatusResult {
+  if (ap.plazoResolucion) {
+    const { diasRestantes, vencido, diasAdicionales, fechaLimite } = ap.plazoResolucion;
+    const total = 17 + diasAdicionales;
+    const efectivos = Math.max(0, total - diasRestantes);
+    return { restantes: diasRestantes, pct: Math.min(100, efectivos / total * 100),
+      tone: vencido ? 'critical' : diasRestantes <= 2 ? 'warn' : 'ok',
+      suspendido: diasAdicionales, efectivos, informado: true, vencido, limite: fechaLimite };
+  }
   if (s.key === 'calificacion1' && ap.plazoPrimeraCalificacion?.fechaLimite) {
     const { diasRestantes, vencido, diasSuspendidos, fechaLimite } = ap.plazoPrimeraCalificacion;
     const efectivos = Math.max(0, 7 - diasRestantes);
@@ -121,6 +129,9 @@ export function computePlazoStatus(ap: Apelacion, s: StageMeta, hoyISO: string, 
     return { restantes, pct, tone: vencido ? 'critical' : tone, suspendido: 0, efectivos, informado: true, vencido, limite: recordedDate(ap.plazoSubsanacion?.fechaLimite) };
   }
 
+  if (s.key === 'resolucion' || ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
+    return { restantes: 0, pct: 0, tone: 'ok', suspendido: 0, efectivos: 0, informado: false, vencido: false, limite: null };
+  }
   const saldo = saldoDesdeIngreso(recordedDate(ap.fechaApelacion), s.plazoDias, cfg, hoyISO);
   if (!saldo) return { restantes: 0, pct: 0, tone: 'ok', suspendido: 0, efectivos: 0, informado: false, vencido: false, limite: null };
   const tone = saldo.vencido || saldo.restantes <= 1 ? 'critical' : saldo.restantes <= 2 ? 'warn' : 'ok';
@@ -196,12 +207,12 @@ const plazoClave: Partial<Record<StageKey, PlazoClave>> = {
   calificacion1: 'TTAIP_CALIFICACION_1',
   subsanacion: 'TTAIP_SUBSANACION',
   calificacion2: 'TTAIP_CALIFICACION_2',
-  resolucion: 'TTAIP_RESOLUCION',
 };
 
 /** Days come only from the official calendar response. Missing or out-of-range values stay uninformed. */
 export function stagesConPlazos(plazos: Record<string, unknown> | null): StageMeta[] {
   return stages.map(stage => {
+    if (stage.key === 'resolucion') return { ...stage, plazoDias: 17, plazoLabel: '17 días háb. de base' };
     const clave = plazoClave[stage.key];
     if (!clave) return stage;
     const meta = PLAZO_META_POR_CLAVE[clave];
@@ -239,14 +250,15 @@ export function actionFor(ap: Apelacion): { route: string[]; label: string; reas
     }
     return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'La lista no acredita la recepción del requerimiento. Revise el expediente antes de segunda calificación.', primary: false };
   }
-  if (ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
-    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'Debe acreditarse la notificación eficaz al recurrente y a la entidad; no se avanza desde el panel.', primary: false };
+  if (ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION' && ap.etapa !== 'resolucion') {
+    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Validar notificaciones',
+      reason: 'Debe acreditarse la notificación eficaz al administrado y a la entidad.', primary: true, tab: 'notificaciones' };
   }
-  if (ap.estado === 'EN_RESOLUCION') {
+  if (ap.estado === 'EN_RESOLUCION' || ap.etapa === 'resolucion') {
     if (ap.calificacionPrimera === 'ADMISIBLE' || ap.calificacionSegunda === 'ADMITIDO' || ap.resolucionPrimeraCalificacion || ap.resolucionSegundaCalificacion) {
       return { route: ['/ttaip/resolver', ap.expediente], label: 'Emitir resolución', reason: '', primary: true };
     }
-    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'Revise admisión, ambas notificaciones eficaces y descargos. La lista no acredita por sí sola estas precondiciones.', primary: false };
+    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'Revise la admisión y la eficacia de ambas notificaciones.', primary: false };
   }
   if (ap.estado === 'PENDIENTE_ELEVACION') {
     return { route: ['/ttaip/apelacion', ap.expediente], label: 'Revisar requisitos', reason: 'La elevación requiere su actuación específica; no se adelanta la calificación.', primary: false };

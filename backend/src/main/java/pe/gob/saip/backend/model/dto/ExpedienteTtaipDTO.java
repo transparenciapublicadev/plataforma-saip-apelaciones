@@ -58,7 +58,8 @@ public record ExpedienteTtaipDTO(
                 expediente.getMiembrosAsignados() != null
                         ? expediente.getMiembrosAsignados().stream().map(MiembroTTAIPDTO::from).toList()
                         : List.of(),
-                DocumentoMetadataDTO.fromActive(expediente.getDocumentos()),
+                DocumentoMetadataDTO.fromActive(expediente.getDocumentos() == null ? null : expediente.getDocumentos().stream()
+                        .filter(d -> d.getPresentacionAdmision() == null).toList()),
                 resoluciones,
                 cedulas,
                 expediente.getNotificaciones() != null

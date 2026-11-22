@@ -470,13 +470,21 @@ public class TTAIPService {
                                                      Long descargoId,
                                                      PresentarDescargoEntidadRequest request) {
         transiciones.bloquearExpedienteAccesible(expedienteId);
+        var expediente = expedienteTtaipService.buscarExpediente(expedienteId);
+        var admision = ExpedienteTtaipService.resolucionAdmision(expediente);
+        if (admision != null && admision.isActosDocumentales()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Presente el oficio mediante la operación documental de descargos");
+        }
         return DescargoEntidadTtaipDTO.from(expedienteTtaipService.presentarDescargo(expedienteId, descargoId, request));
     }
 
     @Transactional
     public List<DescargoEntidadTtaipDTO> procesarDescargosVencidos() {
-        return expedienteTtaipService.procesarDescargosVencidos()
-                .stream()
+        return expedienteTtaipService.expedientesConDescargosVencidos().stream()
+                .flatMap(id -> {
+                    transiciones.bloquearExpedienteAccesible(id);
+                    return expedienteTtaipService.procesarDescargosVencidos(id).stream();
+                })
                 .map(DescargoEntidadTtaipDTO::from)
                 .toList();
     }
@@ -576,7 +584,10 @@ public class TTAIPService {
                                                        Resolucion.DecisionResolucion decision,
                                                        Apelacion.EstadoApelacion estadoFinal) {
         Apelacion apelacion = buscarApelacion(apelacionId);
-        validarPuedeResolverFinal(apelacion);
+        if (apelacion.isResuelta()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
+        }
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 Resolucion.TipoResolucion.RESOLUCION_FINAL,
@@ -592,18 +603,6 @@ public class TTAIPService {
         apelacion.setResultado(decision.name());
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
-    }
-
-    private void validarPuedeResolverFinal(Apelacion apelacion) {
-        if (apelacion.isResuelta()) {
-            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
-                    "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
-        }
-        if (apelacion.getEstado() != Apelacion.EstadoApelacion.EN_RESOLUCION) {
-            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
-                    "La apelación debe estar en estado EN_RESOLUCION para emitir resolución final. Estado actual: "
-                            + apelacion.getEstado());
-        }
     }
 
     private String normalizarNullable(String value) {
@@ -626,6 +625,11 @@ public class TTAIPService {
                                        String fundamentos,
                                        Long miembroId) {
         transiciones.validarActuacion(apelacion, tipo, decision);
+        if (tipo == Resolucion.TipoResolucion.RESOLUCION_FINAL && apelacion.getExpedienteTtaip() != null) {
+            var expediente = apelacion.getExpedienteTtaip();
+            expedienteTtaipService.avanzarSegundaNotificada(expediente);
+            expedienteTtaipService.procesarDescargosVencidos(expediente.getId());
+        }
         Resolucion resolucion = new Resolucion();
         resolucion.setApelacion(apelacion);
         resolucion.setTipoResolucion(tipo);

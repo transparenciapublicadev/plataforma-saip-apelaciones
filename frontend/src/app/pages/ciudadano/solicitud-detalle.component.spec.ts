@@ -570,6 +570,56 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.nativeElement.textContent).toContain('Persona sintética');
   });
 
+  it.each([true, false])('ofrece Solicitudes al Tribunal según la eficacia consultada: %s', habilitada => {
+    const f = pagina();
+    const codigo = '00006-2026-JUS/TTAIP';
+    const estado = 'NOTIFICACION_SEGUNDA_CALIFICACION';
+    responder(f, { ...solicitud, apelacion: { id: 145, expediente: codigo, estado } });
+    const admision = { id: 72, tipoResolucion: 'SEGUNDA_CALIFICACION', decision: 'ADMITIDO' };
+    http.expectOne(`${base}/apelaciones/145`).flush({
+      id: 145, solicitudId: 23, ciudadanoId: 17, expediente: codigo, estado,
+      resolucionSegundaCalificacion: admision, calificacionSegunda: 'ADMITIDO', resoluciones: [admision],
+      expedienteTtaip: { id: 41, numeroExpediente: codigo },
+    });
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('#tab-solicitudes-tribunal')).toBeNull();
+    const urlEscritos = `${base}/ttaip/expedientes/41/presentaciones-admision`;
+    const consulta = { puedePresentarSolicitudes: habilitada, puedeResponderInformeOral: false,
+      fechaLimiteResolucion: null, descargo: null, presentaciones: [] };
+    const solicitudEscritos = http.expectOne(urlEscritos);
+    expect(solicitudEscritos.request.headers.get('Authorization')).toBe('Bearer sesion-a');
+    solicitudEscritos.flush(consulta);
+    f.detectChanges();
+    const tab = f.nativeElement.querySelector('#tab-solicitudes-tribunal') as HTMLButtonElement | null;
+    if (!habilitada) {
+      expect(tab).toBeNull();
+      http.expectNone(r => r.method === 'POST');
+      return;
+    }
+    expect(tab?.textContent).toContain('Solicitudes al Tribunal');
+    tab?.click();
+    f.detectChanges();
+    const panel = f.nativeElement.querySelector('#panel-solicitudes-tribunal') as HTMLElement;
+    expect(panel.hidden).toBe(false);
+    const botones = [...panel.querySelectorAll('button')];
+    expect(botones.some(b => b.textContent.includes('Presentar documentación adicional'))).toBe(true);
+    botones.find(b => b.textContent.includes('Solicitar informe oral'))!.click();
+    f.detectChanges();
+    const campo = panel.querySelector('textarea')!;
+    campo.value = 'Deseo sustentar mi apelación.';
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    panel.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    const post = http.expectOne({ url: urlEscritos, method: 'POST' });
+    expect(post.request.body.get('tipo')).toBe('INFORME_ORAL');
+    expect(post.request.body.get('texto')).toBe('Deseo sustentar mi apelación.');
+    const registro = { id: 98, operacion: post.request.body.get('operacion'), tipo: 'INFORME_ORAL',
+      origen: 'CIUDADANO', texto: 'Deseo sustentar mi apelación.', documentos: [] };
+    post.flush(registro);
+    http.expectOne(urlEscritos).flush({ ...consulta, presentaciones: [registro] });
+    f.detectChanges();
+    expect(document.body.querySelector('[role=dialog][aria-label="Solicitud de informe oral presentada"]')).not.toBeNull();
+  });
+
   it('rechaza un detalle de apelación con el ID correcto pero asociado a otra solicitud', () => {
     const f = pagina(); responder(f, { ...solicitud, apelacion: { id: 145 } });
     http.expectOne(`${base}/apelaciones/145`).flush({ id: 145, solicitudId: 999, resoluciones: [{ id: 71 }] });

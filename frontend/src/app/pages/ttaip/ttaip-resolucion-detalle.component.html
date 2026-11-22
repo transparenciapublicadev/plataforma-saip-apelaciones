@@ -98,7 +98,7 @@
           <div class="form-shell" data-motion-item>
             <div class="detail-tabs flex border-b" role="tablist" aria-label="Secciones del expediente" style="border-color: var(--border)">
               @for (tab of tabs; track tab.id) {
-                <button type="button" role="tab" [id]="'detail-tab-' + tab.id" [attr.aria-controls]="'detail-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (keydown)="onTabKey($event, tab.id)" (click)="cambiarTab(tab.id)" class="flex-1 px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">
+                <button type="button" role="tab" [id]="'detail-tab-' + tab.id" [attr.aria-controls]="'detail-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (keydown)="onTabKey($event, tab.id)" (click)="cambiarTab(tab.id)" class="flex-1 min-w-0 px-2 sm:px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">
                   {{ tab.label }}
                   @if (activeTab() === tab.id) {
                     <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
@@ -187,99 +187,19 @@
             } @else if (activeTab() === 'subprocesos') {
               <div role="tabpanel" id="detail-panel-subprocesos" aria-labelledby="detail-tab-subprocesos" class="p-6 space-y-8 animate-fade-in">
                 @if (expedienteTtaip(); as exp) {
-                  <app-informacion-complementaria [expedienteId]="exp.id" [tribunal]="rolInstitucional()" />
+                  <app-presentaciones-admision [expedienteId]="exp.id" [numeroExpediente]="expedienteDisplay()"
+                    [contexto]="rolInstitucional() ? 'tribunal' : 'entidad'" [vista]="rolInstitucional() ? 'descargos' : 'todo'"
+                    [actualizacion]="descargoMessage()" />
+                  @if (!rolInstitucional()) {
+                    <app-informacion-complementaria [expedienteId]="exp.id" />
+                  }
                 }
-                <!-- SECCIÓN A: Traslado, descargos y suspensiones de plazo -->
-                <section class="space-y-4">
-                  <div>
-                    <h3 class="font-display text-base font-semibold flex items-center gap-2 tracking-wide">
-                      <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                      Traslado y descargos de la entidad
-                    </h3>
-                    <p class="text-xs text-muted-foreground mt-1">Al admitirse la apelación se corre traslado a la entidad (7 días hábiles).</p>
-                  </div>
-
-                  @if (descargoMessage()) {
-                    <div class="alert alert-success p-3 text-sm">{{ descargoMessage() }}</div>
-                  }
-                  @if (descargoError()) {
-                    <div class="alert alert-error p-3 text-sm">{{ descargoError() }}</div>
-                  }
-
-                  @if (!descargoActivo()) {
-                    <div class="rounded-lg p-4 space-y-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                      <div>
-                        <span class="eyebrow" style="color: var(--brand-700)">Requerimiento a entidad pública</span>
-                        <p class="text-sm text-foreground/80 mt-1">Al requerir descargos se abre un plazo de 7 días hábiles y se suspende el plazo de resolución final.</p>
-                      </div>
-                      <textarea aria-label="Observación o sustento del requerimiento" #observacionDescargo rows="3" class="field-input min-h-[92px]" placeholder="Observación o sustento del requerimiento"></textarea>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolInstitucional()" (click)="requerirDescargos(observacionDescargo.value)">
-                        Requerir descargos
-                      </button>
-                    </div>
-                  } @else if (descargoActivo(); as active) {
-                    <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--gold)">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <span class="eyebrow">Descargo activo</span>
-                          <div class="font-display text-lg mt-1">{{ active.entidadNombre || dataView().entidad }}</div>
-                        </div>
-                        <span class="pill">{{ active.fechaLimiteDescargo || 'Sin fecha límite' }}</span>
-                      </div>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <textarea aria-label="Resumen del descargo presentado por la entidad" #resumenDescargo rows="4" class="field-input min-h-[110px]" placeholder="Resumen del descargo presentado por la entidad"></textarea>
-                        <div class="space-y-3">
-                          <input aria-label="Referencia de documento o expediente administrativo" #referenciaDocumento class="field-input" placeholder="Referencia de documento o expediente administrativo" />
-                          <input aria-label="Responsable de la entidad" #responsableEntidad class="field-input" placeholder="Responsable de la entidad" />
-                          <textarea aria-label="Observación adicional" #observacionPresentacion rows="2" class="field-input" placeholder="Observación adicional"></textarea>
-                        </div>
-                      </div>
-                      <button type="button" class="btn-brand w-full justify-center" [disabled]="descargoLoading() || actionUncertain() || !rolEntidad()" [attr.aria-disabled]="!rolEntidad()" (click)="presentarDescargo(active.id, resumenDescargo.value, referenciaDocumento.value, responsableEntidad.value, observacionPresentacion.value)">
-                        Presentar descargo
-                      </button>
-                    </div>
-                  }
-
-                  <div class="space-y-4">
-                    <app-ttaip-informe-oral
-                      [expedienteTtaipId]="expedienteTtaip()?.id"
-                      [numeroExpediente]="expedienteDisplay()"
-                      [estadoApelacion]="apelacion()?.estado"
-                      [suspensiones]="suspensionesExpediente()"
-                      [puedeGestionar]="rolInstitucional()"
-                      [puedeSolicitar]="rolEntidad() || rolInstitucional()"
-                      [actorNombre]="actorLabel()"
-                      (audienciaCambio)="onAudienciaCambio($event)"
-                      (solicitarSuspension)="onSolicitarSuspensionInformeOral($event)"
-                      (cancelarSuspension)="onCancelarSuspensionInformeOral($event)"
-                    ></app-ttaip-informe-oral>
-                  </div>
-
-                  <div class="space-y-3">
-                    <span class="eyebrow">Historial de descargos</span>
-                    @for (descargo of descargosExpediente(); track descargo.id) {
-                      <div class="rounded-md p-3 text-sm" style="background: var(--background); border: 1px solid var(--border)">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                          <div class="font-semibold">{{ descargo.entidadNombre || dataView().entidad }}</div>
-                          <span class="pill">{{ descargo.estadoDescargo || 'Estado no informado' }}</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 text-xs">
-                          <div><span class="eyebrow">Requerimiento</span><div class="font-mono mt-1">{{ descargo.fechaRequerimiento || '—' }}</div></div>
-                          <div><span class="eyebrow">Límite</span><div class="font-mono mt-1">{{ descargo.fechaLimiteDescargo || '—' }}</div></div>
-                          <div><span class="eyebrow">Presentación</span><div class="font-mono mt-1">{{ descargo.fechaPresentacion || 'Fecha no informada' }}</div></div>
-                        </div>
-                        @if (descargo.resumenDescargo) {
-                          <p class="text-xs text-foreground/75 mt-3 leading-relaxed">{{ descargo.resumenDescargo }}</p>
-                        }
-                      </div>
-                    } @empty {
-                      <div class="rounded-md p-4 text-sm text-muted-foreground text-center" style="background: var(--card); border: 1px dashed var(--border)">
-                        {{ detalle().descargosEntidad.error || 'La consulta no devuelve requerimientos de descargos registrados.' }}
-                      </div>
-                    }
-                  </div>
-
-                </section>
+                @if (rolInstitucional() && apelacion()?.estado === 'EN_RESOLUCION' && !descargosExpediente().length) {
+                  <button type="button" class="btn-ghost-brand" [disabled]="descargoLoading() || actionUncertain()"
+                    (click)="requerirDescargos('')">Registrar traslado de descargos</button>
+                  @if (descargoMessage()) { <p role="status" class="text-sm">{{ descargoMessage() }}</p> }
+                  @if (descargoError()) { <p role="alert" class="text-sm text-destructive">{{ descargoError() }}</p> }
+                }
 
                 <div class="rule-ornament"></div>
 
@@ -404,6 +324,17 @@
                   </div>
                 </section>
               </div>
+            } @else if (activeTab() === 'requerimientos' && rolInstitucional()) {
+              <div role="tabpanel" id="detail-panel-requerimientos" aria-labelledby="detail-tab-requerimientos"
+                tabindex="0" class="p-4 sm:p-6 space-y-8 animate-fade-in">
+                @if (expedienteTtaip(); as exp) {
+                  <app-presentaciones-admision [expedienteId]="exp.id" [numeroExpediente]="expedienteDisplay()"
+                    contexto="tribunal" vista="solicitudes" />
+                  <app-informacion-complementaria class="block border-t border-border pt-6" [expedienteId]="exp.id" [tribunal]="true" />
+                } @else {
+                  <p role="status" class="text-sm text-muted-foreground">No se recuperó el expediente del Tribunal.</p>
+                }
+              </div>
             } @else if (activeTab() === 'notificaciones') {
               <div role="tabpanel" id="detail-panel-notificaciones" aria-labelledby="detail-tab-notificaciones" class="p-6 space-y-6 text-sm animate-fade-in">
                 @if (expedienteTtaip(); as exp) {
@@ -502,10 +433,22 @@
                   <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
                     <h3 class="font-display text-base font-semibold tracking-wide">Trazabilidad del trámite</h3>
                     <div class="mt-3 space-y-3">
-                      @for (evento of historialExpediente(); track evento.id) {
+                      @for (evento of historialVisible(); track evento.id) {
                         <div class="text-xs border-b pb-2 last:border-0 last:pb-0" style="border-color: var(--border)">
                           <div class="flex items-center justify-between gap-2">
-                            <span class="font-semibold">{{ etiquetaEvento(evento.tipoEvento) }}</span>
+                            <span class="flex min-w-0 items-center gap-2 font-semibold">
+                              <span class="inline-flex size-6 shrink-0 items-center justify-center rounded-md"
+                                style="color: var(--brand-700); background: var(--brand-subtle)">
+                                @switch (iconoTrazabilidad(evento.tipoEvento)) {
+                                  @case ('inicio') { <svg aria-hidden="true" lucideFolderOpen class="size-3.5"></svg> }
+                                  @case ('resolucion') { <svg aria-hidden="true" lucideScale class="size-3.5"></svg> }
+                                  @case ('notificacion') { <svg aria-hidden="true" lucideMail class="size-3.5"></svg> }
+                                  @case ('estado') { <svg aria-hidden="true" lucideRefreshCw class="size-3.5"></svg> }
+                                  @default { <svg aria-hidden="true" lucideFileText class="size-3.5"></svg> }
+                                }
+                              </span>
+                              {{ etiquetaEvento(evento.tipoEvento) }}
+                            </span>
                             <span class="font-mono text-muted-foreground">{{ evento.fechaEvento | date:'dd/MM/yyyy HH:mm' }}</span>
                           </div>
                           <p class="text-foreground/75 mt-1 leading-relaxed">{{ evento.descripcion || evento.referencia }}</p>

@@ -1,3 +1,5 @@
+import { PresentacionesAdmisionComponent } from '../ttaip/shared/presentaciones-admision.component';
+import { admisionFinal } from '../ttaip/ttaip-resolver.model';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, ElementRef, computed, effect, untracked, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
@@ -35,7 +37,7 @@ import {
 import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo, formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
 import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
 
-export type RequestTabId = 'solicitud' | 'precision' | 'respuesta' | 'entrega' | 'notificaciones' | 'apelacion' | 'encauzamiento';
+export type RequestTabId = 'solicitud' | 'precision' | 'respuesta' | 'entrega' | 'notificaciones' | 'apelacion' | 'encauzamiento' | 'solicitudes-tribunal';
 
 export interface RequestTabItem {
   id: RequestTabId;
@@ -92,7 +94,8 @@ export interface NotifStageItem {
     LucideScale,
     LucideUser,
     DocumentListComponent,
-    DocumentPreviewModalComponent
+    DocumentPreviewModalComponent,
+    PresentacionesAdmisionComponent
   ],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
@@ -170,7 +173,10 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
       ...(this.liquidacionVisible() ? [{ id: 'entrega' as const, label: 'Entrega física' }] : []),
       ...(this.enApelacion()
         ? [{ id: 'notificaciones' as const, label: 'Resoluciones y cédulas' }]
-        : [{ id: 'apelacion' as const, label: 'Apelación' }])
+        : [{ id: 'apelacion' as const, label: 'Apelación' }]),
+      ...(this.expedienteParaSolicitudes() && this.solicitudesTribunalDisponibles()
+        ? [{ id: 'solicitudes-tribunal' as const, label: 'Solicitudes al Tribunal' }]
+        : []),
     ];
   });
 
@@ -300,6 +306,18 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly puedeReintentarConsulta = signal(false);
   readonly documentoError = signal('');
   readonly apelacionDetalle = signal<Apelacion | null>(null);
+  readonly expedienteParaSolicitudes = computed(() => {
+    const apelacion = this.apelacionDetalle();
+    const expediente = apelacion?.expedienteTtaip;
+    return this.enApelacion() && admisionFinal(apelacion) && expediente?.numeroExpediente === apelacion?.expediente
+      && this.idValido(expediente?.id) ? expediente.id : null;
+  });
+  readonly solicitudesTribunalDisponibles = signal(false);
+
+  actualizarDisponibilidadSolicitudes(disponibles: boolean): void {
+    this.solicitudesTribunalDisponibles.set(disponibles);
+    if (!disponibles && this.activeTab() === 'solicitudes-tribunal') this.activeTab.set('notificaciones');
+  }
   readonly loadingApelacion = signal(false);
   readonly errorApelacion = signal('');
   readonly reintentarApelacion = signal(false);
@@ -355,6 +373,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     this.sesionDetalle = -1;
     this.solicitud.set(null);
     this.apelacionDetalle.set(null);
+    this.actualizarDisponibilidadSolicitudes(false);
     this.loadingApelacion.set(false);
     this.errorApelacion.set('');
     this.documentoError.set('');
@@ -422,6 +441,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     const token = this.authService.getToken();
     const sesion = this.authService.cambiosSesion();
     this.apelacionDetalle.set(null);
+    this.actualizarDisponibilidadSolicitudes(false);
     this.errorApelacion.set('');
     this.loadingApelacion.set(true);
     this.reintentarApelacion.set(false);

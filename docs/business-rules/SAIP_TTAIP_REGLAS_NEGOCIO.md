@@ -269,31 +269,31 @@ El sistema permite dos canales compatibles para una apelacion vinculada a una SA
 - La entidad tiene 7 dias habiles para presentar descargos y remitir expediente.
 - El plazo de 10 dias habiles para resolver se suspende durante este periodo.
 - Implementacion actual: `DescargoEntidadTtaip` registra expediente, apelacion, entidad, fecha de requerimiento, fecha limite de descargo, fecha de presentacion, estado, resumen, documento o referencia, responsable de entidad, observacion y trazabilidad.
-- El requerimiento solo se permite cuando el expediente esta en `EN_RESOLUCION`, es decir, luego de una admision valida.
+- En el flujo documental, el Tribunal requiere los descargos al validar la notificación de admisión a la entidad. La entidad vinculada puede presentar un oficio identificado por su número y adjuntar varios anexos. Una presentación recibida queda cerrada para edición.
 - No se permite mas de un descargo activo `REQUERIDO` por expediente.
 - Al requerir descargos se crea `SuspensionPlazoTtaip` con motivo `DESCARGOS_ENTIDAD`, estado `ACTIVA`, inicio en la fecha de requerimiento, fin planificado en 7 dias habiles y `diasSuspendidos = 7`.
-- Si la entidad presenta descargos dentro del plazo, el descargo queda `PRESENTADO`, la suspension queda `CERRADA` y los dias suspendidos se recalculan segun los dias habiles efectivamente transcurridos.
-- Si presenta fuera de plazo, queda `PRESENTADO_EXTEMPORANEO`; la suspension se considera cerrada al limite legal de 7 dias habiles.
-- Si vence sin presentacion, el procesamiento operativo marca el descargo como `VENCIDO_SIN_PRESENTACION`, cierra la suspension como `VENCIDA` y el expediente puede continuar.
-- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma los dias suspendidos registrados.
-- Postman/Newman valida requerimiento positivo, rechazo por duplicado activo, consultas, presentacion de descargo, suspensiones y procesamiento de vencidos.
+- La presentación es opcional. El plazo para resolver conserva los siete días hábiles completos de suspensión aunque la entidad presente el oficio antes del vencimiento. En el flujo documental, los 17 días hábiles de base para resolver se cuentan desde la notificación eficaz de la admisión a la entidad (10 días hábiles más 7 de suspensión por descargos).
+- El formulario documental recibe los descargos dentro del plazo acreditado. Los descargos históricos pueden conservar el estado `PRESENTADO_EXTEMPORANEO`.
+- Si vence sin presentacion, el procesamiento operativo marca el descargo como `VENCIDO_SIN_PRESENTACION` y cierra la suspensión como `VENCIDA`. El Tribunal puede emitir la resolución final con ambas notificaciones eficaces, haya recibido descargos o no.
+- Las suspensiones adicionales de la etapa se suman a la fecha límite que corresponde al expediente.
+- El Tribunal consulta el oficio y sus anexos en el expediente. El panel permite filtrar las apelaciones que tienen descargos presentados.
 
 ### Segunda calificacion
 
 - Aplica solo si hubo inadmisibilidad y el ciudadano subsano.
 - Plazo: 7 dias habiles desde la subsanacion valida.
 - Puede terminar en admision/admisibilidad o improcedencia.
-- La segunda calificacion debe notificarse antes de iniciar el plazo de resolucion final.
+- La notificación eficaz a la entidad inicia el plazo de resolución. Con ambas notificaciones acreditadas, la segunda calificación admitida pasa a resolución final.
 
 ### Resolucion final
 
-- Plazo: 10 dias habiles desde el dia siguiente de la notificacion valida de admisibilidad.
-- El plazo puede suspenderse por descargos, informe oral o informacion complementaria.
+- Plazo base en el flujo documental: 17 días hábiles contados a partir del día siguiente de la notificación eficaz de la admisión a la entidad. Incluye los siete días por descargos.
 - Si se solicita informe oral o informacion complementaria, el plazo se suspende 3 dias adicionales.
 - Implementacion actual: `SuspensionPlazoTtaip` reutiliza el mismo agregado de suspensiones para `DESCARGOS_ENTIDAD`, `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`.
 - Para `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`, el sistema registra expediente, tipo de solicitud, solicitante `CIUDADANO`, `ENTIDAD_PUBLICA` o `TTAIP`, motivo, fecha de solicitud, fecha de inicio, fecha de fin planificada, `diasSuspendidos = 3`, estado, responsable, observacion y trazabilidad.
-- Solo se permite registrar estas suspensiones cuando el expediente TTAIP esta en `EN_RESOLUCION`; no se permiten duplicados activos del mismo tipo para el mismo expediente.
-- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma todos los dias suspendidos registrados. Si una suspension adicional se cancela, queda `CANCELADA`, suma `0` dias y se conserva su traza.
+- El administrado y la entidad pueden pedir informe oral o presentar documentación adicional mientras su admisión esté notificada y el expediente siga abierto. El Tribunal responde el informe oral con un archivo. Si lo acepta, ambas partes reciben la programación en el expediente. Si lo deniega, la parte solicitante recibe el sustento.
+- Dos solicitudes de informe oral de partes del mismo expediente comparten la suspensión registrada por ese motivo. La documentación adicional presentada por iniciativa de una parte se incorpora al expediente. El requerimiento de información complementaria del Tribunal conserva su propio trámite y suspensión.
+- La fecha límite documental se recalcula con la base de 17 días hábiles y las suspensiones adicionales registradas para esta etapa. Si una suspension adicional se cancela, queda `CANCELADA`, suma `0` dias y se conserva su traza.
 
 Decisiones finales:
 

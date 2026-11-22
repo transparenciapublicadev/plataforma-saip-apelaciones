@@ -65,6 +65,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly reintentable = signal(false);
   readonly stageKey = signal<StageKey>('todos');
+  readonly descargosPresentados = signal(false);
   readonly pagina = signal<PanelPage<Apelacion> | null>(null);
   readonly resumen = signal<PanelSummary | null>(null);
   readonly queryLoading = signal(false);
@@ -73,6 +74,12 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   readonly search = signal('');
   private readonly pageSize = 4;
   readonly paginaActual = signal(1);
+
+  alternarFiltroDescargos(): void {
+    this.descargosPresentados.update(valor => !valor);
+    this.paginaActual.set(1);
+    this.cargarDashboard();
+  }
 
   readonly hoyISO = signal(hoyLima());
   readonly fechaHoy = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -104,7 +111,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
 
   readonly queueItems = computed(() => this.apelaciones().map(apelacion => {
     const catalog = this.stageCatalog();
-    const stageKey = apelacion.etapa === 'notificaciones' ? 'notificaciones' : stageOf(apelacion.estado);
+    const stageKey = apelacion.etapa === 'notificaciones' || apelacion.etapa === 'resolucion' ? apelacion.etapa : stageOf(apelacion.estado);
     const stage = catalog.find(s => s.key === stageKey) ?? catalog[0];
     const status = computePlazoStatus(apelacion, stage, this.hoyISO(), this.calendario());
     return {
@@ -274,6 +281,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
       this.resumen.set(null);
       this.search.set('');
       this.stageKey.set(this.focusStageFromState ?? 'todos');
+      this.descargosPresentados.set(false);
       this.focusStageFromState = null;
       this.paginaActual.set(1);
     }
@@ -294,7 +302,8 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
       pagina: page,
       tamano: size,
       busqueda: this.search().trim(),
-      etapa: this.stageKey()
+      etapa: this.stageKey(),
+      ...(this.descargosPresentados() ? { descargosPresentados: true } : {})
     }).subscribe({
       next: value => {
         if (!current()) return;

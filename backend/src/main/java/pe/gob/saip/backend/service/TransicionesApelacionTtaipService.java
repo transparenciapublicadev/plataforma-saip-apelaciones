@@ -20,18 +20,16 @@ public class TransicionesApelacionTtaipService {
     private final SubsanacionTtaipRecepcionRepository recepciones;
     private final NotificacionTtaipRepository notificaciones;
     private final HistorialTtaipRepository historial;
-    private final DescargoEntidadTtaipRepository descargos;
     private final AutorizacionRecursosService autorizacion;
     private final EntityManager em;
     private final SuspensionPlazoTtaipRepository suspensiones;
 
     public TransicionesApelacionTtaipService(ApelacionRepository apelaciones, ResolucionRepository resoluciones,
             SubsanacionTtaipRecepcionRepository recepciones, NotificacionTtaipRepository notificaciones,
-            HistorialTtaipRepository historial, DescargoEntidadTtaipRepository descargos,
+            HistorialTtaipRepository historial,
             AutorizacionRecursosService autorizacion, EntityManager em, SuspensionPlazoTtaipRepository suspensiones) {
         this.apelaciones=apelaciones; this.resoluciones=resoluciones; this.recepciones=recepciones;
         this.notificaciones=notificaciones; this.historial=historial; this.autorizacion=autorizacion; this.em=em;
-        this.descargos=descargos;
         this.suspensiones=suspensiones;
     }
 
@@ -101,15 +99,16 @@ public class TransicionesApelacionTtaipService {
                     "Hay un requerimiento de información complementaria pendiente en esta etapa");
         }
         if (tipo==Resolucion.TipoResolucion.RESOLUCION_FINAL) {
-            exigir(ap.getEstado()==Apelacion.EstadoApelacion.EN_RESOLUCION && !ap.isResuelta(),
-                "La resolución final requiere una apelación en EN_RESOLUCION");
+            Resolucion segunda = ultima(ap, Resolucion.TipoResolucion.SEGUNDA_CALIFICACION);
+            exigir(!ap.isResuelta() && (ap.getEstado() == Apelacion.EstadoApelacion.EN_RESOLUCION
+                    || (ap.getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION
+                        && admisionDocumentalValidada(segunda))),
+                    "La resolución final requiere una admisión notificada");
             exigir(ultima(ap,Resolucion.TipoResolucion.RESOLUCION_FINAL)==null,"Ya existe una resolución final registrada");
-            Resolucion admision=ultima(ap,Resolucion.TipoResolucion.SEGUNDA_CALIFICACION);
-            if(admision!=null) exigirSubsanacion(ap);
-            else admision=ultima(ap,Resolucion.TipoResolucion.PRIMERA_CALIFICACION);
+            if (segunda != null) exigirSubsanacion(ap);
+            Resolucion admision = segunda != null ? segunda : ultima(ap, Resolucion.TipoResolucion.PRIMERA_CALIFICACION);
             exigirAdmision(ap,admision);
             exigirNotificaciones(ap,admision);
-            exigirDescargos(ap,admision);
         } else if (decision==Resolucion.DecisionResolucion.TENER_POR_NO_PRESENTADO) {
             exigir(ap.getEstado()==Apelacion.EstadoApelacion.EN_SUBSANACION,
                 "Tener por no presentado requiere subsanación pendiente, sin presentación recibida");
@@ -154,19 +153,10 @@ public class TransicionesApelacionTtaipService {
             && (r.getDecision()==Resolucion.DecisionResolucion.ADMISIBLE || r.getDecision()==Resolucion.DecisionResolucion.ADMITIDO),
             "Falta la resolución de admisión del mismo expediente");
     }
-    private void exigirDescargos(Apelacion ap, Resolucion admision) {
-        var registrados=descargos.findByExpediente_IdExpedienteTtaipOrderByFechaRequerimientoDesc(ap.getExpedienteTtaip().getId());
-        exigir(registrados.stream().noneMatch(d -> d.getEstadoDescargo()==DescargoEntidadTtaip.EstadoDescargo.REQUERIDO),
-            "Los descargos requeridos deben presentarse o procesarse como vencidos antes de resolver");
-        boolean concluido=registrados.stream().anyMatch(d -> d.getApelacion()!=null && d.getApelacion().getId().equals(ap.getId())
-            && ap.getEntidadApeladaEfectiva()!=null && d.getEntidad()!=null && d.getEntidad().getId().equals(ap.getEntidadApeladaEfectiva().getId())
-            && d.getFechaRequerimiento()!=null && !d.getFechaRequerimiento().isBefore(admision.getFechaResolucion().toLocalDate())
-            && (((d.getEstadoDescargo()==DescargoEntidadTtaip.EstadoDescargo.PRESENTADO
-                    || d.getEstadoDescargo()==DescargoEntidadTtaip.EstadoDescargo.PRESENTADO_EXTEMPORANEO)
-                    && d.getFechaPresentacion()!=null && texto(d.getResumenDescargo()))
-                || (d.getEstadoDescargo()==DescargoEntidadTtaip.EstadoDescargo.VENCIDO_SIN_PRESENTACION
-                    && d.getFechaLimiteDescargo()!=null && java.time.LocalDate.now().isAfter(d.getFechaLimiteDescargo()))));
-        exigir(concluido,"Falta el requerimiento de descargos de la admisión y su presentación o vencimiento registrado");
+    static boolean admisionDocumentalValidada(Resolucion r) {
+        return r != null && r.isActosDocumentales() && r.getFechaValidacionActos() != null
+                && (r.getDecision() == Resolucion.DecisionResolucion.ADMISIBLE
+                    || r.getDecision() == Resolucion.DecisionResolucion.ADMITIDO);
     }
     private Resolucion ultima(Apelacion ap, Resolucion.TipoResolucion tipo) {
         return resoluciones.findByApelacion_Id(ap.getId()).stream().filter(r->r.getTipoResolucion()==tipo)
@@ -183,7 +173,7 @@ public class TransicionesApelacionTtaipService {
             exigir(eficaz,"Valide los actos de notificación de " + r.getNumeroResolucion() + " para " + destinatario);
         }
     }
-    private boolean evidenciaEficaz(NotificacionTtaip n) {
+    boolean evidenciaEficaz(NotificacionTtaip n) {
         // Provider sends can overwrite operational fields while an old receipt remains in history.
         // They never acquire legal efficacy by borrowing that earlier event.
         if(n.getResultadoNotificacion()!=null && n.getResultadoNotificacion().startsWith("ENTREGADA_POR_")) return false;

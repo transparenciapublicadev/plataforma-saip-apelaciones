@@ -245,7 +245,8 @@ export interface ValidarNotificacionManualPayload {
     referenciaEvidencia?: string | null;
 }
 
-export type Resolucion = Required<ResolucionDTO> & {
+export type Resolucion = Required<Omit<ResolucionDTO, 'fechaValidacionActos'>> & {
+    fechaValidacionActos?: string | null;
     numeroResolucion?: string | null;
     sala?: SalaTtaipResumen | null;
     documentos?: DocumentoMetadata[];
