@@ -372,7 +372,7 @@ export function cedulaPdf(action: 'view' | 'download', variant: CedulaVariant, r
 }
 
 export function buildDocWord(
-  tipo: 'resolucion' | 'cedula' | 'carta' | 'oficio',
+  tipo: 'resolucion' | 'cedula' | 'carta' | 'oficio' | 'oficio-cumplimiento',
   stage: OfficialStage,
   decision: string | undefined,
   ctxIn: Partial<DocContext>,
@@ -385,6 +385,17 @@ export function buildDocWord(
   } else if (tipo === 'cedula') {
     const variant = cedulaVariantForStage(stage, decision);
     lines = cedulaTexto(variant, recipient, ctx);
+  } else if (tipo === 'oficio-cumplimiento') {
+    lines = [
+      { text: 'OFICIO DE CUMPLIMIENTO', bold: true, size: 14 },
+      { text: 'Número: ' + (ctx.numeroDocumento || 'Sin numeración asignada') },
+      { text: `Entidad: ${ctx.entidad}` },
+      { text: 'Destinatario: Tribunal de Transparencia y Acceso a la Información Pública' },
+      { text: `Expediente: ${ctx.expediente}` },
+      { text: `Resolución: ${ctx.resolucionNro}` },
+      { text: `Fecha acreditada de notificación al administrado: ${ctx.fechaCedula}` },
+      { text: ctx.sumilla }
+    ];
   } else {
     lines = [
       { text: tipo === 'carta' ? 'CARTA OFICIAL TTAIP' : 'OFICIO TTAIP', bold: true, size: 14 },

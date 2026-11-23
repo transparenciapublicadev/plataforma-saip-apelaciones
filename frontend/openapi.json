@@ -91,6 +91,160 @@
     }
   ],
   "paths": {
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental": {
+      "get": {
+        "tags": [
+          "cumplimiento-documental-ttaip-rest-controller"
+        ],
+        "operationId": "consultar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultaCumplimientoTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/entrega": {
+      "post": {
+        "tags": [
+          "cumplimiento-documental-ttaip-rest-controller"
+        ],
+        "operationId": "entregar",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/EntregaCumplimientoTtaip"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaseCumplimientoTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/remision": {
+      "post": {
+        "tags": [
+          "cumplimiento-documental-ttaip-rest-controller"
+        ],
+        "operationId": "remitir",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RemisionCumplimientoTtaip"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaseCumplimientoTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/validacion-entrega": {
+      "post": {
+        "tags": [
+          "cumplimiento-documental-ttaip-rest-controller"
+        ],
+        "operationId": "validarEntrega",
+        "parameters": [
+          {
+            "name": "expedienteId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidacionEntregaCumplimientoTtaip"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaseCumplimientoTtaip"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/apelaciones/{apelacionId}/subsanacion/{requerimientoId}/recepcion": {
       "post": {
         "tags": [
@@ -9173,6 +9327,205 @@
   },
   "components": {
     "schemas": {
+      "Adjunto": {
+        "type": "object",
+        "properties": {
+          "clase": {
+            "type": "string",
+            "enum": [
+              "RESPUESTA",
+              "ANEXO_RESPUESTA",
+              "CARGO",
+              "ACUSE",
+              "OFICIO",
+              "ANEXO_OFICIO"
+            ]
+          },
+          "documento": {
+            "$ref": "#/components/schemas/DocumentoMetadataDTO"
+          }
+        }
+      },
+      "ConsultaCumplimientoTtaip": {
+        "type": "object",
+        "properties": {
+          "cumplimiento": {
+            "$ref": "#/components/schemas/FaseCumplimientoTtaip"
+          }
+        }
+      },
+      "EntregaCumplimientoTtaip": {
+        "type": "object",
+        "properties": {
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "respuesta": {
+            "type": "string",
+            "format": "binary"
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "required": [
+          "operacion",
+          "respuesta"
+        ]
+      },
+      "FaseCumplimientoTtaip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroExpediente": {
+            "type": "string"
+          },
+          "numeroResolucion": {
+            "type": "string"
+          },
+          "entidad": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "PENDIENTE",
+              "CUMPLIDO",
+              "CUMPLIDO_PARCIAL",
+              "VENCIDO",
+              "OBSERVADO",
+              "CERRADO"
+            ]
+          },
+          "fechaNotificacionEntidad": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaLimite": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaEntrega": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fechaEficaciaEntrega": {
+            "type": "string",
+            "format": "date"
+          },
+          "fechaRemision": {
+            "type": "string",
+            "format": "date"
+          },
+          "numeroOficio": {
+            "type": "string"
+          },
+          "fundamento": {
+            "type": "string"
+          },
+          "operacionEntrega": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operacionValidacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operacionRemision": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "puedeEntregar": {
+            "type": "boolean"
+          },
+          "puedeValidar": {
+            "type": "boolean"
+          },
+          "puedeRemitir": {
+            "type": "boolean"
+          },
+          "expedienteResuelto": {
+            "type": "boolean"
+          },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Adjunto"
+            }
+          }
+        }
+      },
+      "RemisionCumplimientoTtaip": {
+        "type": "object",
+        "properties": {
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "numeroOficio": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "fundamento": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "oficio": {
+            "type": "string",
+            "format": "binary"
+          },
+          "anexos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        },
+        "required": [
+          "fundamento",
+          "numeroOficio",
+          "oficio",
+          "operacion"
+        ]
+      },
+      "ValidacionEntregaCumplimientoTtaip": {
+        "type": "object",
+        "properties": {
+          "operacion": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fechaEficacia": {
+            "type": "string",
+            "format": "date"
+          },
+          "cargo": {
+            "type": "string",
+            "format": "binary"
+          },
+          "acuse": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "acuse",
+          "cargo",
+          "fechaEficacia",
+          "operacion"
+        ]
+      },
       "RegistrarSubsanacionTtaipRequest": {
         "type": "object",
         "properties": {
@@ -9388,6 +9741,8 @@
               "EN_CALIFICACION_2",
               "NOTIFICACION_SEGUNDA_CALIFICACION",
               "EN_RESOLUCION",
+              "NOTIFICACION_RESOLUCION_FINAL",
+              "EN_CUMPLIMIENTO",
               "RESUELTO",
               "TENER_POR_NO_PRESENTADO",
               "CONCLUSION_SUSTRACCION_MATERIA",
@@ -10204,6 +10559,8 @@
               "EN_CALIFICACION_2",
               "NOTIFICACION_SEGUNDA_CALIFICACION",
               "EN_RESOLUCION",
+              "NOTIFICACION_RESOLUCION_FINAL",
+              "EN_CUMPLIMIENTO",
               "RESUELTO",
               "TENER_POR_NO_PRESENTADO",
               "CONCLUSION_SUSTRACCION_MATERIA",
@@ -10429,6 +10786,9 @@
         "type": "object",
         "description": "Seguimiento de cumplimiento de una resolución final fundada o fundada en parte",
         "properties": {
+          "documental": {
+            "type": "boolean"
+          },
           "id": {
             "type": "integer",
             "format": "int64"
@@ -13031,6 +13391,8 @@
               "EN_CALIFICACION_2",
               "NOTIFICACION_SEGUNDA_CALIFICACION",
               "EN_RESOLUCION",
+              "NOTIFICACION_RESOLUCION_FINAL",
+              "EN_CUMPLIMIENTO",
               "RESUELTO",
               "TENER_POR_NO_PRESENTADO",
               "CONCLUSION_SUSTRACCION_MATERIA",

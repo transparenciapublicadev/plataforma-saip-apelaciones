@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consultar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/entrega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["entregar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/remision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["remitir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/validacion-entrega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["validarEntrega"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/apelaciones/{apelacionId}/subsanacion/{requerimientoId}/recepcion": {
         parameters: {
             query?: never;
@@ -3370,6 +3434,72 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Adjunto: {
+            /** @enum {string} */
+            clase?: "RESPUESTA" | "ANEXO_RESPUESTA" | "CARGO" | "ACUSE" | "OFICIO" | "ANEXO_OFICIO";
+            documento?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        ConsultaCumplimientoTtaip: {
+            cumplimiento?: components["schemas"]["FaseCumplimientoTtaip"];
+        };
+        EntregaCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** Format: binary */
+            respuesta: string;
+            anexos?: string[];
+        };
+        FaseCumplimientoTtaip: {
+            /** Format: int64 */
+            id?: number;
+            numeroExpediente?: string;
+            numeroResolucion?: string;
+            entidad?: string;
+            /** @enum {string} */
+            estado?: "PENDIENTE" | "CUMPLIDO" | "CUMPLIDO_PARCIAL" | "VENCIDO" | "OBSERVADO" | "CERRADO";
+            /** Format: date */
+            fechaNotificacionEntidad?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            /** Format: date-time */
+            fechaEntrega?: string;
+            /** Format: date */
+            fechaEficaciaEntrega?: string;
+            /** Format: date */
+            fechaRemision?: string;
+            numeroOficio?: string;
+            fundamento?: string;
+            /** Format: uuid */
+            operacionEntrega?: string;
+            /** Format: uuid */
+            operacionValidacion?: string;
+            /** Format: uuid */
+            operacionRemision?: string;
+            puedeEntregar?: boolean;
+            puedeValidar?: boolean;
+            puedeRemitir?: boolean;
+            expedienteResuelto?: boolean;
+            documentos?: components["schemas"]["Adjunto"][];
+        };
+        RemisionCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            numeroOficio: string;
+            fundamento: string;
+            /** Format: binary */
+            oficio: string;
+            anexos?: string[];
+        };
+        ValidacionEntregaCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** Format: date */
+            fechaEficacia: string;
+            /** Format: binary */
+            cargo: string;
+            /** Format: binary */
+            acuse: string;
+        };
         RegistrarSubsanacionTtaipRequest: {
             /** Format: uuid */
             claveOperacion: string;
@@ -3446,7 +3576,7 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             /**
@@ -3787,7 +3917,7 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             /**
@@ -3879,6 +4009,7 @@ export interface components {
         };
         /** @description Seguimiento de cumplimiento de una resolución final fundada o fundada en parte */
         CumplimientoResolucionTtaipDTO: {
+            documental?: boolean;
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -5001,7 +5132,7 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             /** Format: int64 */
@@ -5515,6 +5646,106 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    consultar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    entregar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["EntregaCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    remitir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RemisionCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    validarEntrega: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ValidacionEntregaCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
     registrarSubsanacionTtaip: {
         parameters: {
             query?: never;

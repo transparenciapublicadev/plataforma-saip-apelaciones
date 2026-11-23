@@ -24,11 +24,16 @@ export type PanelApelacion = Pick<Apelacion, 'id' | 'expediente' | 'estado'>
   informacionComplementariaPendiente?: boolean;
   descargosPendientes?: boolean;
   plazoResolucion?: { diasRestantes: number; vencido: boolean; diasAdicionales: number; fechaLimite: string } | null;
+  diasBaseResolucion?: number | null;
+  recepcionSubsanacion?: string | null;
+  plazoCumplimiento?: { diasRestantes: number; vencido: boolean; fechaLimite: string } | null;
+  respuestaCumplimientoDisponible?: boolean;
+  cumplimientoRemitido?: boolean;
   plazoPrimeraCalificacion?: { diasRestantes: number; vencido: boolean; diasSuspendidos?: number; fechaLimite?: string } | null;
   elevacion?: { fechaLimiteElevacion?: string };
   resolucion?: { id?: number; tipoResolucion?: string; decision?: string; fechaResolucion?: string } | null;
-  resolucionPrimeraCalificacion?: { id?: number } | null;
-  resolucionSegundaCalificacion?: { id?: number } | null;
+  resolucionPrimeraCalificacion?: { id?: number; decision?: string } | null;
+  resolucionSegundaCalificacion?: { id?: number; decision?: string } | null;
   expedienteTtaip?: { id?: number; sala?: { id?: number; nombre?: string; codigo?: string } | null } | null;
 };
 export interface PanelSummary {

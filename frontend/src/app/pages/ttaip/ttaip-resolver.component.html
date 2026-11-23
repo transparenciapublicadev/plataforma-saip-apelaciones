@@ -61,7 +61,20 @@
           @if (mensaje()) { <p role="status" class="rounded-lg p-4 text-sm border border-border">{{ mensaje() }}</p> }
           @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando registro o archivos… No abandone el contexto si necesita conservar el seguimiento local.</p> }
           @if (resultadoIncierto()) { <div class="rounded-lg p-4 border border-border"><p class="text-sm text-muted-foreground">No se repite el comando. {{ registroObservado() ? 'La consulta observó una resolución con ID ' + registroObservado() + ', sin atribuirla al envío.' : 'El registro todavía no está comprobado.' }}</p><button type="button" class="btn-ghost-brand mt-3" [disabled]="loading()" (click)="recuperarResultado()">Consultar resultado sin reenviar</button></div> }
-          @if (resolucionRegistrada(); as r) { <section class="form-shell p-5"><h2 class="font-display text-xl">Resolución final consultada</h2><p class="font-mono text-xs mt-2">ID {{ r.id }} · {{ r.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ r.decision }}</p><p class="text-xs text-muted-foreground mt-2">{{ resultadoConfirmado() ? 'Registro recuperado por el mismo ID devuelto al envío.' : 'Actuación consultada; no confirma una operación incierta anterior.' }}</p><button id="final-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verResolucionRegistrada()">Ver actuación registrada</button></section> }
+          @if (resolucionRegistrada(); as r) {
+            <section class="form-shell p-5">
+              <h2 class="font-display text-xl">Resolución final registrada</h2>
+              <p class="font-mono text-xs mt-2">ID {{ r.id }} · {{ r.numeroResolucion || 'Sin numeración registrada' }}</p>
+              <p class="text-sm mt-2">{{ r.decision }}</p>
+              @if (ap.estado === 'NOTIFICACION_RESOLUCION_FINAL') {
+                <p class="text-sm text-muted-foreground mt-2">Pendiente de acreditar las notificaciones de la resolución.</p>
+              }
+              <div class="flex flex-wrap gap-2 mt-3">
+                <a class="btn-brand" [routerLink]="['/ttaip/apelacion', ap.expediente]" [queryParams]="{ tab: 'notificaciones' }">Ir a notificaciones</a>
+                <button id="final-view-record" type="button" class="btn-ghost-brand" (click)="verResolucionRegistrada()">Ver actuación registrada</button>
+              </div>
+            </section>
+          }
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Análisis preliminar</span><h2 class="form-section-title">Causal invocada</h2></div><div class="p-6 space-y-4"><div class="rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><h3 class="eyebrow">Respuesta de la entidad</h3><p class="text-sm mt-1 whitespace-pre-wrap">{{ ap.resumenRespuestaEntidad || 'La consulta no informa la causal concreta. No se deduce del estado.' }}</p></div><p class="eyebrow">¿La causal está correctamente aplicada?</p><div role="group" aria-label="Análisis de la causal" class="grid grid-cols-1 sm:grid-cols-2 gap-2">@for (item of ['confirmar', 'revocar']; track item) { <button type="button" class="rounded-lg p-3 text-left transition-all" [disabled]="!puedePrepararBorrador()" [attr.aria-pressed]="causal() === item" (click)="seleccionarCausal(item === 'confirmar' ? 'confirmar' : 'revocar')" [style.background]="causal() === item ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (causal() === item ? (item === 'confirmar' ? 'var(--success)' : 'var(--brand-700)') : 'var(--border)')" [style.box-shadow]="causal() === item ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="font-display text-sm font-semibold tracking-wider" [style.color]="causal() === item ? (item === 'confirmar' ? 'var(--success)' : 'var(--brand-700)') : 'var(--foreground)'">{{ item === 'confirmar' ? 'Confirmar' : 'Revocar' }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ item === 'confirmar' ? 'La causal es aplicable' : 'No es aplicable' }}</span></button> }</div></div></section>
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">02 · Sentido del fallo</span><h2 id="final-options" class="form-section-title">Decisión final</h2></div><div class="p-6 space-y-2.5" role="group" aria-labelledby="final-options">@for (option of options; track option.id) { <button type="button" (click)="seleccionarDecision(option.id)" [disabled]="!puedePrepararBorrador() || option.id === 'no_presentado'" [attr.aria-pressed]="selectedDecision() === option.id" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'"><span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">@if (option.id === 'fundado' || option.id === 'fundado_en_parte') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @else if (option.id === 'sustraccion_materia' || option.id === 'desistimiento' || option.id === 'estese_a_lo_resuelto') { <svg aria-hidden="true" lucideMinusCircle class="w-5 h-5"></svg> } @else { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> }</span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span></button> }</div></section>
           @if (selectedOption(); as option) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + option.accent"><svg aria-hidden="true" lucideInfo class="w-5 h-5 shrink-0 mt-0.5" [style.color]="option.accent"></svg><p>{{ efectoResolucion() }}</p></div> }
@@ -69,34 +82,16 @@
             <section class="form-shell" style="border-color: color-mix(in srgb, var(--success) 35%, transparent)">
               <div class="form-section-header" style="border-left: 3px solid var(--success); background: color-mix(in srgb, var(--success) 4%, transparent)">
                 <span class="eyebrow" style="color: var(--success)">Mandato de entrega</span>
-                <h2 class="form-section-title">Ordenar entrega de información</h2>
+                <h2 class="form-section-title">Entrega de información</h2>
               </div>
               <div class="p-6 space-y-4">
-                <label class="flex items-start gap-3 text-sm cursor-pointer">
-                  <input id="final-order-delivery" type="checkbox" [(ngModel)]="ordenarEntrega" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--success)]" />
-                  <div>
-                    <span class="font-semibold text-foreground">Ordenar a la entidad la entrega de la información</span>
-                    <p class="text-xs text-muted-foreground mt-0.5">Establece el mandato formal de entrega bajo apercibimiento legal.</p>
-                  </div>
-                </label>
-
-                @if (ordenarEntrega) {
-                  <div class="p-3.5 rounded-lg border border-border bg-card/60 space-y-2">
-                    <label for="final-delivery-days" class="field-label !text-xs uppercase tracking-wider">Plazo de cumplimiento · días hábiles</label>
-                    <div class="flex items-center gap-3">
-                      <input id="final-delivery-days" type="number" min="1" max="30" [(ngModel)]="plazoDias" [disabled]="!puedePrepararBorrador()" class="field-input !w-24 text-center font-bold" />
-                      <span class="text-xs text-muted-foreground leading-snug">días hábiles desde la notificación eficaz de la resolución (7 días hábiles por defecto de ley, máx. 30).</span>
-                    </div>
-                  </div>
-                }
-
-                <div class="rule-ornament" aria-hidden="true"></div>
+                <p class="text-sm text-muted-foreground">La entidad dispone de siete días hábiles desde que se acredita su notificación de la resolución. La fecha límite se consulta en el seguimiento de cumplimiento.</p>
 
                 <label class="flex items-start gap-3 text-sm cursor-pointer">
                   <input id="final-disciplinary" type="checkbox" [(ngModel)]="iniciarProcesoDisciplinario" [disabled]="!puedePrepararBorrador()" class="mt-1 accent-[var(--brand-700)]" />
                   <div>
                     <span class="font-semibold text-foreground">Registrar indicación de proceso disciplinario</span>
-                    <p class="text-xs text-muted-foreground mt-0.5">Conserva el indicador en la resolución; remite reporte para conocimiento de la STPAD.</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">El indicador se guarda en la resolución.</p>
                   </div>
                 </label>
               </div>

@@ -90,6 +90,11 @@ export type Apelacion = Required<Omit<ApelacionDTO, 'plazoSubsanacion'>> & {
         descargosEntidad?: DescargoEntidadTtaip[];
         suspensionesPlazo?: SuspensionPlazoTtaip[];
         cumplimientosResolucion?: CumplimientoResolucionTtaip[];
+        cumplimientoDocumental?: {
+            fechaEntrega: string;
+            fechaRemision?: string | null;
+            fechaCierre?: string | null;
+        } | null;
     } | null;
     resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;

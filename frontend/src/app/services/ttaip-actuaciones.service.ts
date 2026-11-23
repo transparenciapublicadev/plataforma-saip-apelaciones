@@ -5,6 +5,31 @@ import type { DocumentoMetadata } from '../models/documento.model';
 
 export type EtapaActuacion = 'PRIMERA_CALIFICACION' | 'SEGUNDA_CALIFICACION' | 'RESOLUCION_FINAL';
 
+export type PasoCumplimiento = 'entrega' | 'validacion-entrega' | 'remision';
+export type ClaseAdjuntoCumplimiento = 'RESPUESTA' | 'ANEXO_RESPUESTA' | 'CARGO' | 'ACUSE' | 'OFICIO' | 'ANEXO_OFICIO';
+export interface FaseCumplimientoTtaip {
+  id: number;
+  numeroExpediente: string;
+  numeroResolucion: string;
+  entidad: string;
+  estado: 'PENDIENTE' | 'CUMPLIDO' | 'VENCIDO';
+  fechaNotificacionEntidad: string;
+  fechaLimite: string;
+  fechaEntrega: string | null;
+  fechaEficaciaEntrega: string | null;
+  fechaRemision: string | null;
+  numeroOficio: string | null;
+  fundamento: string | null;
+  operacionEntrega: string | null;
+  operacionValidacion: string | null;
+  operacionRemision: string | null;
+  puedeEntregar: boolean;
+  puedeValidar: boolean;
+  puedeRemitir: boolean;
+  expedienteResuelto: boolean;
+  documentos: { clase: ClaseAdjuntoCumplimiento; documento: DocumentoMetadata }[];
+}
+
 export type TipoPresentacionAdmision = 'DESCARGOS' | 'INFORME_ORAL' | 'DOCUMENTACION_ADICIONAL';
 
 export interface PresentacionAdmision {
@@ -172,5 +197,12 @@ export class TtaipActuacionesService {
   revisar(id: number, acto: number, valida: boolean, observacion: string, fechaEficacia: string | null) {
     return this.http.post<ActoNotificacion>(this.url(id, `actos-notificacion/${acto}/revision`),
       { valida, observacion, fechaEficacia });
+  }
+  cumplimientoDocumental(expedienteId: number) {
+    return this.http.get<{ cumplimiento: FaseCumplimientoTtaip | null }>(this.url(expedienteId, 'cumplimiento-documental'));
+  }
+
+  registrarCumplimientoDocumental(expedienteId: number, paso: PasoCumplimiento, body: FormData) {
+    return this.http.post<FaseCumplimientoTtaip>(this.url(expedienteId, `cumplimiento-documental/${paso}`), body);
   }
 }

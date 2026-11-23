@@ -137,6 +137,7 @@ export interface SuspensionPlazoTtaip {
 }
 
 export interface CumplimientoResolucionTtaip {
+  documental?: boolean;
     id?: number;
     expedienteTtaipId?: number | null;
     numeroExpediente?: string | null;

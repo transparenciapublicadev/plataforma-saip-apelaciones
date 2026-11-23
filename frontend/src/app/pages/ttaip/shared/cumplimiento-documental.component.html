@@ -1,0 +1,133 @@
+@if (fase() || !ciudadano() || error()) {
+  <section class="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-4" [attr.aria-busy]="ocupado()">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h3 class="font-display text-base font-semibold">
+        {{ ciudadano() ? (fase()?.entidad || 'Respuesta de la entidad') : 'Cumplimiento de la resolución' }}
+      </h3>
+      @if (fase(); as actual) {
+        @if (actual.estado === 'CUMPLIDO' || (ciudadano() && actual.fechaEntrega)) {
+          <app-status-badge status="Cumplimiento" toneOverride="success" />
+        } @else if (!ciudadano()) {
+          <span class="pill" [class.pill-high]="actual.estado === 'VENCIDO'">
+            {{ actual.estado === 'VENCIDO' ? 'Incumplimiento de la entidad' : 'Pendiente de remisión' }}
+          </span>
+        }
+      }
+    </div>
+
+    @if (error() && (!paso() || pendiente())) {
+      <p role="alert" class="text-sm text-destructive">{{ error() }}</p>
+      @if (reintentoPermitido()) {
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn-brand" (click)="reintentar()">Reintentar el mismo envío</button>
+          <button type="button" class="btn-ghost-brand" (click)="corregir()">Corregir datos</button>
+        </div>
+      } @else {
+        <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="consultar()">Consultar estado</button>
+      }
+    }
+    @if (mensaje()) { <p role="status" class="text-sm">{{ mensaje() }}</p> }
+    @if (ocupado()) { <p role="status" class="text-sm">Consultando el expediente…</p> }
+
+    @if (fase(); as actual) {
+      @if (!ciudadano()) {
+        @if (actual.estado !== 'PENDIENTE') {
+          <p class="text-sm font-medium">{{ actual.expedienteResuelto && actual.estado === 'CUMPLIDO' ? 'Listo para archivo y publicación' : actual.expedienteResuelto ? 'Expediente resuelto' : 'Cierre pendiente de la última notificación de la resolución' }}</p>
+        }
+        <dl class="grid gap-3 text-xs sm:grid-cols-3">
+          <div><dt class="font-semibold">Resolución</dt><dd>{{ actual.numeroResolucion }}</dd></div>
+          <div><dt class="font-semibold">Notificación eficaz a la entidad</dt><dd>{{ actual.fechaNotificacionEntidad | date:'dd/MM/yyyy' }}</dd></div>
+          <div><dt class="font-semibold">Fecha límite de remisión</dt><dd>{{ actual.fechaLimite | date:'dd/MM/yyyy' }}</dd></div>
+        </dl>
+      }
+      @if (actual.fechaEntrega) {
+        @if (ciudadano()) {
+          @if (actual.estado === 'CUMPLIDO') {
+            <p class="text-sm">{{ actual.entidad }} cumplió con lo dispuesto por el Tribunal.</p>
+          } @else {
+            <p class="text-sm">{{ actual.entidad }} puso a su disposición la respuesta ordenada por el Tribunal.</p>
+          }
+        }
+        <p class="text-sm">Respuesta disponible desde el {{ actual.fechaEntrega | date:'dd/MM/yyyy' }}.</p>
+      }
+      @if (!ciudadano() && actual.fechaEficaciaEntrega) {
+        <p class="text-sm">Notificación al administrado validada para el {{ actual.fechaEficaciaEntrega | date:'dd/MM/yyyy' }}.</p>
+      }
+      @if (actual.numeroOficio) {
+        <p class="text-sm"><strong>Oficio {{ actual.numeroOficio }}</strong> · Remitido el {{ actual.fechaRemision | date:'dd/MM/yyyy' }}</p>
+        <p class="whitespace-pre-wrap break-words text-sm">{{ actual.fundamento }}</p>
+      }
+      @for (adjunto of actual.documentos; track adjunto.documento.id) {
+        <app-ttaip-documento-fila [documento]="adjunto.documento" [etiqueta]="etiquetas[adjunto.clase]" (abrir)="ver($event)" />
+      }
+      @if (!paso() && !pendiente()) {
+        @if (actual.puedeEntregar) {
+          <button type="button" class="btn-brand" [disabled]="ocupado()" (click)="abrir('entrega')">Entregar información al administrado</button>
+        }
+        @if (actual.puedeValidar) {
+          <button type="button" class="btn-brand" [disabled]="ocupado()" (click)="abrir('validacion-entrega')">Registrar y validar cargo y acuse</button>
+        }
+        @if (actual.puedeRemitir) {
+          <button type="button" class="btn-brand" [disabled]="ocupado()" (click)="abrir('remision')">Preparar oficio de cumplimiento</button>
+        }
+      }
+      @if (paso(); as seleccion) {
+        <form class="rounded-md border border-border p-4" (submit)="$event.preventDefault(); enviar()">
+          <fieldset class="space-y-3" [disabled]="ocupado() || !!pendiente()">
+            @if (seleccion === 'entrega') {
+              <p class="text-xs text-muted-foreground">Los documentos quedarán disponibles en la bandeja del administrado.</p>
+            } @else if (seleccion === 'validacion-entrega') {
+              <label class="block text-sm font-medium">Fecha eficaz acreditada por el cargo y el acuse
+                <input class="field-input mt-1" type="date" [formControl]="campos.controls.fechaEficacia" required />
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" required /> Verifiqué que ambos documentos acreditan la notificación de esta respuesta.
+              </label>
+            } @else {
+              <label class="block text-sm font-medium">Número de oficio
+                <input class="field-input mt-1" [formControl]="campos.controls.numeroOficio" maxlength="120" required />
+              </label>
+              <label class="block text-sm font-medium">Fundamento del cumplimiento
+                <textarea class="field-input mt-1" [formControl]="campos.controls.fundamento" maxlength="2000" rows="3" required></textarea>
+              </label>
+              <button type="button" class="btn-ghost-brand" (click)="borrador()">Descargar borrador editable</button>
+              <p class="text-xs text-muted-foreground">La respuesta, sus anexos, el cargo y el acuse se incluirán automáticamente.</p>
+            }
+            <div class="grid gap-3" [class.sm:grid-cols-2]="seleccion === 'validacion-entrega'">
+              @for (adjunto of adjuntos[seleccion]; track adjunto.nombre) {
+                <app-multi-file-upload-zone [label]="adjunto.etiqueta" [single]="true" [required]="true"
+                  [allowText]="true" [keyboardAccessible]="true" [disabled]="ocupado() || !!pendiente()"
+                  [files]="archivos()[adjunto.nombre] ?? []" (filesChange)="seleccionar(adjunto.nombre, $event)" />
+              }
+            </div>
+            @if (seleccion !== 'validacion-entrega') {
+              <app-multi-file-upload-zone label="Anexos (opcional)" addLabel="Agregar anexo" [batch]="true"
+                [allowText]="true" [keyboardAccessible]="true" [disabled]="ocupado() || !!pendiente()" [(files)]="anexos" />
+            }
+            @if (error() && !pendiente()) {
+              <p role="alert" class="text-sm text-destructive">{{ error() }}</p>
+            }
+            <div class="flex flex-wrap gap-2">
+              <button type="submit" class="btn-brand">
+                {{ seleccion === 'entrega' ? 'Enviar al administrado' : seleccion === 'validacion-entrega' ? 'Validar notificación' : 'Remitir cumplimiento al Tribunal' }}
+              </button>
+              <button type="button" class="btn-ghost-brand" (click)="cancelar()">Cancelar</button>
+            </div>
+          </fieldset>
+        </form>
+      }
+    } @else if (!ocupado() && !error() && !ciudadano()) {
+      <p class="text-sm text-muted-foreground">
+        {{ esperaNotificaciones() ? 'El cumplimiento se habilita al acreditar la notificación de la resolución final a la entidad.' : 'No hay un cumplimiento documental registrado.' }}
+      </p>
+    }
+  </section>
+}
+<app-document-preview-modal [doc]="preview()" [open]="!!preview()" [manageFocus]="true" (close)="preview.set(null)" />
+@if (remisionConfirmada(); as confirmada) {
+  <app-reference-success-modal [open]="true" [manageFocus]="true" variant="respuesta-entidad"
+    eyebrow="Constancia de remisión" title="Cumplimiento remitido al Tribunal"
+    [description]="mensaje()" [expediente]="confirmada.numeroExpediente" [expedienteHint]="confirmada.numeroResolucion"
+    [metadata]="detalleRemision()" [plazoDias]="null" primaryLabel="Ver expediente"
+    (close)="cerrarConfirmacion()" (primary)="cerrarConfirmacion()" />
+}

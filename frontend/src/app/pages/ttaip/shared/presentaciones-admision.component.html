@@ -1,5 +1,5 @@
 @if (!ocultarSinAdmision() || mostrarSolicitudes()) {
-  <section class="space-y-6">
+  <section class="block space-y-6">
     @if (vista() !== 'descargos' && contexto() === 'ciudadano') {
       <h3 class="font-display text-base font-semibold">Solicitudes al Tribunal</h3>
     }
@@ -14,7 +14,7 @@
     }
     @if (consulta(); as datos) {
       @if (vista() !== 'solicitudes' && contexto() !== 'ciudadano') {
-        <section class="space-y-3">
+        <section class="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-3">
           <h3 class="font-display text-base font-semibold flex items-center gap-2">
             <svg aria-hidden="true" lucideFileText class="h-4 w-4 text-[var(--brand-700)]"></svg> Descargos de la entidad
           </h3>
@@ -61,7 +61,9 @@
         <div class="space-y-6">
           @for (categoria of categoriasSolicitudes; track categoria.tipo) {
             @let registros = solicitudesPorTipo()[categoria.tipo];
-            <section class="space-y-3">
+            <section class="space-y-3" [class.rounded-lg]="contexto() === 'entidad'"
+              [class.border]="contexto() === 'entidad'" [class.border-border]="contexto() === 'entidad'"
+              [class.bg-card]="contexto() === 'entidad'" [class.p-4]="contexto() === 'entidad'">
               <div>
                 <h3 class="font-display text-base font-semibold flex items-center gap-2">
                   @if (categoria.tipo === 'INFORME_ORAL') {

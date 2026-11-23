@@ -701,6 +701,11 @@
                   </div>
                 </div>
 
+                @if (expedienteParaCumplimiento(); as id) {
+                  <div class="px-6 md:px-8 pt-5">
+                    <app-cumplimiento-documental [expedienteId]="id" [ciudadano]="true" />
+                  </div>
+                }
                 @if (loadingApelacion()) {
                   <p role="status" class="p-6 text-sm text-muted-foreground">Cargando documentos del Tribunal...</p>
                 } @else if (errorApelacion()) {

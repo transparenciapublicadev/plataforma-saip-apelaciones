@@ -38,8 +38,6 @@ export interface FinalOperacion {
   observaciones?: string;
   miembroId: number;
   iniciarProcesoDisciplinario?: boolean;
-  ordenarEntrega?: boolean;
-  plazoDias?: number;
   retrotraeA?: EtapaRetroaccionId;
   resolucionId?: number;
 }
@@ -130,8 +128,11 @@ export function motivoFinal(ap: Apelacion | null, recepcion?: ConsultaRecepcion)
 }
 export function finalCompatible(ap: Apelacion, op: FinalOperacion): boolean {
   const r = finalConsultada(ap), option = finalOpciones.find(o => o.id === op.decision)!;
-  return ap.id === op.apelacionId && ap.expediente === op.expediente && ap.estado === option.estado && ap.resultado === option.decision
-    && ap.resuelta === true && !!r && r.id === op.resolucionId && r.decision === option.decision && r.fundamentos === op.fundamentos
+  const pendiente = ap.estado === 'NOTIFICACION_RESOLUCION_FINAL'
+    || (ap.estado === 'EN_CUMPLIMIENTO' && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(option.decision));
+  const estadoCoherente = pendiente ? ap.resuelta === false : ap.estado === option.estado && ap.resuelta === true;
+  return ap.id === op.apelacionId && ap.expediente === op.expediente && estadoCoherente && ap.resultado === option.decision
+    && !!r && r.id === op.resolucionId && r.decision === option.decision && r.fundamentos === op.fundamentos
     && r.miembroTTAIPId === op.miembroId && (op.observaciones == null || r.observaciones === op.observaciones)
     && (op.iniciarProcesoDisciplinario == null || r.iniciarProcesoDisciplinario === op.iniciarProcesoDisciplinario);
 }

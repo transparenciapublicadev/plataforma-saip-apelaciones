@@ -1,4 +1,5 @@
 import { PresentacionesAdmisionComponent } from './presentaciones-admision.component';
+import { CumplimientoDocumentalComponent } from './cumplimiento-documental.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -6,10 +7,11 @@ import { PanelQueryService } from '../../../services/panel-query.service';
 import { AuthService } from '../../../services/auth.service';
 import { PanelApelacion, PanelPage } from '../../../models/panel-query.model';
 import { ActosNotificacionComponent } from './actos-notificacion.component';
+import { StatusBadgeComponent } from '../../../shared/status-badge.component';
 
 @Component({
   selector: 'app-bandeja-tribunal',
-  imports: [RouterLink, ActosNotificacionComponent, PresentacionesAdmisionComponent],
+  imports: [RouterLink, ActosNotificacionComponent, PresentacionesAdmisionComponent, CumplimientoDocumentalComponent, StatusBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="form-shell mb-6">
@@ -29,8 +31,18 @@ import { ActosNotificacionComponent } from './actos-notificacion.component';
             @for (ap of p.contenido; track ap.id) {
               <article class="border border-border rounded-lg p-3 text-sm">
                 <div class="flex flex-wrap gap-2 justify-between items-center">
-                  <span class="font-mono">{{ ap.expediente }}</span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-mono">{{ ap.expediente }}</span>
+                    @if (!entidad() && ap.respuestaCumplimientoDisponible) {
+                      <app-status-badge status="Cumplimiento" toneOverride="success" />
+                    }
+                  </div>
                   @if (entidad()) {
+                    @if (ap.estado === 'EN_CUMPLIMIENTO') {
+                      <a class="btn-brand" [routerLink]="['/funcionario/apelaciones', ap.expediente]" [queryParams]="{ tab: 'subprocesos' }">
+                        Cumplimiento requerido por el Tribunal
+                      </a>
+                    }
                     @if (ap.descargosPendientes) {
                       <a class="btn-brand" [routerLink]="['/funcionario/apelaciones', ap.expediente]" [queryParams]="{ tab: 'subprocesos' }">
                         Descargos requeridos por el Tribunal
@@ -51,6 +63,9 @@ import { ActosNotificacionComponent } from './actos-notificacion.component';
                 </div>
                 @if (seleccion() === ap.id && ap.expedienteTtaip?.id; as id) {
                   <div class="mt-3 space-y-4">
+                    @if (ap.estado === 'EN_CUMPLIMIENTO' || ap.estado === 'RESUELTO_FUNDADO' || ap.estado === 'RESUELTO_FUNDADO_EN_PARTE') {
+                      <app-cumplimiento-documental [expedienteId]="id" [ciudadano]="true" />
+                    }
                     <app-actos-notificacion [expedienteId]="id" [expediente]="ap.expediente" />
                     <app-presentaciones-admision [expedienteId]="id" [numeroExpediente]="ap.expediente"
                       contexto="ciudadano" [ocultarSinAdmision]="true" />
