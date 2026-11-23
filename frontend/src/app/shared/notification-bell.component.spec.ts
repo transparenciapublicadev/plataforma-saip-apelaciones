@@ -9,6 +9,7 @@ import { NotificationBellComponent } from './notification-bell.component';
 import { AuthService } from '../services/auth.service';
 import { SolicitudService } from '../services/solicitud.service';
 import { ApelacionService } from '../services/apelacion.service';
+import { PanelQueryService } from '../services/panel-query.service';
 import { routes } from '../app.routes';
 import { environment } from '../../environments/environment';
 
@@ -17,16 +18,22 @@ describe('Campana: regresiones V3', () => {
   let revision: ReturnType<typeof signal<number>>;
   let solicitudes: ReturnType<typeof vi.fn>;
   let apelaciones: ReturnType<typeof vi.fn>;
+  let panelSolicitudes: ReturnType<typeof vi.fn>;
+  let panelApelaciones: ReturnType<typeof vi.fn>;
   beforeEach(() => {
     session = { usuarioId: 41, tipoUsuario: 'CIUDADANO', token: 'synthetic-session' };
     revision = signal(0);
+    localStorage.clear();
     solicitudes = vi.fn(() => of({ total: 0 }));
     apelaciones = vi.fn(() => of({ total: 0 }));
+    panelSolicitudes = vi.fn(() => of({ contenido: [] }));
+    panelApelaciones = vi.fn(() => of({ contenido: [] }));
     TestBed.configureTestingModule({ imports: [NotificationBellComponent], providers: [
       provideRouter([]),
       { provide: AuthService, useValue: { cambiosSesion: revision, obtenerSesion: () => session } },
       { provide: SolicitudService, useValue: { getEstadisticas: solicitudes } },
       { provide: ApelacionService, useValue: { getEstadisticas: apelaciones } },
+      { provide: PanelQueryService, useValue: { solicitudes: panelSolicitudes, apelaciones: panelApelaciones } },
     ] });
   });
   afterEach(() => { TestBed.resetTestingModule(); vi.restoreAllMocks(); });
@@ -39,8 +46,10 @@ describe('Campana: regresiones V3', () => {
   it.each(['CIUDADANO', 'FUNCIONARIO', 'TTAIP'])('no inventa actividad para %s', role => {
     session.tipoUsuario = role;
     const f = open(role);
-    expect(f.nativeElement.textContent).not.toMatch(/SAIP-2026-|00124-2026|SUSALUD|Muni Lima|Ministerio de Educación/);
-    expect(f.nativeElement.textContent).toContain('no disponible');
+    expect(f.nativeElement.textContent).not.toMatch(/SAIP-2026-|00124-2026|SUSALUD|Muni Lima|Ministerio de Educación|2 días hábiles/);
+    expect(f.nativeElement.textContent).toContain('No tiene avisos pendientes');
+    expect(solicitudes).not.toHaveBeenCalled();
+    expect(panelSolicitudes).toHaveBeenCalled();
   });
   it('error administrativo no conserva alertas operativas prefijadas', () => {
     session.tipoUsuario = 'ADMINISTRADOR';
@@ -152,11 +161,12 @@ describe('Campana: regresiones V3', () => {
     expect(solicitudes).toHaveBeenCalledTimes(3);
   });
 
-  it.each(['CIUDADANO', 'FUNCIONARIO', 'TTAIP'])('sin fuente integrada de %s muestra indisponibilidad, no vacío, y no consulta globales', role => {
+  it.each(['CIUDADANO', 'FUNCIONARIO', 'TTAIP'])('consulta el panel de %s y no las estadísticas globales', role => {
     session.tipoUsuario = role; const f = open(role);
-    expect(f.componentInstance.consultaActual().estado).toBe('no-disponible');
+    expect(f.componentInstance.bandeja.estado()).toBe('vacio');
     expect(f.nativeElement.textContent).not.toContain('Sin registros');
     expect(solicitudes).not.toHaveBeenCalled(); expect(apelaciones).not.toHaveBeenCalled();
+    expect(panelSolicitudes).toHaveBeenCalledWith({ pagina: 0, tamano: 100 });
   });
 
   it.each([
@@ -222,13 +232,39 @@ describe('Campana: regresiones V3', () => {
     f.destroy(); expect(cancelled).toHaveBeenCalledTimes(2);
   });
 
-  it('no lee ni escribe estados de lectura en localStorage ni ofrece acciones persistidas inexistentes', () => {
+  it('la lectura no copia el contenido del expediente al navegador', () => {
     const read = vi.spyOn(Storage.prototype, 'getItem'); const write = vi.spyOn(Storage.prototype, 'setItem');
     const f = open('CIUDADANO');
-    expect(read).not.toHaveBeenCalled(); expect(write).not.toHaveBeenCalled();
-    expect(f.nativeElement.textContent).not.toMatch(/Marcar|Eliminar|nuevas|pendientes/);
+    expect(write).not.toHaveBeenCalled();
+    expect(read.mock.calls.every(call => call[0] === 'saip:avisos:leidos:v1:41')).toBe(true);
     expect(f.nativeElement.querySelectorAll('button').length).toBe(2);
     f.componentInstance.cerrar(); expect(write).not.toHaveBeenCalled();
+  });
+
+  it('abre la precisión pendiente y recuerda solo su identificador', () => {
+    panelSolicitudes.mockReturnValue(of({ contenido: [{
+      id: 2, expediente: 'SAIP-TEST-2', estado: 'PENDIENTE_INFORMACION', entidadNombre: 'Entidad sintética',
+      observaciones: [{ estado: 'PENDIENTE_SUBSANACION' }],
+    }] }));
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const f = open('CIUDADANO');
+    expect(f.nativeElement.textContent).toContain('Precisión pendiente');
+    expect(f.nativeElement.textContent).not.toMatch(/2 días/);
+    const link = f.nativeElement.querySelector('a[href="/ciudadano/precision/SAIP-TEST-2"]') as HTMLAnchorElement;
+    link.click();
+    expect(navigate).toHaveBeenCalledWith(['/ciudadano/precision', 'SAIP-TEST-2']);
+    expect(localStorage.getItem('saip:avisos:leidos:v1:41')).toBe(JSON.stringify(['saip:SAIP-TEST-2:precision']));
+    expect(localStorage.getItem('saip:avisos:leidos:v1:41')).not.toContain('Entidad sintética');
+  });
+
+  it('las dos campanas comparten una sola consulta de avisos', () => {
+    for (let i = 0; i < 2; i++) {
+      const f = TestBed.createComponent(NotificationBellComponent);
+      f.componentRef.setInput('userType', 'CIUDADANO'); f.detectChanges();
+    }
+    expect(panelSolicitudes).toHaveBeenCalledTimes(1);
+    expect(panelApelaciones).toHaveBeenCalledTimes(1);
+    expect(solicitudes).not.toHaveBeenCalled();
   });
 
   it.each([

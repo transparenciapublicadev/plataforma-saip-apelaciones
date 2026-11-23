@@ -5,6 +5,8 @@ import { LucideBell, LucideInbox, LucideX } from '@lucide/angular';
 import { AuthService } from '../services/auth.service';
 import { SolicitudService } from '../services/solicitud.service';
 import { ApelacionService } from '../services/apelacion.service';
+import { AvisosBandejaService } from './avisos-bandeja.service';
+import { Aviso } from './avisos-bandeja';
 
 type Rol = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
 type Estado = 'no-disponible' | 'sin-consultar' | 'cargando' | 'disponible' | 'vacio' | 'incompleto' | 'error';
@@ -45,6 +47,10 @@ function total(value: unknown): number | null {
         aria-haspopup="dialog" [attr.aria-expanded]="panelAbierto()" [attr.aria-controls]="panelAbierto() ? panelId : null"
         class="relative w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2">
         <svg lucideBell class="w-4 h-4" aria-hidden="true"></svg>
+        @if (noLeidos() > 0) {
+          <span class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[var(--brand-600)] text-white text-[10px] font-semibold leading-4 text-center"
+            [attr.aria-label]="noLeidos() + ' avisos sin leer'">{{ noLeidos() > 9 ? '9+' : noLeidos() }}</span>
+        }
       </button>
       @if (panelAbierto()) {
         @let vista = consultaActual();
@@ -59,23 +65,57 @@ function total(value: unknown): number | null {
               <svg lucideX class="w-4 h-4" aria-hidden="true"></svg>
             </button>
           </header>
-          <div class="p-4 text-sm space-y-3" [attr.aria-busy]="vista.estado === 'cargando'">
-            <p [id]="panelId + '-limite'" class="text-xs text-muted-foreground">
-              Esta campana no consulta una bandeja de notificaciones personales ni acredita entrega o notificación eficaz. No hay contador de no leídas.
-            </p>
-            <div [attr.role]="vista.estado === 'error' || vista.estado === 'incompleto' ? 'alert' : 'status'" aria-live="polite">
-              @if (vista.estado === 'no-disponible') { <svg lucideInbox class="w-5 h-5 mb-2 text-muted-foreground" aria-hidden="true"></svg> }
-              <p>{{ vista.mensaje }}</p>
-            </div>
-            @if (vista.datos; as datos) {
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-border p-3">
-                <div><dt class="text-xs text-muted-foreground">Solicitudes registradas</dt><dd class="font-mono font-semibold">{{ datos.solicitudes }}</dd></div>
-                <div><dt class="text-xs text-muted-foreground">Apelaciones registradas</dt><dd class="font-mono font-semibold">{{ datos.apelaciones }}</dd></div>
-              </dl>
-              <p class="text-xs text-muted-foreground">Indicadores derivados de las estadísticas administrativas de solicitudes y apelaciones del servidor. Son totales globales de registros, no actividad personal, notificaciones, vencimientos legales ni lecturas pendientes.</p>
-            }
-            @if (puedeConsultar() && vista.estado !== 'cargando') {
-              <button type="button" class="btn-ghost-brand !text-xs" (click)="consultar()">{{ vista.estado === 'error' || vista.estado === 'incompleto' ? 'Reintentar indicadores' : 'Actualizar indicadores' }}</button>
+          <div class="p-4 text-sm space-y-3" [attr.aria-busy]="vista.estado === 'cargando' || bandeja.estado() === 'cargando'">
+            @if (puedeConsultar()) {
+              <p [id]="panelId + '-limite'" class="text-xs text-muted-foreground">
+                Esta campana no consulta una bandeja de notificaciones personales ni acredita entrega o notificación eficaz. No hay contador de no leídas.
+              </p>
+              <div [attr.role]="vista.estado === 'error' || vista.estado === 'incompleto' ? 'alert' : 'status'" aria-live="polite">
+                @if (vista.estado === 'no-disponible') { <svg lucideInbox class="w-5 h-5 mb-2 text-muted-foreground" aria-hidden="true"></svg> }
+                <p>{{ vista.mensaje }}</p>
+              </div>
+              @if (vista.datos; as datos) {
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-border p-3">
+                  <div><dt class="text-xs text-muted-foreground">Solicitudes registradas</dt><dd class="font-mono font-semibold">{{ datos.solicitudes }}</dd></div>
+                  <div><dt class="text-xs text-muted-foreground">Apelaciones registradas</dt><dd class="font-mono font-semibold">{{ datos.apelaciones }}</dd></div>
+                </dl>
+                <p class="text-xs text-muted-foreground">Indicadores derivados de las estadísticas administrativas de solicitudes y apelaciones del servidor. Son totales globales de registros, no actividad personal, notificaciones, vencimientos legales ni lecturas pendientes.</p>
+              }
+              @if (vista.estado !== 'cargando') {
+                <button type="button" class="btn-ghost-brand !text-xs" (click)="consultar()">{{ vista.estado === 'error' || vista.estado === 'incompleto' ? 'Reintentar indicadores' : 'Actualizar indicadores' }}</button>
+              }
+            } @else if (bandeja.estado() === 'sin-consultar') {
+              <p [id]="panelId + '-limite'" class="text-xs text-muted-foreground">No hay una sesión válida para consultar avisos.</p>
+            } @else {
+              <p [id]="panelId + '-limite'" class="text-xs text-muted-foreground">
+                Avisos de los expedientes que ya puede consultar. Marcar leído solo los oculta en este navegador y no acredita notificación eficaz.
+              </p>
+              @if (bandeja.estado() === 'cargando') { <p role="status">Consultando sus avisos…</p> }
+              @if (bandeja.estado() === 'error') {
+                <p role="alert">No se pudieron consultar sus avisos. No se muestra una lista sustituta.</p>
+                <button type="button" class="btn-ghost-brand !text-xs" (click)="reintentarAvisos()">Reintentar avisos</button>
+              }
+              @if (bandeja.estado() === 'vacio') { <p role="status">No tiene avisos pendientes.</p> }
+              @if (bandeja.estado() === 'disponible') {
+                <ul class="space-y-2">
+                  @for (aviso of bandeja.avisos(); track aviso.id) {
+                    <li>
+                      <a [href]="aviso.ruta" (click)="abrirAviso($event, aviso)"
+                        class="block rounded-lg border border-border px-3 py-2 hover:bg-accent"
+                        [attr.aria-current]="leido(aviso) ? 'false' : null">
+                        <span class="flex items-center gap-2">
+                          <span class="font-medium">{{ aviso.titulo }}</span>
+                          @if (aviso.urgente && !leido(aviso)) { <span class="text-[10px] font-semibold uppercase tracking-wide text-[var(--gold-dark)]">Acción</span> }
+                        </span>
+                        <span class="block text-xs text-muted-foreground mt-1">{{ aviso.detalle }}</span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+                @if (noLeidos() > 0) {
+                  <button type="button" class="btn-ghost-brand !text-xs" (click)="marcarLeidos()">Marcar leídos</button>
+                }
+              }
             }
           </div>
           @if (rutaPanel(); as destino) {
@@ -94,6 +134,7 @@ export class NotificationBellComponent {
   private readonly router = inject(Router);
   private readonly solicitudes = inject(SolicitudService);
   private readonly apelaciones = inject(ApelacionService);
+  readonly bandeja = inject(AvisosBandejaService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
@@ -110,6 +151,14 @@ export class NotificationBellComponent {
     ? this.consulta() : inicial(this.contexto()));
   readonly puedeConsultar = computed(() => this.contexto()?.rol === 'ADMINISTRADOR');
   readonly rutaPanel = computed(() => { const c = this.contexto(); return c ? PANELES[c.rol] : null; });
+  private readonly leidosTick = signal(0);
+  readonly noLeidos = computed(() => {
+    this.leidosTick();
+    const c = this.contexto();
+    if (!c || c.rol === 'ADMINISTRADOR') return 0;
+    const leidos = leerLeidos(c.usuarioId);
+    return this.bandeja.avisos().filter(aviso => !leidos.has(aviso.id)).length;
+  });
 
   constructor() {
     effect(() => {
@@ -118,6 +167,8 @@ export class NotificationBellComponent {
       this.abierto.set(false);
       this.apertura.set(null);
       this.consulta.set(inicial(c));
+      if (c && c.rol !== 'ADMINISTRADOR') this.bandeja.sincronizar(c.usuarioId, c.rol);
+      else this.bandeja.detener();
     });
     inject(DestroyRef).onDestroy(() => this.cancelar());
   }
@@ -179,6 +230,40 @@ export class NotificationBellComponent {
     void this.router.navigate([PANELES[c.rol]]);
   }
 
+  reintentarAvisos(): void {
+    const c = this.leerContexto();
+    if (!c || c.rol === 'ADMINISTRADOR' || !this.panelAbierto()) return;
+    this.bandeja.reintentar(c.usuarioId, c.rol);
+  }
+
+  leido(aviso: Aviso): boolean {
+    this.leidosTick();
+    const c = this.contexto();
+    return !!c && c.rol !== 'ADMINISTRADOR' && leerLeidos(c.usuarioId).has(aviso.id);
+  }
+
+  abrirAviso(event: MouseEvent, aviso: Aviso): void {
+    const c = this.leerContexto();
+    if (!c || c.rol === 'ADMINISTRADOR' || !this.panelAbierto() || !mismoContexto(c, this.apertura())) {
+      event.preventDefault();
+      return;
+    }
+    this.recordarLeido(c.usuarioId, aviso.id);
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    this.cerrar(false);
+    void this.router.navigate(aviso.segmentos);
+  }
+
+  marcarLeidos(): void {
+    const c = this.leerContexto();
+    if (!c || c.rol === 'ADMINISTRADOR' || !this.panelAbierto()) return;
+    const leidos = leerLeidos(c.usuarioId);
+    for (const aviso of this.bandeja.avisos()) leidos.add(aviso.id);
+    guardarLeidos(c.usuarioId, leidos);
+    this.leidosTick.update(valor => valor + 1);
+  }
+
   consultar(): void {
     this.cancelar();
     const c = this.leerContexto();
@@ -209,4 +294,29 @@ export class NotificationBellComponent {
     this.consulta.set({ contexto, estado: 'incompleto', mensaje: 'Información incompleta: el servidor no proporcionó totales válidos para ambos indicadores. No se sustituyen por cero ni por avisos.' });
   }
   private cancelar(): void { ++this.generacion; this.suscripcion?.unsubscribe(); this.suscripcion = undefined; }
+
+  private recordarLeido(usuarioId: number, id: string): void {
+    const leidos = leerLeidos(usuarioId);
+    leidos.add(id);
+    guardarLeidos(usuarioId, leidos);
+    this.leidosTick.update(valor => valor + 1);
+  }
+}
+
+function claveLeidos(usuarioId: number): string {
+  return `saip:avisos:leidos:v1:${usuarioId}`;
+}
+
+function leerLeidos(usuarioId: number): Set<string> {
+  try {
+    const guardado = localStorage.getItem(claveLeidos(usuarioId));
+    const lista = guardado ? JSON.parse(guardado) as unknown : [];
+    return new Set(Array.isArray(lista) ? lista.filter((id): id is string => typeof id === 'string' && id.length < 180) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function guardarLeidos(usuarioId: number, ids: Set<string>): void {
+  localStorage.setItem(claveLeidos(usuarioId), JSON.stringify([...ids].slice(-200)));
 }
